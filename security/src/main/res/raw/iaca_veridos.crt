@@ -1,0 +1,51 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            be:0d:86:11:92:10:85:5f:7c:b6:8e:6e:54:e7:4e:18
+    Signature Algorithm: ecdsa-with-SHA256
+        Issuer: C=AA, O=Veridos, CN=AAA IACA
+        Validity
+            Not Before: Jul 25 12:46:23 2019 GMT
+            Not After : Jul 24 12:46:23 2029 GMT
+        Subject: C=AA, O=Veridos, CN=AAA IACA
+        Subject Public Key Info:
+            Public Key Algorithm: id-ecPublicKey
+                Public-Key: (256 bit)
+                pub:
+                    04:1a:82:d2:8c:23:32:3d:a8:1d:bd:12:5b:58:25:
+                    42:11:8f:38:1c:4e:7b:f2:44:39:d6:1d:e1:16:68:
+                    e9:b1:3d:7a:22:ef:e3:62:38:80:de:2f:55:02:4f:
+                    93:99:bd:10:fd:b2:3d:68:90:71:c0:37:e2:99:c2:
+                    d2:d7:91:56:02
+                ASN1 OID: prime256v1
+                NIST CURVE: P-256
+        X509v3 extensions:
+            X509v3 Subject Key Identifier: 
+                93:59:4D:F0:29:83:85:D8:F6:36:88:3F:9F:E8:FC:77:7D:8A:7A:E0
+            X509v3 Basic Constraints: critical
+                CA:TRUE, pathlen:0
+            X509v3 CRL Distribution Points: 
+
+                Full Name:
+                  URI:http://crl.myidcheck.at/IACA.crl
+
+            X509v3 Key Usage: critical
+                Certificate Sign, CRL Sign
+    Signature Algorithm: ecdsa-with-SHA256
+         30:45:02:21:00:ba:06:7d:4e:44:53:ac:45:0d:14:e9:b9:5d:
+         02:83:3a:79:91:e9:40:83:8b:dd:5a:37:3e:d0:eb:a8:12:ea:
+         db:02:20:49:53:78:c9:4e:e5:ad:6b:da:5c:10:6f:a3:58:66:
+         8b:11:38:22:bb:e8:8f:f9:93:9f:26:be:67:27:4b:81:d0
+-----BEGIN CERTIFICATE-----
+MIIB2zCCAYGgAwIBAgIRAL4NhhGSEIVffLaOblTnThgwCgYIKoZIzj0EAwIwMjEL
+MAkGA1UEBhMCQUExEDAOBgNVBAoMB1Zlcmlkb3MxETAPBgNVBAMMCEFBQSBJQUNB
+MB4XDTE5MDcyNTEyNDYyM1oXDTI5MDcyNDEyNDYyM1owMjELMAkGA1UEBhMCQUEx
+EDAOBgNVBAoMB1Zlcmlkb3MxETAPBgNVBAMMCEFBQSBJQUNBMFkwEwYHKoZIzj0C
+AQYIKoZIzj0DAQcDQgAEGoLSjCMyPagdvRJbWCVCEY84HE578kQ51h3hFmjpsT16
+Iu/jYjiA3i9VAk+Tmb0Q/bI9aJBxwDfimcLS15FWAqN4MHYwHQYDVR0OBBYEFJNZ
+TfApg4XY9jaIP5/o/Hd9inrgMBIGA1UdEwEB/wQIMAYBAf8CAQAwMQYDVR0fBCow
+KDAmoCSgIoYgaHR0cDovL2NybC5teWlkY2hlY2suYXQvSUFDQS5jcmwwDgYDVR0P
+AQH/BAQDAgEGMAoGCCqGSM49BAMCA0gAMEUCIQC6Bn1ORFOsRQ0U6bldAoM6eZHp
+QIOL3Vo3PtDrqBLq2wIgSVN4yU7lrWvaXBBvo1hmixE4Irvoj/mTnya+ZydLgdA=
+-----END CERTIFICATE-----

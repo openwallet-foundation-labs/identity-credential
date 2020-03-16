@@ -1,0 +1,191 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'org.sonarqube'
+apply plugin: 'jacoco-android'
+apply plugin: 'androidx.navigation.safeargs'
+apply plugin: 'kotlin-kapt'
+
+android {
+    compileSdkVersion 29
+    defaultConfig {
+        applicationId "com.ul.ims.gmdl"
+        minSdkVersion 24
+        targetSdkVersion 29
+        versionCode 9
+        versionName "8"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            testCoverageEnabled = true
+        }
+    }
+    compileOptions {
+        sourceCompatibility = '1.8'
+        targetCompatibility = '1.8'
+    }
+    buildToolsVersion = '29.0.2'
+
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError true
+    }
+
+    dataBinding {
+        enabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+    androidExtensions {
+        experimental = true
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    // Kotlin sdtlib jdk8
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation "org.jetbrains.anko:anko:$anko_version"
+
+    // Androidx dependencies
+    implementation "androidx.appcompat:appcompat:$appcompat_version"
+    implementation "androidx.core:core-ktx:$core_ktx_version"
+    implementation "androidx.constraintlayout:constraintlayout:$constraint_layout_version"
+    implementation "androidx.fragment:fragment:$fragment_version"
+    implementation "androidx.fragment:fragment-ktx:$fragment_version"
+    implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
+    implementation "androidx.legacy:legacy-support-v4:$material_version"
+    implementation "androidx.navigation:navigation-fragment-ktx:$navigation_version"
+    implementation "androidx.navigation:navigation-ui-ktx:$navigation_version"
+    implementation "androidx.cardview:cardview:$cardview_version"
+    implementation "androidx.preference:preference:$androidx_preference"
+
+    // QRCode Library
+    implementation "com.budiyev.android:code-scanner:$qrcode_version"
+
+    //RXAndroid
+    implementation "io.reactivex.rxjava2:rxandroid:$rxandroid_version"
+    implementation "io.reactivex.rxjava2:rxjava:$rxjava_version"
+
+    // JUnit 4 framework
+    testImplementation "junit:junit:$junit_version"
+
+    // Espresso environment
+    androidTestImplementation "androidx.test:runner:$test_runner_version"
+    androidTestImplementation "androidx.test:rules:$test_runner_version"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$espresso_core_version"
+
+    // Robolectric environment
+    androidTestImplementation "androidx.test:core:$test_core_version"
+
+    // Mockito framework
+    testImplementation "org.mockito:mockito-core:$mockito_version"
+
+    // Offline Data Transfer Interface Module
+    implementation project(path: ':offlinetransfer')
+
+    // BLE Offline Data Transfer Module
+    implementation project(path: ':bleofflinetransfer')
+
+    // Cbor Objects used by the mDL App
+    implementation project(path: ':cbordata')
+
+    // Security Module
+    implementation project(path: ':security')
+
+    // Google Identity Credential Module
+    implementation project(path: ':identitycredential')
+
+    // NFC Module
+    implementation project(path: ':nfcengagement')
+
+    // Wi-Fi Aware Offline Data Transfer Module
+    implementation project(path: ':wifiofflinetransfer')
+
+    // Biometric authentication
+    implementation "androidx.biometric:biometric:$androidx_biometrics"
+
+    // Issuer Authority Module
+    implementation project(path: ':issuerauthority')
+}
+
+sonarqube {
+    properties {
+        property "sonar.projectKey", "org.sonarqube:gmdl-android-app"
+        property "sonar.projectName", "Google mDL Android App"
+        property "sonar.host.url", "http://sonarqube.ul-ts.com"
+        property "sonar.login", System.getenv('SONAR_LOGIN')
+        property "sonar.projectVersion", project.android.defaultConfig.versionCode
+        property "sonar.projectBaseDir", "."
+
+        property "sonar.sources", "app/src/main/java, bleofflinetransfer/src/main/java, cbordata/src/main/java, offlinetransfer/src/main/java, security/src/main/java"
+        property "sonar.binaries", "app/build/intermediates/app_classes/debug/packageAppClassesDebug, app/build/tmp/kotlin-classes/debug, app/build/tmp/kotlin-classes/debugUnitTest"
+        property "sonar.java.binaries", "app/build/intermediates/javac/debug/classes"
+        property "sonar.tests", "app/src/test/java, app/src/androidTest/java, cbordata/src/test/java, security/src/test/java, security/src/androidTest/java"
+        property "sonar.java.test.binaries", "app/build/intermediates/app_classes/debug/bundleDebugClasses"
+
+        def unit = fileTree(dir: project.projectDir, includes: ['**/*.exec']).files
+        def ui = fileTree(dir: project.projectDir, includes: ['**/*.ec']).files
+        unit.addAll(ui)
+        def files = unit.join(", ")
+
+        property "sonar.jacoco.reportPaths", files
+        property "sonar.java.coveragePlugin", "jacoco"
+        property "sonar.junit.reportsPath", "app/build/test-results/testDebugUnitTest"
+        property "sonar.android.lint.report", "app/build/reports/lint-results.xml"
+        property "sonar.coverage.jacoco.xmlReportPaths", "app/build/reports/jacoco/jacocoTestReportKt/jacocoTestReportKt.xml"
+    }
+}
+
+task jacocoTestReportKt(type: JacocoReport, dependsOn: "testDebugUnitTest") {
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports for Debug build"
+
+    reports {
+        xml.enabled = true
+        html.enabled = false
+    }
+
+    // what to exclude from coverage report
+    // UI, "noise", generated classes, platform classes, etc.
+    def excludes = [
+            '**/R.class',
+            '**/R$*.class',
+            '**/*$ViewInjector*.*',
+            '**/BuildConfig.*',
+            '**/Manifest*.*',
+            'android/**/*.*',
+            '**/*Fragment.*',
+            '**/*Activity.*'
+    ]
+    // generated classes
+    classDirectories = fileTree(
+            dir: "$buildDir/intermediates/classes/debug",
+            excludes: excludes
+    ) + fileTree(
+            dir: "$buildDir/tmp/kotlin-classes/debug",
+            excludes: excludes
+    )
+
+    // sources
+    sourceDirectories = files([
+            android.sourceSets.main.java.srcDirs
+    ])
+    executionData = files("$buildDir/jacoco/testDebugUnitTest.exec")
+}

@@ -1,0 +1,1 @@
+include ':app', ':offlinetransfer', ':bleofflinetransfer', ':cbordata', ':security', ':identitycredential', ':nfcengagement', ':wifiofflinetransfer', ':issuerauthority'

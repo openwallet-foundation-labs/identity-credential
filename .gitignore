@@ -1,0 +1,11 @@
+*.iml
+.gradle
+/local.properties
+.DS_Store
+/build
+/identitycredential/build/
+/captures
+.externalNativeBuild
+.idea/
+fastlane/report.xml
+app/src/main/res/values/version.xml
