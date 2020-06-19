@@ -34,27 +34,23 @@ class TransportChannelManager(
     publicKey: ByteArray,
     wifiPassphrase: String?
 ){
-    private var transportManager: TransportManager
-    init {
-
-        when (transportChannel) {
-            TransferChannels.BLE -> {
-                Log.d(javaClass.simpleName, "Starting BLE transport manager")
-                transportManager = BleTransportManager(
-                    context,
-                    appMode,
-                    bleServiceMode
-                )
-            }
-            TransferChannels.WiFiAware -> {
-                Log.d(javaClass.simpleName, "Starting Wifi Aware transport manager")
-                transportManager = WifiTransportManager(context, appMode, publicKey, wifiPassphrase)
-            }
-            else -> throw UnsupportedOperationException("Unknown transport channel: $transportChannel")
+    private var transportManager: TransportManager = when (transportChannel) {
+        TransferChannels.BLE -> {
+            Log.d(javaClass.simpleName, "Starting BLE transport manager")
+            BleTransportManager(
+                context,
+                appMode,
+                bleServiceMode
+            )
         }
+        TransferChannels.WiFiAware -> {
+            Log.d(javaClass.simpleName, "Starting Wifi Aware transport manager")
+            WifiTransportManager(context, appMode, publicKey, wifiPassphrase)
+        }
+        else -> throw UnsupportedOperationException("Unknown transport channel: $transportChannel")
     }
 
-    fun getTransportManager() : TransportManager {
+    fun getTransportManager(): TransportManager {
         return this.transportManager
     }
 

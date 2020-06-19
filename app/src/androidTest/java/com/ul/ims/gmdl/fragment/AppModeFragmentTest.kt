@@ -44,7 +44,6 @@ class AppModeFragmentTest {
     @Test
     fun testUi() {
         onView(withId(R.id.btn_holder)).check(matches(isDisplayed()))
-        onView(withId(R.id.btn_verifier)).check(matches(isDisplayed()))
         onView(withId(R.id.txt_select_function_label)).check(matches(isDisplayed()))
     }
 
@@ -57,14 +56,4 @@ class AppModeFragmentTest {
         onView(withText(R.string.credentials_list)).check(matches(isDisplayed()))
     }
 
-    @Test
-    fun onVerifierSelectedTest() {
-        onView(withId(R.id.btn_verifier)).check(matches(isDisplayed()))
-        onView(withId(R.id.btn_verifier)).perform(click())
-
-//        // Consent Dialog
-//        onView(withText(R.string.verifier_request_dialog)).check(matches(isDisplayed()))
-//        onView(withText(android.R.string.ok)).perform(click())
-//        onView(withText(R.string.txt_scan_qrcode_label)).check(matches(isDisplayed()))
-    }
 }

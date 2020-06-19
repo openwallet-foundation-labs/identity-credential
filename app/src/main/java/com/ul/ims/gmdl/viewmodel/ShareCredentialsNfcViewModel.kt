@@ -49,9 +49,8 @@ import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.uiThread
 
 class ShareCredentialsNfcViewModel(val app: Application) : AndroidViewModel(app)  {
-    val LOG_TAG = ShareCredentialsNfcViewModel::class.java.simpleName
-
     companion object {
+        val LOG_TAG = ShareCredentialsNfcViewModel::class.java.simpleName
         const val BLE_VERSION = 1
         const val DE_VERSION = "1.0"
         const val CIPHER_SUIT_IDENT = 1
@@ -63,7 +62,7 @@ class ShareCredentialsNfcViewModel(val app: Application) : AndroidViewModel(app)
     var permissionRequestText = ObservableField<String>()
     var btnEnableBtVisibility = ObservableInt()
     var btnReqPermissionVisibility = ObservableInt()
-    var loadingVisibility = ObservableInt()
+    private var loadingVisibility = ObservableInt()
     private var offlineTransferStatusLd = MutableLiveData<Resource<Any>>()
     private var iofflineTransferHolder : IofflineTransfer? = null
     private var liveDataMerger = MediatorLiveData<Resource<Any>>()

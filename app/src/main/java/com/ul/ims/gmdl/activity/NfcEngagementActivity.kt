@@ -41,15 +41,15 @@ class NfcEngagementActivity : AppCompatActivity() {
         const val EXTRA_TRANSFER_METHOD = "com.ul.ims.gmdl.TRANSFER_METHOD"
         const val EXTRA_BLE_ROLE = "com.ul.ims.gmdl.EXTRA_BLE_ROLE"
         const val EXTRA_WIFI_PASSPHRASE = "com.ul.ims.gmdl.EXTRA_WIFI_PASSPHRASE"
+        private const val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
+                or NfcAdapter.FLAG_READER_NFC_B
+                or NfcAdapter.FLAG_READER_NFC_F
+                or NfcAdapter.FLAG_READER_NFC_V
+                or NfcAdapter.FLAG_READER_NFC_BARCODE)
     }
 
     private var nfcAdapter: NfcAdapter? = null
 
-    private val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
-            or NfcAdapter.FLAG_READER_NFC_B
-            or NfcAdapter.FLAG_READER_NFC_F
-            or NfcAdapter.FLAG_READER_NFC_V
-            or NfcAdapter.FLAG_READER_NFC_BARCODE)
 
     private val callback = ReaderModeCallback()
 

@@ -55,9 +55,8 @@ import org.jetbrains.anko.uiThread
 
 class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
 
-    val LOG_TAG = ShareCredentialsViewModel::class.java.simpleName
-
     companion object {
+        val LOG_TAG = ShareCredentialsViewModel::class.java.simpleName
         const val QRCODE_HEIGHT = 400
         const val QRCODE_WIDTH = 400
         const val BLE_VERSION = 1

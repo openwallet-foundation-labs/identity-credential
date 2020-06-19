@@ -24,7 +24,7 @@ object LivedataUtils {
     fun updateLiveData(resource: Resource<Any>, data: MutableLiveData<Resource<Any>>) {
         val handler = Handler(Looper.getMainLooper())
         handler.post {
-            data?.value = resource
+            data.value = resource
         }
     }
 }

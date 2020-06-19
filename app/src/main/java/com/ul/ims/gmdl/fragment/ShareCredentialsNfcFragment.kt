@@ -50,15 +50,15 @@ import java.util.concurrent.Executor
 
 class ShareCredentialsNfcFragment : Fragment() {
 
-    private val PERMISSION_FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION
-    private val REQUEST_ENABLE_BT = 456
-    private val REQUEST_FINE_LOCATION = 789
-    private lateinit var vm : ShareCredentialsNfcViewModel
-    private lateinit var transferMethod : TransferChannels
-
     companion object {
         val LOG_TAG = ShareCredentialsNfcFragment::class.java.simpleName
+        private const val PERMISSION_FINE_LOCATION = Manifest.permission.ACCESS_FINE_LOCATION
+        private const val REQUEST_ENABLE_BT = 456
+        private const val REQUEST_FINE_LOCATION = 789
     }
+
+    private lateinit var vm: ShareCredentialsNfcViewModel
+    private lateinit var transferMethod: TransferChannels
 
     private val executor = Executor {
         if (Looper.myLooper() == null) {

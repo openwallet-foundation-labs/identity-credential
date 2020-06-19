@@ -21,7 +21,6 @@ import android.util.Log
 import androidx.security.identity.*
 import androidx.security.identity.IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
 import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
-import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import java.security.cert.X509Certificate
@@ -35,40 +34,6 @@ object ProvisioningManager {
 
     private const val TAG = "ProvisioningManager"
 
-    private fun getIdentityCredentialRequest(): Collection<RequestNamespace> {
-        val requestEntryNamespaces = LinkedList<RequestNamespace>()
-        val reqBuilder = RequestNamespace.Builder(MdlDoctype.docType)
-        MdlNamespace.items.keys.forEach {
-            reqBuilder.addEntryNameNoAuthentication(it)
-        }
-
-        requestEntryNamespaces.add(reqBuilder.build())
-
-        return requestEntryNamespaces
-    }
-
-    fun getUserCredential(context: Context, credentialName : String,
-                          sessionTranscript: ByteArray?) : IdentityCredential.GetEntryResult? {
-        val identityCredential = getIdentityCredential(context, credentialName)
-
-        identityCredential?.let {credential ->
-            val requestEntryNamespaces = getIdentityCredentialRequest()
-            return if (sessionTranscript != null && sessionTranscript.isNotEmpty()) {
-                credential.getEntries(
-                    null,
-                    requestEntryNamespaces,
-                    sessionTranscript,
-                    null)
-            } else {
-                credential.getEntries(
-                    null,
-                    requestEntryNamespaces,
-                    null,
-                    null)
-            }
-        }
-        return null
-    }
 
     fun getIdentityCredential(context: Context, credentialName : String) : IdentityCredential? {
         val store = IdentityCredentialStore.getInstance(context)

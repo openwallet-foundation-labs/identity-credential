@@ -76,8 +76,7 @@ class Response private constructor(
         map.put(toDataItem(KEY_STATUS), toDataItem(status))
 
         val outputStream = ByteArrayOutputStream()
-        // TODO: Use nonCanonical when cbor-java 0.9 is out.
-        CborEncoder(outputStream).encode(map)
+        CborEncoder(outputStream).nonCanonical().encode(map)
 
         return outputStream.toByteArray()
     }

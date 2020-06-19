@@ -18,44 +18,43 @@
 
 
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
     <data>
-        <variable name="fragment" type="com.ul.ims.gmdl.fragment.AppModeFragment"/>
+        <variable
+            name="fragment"
+            type="com.ul.ims.gmdl.fragment.AppModeFragment" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
         <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/label_select_function" app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginEnd="8dp" app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginStart="8dp" android:layout_marginTop="50dp"
-                app:layout_constraintTop_toTopOf="parent" android:textSize="22sp"
-                android:id="@+id/txt_select_function_label"/>
+            android:id="@+id/txt_select_function_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="50dp"
+            android:layout_marginEnd="8dp"
+            android:text="@string/label_select_function"
+            android:textSize="22sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <Button
-                android:text="@string/btn_holder_text"
-                android:layout_width="150dp"
-                android:layout_height="wrap_content"
-                android:id="@+id/btn_holder" android:layout_marginTop="50dp"
-                app:layout_constraintTop_toBottomOf="@+id/txt_select_function_label"
-                app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginStart="8dp" app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginEnd="8dp"
-                app:layout_constraintHorizontal_bias="0.498"
-                android:onClick="@{fragment::onHolderSelected}"/>
-        <Button
-                android:text="@string/btn_verifier_text"
-                android:layout_width="150dp"
-                android:layout_height="wrap_content"
-                android:id="@+id/btn_verifier"
-                app:layout_constraintEnd_toEndOf="parent"
-                android:layout_marginEnd="8dp" app:layout_constraintStart_toStartOf="parent"
-                android:layout_marginStart="8dp"
-                android:onClick="@{fragment::onVerifierSelected}" android:layout_marginTop="50dp"
-                app:layout_constraintTop_toBottomOf="@+id/btn_holder"/>
+            android:id="@+id/btn_holder"
+            android:layout_width="150dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="50dp"
+            android:layout_marginEnd="8dp"
+            android:onClick="@{fragment::onHolderSelected}"
+            android:text="@string/btn_holder_text"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/txt_select_function_label" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

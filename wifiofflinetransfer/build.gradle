@@ -24,7 +24,9 @@ android {
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
     }
-
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
 }
 
 dependencies {
@@ -41,7 +43,7 @@ dependencies {
     implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_version"
 
     // Apache HTTP Library
-    implementation "org.apache.httpcomponents:httpcore:4.4.12"
+    implementation 'org.apache.httpcomponents:httpcore:4.4.13'
 
     // JUnit 4 framework
     testImplementation "junit:junit:$junit_version"

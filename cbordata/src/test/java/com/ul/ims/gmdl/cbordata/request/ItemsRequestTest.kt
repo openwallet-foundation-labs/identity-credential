@@ -31,10 +31,10 @@ class ItemsRequestTest {
         .addNamespace(MdlNamespace.namespace, dataElements)
         .build()
 
-    private val requestInfo = mutableMapOf(
-            Pair("Hello", "World"),
-            Pair("Test", "Data"),
-            Pair("Answer", 0x2A)
+    private val requestInfo = mutableMapOf<String, Any>(
+        Pair("Hello", "World"),
+        Pair("Test", "Data"),
+        Pair("Answer", 0x2A)
     )
 
     val encodedExpected = byteArrayOf(

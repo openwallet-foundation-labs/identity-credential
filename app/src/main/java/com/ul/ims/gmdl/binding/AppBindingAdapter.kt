@@ -17,74 +17,12 @@
 package com.ul.ims.gmdl.binding
 
 import android.graphics.Bitmap
-import android.icu.text.SimpleDateFormat
-import android.icu.util.Calendar
 import android.widget.ImageView
-import android.widget.TextView
 import androidx.databinding.BindingAdapter
-import com.ul.ims.gmdl.R
-import com.ul.ims.gmdl.cbordata.drivingPrivileges.DrivingPrivileges
-import com.ul.ims.gmdl.cbordata.utils.DateUtils
-import java.util.*
-
-@BindingAdapter("userImage")
-fun setUserImage(imageView: ImageView, userImage: Bitmap?) {
-    userImage?.let {
-        imageView.setImageBitmap(it)
-    }
-}
 
 @BindingAdapter("qrcode")
 fun setQrcode(imageView: ImageView, qrcode: Bitmap?) {
     qrcode?.let {
         imageView.setImageBitmap(it)
-    }
-}
-
-@BindingAdapter("dateFormat")
-fun setDateFormat(textView: TextView, date: Calendar?) {
-    date?.let {
-        textView.text = DateUtils.getFormattedDateTime(date, DateUtils.DISPLAY_FORMAT_DATE)
-    }
-}
-
-@BindingAdapter("dateTimeFormat")
-fun setDateTimeFormat(textView: TextView, dateTime: Calendar?) {
-    dateTime?.let {
-        textView.text = DateUtils.getFormattedDateTime(dateTime, DateUtils.DISPLAY_FORMAT_DATE_TIME)
-    }
-}
-
-@BindingAdapter("categories")
-fun setCategories(textView: TextView, privileges : DrivingPrivileges?) {
-    var text = ""
-    val df = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    privileges?.let {priv->
-        for ((count, drivingPrivilege) in priv.drivingPrivileges.withIndex()) {
-            if (count > 0) {
-                text += "\n\n"
-            }
-            text += "Vehicle Category: ${drivingPrivilege.vehicleCategory}"
-            drivingPrivilege.issueDate?.let {
-                text += "\n    Issue Date: ${df.format(it)}"
-            }
-            drivingPrivilege.expiryData?.let {
-                text += "\n    Expire Date: ${df.format(it)}"
-            }
-        }
-    }
-    textView.text = text
-}
-
-@BindingAdapter("issuerAuthVal")
-fun setissuerAuthVal(imageView: ImageView, status : Boolean?) {
-    status?.let {
-        var resId = android.R.drawable.ic_delete
-
-        if (it) {
-            resId = R.drawable.ic_baseline_done
-        }
-
-        imageView.setImageResource(resId)
     }
 }

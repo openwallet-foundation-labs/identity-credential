@@ -54,8 +54,7 @@ class IssuerSignedItem private constructor(
         val map = toDataItem()
 
         val outputStream = ByteArrayOutputStream()
-        // TODO: Use nonCanonical when cbor-java 0.9 is out.
-        CborEncoder(outputStream).encode(map)
+        CborEncoder(outputStream).nonCanonical().encode(map)
 
         return outputStream.toByteArray()
     }
