@@ -24,8 +24,6 @@ import androidx.navigation.Navigation
 import androidx.navigation.findNavController
 import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.databinding.FragmentAppModeBinding
-import com.ul.ims.gmdl.offlinetransfer.transportLayer.EngagementChannels
-import com.ul.ims.gmdl.util.SettingsUtils
 
 class AppModeFragment : Fragment() {
 
@@ -71,14 +69,5 @@ class AppModeFragment : Fragment() {
 
         view.findNavController().navigate(action)
 
-    }
-
-    fun onVerifierSelected(view: View) {
-        when (SettingsUtils.getEngagementMethod(context!!)) {
-            EngagementChannels.QR ->
-                view.findNavController().navigate(R.id.action_appModeFragment_to_qrcodeScanFragment)
-            EngagementChannels.NFC ->
-                view.findNavController().navigate(R.id.action_appModeFragment_to_nfcScanFragment)
-        }
     }
 }

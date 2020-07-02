@@ -28,7 +28,7 @@ import com.ul.ims.gmdl.util.QrCode
 import com.ul.ims.gmdl.viewmodel.ShareCredentialsViewModel
 
 class MdlQrCode private constructor(
-    val deviceEngagement: DeviceEngagement?
+    private val deviceEngagement: DeviceEngagement?
 ) {
     companion object {
         const val QRCODE_URI_SCHEME ="mdl"
@@ -69,7 +69,7 @@ class MdlQrCode private constructor(
     }
 
     class Builder {
-        var deviceEngagement: DeviceEngagement? = null
+        private var deviceEngagement: DeviceEngagement? = null
 
         fun setDeviceEngagement(deviceEngagement: DeviceEngagement?) = apply {
             this.deviceEngagement = deviceEngagement

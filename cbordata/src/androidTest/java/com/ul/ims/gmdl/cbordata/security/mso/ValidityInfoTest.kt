@@ -33,6 +33,7 @@ class ValidityInfoTest {
     )
     private val validFrom = DateUtils.getValidityDate()
     private val validUntil = DateUtils.getDateOfExpiry()
+
     // Datetime without milliseconds
     private val expectedUpdate = DateUtils.cborDecodeCalendar(
         DateUtils.getFormattedDateTime(DateUtils.getTimeOfLastUpdate()) ?: ""

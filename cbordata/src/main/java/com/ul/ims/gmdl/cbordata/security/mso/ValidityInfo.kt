@@ -17,7 +17,6 @@
 package com.ul.ims.gmdl.cbordata.security.mso
 
 import android.icu.util.Calendar
-import android.util.Log
 import co.nstant.`in`.cbor.model.DataItem
 import co.nstant.`in`.cbor.model.MajorType
 import co.nstant.`in`.cbor.model.Map

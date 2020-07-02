@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: 'org.sonarqube'
-apply plugin: 'jacoco-android'
+apply plugin: 'jacoco'
 apply plugin: 'androidx.navigation.safeargs'
 apply plugin: 'kotlin-kapt'
 
@@ -22,9 +22,6 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
-        debug {
-            testCoverageEnabled = true
-        }
     }
     compileOptions {
         sourceCompatibility = '1.8'
@@ -41,8 +38,8 @@ android {
         abortOnError true
     }
 
-    dataBinding {
-        enabled true
+    buildFeatures {
+        dataBinding true
     }
 
     kotlinOptions {
@@ -68,8 +65,8 @@ dependencies {
     implementation "androidx.fragment:fragment:$fragment_version"
     implementation "androidx.fragment:fragment-ktx:$fragment_version"
     implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
-    implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version"
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_ktx_version"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_ktx_version"
     implementation "androidx.legacy:legacy-support-v4:$material_version"
     implementation "androidx.navigation:navigation-fragment-ktx:$navigation_version"
     implementation "androidx.navigation:navigation-ui-ktx:$navigation_version"
@@ -81,7 +78,7 @@ dependencies {
 
     //RXAndroid
     implementation "io.reactivex.rxjava2:rxandroid:$rxandroid_version"
-    implementation "io.reactivex.rxjava2:rxjava:$rxjava_version"
+    implementation "io.reactivex.rxjava2:rxjava:${rxjava_version}"
 
     // JUnit 4 framework
     testImplementation "junit:junit:$junit_version"
@@ -137,7 +134,7 @@ sonarqube {
         property "sonar.sources", "app/src/main/java, bleofflinetransfer/src/main/java, cbordata/src/main/java, offlinetransfer/src/main/java, security/src/main/java"
         property "sonar.binaries", "app/build/intermediates/app_classes/debug/packageAppClassesDebug, app/build/tmp/kotlin-classes/debug, app/build/tmp/kotlin-classes/debugUnitTest"
         property "sonar.java.binaries", "app/build/intermediates/javac/debug/classes"
-        property "sonar.tests", "app/src/test/java, app/src/androidTest/java, cbordata/src/test/java, security/src/test/java, security/src/androidTest/java"
+        property "sonar.tests", "app/src/androidTest/java, cbordata/src/androidTest/java, cbordata/src/test/java, security/src/test/java, security/src/androidTest/java"
         property "sonar.java.test.binaries", "app/build/intermediates/app_classes/debug/bundleDebugClasses"
 
         def unit = fileTree(dir: project.projectDir, includes: ['**/*.exec']).files
@@ -175,17 +172,17 @@ task jacocoTestReportKt(type: JacocoReport, dependsOn: "testDebugUnitTest") {
             '**/*Activity.*'
     ]
     // generated classes
-    classDirectories = fileTree(
+    classDirectories.setFrom(fileTree(
             dir: "$buildDir/intermediates/classes/debug",
             excludes: excludes
     ) + fileTree(
             dir: "$buildDir/tmp/kotlin-classes/debug",
             excludes: excludes
-    )
+    ))
 
     // sources
-    sourceDirectories = files([
+    sourceDirectories.setFrom(files([
             android.sourceSets.main.java.srcDirs
-    ])
-    executionData = files("$buildDir/jacoco/testDebugUnitTest.exec")
+    ]))
+    executionData.setFrom(files("$buildDir/jacoco/testDebugUnitTest.exec"))
 }

@@ -57,8 +57,7 @@ class SessionEstablishment private  constructor(
         }
 
         builder = structureMap.end()
-        // TODO: Use nonCanonical when cbor-java 0.9 is out.
-        CborEncoder(outputStream).encode(builder.build())
+        CborEncoder(outputStream).nonCanonical().encode(builder.build())
         return outputStream.toByteArray()
     }
 

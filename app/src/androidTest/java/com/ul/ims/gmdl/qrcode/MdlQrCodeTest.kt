@@ -23,7 +23,7 @@ import org.junit.Test
 
 class MdlQrCodeTest {
 
-    val base64DeString =
+    private val base64DeString =
         "hWMxLjCCAdgYWEukAQIgASFYIAZiYL9qwp-GfaaPMuS-QEuEV-SejwLQhBs24yejSGPwIlgghRVrD3WJf2gkrepbrSZrwsQdqr4jFJm0LveGmNlhy0KBgwIBogD1AfWggA=="
 
     @Test

@@ -1,0 +1,104 @@
+<resources>
+    <string name="app_name">mDL App Reader</string>
+    <string name="label_select_function">Select your function</string>
+    <string name="btn_holder_text">Holder</string>
+    <string name="btn_verifier_text">Verifier</string>
+    <string name="btn_verifier_nfc_text">Verifier via NFC</string>
+    <string name="toast_not_implemented_text">Not Implemented yet!</string>
+    <string name="btn_share_text">Share</string>
+    <string name="btn_share_text_nfc">Share via NFC</string>
+    <string name="txt_name_label_text">Name:</string>
+    <string name="txt_dob_label_text">Date of Birth:</string>
+    <string name="txt_address_label_text">Address:</string>
+    <string name="user_image_content_desc">User Image</string>
+    <string name="fragment_display_credentials">Display Credentials</string>
+    <string name="fragment_share_mdl_title">Share mDL Information</string>
+    <string name="fragment_share_mdl_nfc_title">Share mDL Information Via NFC</string>
+    <string name="fragment_settings_title">Settings</string>
+    <string name="qrcode_label_text">Scan with the mDL verifier app</string>
+    <string name="qrcode_img_content_description">QrCode to share mDL Information</string>
+    <string name="txt_scan_qrcode_label">Scan a mDL QR code</string>
+    <string name="scan_nfc_label">Scan a mDL NFC Tag</string>
+    <string name="txt_camera_permission_explanation">
+        mDL App needs Camera permissions in order to scan a QrCode and Location permission to have
+        access to a BLE scan result.
+    </string>
+    <string name="txt_nfc_permission_explanation">
+        mDL App needs NFC permissions to scan an NFC tag and Location permission to have
+        access to a BLE scan result.
+    </string>
+    <string name="btn_grant_camera_permission">Grant Permissions</string>
+    <string name="fragment_scan_qrcode_title">Scan a mDL QrCode</string>
+    <string name="fragment_scan_nfc_title">Scan a mDL NFC Tag</string>
+    <string name="fragment_transfer_status_title">Transfer Status</string>
+    <string name="btn_cancel_label">Cancel</string>
+    <string name="txt_transferring_data_label">Data Transfer</string>
+    <string name="txt_connecting_label">Connection Setup</string>
+    <string name="txt_share_data_title_label">mDL Data Share Status</string>
+    <string name="invalid_de_error_msg">Invalid Device Engagement QrCode</string>
+    <string name="invalid_de_nfc_error_msg">Invalid Device Engagement NFC Tag</string>
+    <string name="invalid_de_error_title">mDL QrCode Error</string>
+    <string name="invalid_de_nfc_error_title">mDL NFC Tag Error</string>
+    <string name="ble_disabled_txt">BLE Should be enabled in order to transfer data</string>
+    <string name="wifi_disabled_txt">Wifi Should be enabled in order to transfer data</string>
+    <string name="location_permission_btn">Grant Location Permission</string>
+    <string name="nfc_permission_btn">Grant NFC Permission</string>
+    <string name="enable_ble_btn">Enable BLE</string>
+    <string name="location_permission_txt">Location Permission must be granted in order to
+        transfer data via BLE
+    </string>
+    <string name="err_no_device_found">QrCode expired</string>
+    <string name="ble_no_device_found">QrCode is expired. Please try again.</string>
+    <string name="err_no_nfc_device_found">NFC Tag expired</string>
+    <string name="ble_no_nfc_device_found">NFC Tag is expired. Please try again.</string>
+    <string name="response_error">Response Error</string>
+    <string name="response_errors_details">Response Error. Please check logs.</string>
+    <string name="credential_hardcoded_address">Response Error. Please check logs.</string>
+    <string name="is_device_provisioned">is_device_provisioned</string>
+    <string name="biometric_auth">is_biometric_auth_required</string>
+    <string name="engagement_service_desc">NFC HCE Service</string>
+    <string name="engagement_aid_group_desc">mDL AID Group</string>
+    <string name="connection_setup_error">Connection Setup Error</string>
+    <string name="ble_mode_not_supported">%1$s Not Supported by this device</string>
+    <string name="user_consent_dialog">Please select what you\'d like to share with the Verifier
+    </string>
+    <string name="verifier_request_dialog">Please select what you\'d like to request from the Holder
+    </string>
+    <string name="family_name">Family Name</string>
+    <string name="given_name">Given Name</string>
+    <string name="date_of_birth">Date of Birth</string>
+    <string name="validity_date">Validity Date</string>
+    <string name="date_of_issue">Date of Issue</string>
+    <string name="date_of_expiry">Date of Expiry</string>
+    <string name="issuing_country">Issuing Country</string>
+    <string name="issuing_authority">Issuing Authority</string>
+    <string name="license_number">License Number</string>
+    <string name="categories_of_vehicles">Categories of vehicles</string>
+    <string name="last_update">Last update</string>
+    <string name="portrait">Portrait of the mDL Holder</string>
+    <string name="issuer_data_auth">Issuer Data Validation</string>
+    <string name="device_sign_auth">Device Sign Validation</string>
+    <string name="credentials_list">Credentials List</string>
+    <string name="pele_mdl">Pele\'s mDL</string>
+    <string name="nfc_text_tap_description">Tap device to back of mDL Holder</string>
+    <string name="nfc_icon_description">NFC Icon</string>
+    <string name="nfc_engagement_error_text">An error occurred while scanning for mDL
+        NFC Tag, please try again.</string>
+    <string name="bluetooth_le">Bluetooth LE</string>
+    <string name="wifi_aware">Wi-Fi Aware</string>
+    <string name="nfc">NFC</string>
+    <string name="pref_holder_engagement_method">mDL Holder Engagement Method</string>
+    <string name="pref_holder_transfer_method">mDL Holder Transfer Method</string>
+    <string name="qr_code">QR Code</string>
+    <string name="settings">Settings</string>
+    <string name="settings_error_message">Settings Error</string>
+    <string name="settings_error_title">Setting Error</string>
+    <string name="bio_auth_title">Authenticate to share data</string>
+    <string name="bio_auth_subtitle">Log in using your biometric credential</string>
+    <string name="bio_auth_cancel">Cancel</string>
+    <string name="load_credential_error_title">Error Loading Credential</string>
+    <string name="load_credential_error">Error Loading Credential. Please check Logs.</string>
+    <string name="bio_auth_failed">User authentication has failed</string>
+    <string name="fingerprint_removed_error">Biometric Authentication Error</string>
+    <string name="fingerprint_removed_error_desc">Fingerprint was removed from the device so the credential cannot be shared anymore.</string>
+</resources>

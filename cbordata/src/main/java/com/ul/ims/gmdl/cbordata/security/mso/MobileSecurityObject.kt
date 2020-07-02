@@ -107,8 +107,7 @@ class MobileSecurityObject private constructor(
         mapBuilder = mapBuilder.put(UnicodeString(VALIDITY_INFO), validityInfo.toDataItem())
 
         builder = mapBuilder.end()
-        // TODO: Use nonCanonical when cbor-java 0.9 is out.
-        CborEncoder(outputStream).encode(builder.build())
+        CborEncoder(outputStream).nonCanonical().encode(builder.build())
         return outputStream.toByteArray()
     }
 

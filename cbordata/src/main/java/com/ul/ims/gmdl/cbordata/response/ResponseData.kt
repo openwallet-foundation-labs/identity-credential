@@ -60,8 +60,7 @@ class ResponseData private constructor(
 
     override fun encode(): ByteArray {
         val outputStream = ByteArrayOutputStream()
-        // TODO: Use nonCanonical when cbor-java 0.9 is out.
-        CborEncoder(outputStream).encode(toDataItem())
+        CborEncoder(outputStream).nonCanonical().encode(toDataItem())
 
         return outputStream.toByteArray()
     }
