@@ -52,8 +52,7 @@ class DocRequest private constructor(
         builder = mapBuilder.end()
 
         val outputStream = ByteArrayOutputStream()
-        // TODO: Use nonCanonical when cbor-java 0.9 is out
-        CborEncoder(outputStream).encode(builder.build())
+        CborEncoder(outputStream).nonCanonical().encode(builder.build())
 
         return outputStream.toByteArray()
     }

@@ -21,17 +21,20 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    buildToolsVersion = '29.0.2'
     compileOptions {
         sourceCompatibility = '1.8'
         targetCompatibility = '1.8'
     }
-    buildToolsVersion = '29.0.2'
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
-//    // Cbor Library
+    // Cbor Library
     implementation "co.nstant.in:cbor:$cbor_version"
 
     // Kotlin sdtlib jdk8

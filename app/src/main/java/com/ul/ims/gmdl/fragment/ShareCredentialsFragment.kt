@@ -53,11 +53,16 @@ import java.util.concurrent.Executor
  */
 class ShareCredentialsFragment : Fragment() {
 
-    private val REQUEST_FINE_LOCATION = 123
-    private val REQUEST_ENABLE_BT = 456
-    private lateinit var vm : ShareCredentialsViewModel
-    private lateinit var transferMethod : TransferChannels
-    private lateinit var sharedPref : SharedPreferenceUtils
+
+    companion object {
+        val LOG_TAG = ShareCredentialsFragment::class.java.simpleName
+        private const val REQUEST_FINE_LOCATION = 123
+        private const val REQUEST_ENABLE_BT = 456
+    }
+
+    private lateinit var vm: ShareCredentialsViewModel
+    private lateinit var transferMethod: TransferChannels
+    private lateinit var sharedPref: SharedPreferenceUtils
 
     private val executor = Executor {
         if (Looper.myLooper() == null) {
@@ -94,9 +99,6 @@ class ShareCredentialsFragment : Fragment() {
 
             Log.d(LOG_TAG, "Attempt to authenticate the user has failed")
         }
-    }
-    companion object {
-        val LOG_TAG = ShareCredentialsFragment::class.java.simpleName
     }
 
     override fun onCreateView(

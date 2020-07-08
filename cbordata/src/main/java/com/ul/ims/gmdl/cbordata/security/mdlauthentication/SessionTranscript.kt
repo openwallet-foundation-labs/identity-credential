@@ -123,9 +123,9 @@ class SessionTranscript private constructor (
             if (other is SessionTranscript) {
                 val otherDE = other.deviceEngagement
                 val otherRK = other.readerKey
-                otherDE?.let {
+                otherDE.let {
                     if (otherDE == deviceEngagement) {
-                        otherRK?.let {
+                        otherRK.let {
                             if (otherRK == readerKey) {
                                 return super.equals(other)
                             }

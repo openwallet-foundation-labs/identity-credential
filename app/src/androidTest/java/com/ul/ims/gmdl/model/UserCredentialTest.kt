@@ -25,7 +25,7 @@ import org.junit.Test
 import java.util.*
 
 class UserCredentialTest {
-    lateinit var appContext : Context
+    private lateinit var appContext: Context
 
     @Before
     fun setUp() {

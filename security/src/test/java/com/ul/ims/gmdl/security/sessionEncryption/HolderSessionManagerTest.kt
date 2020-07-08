@@ -17,6 +17,4 @@
 package com.ul.ims.gmdl.security.sessionEncryption
 
 
-class HolderSessionManagerTest {
-
-}
+class HolderSessionManagerTest

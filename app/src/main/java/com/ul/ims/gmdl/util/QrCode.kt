@@ -32,11 +32,16 @@ import java.util.*
  * **/
 object QrCode {
 
-    private val WHITE = -0x1
-    private val BLACK = -0x1000000
+    private const val WHITE = -0x1
+    private const val BLACK = -0x1000000
 
     @Throws(WriterException::class)
-    fun encodeAsBitmap(contents: String?, format: BarcodeFormat, imgWidth: Int, imgHeight: Int): Bitmap? {
+    fun encodeAsBitmap(
+        contents: String?,
+        format: BarcodeFormat,
+        imgWidth: Int,
+        imgHeight: Int
+    ): Bitmap? {
         if (contents == null) {
             return null
         }

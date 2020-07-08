@@ -29,7 +29,6 @@ import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.databinding.FragmentCredentialsListBinding
 import com.ul.ims.gmdl.dialog.CustomAlertDialog
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.EngagementChannels
-import com.ul.ims.gmdl.offlinetransfer.utils.BiometricUtils
 import com.ul.ims.gmdl.util.SettingsUtils
 import com.ul.ims.gmdl.viewmodel.CredentialsListViewModel
 

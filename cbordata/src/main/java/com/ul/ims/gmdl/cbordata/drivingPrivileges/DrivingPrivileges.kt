@@ -44,8 +44,8 @@ class DrivingPrivileges private constructor(
         val drivingPrivArray = toCborDataItem()
 
         return try {
-            // TODO: Use nonCanonical when cbor-java 0.9 is out.
-            CborEncoder(baos).encode(drivingPrivArray)
+            // Use non Canonical encoder in order to maintain the order in the Cbor Map
+            CborEncoder(baos).nonCanonical().encode(drivingPrivArray)
 
             baos.toByteArray()
         } catch (ex: CborException) {
