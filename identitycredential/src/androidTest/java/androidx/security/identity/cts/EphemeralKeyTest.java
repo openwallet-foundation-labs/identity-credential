@@ -131,8 +131,8 @@ public class EphemeralKeyTest {
                 PublicKey holderEphemeralPublicKey) throws IdentityCredentialException {
             mCipherSuite = cipherSuite;
             mHolderEphemeralPublicKey = holderEphemeralPublicKey;
-            mCounter = 0;
-            mMdlExpectedCounter = 0;
+            mCounter = 1;
+            mMdlExpectedCounter = 1;
 
             try {
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
