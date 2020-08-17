@@ -64,7 +64,7 @@ object TestUtils {
 
     // Create a CoseKey Obj
     fun genCoseKey() : CoseKey? {
-        var mEphemeralKeyPair = genEphemeralKeyPair()
+        val mEphemeralKeyPair = genEphemeralKeyPair()
 
         val holderPKey = mEphemeralKeyPair?.public as? ECPublicKey
 

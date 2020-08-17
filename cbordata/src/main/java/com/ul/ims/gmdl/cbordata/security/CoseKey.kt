@@ -289,9 +289,9 @@ class CoseKey private constructor(val keyType: Any?, val curve: EC2Curve?) :
                     this.keyType = kTypeString.string
                 }
             }
-            when(keyType) {
-                KEYMEMBER_EC2_KEYS -> curve = EC2Curve()
-                else -> curve = null
+            curve = when (keyType) {
+                KEYMEMBER_EC2_KEYS -> EC2Curve()
+                else -> null
             }
         }
 

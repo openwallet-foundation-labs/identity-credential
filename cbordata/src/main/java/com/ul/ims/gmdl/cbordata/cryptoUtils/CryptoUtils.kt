@@ -36,13 +36,13 @@ import kotlin.experimental.and
 object CryptoUtils {
 
     // TAG for Log
-    const val TAG = "CryptoUtils"
+    private const val TAG = "CryptoUtils"
 
     // Google Identity Credential API uses only curve prime256v1
-    const val CURVE_PRIME256V1 = "prime256v1"
+    private const val CURVE_PRIME256V1 = "prime256v1"
 
     // https://www.bouncycastle.org/wiki/pages/viewpage.action?pageId=362269
-    const val PK_PRIME256V1_SIZE_BITS = 256
+    private const val PK_PRIME256V1_SIZE_BITS = 256
 
     fun decodeEncodedPubKey(publicKeyBytes: ByteArray?): ECPublicKey? {
         val publicKeySpec = X509EncodedKeySpec(publicKeyBytes)
@@ -195,7 +195,7 @@ object CryptoUtils {
             // parse S
             val sIdentifier = signature[4 + rSize]
             val sSize = signature[5 + rSize].toInt()
-            var index = rSize + 6
+            val index = rSize + 6
             val sBigInt = BigInteger(signature.copyOfRange(index, index + sSize))
             val s = toByteArrayUnsigned(sBigInt)
 
@@ -210,9 +210,9 @@ object CryptoUtils {
             throw RuntimeException("signature.length is " + signature.size + ", expected 64")
         }
         val r =
-            BigInteger(Arrays.copyOfRange(signature, 0, 32))
+            BigInteger(signature.copyOfRange(0, 32))
         val s =
-            BigInteger(Arrays.copyOfRange(signature, 32, 64))
+            BigInteger(signature.copyOfRange(32, 64))
         val rBytes = encodePositiveBigInteger(r)
         val sBytes = encodePositiveBigInteger(s)
         val baos = ByteArrayOutputStream()

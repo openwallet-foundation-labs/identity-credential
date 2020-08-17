@@ -60,7 +60,7 @@ class IssuerNameSpaces private constructor
         }
 
         fun setNamespace(namespace : String, issuerSignedItems : MutableList<IssuerSignedItem>) = apply {
-            listOfNameSpaces.put(namespace, issuerSignedItems.toMutableList())
+            listOfNameSpaces[namespace] = issuerSignedItems.toMutableList()
         }
 
         private fun decodeNameSpaces(nameSpaces: Map) {

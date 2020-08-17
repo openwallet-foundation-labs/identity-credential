@@ -21,11 +21,9 @@ import org.junit.Test
 
 class SessionDataTest {
     private val data = byteArrayOf(
-        0xa2.toByte(), 0x64.toByte(), 0x64.toByte(), 0x61.toByte(), 0x74.toByte(),
+        0xa1.toByte(), 0x64.toByte(), 0x64.toByte(), 0x61.toByte(), 0x74.toByte(),
         0x61.toByte(), 0x48.toByte(), 0x12.toByte(), 0x34.toByte(), 0x56.toByte(),
-        0x78.toByte(), 0x9a.toByte(), 0xbc.toByte(), 0xde.toByte(), 0xf0.toByte(),
-        0x65.toByte(), 0x65.toByte(), 0x72.toByte(), 0x72.toByte(), 0x6f.toByte(),
-        0x72.toByte(), 0x00.toByte()
+        0x78.toByte(), 0x9a.toByte(), 0xbc.toByte(), 0xde.toByte(), 0xf0.toByte()
     )
     private val expectedEncryptedData = byteArrayOf(
         0x12.toByte(), 0x34.toByte(), 0x56.toByte(), 0x78.toByte(), 0x9A.toByte(), 0xBC.toByte(), 0xDE.toByte(), 0xF0.toByte()
@@ -50,7 +48,7 @@ class SessionDataTest {
 
         Assert.assertNotNull(sessionData)
         Assert.assertArrayEquals(expectedEncryptedData, sessionData.encryptedData)
-        Assert.assertEquals(0, sessionData.errorCode)
+        Assert.assertNull(sessionData.errorCode)
     }
 
     @Test

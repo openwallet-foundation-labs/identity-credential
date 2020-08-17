@@ -311,7 +311,7 @@ class HolderExecutor(
         }
     }
 
-    fun getIdentityCredentialRequest(itemsToRequest : List<String>) : Collection<RequestNamespace> {
+    private fun getIdentityCredentialRequest(itemsToRequest: List<String>): Collection<RequestNamespace> {
         val requestEntryNamespaces = LinkedList<RequestNamespace>()
         val reqBuilder = RequestNamespace.Builder(MdlDoctype.docType)
         itemsToRequest.forEach {

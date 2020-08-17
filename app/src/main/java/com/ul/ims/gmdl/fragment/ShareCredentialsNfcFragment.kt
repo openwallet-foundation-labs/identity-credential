@@ -35,6 +35,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.bleofflinetransfer.utils.BleUtils
+import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
+import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
 import com.ul.ims.gmdl.databinding.FragmentShareCredentialsNfcBinding
 import com.ul.ims.gmdl.dialog.ConsentDialog
 import com.ul.ims.gmdl.dialog.CustomAlertDialog
@@ -42,6 +44,7 @@ import com.ul.ims.gmdl.nfcengagement.NfcHandler
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.utils.BiometricUtils
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
+import com.ul.ims.gmdl.util.NfcTransferApduService
 import com.ul.ims.gmdl.util.SettingsUtils
 import com.ul.ims.gmdl.viewmodel.ShareCredentialsNfcViewModel
 import com.ul.ims.gmdl.wifiofflinetransfer.utils.WifiUtils
@@ -111,7 +114,7 @@ class ShareCredentialsNfcFragment : Fragment() {
         binding.vm = vm
         binding.fragment = this
 
-        transferMethod = SettingsUtils.getTransferMethod(context!!)
+        transferMethod = SettingsUtils.getTransferMethod(requireContext())
 
         return binding.root
     }
@@ -136,6 +139,8 @@ class ShareCredentialsNfcFragment : Fragment() {
                 // Update UI
                 vm.isWifiEnabled(false)
             }
+        } else if (TransferChannels.NFC == transferMethod) {
+            shouldRequestPermission()
         } else {
             throw UnsupportedOperationException("Unsupported transfer method")
         }
@@ -160,7 +165,7 @@ class ShareCredentialsNfcFragment : Fragment() {
                         ConsentDialog(it, { consent ->
                             this.consent = consent
                             canAuthenticate()
-                        },{
+                        }, {
                             vm.onUserConsentCancel()
                         }).show(parentFragmentManager, "consentdialog")
                     }
@@ -168,6 +173,24 @@ class ShareCredentialsNfcFragment : Fragment() {
                 }
             }
         })
+
+        // Only for NFC transfer is asked to the user to consent with the sharing information prior
+        if (TransferChannels.NFC == transferMethod) {
+            val requestItems = MdlNamespace.items.keys.filter {
+                it != MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier
+            }.toList()
+
+            ConsentDialog(requestItems, { consent ->
+                this.consent = consent
+                canAuthenticate()
+            }, {
+                if (TransferChannels.NFC == transferMethod) {
+                    navigateBack()
+                } else {
+                    vm.onUserConsentCancel()
+                }
+            }).show(parentFragmentManager, "consentdialog")
+        }
     }
 
     private fun canAuthenticate() {
@@ -190,7 +213,11 @@ class ShareCredentialsNfcFragment : Fragment() {
 
     private fun onUserConsent() {
         if (::consent.isInitialized) {
-            vm.onUserConsent(consent)
+            if (TransferChannels.NFC == transferMethod) {
+                vm.onUserPreConsent(consent)
+            } else {
+                vm.onUserConsent(consent)
+            }
         }
     }
 
@@ -205,6 +232,8 @@ class ShareCredentialsNfcFragment : Fragment() {
 
         val intent = Intent(context, NfcHandler::class.java)
         context?.stopService(intent)
+        val intentTransfer = Intent(context, NfcTransferApduService::class.java)
+        context?.stopService(intentTransfer)
     }
 
     private fun shouldRequestPermission() {

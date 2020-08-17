@@ -28,7 +28,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Serializable
 
-class SessionData private constructor(val encryptedData: ByteArray?, val errorCode: Int) :
+class SessionData private constructor(val encryptedData: ByteArray?, val errorCode: Int?) :
     AbstractCborStructure(), Serializable {
 
     companion object {
@@ -43,11 +43,13 @@ class SessionData private constructor(val encryptedData: ByteArray?, val errorCo
         var structureMap = builder.addMap()
 
         // EncryptedData
-        if (encryptedData != null){
+        if (encryptedData != null) {
             structureMap = structureMap.put(encryptedDataLabel, toDataItem(encryptedData))
         }
-        // ErrorCode always have a value, default is 0 for success
-        structureMap = structureMap.put(errorLabel, toDataItem(errorCode))
+        // ErrorCode
+        errorCode?.let {
+            structureMap = structureMap.put(errorLabel, toDataItem(it))
+        }
 
         builder = structureMap.end()
         CborEncoder(outputStream).encode(builder.build())
@@ -55,8 +57,8 @@ class SessionData private constructor(val encryptedData: ByteArray?, val errorCo
     }
 
     class Builder {
-        private var encryptedData : ByteArray? = null
-        private var errorCode: Int = 0
+        private var encryptedData: ByteArray? = null
+        private var errorCode: Int? = null
         private var exceptionDescription = "No exception message received"
 
         fun decode(data: ByteArray) = apply {
@@ -64,9 +66,10 @@ class SessionData private constructor(val encryptedData: ByteArray?, val errorCo
                 val bais = ByteArrayInputStream(data)
                 val decoded = CborDecoder(bais).decode()
                 if (decoded.size == 1) {
-                    val structureItems : Map? = decoded[0] as? Map
+                    val structureItems: Map? = decoded[0] as? Map
                     structureItems?.let {
-                        this.encryptedData = decodeEncryptedData(structureItems.get(encryptedDataLabel))
+                        this.encryptedData =
+                            decodeEncryptedData(structureItems.get(encryptedDataLabel))
                         this.errorCode = decodeErrorCode(structureItems.get(errorLabel))
                     }
                 }
@@ -86,11 +89,11 @@ class SessionData private constructor(val encryptedData: ByteArray?, val errorCo
             errorCode = code
         }
 
-        private fun decodeErrorCode(dataItem: DataItem?): Int {
+        private fun decodeErrorCode(dataItem: DataItem?): Int? {
             if (dataItem?.majorType == MajorType.UNSIGNED_INTEGER) {
                 return (dataItem as UnsignedInteger).value.toInt()
             }
-            return 0
+            return null
         }
 
         private fun decodeEncryptedData(dataItem: DataItem?): ByteArray? {

@@ -20,7 +20,7 @@ import android.util.Log
 import kotlin.math.min
 
 object Log {
-    const val CHUNK_SIZE = 2048
+    private const val CHUNK_SIZE = 2048
 
     fun d(tag : String, message : String) {
         var i = 0

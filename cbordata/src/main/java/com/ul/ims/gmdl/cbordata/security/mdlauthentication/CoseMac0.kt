@@ -61,9 +61,8 @@ class CoseMac0 private constructor(val payload : ByteArray?,
     }
 
     fun appendToNestedStructure() : DataItem {
-        val array = Array()
 
-        return array
+        return Array()
     }
 
     fun encodeAlgMap(string: String): ByteArray? {

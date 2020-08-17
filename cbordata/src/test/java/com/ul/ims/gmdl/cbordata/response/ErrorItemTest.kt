@@ -21,8 +21,8 @@ import org.junit.Test
 
 class ErrorItemTest {
 
-    val dataItem = "NameAuth"
-    val errorCode = 1
+    private val dataItem = "NameAuth"
+    private val errorCode = 1
 
     @Test
     fun errorItemTest() {

@@ -33,7 +33,7 @@ class HolderSessionManagerTest {
         const val VERIFIER_MSG_TO_HOLDER = "HELLO FROM VERIFIER"
     }
 
-    lateinit var appContext: Context
+    private lateinit var appContext: Context
 
     @Before
     fun setUp() {
@@ -101,8 +101,8 @@ class HolderSessionManagerTest {
         val coseKey = holderSessionManager.generateHolderCoseKey()
         coseKey?.let {
             val verifierSessionManager = VerifierSessionManager(it)
-            val coseKey = verifierSessionManager.getReaderCoseKey()
-            coseKey?.let {ck->
+            val coseKeyReader = verifierSessionManager.getReaderCoseKey()
+            coseKeyReader?.let { ck ->
                 holderSessionManager.setVerifierEphemeralPublicKey(ck)
                 val correctResponse = Response.Builder().isError().build().encode()
                 response = holderSessionManager.generateResponse(correctResponse)
@@ -112,7 +112,7 @@ class HolderSessionManagerTest {
                     .build()
 
                 Assert.assertNotNull(sessionData)
-                Assert.assertEquals(0, sessionData.errorCode)
+                Assert.assertNull(sessionData.errorCode)
                 Assert.assertNotNull(sessionData.encryptedData)
             }
         }

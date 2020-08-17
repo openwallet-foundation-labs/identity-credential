@@ -22,9 +22,9 @@ import android.icu.util.Calendar
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.databinding.BindingAdapter
-import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.cbordata.drivingPrivileges.DrivingPrivileges
 import com.ul.ims.gmdl.cbordata.utils.DateUtils
+import com.ul.ims.gmdl.reader.R
 import java.util.*
 
 @BindingAdapter("userImage")

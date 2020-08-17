@@ -25,7 +25,7 @@ import org.junit.Assert
 import org.junit.Test
 
 class RequestTest {
-    val encodedExpected = byteArrayOf(
+    private val encodedExpected = byteArrayOf(
         0xa2.toByte(), 0x67.toByte(), 0x76.toByte(), 0x65.toByte(), 0x72.toByte(),
         0x73.toByte(), 0x69.toByte(), 0x6f.toByte(), 0x6e.toByte(), 0x63.toByte(),
         0x31.toByte(), 0x2e.toByte(), 0x30.toByte(), 0x6b.toByte(), 0x64.toByte(),
@@ -79,7 +79,7 @@ class RequestTest {
         0xf4.toByte()
     )
 
-    val expectedEncodedRequest = byteArrayOf(
+    private val expectedEncodedRequest = byteArrayOf(
         0xa2.toByte(), 0x67.toByte(), 0x76.toByte(), 0x65.toByte(), 0x72.toByte(),
         0x73.toByte(), 0x69.toByte(), 0x6f.toByte(), 0x6e.toByte(), 0x63.toByte(),
         0x31.toByte(), 0x2e.toByte(), 0x30.toByte(), 0x6b.toByte(), 0x64.toByte(),
@@ -135,9 +135,9 @@ class RequestTest {
 
     val version = "1.0"
     val doctype = MdlDoctype
-    val wrongDoctype = "org.iso.2019"
-    val unsupportedDoctype = DocType(wrongDoctype)
-    val unsupportedNamespace = Namespace(wrongDoctype, LinkedHashMap())
+    private val wrongDoctype = "org.iso.2019"
+    private val unsupportedDoctype = DocType(wrongDoctype)
+    private val unsupportedNamespace = Namespace(wrongDoctype, LinkedHashMap())
 
     @Test
     fun testEncode() {

@@ -53,9 +53,9 @@ abstract class AbstractCborStructureBuilder : ICborStructureBuilder {
     fun asBoolean(cborDataItems: MutableList<DataItem>, position: Int) : Boolean {
         val elementValues = cborDataItems.getOrNull(position) as? SimpleValue
         elementValues?.let {
-            when(elementValues.simpleValueType) {
-                SimpleValueType.TRUE -> return true
-                SimpleValueType.FALSE -> return false
+            return when (elementValues.simpleValueType) {
+                SimpleValueType.TRUE -> true
+                SimpleValueType.FALSE -> false
                 // TODO: Check if it's needed to throw specific exception
                 else -> throw RuntimeException("Invalid age_over_NN IssuerSignedItem.")
             }

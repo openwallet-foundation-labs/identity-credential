@@ -22,11 +22,11 @@ import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.cbordata.model.UserCredential
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
 import com.ul.ims.gmdl.cbordata.security.IssuerNameSpaces
 import com.ul.ims.gmdl.cbordata.security.mso.MobileSecurityObject
+import com.ul.ims.gmdl.reader.R
 import com.ul.ims.gmdl.security.issuerdataauthentication.IssuerDataAuthenticationException
 import com.ul.ims.gmdl.security.issuerdataauthentication.IssuerDataAuthenticator
 import com.ul.ims.gmdl.security.issuerdataauthentication.RootCertificateInitialiser

@@ -29,7 +29,7 @@ import java.io.ByteArrayOutputStream
 
 class DrivingPrivilegesTest {
 
-    val expectedEncoded = byteArrayOf(
+    private val expectedEncoded = byteArrayOf(
         0x84.toByte(), 0xa3.toByte(), 0x75.toByte(), 0x76.toByte(), 0x65.toByte(),
         0x68.toByte(), 0x69.toByte(), 0x63.toByte(), 0x6c.toByte(), 0x65.toByte(),
         0x5f.toByte(), 0x63.toByte(), 0x61.toByte(), 0x74.toByte(), 0x65.toByte(),
@@ -73,7 +73,7 @@ class DrivingPrivilegesTest {
         0x65.toByte(), 0x61.toByte(), 0x44.toByte()
     )
 
-    lateinit var drivingPrivileges : DrivingPrivileges
+    private lateinit var drivingPrivileges: DrivingPrivileges
 
     @Before
     fun setUp() {

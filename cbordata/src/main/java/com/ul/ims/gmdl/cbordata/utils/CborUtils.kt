@@ -26,7 +26,7 @@ import java.text.DecimalFormatSymbols
 import java.util.*
 
 object CborUtils {
-    val TAG = "CborUtils"
+    const val TAG = "CborUtils"
 
     // Helper function to display a cbor structure in HEX
     fun encodeToString(bytes: ByteArray): String {
@@ -176,31 +176,33 @@ object CborUtils {
             MajorType.ARRAY -> {
                 // Major type 4: an array of data items.
                 val items = (dataItem as co.nstant.`in`.cbor.model.Array).dataItems
-                if (items.size == 0) {
-                    sb.append("[]")
-                } else if (cborAreAllDataItemsNonCompound(items)) {
-                    // The case where everything fits on one line.
-                    sb.append("[")
-                    var count = 0
-                    for (item in items) {
-                        cborPrettyPrintDataItem(sb, indent, item)
-                        if (++count < items.size) {
-                            sb.append(", ")
-                        }
+                when {
+                    items.size == 0 -> {
+                        sb.append("[]")
                     }
-                    sb.append("]")
-                } else {
-                    sb.append("[\n$indentString")
-                    var count = 0
-                    for (item in items) {
-                        sb.append("  ")
-                        cborPrettyPrintDataItem(sb, indent + 2, item)
-                        if (++count < items.size) {
-                            sb.append(",")
+                    cborAreAllDataItemsNonCompound(items) -> {
+                        // The case where everything fits on one line.
+                        sb.append("[")
+                        for ((count, item) in items.withIndex()) {
+                            cborPrettyPrintDataItem(sb, indent, item)
+                            if (count + 1 < items.size) {
+                                sb.append(", ")
+                            }
                         }
-                        sb.append("\n" + indentString)
+                        sb.append("]")
                     }
-                    sb.append("]")
+                    else -> {
+                        sb.append("[\n$indentString")
+                        for ((count, item) in items.withIndex()) {
+                            sb.append("  ")
+                            cborPrettyPrintDataItem(sb, indent + 2, item)
+                            if (count + 1 < items.size) {
+                                sb.append(",")
+                            }
+                            sb.append("\n" + indentString)
+                        }
+                        sb.append("]")
+                    }
                 }
             }
             MajorType.MAP -> {
@@ -210,14 +212,13 @@ object CborUtils {
                     sb.append("{}")
                 } else {
                     sb.append("{\n$indentString")
-                    var count = 0
-                    for (key in keys) {
+                    for ((count, key) in keys.withIndex()) {
                         sb.append("  ")
                         val value = dataItem.get(key)
                         cborPrettyPrintDataItem(sb, indent + 2, key)
                         sb.append(" : ")
                         cborPrettyPrintDataItem(sb, indent + 2, value)
-                        if (++count < keys.size) {
+                        if (count + 1 < keys.size) {
                             sb.append(",")
                         }
                         sb.append("\n" + indentString)
@@ -235,31 +236,36 @@ object CborUtils {
             MajorType.SPECIAL ->
                 // Major type 7: floating point numbers and simple data types that need no
                 // content, as well as the "break" stop code.
-                if (dataItem is SimpleValue) {
-                    when (dataItem.simpleValueType) {
-                        SimpleValueType.FALSE -> sb.append("false")
-                        SimpleValueType.TRUE -> sb.append("true")
-                        SimpleValueType.NULL -> sb.append("null")
-                        SimpleValueType.UNDEFINED -> sb.append("undefined")
-                        SimpleValueType.RESERVED -> sb.append("reserved")
-                        SimpleValueType.UNALLOCATED -> sb.append("unallocated")
+                when (dataItem) {
+                    is SimpleValue -> {
+                        when (dataItem.simpleValueType) {
+                            SimpleValueType.FALSE -> sb.append("false")
+                            SimpleValueType.TRUE -> sb.append("true")
+                            SimpleValueType.NULL -> sb.append("null")
+                            SimpleValueType.UNDEFINED -> sb.append("undefined")
+                            SimpleValueType.RESERVED -> sb.append("reserved")
+                            SimpleValueType.UNALLOCATED -> sb.append("unallocated")
+                        }
                     }
-                } else if (dataItem is DoublePrecisionFloat) {
-                    val df = DecimalFormat(
-                        "0",
-                        DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                    )
-                    df.maximumFractionDigits = 340
-                    sb.append(df.format(dataItem.value))
-                } else if (dataItem is AbstractFloat) {
-                    val df = DecimalFormat(
-                        "0",
-                        DecimalFormatSymbols.getInstance(Locale.ENGLISH)
-                    )
-                    df.maximumFractionDigits = 340
-                    sb.append(df.format(dataItem.value.toDouble()))
-                } else {
-                    sb.append("break")
+                    is DoublePrecisionFloat -> {
+                        val df = DecimalFormat(
+                            "0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH)
+                        )
+                        df.maximumFractionDigits = 340
+                        sb.append(df.format(dataItem.value))
+                    }
+                    is AbstractFloat -> {
+                        val df = DecimalFormat(
+                            "0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH)
+                        )
+                        df.maximumFractionDigits = 340
+                        sb.append(df.format(dataItem.value.toDouble()))
+                    }
+                    else -> {
+                        sb.append("break")
+                    }
                 }
         }
     }

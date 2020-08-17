@@ -23,7 +23,7 @@ import androidx.navigation.Navigation
 import androidx.navigation.findNavController
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.preference.PreferenceManager
-import com.ul.ims.gmdl.R
+import com.ul.ims.gmdl.reader.R
 
 class MainActivity : AppCompatActivity() {
 

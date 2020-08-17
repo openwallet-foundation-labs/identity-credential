@@ -25,7 +25,6 @@ import com.ul.ims.gmdl.cbordata.security.EC2Curve
 import com.ul.ims.gmdl.cbordata.security.IssuerNameSpaces
 import com.ul.ims.gmdl.cbordata.security.mso.DigestIds
 import com.ul.ims.gmdl.cbordata.security.mso.MobileSecurityObject
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.pqc.math.linearalgebra.ByteUtils
 import java.security.*
 import java.util.*
@@ -173,8 +172,10 @@ class IssuerDataAuthenticator constructor(
                 digest = messageDigest.digest(encodedIsi)
                 digestIdsHashMap[i.digestId] = digest
 
-                Log.d(LOG_TAG, "Calculated hash for ${ByteUtils.toHexString(encodedIsi)} is " +
-                        "${ByteUtils.toHexString(digest)}")
+                Log.d(
+                    LOG_TAG, "Calculated hash for ${ByteUtils.toHexString(encodedIsi)} is " +
+                            ByteUtils.toHexString(digest)
+                )
             }
         }
         return DigestIds.Builder().decode(digestIdsHashMap).build()

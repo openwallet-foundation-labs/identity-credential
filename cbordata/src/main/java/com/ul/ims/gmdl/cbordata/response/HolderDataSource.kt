@@ -18,7 +18,6 @@ package com.ul.ims.gmdl.cbordata.response
 
 import com.ul.ims.gmdl.cbordata.namespace.INamespace
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
-import com.ul.ims.gmdl.cbordata.security.CoseSign1
 
 class HolderDataSource private constructor(
     val namespace : INamespace,

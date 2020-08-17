@@ -19,7 +19,8 @@ package com.ul.ims.gmdl.reader.fragment
 import android.bluetooth.BluetoothAdapter
 import android.content.Intent
 import android.nfc.NfcAdapter
-import android.nfc.NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK
+import android.nfc.Tag
+import android.nfc.tech.IsoDep
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -30,18 +31,19 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.bleofflinetransfer.utils.BleUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.model.UserCredential
 import com.ul.ims.gmdl.cbordata.response.BleTransferResponse
-import com.ul.ims.gmdl.databinding.FragmentOfflineTransferStatusBinding
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
+import com.ul.ims.gmdl.reader.R
+import com.ul.ims.gmdl.reader.databinding.FragmentOfflineTransferStatusBinding
 import com.ul.ims.gmdl.reader.dialog.CustomAlertDialog
 import com.ul.ims.gmdl.reader.viewmodel.OfflineTransferStatusViewModel
 import kotlinx.android.synthetic.main.fragment_offline_transfer_status.*
+import java.util.*
 
 /**
  * A simple [Fragment] subclass.
@@ -50,8 +52,11 @@ import kotlinx.android.synthetic.main.fragment_offline_transfer_status.*
 class OfflineTransferStatusFragment : Fragment() {
 
     companion object {
-        const val LOG_TAG = "OfflineTransferStatusFragment"
+        private const val LOG_TAG = "OfflineTransferStatusFragment"
         private const val REQUEST_ENABLE_BT = 7890
+        private const val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
+                or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK
+                or NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS)
     }
 
     private lateinit var vm: OfflineTransferStatusViewModel
@@ -60,8 +65,11 @@ class OfflineTransferStatusFragment : Fragment() {
     private var transferMethod: TransferChannels? = null
     private var bleServiceMode: BleServiceMode? = null
     private var wifiPassphrase: String? = null
+    private var apduCommandLength = 0
 
     private var nfcAdapter: NfcAdapter? = null
+
+    private var callback: ReaderModeCallback? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -74,6 +82,7 @@ class OfflineTransferStatusFragment : Fragment() {
         transferMethod = args.transferMethod
         bleServiceMode = args.bleServiceMode
         wifiPassphrase = args.wifiPassphrase
+        apduCommandLength = args.apduCommandLength
 
         vm = ViewModelProvider(this).get(OfflineTransferStatusViewModel::class.java)
 
@@ -88,13 +97,7 @@ class OfflineTransferStatusFragment : Fragment() {
     override fun onResume() {
         super.onResume()
 
-        nfcAdapter?.enableReaderMode(activity, null, FLAG_READER_SKIP_NDEF_CHECK, null)
-    }
-
-    override fun onPause() {
-        super.onPause()
-
-        nfcAdapter?.disableReaderMode(activity)
+        nfcAdapter?.enableReaderMode(activity, callback, READER_FLAGS, null)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -113,7 +116,24 @@ class OfflineTransferStatusFragment : Fragment() {
                 setupWiFiVerifier()
             }
             TransferChannels.NFC -> {
-                throw UnsupportedOperationException("NFC Transfer not currently supported")
+                // Wait for the tag discovered
+                callback = ReaderModeCallback()
+            }
+        }
+    }
+
+    private inner class ReaderModeCallback : NfcAdapter.ReaderCallback {
+        override fun onTagDiscovered(tag: Tag) {
+            val techList = tag.techList
+
+            Log.d(LOG_TAG, "Tag discovered: supported tech=" + Arrays.toString(techList))
+
+            for (tech in techList) {
+                if (IsoDep::class.java.name == tech) {
+                    Log.d(LOG_TAG, "Tag found")
+                    setupNfcVerifier(tag)
+                    break
+                }
             }
         }
     }
@@ -146,10 +166,25 @@ class OfflineTransferStatusFragment : Fragment() {
         }
     }
 
+    private fun setupNfcVerifier(tag: Tag) {
+        deviceEngagement?.let { de ->
+            requestItems?.let { req ->
+                vm.setupNfcVerifier(de, req, tag, apduCommandLength)
+            } ?: kotlin.run {
+                Log.e(LOG_TAG, "Data Items List is null")
+            }
+        } ?: kotlin.run {
+            Log.e(LOG_TAG, "Device Engagement is null")
+        }
+    }
+
     override fun onStart() {
         super.onStart()
 
         vm.getTransferData()?.observe(this, Observer { res ->
+            // Avoid reading the same tag
+            nfcAdapter?.enableReaderMode(activity, null, READER_FLAGS, null)
+
             when (res?.status) {
                 Resource.Status.CONNECTING -> {
                     progress_connecting.visibility = View.VISIBLE

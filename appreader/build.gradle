@@ -115,6 +115,9 @@ dependencies {
     // Wi-Fi Aware Offline Data Transfer Module
     implementation project(path: ':wifiofflinetransfer')
 
+    // NFC Offline Data Transfer Module
+    implementation project(path: ':nfcofflinetransfer')
+
     // Biometric authentication
     implementation "androidx.biometric:biometric:$androidx_biometrics"
 

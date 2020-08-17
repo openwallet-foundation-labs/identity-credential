@@ -91,7 +91,7 @@ class BlePeripheralConnection(
 
     private val advertiser = bluetoothManager?.adapter?.bluetoothLeAdvertiser
 
-    var gattUpdateReceiver : BroadcastReceiver? = null
+    private var gattUpdateReceiver: BroadcastReceiver? = null
 
     fun setEventDelegate(peripheralEventListener: BleEventListener) {
         this.peripheralEventListener = peripheralEventListener

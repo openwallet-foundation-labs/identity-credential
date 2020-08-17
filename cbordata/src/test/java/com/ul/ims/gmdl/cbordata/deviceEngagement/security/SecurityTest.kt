@@ -23,7 +23,7 @@ import org.junit.Assert
 import org.junit.Test
 
 class SecurityTest {
-    val coseKey = CoseKey.Builder()
+    private val coseKey = CoseKey.Builder()
         .setKeyType(2)
         .setCurve(
             1
@@ -101,11 +101,11 @@ class SecurityTest {
             null
         )
         .build()
-    val cipherIdent = 123
+    private val cipherIdent = 123
 
     //cose key values
-    val keyOpsValue1 = "keyops1"
-    val keyOpsValue2 = "keyops2"
+    private val keyOpsValue1 = "keyops1"
+    private val keyOpsValue2 = "keyops2"
     val kty = "kyy"
     val kid = byteArrayOf(0x02, 0x03)
     val alg = "alg"

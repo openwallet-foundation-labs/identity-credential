@@ -86,7 +86,7 @@ class Response private constructor(
         private var documents = mutableListOf<kotlin.collections.Map<String, ResponseData>>()
         private var status = 0
 
-        fun setVersion(version: String) = apply {
+        private fun setVersion(version: String) = apply {
             this.version = version
         }
 
@@ -95,7 +95,7 @@ class Response private constructor(
                 this.documents = documents
         }
 
-        fun setStatus(status: Int) = apply {
+        private fun setStatus(status: Int) = apply {
             this.status = status
         }
 

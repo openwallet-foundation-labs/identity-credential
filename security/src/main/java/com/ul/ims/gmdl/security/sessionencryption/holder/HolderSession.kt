@@ -50,7 +50,7 @@ constructor(context : Context, credentialName : String) {
         renewEphemeralKeys()
     }
 
-    fun renewEphemeralKeys() {
+    private fun renewEphemeralKeys() {
         ephemeralKeyPair = credential?.createEphemeralKeyPair()
     }
 
@@ -87,7 +87,7 @@ constructor(context : Context, credentialName : String) {
     }
 
     // Helper function to display a cbor structure in HEX
-    fun encodeToString(encoded : ByteArray): String {
+    private fun encodeToString(encoded: ByteArray): String {
 
         val sb = StringBuilder(encoded.size * 2)
 

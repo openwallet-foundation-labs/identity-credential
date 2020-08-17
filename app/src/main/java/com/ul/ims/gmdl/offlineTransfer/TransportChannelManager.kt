@@ -18,6 +18,7 @@ package com.ul.ims.gmdl.offlineTransfer
 
 import android.content.Context
 import com.ul.ims.gmdl.bleofflinetransfer.manager.BleTransportManager
+import com.ul.ims.gmdl.nfcofflinetransfer.NfcTransportManager
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportLayer
@@ -46,6 +47,10 @@ class TransportChannelManager(
         TransferChannels.WiFiAware -> {
             Log.d(javaClass.simpleName, "Starting Wifi Aware transport manager")
             WifiTransportManager(context, appMode, publicKey, wifiPassphrase)
+        }
+        TransferChannels.NFC -> {
+            Log.d(javaClass.simpleName, "Starting NFC transport manager")
+            NfcTransportManager(context, appMode, null, null)
         }
         else -> throw UnsupportedOperationException("Unknown transport channel: $transportChannel")
     }

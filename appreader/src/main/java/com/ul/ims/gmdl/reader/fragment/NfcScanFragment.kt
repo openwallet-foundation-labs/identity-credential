@@ -30,14 +30,14 @@ import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
-import com.ul.ims.gmdl.databinding.FragmentNfcScanBinding
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
+import com.ul.ims.gmdl.reader.R
 import com.ul.ims.gmdl.reader.activity.NfcEngagementActivity
+import com.ul.ims.gmdl.reader.databinding.FragmentNfcScanBinding
 import com.ul.ims.gmdl.reader.dialog.CustomAlertDialog
 import com.ul.ims.gmdl.reader.dialog.VerifierRequestDialog
 import com.ul.ims.gmdl.reader.viewmodel.NfcScanViewModel
@@ -111,7 +111,8 @@ class NfcScanFragment : Fragment() {
         deviceEngagement: DeviceEngagement,
         transferMethod: TransferChannels,
         bleServiceMode: BleServiceMode,
-        wifiPassphrase: String?
+        wifiPassphrase: String?,
+        apduCommandLength: Int?
     ) {
         runOnUiThread {
             requestItems?.let {
@@ -123,6 +124,9 @@ class NfcScanFragment : Fragment() {
                         bleServiceMode,
                         wifiPassphrase
                     )
+                apduCommandLength?.let { maxLength ->
+                    action.setApduCommandLength(maxLength)
+                }
                 findNavController().navigate(action)
             }
         }
@@ -190,7 +194,17 @@ class NfcScanFragment : Fragment() {
                         intent.getStringExtra(NfcEngagementActivity.EXTRA_WIFI_PASSPHRASE)
                     } else null
 
-                    onValidEngagement(engagement, transferMethod, bleServiceMode, wifiPassphrase)
+                    val apduCommandLength = if (transferMethod == TransferChannels.NFC) {
+                        intent.getIntExtra(NfcEngagementActivity.EXTRA_APDU_COM_LEN, 0)
+                    } else null
+
+                    onValidEngagement(
+                        engagement,
+                        transferMethod,
+                        bleServiceMode,
+                        wifiPassphrase,
+                        apduCommandLength
+                    )
                 }
                 else -> onInvalidEngagement(
                     intent.getStringExtra(NfcEngagementActivity.DEVICE_ENGAGEMENT_ERROR)

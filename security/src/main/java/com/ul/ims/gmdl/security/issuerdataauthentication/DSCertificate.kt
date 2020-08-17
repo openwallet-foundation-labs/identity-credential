@@ -145,33 +145,33 @@ class DSCertificate(bytes: ByteArray,
         } catch (ex: CertificateException) {
             val message = ex.message
             message?.let {
-                throw IssuerDataAuthenticationException(message + "${ex}")
+                throw IssuerDataAuthenticationException(message + "$ex")
             }
-            throw IssuerDataAuthenticationException("Invalid certificate chain: ${ex}")
+            throw IssuerDataAuthenticationException("Invalid certificate chain: $ex")
         } catch (ex: NoSuchAlgorithmException) {
             val message = ex.message
             message?.let {
-                throw IssuerDataAuthenticationException(message + "${ex}")
+                throw IssuerDataAuthenticationException(message + "$ex")
             }
-            throw IssuerDataAuthenticationException("Invalid certificate chain: ${ex}")
+            throw IssuerDataAuthenticationException("Invalid certificate chain: $ex")
         } catch (ex: InvalidKeyException) {
             val message = ex.message
             message?.let {
-                throw IssuerDataAuthenticationException(message + "${ex}")
+                throw IssuerDataAuthenticationException(message + "$ex")
             }
-            throw IssuerDataAuthenticationException("Invalid certificate chain: ${ex}")
+            throw IssuerDataAuthenticationException("Invalid certificate chain: $ex")
         } catch (ex: NoSuchProviderException) {
             val message = ex.message
             message?.let {
-                throw IssuerDataAuthenticationException(message + "${ex}")
+                throw IssuerDataAuthenticationException(message + "$ex")
             }
-            throw IssuerDataAuthenticationException("Invalid certificate chain: ${ex}")
+            throw IssuerDataAuthenticationException("Invalid certificate chain: $ex")
         } catch (ex: SignatureException) {
             val message = ex.message
             message?.let {
-                throw IssuerDataAuthenticationException(message + "${ex}")
+                throw IssuerDataAuthenticationException(message + "$ex")
             }
-            throw IssuerDataAuthenticationException("Invalid certificate chain: ${ex}")
+            throw IssuerDataAuthenticationException("Invalid certificate chain: $ex")
         }
     }
 }

@@ -20,7 +20,7 @@ import org.junit.Assert
 import org.junit.Test
 
 class DocTypeTest {
-    val doctypeStr = "nl.rdw.mvr"
+    private val doctypeStr = "nl.rdw.mvr"
 
     @Test
     fun docTypeTest() {

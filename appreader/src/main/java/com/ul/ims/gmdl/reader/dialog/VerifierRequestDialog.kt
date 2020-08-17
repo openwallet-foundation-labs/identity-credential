@@ -21,7 +21,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
-import com.ul.ims.gmdl.R
+import com.ul.ims.gmdl.reader.R
 
 class VerifierRequestDialog(
     private val consentItems: List<String>,

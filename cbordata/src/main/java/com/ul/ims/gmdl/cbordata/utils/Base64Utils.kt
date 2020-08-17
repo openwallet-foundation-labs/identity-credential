@@ -20,7 +20,7 @@ import android.util.Base64
 
 object Base64Utils {
 
-    const val FLAGS = Base64.URL_SAFE + Base64.NO_PADDING
+    private const val FLAGS = Base64.URL_SAFE + Base64.NO_PADDING
 
     @Throws(IllegalArgumentException::class)
     fun decode(base64String: String) : ByteArray {

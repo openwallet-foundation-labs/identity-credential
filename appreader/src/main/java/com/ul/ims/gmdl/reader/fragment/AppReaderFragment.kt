@@ -22,9 +22,9 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
-import com.ul.ims.gmdl.R
-import com.ul.ims.gmdl.databinding.FragmentAppReaderBinding
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.EngagementChannels
+import com.ul.ims.gmdl.reader.R
+import com.ul.ims.gmdl.reader.databinding.FragmentAppReaderBinding
 import com.ul.ims.gmdl.reader.util.SettingsUtils
 
 class AppReaderFragment : Fragment() {

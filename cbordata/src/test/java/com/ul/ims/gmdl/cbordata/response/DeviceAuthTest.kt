@@ -31,7 +31,6 @@ class DeviceAuthTest {
     )
     private val coseMac0 = CoseMac0.Builder().decode(coseMac0Data).build()
     private val coseSign1 = CoseSign1.Builder().decode(CoseSign1Tests().coseSign1Data).build()
-    private val KEY_DEVICE_SIGNATURE = "deviceSignature"
 
     @Test
     fun builderTest() {
@@ -58,5 +57,9 @@ class DeviceAuthTest {
         Assert.assertNotNull(deviceAuth)
         Assert.assertNotNull(deviceAuth.deviceSignature)
         Assert.assertNull(deviceAuth.deviceMac)
+    }
+
+    companion object {
+        private const val KEY_DEVICE_SIGNATURE = "deviceSignature"
     }
 }

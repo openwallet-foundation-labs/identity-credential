@@ -23,6 +23,8 @@
     <string name="biometric_auth">is_biometric_auth_required</string>
     <string name="engagement_service_desc">NFC HCE Service</string>
     <string name="engagement_aid_group_desc">mDL AID Group</string>
+    <string name="nfc_transfer_service_desc">NFC HCE Service Transfer</string>
+    <string name="nfc_transfer_aid_group_desc">mDL AID Group Transfer</string>
     <string name="user_consent_dialog">Please select what you\'d like to share with the Verifier
     </string>
     <string name="family_name">Family Name</string>

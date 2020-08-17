@@ -67,8 +67,14 @@ class Security private constructor(
         }
     }
 
+    override fun hashCode(): Int {
+        var result = coseKey?.hashCode() ?: 0
+        result = 31 * result + (cipherIdent ?: 0)
+        return result
+    }
+
     class Builder {
-        private var cipherSuiteIdent : Int? = null
+        private var cipherSuiteIdent: Int? = null
         private var coseKey: CoseKey? = null
 
         fun setCipherSuiteIdent(cipherSuiteIdent: Int) = apply {

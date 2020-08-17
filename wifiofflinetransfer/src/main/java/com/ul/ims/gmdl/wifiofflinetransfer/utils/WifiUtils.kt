@@ -23,6 +23,7 @@ import org.bouncycastle.crypto.generators.HKDFBytesGenerator
 import org.bouncycastle.crypto.params.HKDFParameters
 import org.bouncycastle.crypto.util.DigestFactory
 import org.bouncycastle.util.encoders.Hex
+import java.util.*
 
 object WifiUtils {
 
@@ -48,7 +49,7 @@ object WifiUtils {
         val passphrase = ByteArray(16)
         hkdfBytesGenerator.generateBytes(passphrase, 0, 16)
 
-        return Hex.toHexString(passphrase).toUpperCase()
+        return Hex.toHexString(passphrase).toUpperCase(Locale.getDefault())
     }
 
     fun getServiceName(publicKey: ByteArray): String {
@@ -61,6 +62,6 @@ object WifiUtils {
         val serviceName = ByteArray(16)
         hkdfBytesGenerator.generateBytes(serviceName, 0, 16)
 
-        return Hex.toHexString(serviceName).toUpperCase()
+        return Hex.toHexString(serviceName).toUpperCase(Locale.getDefault())
     }
 }

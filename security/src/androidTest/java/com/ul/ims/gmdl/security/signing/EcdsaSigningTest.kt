@@ -41,8 +41,8 @@ class EcdsaSigningTest {
         const val CREDENTIAL_NAME = "EcdsaSigningTest"
     }
 
-    lateinit var context: Context
-    var icStore: IdentityCredentialStore? = null
+    private lateinit var context: Context
+    private var icStore: IdentityCredentialStore? = null
     val sessionTranscript = byteArrayOf(
         0x82.toByte(), 0x58.toByte(), 0x59.toByte(), 0x84.toByte(), 0x01.toByte(),
         0x82.toByte(), 0xa4.toByte(), 0x01.toByte(), 0x02.toByte(), 0x20.toByte(),

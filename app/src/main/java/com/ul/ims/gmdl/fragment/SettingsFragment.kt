@@ -79,15 +79,25 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         // Wi-fi Aware
-        val wifiAwareTransferMethod = preferenceManager.findPreference<Preference>("transfer_method_wifi")
-                as? CheckBoxPreference
+        val wifiAwareTransferMethod =
+            preferenceManager.findPreference<Preference>("transfer_method_wifi")
+                    as? CheckBoxPreference
 
+        // NFC
+        val nfcTransferMethod = preferenceManager.findPreference<Preference>("transfer_method_nfc")
+                as? CheckBoxPreference
+        nfcTransferMethod?.let {
+            it.onPreferenceClickListener = transferMethodsListener
+            transferMethods.add(nfcTransferMethod)
+        }
         // The libraries used in this project do not support API level lower then 29
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 
             // Check whether the device supports Wi-Fi Aware
             if (requireContext().packageManager.hasSystemFeature(
-                    PackageManager.FEATURE_WIFI_AWARE)) {
+                    PackageManager.FEATURE_WIFI_AWARE
+                )
+            ) {
                 wifiAwareTransferMethod?.let {
                     it.onPreferenceClickListener = transferMethodsListener
                     transferMethods.add(wifiAwareTransferMethod)

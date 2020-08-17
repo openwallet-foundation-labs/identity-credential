@@ -119,7 +119,7 @@ class SigStructure private constructor(val alg: ASN1ObjectIdentifier?, val paylo
                     }
                     val algMap = decode[0] as? Map
                     algMap?.let {
-                        alg = CoseSign1.coseSign1AlgorithmMap.get(algMap.get(UnsignedInteger(1)))
+                        alg = CoseSign1.coseSign1AlgorithmMap[algMap.get(UnsignedInteger(1))]
                     }
                 } catch (ex: CborException) {
                     throw CborException(ex)

@@ -21,6 +21,7 @@ import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.util.Log
 import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createBLEStaticHandoverRecord
+import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createNfcStaticHandoverRecord
 import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createWiFiAwareStaticHandoverRecord
 import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.statusWordEndOfFileReached
 import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.statusWordFileNotFound
@@ -41,9 +42,8 @@ class NfcHandler : HostApduService() {
         const val EXTRA_WIFI_PASSPHRASE = "ul.ims.gmdl.mdlnfc.EXTRA_WIFI_PASSPHRASE"
         const val EXTRA_WIFI_5GHZ_BAND_SUPPORTED =
             "ul.ims.gmdl.mdlnfc.EXTRA_WIFI_5GHZ_BAND_SUPPORTED"
+        private const val TAG = "NfcHandler"
     }
-
-    private val TAG = NfcHandler::class.java.simpleName
 
     class File(val fileId: ByteArray, val content: ByteArray)
 
@@ -91,18 +91,26 @@ class NfcHandler : HostApduService() {
 
             deviceEngagementBytes?.let { deviceEngagementPayload ->
                 transferMethod?.let { channel ->
-                    if (channel == TransferChannels.BLE) {
-                        setupBluetoothHandover(
-                            deviceEngagementPayload,
-                            blePeripheralMode,
-                            bleCentralMode
-                        )
-                    } else if (channel == TransferChannels.WiFiAware) {
-                        setupWiFiHandover(
-                            deviceEngagementPayload,
-                            wifiPassphrase,
-                            wifi5GHzBandSupported
-                        )
+                    when (channel) {
+                        TransferChannels.BLE -> {
+                            setupBluetoothHandover(
+                                deviceEngagementPayload,
+                                blePeripheralMode,
+                                bleCentralMode
+                            )
+                        }
+                        TransferChannels.WiFiAware -> {
+                            setupWiFiHandover(
+                                deviceEngagementPayload,
+                                wifiPassphrase,
+                                wifi5GHzBandSupported
+                            )
+                        }
+                        TransferChannels.NFC -> {
+                            setupNfcHandover(
+                                deviceEngagementPayload
+                            )
+                        }
                     }
                 }
             }
@@ -139,6 +147,20 @@ class NfcHandler : HostApduService() {
                 deviceEngagementPayload,
                 wifiPassphrase,
                 wifi5GHzBandSupported
+            )
+        val ndefFileContent =
+            intAsTwoBytes(handoverRecord.byteArrayLength).plus(handoverRecord.toByteArray())
+        val ndefFile = File(ndefFileId, ndefFileContent)
+
+        fileSystem = listOf(capabilityContainerFile, ndefFile)
+    }
+
+    private fun setupNfcHandover(
+        deviceEngagementPayload: ByteArray
+    ) {
+        val handoverRecord =
+            createNfcStaticHandoverRecord(
+                deviceEngagementPayload
             )
         val ndefFileContent =
             intAsTwoBytes(handoverRecord.byteArrayLength).plus(handoverRecord.toByteArray())

@@ -29,12 +29,14 @@ object DateUtils {
 
     // RFC3339 Format
     const val RFC3339_FORMAT_FULL_DATE = "yyyy-MM-dd"
-    const val RFC3339_FORMAT_WITHOUT_MILIS = "yyyy-MM-dd'T'HH:mm:ssXXX"
+    private const val RFC3339_FORMAT_WITHOUT_MILIS = "yyyy-MM-dd'T'HH:mm:ssXXX"
+
     // App Display Format for Date & Time
     const val DISPLAY_FORMAT_DATE_TIME = "EEE, d MMM yyyy HH:mm:ss aaa"
+
     // App Display Format for Date
     const val DISPLAY_FORMAT_DATE = "d MMM yyyy"
-    const val TAG = "DateUtils"
+    private const val TAG = "DateUtils"
     private val timezone = TimeZone.getTimeZone("UTC")
 
     fun getDateOfBirth() : Calendar {

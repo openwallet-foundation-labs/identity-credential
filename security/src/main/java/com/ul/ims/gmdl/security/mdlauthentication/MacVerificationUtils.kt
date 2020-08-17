@@ -34,7 +34,7 @@ import javax.crypto.spec.SecretKeySpec
 
 object MacVerificationUtils {
 
-        val LOG_TAG = "MacVerificationUtils"
+        const val LOG_TAG = "MacVerificationUtils"
 
         fun calculateDerivedKey(salt: ByteArray, ikm: ByteArray): ByteArray? {
             val okm = ByteArray(32)
