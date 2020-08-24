@@ -31,13 +31,17 @@ import java.security.interfaces.ECPublicKey
 
 class HolderSessionManager private constructor(
     val context: Context,
-    val credentialName : String) {
+    private val credentialName: String
+) {
 
     companion object {
-        @Volatile private var INSTANCE : HolderSessionManager? = null
+        @Volatile
+        private var INSTANCE: HolderSessionManager? = null
 
-        fun getInstance(context: Context,
-                        credentialName : String) : HolderSessionManager =
+        fun getInstance(
+            context: Context,
+            credentialName: String
+        ): HolderSessionManager =
             INSTANCE ?: synchronized(this) {
                 INSTANCE
                     ?: HolderSessionManager(
@@ -119,7 +123,7 @@ class HolderSessionManager private constructor(
         getHolderSession().setVerifierEphemeralPublicKey(readerKey)
     }
 
-    fun encryptData(byteArray: ByteArray) : ByteArray? {
+    private fun encryptData(byteArray: ByteArray): ByteArray? {
         return getHolderSession().encryptMessageToReader(byteArray)
     }
 
@@ -128,7 +132,7 @@ class HolderSessionManager private constructor(
     }
 
     fun generateResponse(byteArray: ByteArray?) : ByteArray {
-        var response : ByteArray
+        val response: ByteArray
         val builder = SessionData.Builder()
 
         if (byteArray?.isNotEmpty() == true) {

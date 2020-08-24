@@ -21,7 +21,6 @@ import com.ul.ims.gmdl.cbordata.security.EC2Curve
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.ECPointUtil
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
 import org.bouncycastle.math.ec.ECCurve
 import org.bouncycastle.math.ec.custom.sec.SecP256R1Curve
 import org.bouncycastle.math.ec.custom.sec.SecP384R1Curve

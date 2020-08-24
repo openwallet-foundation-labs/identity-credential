@@ -18,15 +18,13 @@ package com.ul.ims.gmdl.security.sessionencryption.verifier
 
 import android.util.Log
 import androidx.security.identity.IdentityCredentialException
-import androidx.security.identity.IdentityCredentialStore
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
 import java.security.PrivateKey
-import java.security.PublicKey
 import java.security.interfaces.ECPublicKey
 
-class VerifierSessionManager constructor(val holderCoseKey: CoseKey) {
+class VerifierSessionManager constructor(private val holderCoseKey: CoseKey) {
 
     companion object {
         const val LOG_TAG = "VerifierSessionManager"

@@ -33,13 +33,13 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.budiyev.android.codescanner.*
-import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
-import com.ul.ims.gmdl.databinding.FragmentQrcodeScanBinding
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
+import com.ul.ims.gmdl.reader.R
+import com.ul.ims.gmdl.reader.databinding.FragmentQrcodeScanBinding
 import com.ul.ims.gmdl.reader.dialog.CustomAlertDialog
 import com.ul.ims.gmdl.reader.dialog.VerifierRequestDialog
 import com.ul.ims.gmdl.reader.viewmodel.QrcodeScanViewModel

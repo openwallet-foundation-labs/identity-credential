@@ -100,9 +100,9 @@ class BleCentralConnection(private val context: Context,
         bluetoothLeScanner?.startScan(filters, settings , callback)
     }
 
-    fun stopScan() {
+    private fun stopScan() {
         try {
-            if (!isScanning){
+            if (!isScanning) {
                 return
             }
             centralEventListener.onBLEEvent("Stopped scanning", EventType.SCAN_STOPPED)
@@ -232,7 +232,7 @@ class BleCentralConnection(private val context: Context,
         return executorEventListener ?: throw BluetoothException("ITransportEventListener not set")
     }
 
-    fun getGattClient(): GattClient {
+    private fun getGattClient(): GattClient {
         return gattClient ?: throw BluetoothException("GattClient is null")
     }
 

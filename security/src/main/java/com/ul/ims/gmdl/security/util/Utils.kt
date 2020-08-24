@@ -58,7 +58,7 @@ class Utils {
                 throw RuntimeException("size too large")
             }
             try {
-                if (salt == null || salt.size == 0) {
+                if (salt == null || salt.isEmpty()) {
                     // According to RFC 5869, Section 2.2 the salt is optional. If no salt is provided
                     // then HKDF uses a salt that is an array of zeros of the same length as the hash
                     // digest.

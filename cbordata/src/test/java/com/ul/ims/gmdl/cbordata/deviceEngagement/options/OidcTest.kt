@@ -26,11 +26,11 @@ class OidcTest {
 
     companion object {
         const val EXPECTED_VALUE_1 = 1
-        val EXPECTED_VALUE_2 = "my-value-2"
-        val EXPECTED_VALUE_3 = "my-value"
+        const val EXPECTED_VALUE_2 = "my-value-2"
+        const val EXPECTED_VALUE_3 = "my-value"
     }
 
-    val expectedEncoded = byteArrayOf(
+    private val expectedEncoded = byteArrayOf(
         0x83.toByte(), 0x01.toByte(), 0x6a.toByte(), 0x6d.toByte(), 0x79.toByte(),
         0x2d.toByte(), 0x76.toByte(), 0x61.toByte(), 0x6c.toByte(), 0x75.toByte(),
         0x65.toByte(), 0x2d.toByte(), 0x32.toByte(), 0x68.toByte(), 0x6d.toByte(),

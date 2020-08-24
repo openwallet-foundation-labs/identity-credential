@@ -4,15 +4,21 @@
             app:title="@string/pref_holder_transfer_method" >
 
         <CheckBoxPreference
-                app:defaultValue="true"
-                app:key="transfer_method_ble"
-                app:title="@string/bluetooth_le" />
+            app:defaultValue="true"
+            app:key="transfer_method_ble"
+            app:title="@string/bluetooth_le" />
 
         <CheckBoxPreference
-                app:defaultValue="false"
-                app:enabled="true"
-                app:key="transfer_method_wifi"
-                app:title="@string/wifi_aware" />
+            app:defaultValue="false"
+            app:enabled="true"
+            app:key="transfer_method_wifi"
+            app:title="@string/wifi_aware" />
+
+        <CheckBoxPreference
+            app:defaultValue="false"
+            app:enabled="true"
+            app:key="transfer_method_nfc"
+            app:title="@string/nfc" />
 
     </PreferenceCategory>
 

@@ -28,7 +28,7 @@ class ResponseTest {
 
     private val namespace = MdlNamespace.namespace
     private val docType = MdlDoctype.docType
-    private val expected_version = "1.0"
+    private val expectedVersion = "1.0"
     private val issuingCountry = IssuerSignedItem.Builder()
         .setDigestId(1)
         .setElementIdentifier("issuing_country")
@@ -701,7 +701,7 @@ class ResponseTest {
                     .setDocuments(mutableListOf(mapOf(Pair(docType, responseData))))
                     .build()
                 Assert.assertNotNull(res)
-                Assert.assertEquals(expected_version, res.version)
+                Assert.assertEquals(expectedVersion, res.version)
                 Assert.assertTrue(res.documents[0].containsKey(docType))
                 Assert.assertTrue(0 == res.status)
             }

@@ -40,7 +40,7 @@ class CborNamespace private constructor(
         return outputStream.toByteArray()
     }
 
-    fun buildCborBuilderStructure(builder : CborBuilder) : CborBuilder {
+    private fun buildCborBuilderStructure(builder: CborBuilder): CborBuilder {
         val structureMap = builder.addMap()
 
         namespaces.forEach {

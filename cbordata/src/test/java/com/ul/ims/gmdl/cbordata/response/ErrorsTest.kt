@@ -23,14 +23,14 @@ class ErrorsTest {
 
     val namespace = "com.rdw.nl"
 
-    val errorItem1 = ErrorItem("NameAuth", 1)
-    val errorItem2 = ErrorItem("DateReg", 2)
+    private val errorItem1 = ErrorItem("NameAuth", 1)
+    private val errorItem2 = ErrorItem("DateReg", 2)
 
     @Test
     fun builderTest() {
         val errors = Errors.Builder()
-                .setError(namespace, arrayOf(errorItem1, errorItem2))
-                .build()
+            .setError(namespace, arrayOf(errorItem1, errorItem2))
+            .build()
 
         Assert.assertNotNull(errors)
         Assert.assertTrue(1 == errors.errors.size)

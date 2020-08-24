@@ -17,6 +17,7 @@
 package com.ul.ims.gmdl.reader.viewmodel
 
 import android.app.Application
+import android.nfc.Tag
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
@@ -56,6 +57,39 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
                     .setTransferChannel(TransferChannels.WiFiAware)
                     .setWifiPassphrase(wifiPassphrase)
                     .setCoseKey(key)
+
+                offlineTransferVerifier = builder.build()
+                offlineTransferVerifier?.setupVerifier(key, requestItems, deviceEngagement)
+
+                uiThread {
+                    offlineTransferVerifier?.data?.let { livedata ->
+                        liveDataMerger.addSource(livedata) {
+                            liveDataMerger.value = it
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun setupNfcVerifier(
+        deviceEngagement: DeviceEngagement,
+        requestItems: Array<String>,
+        tag: Tag,
+        apduCommandLength: Int
+    ) {
+        doAsync {
+            coseKey = deviceEngagement.security?.coseKey
+
+            coseKey?.let { key ->
+                val builder = OfflineTransferManager.Builder()
+                    .actAs(AppMode.VERIFIER)
+                    .setContext(app.applicationContext)
+                    .setDataType(DataTypes.CBOR)
+                    .setTransferChannel(TransferChannels.NFC)
+                    .setCoseKey(key)
+                    .setNfcTag(tag)
+                    .setApduCommandLength(apduCommandLength)
 
                 offlineTransferVerifier = builder.build()
                 offlineTransferVerifier?.setupVerifier(key, requestItems, deviceEngagement)

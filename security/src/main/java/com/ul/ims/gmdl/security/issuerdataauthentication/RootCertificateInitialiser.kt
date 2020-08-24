@@ -38,9 +38,9 @@ constructor(context: Context) {
         } catch (ex: IssuerDataAuthenticationException) {
             val message = ex.message
             message?.let {
-                throw IssuerDataAuthenticationException(message + "${ex}")
+                throw IssuerDataAuthenticationException(message + "$ex")
             }
-            throw IssuerDataAuthenticationException("Unable to initialise root certificates: ${ex}")
+            throw IssuerDataAuthenticationException("Unable to initialise root certificates: $ex")
         }
     }
 

@@ -17,6 +17,7 @@
 package com.ul.ims.gmdl.reader.offlineTransfer
 
 import android.content.Context
+import android.nfc.Tag
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -40,13 +41,15 @@ import com.ul.ims.gmdl.offlinetransfer.utils.Resource
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
 
-class CborManager constructor(
+class CborManager(
     private val context: Context,
     private val actAs: AppMode,
     transportChannel: TransferChannels,
     bleServiceMode: BleServiceMode,
     publicKey: ByteArray,
-    wifiPassphrase: String?
+    wifiPassphrase: String?,
+    nfcTag: Tag?,
+    apduCommandLength: Int?
 ) : IofflineTransfer {
 
     // Livedata with the transfer status and received data
@@ -60,7 +63,9 @@ class CborManager constructor(
             actAs,
             bleServiceMode,
             publicKey,
-            wifiPassphrase
+            wifiPassphrase,
+            nfcTag,
+            apduCommandLength
         )
 
     //TransportManager obj

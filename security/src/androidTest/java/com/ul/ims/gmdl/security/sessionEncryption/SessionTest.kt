@@ -16,9 +16,7 @@
 
 package com.ul.ims.gmdl.security.sessionEncryption
 
-import androidx.security.identity.IdentityCredential
 import androidx.security.identity.IdentityCredentialStore
-import androidx.security.identity.IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
 import androidx.test.InstrumentationRegistry
 import com.ul.ims.gmdl.security.TestUtils
 import com.ul.ims.gmdl.security.sessionEncryption.holder.HolderSessionTest
@@ -26,7 +24,6 @@ import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSession
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSession
 import org.junit.Assert
 import org.junit.Test
-import java.security.InvalidKeyException
 
 class SessionTest {
 

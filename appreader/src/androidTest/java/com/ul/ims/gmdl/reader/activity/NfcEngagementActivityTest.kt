@@ -110,7 +110,10 @@ class NfcEngagementActivityTest {
     private val nfcRecordTNF: Short = 0x02 // type = RFC 2046 (MIME)
     private val nfcRecordType = "iso.org:18013".toByteArray()
     private val nfcRecordId = "0".toByteArray()
-    private val nfcRecordPayload = byteArrayOfInts() // payload is ignored
+    private val nfcRecordPayload = byteArrayOf(
+        0x10, //mDL NFC Connection Handover Version. Major Version: 1, Minor Version: 0
+        0xFF.toByte(), 0xFF.toByte() // Maximum length of command data field supported
+    )
     private val nfcRecord = NdefRecord(
         nfcRecordTNF,
         nfcRecordType,
@@ -148,14 +151,14 @@ class NfcEngagementActivityTest {
             return
         }
 
-        assertTrue(handoverSelectMessage.getDeviceEngagementBytes().isPresent)
+        assertNotNull(handoverSelectMessage.deviceEngagementBytes)
         assertArrayEquals(
-            deviceEngagementPayload, handoverSelectMessage.getDeviceEngagementBytes().get()
+            deviceEngagementPayload, handoverSelectMessage.deviceEngagementBytes
         )
 
-        assertTrue(handoverSelectMessage.getBleServiceMode().isPresent)
+        assertNotNull(handoverSelectMessage.bleServiceMode)
         assertEquals(
-            handoverSelectMessage.getBleServiceMode().get(),
+            handoverSelectMessage.bleServiceMode,
             BleServiceMode.CENTRAL_CLIENT_MODE
         )
     }
@@ -189,14 +192,14 @@ class NfcEngagementActivityTest {
             return
         }
 
-        assertTrue(handoverSelectMessage.getDeviceEngagementBytes().isPresent)
+        assertNotNull(handoverSelectMessage.deviceEngagementBytes)
         assertArrayEquals(
-            deviceEngagementPayload, handoverSelectMessage.getDeviceEngagementBytes().get()
+            deviceEngagementPayload, handoverSelectMessage.deviceEngagementBytes
         )
 
-        assertTrue(handoverSelectMessage.getBleServiceMode().isPresent)
+        assertNotNull(handoverSelectMessage.bleServiceMode)
         assertEquals(
-            handoverSelectMessage.getBleServiceMode().get(),
+            handoverSelectMessage.bleServiceMode,
             BleServiceMode.CENTRAL_CLIENT_MODE
         )
     }
@@ -217,9 +220,9 @@ class NfcEngagementActivityTest {
             return
         }
 
-        assertTrue(handoverSelectMessage.getDeviceEngagementBytes().isPresent)
+        assertNotNull(handoverSelectMessage.deviceEngagementBytes)
         assertArrayEquals(
-            deviceEngagementPayload, handoverSelectMessage.getDeviceEngagementBytes().get()
+            deviceEngagementPayload, handoverSelectMessage.deviceEngagementBytes
         )
     }
 
@@ -238,9 +241,9 @@ class NfcEngagementActivityTest {
             return
         }
 
-        assertTrue(handoverSelectMessage.getDeviceEngagementBytes().isPresent)
+        assertNotNull(handoverSelectMessage.deviceEngagementBytes)
         assertArrayEquals(
-            deviceEngagementPayload, handoverSelectMessage.getDeviceEngagementBytes().get()
+            deviceEngagementPayload, handoverSelectMessage.deviceEngagementBytes
         )
     }
 

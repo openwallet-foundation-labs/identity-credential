@@ -61,6 +61,7 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
         const val QRCODE_WIDTH = 400
         const val BLE_VERSION = 1
         const val WIFI_AWARE_VERSION = 1
+        const val NFC_VERSION = 1
         const val DE_VERSION = "1.0"
         const val CHIPER_SUITE_IDENT = 1
         const val COSE_KEY_KTY = "tbd"
@@ -158,7 +159,12 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
                             )
                         }
                         TransferChannels.WiFiAware -> {
-                            builder.transferMethods(WiFiAwareTransferMethod(DeviceEngagement.TRANSFER_TYPE_WIFI_AWARE, WIFI_AWARE_VERSION))
+                            builder.transferMethods(
+                                WiFiAwareTransferMethod(
+                                    DeviceEngagement.TRANSFER_TYPE_WIFI_AWARE,
+                                    WIFI_AWARE_VERSION
+                                )
+                            )
                         }
                         else -> throw UnsupportedOperationException("Unsupported transfer method requested in QR code")
                     }

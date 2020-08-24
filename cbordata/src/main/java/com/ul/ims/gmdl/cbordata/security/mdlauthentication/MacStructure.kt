@@ -22,7 +22,10 @@ import co.nstant.`in`.cbor.model.ByteString
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import java.io.ByteArrayOutputStream
 
-class MacStructure private constructor(val alg : ByteArray?, val deviceAuthenticationData: ByteArray?): AbstractCborStructure() {
+class MacStructure private constructor(
+    private val alg: ByteArray?,
+    private val deviceAuthenticationData: ByteArray?
+) : AbstractCborStructure() {
     companion object {
         const val LOG_TAG = "MacStructure"
         private const val MAC_STRUCTURE_CONTEXT = "MAC0"

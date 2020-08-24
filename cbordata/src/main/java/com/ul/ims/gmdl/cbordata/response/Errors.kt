@@ -37,15 +37,15 @@ class Errors private constructor(
 
                 value?.dataItems?.forEach {i->
                     val itemMap = i as? co.nstant.`in`.cbor.model.Map
-                    var listItems = arrayListOf<ErrorItem>()
-                    var namespace = i as? UnicodeString
-                    namespace?.string?.let { n->
+                    val listItems = arrayListOf<ErrorItem>()
+                    val namespace = i as? UnicodeString
+                    namespace?.string?.let { n ->
                         itemMap?.keys?.forEach {
                             val dataItemName = it as? UnicodeString
                             val errorCode = itemMap.get(it) as? UnsignedInteger
 
-                            dataItemName?.let {d->
-                                errorCode?.let {e->
+                            dataItemName?.let { d ->
+                                errorCode?.let { e ->
                                     listItems.add(
                                         ErrorItem(
                                             d.string,

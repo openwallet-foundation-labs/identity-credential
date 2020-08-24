@@ -25,6 +25,8 @@ import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
 import com.ul.ims.gmdl.cbordata.deviceEngagement.options.Oidc
 import com.ul.ims.gmdl.cbordata.deviceEngagement.options.WebAPI
+import com.ul.ims.gmdl.cbordata.deviceEngagement.security.CipherSuiteIdentifiers
+import com.ul.ims.gmdl.cbordata.deviceEngagement.security.CurveIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.CENTRAL_CLIENT_KEY
@@ -36,8 +38,6 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.NfcTransferMeth
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareTransferMethod
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import com.ul.ims.gmdl.cbordata.utils.Base64Utils
-import com.ul.ims.gmdl.cbordata.deviceEngagement.security.CipherSuiteIdentifiers
-import com.ul.ims.gmdl.cbordata.deviceEngagement.security.CurveIdentifiers
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Serializable
@@ -201,7 +201,7 @@ class DeviceEngagement private constructor(
         structureArray = optionsMapBuilder.end()
 
         //*DocType May be used but we can leave it empty
-        var docTypeBuilder = structureArray.addArray()
+        val docTypeBuilder = structureArray.addArray()
         structureArray = docTypeBuilder.end()
 
         //Proprietary (optional element)

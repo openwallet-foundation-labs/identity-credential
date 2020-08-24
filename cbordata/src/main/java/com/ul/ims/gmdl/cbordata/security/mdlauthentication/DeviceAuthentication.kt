@@ -21,8 +21,10 @@ import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.CborException
-import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
+import co.nstant.`in`.cbor.model.DataItem
+import co.nstant.`in`.cbor.model.Tag
+import co.nstant.`in`.cbor.model.UnicodeString
 import com.ul.ims.gmdl.cbordata.doctype.DocType
 import com.ul.ims.gmdl.cbordata.doctype.IDoctype
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
@@ -30,10 +32,10 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Serializable
 
-class DeviceAuthentication private constructor (
-    val sessionTransript: SessionTranscript?,
+class DeviceAuthentication private constructor(
+    private val sessionTranscript: SessionTranscript?,
     val docType: IDoctype?,
-    val deviceNameSpaces : DeviceNameSpaces?
+    private val deviceNameSpaces: DeviceNameSpaces?
 ) : AbstractCborStructure(), Serializable{
 
     companion object {
@@ -49,11 +51,11 @@ class DeviceAuthentication private constructor (
 
         arrayBuilder = arrayBuilder.add(toDataItem(LABEL))
 
-        if (sessionTransript == null) {
+        if (sessionTranscript == null) {
             throw CborException("SessionTranscript cannot be null")
         }
 
-        arrayBuilder = arrayBuilder.add(encodeSessionTranscript(sessionTransript))
+        arrayBuilder = arrayBuilder.add(encodeSessionTranscript(sessionTranscript))
         if (docType?.docType == null) {
             throw CborException("DocType cannot be null")
         }
@@ -89,9 +91,9 @@ class DeviceAuthentication private constructor (
     }
 
     class Builder {
-        private var sessionTranscript : SessionTranscript? = null
-        private var docType : IDoctype? = null
-        private var deviceNameSpaces : DeviceNameSpaces? = null
+        private var sessionTranscript: SessionTranscript? = null
+        private var docType: IDoctype? = null
+        private var deviceNameSpaces: DeviceNameSpaces? = null
 
         fun setDocType(string: String?) = apply {
             string?.let {
@@ -99,9 +101,9 @@ class DeviceAuthentication private constructor (
             }
         }
 
-        fun setSessionTranscript(sessionTransript: SessionTranscript?) = apply {
-            sessionTransript?.let {
-                sessionTranscript = sessionTransript
+        fun setSessionTranscript(sessionTranscript: SessionTranscript?) = apply {
+            sessionTranscript?.let {
+                this.sessionTranscript = sessionTranscript
             }
         }
 
@@ -111,7 +113,7 @@ class DeviceAuthentication private constructor (
             }
         }
 
-        fun decode(data : ByteArray) = apply {
+        fun decode(data: ByteArray) = apply {
             try {
                 val stream = ByteArrayInputStream(data)
                 val dataItems = CborDecoder(stream).decode()
@@ -130,8 +132,8 @@ class DeviceAuthentication private constructor (
         private fun decode(array: Array) {
             if (array.dataItems.size == 4) {
                 decodeLabel(array.dataItems[0])
-                val sessionTransript : Array? = array.dataItems[1] as? Array
-                decodeSessionTranscript(sessionTransript)
+                val sessionTranscript: Array? = array.dataItems[1] as? Array
+                decodeSessionTranscript(sessionTranscript)
                 decodeDocType((array.dataItems[2] as? UnicodeString)?.string)
                 decodeDeviceNameSpaces(array.dataItems[3])
             }
@@ -139,9 +141,9 @@ class DeviceAuthentication private constructor (
 
         private fun decodeDeviceNameSpaces(dataItem: DataItem?) {
             dataItem?.let {
-                if (dataItem.majorType == MajorType.MAP) {
+//                if (dataItem.majorType == MajorType.MAP) {
 //                    deviceNameSpaces = DeviceNameSpaces.Builder().decode(dataItem as Map).build()
-                }
+//                }
             }
         }
 
@@ -151,8 +153,8 @@ class DeviceAuthentication private constructor (
             }
         }
 
-        private fun decodeSessionTranscript(sessionTransript: Array?) {
-            sessionTranscript = SessionTranscript.Builder().decode(sessionTransript).build()
+        private fun decodeSessionTranscript(sessionTranscript: Array?) {
+            this.sessionTranscript = SessionTranscript.Builder().decode(sessionTranscript).build()
         }
 
         private fun decodeLabel(dataItem: DataItem?) {

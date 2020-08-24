@@ -35,11 +35,11 @@ class DataWriterTest {
     @Mock
     lateinit var holderCharacteristic: BluetoothGattCharacteristic
 
-    lateinit var dataWriter: DataWriter
+    private lateinit var dataWriter: DataWriter
 
-    val chunckSize = 1
+    private val chunckSize = 1
 
-    val bytes = byteArrayOf(
+    private val bytes = byteArrayOf(
         0xfa.toByte(), 0xfb.toByte(), 0xfc.toByte(), 0xfd.toByte(), 0xfe.toByte(), 0xde.toByte()
     )
 

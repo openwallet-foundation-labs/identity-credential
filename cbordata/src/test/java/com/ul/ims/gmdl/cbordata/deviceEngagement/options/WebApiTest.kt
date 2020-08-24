@@ -26,18 +26,18 @@ class WebApiTest {
 
     companion object {
         const val EXPECTED_VERSION = 99
-        val EXPECTED_TOKEN = "my-token-abcdef"
-        val EXPECTED_BASEURL = "trident.ul.com"
+        const val EXPECTED_TOKEN = "my-token-abcdef"
+        const val EXPECTED_BASEURL = "trident.ul.com"
     }
 
-    val expectedEncoded = byteArrayOf(
-            0x83.toByte(), 0x18.toByte(), 0x63.toByte(), 0x6e.toByte(), 0x74.toByte(),
-            0x72.toByte(), 0x69.toByte(), 0x64.toByte(), 0x65.toByte(), 0x6e.toByte(),
-            0x74.toByte(), 0x2e.toByte(), 0x75.toByte(), 0x6c.toByte(), 0x2e.toByte(),
-            0x63.toByte(), 0x6f.toByte(), 0x6d.toByte(), 0x6f.toByte(), 0x6d.toByte(),
-            0x79.toByte(), 0x2d.toByte(), 0x74.toByte(), 0x6f.toByte(), 0x6b.toByte(),
-            0x65.toByte(), 0x6e.toByte(), 0x2d.toByte(), 0x61.toByte(), 0x62.toByte(),
-            0x63.toByte(), 0x64.toByte(), 0x65.toByte(), 0x66.toByte()
+    private val expectedEncoded = byteArrayOf(
+        0x83.toByte(), 0x18.toByte(), 0x63.toByte(), 0x6e.toByte(), 0x74.toByte(),
+        0x72.toByte(), 0x69.toByte(), 0x64.toByte(), 0x65.toByte(), 0x6e.toByte(),
+        0x74.toByte(), 0x2e.toByte(), 0x75.toByte(), 0x6c.toByte(), 0x2e.toByte(),
+        0x63.toByte(), 0x6f.toByte(), 0x6d.toByte(), 0x6f.toByte(), 0x6d.toByte(),
+        0x79.toByte(), 0x2d.toByte(), 0x74.toByte(), 0x6f.toByte(), 0x6b.toByte(),
+        0x65.toByte(), 0x6e.toByte(), 0x2d.toByte(), 0x61.toByte(), 0x62.toByte(),
+        0x63.toByte(), 0x64.toByte(), 0x65.toByte(), 0x66.toByte()
     )
 
     @Test
@@ -88,7 +88,7 @@ class WebApiTest {
 
     @Test
     fun testEquals() {
-        var builder = WebAPI.Builder()
+        val builder = WebAPI.Builder()
         builder.setVersion(EXPECTED_VERSION)
         builder.setToken(EXPECTED_TOKEN)
         builder.setBaseUrl(EXPECTED_BASEURL)
@@ -113,7 +113,7 @@ class WebApiTest {
 
     @Test
     fun hashCodeTest() {
-        var builder = WebAPI.Builder()
+        val builder = WebAPI.Builder()
         builder.setVersion(EXPECTED_VERSION)
         builder.setToken(EXPECTED_TOKEN)
         builder.setBaseUrl(EXPECTED_BASEURL)

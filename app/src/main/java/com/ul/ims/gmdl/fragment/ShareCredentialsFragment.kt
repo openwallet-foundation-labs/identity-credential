@@ -147,8 +147,9 @@ class ShareCredentialsFragment : Fragment() {
 
         } else if (TransferChannels.WiFiAware == transferMethod) {
             // TODO(JS): Enable wifi?
-        }
-        else {
+        } else if (TransferChannels.NFC == transferMethod) {
+            Log.d(LOG_TAG, "NFC transfer selected")
+        } else {
             throw UnsupportedOperationException("Unsupported transfer method")
         }
 

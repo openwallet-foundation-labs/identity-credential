@@ -60,10 +60,27 @@ class NfcConstants {
             // auxiliary reference = "mDL"
             0x6D, 0x44, 0x4C
         )
+        private val hsRecordPayloadNfc: ByteArray = byteArrayOfInts(
+            // ac record
+            0x14, // version 1.4
+            0xD1, // NDEF Record Header: MB=1b, ME=1b, CF=0b, SR=1, IL=0b, TNF=001b
+            0x02, // record type length = 2 bytes
+            0x0A, // payload length = 10 bytes
+            0x61, 0x63, // record type = "ac"
+            0x01, // carrier flags. CPS = 1 "active"
+            0x03, // carrier data reference length = 3 octets
+            0x6E, 0x66, 0x63, // carrier data reference = "nfc"
+            0x01, // auxiliary data reference count: 1
+            0x03, // auxiliary data reference length = 1
+            // auxiliary reference = "mDL"
+            0x6D, 0x44, 0x4C
+        )
 
         private const val bluetoothLERecordTNF: Short = 0x02 // type = RFC 2046 (MIME)
+
         // type name = "application/vnd.bluetooth.le.oob"
-        private val bluetoothLERecordType: ByteArray = "application/vnd.bluetooth.le.oob".toByteArray()
+        private val bluetoothLERecordType: ByteArray =
+            "application/vnd.bluetooth.le.oob".toByteArray()
         private val bluetoothLERecordId: ByteArray = "0".toByteArray()
 
         // Wifi Aware Carrier Data Record
@@ -71,15 +88,24 @@ class NfcConstants {
         private val wifiAwareRecordType = "application/vnd.wfa.nan".toByteArray()
         private val wifiAwareRecordId = "W".toByteArray()
 
+        // Carrier Data Record, “nfc”
+        private const val nfcRecordTNF: Short = 0x02 // type = RFC 2046 (MIME)
+        private val nfcRecordType = "iso.org:18013".toByteArray()
+        private val nfcRecordId = "nfc".toByteArray()
+
         private const val deviceEngagementTNF: Short = 0x04 // type = external
+
         // type name = "iso.org:18013:deviceengagement"
         private val deviceEngagementType: ByteArray = "iso.org:18013:deviceengagement".toByteArray()
+
         // id = "mDL"
         private val deviceEngagementId: ByteArray = byteArrayOfInts(0x6D, 0x44, 0x4C)
 
         private val hcRecord = NdefRecord(hsRecordTNF, hsRecordType, hsRecordId, hsRecordPayload)
         private val hcRecordWifi =
             NdefRecord(hsRecordTNF, hsRecordType, hsRecordId, hsRecordPayloadWifi)
+        private val hcRecordNfc =
+            NdefRecord(hsRecordTNF, hsRecordType, hsRecordId, hsRecordPayloadNfc)
 
         fun createBLEStaticHandoverRecord(
             deviceEngagementPayload: ByteArray,
@@ -197,6 +223,37 @@ class NfcConstants {
             )
 
             return NdefMessage(arrayOf(hcRecordWifi, wifiAwareRecord, deviceEngagementRecord))
+        }
+
+        fun createNfcStaticHandoverRecord(
+            deviceEngagementPayload: ByteArray
+        ): NdefMessage {
+
+            val payload = byteArrayOf(
+                0x10, //mDL NFC Connection Handover Version. Major Version: 1, Minor Version: 0
+                // Maximum length of command data field supported by mobile device, as defined in ISO/IEC 7816-4.
+                // NOTE: a value over 255 bytes indicates extended length. Indicated as an unsigned integer.
+                //0x00, 0xFF.toByte()
+                0xFF.toByte(), 0xFF.toByte()
+                //TODO(Eduardo): Extended apdu data length hard-coded, it is needed an Android API
+                // to retrieve this information
+            )
+
+            val nfcRecord = NdefRecord(
+                nfcRecordTNF,
+                nfcRecordType,
+                nfcRecordId,
+                payload
+            )
+
+            val deviceEngagementRecord = NdefRecord(
+                deviceEngagementTNF,
+                deviceEngagementType,
+                deviceEngagementId,
+                deviceEngagementPayload
+            )
+
+            return NdefMessage(arrayOf(hcRecordNfc, nfcRecord, deviceEngagementRecord))
         }
     }
 }

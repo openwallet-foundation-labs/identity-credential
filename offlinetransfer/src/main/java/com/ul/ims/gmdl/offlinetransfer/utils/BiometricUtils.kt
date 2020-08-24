@@ -17,16 +17,15 @@
 package com.ul.ims.gmdl.offlinetransfer.utils
 
 import android.content.Context
-import android.os.Build
 import androidx.biometric.BiometricManager
 
 object BiometricUtils {
-    val LOG_TAG = "BiometricUtils"
+    const val LOG_TAG = "BiometricUtils"
 
-    fun isBiometricAuthSupported(context: Context) : Boolean {
+    private fun isBiometricAuthSupported(context: Context): Boolean {
         val biometricManager = BiometricManager.from(context)
 
-        return when(biometricManager.canAuthenticate()) {
+        return when (biometricManager.canAuthenticate()) {
             BiometricManager.BIOMETRIC_SUCCESS,
             BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
                 Log.d(LOG_TAG, "Biometric Authentication supported by the device")

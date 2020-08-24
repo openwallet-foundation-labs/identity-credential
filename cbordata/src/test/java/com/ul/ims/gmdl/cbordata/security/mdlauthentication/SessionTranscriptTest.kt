@@ -21,7 +21,7 @@ import org.junit.Test
 
 class SessionTranscriptTest {
 
-    val readerKey = byteArrayOf(
+    private val readerKey = byteArrayOf(
         0xa4.toByte(), 0x01.toByte(), 0x02.toByte(), 0x20.toByte(), 0x01.toByte(),
         0x21.toByte(), 0x58.toByte(), 0x20.toByte(), 0x79.toByte(), 0x8c.toByte(),
         0x08.toByte(), 0xe0.toByte(), 0xb9.toByte(), 0x54.toByte(), 0x03.toByte(),
@@ -60,7 +60,7 @@ class SessionTranscriptTest {
         0xf5.toByte(), 0x01.toByte(), 0xf5.toByte(), 0xa0.toByte()
     )
 
-    val expected = byteArrayOf(
+    private val expected = byteArrayOf(
         0x82.toByte(), 0xd8.toByte(), 0x18.toByte(), 0x58.toByte(), 0x59.toByte(),
         0x84.toByte(), 0x01.toByte(), 0x82.toByte(), 0xa4.toByte(), 0x01.toByte(),
         0x02.toByte(), 0x20.toByte(), 0x01.toByte(), 0x21.toByte(), 0x58.toByte(),

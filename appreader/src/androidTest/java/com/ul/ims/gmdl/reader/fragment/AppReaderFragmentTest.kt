@@ -16,15 +16,15 @@
 
 package com.ul.ims.gmdl.reader.fragment
 
+import android.Manifest
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
-import androidx.test.espresso.matcher.ViewMatchers.withId
+import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.rule.ActivityTestRule
 import androidx.test.rule.GrantPermissionRule
 import androidx.test.runner.AndroidJUnit4
-import com.ul.ims.gmdl.R
+import com.ul.ims.gmdl.reader.R
 import com.ul.ims.gmdl.reader.activity.MainActivity
 import org.junit.Rule
 import org.junit.Test
@@ -37,7 +37,10 @@ class AppReaderFragmentTest {
     @Rule
     @JvmField
     val grantPermissionRule: GrantPermissionRule =
-        GrantPermissionRule.grant(android.Manifest.permission.CAMERA)
+        GrantPermissionRule.grant(
+            Manifest.permission.CAMERA,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
 
     @Rule
     @JvmField
@@ -54,9 +57,9 @@ class AppReaderFragmentTest {
         onView(withId(R.id.btn_verifier)).check(matches(isDisplayed()))
         onView(withId(R.id.btn_verifier)).perform(click())
 
-//        // Consent Dialog
-//        onView(withText(R.string.verifier_request_dialog)).check(matches(isDisplayed()))
-//        onView(withText(android.R.string.ok)).perform(click())
-//        onView(withText(R.string.txt_scan_qrcode_label)).check(matches(isDisplayed()))
+        // Consent Dialog
+        onView(withText(R.string.verifier_request_dialog)).check(matches(isDisplayed()))
+        onView(withText(android.R.string.ok)).perform(click())
+        onView(withText(R.string.txt_scan_qrcode_label)).check(matches(isDisplayed()))
     }
 }

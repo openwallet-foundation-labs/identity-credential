@@ -23,8 +23,8 @@ import android.os.Bundle
 import androidx.preference.CheckBoxPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.cbordata.utils.Log
+import com.ul.ims.gmdl.reader.R
 
 
 class SettingsFragment : PreferenceFragmentCompat() {

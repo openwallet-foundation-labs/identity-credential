@@ -16,6 +16,7 @@
 
 package com.ul.ims.gmdl.reader.fragment
 
+import android.nfc.NfcAdapter
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -25,8 +26,8 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.ul.ims.gmdl.databinding.FragmentDisplayCredentialsBinding
 import com.ul.ims.gmdl.offlinetransfer.utils.Log
+import com.ul.ims.gmdl.reader.databinding.FragmentDisplayCredentialsBinding
 import com.ul.ims.gmdl.reader.dialog.CustomAlertDialog
 import com.ul.ims.gmdl.reader.viewmodel.DisplayCredentialsViewModel
 
@@ -35,6 +36,17 @@ import com.ul.ims.gmdl.reader.viewmodel.DisplayCredentialsViewModel
  *
  */
 class DisplayCredentialsFragment : Fragment() {
+
+    companion object {
+        private const val LOG_TAG = "DisplayCredentialsFragment"
+        private const val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
+                or NfcAdapter.FLAG_READER_NFC_B
+                or NfcAdapter.FLAG_READER_NFC_F
+                or NfcAdapter.FLAG_READER_NFC_V
+                or NfcAdapter.FLAG_READER_NFC_BARCODE)
+    }
+
+    private var nfcAdapter: NfcAdapter? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -45,7 +57,21 @@ class DisplayCredentialsFragment : Fragment() {
 
         subscribeUi(binding, args)
 
+        nfcAdapter = NfcAdapter.getDefaultAdapter(requireContext())
+
         return binding.root
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Enable as reader to not allow other apps to open when using NFC transfer
+        nfcAdapter?.enableReaderMode(activity, null, READER_FLAGS, null)
+    }
+
+    override fun onPause() {
+        super.onPause()
+
+        nfcAdapter?.disableReaderMode(activity)
     }
 
     private fun subscribeUi(

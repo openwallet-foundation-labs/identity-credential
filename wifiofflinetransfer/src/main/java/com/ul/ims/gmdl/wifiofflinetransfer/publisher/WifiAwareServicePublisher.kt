@@ -36,7 +36,6 @@ import org.jetbrains.anko.uiThread
 import java.io.ByteArrayInputStream
 import java.net.ServerSocket
 import java.net.Socket
-import java.util.*
 
 @TargetApi(29)
 class WifiAwareServicePublisher internal constructor(
@@ -145,7 +144,7 @@ class WifiAwareServicePublisher internal constructor(
         val read = inputStream?.read(receivedData)
 
         if (read != -1) {
-            val trimmed = Arrays.copyOfRange(receivedData, 0, read ?: 0)
+            val trimmed = receivedData.copyOfRange(0, read ?: 0)
 
             Log.d(LOG_TAG, "Received HTTP request: " + Hex.toHexString(trimmed))
 
@@ -160,12 +159,12 @@ class WifiAwareServicePublisher internal constructor(
 
                 if (httpRequest is HttpEntityEnclosingRequest) {
                     val contentLengthStrategy = StrictContentLengthStrategy.INSTANCE
-                    val len = contentLengthStrategy.determineLength(httpRequest)
-                    val contentStream = when (len) {
-                        ContentLengthStrategy.CHUNKED.toLong() -> ChunkedInputStream(buffer)
-                        ContentLengthStrategy.IDENTITY.toLong() -> IdentityInputStream(buffer)
-                        else -> ContentLengthInputStream(buffer, len)
-                    }
+                    val contentStream =
+                        when (val len = contentLengthStrategy.determineLength(httpRequest)) {
+                            ContentLengthStrategy.CHUNKED.toLong() -> ChunkedInputStream(buffer)
+                            ContentLengthStrategy.IDENTITY.toLong() -> IdentityInputStream(buffer)
+                            else -> ContentLengthInputStream(buffer, len)
+                        }
                     val ent = BasicHttpEntity()
                     ent.content = contentStream
                     httpRequest.entity = ent
@@ -173,7 +172,7 @@ class WifiAwareServicePublisher internal constructor(
                     val requestBody = ByteArray(64000)
                     val length = httpRequest.entity.content.read(requestBody)
 
-                    val requestBodyTrimmed = Arrays.copyOfRange(requestBody, 0, length)
+                    val requestBodyTrimmed = requestBody.copyOfRange(0, length)
 
                     Log.d(
                         LOG_TAG,

@@ -99,7 +99,7 @@ class MockIssuerAuthority private constructor(val context: Context) : IIssuerAut
         )
     }
 
-    fun generateIssuerSignedItemsList(): IssuerNameSpaces {
+    private fun generateIssuerSignedItemsList(): IssuerNameSpaces {
         val builder = IssuerNameSpaces.Builder()
 
         // Create a list with the possible digest ids and shuffle it

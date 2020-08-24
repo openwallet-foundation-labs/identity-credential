@@ -26,9 +26,10 @@ import android.util.Log
 import android.util.Pair
 import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
-import com.ul.ims.gmdl.R
+import com.ul.ims.gmdl.nfcofflinetransfer.utils.NfcUtils
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
+import com.ul.ims.gmdl.reader.R
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
 import java.util.*
@@ -41,6 +42,7 @@ class NfcEngagementActivity : AppCompatActivity() {
         const val EXTRA_TRANSFER_METHOD = "com.ul.ims.gmdl.TRANSFER_METHOD"
         const val EXTRA_BLE_ROLE = "com.ul.ims.gmdl.EXTRA_BLE_ROLE"
         const val EXTRA_WIFI_PASSPHRASE = "com.ul.ims.gmdl.EXTRA_WIFI_PASSPHRASE"
+        const val EXTRA_APDU_COM_LEN = "com.ul.ims.gmdl.EXTRA_APDU_COM_LEN"
         private const val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
                 or NfcAdapter.FLAG_READER_NFC_B
                 or NfcAdapter.FLAG_READER_NFC_F
@@ -60,7 +62,7 @@ class NfcEngagementActivity : AppCompatActivity() {
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
 
-        if (nfcAdapter == null) {
+        if (nfcAdapter?.isEnabled != true) {
             val resultIntent = Intent()
 
             resultIntent.putExtra(DEVICE_ENGAGEMENT_ERROR, "NFC Adapter is not present")
@@ -69,27 +71,16 @@ class NfcEngagementActivity : AppCompatActivity() {
             finish()
             return
         }
-
-        if (!nfcAdapter!!.isEnabled) {
-            val resultIntent = Intent()
-
-            resultIntent.putExtra(DEVICE_ENGAGEMENT_ERROR, "NFC Adapter is not enabled")
-
-            setResult(RESULT_OK, resultIntent)
-            finish()
-
-            return
-        }
     }
 
     override fun onResume() {
         super.onResume()
-        nfcAdapter!!.enableReaderMode(this, callback, READER_FLAGS, null)
+        nfcAdapter?.enableReaderMode(this, callback, READER_FLAGS, null)
     }
 
     override fun onPause() {
         super.onPause()
-        nfcAdapter!!.disableReaderMode(this)
+        nfcAdapter?.disableReaderMode(this)
     }
 
     private inner class ReaderModeCallback : NfcAdapter.ReaderCallback {
@@ -98,7 +89,7 @@ class NfcEngagementActivity : AppCompatActivity() {
 
             // Tell the adapter to ignore this tag for any consecutive reads. debounceMs needs to be
             //  greater than the polling interval of the adapter
-            nfcAdapter!!.ignore(tag, 1000, null, null)
+            nfcAdapter?.ignore(tag, 1000, null, null)
 
             val techList = tag.techList
 
@@ -130,28 +121,34 @@ class NfcEngagementActivity : AppCompatActivity() {
             try {
                 handoverSelectMessage = HandoverSelectMessage(ndefMessage, ndef)
 
-                val deviceEngagementBytes = handoverSelectMessage
-                    .getDeviceEngagementBytes()
 
-                if (deviceEngagementBytes.isPresent) {
+                handoverSelectMessage.deviceEngagementBytes?.let { deviceEngagement ->
                     val resultIntent = Intent()
 
-                    resultIntent.putExtra(DEVICE_ENGAGEMENT_RESULT, deviceEngagementBytes.get())
+                    resultIntent.putExtra(
+                        DEVICE_ENGAGEMENT_RESULT,
+                        deviceEngagement
+                    )
 
-                    val transferMethod = handoverSelectMessage.getTransferMethod()
-                    if (transferMethod.isPresent) {
-                        resultIntent.putExtra(EXTRA_TRANSFER_METHOD, transferMethod.get())
-                    }
+                    resultIntent.putExtra(
+                        EXTRA_TRANSFER_METHOD,
+                        handoverSelectMessage.transferMethod
+                    )
 
-                    val bleServiceMode = handoverSelectMessage.getBleServiceMode()
-                    if (bleServiceMode.isPresent) {
-                        resultIntent.putExtra(EXTRA_BLE_ROLE, bleServiceMode.get())
-                    }
+                    resultIntent.putExtra(
+                        EXTRA_BLE_ROLE,
+                        handoverSelectMessage.bleServiceMode
+                    )
 
-                    val wifiPassphrase = handoverSelectMessage.getWifiPassphrase()
-                    if (wifiPassphrase.isPresent) {
-                        resultIntent.putExtra(EXTRA_WIFI_PASSPHRASE, wifiPassphrase.get())
-                    }
+                    resultIntent.putExtra(
+                        EXTRA_WIFI_PASSPHRASE,
+                        handoverSelectMessage.wifiPassphrase
+                    )
+
+                    resultIntent.putExtra(
+                        EXTRA_APDU_COM_LEN,
+                        handoverSelectMessage.apduCommandLength
+                    )
 
                     setResult(RESULT_OK, resultIntent)
                     finish()
@@ -190,29 +187,19 @@ class NfcEngagementActivity : AppCompatActivity() {
         private val tag: Ndef?
     ) {
 
-        private var deviceEngagementBytes: ByteArray? = null
-        private var transferMethod: TransferChannels? = null
-        private var bleServiceMode: BleServiceMode? = null
-        private var wifiPassphrase: String? = null
+        var deviceEngagementBytes: ByteArray? = null
+            private set
+        var transferMethod: TransferChannels? = null
+            private set
+        var bleServiceMode: BleServiceMode? = null
+            private set
+        var wifiPassphrase: String? = null
+            private set
+        var apduCommandLength: Int? = null
+            private set
 
         init {
             processNDefTag(message)
-        }
-
-        fun getDeviceEngagementBytes(): Optional<ByteArray> {
-            return Optional.ofNullable(deviceEngagementBytes)
-        }
-
-        fun getTransferMethod(): Optional<TransferChannels> {
-            return Optional.ofNullable(transferMethod)
-        }
-
-        fun getBleServiceMode(): Optional<BleServiceMode> {
-            return Optional.ofNullable(bleServiceMode)
-        }
-
-        fun getWifiPassphrase(): Optional<String> {
-            return Optional.ofNullable(wifiPassphrase)
         }
 
         @Throws(FormatException::class)
@@ -321,6 +308,17 @@ class NfcEngagementActivity : AppCompatActivity() {
                 )
             }
 
+            // Read maximum length of command data field supported by mobile device
+            try {
+                if (carrierRecord.isPresent && TransferChannels.NFC == transferMethod) {
+                    apduCommandLength = getMaxLengthFromCarrierDataRecord(carrierRecord.get())
+                }
+            } catch (e: FormatException) {
+                throw FormatException(
+                    "Error on trying to read the maximum length of command data field" +
+                            " from carrier data record: ${e.message}"
+                )
+            }
         }
 
         @Throws(FormatException::class)
@@ -469,6 +467,38 @@ class NfcEngagementActivity : AppCompatActivity() {
                     )
 
                     return passphraseData.toString(Charsets.UTF_8)
+                } catch (e: ArrayIndexOutOfBoundsException) {
+                    throw FormatException("Reference length indicated longer than available bytes")
+                }
+
+            }
+
+            @Throws(FormatException::class)
+            private fun getMaxLengthFromCarrierDataRecord(
+                carrierDataRecord: NdefRecord?
+            ): Int {
+
+                if (carrierDataRecord == null || carrierDataRecord.payload == null) {
+                    throw FormatException("Carrier Data Record Payload not present.")
+                }
+                try {
+                    val carrierDataRecordPayload = carrierDataRecord.payload
+
+                    // The carrier data record payload for NFC is structured as follows (Index - Data):
+                    // 0x10,        - mDL NFC Connection Handover Version.
+                    // 0xYY 0xYY    - Maximum length of command data field supported by mobile device
+                    //                as per ISO 18013-5 8.1.2.2 mDL NFC alternative carrier record
+                    //                for NFC connection handover (Table 7)
+
+                    if (carrierDataRecordPayload.size < 3) {
+                        throw FormatException("Maximum length of command data field not present.")
+                    }
+                    val maxLength =
+                        NfcUtils.twoBytesToInt(carrierDataRecordPayload.copyOfRange(1, 3))
+
+                    Log.d(LOG_TAG, "getMaxLengthFromCarrierDataRecord: $maxLength")
+
+                    return maxLength
                 } catch (e: ArrayIndexOutOfBoundsException) {
                     throw FormatException("Reference length indicated longer than available bytes")
                 }

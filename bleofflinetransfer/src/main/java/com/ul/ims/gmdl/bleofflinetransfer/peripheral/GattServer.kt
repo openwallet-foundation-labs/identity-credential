@@ -65,7 +65,7 @@ class GattServer (
     }
 
     companion object {
-        val LOG_TAG = "GattServer"
+        const val LOG_TAG = "GattServer"
     }
 
     /**

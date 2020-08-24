@@ -17,6 +17,7 @@
 package com.ul.ims.gmdl.reader.offlineTransfer
 
 import android.content.Context
+import android.nfc.Tag
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
@@ -39,6 +40,12 @@ class OfflineTransferManager {
 
         // Wifi passphrase is only set on NFC engagement
         private var wifiPassphrase: String? = null
+
+        // NFC Tag used on NFC transfer method
+        private var nfcTag: Tag? = null
+
+        // Maximum length of command data field supported by NFC
+        private var apduCommandLength: Int? = null
 
         // coseKey
         private var coseKey: CoseKey? = null
@@ -79,7 +86,9 @@ class OfflineTransferManager {
                                     transferChannel,
                                     bleMode,
                                     ck.getPublicKey().encoded,
-                                    wifiPassphrase
+                                    wifiPassphrase,
+                                    nfcTag,
+                                    apduCommandLength
                                 )
                                 else -> throw IllegalArgumentException("Mandatory fields not set")
                             }
@@ -92,6 +101,14 @@ class OfflineTransferManager {
 
         fun setWifiPassphrase(wifiPassphrase: String?) = apply {
             this.wifiPassphrase = wifiPassphrase
+        }
+
+        fun setNfcTag(tag: Tag) = apply {
+            this.nfcTag = tag
+        }
+
+        fun setApduCommandLength(apduCommandLength: Int) = apply {
+            this.apduCommandLength = apduCommandLength
         }
     }
 }

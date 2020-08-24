@@ -21,7 +21,7 @@ import org.junit.Assert
 import org.junit.Test
 
 class CborNamespaceTest {
-    val encodedExpected = byteArrayOf(
+    private val encodedExpected = byteArrayOf(
         0xa1.toByte(), 0x6b.toByte(), 0x63.toByte(), 0x6f.toByte(), 0x6d.toByte(),
         0x2e.toByte(), 0x75.toByte(), 0x6c.toByte(), 0x2e.toByte(), 0x74.toByte(),
         0x65.toByte(), 0x73.toByte(), 0x74.toByte(), 0xa2.toByte(), 0x65.toByte(),

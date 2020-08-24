@@ -41,6 +41,7 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
 import com.ul.ims.gmdl.provisioning.ProvisioningManager
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
+import com.ul.ims.gmdl.util.NfcTransferApduService
 import com.ul.ims.gmdl.util.SharedPreferenceUtils
 import com.ul.ims.gmdl.wifiofflinetransfer.utils.WifiUtils
 import kotlinx.coroutines.launch
@@ -50,7 +51,7 @@ import org.jetbrains.anko.uiThread
 
 class ShareCredentialsNfcViewModel(val app: Application) : AndroidViewModel(app)  {
     companion object {
-        val LOG_TAG = ShareCredentialsNfcViewModel::class.java.simpleName
+        private val LOG_TAG = ShareCredentialsNfcViewModel::class.java.simpleName
         const val BLE_VERSION = 1
         const val DE_VERSION = "1.0"
         const val CIPHER_SUIT_IDENT = 1
@@ -64,10 +65,13 @@ class ShareCredentialsNfcViewModel(val app: Application) : AndroidViewModel(app)
     var btnReqPermissionVisibility = ObservableInt()
     private var loadingVisibility = ObservableInt()
     private var offlineTransferStatusLd = MutableLiveData<Resource<Any>>()
-    private var iofflineTransferHolder : IofflineTransfer? = null
+    private var iofflineTransferHolder: IofflineTransfer? = null
     private var liveDataMerger = MediatorLiveData<Resource<Any>>()
 
-    fun getOfflineTransferStatusLd() : LiveData<Resource<Any>> {
+    private lateinit var consent: Map<String, Boolean>
+    private var deviceEngagement: DeviceEngagement? = null
+
+    fun getOfflineTransferStatusLd(): LiveData<Resource<Any>> {
         return liveDataMerger
     }
 
@@ -87,6 +91,30 @@ class ShareCredentialsNfcViewModel(val app: Application) : AndroidViewModel(app)
         viewModelScope.launch {
             iofflineTransferHolder?.onUserConsent(userConsentMap)
         }
+    }
+
+    /**
+     * This function is only called when used NFC Transfer, the user consent is needed before
+     * to avoid interrupting NFC connection with user interaction
+     *
+     * @param userConsentMap User consent items
+     */
+    fun onUserPreConsent(userConsentMap: Map<String, Boolean>) {
+        // Initiate Nfc Service Tag
+        Log.d(LOG_TAG, "start NFC transport service")
+        Intent(app.applicationContext, NfcTransferApduService::class.java).also { intent ->
+            intent.putExtra(
+                NfcTransferApduService.EXTRA_NFC_TRANSFER_DEVICE_ENGAGEMENT,
+                deviceEngagement?.encode()
+            )
+            intent.putExtra(
+                NfcTransferApduService.EXTRA_NFC_TRANSFER_USER_CONSENT,
+                HashMap(userConsentMap)
+            )
+            app.applicationContext.startService(intent)
+        }
+
+        consent = userConsentMap
     }
 
     fun onUserConsentCancel() {
@@ -201,6 +229,7 @@ class ShareCredentialsNfcViewModel(val app: Application) : AndroidViewModel(app)
                 when (transferMethod) {
                     TransferChannels.BLE -> setupBleHolder(deviceEngagement, bleServiceMode)
                     TransferChannels.WiFiAware -> setupWiFiHolder(deviceEngagement)
+                    TransferChannels.NFC -> setupNfcHolder(deviceEngagement)
                     else -> throw IdentityCredentialException("Unsupported transfer method: $transferMethod")
                 }
 
@@ -290,6 +319,27 @@ class ShareCredentialsNfcViewModel(val app: Application) : AndroidViewModel(app)
                     .setContext(app.applicationContext)
                     .setDataType(DataTypes.CBOR)
                     .setTransferChannel(TransferChannels.WiFiAware)
+                    .setCoseKey(coseKey)
+
+                iofflineTransferHolder = builder.build()
+                iofflineTransferHolder?.let { holder ->
+                    setupOfflineTransferHolder(holder, deviceEngagement)
+                }
+            }
+        }
+    }
+
+    private fun setupNfcHolder(deviceEngagement: DeviceEngagement) {
+        this.deviceEngagement = deviceEngagement
+        doAsync {
+            val coseKey = deviceEngagement.security?.coseKey
+
+            coseKey?.let {
+                val builder = OfflineTransferManager.Builder()
+                    .actAs(AppMode.HOLDER)
+                    .setContext(app.applicationContext)
+                    .setDataType(DataTypes.CBOR)
+                    .setTransferChannel(TransferChannels.NFC)
                     .setCoseKey(coseKey)
 
                 iofflineTransferHolder = builder.build()

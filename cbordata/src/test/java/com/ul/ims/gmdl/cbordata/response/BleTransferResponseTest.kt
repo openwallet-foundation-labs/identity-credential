@@ -20,18 +20,18 @@ import org.junit.Assert
 import org.junit.Test
 
 class BleTransferResponseTest {
-    val errorResponse = 19
+    private val errorResponse = 19
 
-    val dataItem = "NameAuth"
-    val errorCode = 1
-    val errorItem = ErrorItem(dataItem, errorCode)
+    private val dataItem = "NameAuth"
+    private val errorCode = 1
+    private val errorItem = ErrorItem(dataItem, errorCode)
 
-    val issuerSignedItem = IssuerSignedItem.Builder()
-            .setDigestId(1)
-            .setRandomValue(byteArrayOf(0x01))
-            .setElementIdentifier("element1")
-            .setElementValue("value1")
-            .build()
+    private val issuerSignedItem = IssuerSignedItem.Builder()
+        .setDigestId(1)
+        .setRandomValue(byteArrayOf(0x01))
+        .setElementIdentifier("element1")
+        .setElementValue("value1")
+        .build()
 
     @Test
     fun builderTest() {

@@ -283,19 +283,21 @@ class GattClient(
     }
 
     private fun decodeState(value: ByteArray?) {
-        if (value == null){
+        if (value == null) {
             throw GattException("Value of stateCharacteristic is null")
         }
         if (value.size != 1) {
             throw GattException("Invalid status")
         }
         if (value[0] == READY_FOR_TRANSMISSION) {
-            executorEventListener?.onEvent(EventType.STATE_READY_FOR_TRANSMISSION.description,
-                EventType.STATE_READY_FOR_TRANSMISSION.ordinal)
+            executorEventListener?.onEvent(
+                EventType.STATE_READY_FOR_TRANSMISSION.description,
+                EventType.STATE_READY_FOR_TRANSMISSION.ordinal
+            )
         }
-        if (value[0] == TERMINATE_TRANSMISSION) {
-
-        }
+//        if (value[0] == TERMINATE_TRANSMISSION) {
+//
+//        }
     }
 
     /**

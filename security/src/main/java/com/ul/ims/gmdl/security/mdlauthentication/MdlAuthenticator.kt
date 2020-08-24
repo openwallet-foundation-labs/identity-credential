@@ -32,13 +32,14 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.pqc.math.linearalgebra.ByteUtils
 import java.security.*
 
-class MdlAuthenticator (val deviceEngagement: DeviceEngagement,
-                        val deviceNameSpaces: DeviceNameSpaces?,
-                        val docType: IDoctype,
-                        val readerKey : CoseKey?,
-                        val deviceAuth: DeviceAuth?,
-                        val verifierPrivateKey: PrivateKey?,
-                        val deviceKey: CoseKey?
+class MdlAuthenticator (
+    val deviceEngagement: DeviceEngagement,
+    private val deviceNameSpaces: DeviceNameSpaces?,
+    val docType: IDoctype,
+    private val readerKey: CoseKey?,
+    private val deviceAuth: DeviceAuth?,
+    private val verifierPrivateKey: PrivateKey?,
+    private val deviceKey: CoseKey?
 ) {
 
     companion object {
@@ -112,7 +113,7 @@ class MdlAuthenticator (val deviceEngagement: DeviceEngagement,
         }
     }
 
-    fun encodeToString(encoded : ByteArray): String {
+    private fun encodeToString(encoded: ByteArray): String {
         val sb = StringBuilder(encoded.size * 2)
 
         for (b in encoded) {

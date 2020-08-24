@@ -20,8 +20,8 @@ import android.content.Context
 import android.util.Log
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.AndroidJUnit4
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.issuerauthority.MockIssuerAuthority
 import com.ul.ims.gmdl.issuerauthority.util.*
@@ -36,9 +36,9 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class IssuerAuthorityDatabaseTest {
 
-    lateinit var issuerAuthority: IIssuerAuthority
-    lateinit var appContext: Context
-    lateinit var db: IssuerAuthorityDatabase
+    private lateinit var issuerAuthority: IIssuerAuthority
+    private lateinit var appContext: Context
+    private lateinit var db: IssuerAuthorityDatabase
     private lateinit var database: IssuerAuthorityDatabase
     private lateinit var credentialDao: CredentialDao
 
@@ -59,7 +59,7 @@ class IssuerAuthorityDatabaseTest {
 
     @Before
     fun setUp() {
-        appContext = ApplicationProvider.getApplicationContext<Context>()
+        appContext = ApplicationProvider.getApplicationContext()
         issuerAuthority = MockIssuerAuthority.getInstance(appContext)
         db = Room.databaseBuilder(
             appContext,

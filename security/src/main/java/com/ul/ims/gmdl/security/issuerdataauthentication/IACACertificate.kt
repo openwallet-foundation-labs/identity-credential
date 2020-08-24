@@ -39,7 +39,7 @@ class IACACertificate(inputStream: InputStream): Certificate() {
         try {
             return BufferedInputStream(inputStream)
         } catch (e: FileNotFoundException) {
-            throw IssuerDataAuthenticationException("FileNotFound: " + e.message + "${e}")
+            throw IssuerDataAuthenticationException("FileNotFound: " + e.message + "$e")
         }
     }
 

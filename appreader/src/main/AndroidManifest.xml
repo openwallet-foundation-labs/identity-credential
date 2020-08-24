@@ -15,7 +15,7 @@
   -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.ul.ims.gmdl">
+    package="com.ul.ims.gmdl.reader">
 
     <uses-feature
         android:name="android.hardware.bluetooth_le"
@@ -25,6 +25,9 @@
         android:required="true" />
     <uses-feature
         android:name="android.hardware.nfc"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.nfc.hce"
         android:required="true" />
 
     <uses-permission android:name="android.permission.CAMERA" />
@@ -42,7 +45,7 @@
         android:theme="@style/AppTheme">
 
         <activity
-            android:name="com.ul.ims.gmdl.reader.activity.MainActivity"
+            android:name=".activity.MainActivity"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -50,21 +53,8 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.ul.ims.gmdl.reader.activity.NfcEngagementActivity"
+            android:name=".activity.NfcEngagementActivity"
             android:screenOrientation="portrait" />
-
-        <service
-            android:name="com.ul.ims.gmdl.nfcengagement.NfcHandler"
-            android:exported="true"
-            android:label="@string/engagement_service_desc"
-            android:permission="android.permission.BIND_NFC_SERVICE">
-            <intent-filter>
-                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
-                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.nfc.cardemulation.host_apdu_service"
-                android:resource="@xml/nfc_engagement_apdu_service" />
-        </service>
     </application>
+
 </manifest>

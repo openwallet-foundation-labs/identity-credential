@@ -27,7 +27,7 @@ import java.io.ByteArrayOutputStream
 
 class DocRequest private constructor(
     val itemsRequest: ItemsRequest,
-    val readerAuth: CoseSign1?
+    private val readerAuth: CoseSign1?
 
 ) : AbstractCborStructure() {
 

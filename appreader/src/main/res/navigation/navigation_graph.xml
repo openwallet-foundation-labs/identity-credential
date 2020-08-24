@@ -117,6 +117,10 @@
             android:name="wifiPassphrase"
             app:argType="string"
             app:nullable="true" />
+        <argument
+            android:name="apduCommandLength"
+            android:defaultValue="0"
+            app:argType="integer" />
     </fragment>
     <fragment
         android:id="@+id/displayCredentialsFragment2"

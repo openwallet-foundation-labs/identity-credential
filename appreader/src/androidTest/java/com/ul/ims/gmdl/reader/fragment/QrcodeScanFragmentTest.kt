@@ -16,6 +16,7 @@
 
 package com.ul.ims.gmdl.reader.fragment
 
+import android.Manifest
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -23,7 +24,7 @@ import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.rule.ActivityTestRule
 import androidx.test.rule.GrantPermissionRule
 import androidx.test.runner.AndroidJUnit4
-import com.ul.ims.gmdl.R
+import com.ul.ims.gmdl.reader.R
 import com.ul.ims.gmdl.reader.activity.MainActivity
 import org.junit.Before
 import org.junit.Rule
@@ -37,7 +38,10 @@ class QrcodeScanFragmentTest {
     @Rule
     @JvmField
     val grantPermissionRule: GrantPermissionRule =
-        GrantPermissionRule.grant(android.Manifest.permission.CAMERA)
+        GrantPermissionRule.grant(
+            Manifest.permission.CAMERA,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
 
     @Rule
     @JvmField

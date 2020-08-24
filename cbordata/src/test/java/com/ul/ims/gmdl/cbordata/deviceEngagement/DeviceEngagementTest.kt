@@ -26,20 +26,12 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMeth
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import org.junit.Assert
 import org.junit.Test
-import java.util.*
 
 class DeviceEngagementTest {
-    val OPTIONS_MAP_VALUE_1 = "value_1"
-    val OPTIONS_MAP_VALUE_3 = "value_3"
-    val OPTIONS_MAP_VALUE_5 = "value_5"
-    val PROP_MAP_KEY_1 = "prop_1"
-    val PROP_MAP_KEY_2 = "prop_2"
-    val PROP_MAP_KEY_3 = "prop_3"
-    val CHIPER_SUITE_IDENT = 1
 
     val version = "1.0"
 
-    val coseKey = CoseKey.Builder()
+    private val coseKey = CoseKey.Builder()
         .setKeyType(2)
         .setCurve(
             1
@@ -123,31 +115,31 @@ class DeviceEngagementTest {
         .setCipherSuiteIdent(CHIPER_SUITE_IDENT)
         .build()
 
-    val token = "abcdabcd"
-    val webAPI = WebAPI.Builder()
-            .setVersion(1)
-            .setToken(token)
-            .setBaseUrl("trident.quarin.net/MVR-Backend.Api")
-            .build()
+    private val token = "abcdabcd"
+    private val webAPI = WebAPI.Builder()
+        .setVersion(1)
+        .setToken(token)
+        .setBaseUrl("trident.quarin.net/MVR-Backend.Api")
+        .build()
 
-    val oidc = Oidc.Builder()
-            .setVersion(2)
-            .setUrl("oidc-url")
-            .setToken("oidc-token")
-            .build()
+    private val oidc = Oidc.Builder()
+        .setVersion(2)
+        .setUrl("oidc-url")
+        .setToken("oidc-token")
+        .build()
 
-    val options : Map<String, Any>? = mutableMapOf(
-            OPTIONS_WEBAPI_KEY to webAPI,
-            OPTIONS_OIDC_KEY to oidc,
-            OPTIONS_COMPACT_KEY to false
+    private val options: Map<String, Any>? = mutableMapOf(
+        OPTIONS_WEBAPI_KEY to webAPI,
+        OPTIONS_OIDC_KEY to oidc,
+        OPTIONS_COMPACT_KEY to false
     )
-    val proprietary = mapOf(
-            PROP_MAP_KEY_1 to OPTIONS_MAP_VALUE_5,
-            PROP_MAP_KEY_2 to OPTIONS_MAP_VALUE_3,
-            PROP_MAP_KEY_3 to OPTIONS_MAP_VALUE_1
+    private val proprietary = mapOf(
+        PROP_MAP_KEY_1 to OPTIONS_MAP_VALUE_5,
+        PROP_MAP_KEY_2 to OPTIONS_MAP_VALUE_3,
+        PROP_MAP_KEY_3 to OPTIONS_MAP_VALUE_1
     )
 
-    val bleTransferMethod = BleTransferMethod(
+    private val bleTransferMethod = BleTransferMethod(
         2,
         1,
         BleTransferMethod.BleIdentification(
@@ -159,7 +151,7 @@ class DeviceEngagementTest {
         )
     )
 
-    val encodedExpected = byteArrayOf(
+    private val encodedExpected = byteArrayOf(
         0x86.toByte(), 0x63.toByte(), 0x31.toByte(), 0x2e.toByte(), 0x30.toByte(),
         0x82.toByte(), 0x01.toByte(), 0xd8.toByte(), 0x18.toByte(), 0x58.toByte(),
         0x4b.toByte(), 0xa4.toByte(), 0x01.toByte(), 0x02.toByte(), 0x20.toByte(),
@@ -240,7 +232,7 @@ class DeviceEngagementTest {
         val encoded = deviceEngagement.encode()
 
         Assert.assertNotNull(encoded)
-        Assert.assertTrue(Arrays.equals(encodedExpected, encoded))
+        Assert.assertTrue(encodedExpected.contentEquals(encoded))
     }
 
     @Test
@@ -332,4 +324,14 @@ class DeviceEngagementTest {
     fun equalsTest() {}
     fun hashCodeTest() {}
     fun decodeFromBase64Test() {}
+
+    companion object {
+        private const val OPTIONS_MAP_VALUE_1 = "value_1"
+        private const val OPTIONS_MAP_VALUE_3 = "value_3"
+        private const val OPTIONS_MAP_VALUE_5 = "value_5"
+        private const val PROP_MAP_KEY_1 = "prop_1"
+        private const val PROP_MAP_KEY_2 = "prop_2"
+        private const val PROP_MAP_KEY_3 = "prop_3"
+        private const val CHIPER_SUITE_IDENT = 1
+    }
 }

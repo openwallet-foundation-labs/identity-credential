@@ -18,8 +18,8 @@ package com.ul.ims.gmdl.issuerauthority
 
 import android.content.Context
 import android.security.keystore.KeyProperties
-import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.AndroidJUnit4
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
@@ -31,8 +31,8 @@ import java.security.spec.ECGenParameterSpec
 
 @RunWith(AndroidJUnit4::class)
 class MockIssuerAuthorityTest {
-    lateinit var issuerAuthority : IIssuerAuthority
-    lateinit var appContext : Context
+    private lateinit var issuerAuthority: IIssuerAuthority
+    private lateinit var appContext: Context
 
     @Before
     fun setUp() {

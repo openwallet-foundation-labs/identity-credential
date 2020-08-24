@@ -21,7 +21,7 @@ import org.junit.Assert
 import org.junit.Test
 
 class IssuerSignedItemTest {
-    val expectedEncoded = byteArrayOf(
+    private val expectedEncoded = byteArrayOf(
         0xa4.toByte(), 0x68.toByte(), 0x64.toByte(), 0x69.toByte(), 0x67.toByte(),
         0x65.toByte(), 0x73.toByte(), 0x74.toByte(), 0x49.toByte(), 0x44.toByte(),
         0x09.toByte(), 0x66.toByte(), 0x72.toByte(), 0x61.toByte(), 0x6e.toByte(),

@@ -147,12 +147,12 @@ abstract class AbstractCborStructure : ICborStructure {
         return ByteString(outputStream.toByteArray())
     }
 
-    internal fun encodeDeviceEngagement(deviceEngagement: DeviceEngagement): DataItem {
+    private fun encodeDeviceEngagement(deviceEngagement: DeviceEngagement): DataItem {
         TODO("not implemented, to be implemented by Vini") //To change body of created functions use File | Settings | File Templates.
     }
 
     // TODO: Move this to CoseKey1 class
-    internal fun encodeCoseKey(variable: CoseKey): DataItem {
+    private fun encodeCoseKey(variable: CoseKey): DataItem {
         var map = Map()
         if (variable.keyType is Int || variable.keyType is String)
             map = map.put(KEYTYPE_LABEL, toDataItem(variable.keyType))
@@ -266,8 +266,8 @@ abstract class AbstractCborStructure : ICborStructure {
     private fun toSimpleValueType(boolean: Boolean): SimpleValueType {
         if (boolean)
             return SimpleValueType.TRUE
-        if (!boolean)
-            return SimpleValueType.FALSE
-        else return SimpleValueType.NULL
+        return if (!boolean)
+            SimpleValueType.FALSE
+        else SimpleValueType.NULL
     }
 }

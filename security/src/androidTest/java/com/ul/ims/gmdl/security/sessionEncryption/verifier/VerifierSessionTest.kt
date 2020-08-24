@@ -16,7 +16,6 @@
 
 package com.ul.ims.gmdl.security.sessionEncryption.verifier
 
-import androidx.security.identity.IdentityCredentialStore
 import com.ul.ims.gmdl.security.TestUtils.genEphemeralKeyPair
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSession
 import org.junit.Assert

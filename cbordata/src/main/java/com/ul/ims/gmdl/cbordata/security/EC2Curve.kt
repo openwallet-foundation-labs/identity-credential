@@ -16,7 +16,9 @@
 
 package com.ul.ims.gmdl.cbordata.security
 
-class EC2Curve {
+import java.io.Serializable
+
+class EC2Curve : Serializable {
     var id: Any? = null
     var xCoordinate: ByteArray? = null
     var yCoordinate: ByteArray? = null
@@ -26,7 +28,7 @@ class EC2Curve {
         other?.let {
             if (other is EC2Curve) {
                 val otherX = other.xCoordinate
-                val otherY= other.yCoordinate
+                val otherY = other.yCoordinate
                 val otherPK = other.privateKey
                 if (other.id == id) {
                     val thisX = xCoordinate
@@ -46,8 +48,7 @@ class EC2Curve {
                                                 }
                                             }
                                             // PK may be null
-                                            if (thisPK == otherPK)
-                                                return true
+                                            return otherPK == null
                                         }
                                     }
                                 }

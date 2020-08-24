@@ -124,8 +124,8 @@ class Request private constructor(
         }
 
         fun dataItemsToRequest(requestItems : kotlin.Array<String>?) = apply {
-            requestItems?.let {
-                val items = it.map { it to false }.toMap()
+            requestItems?.let { ri ->
+                val items = ri.map { it to false }.toMap()
 
                 val dataElements = DataElements.Builder()
                     .dataElements(items)
