@@ -23,7 +23,9 @@
     <aid-group
         android:category="other"
         android:description="@string/nfc_transfer_aid_group_desc">
-        <aid-filter android:name="A0000002480400" /> <!-- AID mDL shall be: 'A0 00 00 02 48 04 00' -->
+        <!-- AID mDL shall be: 'A0 00 00 02 48 04 00' as per ISO 18013-5
+        8.2.2.2 Data retrieval using Near Field communication (NFC) -->
+        <aid-filter android:name="A0000002480400" />
     </aid-group>
 
 </host-apdu-service>

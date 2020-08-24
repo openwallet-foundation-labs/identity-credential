@@ -27,6 +27,7 @@ class NfcConstants {
         val statusWordChainingResponse: ByteArray = byteArrayOfInts(0x61, 0x00)
 
         // AID = A0 00 00 02 48 04 00
+        // as per ISO 18013-5 8.2.2.2 Data retrieval using Near Field communication (NFC)
         val selectAid = byteArrayOf(0xA0.toByte(), 0x00, 0x00, 0x02, 0x48, 0x04, 0x00)
 
     }

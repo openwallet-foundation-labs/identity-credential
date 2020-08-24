@@ -486,7 +486,9 @@ class NfcEngagementActivity : AppCompatActivity() {
 
                     // The carrier data record payload for NFC is structured as follows (Index - Data):
                     // 0x10,        - mDL NFC Connection Handover Version.
-                    // 0xFF, 0xFF   - Maximum length of command data field supported by mobile device
+                    // 0xYY 0xYY    - Maximum length of command data field supported by mobile device
+                    //                as per ISO 18013-5 8.1.2.2 mDL NFC alternative carrier record
+                    //                for NFC connection handover (Table 7)
 
                     if (carrierDataRecordPayload.size < 3) {
                         throw FormatException("Maximum length of command data field not present.")
