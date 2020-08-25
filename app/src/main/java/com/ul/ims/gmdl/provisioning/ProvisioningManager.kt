@@ -70,36 +70,34 @@ object ProvisioningManager {
                     certificateChain = wc.getCredentialKeyCertificateChain(issuerAuthority.
                         getProvisionChallenge())
 
-                    val profiles = LinkedList<AccessControlProfile>()
+                    val personalizationBuilder = PersonalizationData.Builder()
 
                     if (authRequired) {
                         // Profile 1 (user auth on every reader session)
                         // Connected with getCryptoObject() call
-                        profiles.add(
-                            AccessControlProfile.Builder(1)
+                        personalizationBuilder.addAccessControlProfile(
+                            AccessControlProfile.Builder(AccessControlProfileId(1))
                                 .setUserAuthenticationRequired(true)
                                 .build()
                         )
                     } else {
                         // Profile 1 no auth.
-                        profiles.add(
-                            AccessControlProfile.Builder(1)
+                        personalizationBuilder.addAccessControlProfile(
+                            AccessControlProfile.Builder(AccessControlProfileId(1))
                                 .setUserAuthenticationRequired(false)
                                 .build()
                         )
                     }
 
-                    val entryNamespaces = LinkedList<EntryNamespace>()
-                    val idsNoAuth = ArrayList<Int>()
-                    idsNoAuth.add(1)
+                    val idsNoAuth = ArrayList<AccessControlProfileId>()
+                    idsNoAuth.add(AccessControlProfileId(1))
 
                     userCredential?.let {
-                        entryNamespaces.add(
-                            userCredential.getCredentialsForProvisioning(idsNoAuth)
-                        )
+                        userCredential.getCredentialsForProvisioning(idsNoAuth,
+                            personalizationBuilder)
                     }
 
-                    val proofOfProvisioningCbor = wc.personalize(profiles, entryNamespaces)
+                    val proofOfProvisioningCbor = wc.personalize(personalizationBuilder.build())
                     Log.i(TAG, "Provisioned Credential CBOR ")
                     com.ul.ims.gmdl.offlinetransfer.utils.Log.d(TAG, CborUtils.cborPrettyPrint(proofOfProvisioningCbor))
 

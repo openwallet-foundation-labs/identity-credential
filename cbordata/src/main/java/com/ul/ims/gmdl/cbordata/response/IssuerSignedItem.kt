@@ -35,7 +35,7 @@ import java.io.ByteArrayOutputStream
 import java.io.Serializable
 import java.util.zip.DataFormatException
 
-class IssuerSignedItem private constructor(
+class IssuerSignedItem internal constructor(
         val digestId: Int,
         val randomValue: ByteArray,
         val elementIdentifier: String,
@@ -54,7 +54,7 @@ class IssuerSignedItem private constructor(
         val map = toDataItem()
 
         val outputStream = ByteArrayOutputStream()
-        CborEncoder(outputStream).nonCanonical().encode(map)
+        CborEncoder(outputStream).encode(map)
 
         return outputStream.toByteArray()
     }

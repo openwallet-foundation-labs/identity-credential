@@ -17,10 +17,8 @@
 package com.ul.ims.gmdl.offlinetransfer.executorLayer.holder
 
 import androidx.biometric.BiometricPrompt
-import androidx.security.identity.IdentityCredential
 import androidx.security.identity.IdentityCredentialException
 import androidx.security.identity.NoAuthenticationKeyAvailableException
-import androidx.security.identity.RequestNamespace
 import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
 import com.ul.ims.gmdl.cbordata.interpreter.IDataInterpreter
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
@@ -30,6 +28,7 @@ import com.ul.ims.gmdl.cbordata.response.DeviceAuth
 import com.ul.ims.gmdl.cbordata.response.IResponse
 import com.ul.ims.gmdl.cbordata.response.Response
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.CoseMac0
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
@@ -39,7 +38,7 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportEventListener
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportLayer
 import com.ul.ims.gmdl.offlinetransfer.utils.Log
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
-import java.util.*
+import kotlin.collections.HashMap
 
 class HolderExecutor(
     interpreter: IDataInterpreter,
@@ -47,7 +46,6 @@ class HolderExecutor(
     sessionManager: HolderSessionManager,
     transportEventListener: ITransportEventListener,
     deviceEngagement: ByteArray,
-    icApi: IdentityCredential,
     issuerAuthority: IIssuerAuthority
 ) : IHolderExecutor, IExecutorEventListener {
 
@@ -64,7 +62,6 @@ class HolderExecutor(
     private var request : IRequest? = null
     private var deviceEngagement: ByteArray? = deviceEngagement
     private var sessionTranscript : SessionTranscript? = null
-    private var icApi: IdentityCredential? = icApi
     private var issuerAuthority: IIssuerAuthority? = issuerAuthority
 
     private fun initTransportLayer() {
@@ -91,8 +88,6 @@ class HolderExecutor(
                     .build()
 
                 sessionEstablishment?.let {se ->
-                    decryptedData = session.decryptSessionEstablishment(se)
-
                     if (sessionTranscript == null) {
                         se.readerKey?.let {rKey ->
                             deviceEngagement?.let {de ->
@@ -105,10 +100,15 @@ class HolderExecutor(
                                 sessionTranscript?.let {
                                     com.ul.ims.gmdl.cbordata.utils.Log.d("SessionTranscript",
                                         it.encodeToString())
+
+                                    sessionManager?.setSessionTranscript(it.encode())
                                 }
+
                             }
                         }
                     }
+
+                    decryptedData = session.decryptSessionEstablishment(se)
                 }
 
             } else {
@@ -197,20 +197,26 @@ class HolderExecutor(
                     }
 
                     sessionTranscript?.let {sTranscript ->
-                        val requestEntryNamespaces =
-                            getIdentityCredentialRequest(reqItems)
-
-                        try {
+                         try {
                             sessionManager?.let { session ->
-                                val entryResult = session.getEntries(
-                                    requestEntryNamespaces,
-                                    sTranscript.encode()
-                                )
+                                // Request data items which will appear in IssuerSigned
+                                val entriesToRequestIssuerSigned = HashMap<String, Collection<String>>()
+                                entriesToRequestIssuerSigned[MdlNamespace.namespace] = reqItems
 
-                                val ecdsaSignatureBytes = entryResult?.ecdsaSignature
-                                val issuerAuthBytes = entryResult?.staticAuthenticationData
+                                val resultDataIssuerSigned = session.getEntries(
+                                    entriesToRequestIssuerSigned
+                                ) ?: return errorResponse()
 
-                                Log.d("issuerAuthBytes", encodeToString(issuerAuthBytes?: byteArrayOf()))
+                                // We currently don't use DeviceSigned so make an empty
+                                // request for that.
+                                val entriesToRequestDeviceSigned = HashMap<String, Collection<String>>()
+                                val resultDataDeviceSigned = session.getEntries(
+                                    entriesToRequestDeviceSigned
+                                ) ?: return errorResponse()
+
+                                val ecdsaSignatureBytes = resultDataDeviceSigned.ecdsaSignature
+                                val macBytes = resultDataDeviceSigned.messageAuthenticationCode
+                                val issuerAuthBytes = resultDataDeviceSigned.staticAuthenticationData
 
                                 ecdsaSignatureBytes?.let { signature ->
                                     val coseSign1 = CoseSign1.Builder()
@@ -239,6 +245,7 @@ class HolderExecutor(
                                             return Response.Builder()
                                                 .responseForRequest(
                                                     reqItems,
+                                                    resultDataIssuerSigned,
                                                     deviceAuth,
                                                     issuerAuth,
                                                     issuerNamespaces)
@@ -246,6 +253,43 @@ class HolderExecutor(
                                         }
                                     }
                                 }
+
+                                macBytes?.let { mac ->
+                                    val coseMac0 = CoseMac0.Builder()
+                                        .decodeEncoded(mac)
+                                        .build()
+                                    Log.d("MAC", coseMac0.encodeToString())
+
+                                    val deviceAuth = DeviceAuth.Builder()
+                                        .setCoseMac0(coseMac0)
+                                        .build()
+                                    Log.d("Device Auth", deviceAuth.encodeToString())
+
+                                    issuerAuthBytes?.let { iAuth ->
+
+                                        val issuerAuth = CoseSign1.Builder()
+                                            .decode(iAuth)
+                                            .build()
+                                        Log.d("Issuer Auth", issuerAuth.encodeToString())
+
+                                        // Retrieve the List of IssuerSignedItems used to create the
+                                        // MSO contained in the retrieved Cose_Sign1
+                                        val issuerNamespaces = issuerAuthority?.
+                                        getIssuerNamespaces(iAuth)
+
+                                        issuerNamespaces?.let {
+                                            return Response.Builder()
+                                                .responseForRequest(
+                                                    reqItems,
+                                                    resultDataIssuerSigned,
+                                                    deviceAuth,
+                                                    issuerAuth,
+                                                    issuerNamespaces)
+                                                .build()
+                                        }
+                                    }
+                                }
+
                             }
 
                         } catch (ex: NoAuthenticationKeyAvailableException) {
@@ -311,20 +355,9 @@ class HolderExecutor(
         }
     }
 
-    private fun getIdentityCredentialRequest(itemsToRequest: List<String>): Collection<RequestNamespace> {
-        val requestEntryNamespaces = LinkedList<RequestNamespace>()
-        val reqBuilder = RequestNamespace.Builder(MdlDoctype.docType)
-        itemsToRequest.forEach {
-            reqBuilder.addEntryNameNoAuthentication(it)
-        }
-
-        requestEntryNamespaces.add(reqBuilder.build())
-
-        return requestEntryNamespaces
-    }
-
     override fun getCryptoObject(): BiometricPrompt.CryptoObject? {
-        return icApi?.cryptoObject
+        val credential = sessionManager?.getIdentityCredential()
+        return credential?.cryptoObject
     }
 
     init {

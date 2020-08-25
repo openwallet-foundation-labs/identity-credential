@@ -273,11 +273,10 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
 
                     val icAPI = ProvisioningManager.getIdentityCredential(app.applicationContext, CREDENTIAL_NAME)
 
-                    icAPI?.let {ic ->
-                            holder.setupHolder(CREDENTIAL_NAME, deviceEngagement.encode(), ic,
-                                SharedPreferenceUtils(app.applicationContext).isBiometricAuthRequired(),
-                                issuerAuthority)
-                    }
+                    holder.setupHolder(CREDENTIAL_NAME, deviceEngagement.encode(),
+                        SharedPreferenceUtils(app.applicationContext).isBiometricAuthRequired(),
+                        issuerAuthority)
+
                     uiThread {
                         iofflineTransferHolder?.data?.let {livedata ->
                             liveDataMerger.addSource(livedata) {

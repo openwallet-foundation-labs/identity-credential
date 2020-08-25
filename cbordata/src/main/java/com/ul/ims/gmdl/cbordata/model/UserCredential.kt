@@ -21,12 +21,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.icu.util.Calendar
 import android.os.Parcelable
-import androidx.security.identity.EntryNamespace
-import androidx.security.identity.ResultNamespace
+import androidx.security.identity.AccessControlProfileId
+import androidx.security.identity.PersonalizationData;
+import androidx.security.identity.ResultData
 import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
 import com.ul.ims.gmdl.cbordata.R
-import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
 import com.ul.ims.gmdl.cbordata.drivingPrivileges.DrivingPrivileges
+import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
 import com.ul.ims.gmdl.cbordata.response.BleTransferResponse
 import com.ul.ims.gmdl.cbordata.utils.BitmapUtils
 import com.ul.ims.gmdl.cbordata.utils.DateUtils
@@ -52,80 +53,88 @@ class UserCredential private constructor(
         const val CREDENTIAL_NAME = "mdlUserCredential"
     }
 
-    fun getCredentialsForProvisioning(accessControlProfileIds: Collection<Int>): EntryNamespace {
-        val credentialsBuilder = EntryNamespace.Builder(MdlDoctype.docType)
+    fun getCredentialsForProvisioning(accessControlProfileIds: Collection<AccessControlProfileId>,
+                                      builder: PersonalizationData.Builder) {
+        val mdlNameSpace = MdlNamespace.namespace
         familyName?.let {
-            credentialsBuilder.addStringEntry(
+            builder.putEntryString(mdlNameSpace,
                 MdlDataIdentifiers.FAMILY_NAME.identifier,
                 accessControlProfileIds,
                 it
             )
         }
         givenNames?.let {
-            credentialsBuilder.addStringEntry(
+            builder.putEntryString(
+                mdlNameSpace,
                 MdlDataIdentifiers.GIVEN_NAMES.identifier,
                 accessControlProfileIds,
                 it
             )
         }
         dateOfBirth?.let {
-            credentialsBuilder.addDateTimeEntry(
+            builder.putEntryCalendar(
+                mdlNameSpace,
                 MdlDataIdentifiers.DATE_OF_BIRTH.identifier,
                 accessControlProfileIds,
                 it
             )
         }
         dateOfIssue?.let {
-            credentialsBuilder.addDateTimeEntry(
+            builder.putEntryCalendar(
+                mdlNameSpace,
                 MdlDataIdentifiers.DATE_OF_ISSUE.identifier,
                 accessControlProfileIds,
                 it
             )
         }
         dateOfExpiry?.let {
-            credentialsBuilder.addDateTimeEntry(
+            builder.putEntryCalendar(
+                mdlNameSpace,
                 MdlDataIdentifiers.DATE_OF_EXPIRY.identifier,
                 accessControlProfileIds,
                 it
             )
         }
         issuingCountry?.let {
-            credentialsBuilder.addStringEntry(
+            builder.putEntryString(
+                mdlNameSpace,
                 MdlDataIdentifiers.ISSUING_COUNTRY.identifier,
                 accessControlProfileIds,
                 it
             )
         }
         issuingAuthority?.let {
-            credentialsBuilder.addStringEntry(
+            builder.putEntryString(
+                mdlNameSpace,
                 MdlDataIdentifiers.ISSUING_AUTHORITY.identifier,
                 accessControlProfileIds,
                 it
             )
         }
         licenseNumber?.let {
-            credentialsBuilder.addStringEntry(
+            builder.putEntryString(
+                mdlNameSpace,
                 MdlDataIdentifiers.LICENSE_NUMBER.identifier,
                 accessControlProfileIds,
                 it
             )
         }
         categoriesOfVehicles?.let {
-            credentialsBuilder.addEntry(
+            builder.putEntry(
+                mdlNameSpace,
                 MdlDataIdentifiers.CATEGORIES_OF_VEHICLES.identifier,
                 accessControlProfileIds,
                 it.encode()
             )
         }
         BitmapUtils.encodeBitmap(portraitOfHolder)?.let {
-            credentialsBuilder.addBytestringEntry(
+            builder.putEntryBytestring(
+                mdlNameSpace,
                 MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier,
                 accessControlProfileIds,
                 it
             )
         }
-
-        return credentialsBuilder.build()
     }
 
     class Builder {
@@ -157,22 +166,23 @@ class UserCredential private constructor(
             portraitOfHolder = portrait
         }
 
-        fun fromResultNamespace(resultNamespace: ResultNamespace) = apply {
-            familyName = resultNamespace.getStringEntry(MdlDataIdentifiers.FAMILY_NAME.identifier)
-            givenNames = resultNamespace.getStringEntry(MdlDataIdentifiers.GIVEN_NAMES.identifier)
+        fun fromResultNamespace(resultData: ResultData) = apply {
+            val mdlNameSpace = MdlNamespace.namespace
+            familyName = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.FAMILY_NAME.identifier)
+            givenNames = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.GIVEN_NAMES.identifier)
             dateOfBirth =
-                resultNamespace.getDateTimeEntry(MdlDataIdentifiers.DATE_OF_BIRTH.identifier)
+                resultData.getEntryCalendar(mdlNameSpace, MdlDataIdentifiers.DATE_OF_BIRTH.identifier)
             dateOfIssue =
-                resultNamespace.getDateTimeEntry(MdlDataIdentifiers.DATE_OF_ISSUE.identifier)
+                resultData.getEntryCalendar(mdlNameSpace, MdlDataIdentifiers.DATE_OF_ISSUE.identifier)
             dateOfExpiry =
-                resultNamespace.getDateTimeEntry(MdlDataIdentifiers.DATE_OF_EXPIRY.identifier)
-            issuingCountry = resultNamespace.getStringEntry(MdlDataIdentifiers.ISSUING_COUNTRY.identifier)
-            issuingAuthority = resultNamespace.getStringEntry(MdlDataIdentifiers.ISSUING_AUTHORITY.identifier)
-            licenseNumber = resultNamespace.getStringEntry(MdlDataIdentifiers.LICENSE_NUMBER.identifier)
-            resultNamespace.getEntry(MdlDataIdentifiers.CATEGORIES_OF_VEHICLES.identifier)?.let {
+                resultData.getEntryCalendar(mdlNameSpace, MdlDataIdentifiers.DATE_OF_EXPIRY.identifier)
+            issuingCountry = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.ISSUING_COUNTRY.identifier)
+            issuingAuthority = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.ISSUING_AUTHORITY.identifier)
+            licenseNumber = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.LICENSE_NUMBER.identifier)
+            resultData.getEntry(mdlNameSpace, MdlDataIdentifiers.CATEGORIES_OF_VEHICLES.identifier)?.let {
                 categoriesOfVehicles = DrivingPrivileges.Builder().fromCborBytes(it).build()
             }
-            val portrait = resultNamespace.getBytestringEntry(MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier)
+            val portrait = resultData.getEntryBytestring(mdlNameSpace, MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier)
             portrait?.let {
                 portraitOfHolder = BitmapFactory.decodeByteArray(it, 0, it.size)
             }

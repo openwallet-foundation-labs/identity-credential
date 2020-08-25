@@ -62,7 +62,7 @@ class IssuerSigned private constructor(
 
     override fun encode(): ByteArray {
         val outputStream = ByteArrayOutputStream()
-        CborEncoder(outputStream).nonCanonical().encode(toDataItem())
+        CborEncoder(outputStream).encode(toDataItem())
 
         return outputStream.toByteArray()
     }
@@ -71,8 +71,7 @@ class IssuerSigned private constructor(
         private var nameSpaces = mutableMapOf<String, kotlin.Array<IssuerSignedItem>>()
         private lateinit var issuerAuth: CoseSign1
 
-        fun setNameSpaces(nameSpaces: String, issuerSignedItem: kotlin.Array<IssuerSignedItem>) =
-            apply {
+        fun setNameSpaces(nameSpaces: String, issuerSignedItem: kotlin.Array<IssuerSignedItem>) = apply {
                 this.nameSpaces[nameSpaces] = issuerSignedItem
         }
 

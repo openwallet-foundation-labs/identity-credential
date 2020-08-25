@@ -17,14 +17,12 @@
 package com.ul.ims.gmdl.security.mdlauthentication
 
 import android.util.Log
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator
 import org.bouncycastle.crypto.params.HKDFParameters
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.security.InvalidKeyException
-import java.security.KeyFactory
-import java.security.NoSuchAlgorithmException
-import java.security.NoSuchProviderException
+import java.security.*
 import java.security.spec.InvalidKeySpecException
 import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
@@ -46,18 +44,19 @@ object MacVerificationUtils {
             return okm
         }
 
-        fun calculateSharedKey(publicKeyBytes: ByteArray, privateKeyBytes: ByteArray): ByteArray? {
-        try {
-            val privateKey = KeyFactory.getInstance("EC")
-                .generatePrivate(PKCS8EncodedKeySpec(privateKeyBytes))
-            val publicKey = KeyFactory.getInstance("EC")
-                .generatePublic(X509EncodedKeySpec(publicKeyBytes))
+        fun calculateSharedKey(publicKey: PublicKey, privateKey: PrivateKey,
+                               sessionTranscript: SessionTranscript?): ByteArray? {
+            try {
+                val ecka = KeyAgreement.getInstance("ECDH", BouncyCastleProvider())
+                ecka.init(privateKey)
+                ecka.doPhase(publicKey, true)
 
-            val ecka = KeyAgreement.getInstance("ECDH", BouncyCastleProvider())
-            ecka.init(privateKey)
-            ecka.doPhase(publicKey, true)
+                val sharedSecret = ecka.generateSecret()
+                sessionTranscript?.let {
+                    return sharedSecret + it.encodeAsTaggedByteString()
+                }
+                Log.e(LOG_TAG, "No SessionTranscript")
 
-            return ecka.generateSecret()
             } catch (ex: NoSuchProviderException) {
                 Log.e(LOG_TAG, ex.message, ex)
             } catch (ex: NoSuchAlgorithmException) {

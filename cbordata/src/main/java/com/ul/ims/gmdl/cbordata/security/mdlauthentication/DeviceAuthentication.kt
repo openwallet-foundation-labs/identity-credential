@@ -21,10 +21,8 @@ import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.CborException
+import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
-import co.nstant.`in`.cbor.model.DataItem
-import co.nstant.`in`.cbor.model.Tag
-import co.nstant.`in`.cbor.model.UnicodeString
 import com.ul.ims.gmdl.cbordata.doctype.DocType
 import com.ul.ims.gmdl.cbordata.doctype.IDoctype
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
@@ -42,6 +40,14 @@ class DeviceAuthentication private constructor(
         private const val LOG_TAG = "DeviceAuthentication"
         private const val LABEL = "DeviceAuthentication"
         const val CBOR_TAG = 24L
+    }
+
+    fun encodeAsTaggedByteString(): ByteArray {
+        val byteString = ByteString(encode())
+        byteString.setTag(24)
+        val outputStream = ByteArrayOutputStream()
+        CborEncoder(outputStream).encode(byteString)
+        return outputStream.toByteArray()
     }
 
     override fun encode(): ByteArray {

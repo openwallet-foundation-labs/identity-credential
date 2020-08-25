@@ -45,7 +45,6 @@ class CoseMac0 private constructor(val payload : ByteArray?,
     override fun encode(): ByteArray {
         val outputStream = ByteArrayOutputStream()
         var builder = CborBuilder()
-        builder.addTag(17.toLong())
         var arrayBuilder = builder.addArray()
         arrayBuilder = arrayBuilder.add(encodeAlgMap(algorithm))
         arrayBuilder = arrayBuilder.add(Map())
@@ -61,8 +60,31 @@ class CoseMac0 private constructor(val payload : ByteArray?,
     }
 
     fun appendToNestedStructure() : DataItem {
+        val arr = Array()
 
-        return Array()
+        // protected header
+        var protectedHeaderBuilder = CborBuilder()
+        val protectedHeaderMap = protectedHeaderBuilder.addMap()
+        protectedHeaderMap.put(UnsignedInteger(1.toLong()), UnsignedInteger(5.toLong()))
+        protectedHeaderBuilder = protectedHeaderMap.end()
+        val headerOutputStream = ByteArrayOutputStream()
+        CborEncoder(headerOutputStream).encode(protectedHeaderBuilder.build())
+        val protectedHeaderBytes = headerOutputStream.toByteArray()
+
+        arr.add(ByteString(protectedHeaderBytes))
+
+        // unprotected header
+        val unprotectedHeaderMap = Map()
+        arr.add(unprotectedHeaderMap)
+
+        // payload
+        //arr.add(ByteString(payload))
+        arr.add(SimpleValue.NULL)
+
+        // mac
+        arr.add(ByteString(macValue))
+
+        return arr
     }
 
     fun encodeAlgMap(string: String): ByteArray? {
@@ -82,18 +104,24 @@ class CoseMac0 private constructor(val payload : ByteArray?,
         private var payload : ByteArray? = null
         private var macValue : ByteArray? = null
 
-        fun decode(data : ByteArray) = apply {
+        fun decode(arr : Array) = apply {
+            if (arr?.dataItems?.size == 4) {
+                val algorithm = arr.dataItems[0] as? ByteString
+                decodeAlg(algorithm)
+                validateUnprotectedHeader(arr.dataItems[1])
+                payload = (arr.dataItems[2] as? ByteString)?.bytes
+                macValue = (arr.dataItems[3] as? ByteString)?.bytes
+            }
+        }
+
+        fun decodeEncoded(data : ByteArray) = apply {
             try {
                 val stream = ByteArrayInputStream(data)
                 val dataItems = CborDecoder(stream).decode()
                 if (dataItems.size > 0) {
                     val structureItems = dataItems[0] as? Array
                     if (structureItems?.dataItems?.size == 4) {
-                        val algorithm = structureItems.dataItems[0] as? ByteString
-                        decodeAlg(algorithm)
-                        validateUnprotectedHeader(structureItems.dataItems[1])
-                        payload = (structureItems.dataItems[2] as? ByteString)?.bytes
-                        macValue = (structureItems.dataItems[3] as? ByteString)?.bytes
+                        return decode(structureItems)
                     }
                 }
             } catch (ex: CborException) {

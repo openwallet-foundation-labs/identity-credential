@@ -101,7 +101,6 @@ class CborManager(
     override fun setupHolder(
         credentialName: String,
         deviceEngagement: ByteArray,
-        icApi: IdentityCredential,
         isAuthRequired: Boolean,
         issuerAuthority: IIssuerAuthority
 
@@ -114,7 +113,6 @@ class CborManager(
                     HolderSessionManager.getInstance(context, credentialName),
                     this,
                     deviceEngagement,
-                    icApi,
                     issuerAuthority
                 )
             }
@@ -131,7 +129,7 @@ class CborManager(
                     interpreter,
                     it,
                     data,
-                    VerifierSessionManager(coseKey),
+                    VerifierSessionManager(coseKey, deviceEngagement),
                     requestItems,
                     deviceEngagement,
                     context

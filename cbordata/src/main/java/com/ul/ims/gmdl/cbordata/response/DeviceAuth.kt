@@ -16,6 +16,7 @@
 
 package com.ul.ims.gmdl.cbordata.response
 
+import android.util.Log
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
@@ -27,7 +28,7 @@ import java.io.ByteArrayOutputStream
 import java.io.Serializable
 
 class DeviceAuth private constructor(
-    val deviceSignature: CoseSign1,
+    val deviceSignature: CoseSign1?,
     val deviceMac: CoseMac0?
 ) : AbstractCborStructure(), Serializable {
     companion object {
@@ -39,7 +40,9 @@ class DeviceAuth private constructor(
     fun toDataItem(): Map {
         val map = Map()
 
-        map.put(toDataItem(KEY_DEVICE_SIGNATURE), toDataItem(deviceSignature))
+        deviceSignature?.let {
+            map.put(toDataItem(KEY_DEVICE_SIGNATURE), toDataItem(it))
+        }
 
         deviceMac?.let {
             map.put(toDataItem(KEY_DEVICE_MAC), toDataItem(it))
@@ -50,13 +53,13 @@ class DeviceAuth private constructor(
 
     override fun encode(): ByteArray {
         val outputStream = ByteArrayOutputStream()
-        CborEncoder(outputStream).nonCanonical().encode(toDataItem())
+        CborEncoder(outputStream).encode(toDataItem())
 
         return outputStream.toByteArray()
     }
 
     class Builder {
-        private lateinit var deviceSignature: CoseSign1
+        private var deviceSignature: CoseSign1? = null
         private var deviceMac: CoseMac0? = null
 
         fun decode(map : Map?) = apply {
@@ -73,11 +76,10 @@ class DeviceAuth private constructor(
         }
 
         private fun decodeCoseMac0(cM0DataItem: DataItem?) {
-            val outputStream = ByteArrayOutputStream()
-            CborEncoder(outputStream).encode(cM0DataItem)
-            val cM0Data = outputStream.toByteArray()
-            deviceMac = CoseMac0.Builder().decode(cM0Data).build()
-
+            if (cM0DataItem?.majorType == MajorType.ARRAY) {
+                val arr = cM0DataItem as Array
+                deviceMac = CoseMac0.Builder().decode(arr).build()
+            }
         }
 
         private fun decodeCoseSign1(cS1DataItem: DataItem?) {

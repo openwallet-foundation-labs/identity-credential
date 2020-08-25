@@ -57,7 +57,7 @@ class SessionEstablishment private  constructor(
         }
 
         builder = structureMap.end()
-        CborEncoder(outputStream).nonCanonical().encode(builder.build())
+        CborEncoder(outputStream).encode(builder.build())
         return outputStream.toByteArray()
     }
 

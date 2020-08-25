@@ -356,18 +356,12 @@ class ShareCredentialsNfcViewModel(val app: Application) : AndroidViewModel(app)
     ): Boolean {
         // Set Data to be sent to the Verifier over BLE
         val issuerAuthority = MockIssuerAuthority.getInstance(app.applicationContext)
-        val icAPI = ProvisioningManager.getIdentityCredential(
-            app.applicationContext,
-            UserCredential.CREDENTIAL_NAME
-        )
 
-        icAPI?.let { ic ->
-                holder.setupHolder(
-                    UserCredential.CREDENTIAL_NAME, deviceEngagement.encode(), ic,
-                    SharedPreferenceUtils(app.applicationContext).isBiometricAuthRequired(),
-                    issuerAuthority
-                )
-        }
+        holder.setupHolder(
+            UserCredential.CREDENTIAL_NAME, deviceEngagement.encode(),
+            SharedPreferenceUtils(app.applicationContext).isBiometricAuthRequired(),
+            issuerAuthority)
+
         return uiThread {
             iofflineTransferHolder?.data?.let { livedata ->
                 liveDataMerger.addSource(livedata) {

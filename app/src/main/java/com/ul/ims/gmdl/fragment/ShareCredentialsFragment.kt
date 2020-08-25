@@ -197,6 +197,10 @@ class ShareCredentialsFragment : Fragment() {
         })
     }
 
+    // TODO: Right now we show the biometric auth dialog on every presentation. This is a bug,
+    //  it should only be shown if IdentityCredential.getEntries() returns the status code
+    //  STATUS_USER_AUTHENTICATION_FAILED for one or more of the returned entries.
+    //
     private fun canAuthenticate() {
         if (sharedPref.isBiometricAuthRequired()) {
 

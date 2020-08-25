@@ -17,13 +17,13 @@
 package com.ul.ims.gmdl.cbordata.response
 
 import android.util.Log
+import androidx.security.identity.ResultData
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.CborException
+import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
 import co.nstant.`in`.cbor.model.Map
-import co.nstant.`in`.cbor.model.UnicodeString
-import co.nstant.`in`.cbor.model.UnsignedInteger
 import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
@@ -76,7 +76,7 @@ class Response private constructor(
         map.put(toDataItem(KEY_STATUS), toDataItem(status))
 
         val outputStream = ByteArrayOutputStream()
-        CborEncoder(outputStream).nonCanonical().encode(map)
+        CborEncoder(outputStream).encode(map)
 
         return outputStream.toByteArray()
     }
@@ -105,6 +105,7 @@ class Response private constructor(
 
         fun responseForRequest(
             requestItems: List<String>,
+            resultData: ResultData,
             deviceAuth: DeviceAuth?, issuerAuth: CoseSign1?,
             issuerNamespaces: IssuerNameSpaces
         ) = apply {
@@ -127,11 +128,22 @@ class Response private constructor(
                 val sortedList = newIsiList.sortedBy { it.digestId }
                     .toMutableList()
 
-                if (sortedList.isNotEmpty()) {
+                val itemsWithValue: MutableList<IssuerSignedItem> = mutableListOf()
+                sortedList.forEach { item ->
+                    val value = resultData.getEntry(MdlNamespace.namespace, item.elementIdentifier)
+                    val status = resultData.getStatus(MdlNamespace.namespace, item.elementIdentifier)
+
+                    // TODO: Build new IssuerSignedItem combining |item| and |value|. This way
+                    //  the IssuerSignedItem we store outside the IdentityCredential API
+                    //  won't have to include the value (which it does today).
+                    itemsWithValue.add(item)
+                }
+
+                if (itemsWithValue.isNotEmpty()) {
                     // Create IssuerSigned Obj with the only supported namespace
                     issuerAuth?.let { coseSign1 ->
                         val issuerSigned = IssuerSigned.Builder()
-                            .setNameSpaces(MdlNamespace.namespace, sortedList.toTypedArray())
+                            .setNameSpaces(MdlNamespace.namespace, itemsWithValue.toTypedArray())
                             .setIssuerAuth(coseSign1)
                             .build()
 

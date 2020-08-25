@@ -19,12 +19,14 @@ package com.ul.ims.gmdl.security.sessionencryption.verifier
 import android.util.Log
 import androidx.security.identity.IdentityCredentialException
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
+import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
 import java.security.PrivateKey
 import java.security.interfaces.ECPublicKey
 
-class VerifierSessionManager constructor(private val holderCoseKey: CoseKey) {
+class VerifierSessionManager constructor(private val holderCoseKey: CoseKey,
+                                         val deviceEngagement: DeviceEngagement) {
 
     companion object {
         const val LOG_TAG = "VerifierSessionManager"
@@ -32,7 +34,8 @@ class VerifierSessionManager constructor(private val holderCoseKey: CoseKey) {
 
     //TODO: Add support for potentially new CipherSuites
     private var readerSession = VerifierSession(
-        holderCoseKey.getPublicKey()
+        holderCoseKey.getPublicKey(),
+        deviceEngagement
     )
 
     fun createSessionEstablishment(bytes : ByteArray) : SessionEstablishment {
@@ -66,7 +69,7 @@ class VerifierSessionManager constructor(private val holderCoseKey: CoseKey) {
 
         pk?.let {
             val holderKeyBuilder = CoseKey.Builder()
-            //TODO: Add support for other curves (CoseKey.P256.value.toInt()).
+            // TODO: Add support for other curves (CoseKey.P256.value.toInt()).
             val curveId = 1
 
             val xco = CryptoUtils.toByteArrayUnsigned(it.w.affineX)

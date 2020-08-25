@@ -36,10 +36,10 @@ class MacStructure private constructor(
         var builder = CborBuilder()
         var structureArray = builder.addArray()
 
-        structureArray = structureArray.add(MAC_STRUCTURE_CONTEXT)
-        structureArray = structureArray.add(ByteString(alg))
-        structureArray = structureArray.add(ByteString(byteArrayOf()))
-        structureArray = structureArray.add(ByteString(deviceAuthenticationData))
+        structureArray.add(MAC_STRUCTURE_CONTEXT)
+        structureArray.add(ByteString(alg))
+        structureArray.add(ByteString(byteArrayOf()))
+        structureArray.add(ByteString(deviceAuthenticationData))
 
         builder = structureArray.end()
 

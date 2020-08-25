@@ -16,6 +16,7 @@
 
 package com.ul.ims.gmdl.security.mdlauthentication
 
+import android.R.attr.key
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.doctype.IDoctype
@@ -31,6 +32,13 @@ import com.ul.ims.gmdl.security.mdlauthentication.MacVerificationUtils.calculate
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.pqc.math.linearalgebra.ByteUtils
 import java.security.*
+import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.X509EncodedKeySpec
+import javax.crypto.KeyAgreement
+import javax.crypto.Mac
+import javax.crypto.SecretKey
+import javax.crypto.spec.SecretKeySpec
+
 
 class MdlAuthenticator (
     val deviceEngagement: DeviceEngagement,
@@ -79,7 +87,7 @@ class MdlAuthenticator (
 
         val sigStructureBuilder = SigStructure.Builder()
         sigStructureBuilder.setAlg(coseSign1.alg)
-        sigStructureBuilder.setPayloadData(deviceAuthentication?.encode())
+        sigStructureBuilder.setPayloadData(deviceAuthentication?.encodeAsTaggedByteString())
         val toBeSignedSigStructure = sigStructureBuilder.build().encode()
         Log.d(LOG_TAG, "toBeSignedSigStructure: ${ByteUtils.toHexString(toBeSignedSigStructure)}")
 
@@ -90,7 +98,7 @@ class MdlAuthenticator (
         validateCoseMac0(coseMac0)
         val macStructureBuilder = MacStructure.Builder()
         macStructureBuilder.setAlg(coseMac0.encodeAlgMap(coseMac0.algorithm))
-        macStructureBuilder.setPayload(deviceAuthentication?.encode())
+        macStructureBuilder.setPayload(deviceAuthentication?.encodeAsTaggedByteString())
         val toBeMacedData = macStructureBuilder.build().encode()
         return validateMac(coseMac0.algorithm, toBeMacedData, coseMac0.macValue)
     }
@@ -166,16 +174,27 @@ class MdlAuthenticator (
     }
 
     private fun validateMac(alg : String?, toBeMacedData: ByteArray, macValue: ByteArray?) : Boolean {
-        if (macValue == null) {
-            throw MdlAuthenticationException("tag in COSE_Mac0 cannot be null")
-        }
-        if (alg == null) {
-            throw MdlAuthenticationException("alg is null")
-        }
         verifierPrivateKey?.let {
-            val verifierSharedKey = calculateSharedKey(holderPublicKey.encoded, verifierPrivateKey.encoded)
+            if (macValue == null) {
+                throw MdlAuthenticationException("tag in COSE_Mac0 cannot be null")
+            }
+            if (alg == null) {
+                throw MdlAuthenticationException("alg is null")
+            }
+            if (deviceKey == null) {
+                throw MdlAuthenticationException("no device ephemeral public key")
+            }
+            if (verifierPrivateKey == null) {
+                throw MdlAuthenticationException("no reader ephemeral private key")
+            }
+            if (sessionTranscript == null) {
+                throw MdlAuthenticationException("no session transcript")
+            }
+            val authKey = deviceKey.getPublicKey()
+            val verifierSharedKey = calculateSharedKey(authKey, verifierPrivateKey,
+            sessionTranscript)
                 ?: throw MdlAuthenticationException("VerifierSharedKey is null")
-            val verifierDerivedKey = calculateDerivedKey(byteArrayOf(), verifierSharedKey)
+            val verifierDerivedKey = calculateDerivedKey(byteArrayOf(0x00), verifierSharedKey)
                 ?: throw MdlAuthenticationException("VerifierDerivedKey is null")
             val calculatedMacValue = calculateHMac(alg, toBeMacedData, verifierDerivedKey)
                 ?: throw MdlAuthenticationException("calculatedMac is null")

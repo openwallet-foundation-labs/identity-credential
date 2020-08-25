@@ -56,7 +56,7 @@ class DeviceSigned private constructor(
 
     override fun encode(): ByteArray {
         val outputStream = ByteArrayOutputStream()
-        CborEncoder(outputStream).nonCanonical().encode(toDataItem())
+        CborEncoder(outputStream).encode(toDataItem())
 
         return outputStream.toByteArray()
     }

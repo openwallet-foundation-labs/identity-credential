@@ -19,6 +19,10 @@ package com.ul.ims.gmdl.security.sessionencryption.verifier
 import android.security.keystore.KeyProperties
 import android.util.Log
 import androidx.security.identity.IdentityCredentialException
+import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
+import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
+import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import com.ul.ims.gmdl.security.util.Utils
 import java.nio.ByteBuffer
@@ -30,7 +34,8 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 class VerifierSession
-constructor(holderEphemeralPublicKey: PublicKey) {
+constructor(holderEphemeralPublicKey: PublicKey,
+            deviceEngagement: DeviceEngagement) {
 
     companion object {
         const val LOG_TAG = "VerifierSession"
@@ -67,15 +72,23 @@ constructor(holderEphemeralPublicKey: PublicKey) {
             ka.doPhase(mHolderEphemeralPublicKey, true)
             val sharedSecret = ka.generateSecret()
 
+            val sessionTranscriptBytes = SessionTranscript.Builder()
+                .setReaderKey(getEphemeralPublicKeyAsCoseKey().encode())
+                .setDeviceEngagement(deviceEngagement.encode())
+                .build()
+                .encodeAsTaggedByteString()
+
+            val sharedSecretWithDeviceTranscriptBytes = sharedSecret + sessionTranscriptBytes
+
             val salt = ByteArray(1)
             val info = ByteArray(0)
 
             salt[0] = 0x01
-            var derivedKey = Utils.computeHkdf("HmacSha256", sharedSecret, salt, info, 32)
+            var derivedKey = Utils.computeHkdf("HmacSha256", sharedSecretWithDeviceTranscriptBytes, salt, info, 32)
             mSecretKey = SecretKeySpec(derivedKey, "AES")
 
             salt[0] = 0x00
-            derivedKey = Utils.computeHkdf("HmacSha256", sharedSecret, salt, info, 32)
+            derivedKey = Utils.computeHkdf("HmacSha256", sharedSecretWithDeviceTranscriptBytes, salt, info, 32)
             mReaderSecretKey = SecretKeySpec(derivedKey, "AES")
 
             mSecureRandom = SecureRandom()
@@ -106,6 +119,18 @@ constructor(holderEphemeralPublicKey: PublicKey) {
             throw IdentityCredentialException("Error performing key agreement", e)
         }
 
+    }
+
+    fun getEphemeralPublicKeyAsCoseKey() : CoseKey {
+        // TODO: Add support for other curves (CoseKey.P256.value.toInt()).
+        val curveId = 1
+        val pk = mEphemeralKeyPair.public as ECPublicKey
+        val xco = CryptoUtils.toByteArrayUnsigned(pk.w.affineX)
+        val yco = CryptoUtils.toByteArrayUnsigned(pk.w.affineY)
+        val builder = CoseKey.Builder()
+        builder.setKeyType(2)
+        builder.setCurve(curveId, xco, yco, null)
+        return builder.build()
     }
 
     fun getReaderPublicKey() : ECPublicKey? {

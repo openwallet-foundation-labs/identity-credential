@@ -53,12 +53,12 @@ dependencies {
     implementation project(path: ':security')
 
     // Google Identity Credential Module
-    implementation project(path: ':identitycredential')
+    implementation "androidx.security:security-identity-credential:$androidx_identity_credential"
 
     // Biometric authentication
     implementation "androidx.biometric:biometric:$androidx_biometrics"
 
-    // Google Identity Credential Module
+    // Issuer Authority Module
     implementation project(path: ':issuerauthority')
 }
 repositories {

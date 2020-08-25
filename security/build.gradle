@@ -45,7 +45,7 @@ dependencies {
     implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_version"
 
     // Google Identity Credential Module IdentityCredentialStandalone-20190719
-    implementation project(path: ':identitycredential')
+    implementation "androidx.security:security-identity-credential:$androidx_identity_credential"
 
     // Cbor data Module
     implementation project(path: ':cbordata')

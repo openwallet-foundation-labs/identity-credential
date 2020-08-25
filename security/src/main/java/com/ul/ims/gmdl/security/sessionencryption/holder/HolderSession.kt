@@ -21,7 +21,7 @@ import android.util.Log
 import androidx.security.identity.IdentityCredential
 import androidx.security.identity.IdentityCredentialException
 import androidx.security.identity.IdentityCredentialStore
-import androidx.security.identity.RequestNamespace
+import androidx.security.identity.ResultData
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
@@ -115,13 +115,21 @@ constructor(context : Context, credentialName : String) {
         }
     }
 
-    fun getEntries(requestNamespace: Collection<RequestNamespace>, sessionTranscript: ByteArray) :
-            IdentityCredential.GetEntryResult? {
-        return credential?.getEntries(null,
-            requestNamespace,
-            sessionTranscript,
+    fun setSessionTranscript(sessionTranscript: ByteArray) {
+        credential?.setSessionTranscript(sessionTranscript)
+    }
+
+    fun getEntries(entriesToRequest: Map<String, Collection<String>>) :
+            ResultData? {
+        Log.d(LOG_TAG, "calling getEntries() with " + entriesToRequest.size)
+        return credential?.getEntries(null,  // TODO: need to set requestMessage
+            entriesToRequest,
             null
         )
+    }
+
+    fun getIdentityCredential(): IdentityCredential? {
+        return credential
     }
 
     private fun extractPublicKey(readerKey: CoseKey) : ECPublicKey? {

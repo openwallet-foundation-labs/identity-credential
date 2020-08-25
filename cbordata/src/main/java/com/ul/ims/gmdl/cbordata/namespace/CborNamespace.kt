@@ -36,7 +36,7 @@ class CborNamespace private constructor(
 
         builder = buildCborBuilderStructure(builder)
 
-        CborEncoder(outputStream).nonCanonical().encode(builder.build())
+        CborEncoder(outputStream).encode(builder.build())
         return outputStream.toByteArray()
     }
 

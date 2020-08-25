@@ -107,7 +107,7 @@ class MobileSecurityObject private constructor(
         mapBuilder = mapBuilder.put(UnicodeString(VALIDITY_INFO), validityInfo.toDataItem())
 
         builder = mapBuilder.end()
-        CborEncoder(outputStream).nonCanonical().encode(builder.build())
+        CborEncoder(outputStream).encode(builder.build())
         return outputStream.toByteArray()
     }
 

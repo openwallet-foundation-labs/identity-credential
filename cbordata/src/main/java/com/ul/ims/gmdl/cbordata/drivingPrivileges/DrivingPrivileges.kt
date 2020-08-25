@@ -45,7 +45,7 @@ class DrivingPrivileges private constructor(
 
         return try {
             // Use non Canonical encoder in order to maintain the order in the Cbor Map
-            CborEncoder(baos).nonCanonical().encode(drivingPrivArray)
+            CborEncoder(baos).encode(drivingPrivArray)
 
             baos.toByteArray()
         } catch (ex: CborException) {

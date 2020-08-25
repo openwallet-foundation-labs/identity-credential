@@ -52,7 +52,7 @@ class DocRequest private constructor(
         builder = mapBuilder.end()
 
         val outputStream = ByteArrayOutputStream()
-        CborEncoder(outputStream).nonCanonical().encode(builder.build())
+        CborEncoder(outputStream).encode(builder.build())
 
         return outputStream.toByteArray()
     }

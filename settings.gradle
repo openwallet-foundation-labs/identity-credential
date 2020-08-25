@@ -1,1 +1,1 @@
-include ':app', ':appreader', ':offlinetransfer', ':bleofflinetransfer', ':cbordata', ':security', ':identitycredential', ':nfcengagement', ':wifiofflinetransfer', ':nfcofflinetransfer', ':issuerauthority'
+include ':app', ':appreader', ':offlinetransfer', ':bleofflinetransfer', ':cbordata', ':security', ':nfcengagement', ':wifiofflinetransfer', ':nfcofflinetransfer', ':issuerauthority'

@@ -19,10 +19,8 @@ package com.ul.ims.gmdl.cbordata.security.mdlauthentication
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.CborEncoder
+import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
-import co.nstant.`in`.cbor.model.DataItem
-import co.nstant.`in`.cbor.model.MajorType
-import co.nstant.`in`.cbor.model.Tag
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -55,6 +53,14 @@ class SessionTranscript private constructor (
 
         builder = arrayBuilder.end()
         CborEncoder(outputStream).encode(builder.build())
+        return outputStream.toByteArray()
+    }
+
+    fun encodeAsTaggedByteString(): ByteArray {
+        val byteString = ByteString(encode())
+        byteString.setTag(24)
+        val outputStream = ByteArrayOutputStream()
+        CborEncoder(outputStream).encode(byteString)
         return outputStream.toByteArray()
     }
 

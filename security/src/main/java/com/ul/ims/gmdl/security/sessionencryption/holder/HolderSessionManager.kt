@@ -20,7 +20,7 @@ import android.content.Context
 import android.util.Log
 import androidx.security.identity.IdentityCredential
 import androidx.security.identity.IdentityCredentialException
-import androidx.security.identity.RequestNamespace
+import androidx.security.identity.ResultData
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionData
@@ -109,14 +109,21 @@ class HolderSessionManager private constructor(
         return null
     }
 
+    fun setSessionTranscript(sessionTranscript: ByteArray) {
+        holderSession?.setSessionTranscript(sessionTranscript)
+    }
 
-    fun getEntries(requestNamespace: Collection<RequestNamespace>, sessionTranscript: ByteArray) :
-            IdentityCredential.GetEntryResult? {
+    fun getEntries(entriesToRequest: Map<String, Collection<String>>) :
+            ResultData? {
         return try {
-            holderSession?.getEntries(requestNamespace, sessionTranscript)
+            holderSession?.getEntries(entriesToRequest)
         } catch (ex: NullPointerException) {
             null
         }
+    }
+
+    fun getIdentityCredential(): IdentityCredential? {
+        return holderSession?.getIdentityCredential()
     }
 
     fun setVerifierEphemeralPublicKey(readerKey: CoseKey) {

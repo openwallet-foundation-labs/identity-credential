@@ -125,7 +125,7 @@ class DrivingPrivilegesTest {
         Assert.assertEquals("a3616101616202616303", encodeToString(baos.toByteArray()))
 
         baos = ByteArrayOutputStream()
-        CborEncoder(baos).nonCanonical().encode(map)
+        CborEncoder(baos.encode(map)
         Assert.assertEquals("a3616303616202616101", encodeToString(baos.toByteArray()))
     }
 }

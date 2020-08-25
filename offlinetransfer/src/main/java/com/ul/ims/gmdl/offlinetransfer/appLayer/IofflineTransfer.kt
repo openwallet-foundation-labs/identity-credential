@@ -37,7 +37,6 @@ interface IofflineTransfer : ITransportEventListener {
      * **/
     fun setupHolder(credentialName : String,
                     deviceEngagement : ByteArray,
-                    icApi : IdentityCredential,
                     isAuthRequired : Boolean,
                     issuerAuthority: IIssuerAuthority
     )
