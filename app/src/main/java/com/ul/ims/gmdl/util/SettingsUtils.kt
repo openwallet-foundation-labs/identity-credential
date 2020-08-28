@@ -20,7 +20,6 @@ import android.content.Context
 import androidx.preference.PreferenceManager
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.EngagementChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
-import kotlin.IllegalStateException
 
 
 object SettingsUtils {
@@ -48,6 +47,16 @@ object SettingsUtils {
             wifi -> TransferChannels.WiFiAware
             nfc -> TransferChannels.NFC
             else -> throw IllegalStateException("Unable to get Transfer Method from shared preferences")
+        }
+    }
+
+    fun setTransferMethod(context: Context, tranferMethod: TransferChannels) {
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+        with(sharedPreferences.edit()) {
+            putBoolean("transfer_method_ble", TransferChannels.BLE == tranferMethod)
+            putBoolean("transfer_method_wifi", TransferChannels.WiFiAware == tranferMethod)
+            putBoolean("transfer_method_nfc", TransferChannels.NFC == tranferMethod)
+            commit()
         }
     }
 }

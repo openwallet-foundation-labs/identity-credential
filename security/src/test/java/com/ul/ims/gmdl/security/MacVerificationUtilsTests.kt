@@ -17,11 +17,15 @@
 package com.ul.ims.gmdl.security
 
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.CoseMac0
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.security.mdlauthentication.MacVerificationUtils.calculateDerivedKey
 import com.ul.ims.gmdl.security.mdlauthentication.MacVerificationUtils.calculateHMac
 import com.ul.ims.gmdl.security.mdlauthentication.MacVerificationUtils.calculateSharedKey
 import org.junit.Assert
 import org.junit.Test
+import java.security.KeyFactory
+import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.X509EncodedKeySpec
 import java.util.*
 
 
@@ -43,30 +47,71 @@ class MacVerificationUtilsTests {
         0x35.toByte(), 0xf9.toByte(), 0x83.toByte(), 0xe2.toByte(), 0xdd.toByte(), 0x93.toByte(), 0x51.toByte(), 0xcd.toByte(), 0x96.toByte(), 0x8e.toByte(), 0x85.toByte(), 0x6e.toByte(), 0xb9.toByte(), 0x17.toByte(), 0x40.toByte(), 0x40.toByte(), 0xb3.toByte(), 0xb8.toByte(), 0x4b.toByte(), 0x82.toByte(), 0x1e.toByte(), 0x70.toByte(), 0x2d.toByte(), 0xca.toByte(), 0x81.toByte(), 0x75.toByte(), 0xd8.toByte(), 0x51.toByte(), 0x34.toByte(), 0x53.toByte(), 0x93.toByte(), 0x10.toByte()
     )
     private val verifierDerivedKey = byteArrayOf(
-        0x8c.toByte(), 0xc6.toByte(), 0x87.toByte(), 0x11.toByte(), 0xcb.toByte(), 0x20.toByte(), 0x4e.toByte(), 0x1a.toByte(), 0x33.toByte(), 0xfa.toByte(), 0x0e.toByte(), 0xce.toByte(), 0x0c.toByte(), 0xf0.toByte(), 0x27.toByte(), 0xeb.toByte(), 0x90.toByte(), 0x8b.toByte(), 0x3f.toByte(), 0xdb.toByte(), 0xec.toByte(), 0xf6.toByte(), 0x02.toByte(), 0x97.toByte(), 0xa5.toByte(), 0x95.toByte(), 0x3b.toByte(), 0x27.toByte(), 0x70.toByte(), 0xc7.toByte(), 0x2c.toByte(), 0xfe.toByte()
+        0x89.toByte(), 0x79.toByte(), 0x9c.toByte(), 0x74.toByte(), 0xfc.toByte(),
+        0xda.toByte(), 0x06.toByte(), 0xf0.toByte(), 0xe1.toByte(), 0xba.toByte(),
+        0x44.toByte(), 0x50.toByte(), 0xfc.toByte(), 0x70.toByte(), 0x14.toByte(),
+        0xc7.toByte(), 0x3f.toByte(), 0x68.toByte(), 0x83.toByte(), 0x10.toByte(),
+        0x13.toByte(), 0x5d.toByte(), 0x96.toByte(), 0xb9.toByte(), 0xca.toByte(),
+        0xbb.toByte(), 0x14.toByte(), 0xee.toByte(), 0xd1.toByte(), 0x70.toByte(),
+        0xd3.toByte(), 0xe9.toByte()
     )
+
+    private val holderEphemeralPublicKey = KeyFactory.getInstance("EC")
+        .generatePublic(X509EncodedKeySpec(holderEphemeralPublicKeyBytes))
+    private val holderEphemeralPrivateKey = KeyFactory.getInstance("EC")
+        .generatePrivate(PKCS8EncodedKeySpec(holderEphemeralPrivateKeyBytes))
+    private val verifierEphemeralPublicKey = KeyFactory.getInstance("EC")
+        .generatePublic(X509EncodedKeySpec(verifierEphemeralPublicKeyBytes))
+    private val verifierEphemeralPrivateKey = KeyFactory.getInstance("EC")
+        .generatePrivate(PKCS8EncodedKeySpec(verifierEphemeralPrivateKeyBytes))
+    private val sessionTranscript = SessionTranscript.Builder()
+        .setDeviceEngagement(byteArrayOf())
+        .setReaderKey(byteArrayOf())
+        .build()
 
     @Test
     fun testECKeyAgreement() {
-        val verifierSharedSecretKey = calculateSharedKey(holderEphemeralPublicKeyBytes, verifierEphemeralPrivateKeyBytes)
-        val holderSharedSecretKey = calculateSharedKey(verifierEphemeralPublicKeyBytes, holderEphemeralPrivateKeyBytes)
+        val verifierSharedSecretKey = calculateSharedKey(
+            holderEphemeralPublicKey,
+            verifierEphemeralPrivateKey,
+            sessionTranscript
+        )
+        val holderSharedSecretKey = calculateSharedKey(
+            verifierEphemeralPublicKey,
+            holderEphemeralPrivateKey,
+            sessionTranscript
+        )
 
-        Assert.assertArrayEquals(verifierSharedSecret, verifierSharedSecretKey)
-        Assert.assertArrayEquals(verifierSharedSecret, holderSharedSecretKey)
+        Assert.assertArrayEquals(
+            verifierSharedSecret + sessionTranscript.encodeAsTaggedByteString(),
+            verifierSharedSecretKey
+        )
+        Assert.assertArrayEquals(
+            verifierSharedSecret + sessionTranscript.encodeAsTaggedByteString(),
+            holderSharedSecretKey
+        )
     }
 
     @Test
     fun testDerivedKey() {
-        val verifierSharedKey = calculateSharedKey(holderEphemeralPublicKeyBytes, verifierEphemeralPrivateKeyBytes)
+        val verifierSharedKey = calculateSharedKey(
+            holderEphemeralPublicKey,
+            verifierEphemeralPrivateKey,
+            sessionTranscript
+        )
         Assert.assertNotNull(verifierSharedKey)
         verifierSharedKey?.let {
-            val verifierDKey = calculateDerivedKey(byteArrayOf(), verifierSharedKey)
+            val verifierDKey = calculateDerivedKey(byteArrayOf(0x00), verifierSharedKey)
             Assert.assertArrayEquals(verifierDerivedKey, verifierDKey)
         }
-        val holderSharedKey = calculateSharedKey(verifierEphemeralPublicKeyBytes, holderEphemeralPrivateKeyBytes)
+        val holderSharedKey = calculateSharedKey(
+            verifierEphemeralPublicKey,
+            holderEphemeralPrivateKey,
+            sessionTranscript
+        )
         Assert.assertNotNull(holderSharedKey)
         holderSharedKey?.let {
-            val holderDKey = calculateDerivedKey(byteArrayOf(), holderSharedKey)
+            val holderDKey = calculateDerivedKey(byteArrayOf(0x00), holderSharedKey)
             Assert.assertArrayEquals(verifierDerivedKey, holderDKey)
         }
     }
@@ -227,6 +272,11 @@ class MacVerificationUtilsTests {
             0x0a.toByte(), 0xb4.toByte(), 0x92.toByte(), 0x6d.toByte(), 0x8a.toByte(),
             0xc2.toByte(), 0x36.toByte(), 0xff.toByte(), 0x29.toByte(), 0xb8.toByte()
         )
+
+        val sessionTranscriptTest = SessionTranscript.Builder()
+            .setDeviceEngagement(deviceEngagement)
+            .setReaderKey(readerKey)
+            .build()
 
         val deviceAuthentication = byteArrayOf(
             0x84.toByte(), 0x74.toByte(), 0x44.toByte(), 0x65.toByte(), 0x76.toByte(),
@@ -400,51 +450,57 @@ class MacVerificationUtilsTests {
         )
 
         val expectedDerivedKey = byteArrayOf(
-            0xf2.toByte(), 0xae.toByte(), 0xd2.toByte(), 0x7c.toByte(), 0x7b.toByte(),
-            0x6d.toByte(), 0x8a.toByte(), 0x74.toByte(), 0xb5.toByte(), 0x24.toByte(),
-            0x83.toByte(), 0x62.toByte(), 0x1a.toByte(), 0xb2.toByte(), 0xc9.toByte(),
-            0x4b.toByte(), 0xbd.toByte(), 0xc2.toByte(), 0x41.toByte(), 0xb2.toByte(),
-            0xc8.toByte(), 0x54.toByte(), 0xfc.toByte(), 0x03.toByte(), 0x18.toByte(),
-            0xfc.toByte(), 0x6a.toByte(), 0xa4.toByte(), 0xfd.toByte(), 0x55.toByte(),
-            0xff.toByte(), 0xdb.toByte()
+            0xfb.toByte(), 0xe0.toByte(), 0x2a.toByte(), 0x91.toByte(), 0x2f.toByte(),
+            0x12.toByte(), 0x3a.toByte(), 0x70.toByte(), 0x96.toByte(), 0x8c.toByte(),
+            0x90.toByte(), 0x50.toByte(), 0x61.toByte(), 0xa2.toByte(), 0x5a.toByte(),
+            0x53.toByte(), 0x9d.toByte(), 0xdf.toByte(), 0x99.toByte(), 0xec.toByte(),
+            0x06.toByte(), 0x00.toByte(), 0x43.toByte(), 0x5f.toByte(), 0x05.toByte(),
+            0x8b.toByte(), 0x12.toByte(), 0xd1.toByte(), 0xbe.toByte(), 0x3d.toByte(),
+            0x5e.toByte(), 0x53.toByte()
         )
 
         val expectedMac = byteArrayOf(
-            0xc0.toByte(), 0x13.toByte(), 0x66.toByte(), 0x4d.toByte(), 0x53.toByte(),
-            0xcd.toByte(), 0x5c.toByte(), 0x3e.toByte(), 0x37.toByte(), 0xf0.toByte(),
-            0x0e.toByte(), 0xd7.toByte(), 0xc9.toByte(), 0xb3.toByte(), 0xb6.toByte(),
-            0x14.toByte(), 0xd3.toByte(), 0x22.toByte(), 0x26.toByte(), 0x08.toByte(),
-            0x84.toByte(), 0xd7.toByte(), 0x4e.toByte(), 0x7b.toByte(), 0x12.toByte(),
-            0xb9.toByte(), 0xd0.toByte(), 0x27.toByte(), 0xed.toByte(), 0x21.toByte(),
-            0x31.toByte(), 0xa5.toByte()
+            0x8e.toByte(), 0xdf.toByte(), 0x3e.toByte(), 0x1e.toByte(), 0x0f.toByte(),
+            0xbe.toByte(), 0x96.toByte(), 0x5c.toByte(), 0xc0.toByte(), 0x84.toByte(),
+            0x5c.toByte(), 0xac.toByte(), 0x37.toByte(), 0xdd.toByte(), 0xd6.toByte(),
+            0x61.toByte(), 0x01.toByte(), 0xb5.toByte(), 0x4e.toByte(), 0xbd.toByte(),
+            0x58.toByte(), 0x32.toByte(), 0xe2.toByte(), 0xb6.toByte(), 0xb7.toByte(),
+            0xa3.toByte(), 0x1a.toByte(), 0x0f.toByte(), 0x6d.toByte(), 0x38.toByte(),
+            0x7b.toByte(), 0xb0.toByte()
         )
 
         val expectedCoseMac0 = byteArrayOf(
-            0xd1.toByte(), 0x84.toByte(), 0x43.toByte(), 0xa1.toByte(), 0x01.toByte(),
-            0x05.toByte(), 0xa0.toByte(), 0xf6.toByte(), 0x58.toByte(), 0x20.toByte(),
-            0xc0.toByte(), 0x13.toByte(), 0x66.toByte(), 0x4d.toByte(), 0x53.toByte(),
-            0xcd.toByte(), 0x5c.toByte(), 0x3e.toByte(), 0x37.toByte(), 0xf0.toByte(),
-            0x0e.toByte(), 0xd7.toByte(), 0xc9.toByte(), 0xb3.toByte(), 0xb6.toByte(),
-            0x14.toByte(), 0xd3.toByte(), 0x22.toByte(), 0x26.toByte(), 0x08.toByte(),
-            0x84.toByte(), 0xd7.toByte(), 0x4e.toByte(), 0x7b.toByte(), 0x12.toByte(),
-            0xb9.toByte(), 0xd0.toByte(), 0x27.toByte(), 0xed.toByte(), 0x21.toByte(),
-            0x31.toByte(), 0xa5.toByte()
+            0x84.toByte(), 0x43.toByte(), 0xa1.toByte(), 0x01.toByte(), 0x05.toByte(),
+            0xa0.toByte(), 0xf6.toByte(), 0x58.toByte(), 0x20.toByte(), 0x8e.toByte(),
+            0xdf.toByte(), 0x3e.toByte(), 0x1e.toByte(), 0x0f.toByte(), 0xbe.toByte(),
+            0x96.toByte(), 0x5c.toByte(), 0xc0.toByte(), 0x84.toByte(), 0x5c.toByte(),
+            0xac.toByte(), 0x37.toByte(), 0xdd.toByte(), 0xd6.toByte(), 0x61.toByte(),
+            0x01.toByte(), 0xb5.toByte(), 0x4e.toByte(), 0xbd.toByte(), 0x58.toByte(),
+            0x32.toByte(), 0xe2.toByte(), 0xb6.toByte(), 0xb7.toByte(), 0xa3.toByte(),
+            0x1a.toByte(), 0x0f.toByte(), 0x6d.toByte(), 0x38.toByte(), 0x7b.toByte(),
+            0xb0.toByte()
         )
 
         // Shared Key
         val sharedKey = calculateSharedKey(
-            verifierPublicKey,
-            mDLPrivateKey
+            KeyFactory.getInstance("EC")
+                .generatePublic(X509EncodedKeySpec(verifierPublicKey)),
+            KeyFactory.getInstance("EC")
+                .generatePrivate(PKCS8EncodedKeySpec(mDLPrivateKey)),
+            sessionTranscriptTest
         )
         Assert.assertNotNull(sharedKey)
-        sharedKey?.let {sKey ->
-            Assert.assertArrayEquals(expectedSharedKey, sKey)
+        sharedKey?.let { sKey ->
+            Assert.assertArrayEquals(
+                expectedSharedKey + sessionTranscriptTest.encodeAsTaggedByteString(),
+                sKey
+            )
 
             // Derived Key
             val derivedKey = calculateDerivedKey(byteArrayOf(), sKey)
             Assert.assertNotNull(derivedKey)
 
-            derivedKey?.let {dKey ->
+            derivedKey?.let { dKey ->
                 Assert.assertArrayEquals(expectedDerivedKey, dKey)
 
                 // Mac Calculation

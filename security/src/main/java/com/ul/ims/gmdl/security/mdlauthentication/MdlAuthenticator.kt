@@ -16,7 +16,6 @@
 
 package com.ul.ims.gmdl.security.mdlauthentication
 
-import android.R.attr.key
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.doctype.IDoctype
@@ -32,12 +31,6 @@ import com.ul.ims.gmdl.security.mdlauthentication.MacVerificationUtils.calculate
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.pqc.math.linearalgebra.ByteUtils
 import java.security.*
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.X509EncodedKeySpec
-import javax.crypto.KeyAgreement
-import javax.crypto.Mac
-import javax.crypto.SecretKey
-import javax.crypto.spec.SecretKeySpec
 
 
 class MdlAuthenticator (
@@ -191,8 +184,10 @@ class MdlAuthenticator (
                 throw MdlAuthenticationException("no session transcript")
             }
             val authKey = deviceKey.getPublicKey()
-            val verifierSharedKey = calculateSharedKey(authKey, verifierPrivateKey,
-            sessionTranscript)
+            val verifierSharedKey = calculateSharedKey(
+                authKey, verifierPrivateKey,
+                sessionTranscript
+            )
                 ?: throw MdlAuthenticationException("VerifierSharedKey is null")
             val verifierDerivedKey = calculateDerivedKey(byteArrayOf(0x00), verifierSharedKey)
                 ?: throw MdlAuthenticationException("VerifierDerivedKey is null")

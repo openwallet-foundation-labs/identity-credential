@@ -30,9 +30,17 @@ class DeviceSignedTest {
     val signature = "signature"
 
     private val coseMac0Data = byteArrayOf(
-        0x83.toByte(), 0x43.toByte(), 0xa1.toByte(), 0x01.toByte(), 0x05.toByte(), 0xf6.toByte(), 0x42.toByte(), 0x01.toByte(), 0x02.toByte()
+        0x83.toByte(),
+        0x43.toByte(),
+        0xa1.toByte(),
+        0x01.toByte(),
+        0x05.toByte(),
+        0xf6.toByte(),
+        0x42.toByte(),
+        0x01.toByte(),
+        0x02.toByte()
     )
-    private val coseMac0 = CoseMac0.Builder().decode(coseMac0Data).build()
+    private val coseMac0 = CoseMac0.Builder().decodeEncoded(coseMac0Data).build()
     private val coseSign1 = CoseSign1.Builder().decode(CoseSign1Tests().coseSign1Data).build()
     private var deviceAuth =
         DeviceAuth.Builder().setCoseMac0(coseMac0).setCoseSign1(coseSign1).build()
@@ -65,8 +73,8 @@ class DeviceSignedTest {
 
         Assert.assertNotNull(deviceSigned)
         Assert.assertEquals(
-            deviceAuth.deviceSignature.encodeToString(),
-            deviceSigned.deviceAuth.deviceSignature.encodeToString()
+            deviceAuth.deviceSignature?.encodeToString(),
+            deviceSigned.deviceAuth.deviceSignature?.encodeToString()
         )
 
     }

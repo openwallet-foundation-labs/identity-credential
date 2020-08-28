@@ -64,14 +64,14 @@ class SessionTranscript private constructor (
         return outputStream.toByteArray()
     }
 
-    fun toDataItem() : DataItem? {
+    fun toDataItem(): DataItem? {
         val encoded = encode()
 
         val bais = ByteArrayInputStream(encoded)
         val decoded = CborDecoder(bais).decode()
         if (decoded.isNotEmpty()) {
             if (decoded[0].majorType == MajorType.ARRAY) {
-               return decoded[0] as Array
+                return decoded[0] as Array
             }
         }
 

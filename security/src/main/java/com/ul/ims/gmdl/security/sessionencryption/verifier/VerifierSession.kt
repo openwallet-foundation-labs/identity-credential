@@ -34,8 +34,10 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 class VerifierSession
-constructor(holderEphemeralPublicKey: PublicKey,
-            deviceEngagement: DeviceEngagement) {
+constructor(
+    holderEphemeralPublicKey: PublicKey,
+    deviceEngagement: DeviceEngagement
+) {
 
     companion object {
         const val LOG_TAG = "VerifierSession"
@@ -84,11 +86,23 @@ constructor(holderEphemeralPublicKey: PublicKey,
             val info = ByteArray(0)
 
             salt[0] = 0x01
-            var derivedKey = Utils.computeHkdf("HmacSha256", sharedSecretWithDeviceTranscriptBytes, salt, info, 32)
+            var derivedKey = Utils.computeHkdf(
+                "HmacSha256",
+                sharedSecretWithDeviceTranscriptBytes,
+                salt,
+                info,
+                32
+            )
             mSecretKey = SecretKeySpec(derivedKey, "AES")
 
             salt[0] = 0x00
-            derivedKey = Utils.computeHkdf("HmacSha256", sharedSecretWithDeviceTranscriptBytes, salt, info, 32)
+            derivedKey = Utils.computeHkdf(
+                "HmacSha256",
+                sharedSecretWithDeviceTranscriptBytes,
+                salt,
+                info,
+                32
+            )
             mReaderSecretKey = SecretKeySpec(derivedKey, "AES")
 
             mSecureRandom = SecureRandom()
@@ -121,7 +135,7 @@ constructor(holderEphemeralPublicKey: PublicKey,
 
     }
 
-    fun getEphemeralPublicKeyAsCoseKey() : CoseKey {
+    fun getEphemeralPublicKeyAsCoseKey(): CoseKey {
         // TODO: Add support for other curves (CoseKey.P256.value.toInt()).
         val curveId = 1
         val pk = mEphemeralKeyPair.public as ECPublicKey
@@ -133,16 +147,16 @@ constructor(holderEphemeralPublicKey: PublicKey,
         return builder.build()
     }
 
-    fun getReaderPublicKey() : ECPublicKey? {
+    fun getReaderPublicKey(): ECPublicKey? {
         return mEphemeralKeyPair.public as? ECPublicKey
     }
 
-    fun getPrivateKey() : PrivateKey? {
+    fun getPrivateKey(): PrivateKey? {
         return mEphemeralKeyPair.private
     }
 
     fun encryptMessageToHolder(messagePlaintext: ByteArray): ByteArray? {
-        var messageCiphertext: ByteArray? = null
+        var messageCiphertext: ByteArray?
         try {
             val iv = ByteBuffer.allocate(12)
             iv.putInt(0, 0x00000000)
@@ -181,7 +195,7 @@ constructor(holderEphemeralPublicKey: PublicKey,
         iv.putInt(0, 0x00000000)
         iv.putInt(4, 0x00000001)
         iv.putInt(8, mMdlExpectedCounter)
-        var plaintext: ByteArray? = null
+        var plaintext: ByteArray?
         try {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.DECRYPT_MODE, mSecretKey, GCMParameterSpec(128, iv.array()))

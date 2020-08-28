@@ -18,7 +18,6 @@ package com.ul.ims.gmdl.offlinetransfer.appLayer
 
 import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.MutableLiveData
-import androidx.security.identity.IdentityCredential
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority

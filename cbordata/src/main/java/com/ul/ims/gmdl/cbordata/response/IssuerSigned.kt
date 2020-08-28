@@ -71,9 +71,10 @@ class IssuerSigned private constructor(
         private var nameSpaces = mutableMapOf<String, kotlin.Array<IssuerSignedItem>>()
         private lateinit var issuerAuth: CoseSign1
 
-        fun setNameSpaces(nameSpaces: String, issuerSignedItem: kotlin.Array<IssuerSignedItem>) = apply {
+        fun setNameSpaces(nameSpaces: String, issuerSignedItem: kotlin.Array<IssuerSignedItem>) =
+            apply {
                 this.nameSpaces[nameSpaces] = issuerSignedItem
-        }
+            }
 
         fun setIssuerAuth(issuerAuth: CoseSign1) = apply {
             this.issuerAuth = issuerAuth

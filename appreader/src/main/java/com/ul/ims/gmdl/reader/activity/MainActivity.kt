@@ -22,12 +22,14 @@ import androidx.navigation.NavController
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
 import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.preference.PreferenceManager
 import com.ul.ims.gmdl.reader.R
+import org.jetbrains.anko.toast
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var navController: NavController
+    private val timeInterval = 2000 // # milliseconds passed between two back presses
+    private var mBackPressed: Long = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,11 +37,22 @@ class MainActivity : AppCompatActivity() {
 
         navController = Navigation.findNavController(this, R.id.nav_host_fragment)
         setupActionBarWithNavController(navController)
-
-        // set any default values for our settings
-        PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false)
     }
 
     override fun onSupportNavigateUp() =
         findNavController(R.id.nav_host_fragment).navigateUp()
+
+    override fun onBackPressed() {
+        if (findNavController(R.id.nav_host_fragment).currentDestination?.id == R.id.scanDeviceEngagementFragment) {
+            if (mBackPressed + timeInterval > System.currentTimeMillis()) {
+                super.onBackPressed()
+                return
+            } else {
+                toast(getString(R.string.toast_press_back_twice))
+            }
+            mBackPressed = System.currentTimeMillis()
+        } else {
+            super.onBackPressed()
+        }
+    }
 }

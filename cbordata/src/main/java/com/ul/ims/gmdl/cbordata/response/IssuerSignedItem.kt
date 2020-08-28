@@ -36,11 +36,11 @@ import java.io.Serializable
 import java.util.zip.DataFormatException
 
 class IssuerSignedItem internal constructor(
-        val digestId: Int,
-        val randomValue: ByteArray,
-        val elementIdentifier: String,
-        val elementValue: Any
-) : AbstractCborStructure() , Serializable {
+    val digestId: Int,
+    val randomValue: ByteArray,
+    val elementIdentifier: String,
+    val elementValue: Any
+) : AbstractCborStructure(), Serializable {
 
     companion object {
         const val LOG_TAG = "IssuerSignedItem"

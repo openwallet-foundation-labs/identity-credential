@@ -18,6 +18,8 @@ package com.ul.ims.gmdl.bleofflinetransfer.peripheral
 
 import android.bluetooth.*
 import android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE
+import android.bluetooth.BluetoothProfile.GATT
+import android.bluetooth.BluetoothProfile.GATT_SERVER
 import android.content.Context
 import android.util.Log
 import com.ul.ims.gmdl.bleofflinetransfer.*
@@ -152,8 +154,13 @@ class GattServer (
 
     fun close() {
         try {
-            currentDevice.takeIf { it != null }.apply {
-                getBluetoothGattServer().cancelConnection(currentDevice)
+            currentDevice?.let {
+                if (bluetoothManager.getConnectedDevices(GATT)?.contains(it) == true) {
+                    getBluetoothGattServer().cancelConnection(it)
+                }
+                if (bluetoothManager.getConnectedDevices(GATT_SERVER)?.contains(it) == true) {
+                    getBluetoothGattServer().cancelConnection(it)
+                }
             }
             getBluetoothGattServer().clearServices()
             getBluetoothGattServer().close()

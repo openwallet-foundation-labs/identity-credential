@@ -17,6 +17,7 @@
 package com.ul.ims.gmdl.reader.fragment
 
 import android.Manifest
+import androidx.test.espresso.Espresso.onData
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -26,10 +27,12 @@ import androidx.test.rule.GrantPermissionRule
 import androidx.test.runner.AndroidJUnit4
 import com.ul.ims.gmdl.reader.R
 import com.ul.ims.gmdl.reader.activity.MainActivity
-import org.junit.Before
+import org.hamcrest.Matchers.anything
+import org.hamcrest.Matchers.containsString
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+
 
 @RunWith(AndroidJUnit4::class)
 class QrcodeScanFragmentTest {
@@ -47,19 +50,20 @@ class QrcodeScanFragmentTest {
     @JvmField
     val mActivityRule = ActivityTestRule(MainActivity::class.java)
 
-    @Before
-    fun setUp() {
-        onView(withId(R.id.btn_verifier)).perform(click())
-    }
-
     @Test
     fun testUi() {
+        onView(withId(R.id.txt_scan_qrcode_label)).check(matches(isDisplayed()))
+        onView(withText(R.string.txt_scan_device_engagement_label)).check(matches(isDisplayed()))
+        onView(withId(R.id.qrcode_scan_view)).check(matches(isDisplayed()))
+
+        onView(withId(R.id.spn_data_request)).perform(click())
+        onData(anything()).atPosition(2).perform(click())
+
         // Consent Dialog
         onView(withText(R.string.verifier_request_dialog)).check(matches(isDisplayed()))
         onView(withText(android.R.string.ok)).perform(click())
 
-        onView(withId(R.id.txt_scan_qrcode_label)).check(matches(isDisplayed()))
-        onView(withText(R.string.txt_scan_qrcode_label)).check(matches(isDisplayed()))
-        onView(withId(R.id.qrcode_scan_view)).check(matches(isDisplayed()))
+        onView(withId(R.id.spn_data_request))
+            .check(matches(withSpinnerText(containsString("Custom"))))
     }
 }

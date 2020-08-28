@@ -22,7 +22,7 @@ import android.graphics.BitmapFactory
 import android.icu.util.Calendar
 import android.os.Parcelable
 import androidx.security.identity.AccessControlProfileId
-import androidx.security.identity.PersonalizationData;
+import androidx.security.identity.PersonalizationData
 import androidx.security.identity.ResultData
 import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
 import com.ul.ims.gmdl.cbordata.R
@@ -53,11 +53,14 @@ class UserCredential private constructor(
         const val CREDENTIAL_NAME = "mdlUserCredential"
     }
 
-    fun getCredentialsForProvisioning(accessControlProfileIds: Collection<AccessControlProfileId>,
-                                      builder: PersonalizationData.Builder) {
+    fun getCredentialsForProvisioning(
+        accessControlProfileIds: Collection<AccessControlProfileId>,
+        builder: PersonalizationData.Builder
+    ) {
         val mdlNameSpace = MdlNamespace.namespace
         familyName?.let {
-            builder.putEntryString(mdlNameSpace,
+            builder.putEntryString(
+                mdlNameSpace,
                 MdlDataIdentifiers.FAMILY_NAME.identifier,
                 accessControlProfileIds,
                 it
@@ -168,21 +171,45 @@ class UserCredential private constructor(
 
         fun fromResultNamespace(resultData: ResultData) = apply {
             val mdlNameSpace = MdlNamespace.namespace
-            familyName = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.FAMILY_NAME.identifier)
-            givenNames = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.GIVEN_NAMES.identifier)
+            familyName =
+                resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.FAMILY_NAME.identifier)
+            givenNames =
+                resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.GIVEN_NAMES.identifier)
             dateOfBirth =
-                resultData.getEntryCalendar(mdlNameSpace, MdlDataIdentifiers.DATE_OF_BIRTH.identifier)
+                resultData.getEntryCalendar(
+                    mdlNameSpace,
+                    MdlDataIdentifiers.DATE_OF_BIRTH.identifier
+                )
             dateOfIssue =
-                resultData.getEntryCalendar(mdlNameSpace, MdlDataIdentifiers.DATE_OF_ISSUE.identifier)
+                resultData.getEntryCalendar(
+                    mdlNameSpace,
+                    MdlDataIdentifiers.DATE_OF_ISSUE.identifier
+                )
             dateOfExpiry =
-                resultData.getEntryCalendar(mdlNameSpace, MdlDataIdentifiers.DATE_OF_EXPIRY.identifier)
-            issuingCountry = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.ISSUING_COUNTRY.identifier)
-            issuingAuthority = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.ISSUING_AUTHORITY.identifier)
-            licenseNumber = resultData.getEntryString(mdlNameSpace, MdlDataIdentifiers.LICENSE_NUMBER.identifier)
-            resultData.getEntry(mdlNameSpace, MdlDataIdentifiers.CATEGORIES_OF_VEHICLES.identifier)?.let {
-                categoriesOfVehicles = DrivingPrivileges.Builder().fromCborBytes(it).build()
-            }
-            val portrait = resultData.getEntryBytestring(mdlNameSpace, MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier)
+                resultData.getEntryCalendar(
+                    mdlNameSpace,
+                    MdlDataIdentifiers.DATE_OF_EXPIRY.identifier
+                )
+            issuingCountry = resultData.getEntryString(
+                mdlNameSpace,
+                MdlDataIdentifiers.ISSUING_COUNTRY.identifier
+            )
+            issuingAuthority = resultData.getEntryString(
+                mdlNameSpace,
+                MdlDataIdentifiers.ISSUING_AUTHORITY.identifier
+            )
+            licenseNumber = resultData.getEntryString(
+                mdlNameSpace,
+                MdlDataIdentifiers.LICENSE_NUMBER.identifier
+            )
+            resultData.getEntry(mdlNameSpace, MdlDataIdentifiers.CATEGORIES_OF_VEHICLES.identifier)
+                ?.let {
+                    categoriesOfVehicles = DrivingPrivileges.Builder().fromCborBytes(it).build()
+                }
+            val portrait = resultData.getEntryBytestring(
+                mdlNameSpace,
+                MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier
+            )
             portrait?.let {
                 portraitOfHolder = BitmapFactory.decodeByteArray(it, 0, it.size)
             }

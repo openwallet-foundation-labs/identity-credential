@@ -87,7 +87,12 @@ class NfcTransportManager(
 
     fun close() {
         Log.d(LOG_TAG, "close")
-        context.unregisterReceiver(nfcReceiverHolder)
+        try {
+            context.unregisterReceiver(nfcReceiverHolder)
+        } catch (e: IllegalArgumentException) {
+            // Ignore error when trying to unregister receiver
+            Log.e(LOG_TAG, "Ignored error: ${e.message}")
+        }
     }
 
     override fun setReadyForNextFile(boolean: Boolean) {

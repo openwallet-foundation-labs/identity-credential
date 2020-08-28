@@ -22,7 +22,6 @@ import android.os.Looper
 import android.util.Log
 import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.MutableLiveData
-import androidx.security.identity.IdentityCredential
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.interpreter.CborDataInterpreter
 import com.ul.ims.gmdl.cbordata.security.CoseKey
@@ -190,6 +189,7 @@ class CborManager constructor(
 
     override fun tearDown() {
         transportLayer?.close()
+        data = MutableLiveData()
     }
 
     override fun getCryptoObject(): BiometricPrompt.CryptoObject? {

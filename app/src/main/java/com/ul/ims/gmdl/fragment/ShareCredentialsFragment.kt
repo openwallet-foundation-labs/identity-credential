@@ -18,7 +18,10 @@ package com.ul.ims.gmdl.fragment
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Looper
@@ -35,15 +38,21 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.bleofflinetransfer.utils.BleUtils
+import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
+import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
 import com.ul.ims.gmdl.databinding.FragmentShareCredentialsBinding
 import com.ul.ims.gmdl.dialog.ConsentDialog
 import com.ul.ims.gmdl.dialog.CustomAlertDialog
+import com.ul.ims.gmdl.nfcengagement.NfcHandler
+import com.ul.ims.gmdl.nfcengagement.NfcHandler.Companion.ACTION_NFC_DEVICE_ENGAGEMENT_CALLBACK
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.utils.BiometricUtils
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
+import com.ul.ims.gmdl.util.NfcTransferApduService
 import com.ul.ims.gmdl.util.SettingsUtils
 import com.ul.ims.gmdl.util.SharedPreferenceUtils
 import com.ul.ims.gmdl.viewmodel.ShareCredentialsViewModel
+import com.ul.ims.gmdl.wifiofflinetransfer.utils.WifiUtils
 import org.jetbrains.anko.support.v4.runOnUiThread
 import java.util.concurrent.Executor
 
@@ -55,7 +64,7 @@ class ShareCredentialsFragment : Fragment() {
 
 
     companion object {
-        val LOG_TAG = ShareCredentialsFragment::class.java.simpleName
+        private val LOG_TAG = ShareCredentialsFragment::class.java.simpleName
         private const val REQUEST_FINE_LOCATION = 123
         private const val REQUEST_ENABLE_BT = 456
     }
@@ -71,7 +80,16 @@ class ShareCredentialsFragment : Fragment() {
 
         it.run()
     }
-    private lateinit var consent : Map<String, Boolean>
+    private lateinit var consent: Map<String, Boolean>
+
+    private val nfcDeviceEngagementReceiver = object : BroadcastReceiver() {
+
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.d(LOG_TAG, "onReceive $intent")
+            vm.setupHolderNfc(transferMethod)
+        }
+
+    }
 
     private val biometricAuthCallback = object : BiometricPrompt.AuthenticationCallback() {
 
@@ -136,24 +154,27 @@ class ShareCredentialsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         if (TransferChannels.BLE == transferMethod) {
-            if (!BleUtils.isBtEnabled(requireContext())) {
+            if (BleUtils.isBtEnabled(requireContext())) {
+                shouldRequestPermission()
+            } else {
                 // Update UI
                 vm.isBleEnabled(false)
 
                 // Request user to enable BLE
                 requestToTurnOnBle(requireView())
-                return
             }
-
         } else if (TransferChannels.WiFiAware == transferMethod) {
-            // TODO(JS): Enable wifi?
+            if (WifiUtils.isWifiEnabled(requireContext())) {
+                shouldRequestPermission()
+            } else {
+                // Update UI
+                vm.isWifiEnabled(false)
+            }
         } else if (TransferChannels.NFC == transferMethod) {
-            Log.d(LOG_TAG, "NFC transfer selected")
+            shouldRequestPermission()
         } else {
             throw UnsupportedOperationException("Unsupported transfer method")
         }
-
-        shouldRequestPermission()
     }
 
     private fun setupHolder() {
@@ -162,21 +183,28 @@ class ShareCredentialsFragment : Fragment() {
             if (!BiometricUtils.isBiometricEnrolled(requireContext())) {
                 CustomAlertDialog(requireContext()) {
                     findNavController().popBackStack()
-                }.showErrorDialog(getString(R.string.fingerprint_removed_error),
-                    getString(R.string.fingerprint_removed_error_desc))
+                }.showErrorDialog(
+                    getString(R.string.fingerprint_removed_error),
+                    getString(R.string.fingerprint_removed_error_desc)
+                )
                 return
             }
         }
 
-        // Create the QRCode
-        vm.createDeQrCode(transferMethod)
+        // Create the QRCode and start NFC tag service
+        vm.createHolderDe(transferMethod)
 
-        vm.getOfflineTransferStatusLd().observe(viewLifecycleOwner, Observer {myData ->
-            when(myData.status) {
+        val filter = IntentFilter(ACTION_NFC_DEVICE_ENGAGEMENT_CALLBACK)
+        context?.registerReceiver(nfcDeviceEngagementReceiver, filter)
+
+        vm.getOfflineTransferStatusLd().observe(viewLifecycleOwner, Observer { myData ->
+            when (myData.status) {
                 Resource.Status.NO_DEVICE_FOUND -> {
                     CustomAlertDialog(requireContext()) { navigateBack() }
-                        .showErrorDialog(getString(R.string.err_no_device_found),
-                            getString(R.string.ble_no_device_found))
+                        .showErrorDialog(
+                            getString(R.string.err_no_device_found),
+                            getString(R.string.ble_no_device_found)
+                        )
                 }
 
                 Resource.Status.ASK_USER_CONSENT -> {
@@ -186,15 +214,40 @@ class ShareCredentialsFragment : Fragment() {
                         ConsentDialog(it, { consent ->
                             this.consent = consent
                             canAuthenticate()
-                        },{
+                        }, {
                             vm.onUserConsentCancel()
                         }).show(parentFragmentManager, "consentdialog")
                     }
 
                 }
-                else -> Log.v(LOG_TAG, "Offline transfer: ${myData.status}")
+                Resource.Status.TRANSFER_SUCCESSFUL -> {
+                    CustomAlertDialog(requireContext()) { navigateBack() }
+                        .showErrorDialog(
+                            getString(R.string.alert_transfer_complete_title),
+                            getString(R.string.alert_transfer_complete_text)
+                        )
+                }
+                else -> Log.d(LOG_TAG, "Status: ${myData.status} message: ${myData.message}")
             }
         })
+
+        // Only for NFC transfer is asked to the user to consent with the sharing information prior
+        if (TransferChannels.NFC == transferMethod) {
+            val requestItems = MdlNamespace.items.keys.filter {
+                it != MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier
+            }.toList()
+
+            ConsentDialog(requestItems, { consent ->
+                this.consent = consent
+                canAuthenticate()
+            }, {
+                if (TransferChannels.NFC == transferMethod) {
+                    navigateBack()
+                } else {
+                    vm.onUserConsentCancel()
+                }
+            }).show(parentFragmentManager, "consentdialog")
+        }
     }
 
     // TODO: Right now we show the biometric auth dialog on every presentation. This is a bug,
@@ -206,9 +259,7 @@ class ShareCredentialsFragment : Fragment() {
 
             if (BiometricUtils.isBiometricEnrolled(requireContext())) {
                 try {
-                    val cryptoObject = vm.getCryptoObject()
-
-                    cryptoObject?.let {co ->
+                    vm.getCryptoObject()?.let { co ->
                         showBiometricPrompt(co)
                     }
                 } catch (ex: RuntimeException) {
@@ -223,18 +274,35 @@ class ShareCredentialsFragment : Fragment() {
 
     private fun onUserConsent() {
         if (::consent.isInitialized) {
-            vm.onUserConsent(consent)
+            if (TransferChannels.NFC == transferMethod) {
+                vm.onUserPreConsent(consent)
+            } else {
+                vm.onUserConsent(consent)
+            }
         }
     }
 
     private fun navigateBack() {
-        findNavController().popBackStack()
+        if (findNavController().currentDestination?.id == R.id.shareCredentialsFragment) {
+            findNavController().popBackStack()
+        }
     }
 
     override fun onStop() {
         super.onStop()
 
         vm.tearDownTransfer()
+        try {
+            context?.unregisterReceiver(nfcDeviceEngagementReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Ignore error when trying to unregister receiver
+            Log.e(LOG_TAG, "Ignored error: ${e.message}")
+        }
+
+        val intent = Intent(context, NfcHandler::class.java)
+        context?.stopService(intent)
+        val intentTransfer = Intent(context, NfcTransferApduService::class.java)
+        context?.stopService(intentTransfer)
     }
 
     private fun shouldRequestPermission() {
@@ -323,7 +391,6 @@ class ShareCredentialsFragment : Fragment() {
     fun requestPermission(view: View) {
         requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_FINE_LOCATION)
     }
-
 
     private fun showBiometricPrompt(cryptoObject: BiometricPrompt.CryptoObject) {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()

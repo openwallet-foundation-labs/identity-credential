@@ -16,7 +16,6 @@
 
 package com.ul.ims.gmdl.cbordata.response
 
-import android.util.Log
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array

@@ -43,6 +43,9 @@ class NfcHandler : HostApduService() {
         const val EXTRA_WIFI_5GHZ_BAND_SUPPORTED =
             "ul.ims.gmdl.mdlnfc.EXTRA_WIFI_5GHZ_BAND_SUPPORTED"
         private const val TAG = "NfcHandler"
+        const val ACTION_NFC_DEVICE_ENGAGEMENT_CALLBACK =
+            "com.ul.ims.gmdl.ACTION_NFC_DEVICE_ENGAGEMENT_CALLBACK"
+        const val PACKAGE_NFC_DEVICE_ENGAGEMENT_CALLBACK = "com.ul.ims.gmdl"
     }
 
     class File(val fileId: ByteArray, val content: ByteArray)
@@ -173,7 +176,7 @@ class NfcHandler : HostApduService() {
         Log.d(TAG, "Command -> " + toHexString(commandApdu))
 
         val response = when (getCommandType(commandApdu)) {
-            CommandType.SELECT_BY_AID -> statusWordOK
+            CommandType.SELECT_BY_AID -> handleSelectByAid(commandApdu)
             CommandType.SELECT_FILE -> handleSelectFile(commandApdu)
             CommandType.READ_BINARY -> handleReadBinary(commandApdu)
             CommandType.UPDATE_BINARY -> handleUpdateBinary()
@@ -207,6 +210,22 @@ class NfcHandler : HostApduService() {
         }
 
         return CommandType.OTHER
+    }
+
+    private fun handleSelectByAid(commandApdu: ByteArray?): ByteArray {
+        val aid = byteArrayOf(0xD2.toByte(), 0x76, 0x00, 0x00, 0x85.toByte(), 0x01, 0x01)
+        commandApdu?.let { apdu ->
+            if (apdu.size < 12 || !apdu.copyOfRange(5, 12).contentEquals(aid)) {
+                return statusWordFileNotFound
+            }
+            Intent().also { intent ->
+                intent.action = ACTION_NFC_DEVICE_ENGAGEMENT_CALLBACK
+                intent.setPackage(PACKAGE_NFC_DEVICE_ENGAGEMENT_CALLBACK)
+                sendBroadcast(intent)
+            }
+            return statusWordOK
+        }
+        return statusWordFileNotFound
     }
 
     private fun handleSelectFile(commandApdu: ByteArray?): ByteArray {

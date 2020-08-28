@@ -16,7 +16,8 @@
 
 package com.ul.ims.gmdl.fragment
 
-import androidx.test.espresso.Espresso.*
+import androidx.test.espresso.Espresso.onData
+import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.*
@@ -25,7 +26,7 @@ import androidx.test.runner.AndroidJUnit4
 import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.activity.MainActivity
 import com.ul.ims.gmdl.utils.waitId
-import org.junit.Before
+import org.hamcrest.Matchers.anything
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,19 +39,18 @@ class ShareCredentialsFragmentTest {
     @JvmField
     val mActivityRule = ActivityTestRule(MainActivity::class.java)
 
-    @Before
-    fun setup() {
-        onView(withId(R.id.btn_holder)).perform(click())
-    }
-
     @Test
     fun testUi() {
         // Wait up to 8 seconds for this view to show up
         onView(isRoot()).perform(
-            waitId(R.id.img_share_credential,TimeUnit.SECONDS.toMillis(8))
+            waitId(R.id.btn_share_mdl, TimeUnit.SECONDS.toMillis(8))
         )
 
-        onView(withId(R.id.img_share_credential)).perform(click())
+        // Select the first option (BLE) on transfer method
+        onView(withId(R.id.spn_transfer_method)).perform(click())
+        onData(anything()).atPosition(0).perform(click())
+
+        onView(withId(R.id.btn_share_mdl)).perform(click())
 
         // as we test using an AVD, bluetooth capabilities are not available, so we can test only the case if bt is off
         onView(withId(R.id.permission_denied_txt)).check(matches(isDisplayed()))

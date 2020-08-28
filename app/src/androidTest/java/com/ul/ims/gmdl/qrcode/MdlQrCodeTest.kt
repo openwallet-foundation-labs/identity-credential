@@ -36,7 +36,7 @@ class MdlQrCodeTest {
             .setDeviceEngagement(de)
             .build()
 
-        val qrcode = mdlQrCode.getQrCode()
+        val qrcode = mdlQrCode.getQrCode(400, 400)
 
         Assert.assertNotNull(qrcode)
     }
