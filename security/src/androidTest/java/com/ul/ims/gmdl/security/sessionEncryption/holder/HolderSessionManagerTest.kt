@@ -17,9 +17,15 @@
 package com.ul.ims.gmdl.security.sessionEncryption.holder
 
 import android.content.Context
+import androidx.security.identity.IdentityCredentialException
 import androidx.test.core.app.ApplicationProvider
+import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
+import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
 import com.ul.ims.gmdl.cbordata.response.Response
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionData
+import com.ul.ims.gmdl.security.TestUtils.CHIPER_SUITE_IDENT
+import com.ul.ims.gmdl.security.TestUtils.DE_VERSION
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
 import org.junit.Assert
@@ -57,26 +63,47 @@ class HolderSessionManagerTest {
         holderSessionManager.initializeHolderSession()
 
         val coseKey = holderSessionManager.generateHolderCoseKey()
-        coseKey?.let {
-            val verifierSessionManager = VerifierSessionManager(it)
-            val rCoseKey = verifierSessionManager.getReaderCoseKey()
-            Assert.assertNotNull(rCoseKey)
+            ?: throw IdentityCredentialException("Error generating Holder CoseKey")
 
-            rCoseKey?.let {ck ->
-                holderSessionManager.setVerifierEphemeralPublicKey(ck)
+        val security = Security.Builder()
+            .setCoseKey(coseKey)
+            .setCipherSuiteIdent(CHIPER_SUITE_IDENT)
+            .build()
 
-                val encryptedMsg = verifierSessionManager.encryptData(
-                    VERIFIER_MSG_TO_HOLDER.toByteArray())
-                encryptedMsg?.let {msg ->
-                    val sessionEstablishment = verifierSessionManager.
-                        createSessionEstablishment(msg)
+        // Device engagement for QR Code
+        val deBuilder = DeviceEngagement.Builder()
 
-                    val decryptedSessionEstablishment = holderSessionManager.
-                        decryptSessionEstablishment(sessionEstablishment)
-                    Assert.assertNotNull(decryptedSessionEstablishment)
-                    Assert.assertArrayEquals(VERIFIER_MSG_TO_HOLDER.toByteArray(),
-                        decryptedSessionEstablishment)
-                }
+        deBuilder.version(DE_VERSION)
+        deBuilder.security(security)
+
+        val deviceEngagement = deBuilder.build()
+        val verifierSessionManager = VerifierSessionManager(coseKey, deviceEngagement)
+        val rCoseKey = verifierSessionManager.getReaderCoseKey()
+        Assert.assertNotNull(rCoseKey)
+
+        rCoseKey?.let { ck ->
+            holderSessionManager.setVerifierEphemeralPublicKey(ck)
+            val sessionTranscript = SessionTranscript.Builder()
+                .setReaderKey(ck.encode())
+                .setDeviceEngagement(deviceEngagement.encode())
+                .build()
+
+            holderSessionManager.setSessionTranscript(sessionTranscript.encode())
+
+            val encryptedMsg = verifierSessionManager.encryptData(
+                VERIFIER_MSG_TO_HOLDER.toByteArray()
+            )
+            encryptedMsg?.let { msg ->
+                val sessionEstablishment =
+                    verifierSessionManager.createSessionEstablishment(msg)
+
+                val decryptedSessionEstablishment =
+                    holderSessionManager.decryptSessionEstablishment(sessionEstablishment)
+                Assert.assertNotNull(decryptedSessionEstablishment)
+                Assert.assertArrayEquals(
+                    VERIFIER_MSG_TO_HOLDER.toByteArray(),
+                    decryptedSessionEstablishment
+                )
             }
         }
     }
@@ -99,22 +126,41 @@ class HolderSessionManagerTest {
 
         // Correct Response
         val coseKey = holderSessionManager.generateHolderCoseKey()
-        coseKey?.let {
-            val verifierSessionManager = VerifierSessionManager(it)
-            val coseKeyReader = verifierSessionManager.getReaderCoseKey()
-            coseKeyReader?.let { ck ->
-                holderSessionManager.setVerifierEphemeralPublicKey(ck)
-                val correctResponse = Response.Builder().isError().build().encode()
-                response = holderSessionManager.generateResponse(correctResponse)
-                Assert.assertNotNull(response)
-                sessionData = SessionData.Builder()
-                    .decode(response)
-                    .build()
+            ?: throw IdentityCredentialException("Error generating Holder CoseKey")
 
-                Assert.assertNotNull(sessionData)
-                Assert.assertNull(sessionData.errorCode)
-                Assert.assertNotNull(sessionData.encryptedData)
-            }
+        val security = Security.Builder()
+            .setCoseKey(coseKey)
+            .setCipherSuiteIdent(CHIPER_SUITE_IDENT)
+            .build()
+
+        // Device engagement for QR Code
+        val deBuilder = DeviceEngagement.Builder()
+
+        deBuilder.version(DE_VERSION)
+        deBuilder.security(security)
+        val deviceEngagement = deBuilder.build()
+
+        val verifierSessionManager = VerifierSessionManager(coseKey, deviceEngagement)
+        val coseKeyReader = verifierSessionManager.getReaderCoseKey()
+        coseKeyReader?.let { ck ->
+            holderSessionManager.setVerifierEphemeralPublicKey(ck)
+            val sessionTranscript = SessionTranscript.Builder()
+                .setReaderKey(ck.encode())
+                .setDeviceEngagement(deviceEngagement.encode())
+                .build()
+
+            holderSessionManager.setSessionTranscript(sessionTranscript.encode())
+
+            val correctResponse = Response.Builder().isError().build().encode()
+            response = holderSessionManager.generateResponse(correctResponse)
+            Assert.assertNotNull(response)
+            sessionData = SessionData.Builder()
+                .decode(response)
+                .build()
+
+            Assert.assertNotNull(sessionData)
+            Assert.assertNull(sessionData.errorCode)
+            Assert.assertNotNull(sessionData.encryptedData)
         }
     }
 }

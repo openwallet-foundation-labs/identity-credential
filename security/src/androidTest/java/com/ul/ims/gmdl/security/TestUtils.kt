@@ -19,7 +19,7 @@ package com.ul.ims.gmdl.security
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.security.identity.*
-import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
+import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype.docType
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import java.security.InvalidAlgorithmParameterException
 import java.security.KeyPair
@@ -30,10 +30,12 @@ import java.security.interfaces.ECPublicKey
 import java.util.*
 
 object TestUtils {
+    const val DE_VERSION = "1.0"
+    const val CHIPER_SUITE_IDENT = 1
 
     // Generate an Ephemeral KeyPair
-    fun genEphemeralKeyPair() : KeyPair? {
-        var mEphemeralKeyPair : KeyPair? = null
+    fun genEphemeralKeyPair(): KeyPair? {
+        var mEphemeralKeyPair: KeyPair? = null
 
         //Create a Public Key
         try {
@@ -63,12 +65,12 @@ object TestUtils {
     }
 
     // Create a CoseKey Obj
-    fun genCoseKey() : CoseKey? {
+    fun genCoseKey(): CoseKey {
         val mEphemeralKeyPair = genEphemeralKeyPair()
 
         val holderPKey = mEphemeralKeyPair?.public as? ECPublicKey
 
-        var holderCoseKey : CoseKey? = null
+        var holderCoseKey: CoseKey? = null
 
         holderPKey?.let {
             val holderKeyBuilder = CoseKey.Builder()
@@ -81,6 +83,7 @@ object TestUtils {
             holderCoseKey = holderKeyBuilder.build()
         }
         return holderCoseKey
+            ?: throw IdentityCredentialException("Error generating Holder CoseKey")
     }
 
     // Create a Credential
@@ -109,30 +112,28 @@ object TestUtils {
             e.printStackTrace()
         }
 
-        val profiles = LinkedList<AccessControlProfile>()
+        val personalizationBuilder = PersonalizationData.Builder()
 
-        // Profile 0 (no authentication)
-        profiles.add(
-            AccessControlProfile.Builder(0)
+        // Profile 1 no auth.
+        personalizationBuilder.addAccessControlProfile(
+            AccessControlProfile.Builder(AccessControlProfileId(1))
                 .setUserAuthenticationRequired(false)
                 .build()
         )
 
-        val entryNamespaces = LinkedList<EntryNamespace>()
-        val idsNoAuth = ArrayList<Int>()
-        idsNoAuth.add(0)
-        entryNamespaces.add(
-            EntryNamespace.Builder(MdlDoctype.docType)
-                .addStringEntry("First name", idsNoAuth, "Alan")
-                .addStringEntry("Last name", idsNoAuth, "Turing")
-                .addStringEntry("Home address", idsNoAuth, "Maida Vale, London, England")
-                .addStringEntry("Birth date", idsNoAuth, "19120623")
-                .addBooleanEntry("Cryptanalyst", idsNoAuth, true)
-                .addBytestringEntry("Portrait image", idsNoAuth, byteArrayOf(0x01, 0x02))
-                .build()
-        )
+        val idsNoAuth = ArrayList<AccessControlProfileId>()
+        idsNoAuth.add(AccessControlProfileId(1))
 
-        wc?.personalize(profiles, entryNamespaces)
+        personalizationBuilder.let {
+            it.putEntryString(docType, "First name", idsNoAuth, "Alan")
+            it.putEntryString(docType, "Last name", idsNoAuth, "Turing")
+            it.putEntryString(docType, "Home address", idsNoAuth, "Maida Vale, London, England")
+            it.putEntryString(docType, "Birth date", idsNoAuth, "19120623")
+            it.putEntryBoolean(docType, "Cryptanalyst", idsNoAuth, true)
+            it.putEntryBytestring(docType, "Portrait image", idsNoAuth, byteArrayOf(0x01, 0x02))
+        }
+
+        wc?.personalize(personalizationBuilder.build())
 
         return certificateChain
     }

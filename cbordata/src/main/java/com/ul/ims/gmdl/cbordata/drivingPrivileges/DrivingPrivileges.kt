@@ -54,21 +54,36 @@ class DrivingPrivileges private constructor(
         }
     }
 
-    fun toCborDataItem() : DataItem {
+    fun toCborDataItem(): DataItem {
         val cborDataItemArr = Array()
 
-        drivingPrivileges.forEach { drivingPriv->
+        drivingPrivileges.forEach { drivingPriv ->
             cborDataItemArr.add(drivingPriv.toDataItem())
         }
 
         return cborDataItemArr
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as DrivingPrivileges
+
+        if (drivingPrivileges != other.drivingPrivileges) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return drivingPrivileges.hashCode()
+    }
+
     class Builder {
         // Using LinkedList to preserve the insertion order
         private var drivingPrivileges = LinkedList<DrivingPrivilege>()
 
-        fun fromCborBytes(cborBytes : ByteArray) = apply {
+        fun fromCborBytes(cborBytes: ByteArray) = apply {
             val bais = ByteArrayInputStream(cborBytes)
 
             try {

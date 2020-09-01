@@ -16,15 +16,9 @@
 
 package com.ul.ims.gmdl.cbordata.drivingPrivileges
 
-import co.nstant.`in`.cbor.CborEncoder
-import co.nstant.`in`.cbor.model.Map
-import co.nstant.`in`.cbor.model.UnicodeString
-import co.nstant.`in`.cbor.model.UnsignedInteger
-import com.ul.ims.gmdl.cbordata.utils.CborUtils.encodeToString
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
-import java.io.ByteArrayOutputStream
 
 
 class DrivingPrivilegesTest {
@@ -86,7 +80,9 @@ class DrivingPrivilegesTest {
         val encoded = drivingPrivileges.encode()
 
         Assert.assertNotNull(encoded)
-        Assert.assertArrayEquals(expectedEncoded, encoded)
+
+        val dp = DrivingPrivileges.Builder().fromCborBytes(expectedEncoded).build()
+        Assert.assertEquals(dp, drivingPrivileges)
     }
 
     @Test
@@ -113,19 +109,20 @@ class DrivingPrivilegesTest {
         Assert.assertEquals(4, privileges.drivingPrivileges.size)
     }
 
-    @Test
-    fun cborCanonicalTest() {
-        val map = Map()
-        map.put(UnicodeString("c"), UnsignedInteger(3))
-        map.put(UnicodeString("b"), UnsignedInteger(2))
-        map.put(UnicodeString("a"), UnsignedInteger(1))
-
-        var baos = ByteArrayOutputStream()
-        CborEncoder(baos).encode(map)
-        Assert.assertEquals("a3616101616202616303", encodeToString(baos.toByteArray()))
-
-        baos = ByteArrayOutputStream()
-        CborEncoder(baos).encode(map)
-        Assert.assertEquals("a3616303616202616101", encodeToString(baos.toByteArray()))
-    }
+    // Test is only valid using Cbor library with nonCanonical support
+//    @Test
+//    fun cborCanonicalTest() {
+//        val map = Map()
+//        map.put(UnicodeString("c"), UnsignedInteger(3))
+//        map.put(UnicodeString("b"), UnsignedInteger(2))
+//        map.put(UnicodeString("a"), UnsignedInteger(1))
+//
+//        var baos = ByteArrayOutputStream()
+//        CborEncoder(baos).encode(map)
+//        Assert.assertEquals("a3616101616202616303", encodeToString(baos.toByteArray()))
+//
+//        baos = ByteArrayOutputStream()
+//        CborEncoder(baos).encode(map)
+//        Assert.assertEquals("a3616303616202616101", encodeToString(baos.toByteArray()))
+//    }
 }

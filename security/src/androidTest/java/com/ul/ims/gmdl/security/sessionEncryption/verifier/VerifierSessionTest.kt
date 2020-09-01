@@ -16,6 +16,11 @@
 
 package com.ul.ims.gmdl.security.sessionEncryption.verifier
 
+import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
+import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
+import com.ul.ims.gmdl.security.TestUtils.CHIPER_SUITE_IDENT
+import com.ul.ims.gmdl.security.TestUtils.DE_VERSION
+import com.ul.ims.gmdl.security.TestUtils.genCoseKey
 import com.ul.ims.gmdl.security.TestUtils.genEphemeralKeyPair
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSession
 import org.junit.Assert
@@ -28,11 +33,20 @@ class VerifierSessionTest {
     fun getReaderPublicKeyTest() {
         val mEphemeralKeyPair = genEphemeralKeyPair()
         val pk = mEphemeralKeyPair?.public
+        val security = Security.Builder()
+            .setCoseKey(genCoseKey())
+            .setCipherSuiteIdent(CHIPER_SUITE_IDENT)
+            .build()
+
+        // Device engagement for QR Code
+        val deBuilder = DeviceEngagement.Builder()
+
+        deBuilder.version(DE_VERSION)
+        deBuilder.security(security)
 
         pk?.let {
-            val session = VerifierSession(
-                it
-            )
+            val deviceEngagement = deBuilder.build()
+            val session = VerifierSession(it, deviceEngagement)
 
             Assert.assertNotNull(session.getReaderPublicKey())
             Assert.assertTrue(session.getReaderPublicKey() is ECPublicKey)

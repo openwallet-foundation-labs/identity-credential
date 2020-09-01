@@ -16,12 +16,20 @@
 
 package com.ul.ims.gmdl.security.sessionEncryption
 
+import androidx.security.identity.IdentityCredentialException
 import androidx.security.identity.IdentityCredentialStore
 import androidx.test.InstrumentationRegistry
+import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
+import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
+import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionData
+import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
 import com.ul.ims.gmdl.security.TestUtils
+import com.ul.ims.gmdl.security.TestUtils.CHIPER_SUITE_IDENT
+import com.ul.ims.gmdl.security.TestUtils.DE_VERSION
 import com.ul.ims.gmdl.security.sessionEncryption.holder.HolderSessionTest
-import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSession
-import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSession
+import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
+import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
 import org.junit.Assert
 import org.junit.Test
 
@@ -35,37 +43,80 @@ class SessionTest {
         val readerMessage = "hello from reader".toByteArray()
 
         // Create a Credential
-        store?.let {
-            it.deleteCredentialByName(HolderSessionTest.CREDENTIAL_NAME)
-            TestUtils.createCredential(it, HolderSessionTest.CREDENTIAL_NAME)
+        store.deleteCredentialByName(HolderSessionTest.CREDENTIAL_NAME)
+        TestUtils.createCredential(store, HolderSessionTest.CREDENTIAL_NAME)
+
+        // Session Manager is used to Encrypt/Decrypt Messages
+        val sessionManager =
+            HolderSessionManager.getInstance(appContext, HolderSessionTest.CREDENTIAL_NAME)
+
+        // Set up a new holder session so the Device Engagement COSE_Key is ephemeral to this engagement
+        sessionManager.initializeHolderSession()
+
+        // Generate a CoseKey with an Ephemeral Key
+        val coseKey = sessionManager.generateHolderCoseKey()
+            ?: throw IdentityCredentialException("Error generating Holder CoseKey")
+
+        val security = Security.Builder()
+            .setCoseKey(coseKey)
+            .setCipherSuiteIdent(CHIPER_SUITE_IDENT)
+            .build()
+
+        // Device engagement
+        val deBuilder = DeviceEngagement.Builder()
+        deBuilder.version(DE_VERSION)
+        deBuilder.security(security)
+        val deviceEngagement = deBuilder.build()
+
+        // Verifier Session Manager is used to Encrypt/Decrypt Messages
+        val verifierSessionManager = VerifierSessionManager(coseKey, deviceEngagement)
+
+        val verifierCoseKey = verifierSessionManager.getReaderCoseKey()
+            ?: throw IdentityCredentialException("Error generating Verifier CoseKey")
+
+        // Set up holder with reader cose key
+        sessionManager.setVerifierEphemeralPublicKey(verifierCoseKey)
+
+        // Generate a encrypted message from verifier to holder
+        var encryptedMsg = verifierSessionManager.encryptData(readerMessage)
+        Assert.assertNotNull(encryptedMsg)
+        encryptedMsg?.let {
+            // First message is sent inside the session establishment
+            val sessionEstablishment = SessionEstablishment.Builder()
+                .decode(verifierSessionManager.createSessionEstablishment(it).encode())
+                .build()
+
+            // Set session transcript in the holder side
+            sessionEstablishment.readerKey?.let { rKey ->
+                val sessionTranscript = SessionTranscript.Builder()
+                    .setReaderKey(rKey.encode())
+                    .setDeviceEngagement(deviceEngagement.encode())
+                    .build()
+
+                sessionManager.setSessionTranscript(sessionTranscript.encode())
+            }
+
+            val decryptedMsg = sessionManager.decryptData(it)
+
+            Assert.assertNotNull(decryptedMsg)
+            Assert.assertArrayEquals(readerMessage, decryptedMsg)
         }
 
-            val holderSession = HolderSession(appContext, HolderSessionTest.CREDENTIAL_NAME)
-            val pk = holderSession.getEphemeralPublicKey()
+        // Generate response encrypts data inside a Cbor structure
+        encryptedMsg = sessionManager.generateResponse(holderMessage)
+        Assert.assertNotNull(encryptedMsg)
 
-            pk?.let {pKey ->
-                val verifierSession = VerifierSession(pKey)
+        // Decode Cbor structure to get the data
+        val sessionData = SessionData.Builder()
+            .decode(encryptedMsg)
+            .build()
+        Assert.assertNotNull(sessionData.encryptedData)
 
-                // Holder Encrypt a msg and verifier must decrypt it
-                holderSession.setVerifierEphemeralPublicKey(verifierSession.getReaderPublicKey())
-
-                // Verifier Encrypt a msg and Holder must decrypt it
-                var encryptedMsg = verifierSession.encryptMessageToHolder(readerMessage)
-                Assert.assertNotNull(encryptedMsg)
-                encryptedMsg?.let {
-                    val decryptedMsg = holderSession.decryptMessageFromReader(it)
-                    Assert.assertNotNull(decryptedMsg)
-                    Assert.assertArrayEquals(readerMessage, decryptedMsg)
-                }
-
-                encryptedMsg = holderSession.encryptMessageToReader(holderMessage)
-                Assert.assertNotNull(encryptedMsg)
-
-                encryptedMsg?.let {
-                    val decryptedMsg = verifierSession.decryptMessageFromHolder(it)
-                    Assert.assertNotNull(decryptedMsg)
-                    Assert.assertArrayEquals(holderMessage, decryptedMsg)
-                }
-            }
+        sessionData.encryptedData?.let { encryptedRes ->
+            // Decrypt the message sent from holder to verifier
+            val decryptedMsg = verifierSessionManager.decryptData(encryptedRes)
+            Assert.assertNotNull(decryptedMsg)
+            Assert.assertArrayEquals(holderMessage, decryptedMsg)
+        }
     }
 }
