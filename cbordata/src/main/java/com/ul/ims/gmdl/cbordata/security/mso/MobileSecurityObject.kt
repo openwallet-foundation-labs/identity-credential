@@ -121,13 +121,37 @@ class MobileSecurityObject private constructor(
         return digestIdMap
     }
 
-    private fun getAlg(digestAlgorithm: ASN1ObjectIdentifier?) : String {
+    private fun getAlg(digestAlgorithm: ASN1ObjectIdentifier?): String {
         for (i in algorithmMap.keys) {
             if (digestAlgorithm == algorithmMap[i]) {
                 return i
             }
         }
         throw CborException("Unknown algorithm")
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as MobileSecurityObject
+
+        if (digestAlgorithm != other.digestAlgorithm) return false
+        if (coseKey != other.coseKey) return false
+        if (documentType != other.documentType) return false
+        if (listOfNameSpaces != other.listOfNameSpaces) return false
+        if (validityInfo != other.validityInfo) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = digestAlgorithm.hashCode()
+        result = 31 * result + (coseKey?.hashCode() ?: 0)
+        result = 31 * result + documentType.hashCode()
+        result = 31 * result + listOfNameSpaces.hashCode()
+        result = 31 * result + (validityInfo?.hashCode() ?: 0)
+        return result
     }
 
     class Builder {

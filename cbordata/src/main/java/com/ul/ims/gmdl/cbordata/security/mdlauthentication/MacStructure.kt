@@ -34,7 +34,7 @@ class MacStructure private constructor(
     override fun encode(): ByteArray {
         val outputStream = ByteArrayOutputStream()
         var builder = CborBuilder()
-        var structureArray = builder.addArray()
+        val structureArray = builder.addArray()
 
         structureArray.add(MAC_STRUCTURE_CONTEXT)
         structureArray.add(ByteString(alg))

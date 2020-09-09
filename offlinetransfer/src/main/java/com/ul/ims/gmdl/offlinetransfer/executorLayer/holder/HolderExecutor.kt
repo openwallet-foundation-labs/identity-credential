@@ -38,7 +38,6 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportEventListener
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportLayer
 import com.ul.ims.gmdl.offlinetransfer.utils.Log
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
-import kotlin.collections.HashMap
 
 class HolderExecutor(
     interpreter: IDataInterpreter,
@@ -98,8 +97,10 @@ class HolderExecutor(
                                     .build()
 
                                 sessionTranscript?.let {
-                                    com.ul.ims.gmdl.cbordata.utils.Log.d("SessionTranscript",
-                                        it.encodeToString())
+                                    com.ul.ims.gmdl.cbordata.utils.Log.d(
+                                        "SessionTranscript",
+                                        it.encodeToString()
+                                    )
 
                                     sessionManager?.setSessionTranscript(it.encode())
                                 }
@@ -197,10 +198,11 @@ class HolderExecutor(
                     }
 
                     sessionTranscript?.let {sTranscript ->
-                         try {
+                        try {
                             sessionManager?.let { session ->
                                 // Request data items which will appear in IssuerSigned
-                                val entriesToRequestIssuerSigned = HashMap<String, Collection<String>>()
+                                val entriesToRequestIssuerSigned =
+                                    HashMap<String, Collection<String>>()
                                 entriesToRequestIssuerSigned[MdlNamespace.namespace] = reqItems
 
                                 val resultDataIssuerSigned = session.getEntries(
@@ -209,14 +211,16 @@ class HolderExecutor(
 
                                 // We currently don't use DeviceSigned so make an empty
                                 // request for that.
-                                val entriesToRequestDeviceSigned = HashMap<String, Collection<String>>()
+                                val entriesToRequestDeviceSigned =
+                                    HashMap<String, Collection<String>>()
                                 val resultDataDeviceSigned = session.getEntries(
                                     entriesToRequestDeviceSigned
                                 ) ?: return errorResponse()
 
                                 val ecdsaSignatureBytes = resultDataDeviceSigned.ecdsaSignature
                                 val macBytes = resultDataDeviceSigned.messageAuthenticationCode
-                                val issuerAuthBytes = resultDataDeviceSigned.staticAuthenticationData
+                                val issuerAuthBytes =
+                                    resultDataDeviceSigned.staticAuthenticationData
 
                                 ecdsaSignatureBytes?.let { signature ->
                                     val coseSign1 = CoseSign1.Builder()
@@ -229,7 +233,7 @@ class HolderExecutor(
                                         .build()
                                     Log.d("Device Auth", deviceAuth.encodeToString())
 
-                                    issuerAuthBytes?.let { iAuth ->
+                                    issuerAuthBytes.let { iAuth ->
 
                                         val issuerAuth = CoseSign1.Builder()
                                             .decode(iAuth)
@@ -238,8 +242,8 @@ class HolderExecutor(
 
                                         // Retrieve the List of IssuerSignedItems used to create the
                                         // MSO contained in the retrieved Cose_Sign1
-                                        val issuerNamespaces = issuerAuthority?.
-                                            getIssuerNamespaces(iAuth)
+                                        val issuerNamespaces =
+                                            issuerAuthority?.getIssuerNamespaces(iAuth)
 
                                         issuerNamespaces?.let {
                                             return Response.Builder()
@@ -248,7 +252,8 @@ class HolderExecutor(
                                                     resultDataIssuerSigned,
                                                     deviceAuth,
                                                     issuerAuth,
-                                                    issuerNamespaces)
+                                                    issuerNamespaces
+                                                )
                                                 .build()
                                         }
                                     }
@@ -265,7 +270,7 @@ class HolderExecutor(
                                         .build()
                                     Log.d("Device Auth", deviceAuth.encodeToString())
 
-                                    issuerAuthBytes?.let { iAuth ->
+                                    issuerAuthBytes.let { iAuth ->
 
                                         val issuerAuth = CoseSign1.Builder()
                                             .decode(iAuth)
@@ -274,8 +279,8 @@ class HolderExecutor(
 
                                         // Retrieve the List of IssuerSignedItems used to create the
                                         // MSO contained in the retrieved Cose_Sign1
-                                        val issuerNamespaces = issuerAuthority?.
-                                        getIssuerNamespaces(iAuth)
+                                        val issuerNamespaces =
+                                            issuerAuthority?.getIssuerNamespaces(iAuth)
 
                                         issuerNamespaces?.let {
                                             return Response.Builder()
@@ -284,7 +289,8 @@ class HolderExecutor(
                                                     resultDataIssuerSigned,
                                                     deviceAuth,
                                                     issuerAuth,
-                                                    issuerNamespaces)
+                                                    issuerNamespaces
+                                                )
                                                 .build()
                                         }
                                     }

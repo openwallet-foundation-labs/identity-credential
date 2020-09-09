@@ -81,6 +81,28 @@ class ValidityInfo private constructor(
         return validityInfo
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as ValidityInfo
+
+        if (signed != other.signed) return false
+        if (validFrom != other.validFrom) return false
+        if (validUntil != other.validUntil) return false
+        if (expectedUpdate != other.expectedUpdate) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = signed.hashCode()
+        result = 31 * result + validFrom.hashCode()
+        result = 31 * result + validUntil.hashCode()
+        result = 31 * result + (expectedUpdate?.hashCode() ?: 0)
+        return result
+    }
+
     class Builder {
         private var signed: Calendar? = null
         private var validFrom: Calendar? = null

@@ -38,8 +38,7 @@ import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import com.ul.ims.gmdl.issuerauthority.MockIssuerAuthority
 import com.ul.ims.gmdl.nfcengagement.twoBytesToInt
-import com.ul.ims.gmdl.nfcofflinetransfer.holder.NfcTransferHolder.Companion.ACTION_NFC_TRANSFER_CALLBACK
-import com.ul.ims.gmdl.nfcofflinetransfer.holder.NfcTransferHolder.Companion.PACKAGE_NFC_TRANSFER_CALLBACK
+import com.ul.ims.gmdl.nfcofflinetransfer.holder.NfcTransferHolder
 import com.ul.ims.gmdl.nfcofflinetransfer.model.ApduCommand
 import com.ul.ims.gmdl.nfcofflinetransfer.model.ApduResponse
 import com.ul.ims.gmdl.nfcofflinetransfer.model.DataField
@@ -53,12 +52,9 @@ import com.ul.ims.gmdl.nfcofflinetransfer.utils.NfcUtils.createBERTLV
 import com.ul.ims.gmdl.nfcofflinetransfer.utils.NfcUtils.getBERTLVValue
 import com.ul.ims.gmdl.nfcofflinetransfer.utils.NfcUtils.toHexString
 import com.ul.ims.gmdl.nfcofflinetransfer.utils.NfcUtils.toInt
-import com.ul.ims.gmdl.offlinetransfer.executorLayer.holder.HolderExecutor
 import com.ul.ims.gmdl.provisioning.ProvisioningManager
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
 import kotlinx.coroutines.runBlocking
-import java.util.*
-import kotlin.collections.HashMap
 
 class NfcTransferApduService : HostApduService() {
 
@@ -196,13 +192,7 @@ class NfcTransferApduService : HostApduService() {
             )
 
             val mdlResponse = runBlocking {
-                val response = onReceive(receivedRequest)
-                Intent().also { intent ->
-                    intent.action = ACTION_NFC_TRANSFER_CALLBACK
-                    intent.setPackage(PACKAGE_NFC_TRANSFER_CALLBACK)
-                    sendBroadcast(intent)
-                }
-                return@runBlocking response
+                return@runBlocking onReceive(receivedRequest)
             }
 
             // Create a DO'53' with the mdl CBOR response
@@ -263,10 +253,25 @@ class NfcTransferApduService : HostApduService() {
                 }
             } else statusWordOK // Add SW1 - SW2 to response ('9000' No further qualification)
 
+            if (statusWordOK.contentEquals(sw1sw2)) {
+                // when there is no more data to be sent
+                updateUITransferComplete()
+            }
+
             return ApduResponse.Builder().setResponse(resp, sw1sw2).build().encode()
         }
 
+        // in case of any error inform UI that this transfer is complete
+        updateUITransferComplete()
         return statusWordFileNotFound
+    }
+
+    private fun updateUITransferComplete() {
+        Intent().also { intent ->
+            intent.action = NfcTransferHolder.ACTION_NFC_TRANSFER_CALLBACK
+            intent.setPackage(NfcTransferHolder.PACKAGE_NFC_TRANSFER_CALLBACK)
+            sendBroadcast(intent)
+        }
     }
 
     private fun getCommandType(commandApdu: ByteArray?): CommandType {
@@ -327,15 +332,15 @@ class NfcTransferApduService : HostApduService() {
                                     .build()
 
                                 sessionTranscript?.let {
-                                    com.ul.ims.gmdl.cbordata.utils.Log.d("SessionTranscript",
-                                        it.encodeToString())
-
+                                    com.ul.ims.gmdl.cbordata.utils.Log.d(
+                                        "SessionTranscript",
+                                        it.encodeToString()
+                                    )
                                     sessionManager?.setSessionTranscript(it.encode())
                                 }
                             }
                         }
                     }
-
                     decryptedData = session.decryptSessionEstablishment(se)
                 }
 
@@ -442,11 +447,13 @@ class NfcTransferApduService : HostApduService() {
                     // TODO: This is basically copy-paste of HolderExecutor.kt's generateResponse().
                     //  method. Instead of doing that, use that code instead through inheritance or
                     //  composition.
-                    sessionTranscript?.let {sTranscript ->
+                    sessionTranscript?.let { sTranscript ->
+
                         try {
                             sessionManager?.let { session ->
                                 // Request data items which will appear in IssuerSigned
-                                val entriesToRequestIssuerSigned = HashMap<String, Collection<String>>()
+                                val entriesToRequestIssuerSigned =
+                                    HashMap<String, Collection<String>>()
                                 entriesToRequestIssuerSigned[MdlNamespace.namespace] = reqItems
 
                                 val resultDataIssuerSigned = session.getEntries(
@@ -455,37 +462,44 @@ class NfcTransferApduService : HostApduService() {
 
                                 // We currently don't use DeviceSigned so make an empty
                                 // request for that.
-                                val entriesToRequestDeviceSigned = HashMap<String, Collection<String>>()
+                                val entriesToRequestDeviceSigned =
+                                    HashMap<String, Collection<String>>()
                                 val resultDataDeviceSigned = session.getEntries(
                                     entriesToRequestDeviceSigned
                                 ) ?: return errorResponse()
 
                                 val ecdsaSignatureBytes = resultDataDeviceSigned.ecdsaSignature
                                 val macBytes = resultDataDeviceSigned.messageAuthenticationCode
-                                val issuerAuthBytes = resultDataDeviceSigned.staticAuthenticationData
+                                val issuerAuthBytes =
+                                    resultDataDeviceSigned.staticAuthenticationData
 
                                 ecdsaSignatureBytes?.let { signature ->
                                     val coseSign1 = CoseSign1.Builder()
                                         .decode(signature)
                                         .build()
-                                    com.ul.ims.gmdl.offlinetransfer.utils.Log.d("ECDSA Signature", coseSign1.encodeToString())
+                                    com.ul.ims.gmdl.offlinetransfer.utils.Log.d(
+                                        "ECDSA Signature",
+                                        coseSign1.encodeToString()
+                                    )
 
                                     val deviceAuth = DeviceAuth.Builder()
                                         .setCoseSign1(coseSign1)
                                         .build()
-                                    com.ul.ims.gmdl.offlinetransfer.utils.Log.d("Device Auth", deviceAuth.encodeToString())
+                                    com.ul.ims.gmdl.offlinetransfer.utils.Log.d(
+                                        "Device Auth",
+                                        deviceAuth.encodeToString()
+                                    )
 
-                                    issuerAuthBytes?.let { iAuth ->
+                                    issuerAuthBytes.let { iAuth ->
 
                                         val issuerAuth = CoseSign1.Builder()
                                             .decode(iAuth)
                                             .build()
-                                        com.ul.ims.gmdl.offlinetransfer.utils.Log.d("Issuer Auth", issuerAuth.encodeToString())
 
                                         // Retrieve the List of IssuerSignedItems used to create the
                                         // MSO contained in the retrieved Cose_Sign1
-                                        val issuerNamespaces = issuerAuthority?.
-                                        getIssuerNamespaces(iAuth)
+                                        val issuerNamespaces =
+                                            issuerAuthority.getIssuerNamespaces(iAuth)
 
                                         issuerNamespaces?.let {
                                             return Response.Builder()
@@ -494,7 +508,8 @@ class NfcTransferApduService : HostApduService() {
                                                     resultDataIssuerSigned,
                                                     deviceAuth,
                                                     issuerAuth,
-                                                    issuerNamespaces)
+                                                    issuerNamespaces
+                                                )
                                                 .build()
                                         }
                                     }
@@ -509,7 +524,7 @@ class NfcTransferApduService : HostApduService() {
                                         .setCoseMac0(coseMac0)
                                         .build()
 
-                                    issuerAuthBytes?.let { iAuth ->
+                                    issuerAuthBytes.let { iAuth ->
 
                                         val issuerAuth = CoseSign1.Builder()
                                             .decode(iAuth)
@@ -517,8 +532,8 @@ class NfcTransferApduService : HostApduService() {
 
                                         // Retrieve the List of IssuerSignedItems used to create the
                                         // MSO contained in the retrieved Cose_Sign1
-                                        val issuerNamespaces = issuerAuthority?.
-                                        getIssuerNamespaces(iAuth)
+                                        val issuerNamespaces =
+                                            issuerAuthority.getIssuerNamespaces(iAuth)
 
                                         issuerNamespaces?.let {
                                             return Response.Builder()
@@ -527,20 +542,20 @@ class NfcTransferApduService : HostApduService() {
                                                     resultDataIssuerSigned,
                                                     deviceAuth,
                                                     issuerAuth,
-                                                    issuerNamespaces)
+                                                    issuerNamespaces
+                                                )
                                                 .build()
                                         }
                                     }
                                 }
-
                             }
 
                         } catch (ex: NoAuthenticationKeyAvailableException) {
-                            Log.e(HolderExecutor.LOG_TAG, ex.message, ex)
-                        } catch (ex : IdentityCredentialException) {
-                            Log.e(HolderExecutor.LOG_TAG, ex.message, ex)
-                        } catch(ex: NoClassDefFoundError) {
-                            Log.e(HolderExecutor.LOG_TAG, ex.message, ex)
+                            Log.e(LOG_TAG, ex.message, ex)
+                        } catch (ex: IdentityCredentialException) {
+                            Log.e(LOG_TAG, ex.message, ex)
+                        } catch (ex: NoClassDefFoundError) {
+                            Log.e(LOG_TAG, ex.message, ex)
                         }
                     }
                 } ?: kotlin.run {

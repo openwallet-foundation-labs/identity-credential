@@ -24,48 +24,48 @@ import org.bouncycastle.crypto.params.HKDFParameters
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.*
 import java.security.spec.InvalidKeySpecException
-import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.X509EncodedKeySpec
 import javax.crypto.KeyAgreement
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 object MacVerificationUtils {
 
-        const val LOG_TAG = "MacVerificationUtils"
+    const val LOG_TAG = "MacVerificationUtils"
 
-        fun calculateDerivedKey(salt: ByteArray, ikm: ByteArray): ByteArray? {
-            val okm = ByteArray(32)
-            val hkdf = HKDFBytesGenerator(SHA256Digest())
-            val params = HKDFParameters(ikm, salt, null)
-            hkdf.init(params)
-            hkdf.generateBytes(okm, 0, 32)
+    fun calculateDerivedKey(salt: ByteArray, ikm: ByteArray): ByteArray? {
+        val okm = ByteArray(32)
+        val hkdf = HKDFBytesGenerator(SHA256Digest())
+        val params = HKDFParameters(ikm, salt, null)
+        hkdf.init(params)
+        hkdf.generateBytes(okm, 0, 32)
 
-            return okm
-        }
+        return okm
+    }
 
-        fun calculateSharedKey(publicKey: PublicKey, privateKey: PrivateKey,
-                               sessionTranscript: SessionTranscript?): ByteArray? {
-            try {
-                val ecka = KeyAgreement.getInstance("ECDH", BouncyCastleProvider())
-                ecka.init(privateKey)
-                ecka.doPhase(publicKey, true)
+    fun calculateSharedKey(
+        publicKey: PublicKey, privateKey: PrivateKey,
+        sessionTranscript: SessionTranscript?
+    ): ByteArray? {
+        try {
+            val ecka = KeyAgreement.getInstance("ECDH", BouncyCastleProvider())
+            ecka.init(privateKey)
+            ecka.doPhase(publicKey, true)
 
-                val sharedSecret = ecka.generateSecret()
-                sessionTranscript?.let {
-                    return sharedSecret + it.encodeAsTaggedByteString()
-                }
-                Log.e(LOG_TAG, "No SessionTranscript")
-
-            } catch (ex: NoSuchProviderException) {
-                Log.e(LOG_TAG, ex.message, ex)
-            } catch (ex: NoSuchAlgorithmException) {
-                Log.e(LOG_TAG, ex.message, ex)
-            } catch (ex: InvalidKeyException) {
-                Log.e(LOG_TAG, ex.message, ex)
-            } catch (ex: InvalidKeySpecException) {
-                Log.e(LOG_TAG, ex.message, ex)
+            val sharedSecret = ecka.generateSecret()
+            sessionTranscript?.let {
+                return sharedSecret + it.encodeAsTaggedByteString()
             }
+            Log.e(LOG_TAG, "No SessionTranscript")
+
+        } catch (ex: NoSuchProviderException) {
+            Log.e(LOG_TAG, ex.message, ex)
+        } catch (ex: NoSuchAlgorithmException) {
+            Log.e(LOG_TAG, ex.message, ex)
+        } catch (ex: InvalidKeyException) {
+            Log.e(LOG_TAG, ex.message, ex)
+        } catch (ex: InvalidKeySpecException) {
+            Log.e(LOG_TAG, ex.message, ex)
+        }
             return null
         }
 

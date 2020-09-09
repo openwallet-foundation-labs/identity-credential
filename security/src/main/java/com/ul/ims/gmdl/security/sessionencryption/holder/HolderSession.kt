@@ -44,8 +44,10 @@ constructor(context : Context, credentialName : String) {
 
     init {
         val store = IdentityCredentialStore.getInstance(context)
-        credential = store?.getCredentialByName(credentialName,
-            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256)
+        credential = store.getCredentialByName(
+            credentialName,
+            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+        )
 
         renewEphemeralKeys()
     }
@@ -119,10 +121,11 @@ constructor(context : Context, credentialName : String) {
         credential?.setSessionTranscript(sessionTranscript)
     }
 
-    fun getEntries(entriesToRequest: Map<String, Collection<String>>) :
+    fun getEntries(entriesToRequest: Map<String, Collection<String>>):
             ResultData? {
         Log.d(LOG_TAG, "calling getEntries() with " + entriesToRequest.size)
-        return credential?.getEntries(null,  // TODO: need to set requestMessage
+        return credential?.getEntries(
+            null,  // TODO: need to set requestMessage
             entriesToRequest,
             null
         )
@@ -132,7 +135,7 @@ constructor(context : Context, credentialName : String) {
         return credential
     }
 
-    private fun extractPublicKey(readerKey: CoseKey) : ECPublicKey? {
+    private fun extractPublicKey(readerKey: CoseKey): ECPublicKey? {
         val xco = readerKey.curve?.xCoordinate
         xco?.let {
             val yco = readerKey.curve?.yCoordinate

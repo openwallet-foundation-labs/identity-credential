@@ -17,48 +17,28 @@
   -->
 
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-            xmlns:app="http://schemas.android.com/apk/res-auto"
-            xmlns:tools="http://schemas.android.com/tools" android:id="@+id/navigation_graph"
-            app:startDestination="@id/appModeFragment">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/navigation_graph"
+    app:startDestination="@id/credentialsListFragment">
 
-    <fragment android:id="@+id/appModeFragment" android:name="com.ul.ims.gmdl.fragment.AppModeFragment"
-              android:label="@string/app_name" tools:layout="@layout/fragment_app_mode">
-        <action android:id="@+id/action_appModeFragment_to_SettingsFragment"
-                app:destination="@id/settingsFragment" app:enterAnim="@anim/nav_default_enter_anim"
-                app:exitAnim="@anim/nav_default_exit_anim" app:popUpTo="@id/appModeFragment"
-                app:popEnterAnim="@anim/nav_default_pop_enter_anim" app:popExitAnim="@anim/nav_default_pop_exit_anim"/>
+    <fragment
+        android:id="@+id/shareCredentialsFragment"
+        android:name="com.ul.ims.gmdl.fragment.ShareCredentialsFragment"
+        android:label="@string/fragment_share_mdl_title"
+        tools:layout="@layout/fragment_share_credentials">
         <action
-            android:id="@+id/action_appModeFragment_to_credentialsListFragment"
-            app:destination="@id/credentialsListFragment"
-            app:enterAnim="@anim/fragment_close_enter"
-            app:exitAnim="@anim/fragment_close_exit"
-            app:popUpTo="@id/appModeFragment"
-            app:popEnterAnim="@anim/fragment_fade_enter"
-            app:popExitAnim="@anim/fragment_fade_exit" />
+            android:id="@+id/action_shareCredentialsFragment_to_credentialsListFragment"
+            app:destination="@id/credentialsListFragment" />
     </fragment>
-
-    <fragment android:id="@+id/settingsFragment" android:name="com.ul.ims.gmdl.fragment.SettingsFragment"
-            android:label="@string/fragment_settings_title" tools:layout="@layout/fragment_settings"/>
-    <fragment android:id="@+id/shareCredentialsFragment" android:name="com.ul.ims.gmdl.fragment.ShareCredentialsFragment"
-              android:label="@string/fragment_share_mdl_title" tools:layout="@layout/fragment_share_credentials"/>
-    <fragment android:id="@+id/shareCredentialsNfcFragment" android:name="com.ul.ims.gmdl.fragment.ShareCredentialsNfcFragment"
-              android:label="@string/fragment_share_mdl_nfc_title" tools:layout="@layout/fragment_share_credentials_nfc"/>
     <fragment
         android:id="@+id/credentialsListFragment"
         android:name="com.ul.ims.gmdl.fragment.CredentialsListFragment"
-        android:label="@string/credentials_list"
+        android:label="@string/fragment_credentials_list"
         tools:layout="@layout/fragment_credentials_list">
         <action
             android:id="@+id/action_credentialsListFragment_to_shareCredentialsFragment"
             app:destination="@id/shareCredentialsFragment"
-            app:enterAnim="@anim/fragment_close_enter"
-            app:exitAnim="@anim/fragment_close_exit"
-            app:popUpTo="@id/credentialsListFragment"
-            app:popEnterAnim="@anim/fragment_fade_enter"
-            app:popExitAnim="@anim/fragment_fade_exit" />
-        <action
-            android:id="@+id/action_credentialsListFragment_to_shareCredentialsNfcFragment"
-            app:destination="@id/shareCredentialsNfcFragment"
             app:enterAnim="@anim/fragment_close_enter"
             app:exitAnim="@anim/fragment_close_exit"
             app:popUpTo="@id/credentialsListFragment"

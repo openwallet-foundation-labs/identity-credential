@@ -25,20 +25,19 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.utils.Base64Utils
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import com.ul.ims.gmdl.util.QrCode
-import com.ul.ims.gmdl.viewmodel.ShareCredentialsViewModel
 
 class MdlQrCode private constructor(
     private val deviceEngagement: DeviceEngagement?
 ) {
     companion object {
-        const val QRCODE_URI_SCHEME ="mdl"
+        const val QRCODE_URI_SCHEME = "mdl"
         const val LOG_TAG = "MdlQrCode"
     }
 
-    fun getQrCode() : Bitmap? {
-        var qrcode : Bitmap? = null
+    fun getQrCode(qrWidth: Int, qrHeight: Int): Bitmap? {
+        var qrcode: Bitmap? = null
 
-        deviceEngagement?.let {engagement ->
+        deviceEngagement?.let { engagement ->
             val encoded = deviceEngagement.encode()
             Log.d(LOG_TAG, CborUtils.cborPrettyPrint(encoded))
             Log.d(LOG_TAG, deviceEngagement.encodeToString())
@@ -56,10 +55,11 @@ class MdlQrCode private constructor(
             try {
 
                 qrcode = QrCode.encodeAsBitmap(
-                uri.toString(),
-                BarcodeFormat.QR_CODE,
-                ShareCredentialsViewModel.QRCODE_WIDTH,
-                ShareCredentialsViewModel.QRCODE_HEIGHT)
+                    uri.toString(),
+                    BarcodeFormat.QR_CODE,
+                    qrWidth,
+                    qrHeight
+                )
 
             } catch (ex: WriterException) {
                 Log.e(LOG_TAG, ex.message, ex)

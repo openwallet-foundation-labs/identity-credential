@@ -21,9 +21,10 @@ import androidx.security.identity.ResultData
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.CborException
-import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
 import co.nstant.`in`.cbor.model.Map
+import co.nstant.`in`.cbor.model.UnicodeString
+import co.nstant.`in`.cbor.model.UnsignedInteger
 import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
@@ -131,7 +132,8 @@ class Response private constructor(
                 val itemsWithValue: MutableList<IssuerSignedItem> = mutableListOf()
                 sortedList.forEach { item ->
                     val value = resultData.getEntry(MdlNamespace.namespace, item.elementIdentifier)
-                    val status = resultData.getStatus(MdlNamespace.namespace, item.elementIdentifier)
+                    val status =
+                        resultData.getStatus(MdlNamespace.namespace, item.elementIdentifier)
 
                     // TODO: Build new IssuerSignedItem combining |item| and |value|. This way
                     //  the IssuerSignedItem we store outside the IdentityCredential API

@@ -25,8 +25,10 @@ import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
 import java.security.PrivateKey
 import java.security.interfaces.ECPublicKey
 
-class VerifierSessionManager constructor(private val holderCoseKey: CoseKey,
-                                         val deviceEngagement: DeviceEngagement) {
+class VerifierSessionManager constructor(
+    private val holderCoseKey: CoseKey,
+    val deviceEngagement: DeviceEngagement
+) {
 
     companion object {
         const val LOG_TAG = "VerifierSessionManager"

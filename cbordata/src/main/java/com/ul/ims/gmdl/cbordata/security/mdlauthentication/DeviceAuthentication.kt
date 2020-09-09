@@ -34,7 +34,7 @@ class DeviceAuthentication private constructor(
     private val sessionTranscript: SessionTranscript?,
     val docType: IDoctype?,
     private val deviceNameSpaces: DeviceNameSpaces?
-) : AbstractCborStructure(), Serializable{
+) : AbstractCborStructure(), Serializable {
 
     companion object {
         private const val LOG_TAG = "DeviceAuthentication"

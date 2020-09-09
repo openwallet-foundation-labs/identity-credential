@@ -18,9 +18,9 @@ package com.ul.ims.gmdl.reader.fragment
 
 import android.Manifest
 import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.action.ViewActions.click
 import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.matcher.ViewMatchers.*
+import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.rule.ActivityTestRule
 import androidx.test.rule.GrantPermissionRule
 import androidx.test.runner.AndroidJUnit4
@@ -48,18 +48,6 @@ class AppReaderFragmentTest {
 
     @Test
     fun testUi() {
-        onView(withId(R.id.btn_verifier)).check(matches(isDisplayed()))
-        onView(withId(R.id.txt_select_function_label)).check(matches(isDisplayed()))
-    }
-
-    @Test
-    fun onVerifierSelectedTest() {
-        onView(withId(R.id.btn_verifier)).check(matches(isDisplayed()))
-        onView(withId(R.id.btn_verifier)).perform(click())
-
-        // Consent Dialog
-        onView(withText(R.string.verifier_request_dialog)).check(matches(isDisplayed()))
-        onView(withText(android.R.string.ok)).perform(click())
-        onView(withText(R.string.txt_scan_qrcode_label)).check(matches(isDisplayed()))
+        onView(withId(R.id.txt_explanation_camera_permission)).check(matches(isDisplayed()))
     }
 }

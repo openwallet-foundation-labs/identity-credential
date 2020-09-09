@@ -151,7 +151,12 @@ class BlePeripheralConnection(
 
     private fun stopAdvertise() {
         advertiser?.stopAdvertising(advCallback)
-        context.unregisterReceiver(gattUpdateReceiver)
+        try {
+            context.unregisterReceiver(gattUpdateReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Ignore error when trying to unregister receiver
+            Log.e(LOG_TAG, "Ignored error: ${e.message}")
+        }
     }
 
     fun stop() {

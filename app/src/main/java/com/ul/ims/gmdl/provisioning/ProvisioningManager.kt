@@ -38,7 +38,7 @@ object ProvisioningManager {
     fun getIdentityCredential(context: Context, credentialName : String) : IdentityCredential? {
         val store = IdentityCredentialStore.getInstance(context)
 
-        return store?.getCredentialByName(
+        return store.getCredentialByName(
             credentialName,
             CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
         )
@@ -48,64 +48,69 @@ object ProvisioningManager {
     fun createCredential(context: Context, credentialName : String,
                          issuerAuthority: IIssuerAuthority, authRequired : Boolean) :
             Collection<X509Certificate>? {
-            val userCredential = issuerAuthority.getCredentials()
-            val store = IdentityCredentialStore.getInstance(context)
-            store?.deleteCredentialByName(credentialName)
+        val userCredential = issuerAuthority.getCredentials()
+        val store = IdentityCredentialStore.getInstance(context)
+        store.deleteCredentialByName(credentialName)
 
-            val wc: WritableIdentityCredential?
-            var certificateChain: Collection<X509Certificate>? = null
+        val wc: WritableIdentityCredential?
+        var certificateChain: Collection<X509Certificate>? = null
 
+        try {
+            wc = store.createCredential(
+                credentialName,
+                MdlDoctype.docType
+            )
+        } catch (ex: CipherSuiteNotSupportedException) {
+            Log.e(TAG, ex.message, ex)
+            throw IdentityCredentialException("CipherSuite Not Supported", ex)
+        }
+
+        wc.let {
             try {
-                wc = store?.createCredential(
-                    credentialName,
-                    MdlDoctype.docType
-                )
-            } catch (ex: CipherSuiteNotSupportedException) {
-                Log.e(TAG, ex.message, ex)
-                throw IdentityCredentialException("CipherSuite Not Supported", ex)
-            }
+                certificateChain =
+                    wc.getCredentialKeyCertificateChain(issuerAuthority.getProvisionChallenge())
 
-            wc?.let {
-                try {
-                    certificateChain = wc.getCredentialKeyCertificateChain(issuerAuthority.
-                        getProvisionChallenge())
+                val personalizationBuilder = PersonalizationData.Builder()
 
-                    val personalizationBuilder = PersonalizationData.Builder()
-
-                    if (authRequired) {
-                        // Profile 1 (user auth on every reader session)
-                        // Connected with getCryptoObject() call
-                        personalizationBuilder.addAccessControlProfile(
-                            AccessControlProfile.Builder(AccessControlProfileId(1))
-                                .setUserAuthenticationRequired(true)
-                                .build()
-                        )
-                    } else {
-                        // Profile 1 no auth.
-                        personalizationBuilder.addAccessControlProfile(
-                            AccessControlProfile.Builder(AccessControlProfileId(1))
-                                .setUserAuthenticationRequired(false)
-                                .build()
-                        )
-                    }
-
-                    val idsNoAuth = ArrayList<AccessControlProfileId>()
-                    idsNoAuth.add(AccessControlProfileId(1))
-
-                    userCredential?.let {
-                        userCredential.getCredentialsForProvisioning(idsNoAuth,
-                            personalizationBuilder)
-                    }
-
-                    val proofOfProvisioningCbor = wc.personalize(personalizationBuilder.build())
-                    Log.i(TAG, "Provisioned Credential CBOR ")
-                    com.ul.ims.gmdl.offlinetransfer.utils.Log.d(TAG, CborUtils.cborPrettyPrint(proofOfProvisioningCbor))
-
-                } catch (ex: Exception) {
-                    Log.e(TAG, ex.message, ex)
-                    throw IdentityCredentialException(ex.message ?: ex.javaClass.simpleName, ex)
+                if (authRequired) {
+                    // Profile 1 (user auth on every reader session)
+                    // Connected with getCryptoObject() call
+                    personalizationBuilder.addAccessControlProfile(
+                        AccessControlProfile.Builder(AccessControlProfileId(1))
+                            .setUserAuthenticationRequired(true)
+                            .build()
+                    )
+                } else {
+                    // Profile 1 no auth.
+                    personalizationBuilder.addAccessControlProfile(
+                        AccessControlProfile.Builder(AccessControlProfileId(1))
+                            .setUserAuthenticationRequired(false)
+                            .build()
+                    )
                 }
+
+                val idsNoAuth = ArrayList<AccessControlProfileId>()
+                idsNoAuth.add(AccessControlProfileId(1))
+
+                userCredential?.let {
+                    userCredential.getCredentialsForProvisioning(
+                        idsNoAuth,
+                        personalizationBuilder
+                    )
+                }
+
+                val proofOfProvisioningCbor = wc.personalize(personalizationBuilder.build())
+                Log.i(TAG, "Provisioned Credential CBOR ")
+                com.ul.ims.gmdl.offlinetransfer.utils.Log.d(
+                    TAG,
+                    CborUtils.cborPrettyPrint(proofOfProvisioningCbor)
+                )
+
+            } catch (ex: Exception) {
+                Log.e(TAG, ex.message, ex)
+                throw IdentityCredentialException(ex.message ?: ex.javaClass.simpleName, ex)
             }
+        }
 
             return certificateChain
     }

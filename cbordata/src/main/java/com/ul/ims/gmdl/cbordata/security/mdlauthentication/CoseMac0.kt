@@ -101,11 +101,11 @@ class CoseMac0 private constructor(val payload : ByteArray?,
         return null
     }
     class Builder : AbstractCborStructureBuilder() {
-        private var payload : ByteArray? = null
-        private var macValue : ByteArray? = null
+        private var payload: ByteArray? = null
+        private var macValue: ByteArray? = null
 
-        fun decode(arr : Array) = apply {
-            if (arr?.dataItems?.size == 4) {
+        fun decode(arr: Array) = apply {
+            if (arr.dataItems?.size == 4) {
                 val algorithm = arr.dataItems[0] as? ByteString
                 decodeAlg(algorithm)
                 validateUnprotectedHeader(arr.dataItems[1])
@@ -114,7 +114,7 @@ class CoseMac0 private constructor(val payload : ByteArray?,
             }
         }
 
-        fun decodeEncoded(data : ByteArray) = apply {
+        fun decodeEncoded(data: ByteArray) = apply {
             try {
                 val stream = ByteArrayInputStream(data)
                 val dataItems = CborDecoder(stream).decode()

@@ -437,9 +437,10 @@ class MobileSecurityObjectTest {
 
         assertNotNull(mso)
 
-        mso?.let {
-            val msoData = mso.encode()
-            assertArrayEquals(expectedMobileSecurityObject, msoData)
-        }
+        val expectedMso = MobileSecurityObject.Builder()
+            .decode(expectedMobileSecurityObject)
+            .build()
+
+        assertEquals(mso, expectedMso)
     }
 }

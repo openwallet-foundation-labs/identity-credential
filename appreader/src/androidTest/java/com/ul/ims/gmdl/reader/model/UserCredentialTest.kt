@@ -17,6 +17,9 @@
 package com.ul.ims.gmdl.reader.model
 
 import android.content.Context
+import androidx.security.identity.AccessControlProfile
+import androidx.security.identity.AccessControlProfileId
+import androidx.security.identity.PersonalizationData
 import androidx.test.core.app.ApplicationProvider
 import com.ul.ims.gmdl.cbordata.model.UserCredential
 import org.junit.Assert
@@ -52,12 +55,21 @@ class UserCredentialTest {
             .build()
 
         Assert.assertNotNull(credential)
+        val personalizationBuilder = PersonalizationData.Builder()
+
+        // Profile 1 no auth.
+        personalizationBuilder.addAccessControlProfile(
+            AccessControlProfile.Builder(AccessControlProfileId(1))
+                .setUserAuthenticationRequired(false)
+                .build()
+        )
 
         // No Auth Required
-        val idsNoAuth = ArrayList<Int>()
-        idsNoAuth.add(0)
+        val idsNoAuth = ArrayList<AccessControlProfileId>()
+        idsNoAuth.add(AccessControlProfileId(1))
 
-        val entryNamespace = credential.getCredentialsForProvisioning(idsNoAuth)
+        val entryNamespace =
+            credential.getCredentialsForProvisioning(idsNoAuth, personalizationBuilder)
 
         Assert.assertNotNull(entryNamespace)
     }

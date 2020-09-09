@@ -16,5 +16,31 @@
 
 package com.ul.ims.gmdl.cbordata.security.namespace
 
-class MsoMdlNamespace(override val namespace : String,
-                       override val items : Map<Int, ByteArray>) : IMsoNameSpace
+class MsoMdlNamespace(
+    override val namespace: String,
+    override val items: Map<Int, ByteArray>
+) : IMsoNameSpace {
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as MsoMdlNamespace
+
+        if (namespace != other.namespace) return false
+        if (items.size != other.items.size) return false
+        if (!items.keys.containsAll(other.items.keys)) return false
+        items.keys.forEach { key ->
+            if (items[key]?.contentEquals(other.items[key] ?: byteArrayOf()) == false)
+                return false
+        }
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = namespace.hashCode()
+        result = 31 * result + items.hashCode()
+        return result
+    }
+}

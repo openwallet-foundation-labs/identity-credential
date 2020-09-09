@@ -21,12 +21,15 @@ import android.util.Log
 import androidx.security.identity.*
 import androidx.security.identity.IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
 import androidx.test.core.app.ApplicationProvider
-import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
+import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
+import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
+import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype.docType
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
 import com.ul.ims.gmdl.cbordata.response.DeviceAuth
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.DeviceNameSpaces
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
+import com.ul.ims.gmdl.security.TestUtils
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
 import org.junit.Assert
@@ -98,12 +101,24 @@ class EcdsaSigningTest {
         val coseKey = holder.generateHolderCoseKey()
         Assert.assertNotNull(coseKey)
 
-        coseKey?.let {cKey ->
-            val verifier = VerifierSessionManager(cKey)
+        coseKey?.let { cKey ->
+            val security = Security.Builder()
+                .setCoseKey(cKey)
+                .setCipherSuiteIdent(TestUtils.CHIPER_SUITE_IDENT)
+                .build()
+
+            // Device engagement for QR Code
+            val deBuilder = DeviceEngagement.Builder()
+
+            deBuilder.version(TestUtils.DE_VERSION)
+            deBuilder.security(security)
+
+            val deviceEngagement = deBuilder.build()
+            val verifier = VerifierSessionManager(cKey, deviceEngagement)
             val vCoseKey = verifier.getReaderCoseKey()
             Assert.assertNotNull(vCoseKey)
 
-            vCoseKey?.let {vck ->
+            vCoseKey?.let { vck ->
                 holder.setVerifierEphemeralPublicKey(vck)
 
                 val sessionTranscript = SessionTranscript
@@ -145,8 +160,8 @@ class EcdsaSigningTest {
                     val entryResult = credential.getEntries(
                         null,
                         requestEntryNamespaces,
-                        sessionTranscript.encode(),
-                        null)
+                        sessionTranscript.encode()
+                    )
 
                     println("entryResult.authenticatedData")
                     println(encodeToString(entryResult.authenticatedData))
@@ -187,10 +202,7 @@ class EcdsaSigningTest {
         val certificateChain: Collection<X509Certificate>?
 
         try {
-            wc = store.createCredential(
-                CREDENTIAL_NAME,
-                MdlDoctype.docType
-            )
+            wc = store.createCredential(CREDENTIAL_NAME, docType)
         } catch (ex: CipherSuiteNotSupportedException) {
             Log.e(CREDENTIAL_NAME, ex.message, ex)
             throw IdentityCredentialException("CipherSuite Not Supported", ex)
@@ -199,23 +211,20 @@ class EcdsaSigningTest {
         try {
             certificateChain = wc.getCredentialKeyCertificateChain("challenge".toByteArray())
 
-            val profiles = LinkedList<AccessControlProfile>()
+            val personalizationBuilder = PersonalizationData.Builder()
 
-            // Profile 1 (user auth on every reader session)
-            profiles.add(
-                AccessControlProfile.Builder(1)
+            // Profile 1 no auth.
+            personalizationBuilder.addAccessControlProfile(
+                AccessControlProfile.Builder(AccessControlProfileId(1))
                     .setUserAuthenticationRequired(false)
                     .build()
             )
 
-            val entryNamespaces = LinkedList<EntryNamespace>()
-            val idsNoAuth = ArrayList<Int>()
-            idsNoAuth.add(1)
-            entryNamespaces.add(
-                getCredentialsForProvisioning(idsNoAuth)
-            )
+            val idsNoAuth = ArrayList<AccessControlProfileId>()
+            idsNoAuth.add(AccessControlProfileId(1))
+            getCredentialsForProvisioning(idsNoAuth, personalizationBuilder)
 
-            val proofOfProvisioningCbor = wc.personalize(profiles, entryNamespaces)
+            wc.personalize(personalizationBuilder.build())
 
         } catch (ex: IdentityCredentialException) {
             Log.e(CREDENTIAL_NAME, ex.message, ex)
@@ -225,14 +234,17 @@ class EcdsaSigningTest {
         return certificateChain
     }
 
-    private fun getCredentialsForProvisioning(accessControlProfileIds: Collection<Int>): EntryNamespace {
-        return EntryNamespace.Builder(MdlDoctype.docType)
-            .addStringEntry("family_name", accessControlProfileIds, "Do Nascimento")
-            .addStringEntry("given_name", accessControlProfileIds, "Edson Arantes")
-            .addStringEntry("issuing_country", accessControlProfileIds, "US")
-            .addStringEntry("issuing_authority", accessControlProfileIds, "Google")
-            .addStringEntry("license_number", accessControlProfileIds, "NDL12345JKL")
-            .build()
+    private fun getCredentialsForProvisioning(
+        accessControlProfileIds: ArrayList<AccessControlProfileId>,
+        personalizationBuilder: PersonalizationData.Builder
+    ) {
+        personalizationBuilder.let {
+            it.putEntryString(docType, "family_name", accessControlProfileIds, "Do Nascimento")
+            it.putEntryString(docType, "given_name", accessControlProfileIds, "Edson Arantes")
+            it.putEntryString(docType, "issuing_country", accessControlProfileIds, "US")
+            it.putEntryString(docType, "issuing_authority", accessControlProfileIds, "Google")
+            it.putEntryString(docType, "license_number", accessControlProfileIds, "NDL12345JKL")
+        }
     }
 
     private fun encodeToString(bytes: ByteArray): String {
@@ -244,15 +256,10 @@ class EcdsaSigningTest {
         return sb.toString()
     }
 
-    private fun getIdentityCredentialRequest() : Collection<RequestNamespace> {
-        val requestEntryNamespaces = LinkedList<RequestNamespace>()
-        val reqBuilder = RequestNamespace.Builder(MdlDoctype.docType)
-        MdlNamespace.items.keys.forEach {
-            reqBuilder.addEntryName(it)
-        }
+    private fun getIdentityCredentialRequest(): HashMap<String, Collection<String>> {
+        val entriesToRequestIssuerSigned = HashMap<String, Collection<String>>()
+        entriesToRequestIssuerSigned[MdlNamespace.namespace] = MdlNamespace.items.keys
 
-        requestEntryNamespaces.add(reqBuilder.build())
-
-        return requestEntryNamespaces
+        return entriesToRequestIssuerSigned
     }
 }

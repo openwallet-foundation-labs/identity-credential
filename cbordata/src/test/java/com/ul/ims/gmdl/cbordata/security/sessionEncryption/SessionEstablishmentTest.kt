@@ -62,8 +62,13 @@ class SessionEstablishmentTest {
         val builder = SessionEstablishment.Builder()
         builder.setReaderKey(key)
         builder.setEncryptedData(encryptedData)
-        val se = builder.build().encode()
+        val se = builder.build()
 
-        Assert.assertArrayEquals(seExpected, se)
+        Assert.assertNotNull(se)
+
+        val seDecode = SessionEstablishment.Builder().decode(seExpected).build()
+
+        Assert.assertArrayEquals(seDecode.encryptedData, se.encryptedData)
+        Assert.assertEquals(seDecode.readerKey, se.readerKey)
     }
 }

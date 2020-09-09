@@ -82,12 +82,33 @@ class DrivingPrivilege private constructor(
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as DrivingPrivilege
+
+        if (vehicleCategory != other.vehicleCategory) return false
+        if (issueDate != other.issueDate) return false
+        if (expiryData != other.expiryData) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = vehicleCategory.hashCode()
+        result = 31 * result + (issueDate?.hashCode() ?: 0)
+        result = 31 * result + (expiryData?.hashCode() ?: 0)
+        return result
+    }
+
+
     class Builder {
         private var vehicleCategory = CategoryCodesEnum.B
-        private var issueDate : Calendar? = null
-        private var expiryData : Calendar? = null
+        private var issueDate: Calendar? = null
+        private var expiryData: Calendar? = null
 
-        fun setVehicleCategory(vehicleCategory : CategoryCodesEnum) = apply {
+        fun setVehicleCategory(vehicleCategory: CategoryCodesEnum) = apply {
             this.vehicleCategory = vehicleCategory
         }
 

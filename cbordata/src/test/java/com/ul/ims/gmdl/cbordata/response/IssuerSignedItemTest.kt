@@ -101,6 +101,11 @@ class IssuerSignedItemTest {
         isiBuilder.setElementValue(expectedFamilyName)
         val isi = isiBuilder.build()
 
-        Assert.assertArrayEquals(issuerSignedItemLastNameData, isi.encode())
+        val isiDecode = IssuerSignedItem.Builder().decode(issuerSignedItemLastNameData).build()
+
+        Assert.assertTrue(isiDecode.digestId == isi.digestId)
+        Assert.assertArrayEquals(isi.randomValue, isiDecode.randomValue)
+        Assert.assertTrue(isiDecode.elementIdentifier == isi.elementIdentifier)
+        Assert.assertTrue(isiDecode.elementValue == isi.elementValue)
     }
 }

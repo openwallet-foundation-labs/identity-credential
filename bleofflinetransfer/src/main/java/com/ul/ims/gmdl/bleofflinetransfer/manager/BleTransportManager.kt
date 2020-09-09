@@ -152,6 +152,10 @@ class BleTransportManager(
                 getCentralConnection().writeToState(TERMINATE_TRANSMISSION)
             }
             EventType.ERROR, EventType.GATT_DISCONNECTED -> {
+                getTransportProgressDelegate().onEvent(
+                    EventType.TRANSFER_COMPLETE,
+                    EventType.TRANSFER_COMPLETE.description
+                )
                 getPeripheralConnection().stop()
             }
 

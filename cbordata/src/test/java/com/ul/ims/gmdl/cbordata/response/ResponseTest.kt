@@ -721,8 +721,13 @@ class ResponseTest {
                 .build()
             val encoded = res.encode()
 
-            Assert.assertNotNull(res)
-            Assert.assertArrayEquals(expectedEncoded, encoded)
+            Assert.assertNotNull(encoded)
+
+            val resDecode = Response.Builder().decode(expectedEncoded).build()
+
+            Assert.assertTrue(resDecode.documents[0].keys.containsAll(res.documents[0].keys))
+            Assert.assertEquals(resDecode.status, res.status)
+            Assert.assertEquals(resDecode.version, res.version)
         }
     }
 

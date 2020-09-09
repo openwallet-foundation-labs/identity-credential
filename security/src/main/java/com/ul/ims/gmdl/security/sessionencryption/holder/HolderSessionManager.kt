@@ -113,7 +113,7 @@ class HolderSessionManager private constructor(
         holderSession?.setSessionTranscript(sessionTranscript)
     }
 
-    fun getEntries(entriesToRequest: Map<String, Collection<String>>) :
+    fun getEntries(entriesToRequest: Map<String, Collection<String>>):
             ResultData? {
         return try {
             holderSession?.getEntries(entriesToRequest)
@@ -134,7 +134,7 @@ class HolderSessionManager private constructor(
         return getHolderSession().encryptMessageToReader(byteArray)
     }
 
-    fun decryptData(byteArray: ByteArray) : ByteArray? {
+    fun decryptData(byteArray: ByteArray): ByteArray? {
         return getHolderSession().decryptMessageFromReader(byteArray)
     }
 

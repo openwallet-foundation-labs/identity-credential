@@ -19,73 +19,21 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    app:startDestination="@id/appModeFragment">
+    app:startDestination="@id/scanDeviceEngagementFragment">
 
     <fragment
-        android:id="@+id/appModeFragment"
-        android:name="com.ul.ims.gmdl.reader.fragment.AppReaderFragment"
+        android:id="@+id/scanDeviceEngagementFragment"
+        android:name="com.ul.ims.gmdl.reader.fragment.ScanDeviceEngagementFragment"
         android:label="@string/app_name"
-        tools:layout="@layout/fragment_app_reader">
+        tools:layout="@layout/fragment_scan_device_engagement">
         <action
-            android:id="@+id/action_appModeFragment_to_SettingsFragment"
-            app:destination="@id/settingsFragment"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/appModeFragment" />
-
-        <action
-            android:id="@+id/action_appModeFragment_to_qrcodeScanFragment"
-            app:destination="@id/qrcodeScanFragment"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/appModeFragment" />
-        <action
-            android:id="@+id/action_appModeFragment_to_nfcScanFragment"
-            app:destination="@id/nfcScanFragment"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/appModeFragment" />
-    </fragment>
-
-    <fragment
-        android:id="@+id/settingsFragment"
-        android:name="com.ul.ims.gmdl.reader.fragment.SettingsFragment"
-        android:label="@string/fragment_settings_title"
-        tools:layout="@layout/fragment_settings" />
-
-    <fragment
-        android:id="@+id/qrcodeScanFragment"
-        android:name="com.ul.ims.gmdl.reader.fragment.QrcodeScanFragment"
-        android:label="@string/fragment_scan_qrcode_title"
-        tools:layout="@layout/fragment_qrcode_scan">
-        <action
-            android:id="@+id/action_qrcodeScanFragment_to_offlineTransferStatusFragment"
+            android:id="@+id/action_scanDeviceEngagementFragment_to_offlineTransferStatusFragment"
             app:destination="@id/offlineTransferStatusFragment"
             app:enterAnim="@anim/nav_default_enter_anim"
             app:exitAnim="@anim/nav_default_exit_anim"
             app:popEnterAnim="@anim/nav_default_pop_enter_anim"
             app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/qrcodeScanFragment" />
-    </fragment>
-    <fragment
-        android:id="@+id/nfcScanFragment"
-        android:name="com.ul.ims.gmdl.reader.fragment.NfcScanFragment"
-        android:label="@string/fragment_scan_nfc_title"
-        tools:layout="@layout/fragment_nfc_scan">
-        <action
-            android:id="@+id/action_nfcScanFragment_to_offlineTransferStatusFragment"
-            app:destination="@id/offlineTransferStatusFragment"
-            app:enterAnim="@anim/nav_default_enter_anim"
-            app:exitAnim="@anim/nav_default_exit_anim"
-            app:popEnterAnim="@anim/nav_default_pop_enter_anim"
-            app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/nfcScanFragment" />
+            app:popUpTo="@id/scanDeviceEngagementFragment" />
     </fragment>
     <fragment
         android:id="@+id/offlineTransferStatusFragment"
@@ -94,12 +42,12 @@
         tools:layout="@layout/fragment_offline_transfer_status">
         <action
             android:id="@+id/action_offlineTransferStatusFragment_to_displayCredentialsFragment2"
-            app:destination="@id/displayCredentialsFragment2"
+            app:destination="@id/displayCredentialsFragment"
             app:enterAnim="@anim/nav_default_enter_anim"
             app:exitAnim="@anim/nav_default_exit_anim"
             app:popEnterAnim="@anim/nav_default_pop_enter_anim"
             app:popExitAnim="@anim/nav_default_pop_exit_anim"
-            app:popUpTo="@id/appModeFragment" />
+            app:popUpTo="@id/scanDeviceEngagementFragment" />
         <argument
             android:name="deviceEngagement"
             app:argType="com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement"
@@ -123,9 +71,10 @@
             app:argType="integer" />
     </fragment>
     <fragment
-        android:id="@+id/displayCredentialsFragment2"
+        android:id="@+id/displayCredentialsFragment"
         android:name="com.ul.ims.gmdl.reader.fragment.DisplayCredentialsFragment"
-        android:label="@string/fragment_display_credentials">
+        android:label="@string/fragment_display_credentials"
+        tools:layout="@layout/fragment_display_credentials">
         <argument
             android:name="credential"
             app:argType="com.ul.ims.gmdl.cbordata.model.UserCredential"
