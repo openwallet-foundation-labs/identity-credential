@@ -42,7 +42,7 @@ object DateUtils {
     fun getDateOfBirth() : Calendar {
         val calendar = GregorianCalendar(timezone)
         calendar.clear()
-        calendar.set(1940, Calendar.OCTOBER, 23)
+        calendar.set(2002, Calendar.AUGUST, 12)
 
         return calendar
     }

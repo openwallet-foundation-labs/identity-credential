@@ -32,6 +32,7 @@ import com.ul.ims.gmdl.cbordata.utils.Log
 import com.ul.ims.gmdl.databinding.FragmentCredentialsListBinding
 import com.ul.ims.gmdl.dialog.CustomAlertDialog
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
+import com.ul.ims.gmdl.util.SettingsUtils
 import com.ul.ims.gmdl.util.SettingsUtils.getTransferMethod
 import com.ul.ims.gmdl.util.SettingsUtils.setTransferMethod
 import com.ul.ims.gmdl.viewmodel.CredentialsListViewModel
@@ -56,8 +57,10 @@ class CredentialsListFragment : Fragment() {
         val swtAgeAttestation = view.findViewById<Switch>(R.id.swt_age_attestation)
         val swtAuthorizedReaders = view.findViewById<Switch>(R.id.swt_authorized_readers)
 
-        swtAgeAttestation.setOnCheckedChangeListener { _, _ ->
-            toast(getString(R.string.toast_not_implemented_text))
+        swtAgeAttestation.isChecked = SettingsUtils.getAgeAttestationPreApproval(requireContext())
+
+        swtAgeAttestation.setOnCheckedChangeListener { _, checked ->
+            SettingsUtils.setAgeAttestationPreApproval(requireContext(), checked)
         }
         swtAuthorizedReaders.setOnCheckedChangeListener { _, _ ->
             toast(getString(R.string.toast_not_implemented_text))

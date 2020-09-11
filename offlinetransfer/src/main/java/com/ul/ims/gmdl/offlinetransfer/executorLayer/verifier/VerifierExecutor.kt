@@ -22,6 +22,7 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
 import com.ul.ims.gmdl.cbordata.interpreter.IDataInterpreter
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
+import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.request.Request
 import com.ul.ims.gmdl.cbordata.response.BleTransferResponse
 import com.ul.ims.gmdl.cbordata.response.IResponse
@@ -50,7 +51,7 @@ class VerifierExecutor(
     transportLayer: ITransportLayer,
     data: MutableLiveData<Resource<Any>>,
     sessionManager: VerifierSessionManager,
-    requestItems: Array<String>,
+    requestItems: DataElements,
     deviceEngagement: DeviceEngagement,
     context: Context
 ) : IVerifierExecutor, IExecutorEventListener {
@@ -61,10 +62,10 @@ class VerifierExecutor(
 
     override var data: MutableLiveData<Resource<Any>>? = null
     override var interpreter: IDataInterpreter? = null
-    override var transportLayer : ITransportLayer? = null
-    private var sessionManager : VerifierSessionManager? = null
-    private var sessionEstablishment : SessionEstablishment? = null
-    private var requestItems: Array<String>? = null
+    override var transportLayer: ITransportLayer? = null
+    private var sessionManager: VerifierSessionManager? = null
+    private var sessionEstablishment: SessionEstablishment? = null
+    private var requestItems: DataElements? = null
     private var deviceEngagement: DeviceEngagement? = null
     private var context: Context? = null
 

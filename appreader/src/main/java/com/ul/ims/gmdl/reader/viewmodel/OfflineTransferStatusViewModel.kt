@@ -23,6 +23,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import com.ul.ims.gmdl.bleofflinetransfer.utils.BleUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
+import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
@@ -43,7 +44,7 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
 
     fun setupWiFiVerifier(
         deviceEngagement: DeviceEngagement,
-        requestItems: Array<String>,
+        requestItems: DataElements,
         wifiPassphrase: String?
     ) {
         doAsync {
@@ -74,7 +75,7 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
 
     fun setupNfcVerifier(
         deviceEngagement: DeviceEngagement,
-        requestItems: Array<String>,
+        requestItems: DataElements,
         tag: Tag,
         apduCommandLength: Int
     ) {
@@ -106,7 +107,7 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
     }
 
     fun setupBleVerifier(
-        deviceEngagement: DeviceEngagement, requestItems: Array<String>,
+        deviceEngagement: DeviceEngagement, requestItems: DataElements,
         bleRole: BleServiceMode
     ) {
         doAsync {

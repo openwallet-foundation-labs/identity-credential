@@ -29,6 +29,8 @@ object MdlNamespace : INamespace {
         Pair("issuing_authority", false),
         Pair("driving_privileges", false),
         Pair("portrait", false),
-        Pair("document_number", false)
+        Pair("document_number", false),
+        Pair("age_over_18", false),
+        Pair("age_over_21", false)
     )
 }

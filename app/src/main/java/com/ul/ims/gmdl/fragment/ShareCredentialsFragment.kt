@@ -208,15 +208,37 @@ class ShareCredentialsFragment : Fragment() {
                 }
 
                 Resource.Status.ASK_USER_CONSENT -> {
+                    val preApproved = SettingsUtils.getAgeAttestationPreApproval(requireContext())
+
                     @Suppress("UNCHECKED_CAST")
-                    val requestItems = myData.data as? List<String>
+                    val requestItems = myData.data as? Map<String, Boolean>
                     requestItems?.let {
-                        ConsentDialog(it, { consent ->
-                            this.consent = consent
-                            canAuthenticate()
-                        }, {
-                            vm.onUserConsentCancel()
-                        }).show(parentFragmentManager, "consentdialog")
+                        val requestList = it.keys.toMutableList()
+                        // Only if pre approved and the age attestation is set as not intent to
+                        // retain by the reader we don't ask for the user consent
+                        this.consent = mapOf()
+                        if (preApproved) {
+                            if (it[MdlDataIdentifiers.AGE_OVER_21.identifier] == false) {
+                                requestList.remove(MdlDataIdentifiers.AGE_OVER_18.identifier)
+                                this.consent =
+                                    mapOf(Pair(MdlDataIdentifiers.AGE_OVER_18.identifier, true))
+                            }
+                            if (it[MdlDataIdentifiers.AGE_OVER_21.identifier] == false) {
+                                requestList.remove(MdlDataIdentifiers.AGE_OVER_21.identifier)
+                                this.consent =
+                                    mapOf(Pair(MdlDataIdentifiers.AGE_OVER_21.identifier, true))
+                            }
+                        }
+                        if (requestList.isNotEmpty()) {
+                            ConsentDialog(requestList, { consent ->
+                                this.consent = consent.plus(this.consent)
+                                canAuthenticate()
+                            }, {
+                                vm.onUserConsentCancel()
+                            }).show(parentFragmentManager, "consentdialog")
+                        } else {
+                            onUserConsent()
+                        }
                     }
 
                 }

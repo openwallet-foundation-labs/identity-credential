@@ -82,6 +82,8 @@ class ConsentDialog(private val consentItems : List<String>,
             "issuing_authority" -> R.string.issuing_authority
             "document_number" -> R.string.license_number
             "driving_privileges" -> R.string.categories_of_vehicles
+            "age_over_18" -> R.string.age_over_18
+            "age_over_21" -> R.string.age_over_21
             else -> 0
         }
     }

@@ -36,11 +36,11 @@ class Request private constructor(
     val docRequests: List<DocRequest>
 ) : AbstractCborStructure(), IRequest {
 
-    override fun getConsentRequestItems(): List<String>? {
+    override fun getConsentRequestItems(): kotlin.collections.Map<String, Boolean>? {
         docRequests.forEach { doc ->
             doc.itemsRequest.namespaces.namespaces.forEach { namespace ->
                 if (namespace.key == MdlNamespace.namespace) {
-                    return namespace.value.dataElements.keys.filter { it != "portrait" }.toList()
+                    return namespace.value.dataElements.filter { it.key != "portrait" }
                 }
             }
         }
@@ -123,16 +123,11 @@ class Request private constructor(
             docRequests.add(docRequest)
         }
 
-        fun dataItemsToRequest(requestItems : kotlin.Array<String>?) = apply {
+        fun dataItemsToRequest(requestItems: DataElements?) = apply {
             requestItems?.let { ri ->
-                val items = ri.map { it to false }.toMap()
-
-                val dataElements = DataElements.Builder()
-                    .dataElements(items)
-                    .build()
 
                 val namespacesRequest = CborNamespace.Builder()
-                    .addNamespace(MdlNamespace.namespace, dataElements)
+                    .addNamespace(MdlNamespace.namespace, ri)
                     .build()
 
                 val itemsRequest = ItemsRequest.Builder()

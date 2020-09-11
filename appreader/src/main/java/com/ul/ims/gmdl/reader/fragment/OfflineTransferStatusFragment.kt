@@ -34,6 +34,7 @@ import androidx.navigation.fragment.navArgs
 import com.ul.ims.gmdl.bleofflinetransfer.utils.BleUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.model.UserCredential
+import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.response.BleTransferResponse
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
@@ -61,7 +62,7 @@ class OfflineTransferStatusFragment : Fragment() {
 
     private lateinit var vm: OfflineTransferStatusViewModel
     private var deviceEngagement: DeviceEngagement? = null
-    private var requestItems: Array<String>? = null
+    private var requestItems: DataElements? = null
     private var transferMethod: TransferChannels? = null
     private var bleServiceMode: BleServiceMode? = null
     private var wifiPassphrase: String? = null
@@ -228,7 +229,7 @@ class OfflineTransferStatusFragment : Fragment() {
                                 .build()
 
                             val action =
-                                OfflineTransferStatusFragmentDirections.actionOfflineTransferStatusFragmentToDisplayCredentialsFragment2(
+                                OfflineTransferStatusFragmentDirections.actionOfflineTransferStatusFragmentToDisplayCredentialsFragment(
                                     credential
                                 )
 

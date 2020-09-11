@@ -21,5 +21,5 @@ import com.ul.ims.gmdl.cbordata.command.ICommand
 interface IRequest : ICommand {
     fun isValid() : Boolean
     fun getRequestParams(): List<ItemsRequest>
-    fun getConsentRequestItems() : List<String>?
+    fun getConsentRequestItems(): Map<String, Boolean>?
 }

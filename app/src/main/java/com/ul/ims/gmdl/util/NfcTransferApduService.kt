@@ -372,18 +372,18 @@ class NfcTransferApduService : HostApduService() {
         if (req?.isValid() == true) {
             request = req
             request?.let {
-                it.getConsentRequestItems()?.let { consentList ->
-                    return askForUserConsent(consentList)
+                it.getConsentRequestItems()?.let { requestItems ->
+                    return askForUserConsent(requestItems)
                 }
             }
         }
         return sendResponse(errorResponse())
     }
 
-    private suspend fun askForUserConsent(requestItems: List<String>): ByteArray {
+    private suspend fun askForUserConsent(requestItems: Map<String, Boolean>): ByteArray {
         val selectedItems = HashMap<String, Boolean>()
         requestItems.forEach { reqName ->
-            selectedItems[reqName] = userConsentMap?.get(reqName) ?: false
+            selectedItems[reqName.key] = userConsentMap?.get(reqName.key) ?: false
         }
         return onUserConsent(selectedItems)
     }

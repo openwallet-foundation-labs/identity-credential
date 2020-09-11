@@ -50,4 +50,6 @@
     <string name="swt_intent_retain">Set "Intent to Retain"</string>
     <string name="swt_reader_authentication">Use Reader Authentication</string>
     <string name="toast_press_back_twice">Tap back button again to exit</string>
+    <string name="age_over_18">Age Over 18</string>
+    <string name="age_over_21">Age Over 21</string>
 </resources>

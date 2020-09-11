@@ -68,7 +68,10 @@ class MockIssuerAuthority private constructor(val context: Context) : IIssuerAut
                 }
     }
 
-    private var userCredential = UserCredential.Builder().useStaticData(context.resources).build()
+    private val dateSigned = DateUtils.getTimeOfLastUpdate()
+    private var userCredential = UserCredential.Builder()
+        .useStaticData(context.resources, dateSigned)
+        .build()
     private val expectedAlg = byteArrayOf(
         0x06.toByte(),
         0x08.toByte(),
@@ -103,7 +106,7 @@ class MockIssuerAuthority private constructor(val context: Context) : IIssuerAut
         val builder = IssuerNameSpaces.Builder()
 
         // Create a list with the possible digest ids and shuffle it
-        val digestIds = mutableListOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+        val digestIds = mutableListOf(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
         digestIds.shuffle()
 
         val list = mutableListOf<IssuerSignedItem>()
@@ -117,6 +120,8 @@ class MockIssuerAuthority private constructor(val context: Context) : IIssuerAut
         val licenseNumberIsiBuilder = IssuerSignedItem.Builder()
         val categoriesOfVehiclesIsiBuilder = IssuerSignedItem.Builder()
         val portraitIsiBuilder = IssuerSignedItem.Builder()
+        val ageOver18 = IssuerSignedItem.Builder()
+        val ageOver21 = IssuerSignedItem.Builder()
 
         //family name IssuerSignedItem
         familyNameIsiBuilder.setDigestId(digestIds[0])
@@ -211,6 +216,24 @@ class MockIssuerAuthority private constructor(val context: Context) : IIssuerAut
                 .setElementValue(it)
         }
         list.add(portraitIsiBuilder.build())
+
+        // age over 18
+        ageOver18.setDigestId(digestIds[10])
+            .setRandomValue(randomValue())
+            .setElementIdentifier(MdlDataIdentifiers.AGE_OVER_18.identifier)
+        userCredential.ageOver18?.let {
+            ageOver18.setElementValue(it)
+        }
+        list.add(ageOver18.build())
+
+        // age over 21
+        ageOver21.setDigestId(digestIds[11])
+            .setRandomValue(randomValue())
+            .setElementIdentifier(MdlDataIdentifiers.AGE_OVER_21.identifier)
+        userCredential.ageOver21?.let {
+            ageOver21.setElementValue(it)
+        }
+        list.add(ageOver21.build())
 
         // list must be sorted by digest id
         list.sortedBy { it.digestId }
@@ -365,8 +388,8 @@ class MockIssuerAuthority private constructor(val context: Context) : IIssuerAut
 
             // Create Validity Info
             val validityInfo = ValidityInfo.Builder()
-                .setSigned(DateUtils.getTimeOfLastUpdate())
-                .setValidFrom(DateUtils.getTimeOfLastUpdate())
+                .setSigned(dateSigned)
+                .setValidFrom(dateSigned)
                 .setValidUntil(DateUtils.getDateOfExpiry())
                 .build()
 

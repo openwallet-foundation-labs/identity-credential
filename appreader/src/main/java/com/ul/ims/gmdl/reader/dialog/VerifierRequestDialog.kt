@@ -89,6 +89,8 @@ class VerifierRequestDialog(
             "driving_privileges" -> R.string.categories_of_vehicles
             "mgmt_lastupdate" -> R.string.last_update
             "mgmt_validity" -> R.string.validity_date
+            "age_over_18" -> R.string.age_over_18
+            "age_over_21" -> R.string.age_over_21
             else -> 0
         }
     }

@@ -60,4 +60,6 @@
     <string name="alert_transfer_complete_title">Transfer Complete</string>
     <string name="toast_press_back_twice">Tap back button again to exit</string>
     <string name="nfc_icon_description">NFC Icon</string>
+    <string name="age_over_18">Age Over 18</string>
+    <string name="age_over_21">Age Over 21</string>
 </resources>

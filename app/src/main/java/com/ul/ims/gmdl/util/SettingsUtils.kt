@@ -18,23 +18,10 @@ package com.ul.ims.gmdl.util
 
 import android.content.Context
 import androidx.preference.PreferenceManager
-import com.ul.ims.gmdl.offlinetransfer.transportLayer.EngagementChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 
 
 object SettingsUtils {
-
-    fun getEngagementMethod(context: Context): EngagementChannels {
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        val qr = sharedPreferences.getBoolean("engagement_method_qr", false)
-        val nfc = sharedPreferences.getBoolean("engagement_method_nfc", false)
-
-        return when {
-            qr -> EngagementChannels.QR
-            nfc -> EngagementChannels.NFC
-            else -> throw IllegalStateException("Unable to get Engagement Method from shared preferences")
-        }
-    }
 
     fun getTransferMethod(context: Context) : TransferChannels {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -58,5 +45,18 @@ object SettingsUtils {
             putBoolean("transfer_method_nfc", TransferChannels.NFC == tranferMethod)
             commit()
         }
+    }
+
+    fun setAgeAttestationPreApproval(context: Context, checked: Boolean) {
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+        with(sharedPreferences.edit()) {
+            putBoolean("age_attestation_pre_approval", checked)
+            commit()
+        }
+    }
+
+    fun getAgeAttestationPreApproval(context: Context): Boolean {
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+        return sharedPreferences.getBoolean("age_attestation_pre_approval", false)
     }
 }

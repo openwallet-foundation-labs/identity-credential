@@ -26,5 +26,7 @@ enum class MdlDataIdentifiers(val identifier : String) {
     ISSUING_AUTHORITY("issuing_authority"),
     LICENSE_NUMBER("document_number"),
     CATEGORIES_OF_VEHICLES("driving_privileges"),
-    PORTRAIT_OF_HOLDER("portrait")
+    PORTRAIT_OF_HOLDER("portrait"),
+    AGE_OVER_18("age_over_18"),
+    AGE_OVER_21("age_over_21")
 }
