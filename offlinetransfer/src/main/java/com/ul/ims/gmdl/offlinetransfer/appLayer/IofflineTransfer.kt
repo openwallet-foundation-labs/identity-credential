@@ -19,6 +19,7 @@ package com.ul.ims.gmdl.offlinetransfer.appLayer
 import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.MutableLiveData
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
+import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportEventListener
@@ -43,9 +44,11 @@ interface IofflineTransfer : ITransportEventListener {
     /**
      * Setup Verifier
      * **/
-    fun setupVerifier(coseKey: CoseKey,
-                      requestItems : Array<String>,
-                      deviceEngagement : DeviceEngagement)
+    fun setupVerifier(
+        coseKey: CoseKey,
+        requestItems: DataElements,
+        deviceEngagement: DeviceEngagement
+    )
 
     /**
      * Close the transport channel

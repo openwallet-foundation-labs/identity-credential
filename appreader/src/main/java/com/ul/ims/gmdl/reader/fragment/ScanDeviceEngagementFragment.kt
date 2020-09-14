@@ -42,6 +42,7 @@ import com.budiyev.android.codescanner.*
 import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
+import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.nfcengagement.HandoverSelectMessage
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
@@ -60,6 +61,7 @@ import java.util.*
  */
 class ScanDeviceEngagementFragment : Fragment() {
 
+    private var intentToRetain: Boolean = false
     private lateinit var codeScanner: CodeScanner
     private lateinit var vm: ScanDeviceEngagementViewModel
     private val appPermissions = arrayOf(
@@ -67,7 +69,7 @@ class ScanDeviceEngagementFragment : Fragment() {
         Manifest.permission.ACCESS_FINE_LOCATION
     )
     private var requestDialog: DialogFragment? = null
-    private var requestItems: List<String>? = null
+    private var requestItems: DataElements? = null
     private var runOnce = false
 
     companion object {
@@ -189,11 +191,13 @@ class ScanDeviceEngagementFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val swrIntentRetain = view.findViewById<Switch>(R.id.swt_intent_retain)
+        val swtIntentRetain = view.findViewById<Switch>(R.id.swt_intent_retain)
         val swtReaderAuthentication = view.findViewById<Switch>(R.id.swt_reader_authentication)
+        val spnDataRequest = view.findViewById<Spinner>(R.id.spn_data_request)
 
-        swrIntentRetain.setOnCheckedChangeListener { _, _ ->
-            toast(getString(R.string.toast_not_implemented_text))
+        swtIntentRetain.setOnCheckedChangeListener { _, checked ->
+            intentToRetain = checked
+            dataRequestItemSelected(spnDataRequest.selectedItemPosition)
         }
         swtReaderAuthentication.setOnCheckedChangeListener { _, _ ->
             toast(getString(R.string.toast_not_implemented_text))
@@ -212,7 +216,6 @@ class ScanDeviceEngagementFragment : Fragment() {
             shouldRequestPermission(it)
         }
 
-        val spnDataRequest = view.findViewById<Spinner>(R.id.spn_data_request)
 
         ArrayAdapter.createFromResource(
             requireContext(),
@@ -227,17 +230,21 @@ class ScanDeviceEngagementFragment : Fragment() {
 
         spnDataRequest.onItemSelectedListener = object : OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
-                disableReader()
-                when (pos) {
-                    0 -> toast(getString(R.string.toast_not_implemented_text))
-                    1 -> requestAll()
-                    2 -> showDialog()
-                }
+                dataRequestItemSelected(pos)
             }
 
             override fun onNothingSelected(parent: AdapterView<*>) {
                 disableReader()
             }
+        }
+    }
+
+    private fun dataRequestItemSelected(pos: Int) {
+        disableReader()
+        when (pos) {
+            0 -> requestAgeAttestation()
+            1 -> requestAll()
+            2 -> showDialog()
         }
     }
 
@@ -269,7 +276,7 @@ class ScanDeviceEngagementFragment : Fragment() {
                 val action =
                     ScanDeviceEngagementFragmentDirections.actionScanDeviceEngagementFragmentToOfflineTransferStatusFragment(
                         deviceEngagement,
-                        it.toTypedArray(),
+                        it,
                         transferMethod,
                         bleServiceMode,
                         wifiPassphrase
@@ -313,10 +320,22 @@ class ScanDeviceEngagementFragment : Fragment() {
         }
     }
 
+    private fun requestAgeAttestation() {
+        vm.showPermissionGranted()
+
+        onGatherRequestItems(
+            listOf(
+                MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier,
+                MdlDataIdentifiers.AGE_OVER_21.identifier
+            )
+        )
+        enableReader()
+    }
+
     private fun requestAll() {
         vm.showPermissionGranted()
 
-        requestItems = MdlNamespace.items.keys.toList()
+        onGatherRequestItems(MdlNamespace.items.keys.toList())
         enableReader()
     }
 
@@ -364,7 +383,9 @@ class ScanDeviceEngagementFragment : Fragment() {
     private fun onGatherRequestItems(request: List<String>) {
         // requestItems variable will be passed along when the app navigates
         // to OfflineTransferStatusFragment
-        requestItems = request
+        requestItems = DataElements.Builder()
+            .dataElements(request.map { it to intentToRetain }.toMap())
+            .build()
     }
 
     private fun isAllPermissionsGranted(): Boolean {

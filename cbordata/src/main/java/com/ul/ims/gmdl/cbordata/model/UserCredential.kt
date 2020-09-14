@@ -20,6 +20,7 @@ import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.icu.util.Calendar
+import android.icu.util.Calendar.YEAR
 import android.os.Parcelable
 import androidx.security.identity.AccessControlProfileId
 import androidx.security.identity.PersonalizationData
@@ -45,12 +46,45 @@ class UserCredential private constructor(
     val licenseNumber: String?,
     val categoriesOfVehicles: DrivingPrivileges?,
     val portraitOfHolder: Bitmap?,
-    val issuerDataAuthentication : Boolean?,
-    val deviceSign : Boolean?
+    val issuerDataAuthentication: Boolean?,
+    val deviceSign: Boolean?,
+    val ageOver18: Boolean?,
+    val ageOver21: Boolean?
 ) : Parcelable {
 
     companion object {
         const val CREDENTIAL_NAME = "mdlUserCredential"
+    }
+
+    fun getAgeAttestationForProvisioning(
+        accessControlProfileIds: Collection<AccessControlProfileId>,
+        builder: PersonalizationData.Builder
+    ) {
+        val mdlNameSpace = MdlNamespace.namespace
+        BitmapUtils.encodeBitmap(portraitOfHolder)?.let {
+            builder.putEntryBytestring(
+                mdlNameSpace,
+                MdlDataIdentifiers.PORTRAIT_OF_HOLDER.identifier,
+                accessControlProfileIds,
+                it
+            )
+        }
+        ageOver18?.let {
+            builder.putEntryBoolean(
+                mdlNameSpace,
+                MdlDataIdentifiers.AGE_OVER_18.identifier,
+                accessControlProfileIds,
+                it
+            )
+        }
+        ageOver21?.let {
+            builder.putEntryBoolean(
+                mdlNameSpace,
+                MdlDataIdentifiers.AGE_OVER_21.identifier,
+                accessControlProfileIds,
+                it
+            )
+        }
     }
 
     fun getCredentialsForProvisioning(
@@ -138,6 +172,22 @@ class UserCredential private constructor(
                 it
             )
         }
+        ageOver18?.let {
+            builder.putEntryBoolean(
+                mdlNameSpace,
+                MdlDataIdentifiers.AGE_OVER_18.identifier,
+                accessControlProfileIds,
+                it
+            )
+        }
+        ageOver21?.let {
+            builder.putEntryBoolean(
+                mdlNameSpace,
+                MdlDataIdentifiers.AGE_OVER_21.identifier,
+                accessControlProfileIds,
+                it
+            )
+        }
     }
 
     class Builder {
@@ -151,12 +201,14 @@ class UserCredential private constructor(
         private var licenseNumber: String? = null
         private var categoriesOfVehicles: DrivingPrivileges? = null
         private var portraitOfHolder: Bitmap? = null
-        private var issuerDataAuthentication : Boolean? = null
-        private var deviceSign : Boolean? = null
+        private var issuerDataAuthentication: Boolean? = null
+        private var deviceSign: Boolean? = null
+        private var ageOver18: Boolean? = null
+        private var ageOver21: Boolean? = null
 
-        fun useStaticData(res: Resources) = apply {
-            familyName = "do Nascimento"
-            givenNames = "Edson Arantes"
+        fun useStaticData(res: Resources, dateSigned: Calendar) = apply {
+            familyName = "Mustermann"
+            givenNames = "Erika"
             dateOfBirth = DateUtils.getDateOfBirth()
             dateOfIssue = DateUtils.getDateOfIssue()
             dateOfExpiry = DateUtils.getDateOfExpiry()
@@ -164,9 +216,20 @@ class UserCredential private constructor(
             issuingAuthority = "Google"
             licenseNumber = "5094962111"
             categoriesOfVehicles = DrivingPrivileges.Builder().useHardcodedData().build()
+            dateOfBirth?.let {
+                ageOver18 = ageOver(18, it, dateSigned)
+                ageOver21 = ageOver(21, it, dateSigned)
+            }
 
-            val portrait = BitmapUtils.decodeBitmapResource(res, R.drawable.img_pele_portrait)
+            val portrait = BitmapUtils.decodeBitmapResource(res, R.drawable.img_erika_portrait)
             portraitOfHolder = portrait
+        }
+
+        private fun ageOver(years: Int, birthDate: Calendar, currentDate: Calendar): Boolean {
+            val dateAged = Calendar.getInstance()
+            dateAged.timeInMillis = birthDate.timeInMillis
+            dateAged.add(YEAR, years)
+            return dateAged.before(currentDate)
         }
 
         fun fromResultNamespace(resultData: ResultData) = apply {
@@ -213,6 +276,14 @@ class UserCredential private constructor(
             portrait?.let {
                 portraitOfHolder = BitmapFactory.decodeByteArray(it, 0, it.size)
             }
+            ageOver18 = resultData.getEntryBoolean(
+                mdlNameSpace,
+                MdlDataIdentifiers.AGE_OVER_18.identifier
+            )
+            ageOver21 = resultData.getEntryBoolean(
+                mdlNameSpace,
+                MdlDataIdentifiers.AGE_OVER_21.identifier
+            )
 
         }
 
@@ -299,6 +370,20 @@ class UserCredential private constructor(
                             portraitOfHolder = BitmapUtils.decodeBitmapBytes(element)
                         }
                     }
+
+                    MdlDataIdentifiers.AGE_OVER_18.identifier -> {
+                        val elementValue = it.elementValue as? Boolean
+                        elementValue?.let { element ->
+                            ageOver18 = element
+                        }
+                    }
+
+                    MdlDataIdentifiers.AGE_OVER_21.identifier -> {
+                        val elementValue = it.elementValue as? Boolean
+                        elementValue?.let { element ->
+                            ageOver21 = element
+                        }
+                    }
                 }
             }
         }
@@ -316,7 +401,9 @@ class UserCredential private constructor(
                 categoriesOfVehicles,
                 portraitOfHolder,
                 issuerDataAuthentication,
-                deviceSign
+                deviceSign,
+                ageOver18,
+                ageOver21
             )
         }
     }

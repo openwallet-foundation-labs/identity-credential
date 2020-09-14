@@ -22,5 +22,5 @@ package com.ul.ims.gmdl.offlinetransfer.transportLayer
  * **/
 interface ITransportEventListener {
     fun onEvent(event: EventType, description: String)
-    fun askForUserConsent(requestItems: List<String>)
+    fun askForUserConsent(requestItems: Map<String, Boolean>)
 }

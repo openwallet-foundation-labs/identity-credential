@@ -32,7 +32,7 @@
     <string name="license_number">License Number</string>
     <string name="categories_of_vehicles">Categories of vehicles</string>
     <string name="credentials_list">Credentials List</string>
-    <string name="pele_mdl">Pele\'s mDL</string>
+    <string name="erika_mdl">Erika\'s mDL</string>
     <string name="bluetooth_le">Bluetooth LE</string>
     <string name="wifi_aware">Wi-Fi Aware</string>
     <string name="nfc">NFC</string>
@@ -60,4 +60,6 @@
     <string name="alert_transfer_complete_title">Transfer Complete</string>
     <string name="toast_press_back_twice">Tap back button again to exit</string>
     <string name="nfc_icon_description">NFC Icon</string>
+    <string name="age_over_18">Age Over 18</string>
+    <string name="age_over_21">Age Over 21</string>
 </resources>

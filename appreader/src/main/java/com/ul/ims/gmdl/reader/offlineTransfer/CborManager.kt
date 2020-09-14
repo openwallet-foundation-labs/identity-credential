@@ -25,6 +25,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.lifecycle.MutableLiveData
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.interpreter.CborDataInterpreter
+import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
@@ -119,7 +120,7 @@ class CborManager(
     }
 
     override fun setupVerifier(
-        coseKey: CoseKey, requestItems: Array<String>,
+        coseKey: CoseKey, requestItems: DataElements,
         deviceEngagement: DeviceEngagement
     ) {
         if (AppMode.VERIFIER == actAs) {
@@ -185,7 +186,7 @@ class CborManager(
         }
     }
 
-    override fun askForUserConsent(requestItems: List<String>) {
+    override fun askForUserConsent(requestItems: Map<String, Boolean>) {
         updateLiveData(Resource.askUserConsent(requestItems))
     }
 

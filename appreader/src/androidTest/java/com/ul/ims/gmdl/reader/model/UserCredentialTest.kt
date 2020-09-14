@@ -17,6 +17,7 @@
 package com.ul.ims.gmdl.reader.model
 
 import android.content.Context
+import android.icu.util.Calendar
 import androidx.security.identity.AccessControlProfile
 import androidx.security.identity.AccessControlProfileId
 import androidx.security.identity.PersonalizationData
@@ -42,7 +43,7 @@ class UserCredentialTest {
         Assert.assertNotNull(builder)
 
         val credential = UserCredential.Builder()
-            .useStaticData(appContext.resources)
+            .useStaticData(appContext.resources, Calendar.getInstance())
             .build()
 
         Assert.assertNotNull(credential)
@@ -51,7 +52,7 @@ class UserCredentialTest {
     @Test
     fun getCredentialsForProvisioningTest() {
         val credential = UserCredential.Builder()
-            .useStaticData(appContext.resources)
+            .useStaticData(appContext.resources, Calendar.getInstance())
             .build()
 
         Assert.assertNotNull(credential)

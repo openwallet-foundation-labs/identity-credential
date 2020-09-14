@@ -142,8 +142,8 @@ class HolderExecutor(
         if (req?.isValid() == true) {
             request = req
             request?.let {
-                it.getConsentRequestItems()?.let {consentList ->
-                    askForUserConsent(consentList)
+                it.getConsentRequestItems()?.let { requestItems ->
+                    askForUserConsent(requestItems)
                 }
             }
         } else {
@@ -197,7 +197,7 @@ class HolderExecutor(
                         reqItems.remove(item)
                     }
 
-                    sessionTranscript?.let {sTranscript ->
+                    sessionTranscript?.let { _ ->
                         try {
                             sessionManager?.let { session ->
                                 // Request data items which will appear in IssuerSigned
@@ -330,7 +330,7 @@ class HolderExecutor(
         }
     }
 
-    override fun askForUserConsent(requestItems: List<String>) {
+    override fun askForUserConsent(requestItems: Map<String, Boolean>) {
         transportEventListener?.askForUserConsent(requestItems)
     }
 

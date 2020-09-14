@@ -49,7 +49,7 @@ interface IHolderExecutor : IExecutor {
      * Upon a received request mDL will ask the user consent to share the requested items in
      * the request
      * **/
-    fun askForUserConsent(requestItems : List<String>)
+    fun askForUserConsent(requestItems: Map<String, Boolean>)
 
 
     /**

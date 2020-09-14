@@ -41,7 +41,7 @@
         android:label="@string/fragment_transfer_status_title"
         tools:layout="@layout/fragment_offline_transfer_status">
         <action
-            android:id="@+id/action_offlineTransferStatusFragment_to_displayCredentialsFragment2"
+            android:id="@+id/action_offlineTransferStatusFragment_to_displayCredentialsFragment"
             app:destination="@id/displayCredentialsFragment"
             app:enterAnim="@anim/nav_default_enter_anim"
             app:exitAnim="@anim/nav_default_exit_anim"
@@ -54,7 +54,7 @@
             app:nullable="true" />
         <argument
             android:name="requestItems"
-            app:argType="string[]" />
+            app:argType="com.ul.ims.gmdl.cbordata.request.DataElements" />
         <argument
             android:name="transferMethod"
             app:argType="com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels" />

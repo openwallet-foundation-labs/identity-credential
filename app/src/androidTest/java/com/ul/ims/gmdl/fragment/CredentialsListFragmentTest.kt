@@ -54,8 +54,8 @@ class CredentialsListFragmentTest {
         onView(isRoot()).perform(
             waitId(R.id.txt_credential_title, TimeUnit.SECONDS.toMillis(8))
         )
-        // mDL Pele Credential
-        onView(withText(R.string.pele_mdl)).check(matches(isDisplayed()))
+        // mDL Erika Credential
+        onView(withText(R.string.erika_mdl)).check(matches(isDisplayed()))
 
         onView(withId(R.id.btn_share_mdl)).check(matches(isDisplayed()))
     }
@@ -66,8 +66,8 @@ class CredentialsListFragmentTest {
         onView(isRoot()).perform(
             waitId(R.id.txt_credential_title, TimeUnit.SECONDS.toMillis(8))
         )
-        // mDL Pele Credential
-        onView(withText(R.string.pele_mdl)).check(matches(isDisplayed()))
+        // mDL Erika Credential
+        onView(withText(R.string.erika_mdl)).check(matches(isDisplayed()))
 
         val transferMethods =
             getInstrumentation().targetContext.resources.getStringArray(R.array.arr_transfer_method)
