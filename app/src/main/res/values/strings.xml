@@ -32,7 +32,7 @@
     <string name="license_number">License Number</string>
     <string name="categories_of_vehicles">Categories of vehicles</string>
     <string name="credentials_list">Credentials List</string>
-    <string name="pele_mdl">Pele\'s mDL</string>
+    <string name="erika_mdl">Erika\'s mDL</string>
     <string name="bluetooth_le">Bluetooth LE</string>
     <string name="wifi_aware">Wi-Fi Aware</string>
     <string name="nfc">NFC</string>
