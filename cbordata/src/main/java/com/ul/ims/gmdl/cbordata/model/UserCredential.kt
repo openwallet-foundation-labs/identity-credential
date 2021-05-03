@@ -32,7 +32,7 @@ import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
 import com.ul.ims.gmdl.cbordata.response.BleTransferResponse
 import com.ul.ims.gmdl.cbordata.utils.BitmapUtils
 import com.ul.ims.gmdl.cbordata.utils.DateUtils
-import kotlinx.android.parcel.Parcelize
+import kotlinx.parcelize.Parcelize
 
 @Parcelize
 class UserCredential private constructor(

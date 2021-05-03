@@ -17,13 +17,16 @@
 package com.ul.ims.gmdl.util
 
 import android.content.Context
+import android.util.Log
 import androidx.preference.PreferenceManager
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 
 
 object SettingsUtils {
 
-    fun getTransferMethod(context: Context) : TransferChannels {
+    private val LOG_TAG = SettingsUtils::class.java.simpleName
+
+    fun getTransferMethod(context: Context): TransferChannels {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         val ble = sharedPreferences.getBoolean("transfer_method_ble", false)
         val wifi = sharedPreferences.getBoolean("transfer_method_wifi", false)
@@ -33,7 +36,13 @@ object SettingsUtils {
             ble -> TransferChannels.BLE
             wifi -> TransferChannels.WiFiAware
             nfc -> TransferChannels.NFC
-            else -> throw IllegalStateException("Unable to get Transfer Method from shared preferences")
+            else -> {
+                Log.d(
+                    LOG_TAG,
+                    "Unable to get Transfer Method from shared preferences, return BLE as default"
+                )
+                TransferChannels.BLE
+            }
         }
     }
 

@@ -100,7 +100,6 @@
             android:layout_marginStart="8dp"
             android:layout_marginTop="100dp"
             android:layout_marginEnd="8dp"
-            android:onClick="@{fragment::stopTransfer}"
             android:text="@string/btn_cancel_label"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.482"

@@ -17,6 +17,7 @@
 package com.ul.ims.gmdl.reader.fragment
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -31,14 +32,19 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.AdapterView
 import android.widget.AdapterView.OnItemSelectedListener
+import android.widget.ArrayAdapter
+import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import com.budiyev.android.codescanner.*
+import com.budiyev.android.codescanner.AutoFocusMode
+import com.budiyev.android.codescanner.CodeScanner
+import com.budiyev.android.codescanner.DecodeCallback
+import com.budiyev.android.codescanner.ScanMode
 import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
@@ -61,6 +67,12 @@ import java.util.*
  */
 class ScanDeviceEngagementFragment : Fragment() {
 
+    private var _binding: FragmentScanDeviceEngagementBinding? = null
+
+    // This property is only valid between onCreateView and
+    // onDestroyView.
+    private val binding get() = _binding!!
+
     private var intentToRetain: Boolean = false
     private lateinit var codeScanner: CodeScanner
     private lateinit var vm: ScanDeviceEngagementViewModel
@@ -74,9 +86,7 @@ class ScanDeviceEngagementFragment : Fragment() {
 
     companion object {
         const val LOG_TAG = "QrcodeScanFragment"
-        const val PORTRAIT_KEY = "portrait"
         const val REQUEST_DIALOG_TAG = "requestItems"
-        private const val REQUEST_PERMISSIONS_CODE = 123
         private const val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
                 or NfcAdapter.FLAG_READER_NFC_B
                 or NfcAdapter.FLAG_READER_NFC_F
@@ -125,6 +135,7 @@ class ScanDeviceEngagementFragment : Fragment() {
             }
         }
 
+    @SuppressLint("StaticFieldLeak")
     private inner class NdefReaderTask : AsyncTask<Tag, Void, Void>() {
 
         override fun doInBackground(vararg params: Tag): Void? {
@@ -176,8 +187,8 @@ class ScanDeviceEngagementFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        val binding = FragmentScanDeviceEngagementBinding.inflate(inflater)
+    ): View {
+        _binding = FragmentScanDeviceEngagementBinding.inflate(inflater)
         binding.fragment = this
         nfcAdapter = NfcAdapter.getDefaultAdapter(requireContext())
 
@@ -191,31 +202,27 @@ class ScanDeviceEngagementFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val swtIntentRetain = view.findViewById<Switch>(R.id.swt_intent_retain)
-        val swtReaderAuthentication = view.findViewById<Switch>(R.id.swt_reader_authentication)
-        val spnDataRequest = view.findViewById<Spinner>(R.id.spn_data_request)
 
-        swtIntentRetain.setOnCheckedChangeListener { _, checked ->
+        binding.swtIntentRetain.setOnCheckedChangeListener { _, checked ->
             intentToRetain = checked
-            dataRequestItemSelected(spnDataRequest.selectedItemPosition)
+            dataRequestItemSelected(binding.spnDataRequest.selectedItemPosition)
         }
-        swtReaderAuthentication.setOnCheckedChangeListener { _, _ ->
+        binding.swtReaderAuthentication.setOnCheckedChangeListener { _, _ ->
             toast(getString(R.string.toast_not_implemented_text))
         }
 
-        val scannerView = view.findViewById<CodeScannerView>(R.id.qrcode_scan_view)
-
-        codeScanner = CodeScanner(requireContext(), scannerView)
+        binding.qrcodeScanView.setOnClickListener {
+            shouldRequestPermission()
+        }
+        codeScanner = CodeScanner(requireContext(), binding.qrcodeScanView)
         codeScanner.isAutoFocusEnabled = true
         codeScanner.autoFocusMode = AutoFocusMode.SAFE
         codeScanner.scanMode = ScanMode.SINGLE
         codeScanner.decodeCallback = decodeCallback
 
-        val requestPermissionBtn = view.findViewById<Button>(R.id.btn_req_enable_ble)
-        requestPermissionBtn.setOnClickListener {
-            shouldRequestPermission(it)
+        binding.btnReqEnableBle.setOnClickListener {
+            shouldRequestPermission()
         }
-
 
         ArrayAdapter.createFromResource(
             requireContext(),
@@ -225,10 +232,10 @@ class ScanDeviceEngagementFragment : Fragment() {
             // Specify the layout to use when the list of choices appears
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             // Apply the adapter to the spinner
-            spnDataRequest.adapter = adapter
+            binding.spnDataRequest.adapter = adapter
         }
 
-        spnDataRequest.onItemSelectedListener = object : OnItemSelectedListener {
+        binding.spnDataRequest.onItemSelectedListener = object : OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
                 dataRequestItemSelected(pos)
             }
@@ -252,7 +259,7 @@ class ScanDeviceEngagementFragment : Fragment() {
         super.onResume()
 
         if (isAllPermissionsGranted()) {
-            shouldRequestPermission(requireView())
+            shouldRequestPermission()
         } else {
             vm.showPermissionDenied()
         }
@@ -294,7 +301,7 @@ class ScanDeviceEngagementFragment : Fragment() {
             CustomAlertDialog(
                 requireContext()
             ) {
-                shouldRequestPermission(requireView())
+                shouldRequestPermission()
             }.showErrorDialog(
                 getString(R.string.invalid_de_error_title),
                 getString(R.string.invalid_de_error_msg)
@@ -302,19 +309,15 @@ class ScanDeviceEngagementFragment : Fragment() {
         }
     }
 
-    fun shouldRequestPermission(view: View) {
-        val permissionsNeeded = mutableListOf<String>()
-
-        appPermissions.forEach { permission ->
-            if (checkSelfPermission(requireContext(), permission)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsNeeded.add(permission)
-            }
+    private fun shouldRequestPermission() {
+        val permissionsNeeded = appPermissions.filter { permission ->
+            checkSelfPermission(requireContext(), permission) != PackageManager.PERMISSION_GRANTED
         }
 
         if (permissionsNeeded.isNotEmpty()) {
-            requestPermissions(permissionsNeeded.toTypedArray(), REQUEST_PERMISSIONS_CODE)
+            permissionsLauncher.launch(
+                permissionsNeeded.toTypedArray()
+            )
         } else {
             vm.showPermissionGranted()
         }
@@ -389,59 +392,29 @@ class ScanDeviceEngagementFragment : Fragment() {
     }
 
     private fun isAllPermissionsGranted(): Boolean {
-        val permissionsNeeded = mutableListOf<String>()
-
-        appPermissions.forEach { permission ->
-            if (checkSelfPermission(requireContext(), permission)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                permissionsNeeded.add(permission)
-            }
+        // If any permission is not granted return false
+        return appPermissions.none { permission ->
+            checkSelfPermission(requireContext(), permission) != PackageManager.PERMISSION_GRANTED
         }
-
-        return permissionsNeeded.isEmpty()
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    private val permissionsLauncher =
+        registerForActivityResult(RequestMultiplePermissions()) { permissions ->
+            permissions.entries.forEach {
+                Log.d(LOG_TAG, "permissionsLauncher ${it.key} = ${it.value}")
 
-        when (requestCode) {
-            REQUEST_PERMISSIONS_CODE -> {
-                val permissionsDenied = mutableListOf<String>()
-
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.isNotEmpty()) {
-                    grantResults.forEachIndexed { index, i ->
-                        if (i == PackageManager.PERMISSION_DENIED) {
-                            permissionsDenied.add(permissions[index])
-                        }
-                    }
-
-                    if (!permissionsDenied.isEmpty()) {
-                        permissionsDenied.forEach {
-                            if (!shouldShowRequestPermissionRationale(it)) {
-                                openSettings()
-                            }
-                        }
-                    }
+                // Open settings if user denied any required permission
+                if (!it.value && !shouldShowRequestPermissionRationale(it.key)) {
+                    openSettings()
+                    return@registerForActivityResult
                 }
-                return
-            }
-            else -> {
-                // Ignore all other requests.
             }
         }
-    }
 
     private fun openSettings() {
         val intent = Intent()
         intent.action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
         intent.data = Uri.fromParts("package", requireContext().packageName, null)
         startActivity(intent)
-
-        requireContext().startActivity(intent)
     }
 }

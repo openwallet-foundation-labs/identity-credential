@@ -55,7 +55,6 @@
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="24dp"
                 android:layout_marginEnd="8dp"
-                android:onClick="@{fragment::shouldRequestPermission}"
                 android:visibility="@{safeUnbox(vm.notPermissionVisibility)}"
                 app:autoFocusButtonVisible="false"
                 app:flashButtonVisible="false"
@@ -106,7 +105,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/spn_data_request" />
 
-            <Switch
+            <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/swt_intent_retain"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -117,7 +116,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/txt_options_label" />
 
-            <Switch
+            <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/swt_reader_authentication"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

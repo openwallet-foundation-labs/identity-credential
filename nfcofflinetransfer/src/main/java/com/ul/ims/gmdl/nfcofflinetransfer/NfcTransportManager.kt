@@ -17,9 +17,11 @@
 package com.ul.ims.gmdl.nfcofflinetransfer
 
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
 import android.nfc.Tag
 import android.util.Log
+import com.ul.ims.gmdl.nfcofflinetransfer.holder.NfcTransferApduService
 import com.ul.ims.gmdl.nfcofflinetransfer.holder.NfcTransferHolder
 import com.ul.ims.gmdl.nfcofflinetransfer.holder.NfcTransferHolder.Companion.ACTION_NFC_TRANSFER_CALLBACK
 import com.ul.ims.gmdl.nfcofflinetransfer.reader.NfcTransferReader
@@ -58,11 +60,15 @@ class NfcTransportManager(
     private fun setupTransportLayer() {
         nfcService = when (appMode) {
             AppMode.HOLDER -> {
-                nfcReceiverHolder = NfcTransferHolder(this)
+                nfcReceiverHolder = NfcTransferHolder(context, this)
                 val filter = IntentFilter(ACTION_NFC_TRANSFER_CALLBACK)
                 context.registerReceiver(nfcReceiverHolder, filter)
 
-                // Nfc Transfer service is initiated in Fragment
+                // Nfc Transfer service
+                Intent(context, NfcTransferApduService::class.java).also { intent ->
+                    context.startService(intent)
+                }
+
 
                 nfcReceiverHolder
             }
@@ -89,6 +95,14 @@ class NfcTransportManager(
         Log.d(LOG_TAG, "close")
         try {
             context.unregisterReceiver(nfcReceiverHolder)
+        } catch (e: IllegalArgumentException) {
+            // Ignore error when trying to unregister receiver
+            Log.e(LOG_TAG, "Ignored error: ${e.message}")
+        }
+        try {
+            Intent(context, NfcTransferApduService::class.java).also { intent ->
+                context.stopService(intent)
+            }
         } catch (e: IllegalArgumentException) {
             // Ignore error when trying to unregister receiver
             Log.e(LOG_TAG, "Ignored error: ${e.message}")

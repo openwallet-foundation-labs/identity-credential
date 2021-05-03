@@ -16,6 +16,7 @@
 
 package com.ul.ims.gmdl.reader.fragment
 
+import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.content.Intent
 import android.nfc.NfcAdapter
@@ -26,8 +27,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
@@ -43,7 +44,6 @@ import com.ul.ims.gmdl.reader.R
 import com.ul.ims.gmdl.reader.databinding.FragmentOfflineTransferStatusBinding
 import com.ul.ims.gmdl.reader.dialog.CustomAlertDialog
 import com.ul.ims.gmdl.reader.viewmodel.OfflineTransferStatusViewModel
-import kotlinx.android.synthetic.main.fragment_offline_transfer_status.*
 import java.util.*
 
 /**
@@ -54,11 +54,16 @@ class OfflineTransferStatusFragment : Fragment() {
 
     companion object {
         private const val LOG_TAG = "OfflineTransferStatusFragment"
-        private const val REQUEST_ENABLE_BT = 7890
         private const val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
                 or NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK
                 or NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS)
     }
+
+    private var _binding: FragmentOfflineTransferStatusBinding? = null
+
+    // This property is only valid between onCreateView and
+    // onDestroyView.
+    private val binding get() = _binding!!
 
     private lateinit var vm: OfflineTransferStatusViewModel
     private var deviceEngagement: DeviceEngagement? = null
@@ -75,7 +80,7 @@ class OfflineTransferStatusFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
 
         val args: OfflineTransferStatusFragmentArgs by navArgs()
         deviceEngagement = args.deviceEngagement
@@ -87,7 +92,7 @@ class OfflineTransferStatusFragment : Fragment() {
 
         vm = ViewModelProvider(this).get(OfflineTransferStatusViewModel::class.java)
 
-        val binding = FragmentOfflineTransferStatusBinding.inflate(inflater)
+        _binding = FragmentOfflineTransferStatusBinding.inflate(inflater)
         binding.fragment = this
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(requireContext())
@@ -99,6 +104,8 @@ class OfflineTransferStatusFragment : Fragment() {
         super.onResume()
 
         nfcAdapter?.enableReaderMode(activity, callback, READER_FLAGS, null)
+
+        binding.btnCancelTransfer.setOnClickListener { stopTransfer() }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -182,20 +189,20 @@ class OfflineTransferStatusFragment : Fragment() {
     override fun onStart() {
         super.onStart()
 
-        vm.getTransferData()?.observe(this, Observer { res ->
+        vm.getTransferData()?.observe(this, { res ->
             // Avoid reading the same tag
             nfcAdapter?.enableReaderMode(activity, null, READER_FLAGS, null)
 
             when (res?.status) {
                 Resource.Status.CONNECTING -> {
-                    progress_connecting.visibility = View.VISIBLE
-                    img_conn_status.visibility = View.INVISIBLE
+                    binding.progressConnecting.visibility = View.VISIBLE
+                    binding.imgConnStatus.visibility = View.INVISIBLE
                 }
                 Resource.Status.TRANSFERRING -> {
-                    img_conn_status.setImageResource(R.drawable.ic_baseline_done)
-                    img_conn_status.visibility = View.VISIBLE
-                    progress_connecting.visibility = View.INVISIBLE
-                    progress_transferring_data.visibility = View.VISIBLE
+                    binding.imgConnStatus.setImageResource(R.drawable.ic_baseline_done)
+                    binding.imgConnStatus.visibility = View.VISIBLE
+                    binding.progressConnecting.visibility = View.INVISIBLE
+                    binding.progressTransferringData.visibility = View.VISIBLE
                 }
 
                 Resource.Status.NO_DEVICE_FOUND -> {
@@ -203,12 +210,12 @@ class OfflineTransferStatusFragment : Fragment() {
                 }
 
                 Resource.Status.TRANSFER_SUCCESSFUL -> {
-                    img_conn_status.setImageResource(R.drawable.ic_baseline_done)
-                    img_conn_status.visibility = View.VISIBLE
-                    progress_connecting.visibility = View.INVISIBLE
-                    progress_transferring_data.visibility = View.INVISIBLE
-                    img_transfer_status.setImageResource(R.drawable.ic_baseline_done)
-                    img_transfer_status.visibility = View.VISIBLE
+                    binding.imgConnStatus.setImageResource(R.drawable.ic_baseline_done)
+                    binding.imgConnStatus.visibility = View.VISIBLE
+                    binding.progressConnecting.visibility = View.INVISIBLE
+                    binding.progressTransferringData.visibility = View.INVISIBLE
+                    binding.imgTransferStatus.setImageResource(R.drawable.ic_baseline_done)
+                    binding.imgTransferStatus.visibility = View.VISIBLE
 
                     val response = res.data as? BleTransferResponse
                     response?.let { r ->
@@ -247,6 +254,7 @@ class OfflineTransferStatusFragment : Fragment() {
                     )
                     onErrorUpdateUi()
                 }
+                else -> Log.e(LOG_TAG, "Status transfer not mapped ${res?.status}")
             }
         })
     }
@@ -257,48 +265,41 @@ class OfflineTransferStatusFragment : Fragment() {
         vm.tearDown()
     }
 
-    fun stopTransfer(view: View?) {
+    private fun stopTransfer() {
         findNavController().popBackStack()
     }
 
     private fun onErrorUpdateUi() {
-        if (img_conn_status.visibility == View.INVISIBLE) {
-            img_conn_status.setImageResource(R.drawable.ic_baseline_error_outline)
-            img_conn_status.visibility = View.VISIBLE
-            progress_connecting.visibility = View.INVISIBLE
-            progress_transferring_data.visibility = View.INVISIBLE
+        if (binding.imgConnStatus.visibility == View.INVISIBLE) {
+            binding.imgConnStatus.setImageResource(R.drawable.ic_baseline_error_outline)
+            binding.imgConnStatus.visibility = View.VISIBLE
+            binding.progressConnecting.visibility = View.INVISIBLE
+            binding.progressTransferringData.visibility = View.INVISIBLE
         } else {
-            progress_transferring_data.visibility = View.INVISIBLE
-            img_transfer_status.setImageResource(R.drawable.ic_baseline_error_outline)
-            img_transfer_status.visibility = View.VISIBLE
+            binding.progressTransferringData.visibility = View.INVISIBLE
+            binding.imgTransferStatus.setImageResource(R.drawable.ic_baseline_error_outline)
+            binding.imgTransferStatus.visibility = View.VISIBLE
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        when (requestCode) {
-            REQUEST_ENABLE_BT -> {
-                when (resultCode) {
-                    -1 -> {
-                        // Update UI
-                        setupWiFiVerifier()
-                    }
-
-                    0 -> {
-                        requestToTurnOnBle()
-                    }
-                    else -> {
-                        // Unknown resultCode
-                        Log.e(LOG_TAG, "Unknown resultCode $resultCode")
-                    }
-                }
+    private var resultToTurnOnBle = registerForActivityResult(StartActivityForResult()) { result ->
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                // Update UI
+                setupWiFiVerifier()
+            }
+            Activity.RESULT_CANCELED -> {
+                requestToTurnOnBle()
+            }
+            else -> {
+                // Unknown resultCode
+                Log.e(LOG_TAG, "Unknown resultCode ${result.resultCode}")
             }
         }
     }
 
     private fun requestToTurnOnBle() {
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-        startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
+        resultToTurnOnBle.launch(enableBtIntent)
     }
 }

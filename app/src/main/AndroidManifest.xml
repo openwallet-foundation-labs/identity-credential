@@ -61,7 +61,7 @@
                 android:resource="@xml/nfc_engagement_apdu_service" />
         </service>
         <service
-            android:name=".util.NfcTransferApduService"
+            android:name=".nfcofflinetransfer.holder.NfcTransferApduService"
             android:exported="true"
             android:label="@string/nfc_transfer_service_desc"
             android:permission="android.permission.BIND_NFC_SERVICE">

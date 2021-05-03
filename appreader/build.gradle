@@ -1,6 +1,5 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 apply plugin: 'org.sonarqube'
 apply plugin: 'jacoco'
 apply plugin: 'androidx.navigation.safeargs'
@@ -40,14 +39,11 @@ android {
 
     buildFeatures {
         dataBinding true
+        viewBinding true
     }
 
     kotlinOptions {
         jvmTarget = "1.8"
-    }
-
-    androidExtensions {
-        experimental = true
     }
 }
 
