@@ -240,11 +240,10 @@ class WifiAwareServiceSubscriber internal constructor(
                 // Keep reading until receive all data
                 while (read != -1 && receivedContent.size < len) {
                     read = inputStream?.read(receivedData)
-                    val size = len - receivedContent.size
                     trimmed = receivedData.copyOfRange(0, read ?: 0)
                     Log.d(LOG_TAG, "Response: " + Hex.toHexString(trimmed))
 
-                    receivedContent += trimmed.copyOfRange(0, size.toInt())
+                    receivedContent += trimmed.copyOfRange(0, trimmed.size)
 
                     Log.d(LOG_TAG, "content size: ${receivedContent.size} content length: $len")
                     Log.d(LOG_TAG, "ReceivedContent: " + Hex.toHexString(receivedContent))
