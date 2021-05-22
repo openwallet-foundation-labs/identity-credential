@@ -48,7 +48,6 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
 import com.ul.ims.gmdl.qrcode.MdlQrCode
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
-import com.ul.ims.gmdl.util.NfcTransferApduService
 import com.ul.ims.gmdl.util.SharedPreferenceUtils
 import com.ul.ims.gmdl.wifiofflinetransfer.utils.WifiUtils
 import io.reactivex.Single
@@ -106,28 +105,6 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
     fun onUserConsent(userConsentMap: Map<String, Boolean>?) {
         viewModelScope.launch {
             offlineTransferHolder?.onUserConsent(userConsentMap)
-        }
-    }
-
-    /**
-     * This function is only called when used NFC Transfer, the user consent is needed before
-     * to avoid interrupting NFC connection with user interaction
-     *
-     * @param userConsentMap User consent items
-     */
-    fun onUserPreConsent(userConsentMap: Map<String, Boolean>) {
-        // Initiate Nfc Service Tag
-        Log.d(LOG_TAG, "start NFC transport service")
-        Intent(app.applicationContext, NfcTransferApduService::class.java).also { intent ->
-            intent.putExtra(
-                NfcTransferApduService.EXTRA_NFC_TRANSFER_DEVICE_ENGAGEMENT,
-                deviceEngagement?.encode()
-            )
-            intent.putExtra(
-                NfcTransferApduService.EXTRA_NFC_TRANSFER_USER_CONSENT,
-                HashMap(userConsentMap)
-            )
-            app.applicationContext.startService(intent)
         }
     }
 

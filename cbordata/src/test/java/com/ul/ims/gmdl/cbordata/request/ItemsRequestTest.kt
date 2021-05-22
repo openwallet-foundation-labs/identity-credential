@@ -31,7 +31,7 @@ class ItemsRequestTest {
         .addNamespace(MdlNamespace.namespace, dataElements)
         .build()
 
-    private val requestInfo = mutableMapOf(
+    private val requestInfo: MutableMap<String, Any> = mutableMapOf(
         Pair("Hello", "World"),
         Pair("Test", "Data"),
         Pair("Answer", 0x2A)

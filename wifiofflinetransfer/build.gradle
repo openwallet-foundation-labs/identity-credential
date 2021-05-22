@@ -1,6 +1,5 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 android {
     compileSdkVersion 29
@@ -43,7 +42,7 @@ dependencies {
     implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_version"
 
     // Apache HTTP Library
-    implementation 'org.apache.httpcomponents:httpcore:4.4.13'
+    implementation "org.apache.httpcomponents:httpcore:$apache_http_version"
 
     // JUnit 4 framework
     testImplementation "junit:junit:$junit_version"

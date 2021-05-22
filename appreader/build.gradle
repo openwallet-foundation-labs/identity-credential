@@ -1,6 +1,5 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 apply plugin: 'org.sonarqube'
 apply plugin: 'jacoco'
 apply plugin: 'androidx.navigation.safeargs'
@@ -40,14 +39,11 @@ android {
 
     buildFeatures {
         dataBinding true
+        viewBinding true
     }
 
     kotlinOptions {
         jvmTarget = "1.8"
-    }
-
-    androidExtensions {
-        experimental = true
     }
 }
 
@@ -62,7 +58,7 @@ dependencies {
     implementation "androidx.appcompat:appcompat:$appcompat_version"
     implementation "androidx.core:core-ktx:$core_ktx_version"
     implementation "androidx.constraintlayout:constraintlayout:$constraint_layout_version"
-    implementation "androidx.fragment:fragment:$fragment_version"
+    implementation "androidx.fragment:fragment-ktx:$fragment_version"
     implementation "androidx.fragment:fragment-ktx:$fragment_version"
     implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_ktx_version"
@@ -71,7 +67,7 @@ dependencies {
     implementation "androidx.navigation:navigation-fragment-ktx:$navigation_version"
     implementation "androidx.navigation:navigation-ui-ktx:$navigation_version"
     implementation "androidx.cardview:cardview:$cardview_version"
-    implementation "androidx.preference:preference:$androidx_preference"
+    implementation "androidx.preference:preference-ktx:$androidx_preference"
 
     // QRCode Library
     implementation "com.budiyev.android:code-scanner:$qrcode_version"

@@ -17,23 +17,27 @@
 package com.ul.ims.gmdl.fragment
 
 import android.Manifest
+import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
+import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.biometric.BiometricPrompt
-import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.ul.ims.gmdl.R
@@ -48,7 +52,6 @@ import com.ul.ims.gmdl.nfcengagement.NfcHandler.Companion.ACTION_NFC_DEVICE_ENGA
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.utils.BiometricUtils
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
-import com.ul.ims.gmdl.util.NfcTransferApduService
 import com.ul.ims.gmdl.util.SettingsUtils
 import com.ul.ims.gmdl.util.SharedPreferenceUtils
 import com.ul.ims.gmdl.viewmodel.ShareCredentialsViewModel
@@ -65,8 +68,6 @@ class ShareCredentialsFragment : Fragment() {
 
     companion object {
         private val LOG_TAG = ShareCredentialsFragment::class.java.simpleName
-        private const val REQUEST_FINE_LOCATION = 123
-        private const val REQUEST_ENABLE_BT = 456
     }
 
     private lateinit var vm: ShareCredentialsViewModel
@@ -122,7 +123,7 @@ class ShareCredentialsFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         val binding = FragmentShareCredentialsBinding.inflate(inflater)
         vm = ViewModelProvider(this).get(ShareCredentialsViewModel::class.java)
         vm.setUp()
@@ -146,6 +147,10 @@ class ShareCredentialsFragment : Fragment() {
                 )
         }
 
+        binding.btnReqEnableBle.setOnClickListener { requestToTurnOnBle() }
+
+        binding.btnReqPermission.setOnClickListener { shouldRequestPermission() }
+
         sharedPref = SharedPreferenceUtils(requireContext())
         return binding.root
     }
@@ -161,7 +166,7 @@ class ShareCredentialsFragment : Fragment() {
                 vm.isBleEnabled(false)
 
                 // Request user to enable BLE
-                requestToTurnOnBle(requireView())
+                requestToTurnOnBle()
             }
         } else if (TransferChannels.WiFiAware == transferMethod) {
             if (WifiUtils.isWifiEnabled(requireContext())) {
@@ -197,7 +202,7 @@ class ShareCredentialsFragment : Fragment() {
         val filter = IntentFilter(ACTION_NFC_DEVICE_ENGAGEMENT_CALLBACK)
         context?.registerReceiver(nfcDeviceEngagementReceiver, filter)
 
-        vm.getOfflineTransferStatusLd().observe(viewLifecycleOwner, Observer { myData ->
+        vm.getOfflineTransferStatusLd().observe(viewLifecycleOwner, { myData ->
             when (myData.status) {
                 Resource.Status.NO_DEVICE_FOUND -> {
                     CustomAlertDialog(requireContext()) { navigateBack() }
@@ -208,39 +213,43 @@ class ShareCredentialsFragment : Fragment() {
                 }
 
                 Resource.Status.ASK_USER_CONSENT -> {
-                    val preApproved = SettingsUtils.getAgeAttestationPreApproval(requireContext())
+                    if (TransferChannels.NFC == transferMethod && ::consent.isInitialized) {
+                        vm.onUserConsent(consent)
+                    } else {
+                        val preApproved =
+                            SettingsUtils.getAgeAttestationPreApproval(requireContext())
 
-                    @Suppress("UNCHECKED_CAST")
-                    val requestItems = myData.data as? Map<String, Boolean>
-                    requestItems?.let {
-                        val requestList = it.keys.toMutableList()
-                        // Only if pre approved and the age attestation is set as not intent to
-                        // retain by the reader we don't ask for the user consent
-                        this.consent = mapOf()
-                        if (preApproved) {
-                            if (it[MdlDataIdentifiers.AGE_OVER_21.identifier] == false) {
-                                requestList.remove(MdlDataIdentifiers.AGE_OVER_18.identifier)
-                                this.consent =
-                                    mapOf(Pair(MdlDataIdentifiers.AGE_OVER_18.identifier, true))
+                        @Suppress("UNCHECKED_CAST")
+                        val requestItems = myData.data as? Map<String, Boolean>
+                        requestItems?.let {
+                            val requestList = it.keys.toMutableList()
+                            // Only if pre approved and the age attestation is set as not intent to
+                            // retain by the reader we don't ask for the user consent
+                            this.consent = mapOf()
+                            if (preApproved) {
+                                if (it[MdlDataIdentifiers.AGE_OVER_18.identifier] == false) {
+                                    requestList.remove(MdlDataIdentifiers.AGE_OVER_18.identifier)
+                                    this.consent =
+                                        mapOf(Pair(MdlDataIdentifiers.AGE_OVER_18.identifier, true))
+                                }
+                                if (it[MdlDataIdentifiers.AGE_OVER_21.identifier] == false) {
+                                    requestList.remove(MdlDataIdentifiers.AGE_OVER_21.identifier)
+                                    this.consent =
+                                        mapOf(Pair(MdlDataIdentifiers.AGE_OVER_21.identifier, true))
+                                }
                             }
-                            if (it[MdlDataIdentifiers.AGE_OVER_21.identifier] == false) {
-                                requestList.remove(MdlDataIdentifiers.AGE_OVER_21.identifier)
-                                this.consent =
-                                    mapOf(Pair(MdlDataIdentifiers.AGE_OVER_21.identifier, true))
+                            if (requestList.isNotEmpty()) {
+                                ConsentDialog(requestList, { consent ->
+                                    this.consent = consent.plus(this.consent)
+                                    canAuthenticate()
+                                }, {
+                                    vm.onUserConsentCancel()
+                                }).show(parentFragmentManager, "consentdialog")
+                            } else {
+                                onUserConsent()
                             }
-                        }
-                        if (requestList.isNotEmpty()) {
-                            ConsentDialog(requestList, { consent ->
-                                this.consent = consent.plus(this.consent)
-                                canAuthenticate()
-                            }, {
-                                vm.onUserConsentCancel()
-                            }).show(parentFragmentManager, "consentdialog")
-                        } else {
-                            onUserConsent()
                         }
                     }
-
                 }
                 Resource.Status.TRANSFER_SUCCESSFUL -> {
                     CustomAlertDialog(requireContext()) { navigateBack() }
@@ -296,9 +305,7 @@ class ShareCredentialsFragment : Fragment() {
 
     private fun onUserConsent() {
         if (::consent.isInitialized) {
-            if (TransferChannels.NFC == transferMethod) {
-                vm.onUserPreConsent(consent)
-            } else {
+            if (TransferChannels.NFC != transferMethod) {
                 vm.onUserConsent(consent)
             }
         }
@@ -323,95 +330,68 @@ class ShareCredentialsFragment : Fragment() {
 
         val intent = Intent(context, NfcHandler::class.java)
         context?.stopService(intent)
-        val intentTransfer = Intent(context, NfcTransferApduService::class.java)
-        context?.stopService(intentTransfer)
     }
 
     private fun shouldRequestPermission() {
-        if (ContextCompat.checkSelfPermission(
+        if (checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
-            )
-            != PackageManager.PERMISSION_GRANTED
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
-
-            //Update UI
-            vm.isPermissionGranted(false)
-
-            if (!shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                    REQUEST_FINE_LOCATION)
-            }
-
+            permissionsLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         } else {
-
-            //Update UI
             vm.isPermissionGranted(true)
-
             setupHolder()
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
-                                            grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    private val permissionsLauncher =
+        registerForActivityResult(RequestPermission()) { permission ->
+            Log.d(LOG_TAG, "permissionsLauncher $permission")
 
-        when (requestCode) {
-            REQUEST_FINE_LOCATION -> {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.isNotEmpty()) {
-
-                    when (grantResults[0]) {
-                        PackageManager.PERMISSION_GRANTED -> {
-                            //Update UI
-                            vm.isPermissionGranted(true)
-                            setupHolder()
-                        }
-                        PackageManager.PERMISSION_DENIED -> {
-                            //Update UI
-                            vm.isPermissionGranted(false)
-                        }
-                    }
-                }
-                return
-            }
-            else -> {
-                // Ignore all other requests.
-            }
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        when (requestCode) {
-            REQUEST_ENABLE_BT -> {
-                when (resultCode) {
-                    -1 -> {
-                        // Update UI
-                        vm.isBleEnabled(true)
-                        shouldRequestPermission()
-                    }
-                    0 -> {
-                        // Update UI
-                        vm.isBleEnabled(false)
-                    }
-                    else -> {
-                        // Unknown resultCode
-                        Log.e(LOG_TAG, "Unknown resultCode $resultCode")
-                    }
+            if (permission) {
+                //Update UI
+                vm.isPermissionGranted(true)
+                setupHolder()
+            } else {
+                //Update UI
+                vm.isPermissionGranted(false)
+                // Open settings if user denied any required permission
+                if (!shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                    openSettings()
                 }
             }
         }
+
+    private var resultToTurnOnBle =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            when (result.resultCode) {
+                Activity.RESULT_OK -> {
+                    // Update UI
+                    vm.isBleEnabled(true)
+                    shouldRequestPermission()
+                }
+                Activity.RESULT_CANCELED -> {
+                    // Update UI
+                    vm.isBleEnabled(false)
+                }
+                else -> {
+                    // Unknown resultCode
+                    Log.e(LOG_TAG, "Unknown resultCode ${result.resultCode}")
+                }
+            }
+        }
+
+    private fun openSettings() {
+        val intent = Intent()
+        intent.action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+        intent.data = Uri.fromParts("package", requireContext().packageName, null)
+        startActivity(intent)
     }
 
-    fun requestToTurnOnBle(view : View) {
+    private fun requestToTurnOnBle() {
         val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-        startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
-    }
-
-    fun requestPermission(view: View) {
-        requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_FINE_LOCATION)
+        resultToTurnOnBle.launch(enableBtIntent)
     }
 
     private fun showBiometricPrompt(cryptoObject: BiometricPrompt.CryptoObject) {

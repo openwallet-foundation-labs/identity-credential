@@ -63,10 +63,10 @@ class SessionTest {
             .build()
 
         // Device engagement
-        val deBuilder = DeviceEngagement.Builder()
-        deBuilder.version(DE_VERSION)
-        deBuilder.security(security)
-        val deviceEngagement = deBuilder.build()
+        val deviceEngagement = DeviceEngagement.Builder()
+            .version(DE_VERSION)
+            .security(security)
+            .build()
 
         // Verifier Session Manager is used to Encrypt/Decrypt Messages
         val verifierSessionManager = VerifierSessionManager(coseKey, deviceEngagement)

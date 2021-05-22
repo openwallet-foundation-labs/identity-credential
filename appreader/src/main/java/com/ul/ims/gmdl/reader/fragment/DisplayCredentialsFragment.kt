@@ -22,7 +22,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
@@ -51,7 +50,7 @@ class DisplayCredentialsFragment : Fragment() {
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         val args: DisplayCredentialsFragmentArgs by navArgs()
         val binding = FragmentDisplayCredentialsBinding.inflate(inflater)
 
@@ -82,11 +81,11 @@ class DisplayCredentialsFragment : Fragment() {
 
         binding.fragment = this
         binding.vm = vm
-        vm.getCredentialLiveData().observe(viewLifecycleOwner, Observer {
+        vm.getCredentialLiveData().observe(viewLifecycleOwner, {
             binding.user = it
         })
 
-        vm.getProvisionErrorsLiveData().observe(viewLifecycleOwner, Observer { err ->
+        vm.getProvisionErrorsLiveData().observe(viewLifecycleOwner, { err ->
             CustomAlertDialog(requireContext()) { navigateBack() }
                 .showErrorDialog("error", err.localizedMessage)
         })
@@ -99,15 +98,12 @@ class DisplayCredentialsFragment : Fragment() {
         Log.d("deviceSign", credential?.deviceSign.toString())
     }
 
-    fun onShare(view: View) {
-//        view.findNavController().navigate(R.id.action_displayCredentialsFragment_to_shareCredentialsFragment)
-    }
-
-    fun onShareNFC(view: View) {
-//        view.findNavController().navigate(R.id.action_displayCredentialsFragment_to_shareCredentialsNfcFragment)
-    }
-
     private fun navigateBack() {
         findNavController().popBackStack()
+    }
+
+    override fun onDestroyView() {
+        nfcAdapter = null
+        super.onDestroyView()
     }
 }

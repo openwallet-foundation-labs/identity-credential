@@ -47,10 +47,10 @@ constructor(
 
     private val mHolderEphemeralPublicKey = holderEphemeralPublicKey
     private var mEphemeralKeyPair: KeyPair
-    private var mSecretKey: SecretKey
-    private var mReaderSecretKey: SecretKey
-    private var mCounter: Int = 1
-    private var mMdlExpectedCounter: Int = 1
+    private var mSKDevice: SecretKey
+    private var mSKHolder: SecretKey
+    private var mSKDeviceCounter: Int = 1
+    private var mSKHolderCounter: Int = 1
     private var mSecureRandom: SecureRandom? = null
 
     init {
@@ -80,37 +80,40 @@ constructor(
                 .build()
                 .encodeAsTaggedByteString()
 
-            val sharedSecretWithDeviceTranscriptBytes = sharedSecret + sessionTranscriptBytes
+            val salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes)
 
-            val salt = ByteArray(1)
-            val info = ByteArray(0)
-
-            salt[0] = 0x01
-            var derivedKey = Utils.computeHkdf(
-                "HmacSha256",
-                sharedSecretWithDeviceTranscriptBytes,
-                salt,
-                info,
-                32
+            var info = byteArrayOf(
+                'S'.toByte(),
+                'K'.toByte(),
+                'D'.toByte(),
+                'e'.toByte(),
+                'v'.toByte(),
+                'i'.toByte(),
+                'c'.toByte(),
+                'e'.toByte()
             )
-            mSecretKey = SecretKeySpec(derivedKey, "AES")
+            var derivedKey = Utils.computeHkdf("HmacSha256", sharedSecret, salt, info, 32)
+            mSKDevice = SecretKeySpec(derivedKey, "AES")
 
-            salt[0] = 0x00
-            derivedKey = Utils.computeHkdf(
-                "HmacSha256",
-                sharedSecretWithDeviceTranscriptBytes,
-                salt,
-                info,
-                32
+            info = byteArrayOf(
+                'S'.toByte(),
+                'K'.toByte(),
+                'R'.toByte(),
+                'e'.toByte(),
+                'a'.toByte(),
+                'd'.toByte(),
+                'e'.toByte(),
+                'r'.toByte()
             )
-            mReaderSecretKey = SecretKeySpec(derivedKey, "AES")
+            derivedKey = Utils.computeHkdf("HmacSha256", sharedSecret, salt, info, 32)
+            mSKHolder = SecretKeySpec(derivedKey, "AES")
 
             mSecureRandom = SecureRandom()
 
-            Log.d(LOG_TAG, "mSecretKey.encoded: ${CborUtils.encodeToString(mSecretKey.encoded)}")
+            Log.d(LOG_TAG, "mSecretKey.encoded: ${CborUtils.encodeToString(mSKDevice.encoded)}")
             Log.d(
                 LOG_TAG,
-                "mReaderSecretKey.encoded: ${CborUtils.encodeToString(mReaderSecretKey.encoded)}"
+                "mReaderSecretKey.encoded: ${CborUtils.encodeToString(mSKHolder.encoded)}"
             )
             Log.d(
                 LOG_TAG,
@@ -161,10 +164,10 @@ constructor(
             val iv = ByteBuffer.allocate(12)
             iv.putInt(0, 0x00000000)
             iv.putInt(4, 0x00000000)
-            iv.putInt(8, mCounter)
+            iv.putInt(8, mSKHolderCounter)
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             val encryptionParameterSpec = GCMParameterSpec(128, iv.array())
-            cipher.init(Cipher.ENCRYPT_MODE, mReaderSecretKey, encryptionParameterSpec)
+            cipher.init(Cipher.ENCRYPT_MODE, mSKHolder, encryptionParameterSpec)
             messageCiphertext = cipher.doFinal(messagePlaintext) // This includes the auth tag
         } catch (e: BadPaddingException) {
             Log.e(LOG_TAG, e.message, e)
@@ -186,7 +189,7 @@ constructor(
             throw IdentityCredentialException(ERR_ENCRYPT, e)
         }
 
-        mCounter += 1
+        mSKHolderCounter += 1
         return messageCiphertext
     }
 
@@ -194,11 +197,11 @@ constructor(
         val iv = ByteBuffer.allocate(12)
         iv.putInt(0, 0x00000000)
         iv.putInt(4, 0x00000001)
-        iv.putInt(8, mMdlExpectedCounter)
+        iv.putInt(8, mSKDeviceCounter)
         var plaintext: ByteArray?
         try {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.DECRYPT_MODE, mSecretKey, GCMParameterSpec(128, iv.array()))
+            cipher.init(Cipher.DECRYPT_MODE, mSKDevice, GCMParameterSpec(128, iv.array()))
             plaintext = cipher.doFinal(messageCiphertext)
         } catch (e: BadPaddingException) {
             Log.e(LOG_TAG, e.message, e)
@@ -220,7 +223,7 @@ constructor(
             throw IdentityCredentialException(ERR_DECRYPT, e)
         }
 
-        mMdlExpectedCounter += 1
+        mSKDeviceCounter += 1
         return plaintext
     }
 }
