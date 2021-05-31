@@ -67,7 +67,7 @@ class ShareDocumentFragment : Fragment() {
             when (it) {
                 TransferStatus.ENGAGEMENT_READY -> {
                     vm.message.set("Engagement Ready!")
-                    vm.setDeviceEngagementQrCode()
+                    vm.setDeviceEngagement()
                 }
                 TransferStatus.CONNECTED -> {
                     vm.message.set("Connected!")

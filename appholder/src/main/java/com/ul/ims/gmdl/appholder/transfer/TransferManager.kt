@@ -1,6 +1,7 @@
 package com.ul.ims.gmdl.appholder.transfer
 
 import android.content.Context
+import android.nfc.cardemulation.HostApduService
 import android.os.Build
 import android.util.Log
 import android.view.View
@@ -28,6 +29,7 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     private var presentation: IdentityCredentialPresentation? = null
+    private var hasStarted = false
 
     //    private val store: IdentityCredentialStore =
 //        IdentityCredentialStore.getSoftwareInstance(context.applicationContext)
@@ -39,18 +41,21 @@ class TransferManager private constructor(private val context: Context) {
 
     @Throws(CipherSuiteNotSupportedException::class)
     fun startPresentation(store: IdentityCredentialStore) {
-        try {
-            presentation = store.getPresentation(
-                IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-            )
-        } catch (e: CipherSuiteNotSupportedException) {
-            Log.e(LOG_TAG, "Error creating IdentityCredentialPresentation ${e.message}")
-            throw e
-        }
+        if (!hasStarted) {
+            try {
+                presentation = store.getPresentation(
+                    IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+                )
+            } catch (e: CipherSuiteNotSupportedException) {
+                Log.e(LOG_TAG, "Error creating IdentityCredentialPresentation ${e.message}")
+                throw e
+            }
 
-        presentation?.let {
-            it.setDeviceRequestListener(requestListener, context.mainExecutor())
-            it.presentationBegin()
+            presentation?.let {
+                it.setDeviceRequestListener(requestListener, context.mainExecutor())
+                it.presentationBegin()
+            }
+            hasStarted = true
         }
     }
 
@@ -89,6 +94,14 @@ class TransferManager private constructor(private val context: Context) {
 
     fun getDeviceEngagementQrCode(): View? {
         return presentation?.getDeviceEngagementQrCode(800)
+    }
+
+    fun nfcEngagementProcessCommandApdu(service: HostApduService, commandApdu: ByteArray) {
+        presentation?.nfcEngagementProcessCommandApdu(service, commandApdu)
+    }
+
+    fun nfcEngagementOnDeactivated(service: HostApduService, reason: Int) {
+        presentation?.nfcEngagementOnDeactivated(service, reason)
     }
 
     fun sendCredential(
@@ -138,6 +151,7 @@ class TransferManager private constructor(private val context: Context) {
         presentation?.presentationEnd()
         presentation = null
         transferStatusLd = MutableLiveData<TransferStatus>()
+        hasStarted = false
     }
 
 }

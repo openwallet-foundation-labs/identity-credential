@@ -20,23 +20,19 @@ class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     private val documentManager = DocumentManager.getInstance(app.applicationContext)
     var deviceEngagementQr = ObservableField<View>()
     var message = ObservableField<String>()
-    private var hasStarted = false
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
     fun startPresentation() {
-        if (!hasStarted)
-            transferManager.startPresentation(documentManager.store)
-        hasStarted = true
+        transferManager.startPresentation(documentManager.store)
     }
 
     fun cancelPresentation() {
         transferManager.stopPresentation()
-        hasStarted = false
         message.set("Presentation canceled")
     }
 
-    fun setDeviceEngagementQrCode() {
+    fun setDeviceEngagement() {
         deviceEngagementQr.set(transferManager.getDeviceEngagementQrCode())
     }
 
