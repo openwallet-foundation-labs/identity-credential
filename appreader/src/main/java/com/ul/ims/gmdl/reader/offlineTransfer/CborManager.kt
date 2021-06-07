@@ -27,6 +27,7 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.interpreter.CborDataInterpreter
 import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
@@ -40,12 +41,14 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
+import java.util.*
 
 class CborManager(
     private val context: Context,
     private val actAs: AppMode,
     transportChannel: TransferChannels,
     bleServiceMode: BleServiceMode,
+    bleUUID: UUID?,
     publicKey: ByteArray,
     wifiPassphrase: String?,
     nfcTag: Tag?,
@@ -62,6 +65,7 @@ class CborManager(
             transportChannel,
             actAs,
             bleServiceMode,
+            bleUUID,
             publicKey,
             wifiPassphrase,
             nfcTag,
@@ -121,7 +125,8 @@ class CborManager(
 
     override fun setupVerifier(
         coseKey: CoseKey, requestItems: DataElements,
-        deviceEngagement: DeviceEngagement
+        deviceEngagement: DeviceEngagement,
+        handover: Handover
     ) {
         if (AppMode.VERIFIER == actAs) {
             transportLayer?.let {
@@ -129,9 +134,8 @@ class CborManager(
                     interpreter,
                     it,
                     data,
-                    VerifierSessionManager(coseKey, deviceEngagement),
+                    VerifierSessionManager(coseKey, deviceEngagement, handover),
                     requestItems,
-                    deviceEngagement,
                     context
                 )
             }
@@ -197,7 +201,7 @@ class CborManager(
 
 
     override fun tearDown() {
-        transportLayer?.close()
+        transportLayer?.closeConnection()
     }
 
     override fun getCryptoObject(): BiometricPrompt.CryptoObject? {

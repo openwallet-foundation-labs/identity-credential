@@ -26,6 +26,7 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.interpreter.CborDataInterpreter
 import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
@@ -115,21 +116,10 @@ class CborManager constructor(
 
     override fun setupVerifier(
         coseKey: CoseKey, requestItems: DataElements,
-        deviceEngagement: DeviceEngagement
+        deviceEngagement: DeviceEngagement,
+        handover: Handover
     ) {
-        if (AppMode.VERIFIER == actAs) {
-            transportLayer?.let {
-                readerExecutor = VerifierExecutor(
-                    interpreter,
-                    it,
-                    data,
-                    VerifierSessionManager(coseKey, deviceEngagement),
-                    requestItems,
-                    deviceEngagement,
-                    context
-                )
-            }
-        }
+        // Only used for reader app
     }
 
     /**
@@ -191,7 +181,7 @@ class CborManager constructor(
 
 
     override fun tearDown() {
-        transportLayer?.close()
+        transportLayer?.closeConnection()
         data = MutableLiveData()
     }
 

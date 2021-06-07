@@ -21,13 +21,18 @@ import androidx.security.identity.IdentityCredentialException
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
+import com.ul.ims.gmdl.cbordata.utils.CborUtils
+import com.ul.ims.gmdl.security.util.Utils
 import java.security.PrivateKey
 import java.security.interfaces.ECPublicKey
 
+
 class VerifierSessionManager constructor(
     private val holderCoseKey: CoseKey,
-    val deviceEngagement: DeviceEngagement
+    val deviceEngagement: DeviceEngagement,
+    handover: Handover
 ) {
 
     companion object {
@@ -37,10 +42,11 @@ class VerifierSessionManager constructor(
     //TODO: Add support for potentially new CipherSuites
     private var readerSession = VerifierSession(
         holderCoseKey.getPublicKey(),
-        deviceEngagement
+        deviceEngagement,
+        handover
     )
 
-    fun createSessionEstablishment(bytes : ByteArray) : SessionEstablishment {
+    fun createSessionEstablishment(bytes: ByteArray) : SessionEstablishment {
         return SessionEstablishment.Builder()
             .setEncryptedData(bytes)
             .setReaderKey(getReaderCoseKey())
@@ -50,6 +56,23 @@ class VerifierSessionManager constructor(
     fun getHolderPkHash() : ByteArray? {
         return holderCoseKey.calculatePublickeyHash()
     }
+
+    fun getIdentValue(): ByteArray {
+        val ikm: ByteArray = holderCoseKey.encodeTagged()
+        val info = byteArrayOf(
+            'B'.toByte(),
+            'L'.toByte(),
+            'E'.toByte(),
+            'I'.toByte(),
+            'd'.toByte(),
+            'e'.toByte(),
+            'n'.toByte(),
+            't'.toByte()
+        )
+        val salt = byteArrayOf()
+        return Utils.computeHkdf("HmacSha256", ikm, salt, info, 16)
+    }
+
 
     fun getVerifierPrivateKey() : PrivateKey {
         val pk = readerSession.getPrivateKey()
@@ -83,10 +106,10 @@ class VerifierSessionManager constructor(
         return readerCoseKey
     }
 
-    fun encryptData(data : ByteArray) : ByteArray? {
+    fun encryptData(data: ByteArray) : ByteArray? {
         return try {
             readerSession.encryptMessageToHolder(data)
-        } catch (ex : IdentityCredentialException) {
+        } catch (ex: IdentityCredentialException) {
             Log.e(LOG_TAG, ex.message, ex)
             null
         }
@@ -95,7 +118,7 @@ class VerifierSessionManager constructor(
     fun decryptData(data: ByteArray) : ByteArray? {
         return try {
             readerSession.decryptMessageFromHolder(data)
-        } catch (ex : IdentityCredentialException) {
+        } catch (ex: IdentityCredentialException) {
             Log.e(LOG_TAG, ex.message, ex)
             null
         }

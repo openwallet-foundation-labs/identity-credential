@@ -29,7 +29,8 @@ class BleTransferMethod(
         val PERIPHERAL_SERVER_KEY = UnsignedInteger(0)
         val CENTRAL_CLIENT_KEY = UnsignedInteger(1)
         val PERIPHERAL_UUID_KEY = UnsignedInteger(10)
-        val PERIPHERAL_MAC_ADDRESS_KEY = UnsignedInteger(11)
+        val CENTRAL_CLIENT_UUID_KEY = UnsignedInteger(11)
+        val PERIPHERAL_MAC_ADDRESS_KEY = UnsignedInteger(20)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -55,20 +56,25 @@ class BleTransferMethod(
         val peripheralServer: Boolean?,
         val centralClient: Boolean?,
         val peripheralServerUUID: UUID?,
+        val centralClientUUID: UUID?,
         val mac: String?
     ) {
+        override fun toString(): String {
+            return "BleIdentification(peripheralServer=$peripheralServer, centralClient=$centralClient, peripheralServerUUID=$peripheralServerUUID, centralClientUUID=$centralClientUUID, mac=$mac)"
+        }
 
         override fun equals(other: Any?): Boolean {
-            if (other !is BleIdentification)
-                return false
-            if (other.peripheralServer != peripheralServer)
-                return false
-            if (other.centralClient != centralClient)
-                return false
-            if (other.peripheralServerUUID != peripheralServerUUID)
-                return false
-            if (other.mac != mac)
-                return false
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as BleIdentification
+
+            if (peripheralServer != other.peripheralServer) return false
+            if (centralClient != other.centralClient) return false
+            if (peripheralServerUUID != other.peripheralServerUUID) return false
+            if (centralClientUUID != other.centralClientUUID) return false
+            if (mac != other.mac) return false
+
             return true
         }
 
@@ -76,6 +82,7 @@ class BleTransferMethod(
             var result = peripheralServer?.hashCode() ?: 0
             result = 31 * result + (centralClient?.hashCode() ?: 0)
             result = 31 * result + (peripheralServerUUID?.hashCode() ?: 0)
+            result = 31 * result + (centralClientUUID?.hashCode() ?: 0)
             result = 31 * result + (mac?.hashCode() ?: 0)
             return result
         }

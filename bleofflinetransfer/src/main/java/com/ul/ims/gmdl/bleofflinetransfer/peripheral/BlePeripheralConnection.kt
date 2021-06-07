@@ -43,8 +43,8 @@ class BlePeripheralConnection(
     private val bluetoothManager: BluetoothManager?) : ITransportLayer {
 
     override fun closeConnection() {
-        peripheralEventListener.onBLEEvent("STATE_TERMINATE_TRANSMISSION",
-            EventType.STATE_TERMINATE_TRANSMISSION)
+        writeToState(TERMINATE_TRANSMISSION)
+        stop()
     }
 
     override fun inititalize(publicKeyHash: ByteArray) {
@@ -181,10 +181,6 @@ class BlePeripheralConnection(
             throw TransportLayerException("Empty data")
         }
         getGattServer().write(data, chunkSize)
-    }
-
-    override fun close() {
-        stop()
     }
 
     override fun setEventListener(eventListener: IExecutorEventListener) {

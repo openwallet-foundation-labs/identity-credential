@@ -25,6 +25,7 @@ import com.ul.ims.gmdl.cbordata.ICborStructure
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.CENTRAL_CLIENT_KEY
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.CENTRAL_CLIENT_UUID_KEY
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_MAC_ADDRESS_KEY
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_SERVER_KEY
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_UUID_KEY
@@ -43,6 +44,7 @@ import com.ul.ims.gmdl.cbordata.security.CoseKey.Companion.YCOORDINATE_LABEL
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.CoseMac0
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.DeviceNameSpaces
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import java.io.ByteArrayOutputStream
 import java.util.zip.DataFormatException
@@ -106,10 +108,11 @@ abstract class AbstractCborStructure : ICborStructure {
             is CoseSign1 -> encodeCoseSign1(variable)
             is CoseMac0 -> encodeCoseMac0(variable)
             is IssuerSignedItem -> variable.toDataItem()
-            is ResponseData -> variable.toDataItem()
+            is Document -> variable.toDataItem()
             is IssuerSigned -> variable.toDataItem()
             is DeviceSigned -> variable.toDataItem()
             is DeviceAuth -> variable.toDataItem()
+            is Handover -> variable.toDataItem()
             else -> throw DataFormatException("Data Type not supported $variable")
         }
     }
@@ -234,9 +237,19 @@ abstract class AbstractCborStructure : ICborStructure {
                 }
                 if (bleId.peripheralServerUUID != null)
                     bleIdMap =
-                        bleIdMap.put(PERIPHERAL_UUID_KEY, toDataItem(bleId.peripheralServerUUID.toString()))
+                        bleIdMap.put(
+                            PERIPHERAL_UUID_KEY,
+                            toDataItem(bleId.peripheralServerUUID.toString())
+                        )
+                if (bleId.centralClientUUID != null)
+                    bleIdMap =
+                        bleIdMap.put(
+                            CENTRAL_CLIENT_UUID_KEY,
+                            toDataItem(bleId.centralClientUUID.toString())
+                        )
                 if (bleId.mac != null)
-                    bleIdMap = bleIdMap.put(PERIPHERAL_MAC_ADDRESS_KEY, toDataItem(bleId.mac.toString()))
+                    bleIdMap =
+                        bleIdMap.put(PERIPHERAL_MAC_ADDRESS_KEY, toDataItem(bleId.mac.toString()))
             }
             array = array.add(bleIdMap)
         }

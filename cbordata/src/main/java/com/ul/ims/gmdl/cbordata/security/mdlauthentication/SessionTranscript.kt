@@ -19,48 +19,48 @@ package com.ul.ims.gmdl.cbordata.security.mdlauthentication
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.CborEncoder
-import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
+import co.nstant.`in`.cbor.model.ByteString
+import co.nstant.`in`.cbor.model.DataItem
+import co.nstant.`in`.cbor.model.MajorType
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Serializable
 
-class SessionTranscript private constructor (
-    val deviceEngagement: ByteArray,
-    val readerKey : ByteArray
-) : AbstractCborStructure(), Serializable{
+
+class SessionTranscript private constructor(
+    val deviceEngagementBytes: ByteArray,
+    val eReaderKeyBytes: ByteArray,
+    val handover: Handover
+) : AbstractCborStructure(), Serializable {
 
     companion object {
         private const val LOG_TAG = "SessionTranscript"
-        const val STRUCTURE_TAG = 24L
+        const val STRUCTURE_TAG = 24
     }
 
     override fun encode(): ByteArray {
         val outputStream = ByteArrayOutputStream()
-        var builder = CborBuilder()
-        var arrayBuilder = builder.addArray()
 
-        val de = toDataItem(deviceEngagement)
-        de.tag = Tag(STRUCTURE_TAG)
+        val builder = CborBuilder().addArray()
+            .add(encodeAsTagged(deviceEngagementBytes))
+            .add(encodeAsTagged(eReaderKeyBytes))
+            .add(handover.toDataItem()).end()
 
-        arrayBuilder = arrayBuilder.add(de)
-
-        val rk = toDataItem(readerKey)
-        rk.tag = Tag(STRUCTURE_TAG)
-
-        arrayBuilder = arrayBuilder.add(rk)
-
-        builder = arrayBuilder.end()
         CborEncoder(outputStream).encode(builder.build())
         return outputStream.toByteArray()
     }
 
+    private fun encodeAsTagged(byteArray: ByteArray): DataItem {
+        val byteString = ByteString(byteArray)
+        byteString.setTag(STRUCTURE_TAG)
+        return byteString
+    }
+
     fun encodeAsTaggedByteString(): ByteArray {
-        val byteString = ByteString(encode())
-        byteString.setTag(24)
         val outputStream = ByteArrayOutputStream()
-        CborEncoder(outputStream).encode(byteString)
+        CborEncoder(outputStream).encode(encodeAsTagged(encode()))
         return outputStream.toByteArray()
     }
 
@@ -78,76 +78,46 @@ class SessionTranscript private constructor (
         return null
     }
 
+
     class Builder {
-        private var deviceEngagement : ByteArray = byteArrayOf()
-        private var readerKey : ByteArray = byteArrayOf()
+        private var deviceEngagementBytes: ByteArray = byteArrayOf()
+        private var eReaderKeyBytes: ByteArray = byteArrayOf()
+        private var handover: Handover? = null
 
-        fun decode(array : Array?) = apply {
+        fun decode(array: Array?) = apply {
             array?.let {
-                if (array.dataItems.size == 2) {
-                    val deStructure = array.dataItems[0]
-                    decodeDeviceEngagementStructure(deStructure)
-                    val rkStructure = array.dataItems[1]
-                    decodeReaderKeyStructure(rkStructure)
+                if (array.dataItems.size == 3) {
+                    deviceEngagementBytes = toByteArray(array.dataItems[0])
+                    eReaderKeyBytes = toByteArray(array.dataItems[1])
+                    handover = Handover.Builder().decode(array.dataItems[2]).build()
                 }
             }
         }
 
-        fun decode(bytes : ByteArray) = apply {
-
-        }
-
-        private fun decodeReaderKeyStructure(rkStructure: DataItem?) {
+        private fun toByteArray(dataItem: DataItem?): ByteArray {
             val outputStream = ByteArrayOutputStream()
-            CborEncoder(outputStream).encode(rkStructure)
-            val rkData = outputStream.toByteArray()
-//            readerKey = CoseKey.Builder().decode(rkData).build()
+            CborEncoder(outputStream).encode(dataItem)
+            return outputStream.toByteArray()
         }
 
-        private fun decodeDeviceEngagementStructure(deStructure: DataItem?) {
-            val outputStream = ByteArrayOutputStream()
-            CborEncoder(outputStream).encode(deStructure)
-            val deData = outputStream.toByteArray()
-//            deviceEngagement = DeviceEngagement.Builder().decode(deData).build()
+        fun setDeviceEngagement(deviceEngagementBytes: ByteArray) = apply {
+            this.deviceEngagementBytes = deviceEngagementBytes
         }
 
-        fun setDeviceEngagement(deviceEngagement: ByteArray) = apply {
-            this.deviceEngagement = deviceEngagement
+        fun setReaderKey(eReaderKeyBytes: ByteArray) = apply {
+            this.eReaderKeyBytes = eReaderKeyBytes
         }
 
-        fun setReaderKey(readerKey: ByteArray) = apply {
-            this.readerKey = readerKey
+        fun setHandover(handover: Handover) = apply {
+            this.handover = handover
         }
 
-        fun build() : SessionTranscript {
-          return SessionTranscript(deviceEngagement, readerKey)
-        }
-    }
+        fun build() = SessionTranscript(
+            deviceEngagementBytes,
+            eReaderKeyBytes,
+            handover ?: Handover.Builder().build()
+        )
 
-    override fun equals(other: Any?): Boolean {
-        other?.let {
-            if (other is SessionTranscript) {
-                val otherDE = other.deviceEngagement
-                val otherRK = other.readerKey
-                otherDE.let {
-                    if (otherDE.contentEquals(deviceEngagement)) {
-                        otherRK.let {
-                            if (otherRK.contentEquals(readerKey)) {
-                                return super.equals(other)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return false
-    }
-
-    override fun hashCode(): Int {
-        var result = deviceEngagement.hashCode()
-        result = 31 * result + (readerKey.hashCode())
-
-        return result
     }
 
 }

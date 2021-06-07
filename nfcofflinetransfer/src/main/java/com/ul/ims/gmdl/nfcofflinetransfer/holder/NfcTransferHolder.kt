@@ -53,6 +53,7 @@ class NfcTransferHolder internal constructor(
 
     override fun closeConnection() {
         Log.d(LOG_TAG, "closeConnection")
+        transportManager.close()
     }
 
     override fun inititalize(publicKeyHash: ByteArray?) {
@@ -68,11 +69,6 @@ class NfcTransferHolder internal constructor(
             context.sendBroadcast(intent)
         }
 
-    }
-
-    override fun close() {
-        Log.d(LOG_TAG, "close")
-        transportManager.close()
     }
 
     // Broadcast receiver to receive intent when NFC transfer is completed

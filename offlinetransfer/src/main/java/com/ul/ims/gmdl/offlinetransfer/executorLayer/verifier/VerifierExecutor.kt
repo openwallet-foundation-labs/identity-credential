@@ -52,7 +52,6 @@ class VerifierExecutor(
     data: MutableLiveData<Resource<Any>>,
     sessionManager: VerifierSessionManager,
     requestItems: DataElements,
-    deviceEngagement: DeviceEngagement,
     context: Context
 ) : IVerifierExecutor, IExecutorEventListener {
 
@@ -76,12 +75,12 @@ class VerifierExecutor(
     private val docType = MdlDoctype
 
     private fun initTransportLayer() {
-        val sha256Hash = sessionManager?.getHolderPkHash()
+        val identValue = sessionManager?.getIdentValue()
 
-        sha256Hash?.let {hash ->
-            Log.d(LOG_TAG, "holder pk hash = ${encodeToString(hash)}")
+        identValue?.let { iValue ->
+            Log.d(LOG_TAG, "Ident Value = ${encodeToString(iValue)}")
 
-            transportLayer?.inititalize(hash)
+            transportLayer?.inititalize(iValue)
         }
     }
     override fun getInitialRequest(): Request {
@@ -191,23 +190,23 @@ class VerifierExecutor(
 
                 if (!r.isError()) {
                     r.documents.forEach { document ->
-                        // Currently we support only one namespace
-                        val myDoc = document[docType.docType]
-                        myDoc?.let { doc ->
-                            // Look for errors in a certain namespace item
-                            val namespaceItemsError = doc.erros.errors[namespace.namespace]
-                            builder.setErrorItems(namespaceItemsError)
+                        // Doc Type
+                        val docType = document.docType
 
-                            // Get response for the requested namespace items
-                            val namespaceItemsResponse =
-                                doc.issuerSigned.nameSpaces?.get(namespace.namespace)
-                            builder.setIssuerSignedItems(namespaceItemsResponse)
+                        // Look for errors in a certain namespace item
+                        val namespaceItemsError = document.errors.errors[namespace.namespace]
+                        builder.setErrorItems(namespaceItemsError)
 
-                            // Get the Issuer Authentication Structure
-                            val issuerAuth = doc.issuerSigned.issuerAuth
+                        // Get response for the requested namespace items
+                        val namespaceItemsResponse =
+                            document.issuerSigned.nameSpaces?.get(namespace.namespace)
+                        builder.setIssuerSignedItems(namespaceItemsResponse)
+
+                        // Get the Issuer Authentication Structure
+                        val issuerAuth = document.issuerSigned.issuerAuth
 
                             // Get the device Signed Structure
-                            val deviceSigned = doc.deviceSigned
+                        val deviceSigned = document.deviceSigned
 
                             // Issuer Data Authentication
                             issuerAuth.let {
@@ -269,7 +268,6 @@ class VerifierExecutor(
                                         }
                                     }
                                 }
-                            }
                         }
                     }
 
@@ -321,7 +319,6 @@ class VerifierExecutor(
             this.interpreter = interpreter
             this.sessionManager = sessionManager
             this.requestItems = requestItems
-            this.deviceEngagement = deviceEngagement
             this.context = context
 
             initTransportLayer()

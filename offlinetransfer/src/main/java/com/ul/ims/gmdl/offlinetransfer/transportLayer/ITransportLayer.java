@@ -39,10 +39,10 @@ public interface ITransportLayer {
     /**
      * When the data transfer is finished, we close the connection
      * **/
-    void close() throws IOException;
+    void closeConnection();
 
 
     void setEventListener(IExecutorEventListener eventListener);
 
-    void closeConnection();
+
 }

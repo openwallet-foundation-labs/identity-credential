@@ -25,6 +25,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.ul.ims.gmdl.bleofflinetransfer.DEFAULT_SCAN_PERIOD
+import com.ul.ims.gmdl.bleofflinetransfer.TERMINATE_TRANSMISSION
 import com.ul.ims.gmdl.bleofflinetransfer.common.BleEventListener
 import com.ul.ims.gmdl.bleofflinetransfer.config.ServiceCharacteristics
 import com.ul.ims.gmdl.bleofflinetransfer.exceptions.BluetoothException
@@ -43,8 +44,10 @@ class BleCentralConnection(private val context: Context,
 ): ITransportLayer {
 
     override fun closeConnection() {
-        centralEventListener.onBLEEvent("STATE_TERMINATE_TRANSMISSION",
-            EventType.STATE_TERMINATE_TRANSMISSION)
+        Log.i(javaClass.simpleName, "closeConnection")
+        writeToState(TERMINATE_TRANSMISSION)
+        stopScan()
+        stopTransfer()
     }
 
     companion object {
@@ -216,12 +219,6 @@ class BleCentralConnection(private val context: Context,
             throw TransportLayerException("Empty data")
         }
         getGattClient().write(data, chunkSize)
-    }
-
-    override fun close() {
-        Log.i(javaClass.simpleName, "Shut down")
-        stopScan()
-        stopTransfer()
     }
 
     override fun setEventListener(eventListener: IExecutorEventListener) {

@@ -91,6 +91,7 @@ class HolderExecutor(
                         se.readerKey?.let {rKey ->
                             deviceEngagement?.let {de ->
 
+                                //TODO: Update Session Transcript according to the latest version
                                 sessionTranscript = SessionTranscript.Builder()
                                     .setReaderKey(rKey.encode())
                                     .setDeviceEngagement(de)

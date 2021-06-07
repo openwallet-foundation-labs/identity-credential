@@ -27,12 +27,14 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
 import com.ul.ims.gmdl.offlinetransfer.utils.Log
 import com.ul.ims.gmdl.wifiofflinetransfer.WifiTransportManager
+import java.util.*
 
 class TransportChannelManager(
     context: Context,
     transportChannel: TransferChannels,
     appMode: AppMode,
     bleServiceMode: BleServiceMode,
+    bleUUID: UUID?,
     publicKey: ByteArray,
     wifiPassphrase: String?,
     nfcTag: Tag?,
@@ -44,7 +46,8 @@ class TransportChannelManager(
             BleTransportManager(
                 context,
                 appMode,
-                bleServiceMode
+                bleServiceMode,
+                bleUUID
             )
         }
         TransferChannels.WiFiAware -> {

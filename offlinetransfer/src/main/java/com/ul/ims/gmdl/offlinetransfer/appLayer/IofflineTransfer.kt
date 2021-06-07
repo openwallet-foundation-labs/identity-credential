@@ -21,6 +21,7 @@ import androidx.lifecycle.MutableLiveData
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportEventListener
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
@@ -47,7 +48,8 @@ interface IofflineTransfer : ITransportEventListener {
     fun setupVerifier(
         coseKey: CoseKey,
         requestItems: DataElements,
-        deviceEngagement: DeviceEngagement
+        deviceEngagement: DeviceEngagement,
+        handover: Handover
     )
 
     /**

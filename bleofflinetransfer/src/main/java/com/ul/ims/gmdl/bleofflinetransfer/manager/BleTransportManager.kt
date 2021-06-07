@@ -20,7 +20,6 @@ import android.content.Context
 import android.util.Log
 import com.ul.ims.gmdl.bleofflinetransfer.R
 import com.ul.ims.gmdl.bleofflinetransfer.READY_FOR_TRANSMISSION
-import com.ul.ims.gmdl.bleofflinetransfer.TERMINATE_TRANSMISSION
 import com.ul.ims.gmdl.bleofflinetransfer.central.BleCentralConnection
 import com.ul.ims.gmdl.bleofflinetransfer.common.BleEventListener
 import com.ul.ims.gmdl.bleofflinetransfer.config.BleTransportConfigurations
@@ -34,14 +33,16 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.EventType
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportEventListener
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportLayer
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
+import java.util.*
 
 /**
  * BLE specific transport manager
  */
 class BleTransportManager(
     private val context: Context,
-    private val appMode : AppMode,
-    private val bleServiceMode: BleServiceMode
+    private val appMode: AppMode,
+    private val bleServiceMode: BleServiceMode,
+    private var bleUUID: UUID?
 ) : BleEventListener, TransportManager {
 
     private var readyForNextFile: Boolean = false
@@ -62,50 +63,64 @@ class BleTransportManager(
     }
 
     private fun setupTransportLayers() {
-        val bleServiceCharacteristics = BleTransportConfigurations(
-            bleServiceMode
-        ).
-            getBleServiceCharacteristics()
+        val uuid = bleUUID ?: UUID.randomUUID()
+        bleUUID = uuid
+        val bleServiceCharacteristics =
+            BleTransportConfigurations(bleServiceMode, uuid).getBleServiceCharacteristics()
 
-            when(bleServiceMode) {
-                BleServiceMode.CENTRAL_CLIENT_MODE -> {
-                    Log.d(TAG, String.format(context.resources.
-                        getString(R.string.setup_central_client), appMode))
-                    when (appMode) {
-                        AppMode.HOLDER -> {
-                            centralBleConnection = BleCentralConnection(context,
-                                bleServiceCharacteristics, BleUtils.getBluetoothAdapter(context),
-                                bleServiceMode)
-                            getCentralConnection().setEventDelegate(this)
-                        }
-                        AppMode.VERIFIER -> {
-                            peripheralBleConnection = BlePeripheralConnection(context,
-                                bleServiceCharacteristics, BleUtils.getBluetoothManager(context))
-                            getPeripheralConnection().setEventDelegate(this)
-                        }
+        when (bleServiceMode) {
+            BleServiceMode.CENTRAL_CLIENT_MODE -> {
+                Log.d(
+                    TAG, String.format(
+                        context.resources.getString(R.string.setup_central_client), appMode
+                    )
+                )
+                when (appMode) {
+                    AppMode.HOLDER -> {
+                        centralBleConnection = BleCentralConnection(
+                            context,
+                            bleServiceCharacteristics, BleUtils.getBluetoothAdapter(context),
+                            bleServiceMode
+                        )
+                        getCentralConnection().setEventDelegate(this)
                     }
-                }
-                BleServiceMode.PERIPHERAL_SERVER_MODE -> {
-                    Log.d(TAG, String.format(context.resources.
-                        getString(R.string.setup_peripheral_server), appMode))
-                    when (appMode) {
-                        AppMode.HOLDER -> {
-                            peripheralBleConnection = BlePeripheralConnection(context,
-                                bleServiceCharacteristics, BleUtils.getBluetoothManager(context))
-                            getPeripheralConnection().setEventDelegate(this)
-                        }
-                        AppMode.VERIFIER -> {
-                            centralBleConnection = BleCentralConnection(context,
-                                bleServiceCharacteristics, BleUtils.getBluetoothAdapter(context),
-                                bleServiceMode)
-                            getCentralConnection().setEventDelegate(this)
-                        }
+                    AppMode.VERIFIER -> {
+                        peripheralBleConnection = BlePeripheralConnection(
+                            context,
+                            bleServiceCharacteristics, BleUtils.getBluetoothManager(context)
+                        )
+                        getPeripheralConnection().setEventDelegate(this)
                     }
-                }
-                BleServiceMode.UNKNOWN -> {
-                    throw BluetoothException("Unknown Bluetooth LE Role, cannot set up transport manager")
                 }
             }
+            BleServiceMode.PERIPHERAL_SERVER_MODE -> {
+                Log.d(
+                    TAG, String.format(
+                        context.resources.getString(R.string.setup_peripheral_server), appMode
+                    )
+                )
+                when (appMode) {
+                    AppMode.HOLDER -> {
+                        peripheralBleConnection = BlePeripheralConnection(
+                            context,
+                            bleServiceCharacteristics, BleUtils.getBluetoothManager(context)
+                        )
+                        getPeripheralConnection().setEventDelegate(this)
+                    }
+                    AppMode.VERIFIER -> {
+                        centralBleConnection = BleCentralConnection(
+                            context,
+                            bleServiceCharacteristics, BleUtils.getBluetoothAdapter(context),
+                            bleServiceMode
+                        )
+                        getCentralConnection().setEventDelegate(this)
+                    }
+                }
+            }
+            BleServiceMode.UNKNOWN -> {
+                throw BluetoothException("Unknown Bluetooth LE Role, cannot set up transport manager")
+            }
+        }
     }
 
     override fun onBLEEvent(string: String, eventType: EventType) {
@@ -149,14 +164,18 @@ class BleTransportManager(
                     EventType.TRANSFER_IN_PROGRESS.description)
             }
             EventType.STATE_TERMINATE_TRANSMISSION -> {
-                getCentralConnection().writeToState(TERMINATE_TRANSMISSION)
+                getTransportProgressDelegate().onEvent(
+                    EventType.TRANSFER_COMPLETE,
+                    EventType.TRANSFER_COMPLETE.description
+                )
+                getTransportLayer().closeConnection()
             }
             EventType.ERROR, EventType.GATT_DISCONNECTED -> {
                 getTransportProgressDelegate().onEvent(
                     EventType.TRANSFER_COMPLETE,
                     EventType.TRANSFER_COMPLETE.description
                 )
-                getPeripheralConnection().stop()
+                getPeripheralConnection().closeConnection()
             }
 
             else -> Log.i(javaClass.simpleName, "$eventType: $string")
@@ -191,7 +210,7 @@ class BleTransportManager(
                     EventType.TRANSFER_IN_PROGRESS.description)
             }
             EventType.STATE_TERMINATE_TRANSMISSION -> {
-                getCentralConnection().writeToState(TERMINATE_TRANSMISSION)
+                getTransportLayer().closeConnection()
             }
             EventType.NO_DEVICE_FOUND -> {
                 getTransportProgressDelegate().onEvent(
@@ -200,7 +219,7 @@ class BleTransportManager(
             }
 
             EventType.GATT_DISCONNECTED -> {
-                getCentralConnection().close()
+                getTransportLayer().closeConnection()
             }
 
             EventType.ERROR -> {

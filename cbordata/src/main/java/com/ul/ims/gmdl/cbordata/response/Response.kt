@@ -38,7 +38,8 @@ import java.io.Serializable
 
 class Response private constructor(
     val version: String,
-    val documents: List<kotlin.collections.Map<String, ResponseData>>,
+    val documents: List<Document>,
+    val documentErrors: List<kotlin.collections.Map<String, Int>>,
     val status: Int
 ) : AbstractCborStructure(), IResponse, Serializable {
 
@@ -51,6 +52,7 @@ class Response private constructor(
         const val DEFAULT_VERSION = "1.0"
         const val KEY_VERSION = "version"
         const val KEY_DOCUMENTS = "documents"
+        const val KEY_DOCUMENT_ERRORS = "documentErrors"
         const val KEY_STATUS = "status"
     }
 
@@ -64,13 +66,22 @@ class Response private constructor(
         if (documents.isNotEmpty()) {
             val array = Array()
             documents.forEach { document ->
+                array.add(toDataItem(document))
+            }
+            map.put(toDataItem(KEY_DOCUMENTS), array)
+        }
+
+        // DocumentErrors
+        if (documentErrors.isNotEmpty()) {
+            val array = Array()
+            documentErrors.forEach { documentError ->
                 val documentMap = Map()
-                document.forEach { itemMap ->
+                documentError.forEach { itemMap ->
                     documentMap.put(toDataItem(itemMap.key), toDataItem(itemMap.value))
                 }
                 array.add(documentMap)
             }
-            map.put(toDataItem(KEY_DOCUMENTS), array)
+            map.put(toDataItem(KEY_DOCUMENT_ERRORS), array)
         }
 
         //Status
@@ -84,17 +95,22 @@ class Response private constructor(
 
     class Builder {
         private var version = DEFAULT_VERSION
-        private var documents = mutableListOf<kotlin.collections.Map<String, ResponseData>>()
+        private var documents = mutableListOf<Document>()
+        private var documentErrors = mutableListOf<kotlin.collections.Map<String, Int>>()
         private var status = 0
 
         private fun setVersion(version: String) = apply {
             this.version = version
         }
 
-        fun setDocuments(documents: MutableList<kotlin.collections.Map<String, ResponseData>>) =
-            apply {
-                this.documents = documents
+        fun setDocuments(documents: MutableList<Document>) = apply {
+            this.documents = documents
         }
+
+        fun setDocumentErrors(documentErrors: MutableList<kotlin.collections.Map<String, Int>>) =
+            apply {
+                this.documentErrors = documentErrors
+            }
 
         private fun setStatus(status: Int) = apply {
             this.status = status
@@ -159,23 +175,13 @@ class Response private constructor(
                             issuerSigned.let { issueSign ->
                                 // Create DeviceSigned Obj
                                 deviceSigned.let {
-                                    val responseData = ResponseData.Builder()
+                                    val document = Document.Builder()
+                                        .setDocType(MdlDoctype.docType)
                                         .setDeviceSigned(deviceSigned)
                                         .setIssuerSigned(issueSign)
                                         .build()
-
-                                    // Set the Response Document
-                                    responseData?.let {
-                                        setDocuments(
-                                            mutableListOf(
-                                                mapOf(
-                                                    Pair(
-                                                        MdlDoctype.docType,
-                                                        responseData
-                                                    )
-                                                )
-                                            )
-                                        )
+                                    document?.let { doc ->
+                                        setDocuments(mutableListOf(doc))
                                     }
                                 }
                             }
@@ -209,6 +215,13 @@ class Response private constructor(
                                     }
                                 }
 
+                                KEY_DOCUMENT_ERRORS -> {
+                                    val docErrorsResponse = struct.get(it) as? Array
+                                    docErrorsResponse?.let { docErrors ->
+                                        setDocumentErrors(decodeDocErrorsResponse(docErrors))
+                                    }
+                                }
+
                                 KEY_STATUS -> {
                                     val status = struct.get(it) as? UnsignedInteger
                                     status?.let { st ->
@@ -225,32 +238,45 @@ class Response private constructor(
         }
 
         private fun decodeDocsResponse(docs: Array):
-                MutableList<kotlin.collections.Map<String, ResponseData>> {
-            val documents = mutableListOf<kotlin.collections.Map<String, ResponseData>>()
+                MutableList<Document> {
+            val documents = mutableListOf<Document>()
             docs.dataItems.forEach { d ->
                 val docMap = d as? Map
-                docMap?.keys?.forEach { dType ->
-                    val docType: UnicodeString? = dType as? UnicodeString
-                    docType?.let { dt ->
-                        val respDataMap = docMap.get(dt) as? Map
-                        respDataMap?.let { resData ->
-                            val responseData = ResponseData.Builder()
-                                .decode(resData)
-                                .build()
-                            responseData?.let { r ->
-                                documents.add(mapOf(Pair(dt.string, r)))
-                            }
-                        }
+                docMap?.let { dMap ->
+                    val document = Document.Builder()
+                        .decode(dMap)
+                        .build()
+                    document?.let { d ->
+                        documents.add(d)
                     }
                 }
             }
             return documents
         }
 
+        private fun decodeDocErrorsResponse(docErrors: Array):
+                MutableList<kotlin.collections.Map<String, Int>> {
+            val documentErrors = mutableListOf<kotlin.collections.Map<String, Int>>()
+            docErrors.dataItems.forEach { de ->
+                val docErrorMap = de as? Map
+                docErrorMap?.keys?.forEach { dType ->
+                    val docType: UnicodeString? = dType as? UnicodeString
+                    docType?.let { dt ->
+                        val errorCode = docErrorMap.get(dt) as? UnsignedInteger
+                        errorCode?.let { eCode ->
+                            documentErrors.add(mapOf(Pair(dt.string, eCode.value.toInt())))
+                        }
+                    }
+                }
+            }
+            return documentErrors
+        }
+
         fun build(): Response {
             return Response(
                 version,
                 documents,
+                documentErrors,
                 status
             )
         }

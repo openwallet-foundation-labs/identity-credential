@@ -5,11 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.security.identity.IdentityCredentialPresentation
 import androidx.security.identity.InvalidRequestMessageException
+import com.ul.ims.gmdl.appholder.transfer.TransferManager
 import com.ul.ims.gmdl.appholder.util.DocumentData.AAMVA_NAMESPACE
 import com.ul.ims.gmdl.appholder.util.DocumentData.DUMMY_CREDENTIAL_NAME
 import com.ul.ims.gmdl.appholder.util.DocumentData.MDL_DOCTYPE
 import com.ul.ims.gmdl.appholder.util.DocumentData.MDL_NAMESPACE
-import com.ul.ims.gmdl.appholder.transfer.TransferManager
 import com.ul.ims.gmdl.appholder.util.TransferStatus
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {

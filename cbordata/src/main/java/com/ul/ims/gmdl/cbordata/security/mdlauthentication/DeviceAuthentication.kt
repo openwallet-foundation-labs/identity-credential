@@ -81,15 +81,15 @@ class DeviceAuthentication private constructor(
 
     private fun encodeSessionTranscript(st: SessionTranscript): DataItem {
         val array = Array()
-        if (st.deviceEngagement == null || st.readerKey == null) {
+        if (st.deviceEngagementBytes == null || st.eReaderKeyBytes == null) {
             throw CborException("Neither DeviceEngagement nor ReaderKey can be null in SessionTranscript.")
         }
 
-        val de = toDataItem(st.deviceEngagement)
+        val de = toDataItem(st.deviceEngagementBytes)
         de.tag = Tag(CBOR_TAG)
         array.add(de)
 
-        val rk = toDataItem(st.readerKey)
+        val rk = toDataItem(st.eReaderKeyBytes)
         rk.tag = Tag(CBOR_TAG)
         array.add(rk)
 

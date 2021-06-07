@@ -49,6 +49,7 @@ import com.ul.ims.gmdl.cbordata.MdlDataIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
 import com.ul.ims.gmdl.cbordata.request.DataElements
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.nfcengagement.HandoverSelectMessage
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
@@ -111,7 +112,10 @@ class ScanDeviceEngagementFragment : Fragment() {
                     TransferChannels.NFC
                 else -> TransferChannels.BLE // Default
             }
-            onValidEngagement(engagement, transferMethod, BleServiceMode.UNKNOWN, null, null)
+            // QRHandover is created with a null value
+            val handover = Handover.Builder().build()
+
+            onValidEngagement(engagement, handover, transferMethod, BleServiceMode.UNKNOWN, null, null)
         } else {
             onInvalidEngagement()
         }
@@ -165,8 +169,13 @@ class ScanDeviceEngagementFragment : Fragment() {
                     val bleServiceMode =
                         handoverSelectMessage.bleServiceMode ?: BleServiceMode.UNKNOWN
 
+                    val handover = Handover.Builder()
+                        .setHandoverRequest(ndefMessage.toByteArray())
+                        .build()
+
                     onValidEngagement(
                         deviceEngagement,
+                        handover,
                         transferMethod,
                         bleServiceMode,
                         handoverSelectMessage.wifiPassphrase,
@@ -273,6 +282,7 @@ class ScanDeviceEngagementFragment : Fragment() {
 
     private fun onValidEngagement(
         deviceEngagement: DeviceEngagement,
+        handover: Handover,
         transferMethod: TransferChannels,
         bleServiceMode: BleServiceMode,
         wifiPassphrase: String?,
@@ -283,6 +293,7 @@ class ScanDeviceEngagementFragment : Fragment() {
                 val action =
                     ScanDeviceEngagementFragmentDirections.actionScanDeviceEngagementFragmentToOfflineTransferStatusFragment(
                         deviceEngagement,
+                        handover,
                         it,
                         transferMethod,
                         bleServiceMode,

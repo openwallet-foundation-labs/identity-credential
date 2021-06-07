@@ -18,8 +18,7 @@ package com.ul.ims.gmdl.bleofflinetransfer.config
 
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-import android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE
+import android.bluetooth.BluetoothGattDescriptor.*
 import android.os.ParcelUuid
 import java.util.*
 
@@ -36,12 +35,13 @@ data class ServiceCharacteristics(
         server2ClientUuid,
         BluetoothGattCharacteristic.PROPERTY_NOTIFY,
         BluetoothGattCharacteristic.PERMISSION_WRITE
-    ).apply {
-        val descriptor = BluetoothGattDescriptor(server2ClientUuid, PERMISSION_WRITE)
-        descriptor.value = ENABLE_NOTIFICATION_VALUE
-
-        this.addDescriptor(descriptor)
-    }
+    )
+//        .apply {
+//        val descriptor = BluetoothGattDescriptor(server2ClientUuid, PERMISSION_WRITE)
+//        descriptor.value = DISABLE_NOTIFICATION_VALUE
+//
+//        this.addDescriptor(descriptor)
+//    }
 
     val client2ServerCharacteristic = BluetoothGattCharacteristic(client2ServerUuid,
         BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
@@ -51,12 +51,13 @@ data class ServiceCharacteristics(
     val stateCharacteristic = BluetoothGattCharacteristic(stateUuid,
         BluetoothGattCharacteristic.PROPERTY_NOTIFY or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
         BluetoothGattCharacteristic.PERMISSION_WRITE
-    ).apply {
-        val descriptor = BluetoothGattDescriptor(server2ClientUuid, PERMISSION_WRITE)
-        descriptor.value = ENABLE_NOTIFICATION_VALUE
-
-        this.addDescriptor(descriptor)
-    }
+    )
+//        .apply {
+//        val descriptor = BluetoothGattDescriptor(server2ClientUuid, PERMISSION_WRITE)
+//        descriptor.value = ENABLE_NOTIFICATION_VALUE
+//
+//        this.addDescriptor(descriptor)
+//    }
 
     val identCharacteristic = BluetoothGattCharacteristic(identUuid,
         BluetoothGattCharacteristic.PROPERTY_READ,
