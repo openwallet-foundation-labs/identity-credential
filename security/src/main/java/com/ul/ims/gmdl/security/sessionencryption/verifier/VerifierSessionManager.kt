@@ -53,10 +53,6 @@ class VerifierSessionManager constructor(
             .build()
     }
 
-    fun getHolderPkHash() : ByteArray? {
-        return holderCoseKey.calculatePublickeyHash()
-    }
-
     fun getIdentValue(): ByteArray {
         val ikm: ByteArray = holderCoseKey.encodeTagged()
         val info = byteArrayOf(

@@ -53,6 +53,7 @@ class TransferManager private constructor(private val context: Context) {
 
             presentation?.let {
                 it.setDeviceRequestListener(requestListener, context.mainExecutor())
+                it.addTransport(IdentityCredentialPresentation.TRANSPORT_BLUETOOTH_LE)
                 it.presentationBegin()
             }
             hasStarted = true
@@ -65,11 +66,22 @@ class TransferManager private constructor(private val context: Context) {
             transferStatusLd.value = TransferStatus.ENGAGEMENT_READY
         }
 
+        override fun onEngagementDetected() {
+            transferStatusLd.value = TransferStatus.ENGAGEMENT_DETECTED
+        }
+
+        override fun onDeviceConnecting() {
+            transferStatusLd.value = TransferStatus.CONNECTING
+        }
+
         override fun onDeviceConnected() {
             transferStatusLd.value = TransferStatus.CONNECTED
         }
 
-        override fun onDeviceRequest(deviceRequest: IdentityCredentialPresentation.DeviceRequest) {
+        override fun onDeviceRequest(
+            deviceEngagementMethod: Int,
+            deviceRequest: IdentityCredentialPresentation.DeviceRequest
+        ) {
             request = deviceRequest
             transferStatusLd.value = TransferStatus.REQUEST
         }

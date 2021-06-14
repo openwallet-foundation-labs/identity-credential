@@ -25,7 +25,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.ul.ims.gmdl.bleofflinetransfer.DEFAULT_SCAN_PERIOD
-import com.ul.ims.gmdl.bleofflinetransfer.TERMINATE_TRANSMISSION
 import com.ul.ims.gmdl.bleofflinetransfer.common.BleEventListener
 import com.ul.ims.gmdl.bleofflinetransfer.config.ServiceCharacteristics
 import com.ul.ims.gmdl.bleofflinetransfer.exceptions.BluetoothException
@@ -44,8 +43,9 @@ class BleCentralConnection(private val context: Context,
 ): ITransportLayer {
 
     override fun closeConnection() {
+        if (gattClient == null) return
+
         Log.i(javaClass.simpleName, "closeConnection")
-        writeToState(TERMINATE_TRANSMISSION)
         stopScan()
         stopTransfer()
     }
@@ -185,11 +185,17 @@ class BleCentralConnection(private val context: Context,
 
                 val scanResult = verifyResult(result)
                 if (scanResult!=null) {
-                    val existingDevice = deviceList.find { it.device.address == scanResult.device.address }
+                    val existingDevice =
+                        deviceList.find { it.device.address == scanResult.device.address }
                     if (existingDevice == null) {
-                        Log.i(javaClass.simpleName,"Candidate device found ${scanResult.device.name} at ${scanResult.device.address}")
+                        Log.i(
+                            javaClass.simpleName,
+                            "Candidate device found ${scanResult.device.name} at ${scanResult.device.address}"
+                        )
                         deviceList.add(scanResult)
                     }
+                    // As UUID is random now, stop scanning after first match
+                    stopScan()
                 }
             }
 

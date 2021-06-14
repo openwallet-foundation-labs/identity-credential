@@ -53,10 +53,6 @@ object BiometricUtils {
         }
     }
 
-    fun setUserAuth(context: Context) : Boolean {
-        if (isBiometricAuthSupported(context) && isBiometricEnrolled(context)) {
-            return true
-        }
-        return false
-    }
+    fun setUserAuth(context: Context) =
+        isBiometricAuthSupported(context) && isBiometricEnrolled(context)
 }

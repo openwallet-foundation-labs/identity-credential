@@ -195,7 +195,7 @@ class GattServer (
         Log.i(javaClass.simpleName, "Gatt server writeToState")
         stateCharacteristic?.value = byteArrayOf(status)
         val stateStatusWritten = getBluetoothGattServer().notifyCharacteristicChanged(currentDevice,stateCharacteristic,false)
-        Log.i(javaClass.simpleName, "writeCharacteristic(${ByteUtils.bytesToHex(stateCharacteristic?.value)}): status = $status, Successfully written = $stateStatusWritten")
+        Log.i(javaClass.simpleName, "writeCharacteristic ${stateCharacteristic?.uuid}(${ByteUtils.bytesToHex(stateCharacteristic?.value)}): status = $status, Successfully written = $stateStatusWritten")
         if (!stateStatusWritten) {
             throw GattException("Could not write characteristic ${stateCharacteristic?.uuid} (value ${ByteUtils.bytesToHex(stateCharacteristic?.value)}.")
         }
@@ -289,7 +289,7 @@ class GattServer (
                 BluetoothGatt.GATT_SUCCESS,
                 0,
                 null
-            );
+            )
         } else {
             dataStream.write(decodeData(value))
             val receivedData = dataStream.toByteArray()

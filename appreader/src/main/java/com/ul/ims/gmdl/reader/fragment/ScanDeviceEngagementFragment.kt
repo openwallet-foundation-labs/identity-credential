@@ -170,7 +170,7 @@ class ScanDeviceEngagementFragment : Fragment() {
                         handoverSelectMessage.bleServiceMode ?: BleServiceMode.UNKNOWN
 
                     val handover = Handover.Builder()
-                        .setHandoverRequest(ndefMessage.toByteArray())
+                        .setHandoverSelect(ndefMessage.toByteArray())
                         .build()
 
                     onValidEngagement(

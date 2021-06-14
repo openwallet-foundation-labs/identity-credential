@@ -39,7 +39,8 @@ interface IofflineTransfer : ITransportEventListener {
     fun setupHolder(credentialName : String,
                     deviceEngagement : ByteArray,
                     isAuthRequired : Boolean,
-                    issuerAuthority: IIssuerAuthority
+                    issuerAuthority: IIssuerAuthority,
+                    handover: Handover
     )
 
     /**

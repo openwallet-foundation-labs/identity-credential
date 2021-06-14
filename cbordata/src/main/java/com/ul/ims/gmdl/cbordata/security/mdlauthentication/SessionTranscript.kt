@@ -46,7 +46,9 @@ class SessionTranscript private constructor(
         val builder = CborBuilder().addArray()
             .add(encodeAsTagged(deviceEngagementBytes))
             .add(encodeAsTagged(eReaderKeyBytes))
-            .add(handover.toDataItem()).end()
+            // TODO: Add handover as new standard ISO 18013-5
+            //.add(handover.toDataItem())
+            .end()
 
         CborEncoder(outputStream).encode(builder.build())
         return outputStream.toByteArray()

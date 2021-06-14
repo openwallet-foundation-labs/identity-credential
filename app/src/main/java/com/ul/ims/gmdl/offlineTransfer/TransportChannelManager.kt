@@ -26,6 +26,7 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
 import com.ul.ims.gmdl.offlinetransfer.utils.Log
 import com.ul.ims.gmdl.wifiofflinetransfer.WifiTransportManager
+import java.util.*
 
 class TransportChannelManager(
     context: Context,
@@ -41,7 +42,8 @@ class TransportChannelManager(
             BleTransportManager(
                 context,
                 appMode,
-                bleServiceMode
+                bleServiceMode,
+                UUID.randomUUID() // Added support to random UUID
             )
         }
         TransferChannels.WiFiAware -> {

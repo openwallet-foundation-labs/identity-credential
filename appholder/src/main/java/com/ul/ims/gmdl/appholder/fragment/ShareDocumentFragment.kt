@@ -73,7 +73,7 @@ class ShareDocumentFragment : Fragment() {
                     vm.message.set("Connected!")
                 }
                 TransferStatus.REQUEST -> {
-                    vm.message.set("Request received")
+                    vm.message.set("Request received!")
                     findNavController().navigate(
                         actionShareDocumentFragmentToUserConsentFragment(
                             docType, identityCredentialName, userVisibleName, hardwareBacked
@@ -81,13 +81,19 @@ class ShareDocumentFragment : Fragment() {
                     )
                 }
                 TransferStatus.DISCONNECTED -> {
-                    vm.message.set("Request received")
+                    vm.message.set("Disconnected!")
                     findNavController().navigate(
                         actionShareDocumentFragmentToSelectDocumentFragment()
                     )
                 }
                 TransferStatus.ERROR -> {
-                    vm.message.set("Error on presentation")
+                    vm.message.set("Error on presentation!")
+                }
+                TransferStatus.ENGAGEMENT_DETECTED -> {
+                    vm.message.set("Engagement detected!")
+                }
+                TransferStatus.CONNECTING -> {
+                    vm.message.set("Connecting...")
                 }
             }
         }

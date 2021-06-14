@@ -286,31 +286,6 @@ class VerifierExecutor(
         transportLayer?.closeConnection()
     }
 
-
-    fun encodeStringDebug(encoded : ByteArray): String {
-        val sb = StringBuilder(encoded.size * 2)
-
-        val iterator = encoded.iterator().withIndex()
-        var newLineCounter = 0
-        iterator.forEach { b ->
-            sb.append("0x")
-            sb.append(String.format("%02x", b.value))
-            sb.append(".toByte()")
-
-            if (iterator.hasNext()) {
-                newLineCounter++
-                sb.append(", ")
-
-                if (newLineCounter == 5) {
-                    sb.append("\n")
-                    newLineCounter = 0
-                }
-            }
-        }
-
-        return sb.toString()
-    }
-
     init {
         try {
             this.transportLayer = transportLayer
@@ -318,6 +293,7 @@ class VerifierExecutor(
             this.data = data
             this.interpreter = interpreter
             this.sessionManager = sessionManager
+            this.deviceEngagement = sessionManager.deviceEngagement
             this.requestItems = requestItems
             this.context = context
 

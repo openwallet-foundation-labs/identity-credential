@@ -310,7 +310,6 @@ class DeviceEngagement private constructor(
         }
 
         fun decode(bytes: ByteArray) = apply {
-            Log.d(LOG_TAG, "deviceEngagementBytes -> " + CborUtils.encodeToString(bytes))
             decodedFrom = bytes
             try {
                 val bais = ByteArrayInputStream(bytes)
@@ -433,7 +432,7 @@ class DeviceEngagement private constructor(
                             return NfcTransferMethod(type, version, maxApduLength)
                     }
                     TRANSFER_TYPE_BLE -> {
-                        val bleId = arrayOfEachTransferMethod[2] as? co.nstant.`in`.cbor.model.Map
+                        val bleId = arrayOfEachTransferMethod[2] as? Map
                         bleId?.let {
                             val peripheralServer: Boolean? =
                                 decodeBoolean(bleId.get(PERIPHERAL_SERVER_KEY))

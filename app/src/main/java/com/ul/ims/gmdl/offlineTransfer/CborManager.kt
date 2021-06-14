@@ -32,14 +32,12 @@ import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.executorLayer.holder.HolderExecutor
-import com.ul.ims.gmdl.offlinetransfer.executorLayer.verifier.VerifierExecutor
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.EventType
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportLayer
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
-import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
 
 class CborManager constructor(
     private val context : Context,
@@ -75,7 +73,6 @@ class CborManager constructor(
 
     // Request/Response executor instances
     private var holderExecutor: HolderExecutor? = null
-    private var readerExecutor: VerifierExecutor? = null
 
     init {
         transportManager = transportChannelManager.getTransportManager()
@@ -94,11 +91,12 @@ class CborManager constructor(
      * Transfer Data Between two devices
      *
      * **/
-    override fun setupHolder(credentialName : String,
-                             deviceEngagement : ByteArray,
-                             isAuthRequired : Boolean,
-                             issuerAuthority: IIssuerAuthority
-
+    override fun setupHolder(
+        credentialName: String,
+        deviceEngagement: ByteArray,
+        isAuthRequired: Boolean,
+        issuerAuthority: IIssuerAuthority,
+        handover: Handover
     ) {
         if (AppMode.HOLDER == actAs) {
             transportLayer?.let {
@@ -108,7 +106,8 @@ class CborManager constructor(
                     HolderSessionManager.getInstance(context, credentialName),
                     this,
                     deviceEngagement,
-                    issuerAuthority
+                    issuerAuthority,
+                    handover
                 )
             }
         }

@@ -20,6 +20,7 @@ import android.content.Context
 import android.util.Log
 import com.ul.ims.gmdl.bleofflinetransfer.R
 import com.ul.ims.gmdl.bleofflinetransfer.READY_FOR_TRANSMISSION
+import com.ul.ims.gmdl.bleofflinetransfer.TERMINATE_TRANSMISSION
 import com.ul.ims.gmdl.bleofflinetransfer.central.BleCentralConnection
 import com.ul.ims.gmdl.bleofflinetransfer.common.BleEventListener
 import com.ul.ims.gmdl.bleofflinetransfer.config.BleTransportConfigurations
@@ -168,6 +169,7 @@ class BleTransportManager(
                     EventType.TRANSFER_COMPLETE,
                     EventType.TRANSFER_COMPLETE.description
                 )
+                getPeripheralConnection().writeToState(TERMINATE_TRANSMISSION)
                 getTransportLayer().closeConnection()
             }
             EventType.ERROR, EventType.GATT_DISCONNECTED -> {

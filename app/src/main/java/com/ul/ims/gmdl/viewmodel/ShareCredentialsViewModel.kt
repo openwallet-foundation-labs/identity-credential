@@ -37,7 +37,12 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod
 import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareTransferMethod
 import com.ul.ims.gmdl.cbordata.model.UserCredential.Companion.CREDENTIAL_NAME
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.issuerauthority.MockIssuerAuthority
+import com.ul.ims.gmdl.nfcengagement.NfcConstants
+import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createBLEStaticHandoverRecord
+import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createNfcStaticHandoverRecord
+import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createWiFiAwareStaticHandoverRecord
 import com.ul.ims.gmdl.nfcengagement.NfcHandler
 import com.ul.ims.gmdl.offlineTransfer.OfflineTransferManager
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
@@ -79,6 +84,12 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
     var btnEnableBtVisibility = ObservableInt()
     var btnReqPermissionVisibility = ObservableInt()
     var loadingVisibility = ObservableInt()
+
+    private var blePeripheralMode = false
+    private var bleCentralMode = false
+    private var wifiPassphrase: String? = null
+    private var wifi5GHzBandSupported = false
+
     private var offlineTransferHolder: IofflineTransfer? = null
     private var liveDataMerger = MediatorLiveData<Resource<Any>>()
     private var deviceEngagement: DeviceEngagement? = null
@@ -161,11 +172,6 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
                     var hideQrCode = false
 
                     var bleServiceMode: BleServiceMode? = null
-                    var blePeripheralMode = false
-                    var bleCentralMode = false
-
-                    var wifiPassphrase: String? = null
-                    var wifi5GHzBandSupported = false
 
                     when (transferMethod) {
                         TransferChannels.BLE -> {
@@ -178,7 +184,7 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
                                 BleTransferMethod(
                                     DeviceEngagement.TRANSFER_TYPE_BLE, BLE_VERSION,
                                     BleTransferMethod.BleIdentification(
-                                        blePeripheralMode, bleCentralMode, null, null
+                                        blePeripheralMode, bleCentralMode, null, null, null
                                     )
                                 )
                             )
@@ -382,7 +388,8 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
                         holder.setupHolder(
                             CREDENTIAL_NAME, deviceEngagement.encode(),
                             SharedPreferenceUtils(app.applicationContext).isBiometricAuthRequired(),
-                            issuerAuthority
+                            issuerAuthority,
+                            Handover.Builder().build() // QRHandover= null
                         )
                     uiThread {
                         offlineTransferHolder?.data?.let { livedata ->
@@ -421,12 +428,33 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
                 offlineTransferHolder = builder.build()
                 offlineTransferHolder?.let { holder ->
                         deviceEngagement?.let { de ->
+                            val handoverRecord =
+                                when (transferMethod) {
+                                    TransferChannels.BLE ->
+
+                                        createBLEStaticHandoverRecord(
+                                            de.encode(),
+                                            blePeripheralMode,
+                                            bleCentralMode
+                                        )
+                                    TransferChannels.NFC -> createNfcStaticHandoverRecord(
+                                        de.encode()
+                                    )
+                                    TransferChannels.WiFiAware -> createWiFiAwareStaticHandoverRecord(
+                                        de.encode(), wifiPassphrase, wifi5GHzBandSupported
+                                    )
+                                }
+
+                            val handover = Handover.Builder()
+                                .setHandoverSelect(handoverRecord.toByteArray())
+                                .build()
                             holder.setupHolder(
                                 CREDENTIAL_NAME, de.encode(),
                                 SharedPreferenceUtils(app.applicationContext).isBiometricAuthRequired(),
-                                issuerAuthority
+                                issuerAuthority,
+                                handover
                             )
-                    }
+                        }
                     uiThread {
                         offlineTransferHolder?.data?.let { livedata ->
                             liveDataMerger.addSource(livedata) {

@@ -32,14 +32,12 @@ import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
-import com.ul.ims.gmdl.offlinetransfer.executorLayer.holder.HolderExecutor
 import com.ul.ims.gmdl.offlinetransfer.executorLayer.verifier.VerifierExecutor
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.EventType
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportLayer
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
-import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
 import java.util.*
 
@@ -82,7 +80,6 @@ class CborManager(
     private val interpreter = CborDataInterpreter()
 
     // Request/Response executor instances
-    private var holderExecutor: HolderExecutor? = null
     private var readerExecutor: VerifierExecutor? = null
 
     init {
@@ -106,21 +103,10 @@ class CborManager(
         credentialName: String,
         deviceEngagement: ByteArray,
         isAuthRequired: Boolean,
-        issuerAuthority: IIssuerAuthority
-
+        issuerAuthority: IIssuerAuthority,
+        handover: Handover
     ) {
-        if (AppMode.HOLDER == actAs) {
-            transportLayer?.let {
-                holderExecutor = HolderExecutor(
-                    interpreter,
-                    it,
-                    HolderSessionManager.getInstance(context, credentialName),
-                    this,
-                    deviceEngagement,
-                    issuerAuthority
-                )
-            }
-        }
+        // Only used for holder app
     }
 
     override fun setupVerifier(
@@ -194,18 +180,17 @@ class CborManager(
         updateLiveData(Resource.askUserConsent(requestItems))
     }
 
-
     override suspend fun onUserConsent(userConsentMap: Map<String, Boolean>?) {
-        holderExecutor?.onUserConsent(userConsentMap)
+        // Used on holder app
     }
-
 
     override fun tearDown() {
         transportLayer?.closeConnection()
     }
 
     override fun getCryptoObject(): BiometricPrompt.CryptoObject? {
-        return holderExecutor?.getCryptoObject()
+        // Used on holder app
+        return null
     }
 }
 

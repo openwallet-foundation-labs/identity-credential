@@ -4,13 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.security.keystore.KeyProperties
-import androidx.security.identity.Helpers
-import androidx.security.identity.IdentityCredentialException
-import androidx.security.identity.IdentityCredentialStore
+import androidx.security.identity.*
 import com.ul.ims.gmdl.appholder.R
 import com.ul.ims.gmdl.appholder.util.DocumentData
+import com.ul.ims.gmdl.appholder.util.DocumentData.AAMVA_NAMESPACE
 import com.ul.ims.gmdl.appholder.util.DocumentData.DUMMY_CREDENTIAL_NAME
 import com.ul.ims.gmdl.appholder.util.DocumentData.MDL_DOCTYPE
+import com.ul.ims.gmdl.appholder.util.DocumentData.MDL_NAMESPACE
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.ContentSigner
@@ -29,6 +29,9 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
 import java.util.*
+import java.util.List
+import kotlin.collections.Collection
+import kotlin.collections.mutableListOf
 
 
 class DocumentManager private constructor(private val context: Context) {
@@ -67,16 +70,27 @@ class DocumentManager private constructor(private val context: Context) {
             bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
             val portrait: ByteArray = baos.toByteArray()
             try {
-                Helpers.createSelfSignedCredential(
+                val id = AccessControlProfileId(0)
+                val ids: Collection<AccessControlProfileId> = listOf(id)
+                val profile = AccessControlProfile.Builder(id)
+                    .setUserAuthenticationRequired(false)
+                    .build()
+                val personalizationData = PersonalizationData.Builder()
+                    .addAccessControlProfile(profile)
+                    .putEntryString(MDL_NAMESPACE, "given_name", ids, "Erika")
+                    .putEntryString(MDL_NAMESPACE, "family_name", ids, "Mustermann")
+                    .putEntryBytestring(MDL_NAMESPACE, "portrait", ids, portrait)
+                    .putEntryBoolean(AAMVA_NAMESPACE, "real_id", ids, true)
+                    .build()
+                Helpers.provisionSelfSignedCredential(
                     store,
                     DUMMY_CREDENTIAL_NAME,
                     iaKeyPair.private,
                     iaSelfSignedCert,
+                    MDL_DOCTYPE,
+                    personalizationData,
                     5,
-                    DocumentData.ErikaStaticData.FAMILY_NAME.value,
-                    DocumentData.ErikaStaticData.GIVEN_NAMES.value,
-                    portrait,
-                    true
+                    1
                 )
                 return Document(
                     MDL_DOCTYPE,

@@ -29,6 +29,7 @@ import com.ul.ims.gmdl.cbordata.response.IResponse
 import com.ul.ims.gmdl.cbordata.response.Response
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.CoseMac0
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
@@ -45,7 +46,8 @@ class HolderExecutor(
     sessionManager: HolderSessionManager,
     transportEventListener: ITransportEventListener,
     deviceEngagement: ByteArray,
-    issuerAuthority: IIssuerAuthority
+    issuerAuthority: IIssuerAuthority,
+    private val handover: Handover
 ) : IHolderExecutor, IExecutorEventListener {
 
     companion object {
@@ -65,12 +67,7 @@ class HolderExecutor(
 
     private fun initTransportLayer() {
         sessionManager?.let {session ->
-            val hash = session.getHolderPkHash()
-            transportLayer?.let {transport->
-                hash?.let {
-                    transport.inititalize(it)
-                }
-            }
+            transportLayer?.inititalize(session.getIdentValue())
         }
     }
 
@@ -91,16 +88,16 @@ class HolderExecutor(
                         se.readerKey?.let {rKey ->
                             deviceEngagement?.let {de ->
 
-                                //TODO: Update Session Transcript according to the latest version
                                 sessionTranscript = SessionTranscript.Builder()
                                     .setReaderKey(rKey.encode())
                                     .setDeviceEngagement(de)
+                                    .setHandover(handover)
                                     .build()
 
                                 sessionTranscript?.let {
                                     com.ul.ims.gmdl.cbordata.utils.Log.d(
                                         "SessionTranscript",
-                                        it.encodeToString()
+                                        CborUtils.encodeToString(it.encodeAsTaggedByteString())
                                     )
 
                                     sessionManager?.setSessionTranscript(it.encode())
