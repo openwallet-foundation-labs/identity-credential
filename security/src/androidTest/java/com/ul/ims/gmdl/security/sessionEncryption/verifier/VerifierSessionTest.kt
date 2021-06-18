@@ -18,6 +18,7 @@ package com.ul.ims.gmdl.security.sessionEncryption.verifier
 
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.security.TestUtils.CHIPER_SUITE_IDENT
 import com.ul.ims.gmdl.security.TestUtils.DE_VERSION
 import com.ul.ims.gmdl.security.TestUtils.genCoseKey
@@ -46,7 +47,7 @@ class VerifierSessionTest {
 
         pk?.let {
             val deviceEngagement = deBuilder.build()
-            val session = VerifierSession(it, deviceEngagement)
+            val session = VerifierSession(it, deviceEngagement, Handover.Builder().build())
 
             Assert.assertNotNull(session.getReaderPublicKey())
             Assert.assertTrue(session.getReaderPublicKey() is ECPublicKey)

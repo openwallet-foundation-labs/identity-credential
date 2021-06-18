@@ -16,6 +16,7 @@
 
 package com.ul.ims.gmdl.cbordata.response
 
+import com.ul.ims.gmdl.cbordata.doctype.MdlDoctype
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
 import com.ul.ims.gmdl.cbordata.security.CoseSign1Tests
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.CoseMac0
@@ -23,15 +24,16 @@ import com.ul.ims.gmdl.cbordata.security.mdlauthentication.DeviceNameSpaces
 import org.junit.Assert
 import org.junit.Test
 
-class ResponseDataTest {
+class DocumentTest {
 
     private val namespace = "com.rdw.nl"
+    private val docType = MdlDoctype.docType
     private val issuerSignedItem1 = IssuerSignedItem.Builder()
-            .setDigestId(1)
-            .setRandomValue(byteArrayOf(0x01))
-            .setElementIdentifier("NameAuth")
-            .setElementValue("value1")
-            .build()
+        .setDigestId(1)
+        .setRandomValue(byteArrayOf(0x01))
+        .setElementIdentifier("NameAuth")
+        .setElementValue("value1")
+        .build()
 
     private val issuerSignedItem2 = IssuerSignedItem.Builder()
             .setDigestId(2)
@@ -76,27 +78,30 @@ class ResponseDataTest {
 
     @Test
     fun builderTest() {
-        var responseData = ResponseData.Builder()
-                .setIssuerSigned(issuerSigned)
-                .setDeviceSigned(deviceSigned)
-                .build()
+        var document = Document.Builder()
+            .setDocType(docType)
+            .setIssuerSigned(issuerSigned)
+            .setDeviceSigned(deviceSigned)
+            .build()
 
-        Assert.assertNotNull(responseData)
-        Assert.assertEquals(issuerSigned, responseData?.issuerSigned)
-        Assert.assertEquals(deviceSigned, responseData?.deviceSigned)
+        Assert.assertNotNull(document)
+        Assert.assertEquals(docType, document?.docType)
+        Assert.assertEquals(issuerSigned, document?.issuerSigned)
+        Assert.assertEquals(deviceSigned, document?.deviceSigned)
 
-        responseData = ResponseData.Builder()
-                .setIssuerSigned(issuerSigned)
-                .setDeviceSigned(deviceSigned)
-                .setErrors(errors)
-                .build()
+        document = Document.Builder()
+            .setDocType(docType)
+            .setIssuerSigned(issuerSigned)
+            .setDeviceSigned(deviceSigned)
+            .setErrors(errors)
+            .build()
 
-        Assert.assertNotNull(responseData)
-        Assert.assertEquals(errors, responseData?.erros)
+        Assert.assertNotNull(document)
+        Assert.assertEquals(errors, document?.errors)
 
-        responseData = ResponseData.Builder()
-                .build()
+        document = Document.Builder()
+            .build()
 
-        Assert.assertNull(responseData)
+        Assert.assertNull(document)
     }
 }

@@ -22,6 +22,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
 import com.ul.ims.gmdl.cbordata.response.Response
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionData
 import com.ul.ims.gmdl.security.TestUtils.CHIPER_SUITE_IDENT
@@ -77,7 +78,8 @@ class HolderSessionManagerTest {
         deBuilder.security(security)
 
         val deviceEngagement = deBuilder.build()
-        val verifierSessionManager = VerifierSessionManager(coseKey, deviceEngagement)
+        val verifierSessionManager =
+            VerifierSessionManager(coseKey, deviceEngagement, Handover.Builder().build())
         val rCoseKey = verifierSessionManager.getReaderCoseKey()
         Assert.assertNotNull(rCoseKey)
 
@@ -140,7 +142,8 @@ class HolderSessionManagerTest {
         deBuilder.security(security)
         val deviceEngagement = deBuilder.build()
 
-        val verifierSessionManager = VerifierSessionManager(coseKey, deviceEngagement)
+        val verifierSessionManager =
+            VerifierSessionManager(coseKey, deviceEngagement, Handover.Builder().build())
         val coseKeyReader = verifierSessionManager.getReaderCoseKey()
         coseKeyReader?.let { ck ->
             holderSessionManager.setVerifierEphemeralPublicKey(ck)
