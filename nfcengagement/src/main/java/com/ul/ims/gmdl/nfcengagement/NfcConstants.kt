@@ -18,6 +18,9 @@ package com.ul.ims.gmdl.nfcengagement
 
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.*
 
 class NfcConstants {
     companion object {
@@ -110,14 +113,16 @@ class NfcConstants {
         fun createBLEStaticHandoverRecord(
             deviceEngagementPayload: ByteArray,
             blePeripheralMode: Boolean,
-            bleCentralMode: Boolean
+            bleCentralMode: Boolean,
+            bleUUID: UUID?
         ): NdefMessage {
 
-            val bluetoothLEPayload: ByteArray
+            val bluetoothLEPayload: MutableList<Byte>
+
             // both modes are supported
             if (blePeripheralMode && bleCentralMode) {
                 // When the mDL supports both modes, the mDL reader should act as BLE central mode.
-                bluetoothLEPayload = byteArrayOf(
+                bluetoothLEPayload = mutableListOf(
                     0x02, // LE Role length = 2
                     0x1C, // LE Role data type
                     0x02  // Peripheral and Central Role supported, Peripheral Role preferred for connection establishment
@@ -125,14 +130,14 @@ class NfcConstants {
             } else {
                 // only central client mode supported
                 bluetoothLEPayload = if (bleCentralMode) {
-                    byteArrayOf(
+                    mutableListOf(
                         0x02, // LE Role length = 2
                         0x1C, // LE Role data type
                         0x01  // Central mode only
                     )
                 } else {
                     // only peripheral server mode supported
-                    byteArrayOf(
+                    mutableListOf(
                         0x02, // LE Role length = 2
                         0x1C, // LE Role data type
                         0x00  // Peripheral mode only
@@ -140,11 +145,21 @@ class NfcConstants {
                 }
             }
 
+            // Added Ble UUID to static handover
+            bleUUID?.let { uuid ->
+                val data: ByteBuffer = ByteBuffer.allocate(16)
+                data.order(ByteOrder.LITTLE_ENDIAN)
+                data.putLong(0, uuid.leastSignificantBits)
+                data.putLong(8, uuid.mostSignificantBits)
+
+                bluetoothLEPayload.addAll(data.array().toList())
+            }
+
             val bluetoothLERecord = NdefRecord(
                 bluetoothLERecordTNF,
                 bluetoothLERecordType,
                 bluetoothLERecordId,
-                bluetoothLEPayload
+                bluetoothLEPayload.toByteArray()
             )
 
             val deviceEngagementRecord = NdefRecord(
@@ -159,8 +174,8 @@ class NfcConstants {
 
         fun createWiFiAwareStaticHandoverRecord(
             deviceEngagementPayload: ByteArray,
-            wifiPassphrase: String?,
-            wifi5GHzBandSupported: Boolean
+            passPhrase: String?,
+            supportedBands: ByteArray?
         ): NdefMessage {
 
             //Cipher Suite Info
@@ -172,14 +187,14 @@ class NfcConstants {
 
             //Password Info
             val payloadPasswordInfo = mutableListOf<Byte>()
-            if (wifiPassphrase != null) {
+            if (passPhrase != null) {
                 payloadPasswordInfo.addAll(
                     listOf(
                         0x21, // Length 33 octets
                         0x03 // Data Type 0x03 - Password Info
                     )
                 )
-                payloadPasswordInfo.addAll(wifiPassphrase.toByteArray(Charsets.UTF_8).toList())
+                payloadPasswordInfo.addAll(passPhrase.toByteArray(Charsets.UTF_8).toList())
             } else {
                 payloadPasswordInfo.addAll(
                     listOf(
@@ -190,17 +205,17 @@ class NfcConstants {
             }
 
             //Band Info
-            val payloadBandinfo = if (wifi5GHzBandSupported)
+            val payloadBandinfo = if (supportedBands != null && supportedBands.isNotEmpty())
                 listOf<Byte>(
                     0x02, // Length 2 octets
                     0x04, // Data Type 0x04 - Band Info
-                    0x28  // Bit 2: 2.4 GHz + Bit 4: 4.9 and 5 GHz
+                    supportedBands[0]  // Bit 2: 2.4 GHz + Bit 4: 4.9 and 5 GHz
                 )
             else
                 listOf<Byte>(
                     0x02, // Length 2 octets
                     0x04, // Data Type 0x04 - Band Info
-                    0x14  // Bit 2: 2.4 GHz
+                    0x14  // Bit 2: 2.4 GHz as default
                 )
 
             val payload = mutableListOf<Byte>()

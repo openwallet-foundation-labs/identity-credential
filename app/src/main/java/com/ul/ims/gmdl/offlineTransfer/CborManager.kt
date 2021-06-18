@@ -38,12 +38,14 @@ import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
+import java.util.*
 
 class CborManager constructor(
     private val context : Context,
     private val actAs : AppMode,
     transportChannel: TransferChannels,
     bleServiceMode: BleServiceMode,
+    bleUUID: UUID?,
     publicKey: ByteArray,
     wifiPassphrase: String?
 ) : IofflineTransfer {
@@ -58,6 +60,7 @@ class CborManager constructor(
             transportChannel,
             actAs,
             bleServiceMode,
+            bleUUID,
             publicKey,
             wifiPassphrase
         )

@@ -134,21 +134,21 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
                     bleTransportMethod?.let { bleTransport ->
                         // both modes are supported
 
-                        if (bleTransport.bleIdentification?.centralClient == true &&
-                            bleTransport.bleIdentification?.peripheralServer == true
+                        if (bleTransport.retrievalOptions?.centralClient == true &&
+                            bleTransport.retrievalOptions?.peripheralServer == true
                         ) {
                             // When the mDL supports both modes, the mDL reader should act as BLE central mode.
                             bleServiceMode = BleServiceMode.PERIPHERAL_SERVER_MODE
-                            bleUUID = bleTransport.bleIdentification?.peripheralServerUUID
+                            bleUUID = bleTransport.retrievalOptions?.peripheralServerUUID
                         } else {
                             // only central client mode supported
-                            if (bleTransport.bleIdentification?.centralClient == true) {
+                            if (bleTransport.retrievalOptions?.centralClient == true) {
                                 bleServiceMode = BleServiceMode.CENTRAL_CLIENT_MODE
-                                bleUUID = bleTransport.bleIdentification?.centralClientUUID
+                                bleUUID = bleTransport.retrievalOptions?.centralClientUUID
                             } else {
                                 // only peripheral server mode supported
                                 bleServiceMode = BleServiceMode.PERIPHERAL_SERVER_MODE
-                                bleUUID = bleTransport.bleIdentification?.peripheralServerUUID
+                                bleUUID = bleTransport.retrievalOptions?.peripheralServerUUID
                             }
                         }
                     }

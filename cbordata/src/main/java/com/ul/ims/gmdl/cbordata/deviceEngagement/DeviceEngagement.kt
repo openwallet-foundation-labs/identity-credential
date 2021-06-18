@@ -29,29 +29,20 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.options.WebAPI
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.CipherSuiteIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.CurveIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.CENTRAL_CLIENT_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.CENTRAL_CLIENT_UUID_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_MAC_ADDRESS_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_SERVER_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_UUID_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.ITransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.NfcTransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareTransferMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleDeviceRetrievalMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.DeviceRetrievalMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.NfcDeviceRetrievalMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareDeviceRetrievalMethod
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import com.ul.ims.gmdl.cbordata.utils.Base64Utils
-import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Serializable
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import java.util.*
 
 class DeviceEngagement private constructor(
     val version: String?,
     val security: Security?,
-    val transferMethods: List<ITransferMethod>?,
+    val deviceRetrievalMethod: List<DeviceRetrievalMethod>?,
     val options: kotlin.collections.Map<String, Any>?,
     val proprietary: kotlin.collections.Map<String, String>?,
     private val decodedFrom: ByteArray?
@@ -87,11 +78,11 @@ class DeviceEngagement private constructor(
     /**
      * Return the BLE Transfer Method if present or null otherwise.
      * */
-    fun getBLETransferMethod(): BleTransferMethod? {
-        var bleTransferMethod: BleTransferMethod? = null
-        transferMethods?.let {
-            for (i in transferMethods) {
-                val bTMethod = i as? BleTransferMethod
+    fun getBLETransferMethod(): BleDeviceRetrievalMethod? {
+        var bleTransferMethod: BleDeviceRetrievalMethod? = null
+        deviceRetrievalMethod?.let {
+            for (i in deviceRetrievalMethod) {
+                val bTMethod = i as? BleDeviceRetrievalMethod
                 if (bTMethod != null)
                     bleTransferMethod = bTMethod
             }
@@ -102,11 +93,11 @@ class DeviceEngagement private constructor(
     /**
      * Return the NFC Transfer Method if present or null otherwise.
      * **/
-    fun getNfcTransferMethod(): NfcTransferMethod? {
-        var nfcTransferMethod: NfcTransferMethod? = null
-        transferMethods?.let {
-            for (i in transferMethods) {
-                val nTMethod = i as? NfcTransferMethod
+    fun getNfcTransferMethod(): NfcDeviceRetrievalMethod? {
+        var nfcTransferMethod: NfcDeviceRetrievalMethod? = null
+        deviceRetrievalMethod?.let {
+            for (i in deviceRetrievalMethod) {
+                val nTMethod = i as? NfcDeviceRetrievalMethod
                 if (nTMethod != null)
                     nfcTransferMethod = nTMethod
             }
@@ -117,11 +108,11 @@ class DeviceEngagement private constructor(
     /**
      * Return the Wifi Aware Transfer Method if present or null otherwise.
      * **/
-    fun getWiFiAwareTransferMethod(): WiFiAwareTransferMethod? {
-        var wiFiAwareTransferMethod: WiFiAwareTransferMethod? = null
-        transferMethods?.let {
-            for (i in transferMethods) {
-                val wiFiTMethod = i as? WiFiAwareTransferMethod
+    fun getWiFiAwareTransferMethod(): WiFiAwareDeviceRetrievalMethod? {
+        var wiFiAwareTransferMethod: WiFiAwareDeviceRetrievalMethod? = null
+        deviceRetrievalMethod?.let {
+            for (i in deviceRetrievalMethod) {
+                val wiFiTMethod = i as? WiFiAwareDeviceRetrievalMethod
                 if (wiFiTMethod != null)
                     wiFiAwareTransferMethod = wiFiTMethod
             }
@@ -163,10 +154,10 @@ class DeviceEngagement private constructor(
         }
 
         // Transfer Methods
-        transferMethods?.let {
+        deviceRetrievalMethod?.let {
             var transferMethodsBuilder = CborBuilder().addArray()
-            if (transferMethods.isNotEmpty()) {
-                for (i in transferMethods) {
+            if (deviceRetrievalMethod.isNotEmpty()) {
+                for (i in deviceRetrievalMethod) {
                     transferMethodsBuilder = transferMethodsBuilder.add(toDataItem(i))
                 }
             }
@@ -216,7 +207,7 @@ class DeviceEngagement private constructor(
                     proprietaryMapBuilder = proprietaryMapBuilder.put(key, value)
                 }
                 structureMap =
-                    structureMap.put(toDataItem(5), proprietaryMapBuilder.end().build()[0])
+                    structureMap.put(toDataItem(4), proprietaryMapBuilder.end().build()[0])
             }
         }
 
@@ -254,7 +245,7 @@ class DeviceEngagement private constructor(
     override fun hashCode(): Int {
         var result = version.hashCode()
         // TODO: Security must be taken into account to calculate the hashcode
-        result = 31 * result + transferMethods.hashCode()
+        result = 31 * result + deviceRetrievalMethod.hashCode()
         result = 31 * result + options.hashCode()
         result = 31 * result + proprietary.hashCode()
         return result
@@ -263,7 +254,7 @@ class DeviceEngagement private constructor(
     class Builder {
         private var version: String? = null
         private var security: Security? = null
-        private var transferMethods: MutableList<ITransferMethod>? = null
+        private var deviceRetrievalMethods: MutableList<DeviceRetrievalMethod>? = null
         private var options: MutableMap<String, Any>? = null
         private var proprietary: kotlin.collections.Map<String, String>? = null
         private var decodedFrom: ByteArray? = null
@@ -272,11 +263,11 @@ class DeviceEngagement private constructor(
 
         fun security(security: Security?) = apply { this.security = security }
 
-        fun transferMethods(transferMethod: ITransferMethod) = apply {
-            if (transferMethods == null) {
-                transferMethods = mutableListOf()
+        fun transferMethods(deviceRetrievalMethod: DeviceRetrievalMethod) = apply {
+            if (deviceRetrievalMethods == null) {
+                deviceRetrievalMethods = mutableListOf()
             }
-            transferMethods?.add(transferMethod)
+            deviceRetrievalMethods?.add(deviceRetrievalMethod)
         }
 
         fun options(options: kotlin.collections.Map<String, Any>?) = apply {
@@ -331,7 +322,7 @@ class DeviceEngagement private constructor(
                                 }
                                 //transfer methods
                                 2.toBigInteger() -> {
-                                    transferMethods = decodeTransferMethods(value)
+                                    deviceRetrievalMethods = decodeTransferMethods(value)
                                 }
 
                                 //options
@@ -356,7 +347,7 @@ class DeviceEngagement private constructor(
         fun build() = DeviceEngagement(
             version,
             security,
-            transferMethods,
+            deviceRetrievalMethods,
             options,
             proprietary,
             decodedFrom
@@ -396,99 +387,49 @@ class DeviceEngagement private constructor(
                 print("$LOG_TAG : ${CurveIdentifiers.curveIds[cid[0]]}\n")
         }
 
-        private fun decodeTransferMethods(item: DataItem?): MutableList<ITransferMethod>? {
+        private fun decodeTransferMethods(item: DataItem?): MutableList<DeviceRetrievalMethod>? {
             item?.let {
                 val tMethods = it as Array
                 val tMethodsArray = tMethods.dataItems
-                this.transferMethods = mutableListOf()
+                this.deviceRetrievalMethods = mutableListOf()
                 for (i in tMethodsArray) {
                     val tMethod = i as? Array
                     tMethod?.let {
                         val arrayOfEachTransferMethod = tMethod.dataItems
                         val decodedTransferMethod = decodeTransferMethod(arrayOfEachTransferMethod)
                         if (decodedTransferMethod != null)
-                            this.transferMethods?.add(decodedTransferMethod)
+                            this.deviceRetrievalMethods?.add(decodedTransferMethod)
                     }
                 }
-                return transferMethods
+                return deviceRetrievalMethods
             }
             return null
         }
 
-        private fun decodeTransferMethod(arrayOfEachTransferMethod: List<DataItem>?): ITransferMethod? {
+        private fun decodeTransferMethod(arrayOfEachTransferMethod: List<DataItem>?): DeviceRetrievalMethod? {
             if (arrayOfEachTransferMethod == null) {
                 return null
             }
             val type = (arrayOfEachTransferMethod[0] as? UnsignedInteger)?.value?.toInt()
             val version = (arrayOfEachTransferMethod[1] as? UnsignedInteger)?.value?.toInt()
+            val mapOptions = arrayOfEachTransferMethod[2] as? Map
             if (type == null || version == null) {
                 return null
             }
             if (arrayOfEachTransferMethod.size > 2) {
                 when (type) {
                     TRANSFER_TYPE_NFC -> {
-                        val maxApduLength = (arrayOfEachTransferMethod[2] as? UnsignedInteger)?.value?.toInt()
-                        if (maxApduLength != null)
-                            return NfcTransferMethod(type, version, maxApduLength)
+                        val nfcOption = NfcDeviceRetrievalMethod.NfcOptions.decode(mapOptions)
+                        return NfcDeviceRetrievalMethod(type, version, nfcOption)
                     }
                     TRANSFER_TYPE_BLE -> {
-                        val bleId = arrayOfEachTransferMethod[2] as? Map
-                        bleId?.let {
-                            val peripheralServer: Boolean? =
-                                decodeBoolean(bleId.get(PERIPHERAL_SERVER_KEY))
-                            val centralClient: Boolean? =
-                                decodeBoolean(bleId.get(CENTRAL_CLIENT_KEY))
-                            val psUuid = (bleId.get(PERIPHERAL_UUID_KEY) as? ByteString)
-                            val ccUuid = (bleId.get(CENTRAL_CLIENT_UUID_KEY) as? ByteString)
-                            var peripheralUUID: UUID? = null
-                            psUuid?.let {
-                                peripheralUUID = uuidFromBytes(it.bytes)
-                            }
-                            var centralUUID: UUID? = null
-                            ccUuid?.let {
-                                centralUUID = uuidFromBytes(it.bytes)
-                            }
-                            val macString = bleId.get(PERIPHERAL_MAC_ADDRESS_KEY) as? UnicodeString
-                            var mac: String? = null
-                            macString?.let {
-                                mac = macString.string
-                            }
-                            val bleIdentification = BleTransferMethod.BleIdentification(
-                                peripheralServer,
-                                centralClient,
-                                peripheralUUID,
-                                centralUUID,
-                                mac
-                            )
-                            return BleTransferMethod(type, version, bleIdentification)
-                        }
+                        val bleOptions = BleDeviceRetrievalMethod.BleOptions.decode(mapOptions)
+                        return BleDeviceRetrievalMethod(type, version, bleOptions)
+
                     }
                     TRANSFER_TYPE_WIFI_AWARE -> {
-                        return WiFiAwareTransferMethod(type, version)
-                    }
-                }
-            }
-            return null
-        }
-
-        private fun uuidFromBytes(bytes: ByteArray): UUID {
-            check(bytes.size == 16) { "Expected 16 bytes, found " + bytes.size }
-            val data: ByteBuffer = ByteBuffer.wrap(bytes, 0, 16)
-            data.order(ByteOrder.BIG_ENDIAN)
-            return UUID(data.getLong(0), data.getLong(8))
-        }
-
-        private fun decodeBoolean(get: DataItem?): Boolean? {
-            get?.let {
-                if (get.majorType != MajorType.SPECIAL) {
-                    return null
-                }
-                val simpleValue = get as? SimpleValue
-                simpleValue?.let {
-                    return when (simpleValue.simpleValueType) {
-                        SimpleValueType.FALSE -> false
-                        SimpleValueType.TRUE -> true
-                        else -> null
+                        val wifiOptions = WiFiAwareDeviceRetrievalMethod.WifiOptions.decode(mapOptions)
+                        return WiFiAwareDeviceRetrievalMethod(type, version, wifiOptions)
                     }
                 }
             }

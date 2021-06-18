@@ -34,12 +34,12 @@ import com.ul.ims.gmdl.R
 import com.ul.ims.gmdl.bleofflinetransfer.utils.BleUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareTransferMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleDeviceRetrievalMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.NfcDeviceRetrievalMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareDeviceRetrievalMethod
 import com.ul.ims.gmdl.cbordata.model.UserCredential.Companion.CREDENTIAL_NAME
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.issuerauthority.MockIssuerAuthority
-import com.ul.ims.gmdl.nfcengagement.NfcConstants
 import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createBLEStaticHandoverRecord
 import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createNfcStaticHandoverRecord
 import com.ul.ims.gmdl.nfcengagement.NfcConstants.Companion.createWiFiAwareStaticHandoverRecord
@@ -63,6 +63,7 @@ import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.launch
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.uiThread
+import java.util.*
 
 
 class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
@@ -85,10 +86,10 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
     var btnReqPermissionVisibility = ObservableInt()
     var loadingVisibility = ObservableInt()
 
-    private var blePeripheralMode = false
-    private var bleCentralMode = false
-    private var wifiPassphrase: String? = null
-    private var wifi5GHzBandSupported = false
+    private var bleOptions: BleDeviceRetrievalMethod.BleOptions? = null
+    private var nfcOptions: NfcDeviceRetrievalMethod.NfcOptions? = null
+    private var wifiOptions: WiFiAwareDeviceRetrievalMethod.WifiOptions? = null
+
 
     private var offlineTransferHolder: IofflineTransfer? = null
     private var liveDataMerger = MediatorLiveData<Resource<Any>>()
@@ -175,37 +176,68 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
 
                     when (transferMethod) {
                         TransferChannels.BLE -> {
-                            blePeripheralMode =
+                            val blePeripheralMode =
                                 BleUtils.isPeripheralSupported(app.applicationContext)
-                            bleCentralMode = BleUtils.isCentralModeSupported(app.applicationContext)
+                            val bleCentralMode =
+                                BleUtils.isCentralModeSupported(app.applicationContext)
+                            val bleRandomUUID = UUID.randomUUID()
+                            val blePeripheralUUID: UUID? =
+                                if (blePeripheralMode) bleRandomUUID else null
+                            val bleCentralUUID: UUID? =
+                                if (bleCentralMode) bleRandomUUID else null
+
+                            bleOptions = BleDeviceRetrievalMethod.BleOptions(
+                                blePeripheralMode,
+                                bleCentralMode,
+                                blePeripheralUUID,
+                                bleCentralUUID,
+                                null
+                            )
 
                             bleServiceMode = getBleServiceMode()
                             deBuilderQR.transferMethods(
-                                BleTransferMethod(
+                                BleDeviceRetrievalMethod(
                                     DeviceEngagement.TRANSFER_TYPE_BLE, BLE_VERSION,
-                                    BleTransferMethod.BleIdentification(
-                                        blePeripheralMode, bleCentralMode, null, null, null
-                                    )
+                                    bleOptions
                                 )
                             )
                         }
                         TransferChannels.WiFiAware -> {
-                            wifiPassphrase = WifiUtils.getPassphrase(coseKey.getPublicKey().encoded)
-                            wifi5GHzBandSupported =
-                                WifiUtils.getWifiManager(app.applicationContext)?.is5GHzBandSupported == true
+                            val wifiPassphrase =
+                                WifiUtils.getPassphrase(coseKey.getPublicKey().encoded)
+                            val wifiSupportedBands =
+                                WifiUtils.getSupportedBands(app.applicationContext)
+
+                            wifiOptions = WiFiAwareDeviceRetrievalMethod.WifiOptions(
+                                wifiPassphrase,
+                                null,
+                                null,
+                                wifiSupportedBands
+                            )
 
                             deBuilderQR.transferMethods(
-                                WiFiAwareTransferMethod(
+                                WiFiAwareDeviceRetrievalMethod(
                                     DeviceEngagement.TRANSFER_TYPE_WIFI_AWARE,
-                                    WIFI_AWARE_VERSION
+                                    WIFI_AWARE_VERSION, wifiOptions
                                 )
                             )
                         }
                         TransferChannels.NFC -> {
+                            // TODO: get these from underlying hardware instead of assuming they're the top limit.
+                            //
+                            val nfcMaxCommandLength = 0xffff
+                            val nfcMaxResponseLength = 0x10000
+
+                            nfcOptions = NfcDeviceRetrievalMethod.NfcOptions(
+                                nfcMaxCommandLength,
+                                nfcMaxResponseLength
+                            )
+
                             deBuilderQR.transferMethods(
-                                WiFiAwareTransferMethod(
+                                NfcDeviceRetrievalMethod(
                                     DeviceEngagement.TRANSFER_TYPE_NFC,
-                                    NFC_VERSION
+                                    NFC_VERSION,
+                                    nfcOptions
                                 )
                             )
                             hideQrCode = true
@@ -232,16 +264,13 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
                         NfcHandler.EXTRA_TRANSFER_METHOD, transferMethod
                     )
                     intent.putExtra(
-                        NfcHandler.EXTRA_BLE_PERIPHERAL_SERVER_MODE, blePeripheralMode
+                        NfcHandler.EXTRA_BLE_OPTIONS, bleOptions
                     )
                     intent.putExtra(
-                        NfcHandler.EXTRA_BLE_CENTRAL_CLIENT_MODE, bleCentralMode
+                        NfcHandler.EXTRA_NFC_OPTIONS, bleOptions
                     )
                     intent.putExtra(
-                        NfcHandler.EXTRA_WIFI_PASSPHRASE, wifiPassphrase
-                    )
-                    intent.putExtra(
-                        NfcHandler.EXTRA_WIFI_5GHZ_BAND_SUPPORTED, wifi5GHzBandSupported
+                        NfcHandler.EXTRA_WIFI_OPTIONS, bleOptions
                     )
 
                     // Setup Holder works the same for both engagement method
@@ -369,12 +398,17 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
 
                 deviceEngagement.getBLETransferMethod()?.let {
                     builder.setTransferChannel(TransferChannels.BLE)
-                    bleServiceMode?.let {
-                        builder.setBleServiceMode(it)
+                    bleServiceMode?.let { bleMode ->
+                        builder.setBleServiceMode(bleMode)
                     }
+                    builder.setBleUUID(
+                        it.retrievalOptions?.peripheralServerUUID
+                            ?: it.retrievalOptions?.centralClientUUID
+                    )
                 }
                 deviceEngagement.getWiFiAwareTransferMethod()?.let {
                     builder.setTransferChannel(TransferChannels.WiFiAware)
+                    builder.setWifiPassphrase(it.retrievalOptions?.passPhrase)
                 }
                 deviceEngagement.getNfcTransferMethod()?.let {
                     builder.setTransferChannel(TransferChannels.NFC)
@@ -422,27 +456,37 @@ class ShareCredentialsViewModel(val app: Application) : AndroidViewModel(app) {
                     builder.setBleServiceMode(getBleServiceMode())
                 }
 
+                builder.setBleUUID(
+                    bleOptions?.peripheralServerUUID ?: bleOptions?.centralClientUUID
+                )
+
+                builder.setWifiPassphrase(wifiOptions?.passPhrase)
+
                 val issuerAuthority =
                     MockIssuerAuthority.getInstance(app.applicationContext)
 
                 offlineTransferHolder = builder.build()
                 offlineTransferHolder?.let { holder ->
-                        deviceEngagement?.let { de ->
-                            val handoverRecord =
-                                when (transferMethod) {
-                                    TransferChannels.BLE ->
+                    deviceEngagement?.let { de ->
+                        val handoverRecord =
+                            when (transferMethod) {
+                                TransferChannels.BLE ->
 
-                                        createBLEStaticHandoverRecord(
-                                            de.encode(),
-                                            blePeripheralMode,
-                                            bleCentralMode
-                                        )
-                                    TransferChannels.NFC -> createNfcStaticHandoverRecord(
-                                        de.encode()
+                                    createBLEStaticHandoverRecord(
+                                        de.encode(),
+                                        bleOptions?.peripheralServer ?: false,
+                                        bleOptions?.centralClient ?: false,
+                                        bleOptions?.peripheralServerUUID
+                                            ?: bleOptions?.centralClientUUID
                                     )
-                                    TransferChannels.WiFiAware -> createWiFiAwareStaticHandoverRecord(
-                                        de.encode(), wifiPassphrase, wifi5GHzBandSupported
-                                    )
+                                TransferChannels.NFC -> createNfcStaticHandoverRecord(
+                                    de.encode()
+                                )
+                                TransferChannels.WiFiAware -> createWiFiAwareStaticHandoverRecord(
+                                    de.encode(),
+                                    wifiOptions?.passPhrase,
+                                    wifiOptions?.supportedBands
+                                )
                                 }
 
                             val handover = Handover.Builder()

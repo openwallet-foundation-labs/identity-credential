@@ -33,6 +33,7 @@ class TransportChannelManager(
     transportChannel: TransferChannels,
     appMode: AppMode,
     bleServiceMode: BleServiceMode,
+    bleUUID: UUID?,
     publicKey: ByteArray,
     wifiPassphrase: String?
 ){
@@ -43,7 +44,7 @@ class TransportChannelManager(
                 context,
                 appMode,
                 bleServiceMode,
-                UUID.randomUUID() // Added support to random UUID
+                bleUUID // Added support to random UUID
             )
         }
         TransferChannels.WiFiAware -> {
