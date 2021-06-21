@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.util
+package com.android.mdl.app.util
 
 object DocumentData {
     const val DUMMY_CREDENTIAL_NAME = "dummyCredential"

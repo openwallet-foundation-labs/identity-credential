@@ -14,12 +14,12 @@
  * limitations under the License.
 */
 
-package com.ul.ims.gmdl.appholder.util
+package com.android.mdl.app.util
 
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.util.Log
-import com.ul.ims.gmdl.appholder.transfer.TransferManager
+import com.android.mdl.app.transfer.TransferManager
 
 class NfcHandler : HostApduService() {
 

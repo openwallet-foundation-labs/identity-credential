@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.fragment
+package com.android.mdl.app.fragment
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -11,9 +11,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.ul.ims.gmdl.appholder.adapter.DocumentAdapter
-import com.ul.ims.gmdl.appholder.databinding.FragmentSelectDocumentBinding
-import com.ul.ims.gmdl.appholder.document.DocumentManager
+import com.android.mdl.app.adapter.DocumentAdapter
+import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
+import com.android.mdl.app.document.DocumentManager
 
 
 class SelectDocumentFragment : Fragment() {

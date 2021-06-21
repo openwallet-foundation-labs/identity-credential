@@ -16,7 +16,7 @@
   -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.ul.ims.gmdl.appholder">
+    package="com.android.mdl.app">
 
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
     <uses-feature android:name="android.hardware.nfc" android:required="true" />
@@ -45,7 +45,7 @@
         </activity>
 
         <service
-            android:name="com.ul.ims.gmdl.appholder.util.NfcHandler"
+            android:name=".util.NfcHandler"
             android:exported="true"
             android:label="@string/engagement_service_desc"
             android:permission="android.permission.BIND_NFC_SERVICE">

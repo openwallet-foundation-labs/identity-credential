@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.fragment
+package com.android.mdl.app.fragment
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -6,14 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import com.ul.ims.gmdl.appholder.R
-import com.ul.ims.gmdl.appholder.databinding.FragmentDocumentSharedBinding
-import com.ul.ims.gmdl.appholder.databinding.FragmentShareDocumentBinding
-import com.ul.ims.gmdl.appholder.fragment.DocumentSharedFragmentDirections.Companion.actionDocumentSharedFragmentToSelectDocumentFragment
-import com.ul.ims.gmdl.appholder.transfer.TransferManager
-import com.ul.ims.gmdl.appholder.viewmodel.ShareDocumentViewModel
+import com.android.mdl.app.databinding.FragmentDocumentSharedBinding
+import com.android.mdl.app.fragment.DocumentSharedFragmentDirections.Companion.actionDocumentSharedFragmentToSelectDocumentFragment
+import com.android.mdl.app.transfer.TransferManager
 
 class DocumentSharedFragment : Fragment() {
 

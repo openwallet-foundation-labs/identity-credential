@@ -22,7 +22,7 @@
 
     <fragment
         android:id="@+id/selectDocumentFragment"
-        android:name="com.ul.ims.gmdl.appholder.fragment.SelectDocumentFragment"
+        android:name="com.android.mdl.app.fragment.SelectDocumentFragment"
         android:label="Select a Document to Share"
         tools:layout="@layout/fragment_select_document">
         <action
@@ -31,7 +31,7 @@
     </fragment>
     <fragment
         android:id="@+id/shareDocumentFragment"
-        android:name="com.ul.ims.gmdl.appholder.fragment.ShareDocumentFragment"
+        android:name="com.android.mdl.app.fragment.ShareDocumentFragment"
         android:label="Sharing Document"
         tools:layout="@layout/fragment_share_document">
         <argument
@@ -55,7 +55,7 @@
     </fragment>
     <fragment
         android:id="@+id/userConsentFragment"
-        android:name="com.ul.ims.gmdl.appholder.fragment.UserConsentFragment"
+        android:name="com.android.mdl.app.fragment.UserConsentFragment"
         android:label="Consent needed"
         tools:layout="@layout/fragment_user_consent">
         <argument
@@ -79,7 +79,7 @@
     </fragment>
     <fragment
         android:id="@+id/transferDocumentFragment"
-        android:name="com.ul.ims.gmdl.appholder.fragment.TransferDocumentFragment"
+        android:name="com.android.mdl.app.fragment.TransferDocumentFragment"
         android:label="Transferring"
         tools:layout="@layout/fragment_transfer_document">
         <argument
@@ -103,7 +103,7 @@
     </fragment>
     <fragment
         android:id="@+id/documentSharedFragment"
-        android:name="com.ul.ims.gmdl.appholder.fragment.DocumentSharedFragment"
+        android:name="com.android.mdl.app.fragment.DocumentSharedFragment"
         android:label="Document Shared"
         tools:layout="@layout/fragment_document_shared">
         <action

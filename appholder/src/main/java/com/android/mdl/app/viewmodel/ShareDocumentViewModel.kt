@@ -1,13 +1,13 @@
-package com.ul.ims.gmdl.appholder.viewmodel
+package com.android.mdl.app.viewmodel
 
 import android.app.Application
 import android.view.View
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import com.ul.ims.gmdl.appholder.document.DocumentManager
-import com.ul.ims.gmdl.appholder.transfer.TransferManager
-import com.ul.ims.gmdl.appholder.util.TransferStatus
+import com.android.mdl.app.document.DocumentManager
+import com.android.mdl.app.transfer.TransferManager
+import com.android.mdl.app.util.TransferStatus
 
 
 class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {

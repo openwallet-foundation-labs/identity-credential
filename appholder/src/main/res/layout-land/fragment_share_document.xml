@@ -8,11 +8,11 @@
 
         <variable
             name="vm"
-            type="com.ul.ims.gmdl.appholder.viewmodel.ShareDocumentViewModel" />
+            type="com.android.mdl.app.viewmodel.ShareDocumentViewModel" />
 
         <variable
             name="fragment"
-            type="com.ul.ims.gmdl.appholder.fragment.ShareDocumentFragment" />
+            type="com.android.mdl.app.fragment.ShareDocumentFragment" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

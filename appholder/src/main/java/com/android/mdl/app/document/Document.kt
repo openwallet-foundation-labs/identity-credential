@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.document
+package com.android.mdl.app.document
 
 import android.graphics.Bitmap
 

@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.fragment
+package com.android.mdl.app.fragment
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,11 +9,11 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.ul.ims.gmdl.appholder.databinding.FragmentShareDocumentBinding
-import com.ul.ims.gmdl.appholder.fragment.ShareDocumentFragmentDirections.Companion.actionShareDocumentFragmentToSelectDocumentFragment
-import com.ul.ims.gmdl.appholder.fragment.ShareDocumentFragmentDirections.Companion.actionShareDocumentFragmentToUserConsentFragment
-import com.ul.ims.gmdl.appholder.util.TransferStatus
-import com.ul.ims.gmdl.appholder.viewmodel.ShareDocumentViewModel
+import com.android.mdl.app.databinding.FragmentShareDocumentBinding
+import com.android.mdl.app.fragment.ShareDocumentFragmentDirections.Companion.actionShareDocumentFragmentToSelectDocumentFragment
+import com.android.mdl.app.fragment.ShareDocumentFragmentDirections.Companion.actionShareDocumentFragmentToUserConsentFragment
+import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 
 
 class ShareDocumentFragment : Fragment() {

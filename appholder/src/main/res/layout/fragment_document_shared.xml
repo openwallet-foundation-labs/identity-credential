@@ -7,7 +7,7 @@
 
         <variable
             name="fragment"
-            type="com.ul.ims.gmdl.appholder.fragment.DocumentSharedFragment" />
+            type="com.android.mdl.app.fragment.DocumentSharedFragment" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder
+package com.android.mdl.app
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity

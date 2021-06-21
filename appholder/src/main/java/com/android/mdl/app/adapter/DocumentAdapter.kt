@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-package com.ul.ims.gmdl.appholder.adapter
+package com.android.mdl.app.adapter
 
 
 import android.view.LayoutInflater
@@ -23,10 +23,10 @@ import androidx.navigation.findNavController
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.ul.ims.gmdl.appholder.R
-import com.ul.ims.gmdl.appholder.databinding.ListItemDocumentBinding
-import com.ul.ims.gmdl.appholder.document.Document
-import com.ul.ims.gmdl.appholder.fragment.SelectDocumentFragmentDirections
+import com.android.mdl.app.R
+import com.android.mdl.app.databinding.ListItemDocumentBinding
+import com.android.mdl.app.document.Document
+import com.android.mdl.app.fragment.SelectDocumentFragmentDirections
 
 /**
  * Adapter for the [RecyclerView].

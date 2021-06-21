@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.util
+package com.android.mdl.app.util
 
 import android.view.View
 import android.widget.LinearLayout

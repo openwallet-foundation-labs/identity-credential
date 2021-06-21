@@ -1,16 +1,16 @@
-package com.ul.ims.gmdl.appholder.document
+package com.android.mdl.app.document
 
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.security.keystore.KeyProperties
 import androidx.security.identity.*
-import com.ul.ims.gmdl.appholder.R
-import com.ul.ims.gmdl.appholder.util.DocumentData
-import com.ul.ims.gmdl.appholder.util.DocumentData.AAMVA_NAMESPACE
-import com.ul.ims.gmdl.appholder.util.DocumentData.DUMMY_CREDENTIAL_NAME
-import com.ul.ims.gmdl.appholder.util.DocumentData.MDL_DOCTYPE
-import com.ul.ims.gmdl.appholder.util.DocumentData.MDL_NAMESPACE
+import com.android.mdl.app.R
+import com.android.mdl.app.util.DocumentData
+import com.android.mdl.app.util.DocumentData.AAMVA_NAMESPACE
+import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
+import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
+import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.ContentSigner
@@ -29,7 +29,6 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
 import java.util.*
-import java.util.List
 import kotlin.collections.Collection
 import kotlin.collections.mutableListOf
 

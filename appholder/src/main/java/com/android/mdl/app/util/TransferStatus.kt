@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.util
+package com.android.mdl.app.util
 
 enum class TransferStatus {
     ENGAGEMENT_READY,

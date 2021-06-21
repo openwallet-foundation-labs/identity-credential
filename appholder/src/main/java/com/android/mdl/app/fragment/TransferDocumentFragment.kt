@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.fragment
+package com.android.mdl.app.fragment
 
 import android.os.Bundle
 import android.util.Log
@@ -11,16 +11,18 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.ul.ims.gmdl.appholder.databinding.FragmentUserConsentBinding
-import com.ul.ims.gmdl.appholder.fragment.UserConsentFragmentDirections.Companion.actionUserConsentFragmentToSelectDocumentFragment
-import com.ul.ims.gmdl.appholder.util.TransferStatus
-import com.ul.ims.gmdl.appholder.viewmodel.UserConsentViewModel
+import androidx.security.identity.InvalidRequestMessageException
+import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
+import com.android.mdl.app.fragment.TransferDocumentFragmentDirections.Companion.actionTransferDocumentFragmentToDocumentSharedFragment
+import com.android.mdl.app.fragment.TransferDocumentFragmentDirections.Companion.actionTransferDocumentFragmentToSelectDocumentFragment
+import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 
 
-class UserConsentFragment : Fragment() {
+class TransferDocumentFragment : Fragment() {
 
     companion object {
-        private const val LOG_TAG = "UserConsentFragment"
+        private const val LOG_TAG = "TransferDocumentFragment"
     }
 
     private val args: ShareDocumentFragmentArgs by navArgs()
@@ -29,8 +31,8 @@ class UserConsentFragment : Fragment() {
     private lateinit var userVisibleName: String
     private var hardwareBacked = false
 
-    private var _binding: FragmentUserConsentBinding? = null
-    private lateinit var vm: UserConsentViewModel
+    private var _binding: FragmentTransferDocumentBinding? = null
+    private lateinit var vm: TransferDocumentViewModel
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -50,8 +52,8 @@ class UserConsentFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentUserConsentBinding.inflate(inflater)
-        vm = ViewModelProvider(this).get(UserConsentViewModel::class.java)
+        _binding = FragmentTransferDocumentBinding.inflate(inflater)
+        vm = ViewModelProvider(this).get(TransferDocumentViewModel::class.java)
 
         binding.fragment = this
 
@@ -62,6 +64,7 @@ class UserConsentFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         vm.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {
                 TransferStatus.ENGAGEMENT_READY -> {
@@ -74,12 +77,8 @@ class UserConsentFragment : Fragment() {
                     Log.d(LOG_TAG, "Request")
                 }
                 TransferStatus.DISCONNECTED -> {
-                    Toast.makeText(
-                        requireContext(), "Device disconnected",
-                        Toast.LENGTH_SHORT
-                    ).show()
                     findNavController().navigate(
-                        actionUserConsentFragmentToSelectDocumentFragment()
+                        actionTransferDocumentFragmentToDocumentSharedFragment()
                     )
                 }
                 TransferStatus.ERROR -> {
@@ -88,32 +87,35 @@ class UserConsentFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
                     findNavController().navigate(
-                        actionUserConsentFragmentToSelectDocumentFragment()
+                        actionTransferDocumentFragmentToSelectDocumentFragment()
                     )
                 }
             }
-        })
-    }
-
-    fun onApprove() {
-        findNavController().navigate(
-            UserConsentFragmentDirections.actionUserConsentFragmentToTransferDocumentFragment(
-                docType, identityCredentialName, userVisibleName, hardwareBacked
-            )
+        }
         )
+
+        try {
+            vm.sendResponse()
+        } catch (e: InvalidRequestMessageException) {
+            Log.e(LOG_TAG, "Send response error: ${e.message}")
+            Toast.makeText(
+                requireContext(), "Send response error: ${e.message}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
     }
 
-    // This callback will only be called when MyFragment is at least Started.
     var callback = object : OnBackPressedCallback(true /* enabled by default */) {
         override fun handleOnBackPressed() {
-            onCancel()
+            onDone()
         }
     }
 
-    fun onCancel() {
+    fun onDone() {
         vm.cancelPresentation()
         findNavController().navigate(
-            actionUserConsentFragmentToSelectDocumentFragment()
+            actionTransferDocumentFragmentToSelectDocumentFragment()
         )
     }
 }

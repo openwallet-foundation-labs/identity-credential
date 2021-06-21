@@ -37,7 +37,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/message"
-                tools:context="com.ul.ims.gmdl.appholder.fragment.SelectDocumentFragment"
+                tools:context=".fragment.SelectDocumentFragment"
                 tools:layout_height="300dp"
                 tools:listitem="@layout/list_item_document" />
 

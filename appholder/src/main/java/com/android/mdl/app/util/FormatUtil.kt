@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.util
+package com.android.mdl.app.util
 
 object FormatUtil {
     // Helper function to convert a byteArray to HEX string

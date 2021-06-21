@@ -8,7 +8,7 @@
 
         <variable
             name="fragment"
-            type="com.ul.ims.gmdl.appholder.fragment.TransferDocumentFragment" />
+            type="com.android.mdl.app.fragment.TransferDocumentFragment" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

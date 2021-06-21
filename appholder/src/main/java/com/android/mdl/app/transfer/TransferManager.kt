@@ -1,4 +1,4 @@
-package com.ul.ims.gmdl.appholder.transfer
+package com.android.mdl.app.transfer
 
 import android.content.Context
 import android.nfc.cardemulation.HostApduService
@@ -11,7 +11,7 @@ import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.security.identity.*
-import com.ul.ims.gmdl.appholder.util.TransferStatus
+import com.android.mdl.app.util.TransferStatus
 import java.util.concurrent.Executor
 
 class TransferManager private constructor(private val context: Context) {
