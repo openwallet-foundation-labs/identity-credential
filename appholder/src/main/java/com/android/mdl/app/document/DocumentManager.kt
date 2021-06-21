@@ -47,8 +47,10 @@ class DocumentManager private constructor(private val context: Context) {
             }
     }
 
+    // TODO: Review to add support for both software and hardware implementations
     val store: IdentityCredentialStore =
         IdentityCredentialStore.getSoftwareInstance(context)
+
     private val documents = mutableListOf<Document>()
 
     init {
