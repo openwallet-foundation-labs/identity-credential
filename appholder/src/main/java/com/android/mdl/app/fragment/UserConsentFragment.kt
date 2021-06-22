@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.databinding.FragmentUserConsentBinding
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.fragment.UserConsentFragmentDirections.Companion.actionUserConsentFragmentToSelectDocumentFragment
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.UserConsentViewModel
@@ -24,10 +25,7 @@ class UserConsentFragment : Fragment() {
     }
 
     private val args: ShareDocumentFragmentArgs by navArgs()
-    private lateinit var docType: String
-    private lateinit var identityCredentialName: String
-    private lateinit var userVisibleName: String
-    private var hardwareBacked = false
+    private lateinit var document: Document
 
     private var _binding: FragmentUserConsentBinding? = null
     private lateinit var vm: UserConsentViewModel
@@ -39,11 +37,7 @@ class UserConsentFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        docType = args.docType
-        identityCredentialName = args.identityCredentialName
-        hardwareBacked = args.hardwareBacked
-        userVisibleName = args.userVisibleName
-
+        document = args.document
     }
 
     override fun onCreateView(
@@ -98,7 +92,7 @@ class UserConsentFragment : Fragment() {
     fun onApprove() {
         findNavController().navigate(
             UserConsentFragmentDirections.actionUserConsentFragmentToTransferDocumentFragment(
-                docType, identityCredentialName, userVisibleName, hardwareBacked
+                document
             )
         )
     }

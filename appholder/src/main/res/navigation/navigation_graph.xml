@@ -35,17 +35,8 @@
         android:label="Sharing Document"
         tools:layout="@layout/fragment_share_document">
         <argument
-            android:name="docType"
-            app:argType="string" />
-        <argument
-            android:name="identityCredentialName"
-            app:argType="string" />
-        <argument
-            android:name="userVisibleName"
-            app:argType="string" />
-        <argument
-            android:name="hardwareBacked"
-            app:argType="boolean" />
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
         <action
             android:id="@+id/action_shareDocumentFragment_to_selectDocumentFragment"
             app:destination="@id/selectDocumentFragment" />
@@ -59,17 +50,8 @@
         android:label="Consent needed"
         tools:layout="@layout/fragment_user_consent">
         <argument
-            android:name="docType"
-            app:argType="string" />
-        <argument
-            android:name="identityCredentialName"
-            app:argType="string" />
-        <argument
-            android:name="userVisibleName"
-            app:argType="string" />
-        <argument
-            android:name="hardwareBacked"
-            app:argType="boolean" />
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
         <action
             android:id="@+id/action_userConsentFragment_to_selectDocumentFragment"
             app:destination="@id/selectDocumentFragment" />
@@ -83,17 +65,8 @@
         android:label="Transferring"
         tools:layout="@layout/fragment_transfer_document">
         <argument
-            android:name="docType"
-            app:argType="string" />
-        <argument
-            android:name="identityCredentialName"
-            app:argType="string" />
-        <argument
-            android:name="userVisibleName"
-            app:argType="string" />
-        <argument
-            android:name="hardwareBacked"
-            app:argType="boolean" />
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
         <action
             android:id="@+id/action_transferDocumentFragment_to_selectDocumentFragment"
             app:destination="@id/selectDocumentFragment" />

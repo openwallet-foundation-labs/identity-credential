@@ -64,10 +64,7 @@ class DocumentAdapter :
         ) {
             val direction =
                 SelectDocumentFragmentDirections.actionSelectDocumentFragmentToShareDocumentFragment(
-                    document.docType,
-                    document.identityCredentialName,
-                    document.userVisibleName,
-                    document.hardwareBacked
+                    document
                 )
 
             if (view.findNavController().currentDestination?.id == R.id.selectDocumentFragment) {

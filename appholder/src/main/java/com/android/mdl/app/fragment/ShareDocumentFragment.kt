@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.databinding.FragmentShareDocumentBinding
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.fragment.ShareDocumentFragmentDirections.Companion.actionShareDocumentFragmentToSelectDocumentFragment
 import com.android.mdl.app.fragment.ShareDocumentFragmentDirections.Companion.actionShareDocumentFragmentToUserConsentFragment
 import com.android.mdl.app.util.TransferStatus
@@ -22,10 +23,7 @@ class ShareDocumentFragment : Fragment() {
     }
 
     private val args: ShareDocumentFragmentArgs by navArgs()
-    private lateinit var docType: String
-    private lateinit var identityCredentialName: String
-    private lateinit var userVisibleName: String
-    private var hardwareBacked = false
+    private lateinit var document: Document
 
     private var _binding: FragmentShareDocumentBinding? = null
     private lateinit var vm: ShareDocumentViewModel
@@ -37,11 +35,7 @@ class ShareDocumentFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        docType = args.docType
-        identityCredentialName = args.identityCredentialName
-        hardwareBacked = args.hardwareBacked
-        userVisibleName = args.userVisibleName
-
+        document = args.document
     }
 
     override fun onCreateView(
@@ -75,9 +69,7 @@ class ShareDocumentFragment : Fragment() {
                 TransferStatus.REQUEST -> {
                     vm.message.set("Request received!")
                     findNavController().navigate(
-                        actionShareDocumentFragmentToUserConsentFragment(
-                            docType, identityCredentialName, userVisibleName, hardwareBacked
-                        )
+                        actionShareDocumentFragmentToUserConsentFragment(document)
                     )
                 }
                 TransferStatus.DISCONNECTED -> {

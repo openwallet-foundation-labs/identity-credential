@@ -13,6 +13,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.fragment.TransferDocumentFragmentDirections.Companion.actionTransferDocumentFragmentToDocumentSharedFragment
 import com.android.mdl.app.fragment.TransferDocumentFragmentDirections.Companion.actionTransferDocumentFragmentToSelectDocumentFragment
 import com.android.mdl.app.util.TransferStatus
@@ -26,10 +27,7 @@ class TransferDocumentFragment : Fragment() {
     }
 
     private val args: ShareDocumentFragmentArgs by navArgs()
-    private lateinit var docType: String
-    private lateinit var identityCredentialName: String
-    private lateinit var userVisibleName: String
-    private var hardwareBacked = false
+    private lateinit var document: Document
 
     private var _binding: FragmentTransferDocumentBinding? = null
     private lateinit var vm: TransferDocumentViewModel
@@ -41,10 +39,7 @@ class TransferDocumentFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        docType = args.docType
-        identityCredentialName = args.identityCredentialName
-        hardwareBacked = args.hardwareBacked
-        userVisibleName = args.userVisibleName
+        document = args.document
 
     }
 
