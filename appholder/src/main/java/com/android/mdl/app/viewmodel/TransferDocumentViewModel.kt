@@ -37,7 +37,6 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         )
         transferManager.sendCredential(
             docRequest,
-            DUMMY_CREDENTIAL_NAME,
             issuerSignedEntriesToRequest
         )
 

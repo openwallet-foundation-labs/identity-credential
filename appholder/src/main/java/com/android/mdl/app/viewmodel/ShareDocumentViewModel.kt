@@ -5,30 +5,35 @@ import android.view.View
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import com.android.mdl.app.document.DocumentManager
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 
-
-class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
+class ShareDocumentViewModel(val app: Application) :
+    AndroidViewModel(app) {
 
     companion object {
         private const val LOG_TAG = "ShareDocumentViewModel"
     }
 
     private val transferManager = TransferManager.getInstance(app.applicationContext)
-    private val documentManager = DocumentManager.getInstance(app.applicationContext)
     var deviceEngagementQr = ObservableField<View>()
     var message = ObservableField<String>()
+    private var hasStarted = false
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
-    fun startPresentation() {
-        transferManager.startPresentation(documentManager.store)
+    fun startPresentation(document: Document) {
+        // No need to call more than once
+        if (!hasStarted) {
+            transferManager.startPresentation(document)
+            hasStarted = true
+        }
     }
 
     fun cancelPresentation() {
         transferManager.stopPresentation()
+        hasStarted = false
         message.set("Presentation canceled")
     }
 

@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment
 import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.DocumentManager
+import com.android.mdl.app.transfer.TransferManager
 
 
 class SelectDocumentFragment : Fragment() {
@@ -30,6 +31,9 @@ class SelectDocumentFragment : Fragment() {
         binding.documentList.adapter = adapter
 
         val documentManager = DocumentManager.getInstance(requireContext())
+        // Call stop presentation to finish all presentation that could be running
+        val transferManager = TransferManager.getInstance(requireContext())
+        transferManager.stopPresentation()
 
         adapter.submitList(documentManager.getDocuments().toMutableList())
 

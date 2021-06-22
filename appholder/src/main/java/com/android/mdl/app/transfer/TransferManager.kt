@@ -1,5 +1,6 @@
 package com.android.mdl.app.transfer
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.nfc.cardemulation.HostApduService
 import android.os.Build
@@ -11,6 +12,7 @@ import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.security.identity.*
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.util.TransferStatus
 import java.util.concurrent.Executor
 
@@ -19,6 +21,7 @@ class TransferManager private constructor(private val context: Context) {
     companion object {
         private const val LOG_TAG = "TransferManager"
 
+        @SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: TransferManager? = null
 
@@ -28,34 +31,46 @@ class TransferManager private constructor(private val context: Context) {
             }
     }
 
+    private var store: IdentityCredentialStore? = null
     private var presentation: IdentityCredentialPresentation? = null
+    private var document: Document? = null
     private var hasStarted = false
 
-    //    private val store: IdentityCredentialStore =
-//        IdentityCredentialStore.getSoftwareInstance(context.applicationContext)
     var request: IdentityCredentialPresentation.DeviceRequest? = null
         private set
     private var transferStatusLd = MutableLiveData<TransferStatus>()
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
-    @Throws(CipherSuiteNotSupportedException::class)
-    fun startPresentation(store: IdentityCredentialStore) {
-        if (!hasStarted) {
-            try {
-                presentation = store.getPresentation(
-                    IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-                )
-            } catch (e: CipherSuiteNotSupportedException) {
-                Log.e(LOG_TAG, "Error creating IdentityCredentialPresentation ${e.message}")
-                throw e
-            }
+    private fun initiate(document: Document) {
+        this.document = document
 
-            presentation?.let {
-                it.setDeviceRequestListener(requestListener, context.mainExecutor())
-                it.addTransport(IdentityCredentialPresentation.TRANSPORT_BLUETOOTH_LE)
-                it.presentationBegin()
-            }
+        // Create identity credential store from hardware or software implementation depending on
+        // what was used to store this specific document.
+        store = if (document.hardwareBacked)
+            IdentityCredentialStore.getHardwareInstance(context)
+                ?: IdentityCredentialStore.getSoftwareInstance(context)
+        else
+            IdentityCredentialStore.getSoftwareInstance(context)
+
+        presentation = store?.getPresentation(
+            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+        )
+    }
+
+    @Throws(IllegalStateException::class)
+    fun startPresentation(document: Document) {
+        if (hasStarted)
+            throw IllegalStateException("Transfer has already started. It is necessary to stop current presentation before starting a new one.")
+
+        // Get an instance of the presentation based on the document
+        initiate(document)
+
+        // Setup and begin presentation
+        presentation?.let {
+            it.setDeviceRequestListener(requestListener, context.mainExecutor())
+            it.addTransport(IdentityCredentialPresentation.TRANSPORT_BLUETOOTH_LE)
+            it.presentationBegin()
             hasStarted = true
         }
     }
@@ -116,11 +131,14 @@ class TransferManager private constructor(private val context: Context) {
         presentation?.nfcEngagementOnDeactivated(service, reason)
     }
 
+    @Throws(IllegalStateException::class)
     fun sendCredential(
         docRequest: IdentityCredentialPresentation.DocumentRequest,
-        credentialName: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>
     ) {
+        val credentialName = document?.identityCredentialName
+            ?: throw IllegalStateException("Error recovering credential name from document")
+
         presentation?.let {
             it.deviceResponseBegin()
             it.getCredentialForPresentation(credentialName)?.let { c ->
@@ -157,13 +175,18 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    fun stopPresentation() {
+    private fun destroy() {
         request = null
-        presentation?.setDeviceRequestListener(null, null)
-        presentation?.presentationEnd()
+        document = null
+        store = null
         presentation = null
-        transferStatusLd = MutableLiveData<TransferStatus>()
-        hasStarted = false
     }
 
+    fun stopPresentation() {
+        presentation?.setDeviceRequestListener(null, null)
+        presentation?.presentationEnd()
+        transferStatusLd = MutableLiveData<TransferStatus>()
+        destroy()
+        hasStarted = false
+    }
 }

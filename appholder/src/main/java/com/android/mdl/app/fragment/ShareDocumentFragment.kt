@@ -55,7 +55,7 @@ class ShareDocumentFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        vm.startPresentation()
+        vm.startPresentation(document)
 
         vm.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {

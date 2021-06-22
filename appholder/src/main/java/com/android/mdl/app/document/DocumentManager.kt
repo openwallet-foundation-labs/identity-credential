@@ -1,5 +1,6 @@
 package com.android.mdl.app.document
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -38,6 +39,7 @@ class DocumentManager private constructor(private val context: Context) {
     companion object {
         private const val LOG_TAG = "DocumentManager"
 
+        @SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: DocumentManager? = null
 
@@ -48,7 +50,7 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     // TODO: Review to add support for both software and hardware implementations
-    val store: IdentityCredentialStore =
+    private val store: IdentityCredentialStore =
         IdentityCredentialStore.getSoftwareInstance(context)
 
     private val documents = mutableListOf<Document>()
