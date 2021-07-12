@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.DocumentManager
@@ -28,6 +29,7 @@ class SelectDocumentFragment : Fragment() {
     ): View {
         val binding = FragmentSelectDocumentBinding.inflate(inflater)
         val adapter = DocumentAdapter()
+        binding.fragment = this
         binding.documentList.adapter = adapter
 
         val documentManager = DocumentManager.getInstance(requireContext())
@@ -48,6 +50,12 @@ class SelectDocumentFragment : Fragment() {
         }
 
         return binding.root
+    }
+
+    fun onStartProvisioning() {
+        findNavController().navigate(
+            SelectDocumentFragmentDirections.actionSelectDocumentFragmentToProvisioningFragment()
+        )
     }
 
     private val permissionsLauncher =

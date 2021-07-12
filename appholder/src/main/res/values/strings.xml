@@ -9,4 +9,18 @@
     <string name="bt_approve">Approve</string>
     <string name="engagement_service_desc">mDL Holder NFC Engagement</string>
     <string name="engagement_aid_group_desc">mDL AID Group</string>
+    <string name="bt_add_document">Add Document</string>
+    <string name="txt_server_url">Enter the server URL</string>
+    <string name="txt_provisioning_code">Enter the provisioning code</string>
+    <string name="value_server_url">http://192.168.1.130:18013/mdlServer</string>
+    <string name="value_provisioning_code">1001</string>
+    <string name="bt_next">Next</string>
+    <string name="txt_retrieving_data">Retrieving data</string>
+    <string name="bt_ok">OK</string>
+    <string name="bio_auth_title">Authenticate to share data</string>
+    <string name="bio_auth_subtitle">Log in using your biometric credential</string>
+    <string name="bio_auth_cancel">Cancel</string>
+    <string name="bio_auth_failed">User authentication has failed</string>
+    <string name="fingerprint_removed_error">Biometric Authentication Error</string>
+    <string name="fingerprint_removed_error_desc">Fingerprint was removed from the device so the credential cannot be shared anymore.</string>
 </resources>

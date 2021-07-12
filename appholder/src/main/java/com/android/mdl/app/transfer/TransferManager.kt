@@ -6,6 +6,7 @@ import android.nfc.cardemulation.HostApduService
 import android.os.Build
 import android.util.Log
 import android.view.View
+import androidx.biometric.BiometricPrompt.CryptoObject
 import androidx.core.content.ContextCompat
 import androidx.core.util.component1
 import androidx.core.util.component2
@@ -135,12 +136,11 @@ class TransferManager private constructor(private val context: Context) {
     fun sendCredential(
         docRequest: IdentityCredentialPresentation.DocumentRequest,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>
-    ) {
+    ): CryptoObject? {
         val credentialName = document?.identityCredentialName
             ?: throw IllegalStateException("Error recovering credential name from document")
 
         presentation?.let {
-            it.deviceResponseBegin()
             it.getCredentialForPresentation(credentialName)?.let { c ->
 
 
@@ -152,6 +152,13 @@ class TransferManager private constructor(private val context: Context) {
                     val issuerSignedResult: ResultData = c.getEntries(
                         null, issuerSignedEntriesToRequest, null
                     )
+                    if (checkAuthenticationRequired(deviceSignedResult) ||
+                        checkAuthenticationRequired(issuerSignedResult)
+                    ) {
+                        return c.cryptoObject
+                    }
+                    it.deviceResponseBegin()
+
                     val staticAuthData = issuerSignedResult.staticAuthenticationData
                     val (first, second) = Helpers.decodeStaticAuthData(staticAuthData)
                     it.deviceResponseAddDocument(
@@ -173,6 +180,20 @@ class TransferManager private constructor(private val context: Context) {
             }
             it.deviceResponseSend()
         }
+        return null
+    }
+
+    // If an access control check fails for one of the requested entries or if the entry
+    // doesn't exist, the entry is simply not returned.
+    // TODO: store if authentication is required for each document, than this will be not necessary
+    private fun checkAuthenticationRequired(resultData: ResultData): Boolean {
+        resultData.namespaces.forEach { namespace ->
+            resultData.getEntryNames(namespace)?.forEach { entryName ->
+                if (resultData.getEntry(namespace, entryName) == null)
+                    return true
+            }
+        }
+        return false
     }
 
     private fun destroy() {

@@ -173,4 +173,7 @@ class DocumentManager private constructor(private val context: Context) {
         return documents
     }
 
+    fun addDocument(document: Document) {
+        documents.add(document)
+    }
 }

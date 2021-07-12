@@ -60,6 +60,10 @@ dependencies {
     implementation "androidx.navigation:navigation-fragment-ktx:$navigation_version"
     implementation "androidx.navigation:navigation-ui-ktx:$navigation_version"
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation "com.android.volley:volley:$volley_version"
+
+    // Biometric authentication
+    implementation "androidx.biometric:biometric:$androidx_biometrics"
 
     // Imported to use IC API
     implementation "org.java-websocket:Java-WebSocket:1.5.1"

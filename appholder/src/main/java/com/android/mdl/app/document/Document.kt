@@ -9,6 +9,6 @@ data class Document(
     val docType: String,
     val identityCredentialName: String,
     val userVisibleName: String, // Name displayed in UI, e.g. “P HIN”
-    val userVisibleDocumentBackground: Bitmap,
+    val userVisibleDocumentBackground: Bitmap?,
     val hardwareBacked: Boolean // cf. blurb in IdentityCredentialStore docs
-): Parcelable
+) : Parcelable

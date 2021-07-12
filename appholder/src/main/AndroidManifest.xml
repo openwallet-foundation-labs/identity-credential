@@ -30,6 +30,7 @@
     <uses-permission android:name="android.permission.NFC"/>
 
     <application
+        android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="false"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
