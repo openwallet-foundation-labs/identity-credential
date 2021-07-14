@@ -205,11 +205,6 @@ class NfcTransferReader(
         }
     }
 
-    override fun close() {
-        Log.d(LOG_TAG, "Close")
-
-    }
-
     private fun connect() {
         doAsync {
             if (isoDep.isConnected) {

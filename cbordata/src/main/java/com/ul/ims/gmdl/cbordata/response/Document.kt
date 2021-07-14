@@ -24,12 +24,14 @@ import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import java.io.ByteArrayOutputStream
 import java.io.Serializable
 
-class ResponseData private constructor(
+class Document private constructor(
+    val docType: String,
     val issuerSigned : IssuerSigned,
     val deviceSigned : DeviceSigned,
-    val erros : Errors
+    val errors : Errors
 ) : AbstractCborStructure(), Serializable {
     companion object {
+        const val KEY_DOC_TYPE = "docType"
         const val KEY_ISSUER_SIGNED = "issuerSigned"
         const val KEY_DEVICE_SIGNED = "deviceSigned"
         const val KEY_ERRORS = "errors"
@@ -37,6 +39,8 @@ class ResponseData private constructor(
 
     fun toDataItem(): Map {
         val map = Map()
+        //DocType
+        map.put(toDataItem(KEY_DOC_TYPE), toDataItem(docType))
 
         // IssuerSigned
         map.put(toDataItem(KEY_ISSUER_SIGNED), toDataItem(issuerSigned))
@@ -45,7 +49,7 @@ class ResponseData private constructor(
         map.put(toDataItem(KEY_DEVICE_SIGNED), toDataItem(deviceSigned))
 
         // Error
-        erros.errors.forEach { (key, value) ->
+        errors.errors.forEach { (key, value) ->
             val itemArr = Array()
             value.forEach {
                 val mapError = Map()
@@ -66,10 +70,15 @@ class ResponseData private constructor(
     }
 
     class Builder {
+        private var docType : String? = null
         private var issuerSigned : IssuerSigned? = null
         private var deviceSigned : DeviceSigned? = null
 
         private var errors : Errors = Errors.Builder().build()
+
+        fun setDocType(docType: String) = apply {
+            this.docType = docType
+        }
 
         fun setIssuerSigned(issuerSigned : IssuerSigned) = apply {
             this.issuerSigned = issuerSigned
@@ -88,9 +97,13 @@ class ResponseData private constructor(
         fun decode(map : Map) = apply {
             map.keys.forEach {item->
                 val key : UnicodeString? = item as? UnicodeString
-                val value = map.get(item) as? Map
                 when (key?.string) {
+                    KEY_DOC_TYPE -> {
+                        val value = map.get(item) as UnicodeString
+                        setDocType(value.string)
+                    }
                     KEY_ISSUER_SIGNED -> {
+                        val value = map.get(item) as? Map
                         setIssuerSigned(
                             IssuerSigned.Builder()
                                 .decode(value)
@@ -98,6 +111,7 @@ class ResponseData private constructor(
                         )
                     }
                     KEY_DEVICE_SIGNED -> {
+                        val value = map.get(item) as? Map
                         setDeviceSigned(
                             DeviceSigned.Builder()
                                 .decode(value)
@@ -105,6 +119,7 @@ class ResponseData private constructor(
                         )
                     }
                     KEY_ERRORS -> {
+                        val value = map.get(item) as? Map
                         setErrors(
                             Errors.Builder()
                                 .decode(value)
@@ -114,15 +129,18 @@ class ResponseData private constructor(
                 }
             }
         }
-        fun build() : ResponseData? {
-            issuerSigned?.let {issuer->
-                deviceSigned?.let {device->
-                        return ResponseData(
-                            issuer,
-                            device,
-                            errors
-                        )
 
+        fun build() : Document? {
+            docType?.let { dType ->
+            issuerSigned?.let {issuer->
+                deviceSigned?.let { device ->
+                    return Document(
+                        dType,
+                        issuer,
+                        device,
+                        errors
+                    )
+                }
                 }
             }
             return null

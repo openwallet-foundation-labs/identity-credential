@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">App Holder</string>
+    <string name="bt_cancel">Cancel</string>
+    <string name="bt_done">Done</string>
+    <string name="txt_transfer_completed">Transfer Completed!</string>
+    <string name="txt_list_of_documents">List of Documents:</string>
+    <string name="txt_transferring">Transferring</string>
+    <string name="txt_consent">Approve sending data to mDL verifier</string>
+    <string name="bt_approve">Approve</string>
+    <string name="engagement_service_desc">mDL Holder NFC Engagement</string>
+    <string name="engagement_aid_group_desc">mDL AID Group</string>
+</resources>

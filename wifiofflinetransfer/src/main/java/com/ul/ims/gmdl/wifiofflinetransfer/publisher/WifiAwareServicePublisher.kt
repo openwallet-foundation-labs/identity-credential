@@ -267,9 +267,4 @@ class WifiAwareServicePublisher internal constructor(
             }
         }
     }
-
-    override fun close() {
-        Log.d(LOG_TAG, "Close")
-        closeConnection()
-    }
 }

@@ -19,18 +19,10 @@ package com.ul.ims.gmdl.cbordata.generic
 import android.icu.util.GregorianCalendar
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.model.*
-import co.nstant.`in`.cbor.model.Array
 import co.nstant.`in`.cbor.model.Map
 import com.ul.ims.gmdl.cbordata.ICborStructure
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.CENTRAL_CLIENT_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_MAC_ADDRESS_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_SERVER_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_UUID_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.ITransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.NfcTransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareTransferMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.DeviceRetrievalMethod
 import com.ul.ims.gmdl.cbordata.drivingPrivileges.DrivingPrivilege
 import com.ul.ims.gmdl.cbordata.drivingPrivileges.DrivingPrivileges
 import com.ul.ims.gmdl.cbordata.response.*
@@ -43,8 +35,10 @@ import com.ul.ims.gmdl.cbordata.security.CoseKey.Companion.YCOORDINATE_LABEL
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.CoseMac0
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.DeviceNameSpaces
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import java.io.ByteArrayOutputStream
+import java.util.*
 import java.util.zip.DataFormatException
 
 abstract class AbstractCborStructure : ICborStructure {
@@ -94,11 +88,12 @@ abstract class AbstractCborStructure : ICborStructure {
             is Boolean -> encodeBoolean(variable)
             is Int -> encodeInteger(variable)
             is String -> UnicodeString(variable)
+            is UUID -> UnicodeString(variable.toString())
             is Byte -> ByteString(byteArrayOf(variable))
             is ByteArray -> ByteString(variable)
             is DrivingPrivilege -> variable.toDataItem()
             is CoseKey -> encodeCoseKey(variable)
-            is ITransferMethod -> encodeTransferMethod(variable)
+            is DeviceRetrievalMethod -> variable.toDataItem()
             is GregorianCalendar -> CborUtils.dateTimeToUnicodeString(variable)
             is DrivingPrivileges -> variable.toCborDataItem()
             is DeviceEngagement -> encodeDeviceEngagement(variable)
@@ -106,10 +101,11 @@ abstract class AbstractCborStructure : ICborStructure {
             is CoseSign1 -> encodeCoseSign1(variable)
             is CoseMac0 -> encodeCoseMac0(variable)
             is IssuerSignedItem -> variable.toDataItem()
-            is ResponseData -> variable.toDataItem()
+            is Document -> variable.toDataItem()
             is IssuerSigned -> variable.toDataItem()
             is DeviceSigned -> variable.toDataItem()
             is DeviceAuth -> variable.toDataItem()
+            is Handover -> variable.toDataItem()
             else -> throw DataFormatException("Data Type not supported $variable")
         }
     }
@@ -184,83 +180,6 @@ abstract class AbstractCborStructure : ICborStructure {
             }
         }
         return map
-    }
-
-    private fun encodeTransferMethod(variable: ITransferMethod): DataItem {
-        return when (variable.type) {
-            1 -> nfcTransferMethod(variable)
-            2 -> bleTransferMethod(variable)
-            3 -> wifiAwareTransferMethod(variable)
-            else -> Array()
-        }
-    }
-
-    /**
-     * Return a CBor Array with the NFC Transfer Method
-     * **/
-    private fun nfcTransferMethod(transferMethod: ITransferMethod) : Array {
-        var array = Array()
-
-        val nfcTransferMethod = transferMethod as? NfcTransferMethod
-        nfcTransferMethod?.let {
-            array = array.add(toDataItem(nfcTransferMethod.type))
-            array = array.add(toDataItem(nfcTransferMethod.version))
-            array = array.add(toDataItem(nfcTransferMethod.maxApduLength))
-        }
-
-        return array
-    }
-
-    /**
-     * Return a CBor Array with the BLE Transfer Method
-     * **/
-    private fun bleTransferMethod(transferMethod: ITransferMethod) : Array {
-        var array = Array()
-
-        val bleTransferMethod = transferMethod as? BleTransferMethod
-        bleTransferMethod?.let {
-            array = array.add(toDataItem(bleTransferMethod.type))
-            array = array.add(toDataItem(bleTransferMethod.version))
-            var bleIdMap = Map()
-            val bleId = bleTransferMethod.bleIdentification
-            bleId?.let {
-                if (bleId.peripheralServer != null) {
-                    val simpleValueType = toSimpleValueType(bleId.peripheralServer)
-                    bleIdMap = bleIdMap.put(PERIPHERAL_SERVER_KEY, SimpleValue(simpleValueType))
-                }
-                if (bleId.centralClient != null) {
-                    val simpleValueType = toSimpleValueType(bleId.centralClient)
-                    bleIdMap = bleIdMap.put(CENTRAL_CLIENT_KEY, SimpleValue(simpleValueType))
-                }
-                if (bleId.peripheralServerUUID != null)
-                    bleIdMap =
-                        bleIdMap.put(PERIPHERAL_UUID_KEY, toDataItem(bleId.peripheralServerUUID.toString()))
-                if (bleId.mac != null)
-                    bleIdMap = bleIdMap.put(PERIPHERAL_MAC_ADDRESS_KEY, toDataItem(bleId.mac.toString()))
-            }
-            array = array.add(bleIdMap)
-        }
-
-        return array
-    }
-
-    /**
-     * Return a CBor Array with the Wifi Aware Transfer Method
-     * **/
-    private fun wifiAwareTransferMethod(transferMethod: ITransferMethod) : Array {
-        var array = Array()
-
-        val wifiAwareTransferMethod = transferMethod as? WiFiAwareTransferMethod
-        wifiAwareTransferMethod?.let {
-            array = array.add(toDataItem(wifiAwareTransferMethod.type))
-            array = array.add(toDataItem(wifiAwareTransferMethod.version))
-        }
-
-        // * TransferOptions; specific option(s) to the type
-        // As optional will be an empty map
-        array.add(Map())
-
-        return array
     }
 
     private fun toSimpleValueType(boolean: Boolean): SimpleValueType {

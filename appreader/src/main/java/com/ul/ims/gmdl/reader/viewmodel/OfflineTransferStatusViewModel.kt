@@ -25,6 +25,7 @@ import com.ul.ims.gmdl.bleofflinetransfer.utils.BleUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
@@ -34,6 +35,7 @@ import com.ul.ims.gmdl.offlinetransfer.utils.Resource
 import com.ul.ims.gmdl.reader.offlineTransfer.OfflineTransferManager
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.uiThread
+import java.util.*
 
 class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(app) {
 
@@ -41,9 +43,11 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
     private var coseKey: CoseKey? = null
     private var liveDataMerger = MediatorLiveData<Resource<Any>>()
     private var bleServiceMode: BleServiceMode? = null
+    private var bleUUID: UUID? = null
 
     fun setupWiFiVerifier(
         deviceEngagement: DeviceEngagement,
+        handover: Handover,
         requestItems: DataElements,
         wifiPassphrase: String?
     ) {
@@ -60,7 +64,7 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
                     .setCoseKey(key)
 
                 offlineTransferVerifier = builder.build()
-                offlineTransferVerifier?.setupVerifier(key, requestItems, deviceEngagement)
+                offlineTransferVerifier?.setupVerifier(key, requestItems, deviceEngagement, handover)
 
                 uiThread {
                     offlineTransferVerifier?.data?.let { livedata ->
@@ -75,6 +79,7 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
 
     fun setupNfcVerifier(
         deviceEngagement: DeviceEngagement,
+        handover: Handover,
         requestItems: DataElements,
         tag: Tag,
         apduCommandLength: Int
@@ -93,7 +98,7 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
                     .setApduCommandLength(apduCommandLength)
 
                 offlineTransferVerifier = builder.build()
-                offlineTransferVerifier?.setupVerifier(key, requestItems, deviceEngagement)
+                offlineTransferVerifier?.setupVerifier(key, requestItems, deviceEngagement, handover)
 
                 uiThread {
                     offlineTransferVerifier?.data?.let { livedata ->
@@ -107,7 +112,9 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
     }
 
     fun setupBleVerifier(
-        deviceEngagement: DeviceEngagement, requestItems: DataElements,
+        deviceEngagement: DeviceEngagement,
+        handover: Handover,
+        requestItems: DataElements,
         bleRole: BleServiceMode
     ) {
         doAsync {
@@ -126,21 +133,24 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
                     val bleTransportMethod = deviceEngagement.getBLETransferMethod()
                     bleTransportMethod?.let { bleTransport ->
                         // both modes are supported
-                        bleServiceMode =
-                            if (bleTransport.bleIdentification?.centralClient == true &&
-                                bleTransport.bleIdentification?.peripheralServer == true
-                            ) {
-                                // When the mDL supports both modes, the mDL reader should act as BLE central mode.
-                                BleServiceMode.PERIPHERAL_SERVER_MODE
+
+                        if (bleTransport.retrievalOptions?.centralClient == true &&
+                            bleTransport.retrievalOptions?.peripheralServer == true
+                        ) {
+                            // When the mDL supports both modes, the mDL reader should act as BLE central mode.
+                            bleServiceMode = BleServiceMode.PERIPHERAL_SERVER_MODE
+                            bleUUID = bleTransport.retrievalOptions?.peripheralServerUUID
+                        } else {
+                            // only central client mode supported
+                            if (bleTransport.retrievalOptions?.centralClient == true) {
+                                bleServiceMode = BleServiceMode.CENTRAL_CLIENT_MODE
+                                bleUUID = bleTransport.retrievalOptions?.centralClientUUID
                             } else {
-                                // only central client mode supported
-                                if (bleTransport.bleIdentification?.centralClient == true) {
-                                    BleServiceMode.CENTRAL_CLIENT_MODE
-                                } else {
-                                    // only peripheral server mode supported
-                                    BleServiceMode.PERIPHERAL_SERVER_MODE
-                                }
+                                // only peripheral server mode supported
+                                bleServiceMode = BleServiceMode.PERIPHERAL_SERVER_MODE
+                                bleUUID = bleTransport.retrievalOptions?.peripheralServerUUID
                             }
+                        }
                     }
                 } else {
                     bleServiceMode = bleRole
@@ -149,9 +159,10 @@ class OfflineTransferStatusViewModel(val app: Application) : AndroidViewModel(ap
                 bleServiceMode?.let { bleMode ->
                     if (isBleModeSupported(bleMode)) {
                         builder.setBleServiceMode(bleMode)
+                        builder.setBleUUID(bleUUID)
 
                         offlineTransferVerifier = builder.build()
-                        offlineTransferVerifier?.setupVerifier(key, requestItems, deviceEngagement)
+                        offlineTransferVerifier?.setupVerifier(key, requestItems, deviceEngagement, handover)
 
                         uiThread {
                             offlineTransferVerifier?.data?.let { livedata ->

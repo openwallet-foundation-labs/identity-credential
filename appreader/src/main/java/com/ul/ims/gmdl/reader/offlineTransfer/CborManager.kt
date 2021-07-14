@@ -27,25 +27,26 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.interpreter.CborDataInterpreter
 import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
-import com.ul.ims.gmdl.offlinetransfer.executorLayer.holder.HolderExecutor
 import com.ul.ims.gmdl.offlinetransfer.executorLayer.verifier.VerifierExecutor
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.EventType
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportLayer
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
-import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
 import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
+import java.util.*
 
 class CborManager(
     private val context: Context,
     private val actAs: AppMode,
     transportChannel: TransferChannels,
     bleServiceMode: BleServiceMode,
+    bleUUID: UUID?,
     publicKey: ByteArray,
     wifiPassphrase: String?,
     nfcTag: Tag?,
@@ -62,6 +63,7 @@ class CborManager(
             transportChannel,
             actAs,
             bleServiceMode,
+            bleUUID,
             publicKey,
             wifiPassphrase,
             nfcTag,
@@ -78,7 +80,6 @@ class CborManager(
     private val interpreter = CborDataInterpreter()
 
     // Request/Response executor instances
-    private var holderExecutor: HolderExecutor? = null
     private var readerExecutor: VerifierExecutor? = null
 
     init {
@@ -102,26 +103,16 @@ class CborManager(
         credentialName: String,
         deviceEngagement: ByteArray,
         isAuthRequired: Boolean,
-        issuerAuthority: IIssuerAuthority
-
+        issuerAuthority: IIssuerAuthority,
+        handover: Handover
     ) {
-        if (AppMode.HOLDER == actAs) {
-            transportLayer?.let {
-                holderExecutor = HolderExecutor(
-                    interpreter,
-                    it,
-                    HolderSessionManager.getInstance(context, credentialName),
-                    this,
-                    deviceEngagement,
-                    issuerAuthority
-                )
-            }
-        }
+        // Only used for holder app
     }
 
     override fun setupVerifier(
         coseKey: CoseKey, requestItems: DataElements,
-        deviceEngagement: DeviceEngagement
+        deviceEngagement: DeviceEngagement,
+        handover: Handover
     ) {
         if (AppMode.VERIFIER == actAs) {
             transportLayer?.let {
@@ -129,9 +120,8 @@ class CborManager(
                     interpreter,
                     it,
                     data,
-                    VerifierSessionManager(coseKey, deviceEngagement),
+                    VerifierSessionManager(coseKey, deviceEngagement, handover),
                     requestItems,
-                    deviceEngagement,
                     context
                 )
             }
@@ -190,18 +180,17 @@ class CborManager(
         updateLiveData(Resource.askUserConsent(requestItems))
     }
 
-
     override suspend fun onUserConsent(userConsentMap: Map<String, Boolean>?) {
-        holderExecutor?.onUserConsent(userConsentMap)
+        // Used on holder app
     }
 
-
     override fun tearDown() {
-        transportLayer?.close()
+        transportLayer?.closeConnection()
     }
 
     override fun getCryptoObject(): BiometricPrompt.CryptoObject? {
-        return holderExecutor?.getCryptoObject()
+        // Used on holder app
+        return null
     }
 }
 

@@ -26,25 +26,26 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.interpreter.CborDataInterpreter
 import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import com.ul.ims.gmdl.offlinetransfer.appLayer.IofflineTransfer
 import com.ul.ims.gmdl.offlinetransfer.config.AppMode
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.executorLayer.holder.HolderExecutor
-import com.ul.ims.gmdl.offlinetransfer.executorLayer.verifier.VerifierExecutor
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.EventType
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.ITransportLayer
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransportManager
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
-import com.ul.ims.gmdl.security.sessionencryption.verifier.VerifierSessionManager
+import java.util.*
 
 class CborManager constructor(
     private val context : Context,
     private val actAs : AppMode,
     transportChannel: TransferChannels,
     bleServiceMode: BleServiceMode,
+    bleUUID: UUID?,
     publicKey: ByteArray,
     wifiPassphrase: String?
 ) : IofflineTransfer {
@@ -59,6 +60,7 @@ class CborManager constructor(
             transportChannel,
             actAs,
             bleServiceMode,
+            bleUUID,
             publicKey,
             wifiPassphrase
         )
@@ -74,7 +76,6 @@ class CborManager constructor(
 
     // Request/Response executor instances
     private var holderExecutor: HolderExecutor? = null
-    private var readerExecutor: VerifierExecutor? = null
 
     init {
         transportManager = transportChannelManager.getTransportManager()
@@ -93,11 +94,12 @@ class CborManager constructor(
      * Transfer Data Between two devices
      *
      * **/
-    override fun setupHolder(credentialName : String,
-                             deviceEngagement : ByteArray,
-                             isAuthRequired : Boolean,
-                             issuerAuthority: IIssuerAuthority
-
+    override fun setupHolder(
+        credentialName: String,
+        deviceEngagement: ByteArray,
+        isAuthRequired: Boolean,
+        issuerAuthority: IIssuerAuthority,
+        handover: Handover
     ) {
         if (AppMode.HOLDER == actAs) {
             transportLayer?.let {
@@ -107,7 +109,8 @@ class CborManager constructor(
                     HolderSessionManager.getInstance(context, credentialName),
                     this,
                     deviceEngagement,
-                    issuerAuthority
+                    issuerAuthority,
+                    handover
                 )
             }
         }
@@ -115,21 +118,10 @@ class CborManager constructor(
 
     override fun setupVerifier(
         coseKey: CoseKey, requestItems: DataElements,
-        deviceEngagement: DeviceEngagement
+        deviceEngagement: DeviceEngagement,
+        handover: Handover
     ) {
-        if (AppMode.VERIFIER == actAs) {
-            transportLayer?.let {
-                readerExecutor = VerifierExecutor(
-                    interpreter,
-                    it,
-                    data,
-                    VerifierSessionManager(coseKey, deviceEngagement),
-                    requestItems,
-                    deviceEngagement,
-                    context
-                )
-            }
-        }
+        // Only used for reader app
     }
 
     /**
@@ -191,7 +183,7 @@ class CborManager constructor(
 
 
     override fun tearDown() {
-        transportLayer?.close()
+        transportLayer?.closeConnection()
         data = MutableLiveData()
     }
 

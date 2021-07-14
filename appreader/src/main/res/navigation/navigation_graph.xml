@@ -53,6 +53,9 @@
             app:argType="com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement"
             app:nullable="true" />
         <argument
+            android:name="handover"
+            app:argType="com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover" />
+        <argument
             android:name="requestItems"
             app:argType="com.ul.ims.gmdl.cbordata.request.DataElements" />
         <argument

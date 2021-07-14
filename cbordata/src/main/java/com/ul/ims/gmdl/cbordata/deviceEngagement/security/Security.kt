@@ -18,10 +18,8 @@ package com.ul.ims.gmdl.cbordata.deviceEngagement.security
 
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.builder.ArrayBuilder
+import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
-import co.nstant.`in`.cbor.model.ByteString
-import co.nstant.`in`.cbor.model.Tag
-import co.nstant.`in`.cbor.model.UnsignedInteger
 import com.ul.ims.gmdl.cbordata.security.CoseKey
 import java.io.Serializable
 
@@ -47,9 +45,27 @@ class Security private constructor(
         return securityArr.end()
     }
 
+    fun encode(): DataItem {
+        var securityArr = CborBuilder().addArray()
+
+        // Add cipherIdent to the structure
+        cipherIdent?.let {
+            securityArr = securityArr.add(cipherIdent.toLong())
+        }
+
+        // Add coseKey to the structure
+        coseKey?.let {
+            val coseKeyByteString = ByteString(coseKey.encode())
+            coseKeyByteString.tag = Tag(24)
+            securityArr = securityArr.add(coseKeyByteString)
+        }
+
+        return securityArr.end().build()[0]
+    }
+
     fun isValid(): Boolean {
-        coseKey?.let {ck->
-            cipherIdent?.let {ci->
+        coseKey?.let { ck ->
+            cipherIdent?.let { ci ->
                 if (ck.curve?.id != null && ci > 0) {
                     return true
                 }

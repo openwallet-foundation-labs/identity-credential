@@ -19,19 +19,19 @@ package com.ul.ims.gmdl.bleofflinetransfer.config
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import java.util.*
 
-class BleTransportConfigurations(private val bleServiceMode: BleServiceMode) {
+class BleTransportConfigurations(private val bleServiceMode: BleServiceMode, serviceUuid: UUID) {
 
     companion object {
-        const val MDL_PSM_STATE = "00000001-0000-1000-8000-00805F9B34FB"
-        const val MDL_PSM_CLIENT_2_SERVER = "00000002-0000-1000-8000-00805F9B34FB"
-        const val MDL_PSM_SERVER_2_CLIENT = "00000003-0000-1000-8000-00805F9B34FB"
-        const val MDL_PSM_IDENT = "00000004-0000-1000-8000-00805F9B34FB"
+        const val MDL_PSM_STATE = "00000001-A123-48CE-896B-4C76973373E6"
+        const val MDL_PSM_CLIENT_2_SERVER = "00000002-A123-48CE-896B-4C76973373E6"
+        const val MDL_PSM_SERVER_2_CLIENT = "00000003-A123-48CE-896B-4C76973373E6"
+        const val MDL_PSM_IDENT = "00000004-A123-48CE-896B-4C76973373E6"
         const val MDL_PSM_SERVICE = "6fa90bce-a8ef-48b0-b6b3-842b6e80f317"
 
-        const val MDL_CCM_STATE = "0000005-0000-1000-8000-00805F9B34FB"
-        const val MDL_CCM_CLIENT_2_SERVER = "00000006-0000-1000-8000-00805F9B34FB"
-        const val MDL_CCM_SERVER_2_CLIENT = "00000007-0000-1000-8000-00805F9B34FB"
-        const val MDL_CCM_IDENT = "00000008-0000-1000-8000-00805F9B34FB"
+        const val MDL_CCM_STATE = "0000005-A123-48CE-896B-4C76973373E6"
+        const val MDL_CCM_CLIENT_2_SERVER = "00000006-A123-48CE-896B-4C76973373E6"
+        const val MDL_CCM_SERVER_2_CLIENT = "00000007-A123-48CE-896B-4C76973373E6"
+        const val MDL_CCM_IDENT = "00000008-A123-48CE-896B-4C76973373E6"
         const val MDL_CCM_SERVICE = "5c8256b5-225f-45e6-a102-f9307a4d30c4"
     }
 
@@ -46,7 +46,7 @@ class BleTransportConfigurations(private val bleServiceMode: BleServiceMode) {
 
     private val mdlCentralClientMode =
         ServiceCharacteristics(
-            UUID.fromString(MDL_CCM_SERVICE),
+            serviceUuid,
             UUID.fromString(MDL_CCM_STATE),
             UUID.fromString(MDL_CCM_CLIENT_2_SERVER),
             UUID.fromString(MDL_CCM_SERVER_2_CLIENT),

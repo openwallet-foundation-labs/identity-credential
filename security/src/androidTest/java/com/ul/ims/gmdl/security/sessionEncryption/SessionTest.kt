@@ -21,6 +21,7 @@ import androidx.security.identity.IdentityCredentialStore
 import androidx.test.InstrumentationRegistry
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionData
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
@@ -68,8 +69,10 @@ class SessionTest {
             .security(security)
             .build()
 
+        val handover = Handover.Builder().build()
+
         // Verifier Session Manager is used to Encrypt/Decrypt Messages
-        val verifierSessionManager = VerifierSessionManager(coseKey, deviceEngagement)
+        val verifierSessionManager = VerifierSessionManager(coseKey, deviceEngagement, handover)
 
         val verifierCoseKey = verifierSessionManager.getReaderCoseKey()
             ?: throw IdentityCredentialException("Error generating Verifier CoseKey")
@@ -91,6 +94,7 @@ class SessionTest {
                 val sessionTranscript = SessionTranscript.Builder()
                     .setReaderKey(rKey.encode())
                     .setDeviceEngagement(deviceEngagement.encode())
+                    .setHandover(handover)
                     .build()
 
                 sessionManager.setSessionTranscript(sessionTranscript.encode())

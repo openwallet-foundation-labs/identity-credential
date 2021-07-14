@@ -22,6 +22,7 @@ import com.ul.ims.gmdl.offlinetransfer.config.AppMode
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.data.DataTypes
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
+import java.util.*
 
 class OfflineTransferManager {
     class Builder {
@@ -31,8 +32,10 @@ class OfflineTransferManager {
         private var dataType : DataTypes = DataTypes.CBOR
         // Default transfer method is BLE
         private var transferChannel: TransferChannels = TransferChannels.BLE
-        // So far the supported mode is only mDL Central Client
+        // Ble Service Mode
         private var bleServiceMode: BleServiceMode? = BleServiceMode.PERIPHERAL_SERVER_MODE
+        // Ble random UUID
+        private var bleUUID: UUID? = null
         // Wifi passphrase is only set on NFC engagement
         private var wifiPassphrase: String? = null
         // coseKey
@@ -62,6 +65,10 @@ class OfflineTransferManager {
             this.bleServiceMode = bleServiceMode
         }
 
+        fun setBleUUID(bleUUID: UUID?) = apply {
+            this.bleUUID = bleUUID
+        }
+
         fun build() : CborManager {
             context?.let { ctx ->
                 actAs?.let { actor ->
@@ -73,6 +80,7 @@ class OfflineTransferManager {
                                     actor,
                                     transferChannel,
                                     bleMode,
+                                    bleUUID,
                                     ck.getPublicKey().encoded,
                                     wifiPassphrase
                                 )

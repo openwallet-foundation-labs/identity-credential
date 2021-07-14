@@ -22,6 +22,7 @@ import androidx.security.identity.IdentityCredentialException
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
 import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import com.ul.ims.gmdl.security.util.Utils
@@ -36,7 +37,8 @@ import javax.crypto.spec.SecretKeySpec
 class VerifierSession
 constructor(
     holderEphemeralPublicKey: PublicKey,
-    deviceEngagement: DeviceEngagement
+    deviceEngagement: DeviceEngagement,
+    handover: Handover
 ) {
 
     companion object {
@@ -54,6 +56,10 @@ constructor(
     private var mSecureRandom: SecureRandom? = null
 
     init {
+        Log.d(
+            DeviceEngagement.LOG_TAG,
+            "deviceEngagementBytes -> " + CborUtils.encodeToString(deviceEngagement.encode())
+        )
 
         try {
             val kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC)
@@ -77,6 +83,7 @@ constructor(
             val sessionTranscriptBytes = SessionTranscript.Builder()
                 .setReaderKey(getEphemeralPublicKeyAsCoseKey().encode())
                 .setDeviceEngagement(deviceEngagement.encode())
+                .setHandover(handover)
                 .build()
                 .encodeAsTaggedByteString()
 
@@ -109,7 +116,10 @@ constructor(
             mSKHolder = SecretKeySpec(derivedKey, "AES")
 
             mSecureRandom = SecureRandom()
-
+            Log.d(
+                LOG_TAG,
+                "sessionTranscriptBytes: ${CborUtils.encodeToString(sessionTranscriptBytes)}"
+            )
             Log.d(LOG_TAG, "mSecretKey.encoded: ${CborUtils.encodeToString(mSKDevice.encoded)}")
             Log.d(
                 LOG_TAG,

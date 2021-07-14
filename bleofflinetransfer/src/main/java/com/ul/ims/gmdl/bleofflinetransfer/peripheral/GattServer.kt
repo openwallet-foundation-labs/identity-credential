@@ -17,6 +17,7 @@
 package com.ul.ims.gmdl.bleofflinetransfer.peripheral
 
 import android.bluetooth.*
+import android.bluetooth.BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
 import android.bluetooth.BluetoothGattDescriptor.PERMISSION_WRITE
 import android.bluetooth.BluetoothProfile.GATT
 import android.bluetooth.BluetoothProfile.GATT_SERVER
@@ -85,7 +86,10 @@ class GattServer (
                 // Server2Client
                 serverToClientCharacteristic = bleServiceCharacteristics.server2ClientCharacteristic
                 val descriptorServerToClient = BluetoothGattDescriptor(
-                    UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG), PERMISSION_WRITE)
+                    UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG), PERMISSION_WRITE
+                ).also {
+                    it.value = DISABLE_NOTIFICATION_VALUE
+                }
                 serverToClientCharacteristic?.addDescriptor(descriptorServerToClient)
                 bluetoothGattService?.addCharacteristic(serverToClientCharacteristic)
 
@@ -96,7 +100,10 @@ class GattServer (
                 // State
                 stateCharacteristic = bleServiceCharacteristics.stateCharacteristic
                 val descriptorState = BluetoothGattDescriptor(
-                    UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG), PERMISSION_WRITE)
+                    UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG), PERMISSION_WRITE
+                ).also {
+                    it.value = DISABLE_NOTIFICATION_VALUE
+                }
                 stateCharacteristic?.addDescriptor(descriptorState)
                 bluetoothGattService?.addCharacteristic(stateCharacteristic)
 
@@ -188,7 +195,7 @@ class GattServer (
         Log.i(javaClass.simpleName, "Gatt server writeToState")
         stateCharacteristic?.value = byteArrayOf(status)
         val stateStatusWritten = getBluetoothGattServer().notifyCharacteristicChanged(currentDevice,stateCharacteristic,false)
-        Log.i(javaClass.simpleName, "writeCharacteristic(${ByteUtils.bytesToHex(stateCharacteristic?.value)}): status = $status, Successfully written = $stateStatusWritten")
+        Log.i(javaClass.simpleName, "writeCharacteristic ${stateCharacteristic?.uuid}(${ByteUtils.bytesToHex(stateCharacteristic?.value)}): status = $status, Successfully written = $stateStatusWritten")
         if (!stateStatusWritten) {
             throw GattException("Could not write characteristic ${stateCharacteristic?.uuid} (value ${ByteUtils.bytesToHex(stateCharacteristic?.value)}.")
         }
@@ -270,8 +277,19 @@ class GattServer (
         }
         Log.i(javaClass.simpleName, "Current value of clientToServerCharacteristic: ${ByteUtils.bytesToHex(value)}")
         if (isDataPending(value)) {
-            getPeripheralEventListener().onBLEEvent("Further data awaited", EventType.TRANSFER_IN_PROGRESS)
+            getPeripheralEventListener().onBLEEvent(
+                "Further data awaited",
+                EventType.TRANSFER_IN_PROGRESS
+            )
             dataStream.write(decodeData(value))
+            // More data needed
+            getBluetoothGattServer().sendResponse(
+                device,
+                requestId,
+                BluetoothGatt.GATT_SUCCESS,
+                0,
+                null
+            )
         } else {
             dataStream.write(decodeData(value))
             val receivedData = dataStream.toByteArray()
@@ -294,12 +312,32 @@ class GattServer (
 
     }
 
+    override fun onDescriptorWriteRequest(
+        device: BluetoothDevice?,
+        requestId: Int,
+        descriptor: BluetoothGattDescriptor?,
+        preparedWrite: Boolean,
+        responseNeeded: Boolean,
+        offset: Int,
+        value: ByteArray?
+    ) {
+        if (responseNeeded) {
+            getBluetoothGattServer().sendResponse(
+                device,
+                requestId,
+                BluetoothGatt.GATT_SUCCESS,
+                0,
+                null
+            )
+        }
+    }
+
     private fun isDataPending(value: ByteArray): Boolean {
         return value[0] == DATA_PENDING
     }
 
     private fun decodeState(value: ByteArray?, requestId: Int) {
-        if (value == null){
+        if (value == null) {
             throw GattException("Value of stateCharacteristic is null")
         }
         if (value.size != 1) {

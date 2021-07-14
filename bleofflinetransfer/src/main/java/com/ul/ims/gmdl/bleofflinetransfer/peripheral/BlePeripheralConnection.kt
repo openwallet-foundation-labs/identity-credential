@@ -43,8 +43,11 @@ class BlePeripheralConnection(
     private val bluetoothManager: BluetoothManager?) : ITransportLayer {
 
     override fun closeConnection() {
-        peripheralEventListener.onBLEEvent("STATE_TERMINATE_TRANSMISSION",
-            EventType.STATE_TERMINATE_TRANSMISSION)
+        // if gattServer is null connection is already closed or not initiated
+        if (gattServer != null) {
+            writeToState(TERMINATE_TRANSMISSION)
+            stop()
+        }
     }
 
     override fun inititalize(publicKeyHash: ByteArray) {
@@ -159,13 +162,14 @@ class BlePeripheralConnection(
         }
     }
 
-    fun stop() {
+    private fun stop() {
 
         try {
 
             stopAdvertise()
             getGattServer().stopServer()
             getGattServer().close()
+            gattServer = null
 
             Log.d(javaClass.simpleName, "Stopped GatServer serviceUuid")
         } catch (ex: BluetoothException) {
@@ -181,10 +185,6 @@ class BlePeripheralConnection(
             throw TransportLayerException("Empty data")
         }
         getGattServer().write(data, chunkSize)
-    }
-
-    override fun close() {
-        stop()
     }
 
     override fun setEventListener(eventListener: IExecutorEventListener) {

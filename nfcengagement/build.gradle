@@ -36,6 +36,9 @@ dependencies {
     // Offline Data Transfer Interface Module
     implementation project(path: ':offlinetransfer')
 
+    // Cbor Objects used by the mDL App
+    implementation project(path: ':cbordata')
+
     // Kotlin stdlib jdk8
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 

@@ -27,6 +27,7 @@ import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionData
 import com.ul.ims.gmdl.cbordata.security.sessionEncryption.SessionEstablishment
 import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
+import com.ul.ims.gmdl.security.util.Utils
 import java.security.interfaces.ECPublicKey
 
 class HolderSessionManager private constructor(
@@ -92,8 +93,21 @@ class HolderSessionManager private constructor(
         return holderCoseKey
     }
 
-    fun getHolderPkHash() : ByteArray? {
-        return generateHolderCoseKey()?.calculatePublickeyHash()
+    fun getIdentValue(): ByteArray {
+        val holderCoseKey = generateHolderCoseKey()?: return byteArrayOf()
+        val ikm: ByteArray = holderCoseKey.encodeTagged()
+        val info = byteArrayOf(
+            'B'.toByte(),
+            'L'.toByte(),
+            'E'.toByte(),
+            'I'.toByte(),
+            'd'.toByte(),
+            'e'.toByte(),
+            'n'.toByte(),
+            't'.toByte()
+        )
+        val salt = byteArrayOf()
+        return Utils.computeHkdf("HmacSha256", ikm, salt, info, 16)
     }
 
     fun decryptSessionEstablishment(sessionEstablishment: SessionEstablishment) : ByteArray? {

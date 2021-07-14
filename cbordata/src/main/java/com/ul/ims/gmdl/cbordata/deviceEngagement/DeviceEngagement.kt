@@ -23,32 +23,29 @@ import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.CborException
 import co.nstant.`in`.cbor.model.*
 import co.nstant.`in`.cbor.model.Array
+import co.nstant.`in`.cbor.model.Map
 import com.ul.ims.gmdl.cbordata.deviceEngagement.options.Oidc
 import com.ul.ims.gmdl.cbordata.deviceEngagement.options.WebAPI
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.CipherSuiteIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.CurveIdentifiers
 import com.ul.ims.gmdl.cbordata.deviceEngagement.security.Security
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.CENTRAL_CLIENT_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_MAC_ADDRESS_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_SERVER_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleTransferMethod.Companion.PERIPHERAL_UUID_KEY
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.ITransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.NfcTransferMethod
-import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareTransferMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.BleDeviceRetrievalMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.DeviceRetrievalMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.NfcDeviceRetrievalMethod
+import com.ul.ims.gmdl.cbordata.deviceEngagement.transferMethods.WiFiAwareDeviceRetrievalMethod
 import com.ul.ims.gmdl.cbordata.generic.AbstractCborStructure
 import com.ul.ims.gmdl.cbordata.utils.Base64Utils
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.Serializable
-import java.util.*
 
 class DeviceEngagement private constructor(
     val version: String?,
     val security: Security?,
-    val transferMethods: List<ITransferMethod>?,
-    val options: Map<String, Any>?,
-    val proprietary: Map<String, String>?
+    val deviceRetrievalMethod: List<DeviceRetrievalMethod>?,
+    val options: kotlin.collections.Map<String, Any>?,
+    val proprietary: kotlin.collections.Map<String, String>?,
+    private val decodedFrom: ByteArray?
 ) : AbstractCborStructure(), Serializable {
 
     companion object {
@@ -70,11 +67,7 @@ class DeviceEngagement private constructor(
             if (v.isNotEmpty()) {
                 security?.let { s ->
                     if (s.isValid()) {
-                        transferMethods?.let {
-                            options?.let {
-                                return true
-                            }
-                        }
+                        return true
                     }
                 }
             }
@@ -85,11 +78,11 @@ class DeviceEngagement private constructor(
     /**
      * Return the BLE Transfer Method if present or null otherwise.
      * */
-    fun getBLETransferMethod(): BleTransferMethod? {
-        var bleTransferMethod: BleTransferMethod? = null
-        transferMethods?.let {
-            for (i in transferMethods) {
-                val bTMethod = i as? BleTransferMethod
+    fun getBLETransferMethod(): BleDeviceRetrievalMethod? {
+        var bleTransferMethod: BleDeviceRetrievalMethod? = null
+        deviceRetrievalMethod?.let {
+            for (i in deviceRetrievalMethod) {
+                val bTMethod = i as? BleDeviceRetrievalMethod
                 if (bTMethod != null)
                     bleTransferMethod = bTMethod
             }
@@ -100,11 +93,11 @@ class DeviceEngagement private constructor(
     /**
      * Return the NFC Transfer Method if present or null otherwise.
      * **/
-    fun getNfcTransferMethod(): NfcTransferMethod? {
-        var nfcTransferMethod: NfcTransferMethod? = null
-        transferMethods?.let {
-            for (i in transferMethods) {
-                val nTMethod = i as? NfcTransferMethod
+    fun getNfcTransferMethod(): NfcDeviceRetrievalMethod? {
+        var nfcTransferMethod: NfcDeviceRetrievalMethod? = null
+        deviceRetrievalMethod?.let {
+            for (i in deviceRetrievalMethod) {
+                val nTMethod = i as? NfcDeviceRetrievalMethod
                 if (nTMethod != null)
                     nfcTransferMethod = nTMethod
             }
@@ -115,11 +108,11 @@ class DeviceEngagement private constructor(
     /**
      * Return the Wifi Aware Transfer Method if present or null otherwise.
      * **/
-    fun getWiFiAwareTransferMethod(): WiFiAwareTransferMethod? {
-        var wiFiAwareTransferMethod: WiFiAwareTransferMethod? = null
-        transferMethods?.let {
-            for (i in transferMethods) {
-                val wiFiTMethod = i as? WiFiAwareTransferMethod
+    fun getWiFiAwareTransferMethod(): WiFiAwareDeviceRetrievalMethod? {
+        var wiFiAwareTransferMethod: WiFiAwareDeviceRetrievalMethod? = null
+        deviceRetrievalMethod?.let {
+            for (i in deviceRetrievalMethod) {
+                val wiFiTMethod = i as? WiFiAwareDeviceRetrievalMethod
                 if (wiFiTMethod != null)
                     wiFiAwareTransferMethod = wiFiTMethod
             }
@@ -144,34 +137,36 @@ class DeviceEngagement private constructor(
      * Encode this Object into a CBor bytearray. The structure follows the definition in the standard.
      * **/
     override fun encode(): ByteArray {
+        if (decodedFrom?.isNotEmpty() == true) return decodedFrom
+
         val outputStream = ByteArrayOutputStream()
         var builder = CborBuilder()
-        var structureArray = builder.addArray()
+        var structureMap = builder.addMap()
 
         // Version
         version?.let {
-            structureArray = structureArray.add(toDataItem(it))
+            structureMap = structureMap.put(toDataItem(0), toDataItem(it))
         }
 
         // Security
         security?.let {
-            structureArray = it.appendToCborStructure(structureArray)
+            structureMap = structureMap.put(toDataItem(1), it.encode())
         }
 
         // Transfer Methods
-        var transferMethodsBuilder = structureArray.addArray()
-        transferMethods?.let {
-            if (transferMethods.isNotEmpty()) {
-                for (i in transferMethods) {
+        deviceRetrievalMethod?.let {
+            var transferMethodsBuilder = CborBuilder().addArray()
+            if (deviceRetrievalMethod.isNotEmpty()) {
+                for (i in deviceRetrievalMethod) {
                     transferMethodsBuilder = transferMethodsBuilder.add(toDataItem(i))
                 }
             }
+            structureMap = structureMap.put(toDataItem(2), transferMethodsBuilder.end().build()[0])
         }
-        structureArray = transferMethodsBuilder.end()
 
         // Options
-        var optionsMapBuilder = structureArray.addMap()
         options?.let {
+            var optionsMapBuilder = CborBuilder().addMap()
             if (options.isNotEmpty()) {
                 options.forEach { (_, value) ->
                     when (value) {
@@ -197,28 +192,39 @@ class DeviceEngagement private constructor(
                 }
 
             }
+            structureMap = structureMap.put(toDataItem(3), optionsMapBuilder.end().build()[0])
         }
-        structureArray = optionsMapBuilder.end()
 
         //*DocType May be used but we can leave it empty
-        val docTypeBuilder = structureArray.addArray()
-        structureArray = docTypeBuilder.end()
+//        val docTypeBuilder = structureArray.addArray()
+//        structureArray = docTypeBuilder.end()
 
         //Proprietary (optional element)
         proprietary?.let {
             if (proprietary.isNotEmpty()) {
-                var proprietaryMapBuilder = structureArray.addMap()
+                var proprietaryMapBuilder = CborBuilder().addMap()
                 proprietary.forEach { (key, value) ->
                     proprietaryMapBuilder = proprietaryMapBuilder.put(key, value)
                 }
-                structureArray = proprietaryMapBuilder.end()
+                structureMap =
+                    structureMap.put(toDataItem(4), proprietaryMapBuilder.end().build()[0])
             }
         }
 
-        builder = structureArray.end()
+        builder = structureMap.end()
 
         CborEncoder(outputStream).encode(builder.build())
 
+        return outputStream.toByteArray()
+    }
+
+    fun encodeTagged(): ByteArray {
+        val outputStream = ByteArrayOutputStream()
+
+        val byteString = ByteString(encode())
+        byteString.tag = Tag(24)
+
+        CborEncoder(outputStream).encode(byteString)
         return outputStream.toByteArray()
     }
 
@@ -239,7 +245,7 @@ class DeviceEngagement private constructor(
     override fun hashCode(): Int {
         var result = version.hashCode()
         // TODO: Security must be taken into account to calculate the hashcode
-        result = 31 * result + transferMethods.hashCode()
+        result = 31 * result + deviceRetrievalMethod.hashCode()
         result = 31 * result + options.hashCode()
         result = 31 * result + proprietary.hashCode()
         return result
@@ -248,27 +254,27 @@ class DeviceEngagement private constructor(
     class Builder {
         private var version: String? = null
         private var security: Security? = null
-        private var transferMethods: MutableList<ITransferMethod>? = null
+        private var deviceRetrievalMethods: MutableList<DeviceRetrievalMethod>? = null
         private var options: MutableMap<String, Any>? = null
-        private var proprietary: Map<String, String>? = null
+        private var proprietary: kotlin.collections.Map<String, String>? = null
         private var decodedFrom: ByteArray? = null
 
         fun version(version: String?) = apply { this.version = version }
 
         fun security(security: Security?) = apply { this.security = security }
 
-        fun transferMethods(transferMethod: ITransferMethod) = apply {
-            if (transferMethods == null) {
-                transferMethods = mutableListOf()
+        fun transferMethods(deviceRetrievalMethod: DeviceRetrievalMethod) = apply {
+            if (deviceRetrievalMethods == null) {
+                deviceRetrievalMethods = mutableListOf()
             }
-            transferMethods?.add(transferMethod)
+            deviceRetrievalMethods?.add(deviceRetrievalMethod)
         }
 
-        fun options(options: Map<String, Any>?) = apply {
+        fun options(options: kotlin.collections.Map<String, Any>?) = apply {
             this.options = options?.toMutableMap()
         }
 
-        fun proprietary(proprietary: Map<String, String>) = apply {
+        fun proprietary(proprietary: kotlin.collections.Map<String, String>) = apply {
             this.proprietary = proprietary
         }
 
@@ -300,23 +306,36 @@ class DeviceEngagement private constructor(
                 val bais = ByteArrayInputStream(bytes)
                 val decoded = CborDecoder(bais).decode()
                 if (decoded.size > 0) {
-                    val structureItems: Array? = decoded[0] as? Array
-                    structureItems?.let {
-                        if (structureItems.dataItems.size in 4..6) {
-                            //version
-                            version = decodeVersion(structureItems)
+                    val structureItems: Map? = decoded[0] as? Map
+                    structureItems?.let { struct ->
+                        struct.keys.forEach {
+                            val key = it as? UnsignedInteger
+                            val value = struct.get(it)
+                            when (key?.value) {
+                                //version
+                                0.toBigInteger() -> {
+                                    version = decodeVersion(value)
+                                }
+                                //security
+                                1.toBigInteger() -> {
+                                    security = decodeSecurity(value)
+                                }
+                                //transfer methods
+                                2.toBigInteger() -> {
+                                    deviceRetrievalMethods = decodeTransferMethods(value)
+                                }
 
-                            //security
-                            security = decodeSecurity(structureItems)
+                                //options
+                                3.toBigInteger() -> {
+                                    options = decodeOptions(value)
+                                }
 
-                            //transfer methods
-                            transferMethods = decodeTransferMethods(structureItems)
+                                //proprietary
+                                4.toBigInteger() -> {
+                                    proprietary = decodeProprietary(value)
+                                }
 
-                            //options
-                            options = decodeOptions(structureItems)
-
-                            //proprietary
-                            proprietary = decodeProprietary(structureItems)
+                            }
                         }
                     }
                 }
@@ -328,37 +347,32 @@ class DeviceEngagement private constructor(
         fun build() = DeviceEngagement(
             version,
             security,
-            transferMethods,
+            deviceRetrievalMethods,
             options,
-            proprietary
+            proprietary,
+            decodedFrom
         )
 
-        private fun decodeVersion(structureItems: Array): String? {
-            val cborDataItems = structureItems.dataItems
-            cborDataItems?.let {
-                val version = cborDataItems.getOrNull(0) as UnicodeString
-                version.let {
-                    return version.string
-                }
+        private fun decodeVersion(item: DataItem?): String? {
+            item?.let {
+                val version = item as UnicodeString
+                return version.string
             }
             return null
         }
 
-        private fun decodeSecurity(structureItems: Array): Security? {
-            val cborDataItems = structureItems.dataItems
-            cborDataItems?.let {
-                val securityArr = cborDataItems.getOrNull(1) as? Array
-                securityArr?.let {
-                    return Security.Builder()
-                        .fromCborStructure(it)
-                        .build()
-                }
+        private fun decodeSecurity(item: DataItem?): Security? {
+            item?.let {
+                return Security.Builder()
+                    .fromCborStructure(it as Array)
+                    .build()
             }
             return null
         }
 
         private fun validateCipherSuiteId(csi: UnsignedInteger?) {
-            val csid = CipherSuiteIdentifiers.cipherSuiteValue.keys.filter { it == csi?.value?.toInt() }
+            val csid =
+                CipherSuiteIdentifiers.cipherSuiteValue.keys.filter { it == csi?.value?.toInt() }
             if (csid.isEmpty()) {
                 // TODO: Fix implementation as we're not throwing errors anymore
             } else
@@ -373,145 +387,99 @@ class DeviceEngagement private constructor(
                 print("$LOG_TAG : ${CurveIdentifiers.curveIds[cid[0]]}\n")
         }
 
-        private fun decodeTransferMethods(structureItems: Array): MutableList<ITransferMethod>? {
-            val cborDataItems = structureItems.dataItems
-            cborDataItems?.let {
-                val tMethods = cborDataItems.getOrNull(2) as? Array
-                tMethods?.let {
-                    val tMethodsArray = tMethods.dataItems
-                    this.transferMethods = mutableListOf()
-                    for (i in tMethodsArray) {
-                        val tMethod = i as? Array
-                        tMethod?.let {
-                            val arrayOfEachTransferMethod = tMethod.dataItems
-                            val decodedTransferMethod = decodeTransferMethod(arrayOfEachTransferMethod)
-                            if (decodedTransferMethod != null)
-                                this.transferMethods?.add(decodedTransferMethod)
-                        }
+        private fun decodeTransferMethods(item: DataItem?): MutableList<DeviceRetrievalMethod>? {
+            item?.let {
+                val tMethods = it as Array
+                val tMethodsArray = tMethods.dataItems
+                this.deviceRetrievalMethods = mutableListOf()
+                for (i in tMethodsArray) {
+                    val tMethod = i as? Array
+                    tMethod?.let {
+                        val arrayOfEachTransferMethod = tMethod.dataItems
+                        val decodedTransferMethod = decodeTransferMethod(arrayOfEachTransferMethod)
+                        if (decodedTransferMethod != null)
+                            this.deviceRetrievalMethods?.add(decodedTransferMethod)
                     }
-                    return transferMethods
                 }
+                return deviceRetrievalMethods
             }
             return null
         }
 
-        private fun decodeTransferMethod(arrayOfEachTransferMethod: List<DataItem>?): ITransferMethod? {
+        private fun decodeTransferMethod(arrayOfEachTransferMethod: List<DataItem>?): DeviceRetrievalMethod? {
             if (arrayOfEachTransferMethod == null) {
                 return null
             }
             val type = (arrayOfEachTransferMethod[0] as? UnsignedInteger)?.value?.toInt()
             val version = (arrayOfEachTransferMethod[1] as? UnsignedInteger)?.value?.toInt()
+            val mapOptions = arrayOfEachTransferMethod[2] as? Map
             if (type == null || version == null) {
                 return null
             }
             if (arrayOfEachTransferMethod.size > 2) {
                 when (type) {
                     TRANSFER_TYPE_NFC -> {
-                        val maxApduLength = (arrayOfEachTransferMethod[2] as? UnsignedInteger)?.value?.toInt()
-                        if (maxApduLength != null)
-                            return NfcTransferMethod(type, version, maxApduLength)
+                        val nfcOption = NfcDeviceRetrievalMethod.NfcOptions.decode(mapOptions)
+                        return NfcDeviceRetrievalMethod(type, version, nfcOption)
                     }
                     TRANSFER_TYPE_BLE -> {
-                        val bleId = arrayOfEachTransferMethod[2] as? co.nstant.`in`.cbor.model.Map
-                        bleId?.let {
-                            val peripheralServer: Boolean? = decodeBoolean(bleId.get(PERIPHERAL_SERVER_KEY))
-                            val centralClient: Boolean? = decodeBoolean(bleId.get(CENTRAL_CLIENT_KEY))
-                            val pUuidString = (bleId.get(PERIPHERAL_UUID_KEY) as? UnicodeString)
-                            var peripheralUUID: UUID? = null
-                            pUuidString?.let {
-                                peripheralUUID = UUID.fromString(pUuidString.string)
-                            }
-                            val macString = bleId.get(PERIPHERAL_MAC_ADDRESS_KEY) as? UnicodeString
-                            var mac: String? = null
-                            macString?.let {
-                                mac = macString.string
-                            }
-                            val bleIdentification = BleTransferMethod.BleIdentification(
-                                peripheralServer,
-                                centralClient,
-                                peripheralUUID,
-                                mac
-                            )
-                            return BleTransferMethod(type, version, bleIdentification)
-                        }
+                        val bleOptions = BleDeviceRetrievalMethod.BleOptions.decode(mapOptions)
+                        return BleDeviceRetrievalMethod(type, version, bleOptions)
+
                     }
                     TRANSFER_TYPE_WIFI_AWARE -> {
-                        return WiFiAwareTransferMethod(type, version)
+                        val wifiOptions = WiFiAwareDeviceRetrievalMethod.WifiOptions.decode(mapOptions)
+                        return WiFiAwareDeviceRetrievalMethod(type, version, wifiOptions)
                     }
                 }
             }
             return null
         }
 
-        private fun decodeBoolean(get: DataItem?): Boolean? {
-            get?.let {
-                if (get.majorType != MajorType.SPECIAL) {
-                    return null
-                }
-                val simpleValue = get as? SimpleValue
-                simpleValue?.let {
-                    return when (simpleValue.simpleValueType) {
-                        SimpleValueType.FALSE -> false
-                        SimpleValueType.TRUE -> true
-                        else -> null
-                    }
-                }
-            }
-            return null
-        }
-
-        private fun decodeOptions(structureItems: Array): MutableMap<String, Any> {
-            val cborDataItems = structureItems.dataItems
+        private fun decodeOptions(item: DataItem?): MutableMap<String, Any> {
             val optionsMap = mutableMapOf<String, Any>()
-            cborDataItems?.let {
-                val options = cborDataItems.getOrNull(3) as? co.nstant.`in`.cbor.model.Map
-                options?.let {
-                    options.keys?.forEach {
-                        val key: UnicodeString? = it as? UnicodeString
-                        var value: Any? = null
-                        when (key?.string) {
-                            OPTIONS_WEBAPI_KEY -> {
-                                value = WebAPI.Builder()
-                                    .fromArray(options.get(it) as? Array)
-                                    .build()
-                            }
-                            OPTIONS_OIDC_KEY -> {
-                                value = Oidc.Builder()
-                                    .fromArray(options.get(it) as? Array)
-                                    .build()
-                            }
-                            OPTIONS_COMPACT_KEY -> {
-                                val simpleValue = options.get(it) as? SimpleValue
-                                value = when (simpleValue?.simpleValueType) {
-                                    SimpleValue.TRUE -> true
-                                    else -> false
-                                }
+            item?.let {
+                val options = it as Map
+                options.keys?.forEach { k ->
+                    val key: UnicodeString = k as UnicodeString
+                    var value: Any? = null
+                    when (key.string) {
+                        OPTIONS_WEBAPI_KEY -> {
+                            value = WebAPI.Builder()
+                                .fromArray(options.get(k) as? Array)
+                                .build()
+                        }
+                        OPTIONS_OIDC_KEY -> {
+                            value = Oidc.Builder()
+                                .fromArray(options.get(k) as? Array)
+                                .build()
+                        }
+                        OPTIONS_COMPACT_KEY -> {
+                            val simpleValue = options.get(k) as? SimpleValue
+                            value = when (simpleValue?.simpleValueType) {
+                                SimpleValue.TRUE -> true
+                                else -> false
                             }
                         }
-                        key?.let { itKey ->
-                            value?.let { itValue ->
-                                optionsMap.put(itKey.string, itValue)
-                            }
-                        }
+                    }
+                    value?.let { itValue ->
+                        optionsMap[key.string] = itValue
                     }
                 }
             }
             return optionsMap
         }
 
-        private fun decodeProprietary(structureItems: Array): MutableMap<String, String> {
-            val cborDataItems = structureItems.dataItems
+        private fun decodeProprietary(item: DataItem?): MutableMap<String, String> {
             val proprietaryMap = mutableMapOf<String, String>()
-            cborDataItems?.let {
-                val proprietary = cborDataItems.getOrNull(5) as? co.nstant.`in`.cbor.model.Map
-                proprietary?.let {
-                    proprietary.keys?.forEach {
-                        val key: UnicodeString? = it as? UnicodeString
-                        val value: UnicodeString? = proprietary.get(it) as? UnicodeString
-                        key?.let { itKey ->
-                            value?.let { itValue ->
-                                proprietaryMap.put(itKey.string, itValue.string)
-                            }
+            item?.let {
+                val proprietary = it as Map
+                proprietary.keys?.forEach {
+                    val key: UnicodeString? = it as? UnicodeString
+                    val value: UnicodeString? = proprietary.get(it) as? UnicodeString
+                    key?.let { itKey ->
+                        value?.let { itValue ->
+                            proprietaryMap.put(itKey.string, itValue.string)
                         }
                     }
                 }

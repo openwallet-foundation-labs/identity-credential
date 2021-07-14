@@ -84,29 +84,30 @@ class CredentialsListViewModel(private val app : Application) : AndroidViewModel
     private fun provisionCredentialAsync() : Completable {
         return Completable.create { emitter ->
             viewModelScope.launch {
-                if (!sharedPref.isDeviceProvisioned()) {
-                    try {
 
-                        var authRequired = false
-                        // Google IC API only supports authentication for api level 28 or higher
-                        // for more info check android.hardware.biometrics.BiometricPrompt.CryptoObject
-                        if (BiometricUtils.setUserAuth(app.applicationContext)) {
-                            authRequired = true
-                        }
+                if (sharedPref.isDeviceProvisioned()) {
+                    emitter.onComplete()
+                    return@launch
+                }
 
-                        // insert credential into Identity Credential API
-                        val certs = ProvisioningManager.createCredential(
-                            app.applicationContext,
-                            CREDENTIAL_NAME,
-                            MockIssuerAuthority.getInstance(app.applicationContext), authRequired)
+                try {
+                    // Google IC API only supports authentication for api level 28 or higher
+                    // for more info check android.hardware.biometrics.BiometricPrompt.CryptoObject
+                    val authRequired = BiometricUtils.setUserAuth(app.applicationContext)
 
-                        sharedPref.setBiometricAuthRequired(authRequired)
+                    // insert credential into Identity Credential API
+                    ProvisioningManager.createCredential(
+                        app.applicationContext,
+                        CREDENTIAL_NAME,
+                        MockIssuerAuthority.getInstance(app.applicationContext), authRequired
+                    )
 
-                    } catch (ex: IdentityCredentialException) {
-                        onError(ex)
-                        emitter.onError(RuntimeException(ex.message))
-                        return@launch
-                    }
+                    sharedPref.setBiometricAuthRequired(authRequired)
+
+                } catch (ex: IdentityCredentialException) {
+                    onError(ex)
+                    emitter.onError(RuntimeException(ex.message))
+                    return@launch
                 }
 
                 // Create a Ephemeral Key Pair and give the mDL Holder Key to the
@@ -116,15 +117,13 @@ class CredentialsListViewModel(private val app : Application) : AndroidViewModel
                     CREDENTIAL_NAME
                 )
 
-                if (!sharedPref.isDeviceProvisioned()) {
-                    holderSession.initializeHolderSession()
+                holderSession.initializeHolderSession()
 
-                    // Generate the MSO and Sign it
-                    holderSession.setAuthenticationData(MockIssuerAuthority.
-                        getInstance(app.applicationContext))
+                // Generate the MSO and Sign it
+                holderSession.setAuthenticationData(MockIssuerAuthority.
+                    getInstance(app.applicationContext))
 
-                    sharedPref.setDeviceProvisioned(true)
-                }
+                sharedPref.setDeviceProvisioned(true)
 
                 emitter.onComplete()
             }

@@ -102,11 +102,21 @@ class CoseKey private constructor(val keyType: Any?, val curve: EC2Curve?) :
         return outputStream.toByteArray()
     }
 
+    fun encodeTagged(): ByteArray {
+        val outputStream = ByteArrayOutputStream()
+
+        val coseKeyByteString = ByteString(encode())
+        coseKeyByteString.tag = Tag(24)
+
+        CborEncoder(outputStream).encode(coseKeyByteString)
+        return outputStream.toByteArray()
+    }
+
     // The structure of pub key follows (for EC cuv): 0x04 + [32-byte X coordinate] + [32-byte Y coordinate]
-    fun getPublicKey() : PublicKey {
-        curve?.let {curv ->
-            curv.xCoordinate?.let {cx ->
-                curv.yCoordinate?.let {cy ->
+    fun getPublicKey(): PublicKey {
+        curve?.let { curv ->
+            curv.xCoordinate?.let { cx ->
+                curv.yCoordinate?.let { cy ->
                     val pubKeyBytes = CryptoUtils.toUncompressedPoint(cx, cy)
                     return CryptoUtils.decodeUncompressedPoint(pubKeyBytes)
                 }

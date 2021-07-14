@@ -24,6 +24,7 @@ import androidx.security.identity.IdentityCredentialStore
 import androidx.security.identity.ResultData
 import com.ul.ims.gmdl.cbordata.cryptoUtils.CryptoUtils
 import com.ul.ims.gmdl.cbordata.security.CoseKey
+import com.ul.ims.gmdl.cbordata.utils.CborUtils
 import com.ul.ims.gmdl.issuerauthority.IIssuerAuthority
 import java.security.KeyPair
 import java.security.PublicKey
@@ -107,7 +108,11 @@ constructor(context : Context, credentialName : String) {
         setVerifierEphemeralPublicKey(extractPublicKey(readerKey))
     }
 
-    fun setVerifierEphemeralPublicKey(pk: ECPublicKey?) {
+    private fun setVerifierEphemeralPublicKey(pk: ECPublicKey?) {
+        Log.d(
+            LOG_TAG,
+            " Verifier ephemeral PK: ${CborUtils.encodeToString(pk?.encoded ?: byteArrayOf())}"
+        )
         try {
             pk?.let {
                 credential?.setReaderEphemeralPublicKey(it)
@@ -165,6 +170,7 @@ constructor(context : Context, credentialName : String) {
         try {
             decryptedMessage = credential?.decryptMessageFromReader(message)
         } catch (ex : IdentityCredentialException) {
+            Log.e(LOG_TAG, "Message ${CborUtils.encodeToString(message)}")
             Log.e(LOG_TAG, ex.message, ex)
         }
 

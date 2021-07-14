@@ -43,8 +43,11 @@ class BleCentralConnection(private val context: Context,
 ): ITransportLayer {
 
     override fun closeConnection() {
-        centralEventListener.onBLEEvent("STATE_TERMINATE_TRANSMISSION",
-            EventType.STATE_TERMINATE_TRANSMISSION)
+        if (gattClient == null) return
+
+        Log.i(javaClass.simpleName, "closeConnection")
+        stopScan()
+        stopTransfer()
     }
 
     companion object {
@@ -182,11 +185,17 @@ class BleCentralConnection(private val context: Context,
 
                 val scanResult = verifyResult(result)
                 if (scanResult!=null) {
-                    val existingDevice = deviceList.find { it.device.address == scanResult.device.address }
+                    val existingDevice =
+                        deviceList.find { it.device.address == scanResult.device.address }
                     if (existingDevice == null) {
-                        Log.i(javaClass.simpleName,"Candidate device found ${scanResult.device.name} at ${scanResult.device.address}")
+                        Log.i(
+                            javaClass.simpleName,
+                            "Candidate device found ${scanResult.device.name} at ${scanResult.device.address}"
+                        )
                         deviceList.add(scanResult)
                     }
+                    // As UUID is random now, stop scanning after first match
+                    stopScan()
                 }
             }
 
@@ -216,12 +225,6 @@ class BleCentralConnection(private val context: Context,
             throw TransportLayerException("Empty data")
         }
         getGattClient().write(data, chunkSize)
-    }
-
-    override fun close() {
-        Log.i(javaClass.simpleName, "Shut down")
-        stopScan()
-        stopTransfer()
     }
 
     override fun setEventListener(eventListener: IExecutorEventListener) {

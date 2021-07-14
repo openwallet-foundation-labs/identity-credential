@@ -37,6 +37,7 @@ import com.ul.ims.gmdl.cbordata.deviceEngagement.DeviceEngagement
 import com.ul.ims.gmdl.cbordata.model.UserCredential
 import com.ul.ims.gmdl.cbordata.request.DataElements
 import com.ul.ims.gmdl.cbordata.response.BleTransferResponse
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.offlinetransfer.config.BleServiceMode
 import com.ul.ims.gmdl.offlinetransfer.transportLayer.TransferChannels
 import com.ul.ims.gmdl.offlinetransfer.utils.Resource
@@ -67,6 +68,7 @@ class OfflineTransferStatusFragment : Fragment() {
 
     private lateinit var vm: OfflineTransferStatusViewModel
     private var deviceEngagement: DeviceEngagement? = null
+    private lateinit var handover: Handover
     private var requestItems: DataElements? = null
     private var transferMethod: TransferChannels? = null
     private var bleServiceMode: BleServiceMode? = null
@@ -84,6 +86,7 @@ class OfflineTransferStatusFragment : Fragment() {
 
         val args: OfflineTransferStatusFragmentArgs by navArgs()
         deviceEngagement = args.deviceEngagement
+        handover = args.handover
         requestItems = args.requestItems
         transferMethod = args.transferMethod
         bleServiceMode = args.bleServiceMode
@@ -150,7 +153,7 @@ class OfflineTransferStatusFragment : Fragment() {
         deviceEngagement?.let { de ->
             requestItems?.let { req ->
                 bleServiceMode?.let { bsm ->
-                    vm.setupBleVerifier(de, req, bsm)
+                    vm.setupBleVerifier(de, handover, req, bsm)
                 } ?: kotlin.run {
                     Log.e(LOG_TAG, "BLE Service Mode is null")
                 }
@@ -165,7 +168,7 @@ class OfflineTransferStatusFragment : Fragment() {
     private fun setupWiFiVerifier() {
         deviceEngagement?.let { de ->
             requestItems?.let { req ->
-                vm.setupWiFiVerifier(de, req, wifiPassphrase)
+                vm.setupWiFiVerifier(de, handover, req, wifiPassphrase)
             } ?: kotlin.run {
                 Log.e(LOG_TAG, "Data Items List is null")
             }
@@ -177,7 +180,7 @@ class OfflineTransferStatusFragment : Fragment() {
     private fun setupNfcVerifier(tag: Tag) {
         deviceEngagement?.let { de ->
             requestItems?.let { req ->
-                vm.setupNfcVerifier(de, req, tag, apduCommandLength)
+                vm.setupNfcVerifier(de, handover, req, tag, apduCommandLength)
             } ?: kotlin.run {
                 Log.e(LOG_TAG, "Data Items List is null")
             }

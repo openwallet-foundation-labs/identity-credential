@@ -28,6 +28,7 @@ import com.ul.ims.gmdl.cbordata.namespace.MdlNamespace
 import com.ul.ims.gmdl.cbordata.response.DeviceAuth
 import com.ul.ims.gmdl.cbordata.security.CoseSign1
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.DeviceNameSpaces
+import com.ul.ims.gmdl.cbordata.security.mdlauthentication.Handover
 import com.ul.ims.gmdl.cbordata.security.mdlauthentication.SessionTranscript
 import com.ul.ims.gmdl.security.TestUtils
 import com.ul.ims.gmdl.security.sessionencryption.holder.HolderSessionManager
@@ -114,7 +115,8 @@ class EcdsaSigningTest {
             deBuilder.security(security)
 
             val deviceEngagement = deBuilder.build()
-            val verifier = VerifierSessionManager(cKey, deviceEngagement)
+            val verifier =
+                VerifierSessionManager(cKey, deviceEngagement, Handover.Builder().build())
             val vCoseKey = verifier.getReaderCoseKey()
             Assert.assertNotNull(vCoseKey)
 

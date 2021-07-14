@@ -52,6 +52,16 @@ object WifiUtils {
         return Hex.toHexString(passphrase).toUpperCase(Locale.getDefault())
     }
 
+    fun getSupportedBands(context: Context): ByteArray {
+        var supportedBandsBitmap = 0x04 // Bit 2: 2.4 GHz
+
+        if (getWifiManager(context)?.is5GHzBandSupported == true) {
+            supportedBandsBitmap =
+                supportedBandsBitmap or 0x10 // Bit 4: 4.9 and 5 GHz
+        }
+        return byteArrayOf((supportedBandsBitmap and 0xff).toByte())
+    }
+
     fun getServiceName(publicKey: ByteArray): String {
         val salt = byteArrayOf(0x01)
 
