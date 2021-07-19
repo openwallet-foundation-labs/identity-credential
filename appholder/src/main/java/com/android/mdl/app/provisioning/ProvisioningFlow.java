@@ -13,16 +13,11 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
-import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.CborEncoder;
-import co.nstant.in.cbor.CborException;
-import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
@@ -72,24 +67,17 @@ public class ProvisioningFlow extends BaseFlow {
 
             @Override
             public byte[] getBody() {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                CborBuilder builder = new CborBuilder();
-                MapBuilder<CborBuilder> map = builder.addMap();
-
-                map.put("messageType", "StartProvisioning");
-                map.put("provisioningCode", provisioningCode);
-
-                map.end();
-
                 try {
-                    new CborEncoder(outputStream).encode(builder.build());
-                } catch (CborException e) {
-                    // This should never happen so just adding to Log.
-                    String message = "CborEncode Exception: " + e.getMessage();
+                    Map map = new Map();
+                    map.put(new UnicodeString("messageType"), new UnicodeString("StartProvisioning"));
+                    map.put(new UnicodeString("provisioningCode"), new UnicodeString(provisioningCode));
+                    return CborHelper.encode(map);
+                } catch (IllegalArgumentException e) {
+                    String message = "Error sending body request, error: " + e.getMessage();
                     Log.e(TAG, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
-                return outputStream.toByteArray();
+                return new byte[0];
             }
         };
 
@@ -145,24 +133,17 @@ public class ProvisioningFlow extends BaseFlow {
 
             @Override
             public byte[] getBody() {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                CborBuilder builder = new CborBuilder();
-                MapBuilder<CborBuilder> map = builder.addMap();
-
-                map.put("messageType", "com.android.identity_credential.StartProvisioning");
-                map.put("eSessionId", sessionId);
-
-                map.end();
-
                 try {
-                    new CborEncoder(outputStream).encode(builder.build());
-                } catch (CborException e) {
-                    // This should never happen so just adding to Log.
-                    String message = "CborEncode Exception: " + e.getMessage();
+                    Map map = new Map();
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.StartProvisioning"));
+                    map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
+                    return CborHelper.encode(map);
+                } catch (IllegalArgumentException e) {
+                    String message = "Error sending body request, error: " + e.getMessage();
                     Log.e(TAG, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
-                return outputStream.toByteArray();
+                return new byte[0];
             }
         };
 
@@ -275,7 +256,7 @@ public class ProvisioningFlow extends BaseFlow {
                         });
                     });
 
-                    String visibleName = (names.get("given_name")+ "0").substring(0, 1) + ". " + names.get("family_name");
+                    String visibleName = (names.get("given_name") + "0").substring(0, 1) + ". " + names.get("family_name");
 
                     getListener().onMessageDataToProvision(visibleName, personalizationDataBuilder.build());
 
@@ -285,25 +266,18 @@ public class ProvisioningFlow extends BaseFlow {
 
             @Override
             public byte[] getBody() {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                CborBuilder builder = new CborBuilder();
-                MapBuilder<CborBuilder> map = builder.addMap();
-
-                map.put("messageType", "com.android.identity_credential.SetCertificateChain");
-                map.put("eSessionId", sessionId);
-                map.put("credentialKeyCertificateChain", credentialKeyCertification);
-
-                builder = map.end();
-
                 try {
-                    new CborEncoder(outputStream).encode(builder.build());
-                } catch (CborException e) {
-                    // This should never happen so just adding to Log.
-                    String message = "CborEncode Exception: " + e.getMessage();
+                    Map map = new Map();
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.SetCertificateChain"));
+                    map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
+                    map.put(new UnicodeString("credentialKeyCertificateChain"), new ByteString(credentialKeyCertification));
+                    return CborHelper.encode(map);
+                } catch (IllegalArgumentException e) {
+                    String message = "Error sending body request, error: " + e.getMessage();
                     Log.e(TAG, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
-                return outputStream.toByteArray();
+                return new byte[0];
             }
         };
 
@@ -344,25 +318,18 @@ public class ProvisioningFlow extends BaseFlow {
 
             @Override
             public byte[] getBody() {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                CborBuilder builder = new CborBuilder();
-                MapBuilder<CborBuilder> map = builder.addMap();
-
-                map.put("messageType", "com.android.identity_credential.SetProofOfProvisioning");
-                map.put("eSessionId", sessionId);
-                map.put("proofOfProvisioningSignature", proofOfProvisioning);
-
-                builder = map.end();
-
                 try {
-                    new CborEncoder(outputStream).encode(builder.build());
-                } catch (CborException e) {
-                    // This should never happen so just adding to Log.
-                    String message = "CborEncode Exception: " + e.getMessage();
+                    Map map = new Map();
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.SetProofOfProvisioning"));
+                    map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
+                    map.put(new UnicodeString("proofOfProvisioningSignature"), CborHelper.decode(proofOfProvisioning));
+                    return CborHelper.encode(map);
+                } catch (IllegalArgumentException e) {
+                    String message = "Error sending body request, error: " + e.getMessage();
                     Log.e(TAG, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
-                return outputStream.toByteArray();
+                return new byte[0];
             }
         };
 

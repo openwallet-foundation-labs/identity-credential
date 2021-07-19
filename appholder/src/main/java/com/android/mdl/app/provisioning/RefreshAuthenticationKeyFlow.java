@@ -9,14 +9,9 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
-import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.CborEncoder;
-import co.nstant.in.cbor.CborException;
-import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
@@ -25,8 +20,8 @@ import co.nstant.in.cbor.model.UnicodeString;
 
 public class RefreshAuthenticationKeyFlow extends BaseFlow {
     private static final String TAG = "RefreshAuthenticationKeyFlow";
-    private Context context;
-    private String serverUrl;
+    private final Context context;
+    private final String serverUrl;
 
     private RefreshAuthenticationKeyFlow(@NonNull Context context, String serverUrl) {
         this.context = context;
@@ -38,12 +33,12 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
         return new RefreshAuthenticationKeyFlow(context, serverUrl);
     }
 
-    public void setListener(@NonNull Listener listener) {
-        this.listener = listener;
-    }
-
     private Listener getListener() {
         return (Listener) listener;
+    }
+
+    public void setListener(@NonNull Listener listener) {
+        this.listener = listener;
     }
 
     public void sendMessageCertifyAuthKeys(byte[] credentialKeyCertification) {
@@ -77,24 +72,17 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
 
             @Override
             public byte[] getBody() {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                CborBuilder builder = new CborBuilder();
-                MapBuilder<CborBuilder> map = builder.addMap();
-
-                map.put("messageType", "com.android.identity_credential.CertifyAuthKeys");
-                map.put("credentialKey", credentialKeyCertification);
-
-                builder = map.end();
-
                 try {
-                    new CborEncoder(outputStream).encode(builder.build());
-                } catch (CborException e) {
-                    // This should never happen so just adding to Log.
-                    String message = "CborEncode Exception: " + e.getMessage();
+                    Map map = new Map();
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.CertifyAuthKeys"));
+                    map.put(new UnicodeString("credentialKey"), CborHelper.decode(credentialKeyCertification));
+                    return CborHelper.encode(map);
+                } catch (IllegalArgumentException e) {
+                    String message = "Error sending body request, error: " + e.getMessage();
                     Log.e(TAG, message, e.fillInStackTrace());
-                    listener.onError(message);
+                    getListener().onError(message);
                 }
-                return outputStream.toByteArray();
+                return new byte[0];
             }
         };
 
@@ -125,25 +113,18 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
 
             @Override
             public byte[] getBody() {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                CborBuilder builder = new CborBuilder();
-                MapBuilder<CborBuilder> map = builder.addMap();
-
-                map.put("messageType", "com.android.identity_credential.CertifyAuthKeysProveOwnershipResponse");
-                map.put("eSessionId", sessionId);
-                map.put("proofOfOwnershipSignature", proofOfOwnership);
-
-                builder = map.end();
-
                 try {
-                    new CborEncoder(outputStream).encode(builder.build());
-                } catch (CborException e) {
-                    // This should never happen so just adding to Log.
-                    String message = "CborEncode Exception: " + e.getMessage();
+                    Map map = new Map();
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.CertifyAuthKeysProveOwnershipResponse"));
+                    map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
+                    map.put(new UnicodeString("proofOfOwnershipSignature"), CborHelper.decode(proofOfOwnership));
+                    return CborHelper.encode(map);
+                } catch (IllegalArgumentException e) {
+                    String message = "Error sending body request, error: " + e.getMessage();
                     Log.e(TAG, message, e.fillInStackTrace());
-                    listener.onError(message);
+                    getListener().onError(message);
                 }
-                return outputStream.toByteArray();
+                return new byte[0];
             }
         };
 
@@ -188,25 +169,18 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
 
             @Override
             public byte[] getBody() {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                CborBuilder builder = new CborBuilder();
-                MapBuilder<CborBuilder> map = builder.addMap();
-
-                map.put("messageType", "com.android.identity_credential.CertifyAuthKeysSendCerts");
-                map.put("eSessionId", sessionId);
-                map.put("authKeyCerts", authKeyNeedingCertification);
-
-                builder = map.end();
-
                 try {
-                    new CborEncoder(outputStream).encode(builder.build());
-                } catch (CborException e) {
-                    // This should never happen so just adding to Log.
-                    String message = "CborEncode Exception: " + e.getMessage();
+                    Map map = new Map();
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.CertifyAuthKeysSendCerts"));
+                    map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
+                    map.put(new UnicodeString("authKeyCerts"), CborHelper.decode(authKeyNeedingCertification));
+                    return CborHelper.encode(map);
+                } catch (IllegalArgumentException e) {
+                    String message = "Error sending body request, error: " + e.getMessage();
                     Log.e(TAG, message, e.fillInStackTrace());
-                    listener.onError(message);
+                    getListener().onError(message);
                 }
-                return outputStream.toByteArray();
+                return new byte[0];
             }
         };
 
@@ -241,24 +215,17 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
 
             @Override
             public byte[] getBody() {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                CborBuilder builder = new CborBuilder();
-                MapBuilder<CborBuilder> map = builder.addMap();
-
-                map.put("messageType", "RequestEndSession");
-                map.put("eSessionId", sessionId);
-
-                builder = map.end();
-
                 try {
-                    new CborEncoder(outputStream).encode(builder.build());
-                } catch (CborException e) {
-                    // This should never happen so just adding to Log.
-                    String message = "CborEncode Exception: " + e.getMessage();
+                    Map map = new Map();
+                    map.put(new UnicodeString("messageType"), new UnicodeString("RequestEndSession"));
+                    map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
+                    return CborHelper.encode(map);
+                } catch (IllegalArgumentException e) {
+                    String message = "Error sending body request, error: " + e.getMessage();
                     Log.e(TAG, message, e.fillInStackTrace());
-                    listener.onError(message);
+                    getListener().onError(message);
                 }
-                return outputStream.toByteArray();
+                return new byte[0];
             }
         };
 
