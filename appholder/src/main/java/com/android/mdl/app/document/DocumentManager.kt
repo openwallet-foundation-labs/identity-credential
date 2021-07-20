@@ -12,6 +12,7 @@ import com.android.mdl.app.util.DocumentData.AAMVA_NAMESPACE
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
+import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.ContentSigner
@@ -30,8 +31,6 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
 import java.util.*
-import kotlin.collections.Collection
-import kotlin.collections.mutableListOf
 
 
 class DocumentManager private constructor(private val context: Context) {
@@ -53,13 +52,25 @@ class DocumentManager private constructor(private val context: Context) {
     private val store: IdentityCredentialStore =
         IdentityCredentialStore.getSoftwareInstance(context)
 
-    private val documents = mutableListOf<Document>()
+    // Database to store document information
+    val documentRepository = DocumentRepository.getInstance(
+        DocumentDatabase.getInstance(context).credentialDao()
+    )
 
     init {
-        // Create the dummy credential...
-        createDummyCredential(store)?.let { document ->
-            documents.add(document)
+        runBlocking {
+            // Load created documents from local database
+            val documents = documentRepository.getAll()
+
+            if (documents.isEmpty()) {
+                // Create the dummy credential...
+                createDummyCredential(store)?.let { document ->
+                    documentRepository.insert(document)
+                }
+            }
         }
+
+
     }
 
     private fun createDummyCredential(store: IdentityCredentialStore): Document? {
@@ -169,11 +180,11 @@ class DocumentManager private constructor(private val context: Context) {
         return null
     }
 
-    fun getDocuments(): Collection<Document> {
-        return documents
+    fun getDocuments(): Collection<Document> = runBlocking {
+        documentRepository.getAll()
     }
 
-    fun addDocument(document: Document) {
-        documents.add(document)
+    fun addDocument(document: Document) = runBlocking {
+        documentRepository.insert(document)
     }
 }

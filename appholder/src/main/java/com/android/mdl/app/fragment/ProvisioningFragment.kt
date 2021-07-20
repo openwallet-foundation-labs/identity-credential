@@ -8,10 +8,15 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import androidx.security.identity.*
+import androidx.security.identity.CipherSuiteNotSupportedException
+import androidx.security.identity.IdentityCredentialStore
+import androidx.security.identity.PersonalizationData
+import androidx.security.identity.WritableIdentityCredential
 import com.android.mdl.app.databinding.FragmentProvisioningBinding
 import com.android.mdl.app.document.Document
+import com.android.mdl.app.document.DocumentDatabase
 import com.android.mdl.app.document.DocumentManager
+import com.android.mdl.app.document.DocumentRepository
 import com.android.mdl.app.provisioning.ProvisioningFlow
 import com.android.mdl.app.util.FormatUtil
 
@@ -118,7 +123,7 @@ class ProvisioningFragment : Fragment() {
                         wc?.getCredentialKeyCertificateChain(challenge)
                     Log.d(LOG_TAG, "sendMessageSetCertificateChain")
                     var certificateChainEncoded = byteArrayOf()
-                    certificateChain?.forEach { cer->
+                    certificateChain?.forEach { cer ->
                         certificateChainEncoded += cer.encoded
                     }
                     FormatUtil.debugPrintEncodeToString(LOG_TAG, certificateChainEncoded)
@@ -155,7 +160,8 @@ class ProvisioningFragment : Fragment() {
     fun onSuccess() {
         if (document == null) {
             Toast.makeText(
-                requireContext(), "It was not possible to get the provisioned document. Please try again!",
+                requireContext(),
+                "It was not possible to get the provisioned document. Please try again!",
                 Toast.LENGTH_SHORT
             ).show()
             return

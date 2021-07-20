@@ -60,7 +60,14 @@ dependencies {
     implementation "androidx.navigation:navigation-fragment-ktx:$navigation_version"
     implementation "androidx.navigation:navigation-ui-ktx:$navigation_version"
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+
+    // Volley
     implementation "com.android.volley:volley:$volley_version"
+
+    //Room
+    kapt "androidx.room:room-compiler:$androidx_room_version"
+    implementation "androidx.room:room-runtime:$androidx_room_version"
+    implementation "androidx.room:room-ktx:$androidx_room_version"
 
     // Biometric authentication
     implementation "androidx.biometric:biometric:$androidx_biometrics"

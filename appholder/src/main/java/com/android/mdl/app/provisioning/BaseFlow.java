@@ -12,15 +12,6 @@ abstract class BaseFlow {
     protected Listener listener;
     protected String sessionId;
 
-    interface Listener {
-        void onMessageSessionEnd(@NonNull String reason);
-
-        void sendMessageRequestEnd(@NonNull String reason);
-
-        void onError(@NonNull String error);
-    }
-
-
     protected boolean hasValidSessionId(Map response) {
         if (sessionId != null) {
             String newSessionId = ((UnicodeString) response.get(new UnicodeString("eSessionId"))).getString();
@@ -56,5 +47,13 @@ abstract class BaseFlow {
         Log.e(TAG, message);
         listener.onError(message);
         return false;
+    }
+
+    interface Listener {
+        void onMessageSessionEnd(@NonNull String reason);
+
+        void sendMessageRequestEnd(@NonNull String reason);
+
+        void onError(@NonNull String error);
     }
 }

@@ -12,7 +12,7 @@
     <string name="bt_add_document">Add Document</string>
     <string name="txt_server_url">Enter the server URL</string>
     <string name="txt_provisioning_code">Enter the provisioning code</string>
-    <string name="value_server_url">http://192.168.1.130:18013/mdlServer</string>
+    <string name="value_server_url">http://192.168.1.169:18013/mdlServer</string>
     <string name="value_provisioning_code">1001</string>
     <string name="bt_next">Next</string>
     <string name="txt_retrieving_data">Retrieving data</string>

@@ -141,8 +141,10 @@ class TransferDocumentFragment : Fragment() {
             Log.d(LOG_TAG, "Attempt to authenticate the user has failed")
 
             runOnUiThread {
-                Toast.makeText(requireContext(), getString(R.string.bio_auth_failed),
-                    Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(), getString(R.string.bio_auth_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
             onDone()
         }
