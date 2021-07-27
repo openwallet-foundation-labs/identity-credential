@@ -5,13 +5,17 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.security.keystore.KeyProperties
+import android.util.Log
 import androidx.security.identity.*
+import co.nstant.`in`.cbor.CborBuilder
 import com.android.mdl.app.R
+import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.AAMVA_NAMESPACE
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
+import com.android.mdl.app.util.FormatUtil
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
@@ -37,6 +41,8 @@ class DocumentManager private constructor(private val context: Context) {
 
     companion object {
         private const val LOG_TAG = "DocumentManager"
+        private const val MAX_USES_PER_KEY = 1
+        private const val KEY_COUNT = 1
 
         @SuppressLint("StaticFieldLeak")
         @Volatile
@@ -48,12 +54,10 @@ class DocumentManager private constructor(private val context: Context) {
             }
     }
 
-    // TODO: Review to add support for both software and hardware implementations
-    private val store: IdentityCredentialStore =
-        IdentityCredentialStore.getSoftwareInstance(context)
+    private val store = IdentityCredentialStore.getInstance(context)
 
     // Database to store document information
-    val documentRepository = DocumentRepository.getInstance(
+    private val documentRepository = DocumentRepository.getInstance(
         DocumentDatabase.getInstance(context).credentialDao()
     )
 
@@ -114,7 +118,9 @@ class DocumentManager private constructor(private val context: Context) {
                         context.resources,
                         R.drawable.driving_license_bg
                     ),
-                    false
+                    store.capabilities.isHardwareBacked,
+                    null,
+                    null
                 )
             } catch (e: IdentityCredentialException) {
                 throw IllegalStateException("Error creating dummy credential", e)
@@ -184,7 +190,162 @@ class DocumentManager private constructor(private val context: Context) {
         documentRepository.getAll()
     }
 
-    fun addDocument(document: Document) = runBlocking {
-        documentRepository.insert(document)
+    fun addDocument(
+        docType: String,
+        identityCredentialName: String,
+        userVisibleName: String,
+        serverUrl: String?,
+        provisioningCode: String?
+    ): Document {
+        val document = Document(
+            docType,
+            identityCredentialName,
+            userVisibleName,
+            null,
+            store.capabilities.isHardwareBacked,
+            serverUrl,
+            provisioningCode
+        )
+        runBlocking {
+            documentRepository.insert(document)
+        }
+        return document
+    }
+
+    fun createCredential(credentialName: String, docType: String): WritableIdentityCredential {
+        return store.createCredential(credentialName, docType)
+    }
+
+    fun deleteCredentialByName(credentialName: String) {
+        val document = runBlocking {
+            documentRepository.findById(credentialName)
+        } ?: return
+
+        val mStore = if (document.hardwareBacked)
+            IdentityCredentialStore.getHardwareInstance(context)
+                ?: IdentityCredentialStore.getSoftwareInstance(context)
+        else
+            IdentityCredentialStore.getSoftwareInstance(context)
+
+        val credential = mStore.getCredentialByName(
+            document.identityCredentialName,
+            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+        )
+
+        // Delete data from local storage
+        runBlocking {
+            documentRepository.delete(document)
+        }
+
+        // Delete credential provisioned on IC API
+        if (mStore.capabilities.isDeleteSupported) {
+            credential?.delete(byteArrayOf())
+        } else {
+            mStore.deleteCredentialByName(credentialName)
+        }
+    }
+
+    fun setAvailableAuthKeys(credential: IdentityCredential) {
+        credential.setAvailableAuthenticationKeys(KEY_COUNT, MAX_USES_PER_KEY)
+    }
+
+    fun getCredential(document: Document): IdentityCredential? {
+        val mStore = if (document.hardwareBacked)
+            IdentityCredentialStore.getHardwareInstance(context)
+                ?: IdentityCredentialStore.getSoftwareInstance(context)
+        else
+            IdentityCredentialStore.getSoftwareInstance(context)
+
+        return mStore.getCredentialByName(
+            document.identityCredentialName,
+            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+        )
+    }
+
+    fun refreshAuthKeysNeedingCert() {
+        getDocuments().forEach { document ->
+            if (document.serverUrl?.isNotEmpty() == true) {
+                getCredential(document)?.let { credential ->
+                    // Will only call the server if necessary
+                    refreshAuthKeysNeedingCertFromServer(credential, document.serverUrl)
+                }
+            }
+        }
+    }
+
+    private fun refreshAuthKeysNeedingCertFromServer(
+        credential: IdentityCredential,
+        serverUrl: String
+    ) {
+        val dynAuthKeyCerts = credential.authKeysNeedingCertification
+        val credentialCertificateChain = credential.credentialKeyCertificateChain
+
+        // Start refresh auth key flow
+        val refreshAuthKeyFlow =
+            RefreshAuthenticationKeyFlow.getInstance(context, serverUrl)
+        refreshAuthKeyFlow.setListener(object : RefreshAuthenticationKeyFlow.Listener {
+            override fun onMessageSessionEnd(reason: String) {
+
+                //Check if provisioning was successful
+                if (reason == "Success") {
+                    Log.d(LOG_TAG, "refreshAuthKeysNeedingCertFromServer: Done")
+                }
+            }
+
+            override fun sendMessageRequestEnd(reason: String) {
+                Log.d(LOG_TAG, "\n- sendMessageRequestEnd: $reason\n")
+            }
+
+            override fun onError(error: String) {
+                Log.d(LOG_TAG, "\n- onError: $error\n")
+            }
+
+            override fun onMessageProveOwnership(challenge: ByteArray) {
+                Log.d(
+                    LOG_TAG,
+                    "\n- onMessageProveOwnership: ${FormatUtil.encodeToString(challenge)}\n"
+                )
+                val proveOwnership = credential.proveOwnership(challenge)
+
+                refreshAuthKeyFlow.sendMessageProveOwnership(proveOwnership)
+            }
+
+            override fun onMessageCertifyAuthKeysReady() {
+                Log.d(LOG_TAG, "\n- onMessageCertifyAuthKeysReady")
+                val builderArray = CborBuilder()
+                    .addArray()
+                dynAuthKeyCerts.forEach { cert ->
+                    builderArray.add(cert.encoded)
+                }
+                val authKeyCerts = FormatUtil.cborEncode(builderArray.end().build()[0])
+                refreshAuthKeyFlow.sendMessageAuthKeyNeedingCertification(authKeyCerts)
+            }
+
+            override fun onMessageStaticAuthData(staticAuthDataList: MutableList<ByteArray>) {
+                Log.d(LOG_TAG, "\n- onMessageStaticAuthData ${staticAuthDataList.size} ")
+
+                dynAuthKeyCerts.forEachIndexed { i, cert ->
+                    Log.d(
+                        LOG_TAG,
+                        "Provisioned Isser Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
+                                "for Device Key ${FormatUtil.encodeToString(cert.publicKey.encoded)}"
+                    )
+                    credential.storeStaticAuthenticationData(cert, staticAuthDataList[i])
+                }
+                refreshAuthKeyFlow.sendMessageRequestEndSession()
+
+            }
+        })
+
+        if (dynAuthKeyCerts.isNotEmpty()) {
+            Log.d(LOG_TAG, "Device Keys needing certification ${dynAuthKeyCerts.size}")
+            // returns the Cose_Sign1 Obj with the MSO in the payload
+            credentialCertificateChain.first()?.publicKey?.let { publicKey ->
+                val cborCoseKey = FormatUtil.cborBuildCoseKey(publicKey)
+                refreshAuthKeyFlow.sendMessageCertifyAuthKeys(FormatUtil.cborEncode(cborCoseKey))
+            }
+        } else {
+            Log.d(LOG_TAG, "No Device Keys Needing Certification for now")
+        }
     }
 }

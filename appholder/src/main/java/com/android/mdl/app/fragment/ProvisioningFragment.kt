@@ -9,14 +9,11 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.security.identity.CipherSuiteNotSupportedException
-import androidx.security.identity.IdentityCredentialStore
 import androidx.security.identity.PersonalizationData
 import androidx.security.identity.WritableIdentityCredential
 import com.android.mdl.app.databinding.FragmentProvisioningBinding
 import com.android.mdl.app.document.Document
-import com.android.mdl.app.document.DocumentDatabase
 import com.android.mdl.app.document.DocumentManager
-import com.android.mdl.app.document.DocumentRepository
 import com.android.mdl.app.provisioning.ProvisioningFlow
 import com.android.mdl.app.util.FormatUtil
 
@@ -33,7 +30,6 @@ class ProvisioningFragment : Fragment() {
     private val binding get() = _binding!!
     private var serverUrl = ""
     private var provisioningCode = ""
-    private var userVisibleName = ""
     private var document: Document? = null
     private var proofOfProvisioning: ByteArray? = null
 
@@ -65,12 +61,12 @@ class ProvisioningFragment : Fragment() {
         }
 
         binding.loadingProgress.visibility = View.VISIBLE
+        val documentManager = DocumentManager.getInstance(requireContext())
+
         val credentialName = "credentialName$provisioningCode"
-        // TODO: should use docType from mdl server
-        val docType = "org.iso.18013.5.1.mDL"
-        // TODO: Add support for both implementations
-        val store = IdentityCredentialStore.getSoftwareInstance(requireContext())
-        store.deleteCredentialByName(credentialName)
+        var mDocType = ""
+        var mUserVisibleName = ""
+        documentManager.deleteCredentialByName(credentialName)
         var wc: WritableIdentityCredential? = null
 
         // Start provisioning flow
@@ -81,16 +77,15 @@ class ProvisioningFragment : Fragment() {
 
                 //Check if provisioning was successful
                 if (reason == "Success") {
-                    document = Document(docType, credentialName, userVisibleName, null, false)
-                    // Just workaround to add the document to the main screen list
-                    // It will be improve using a database to persist the
-                    // document and add the option to delete
-                    // TODO: implement local database
-                    document?.let { doc ->
-                        val documentManager = DocumentManager.getInstance(requireContext())
-                        if (!documentManager.getDocuments().contains(doc))
-                            documentManager.addDocument(doc)
-                    }
+                    // Add document to the list of provisioned documents
+                    document =
+                        documentManager.addDocument(
+                            mDocType,
+                            credentialName,
+                            mUserVisibleName,
+                            serverUrl,
+                            provisioningCode
+                        )
                     binding.btSuccess.visibility = View.VISIBLE
                 }
 
@@ -112,13 +107,14 @@ class ProvisioningFragment : Fragment() {
                 provisioningFlow.sendMessageStartIdentityCredentialProvision()
             }
 
-            override fun onMessageProvisioningResponse(challenge: ByteArray) {
+            override fun onMessageProvisioningResponse(docType: String, challenge: ByteArray) {
                 Log.d(LOG_TAG, "onMessageProvisioningResponse")
                 binding.tvStatusProvisioning.append(
                     "\n- onMessageProvisioningResponse: $${FormatUtil.encodeToString(challenge)}\n"
                 )
+                mDocType = docType
                 try {
-                    wc = store.createCredential(credentialName, docType)
+                    wc = documentManager.createCredential(credentialName, docType)
                     val certificateChain =
                         wc?.getCredentialKeyCertificateChain(challenge)
                     Log.d(LOG_TAG, "sendMessageSetCertificateChain")
@@ -139,7 +135,7 @@ class ProvisioningFragment : Fragment() {
                 personalizationData: PersonalizationData
             ) {
                 binding.tvStatusProvisioning.append("\n- onMessageDataToProvision: $visibleName\n")
-                userVisibleName = visibleName
+                mUserVisibleName = visibleName
                 try {
                     proofOfProvisioning = wc?.personalize(personalizationData)
                     Log.d(LOG_TAG, "proofOfProvisioning:")

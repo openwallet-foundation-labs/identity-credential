@@ -8,11 +8,13 @@ import androidx.room.PrimaryKey
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
-@Entity(tableName = "document", primaryKeys = ["doc_type", "identity_credential_name"])
+@Entity(tableName = "document")
 data class Document(
     @ColumnInfo(name = "doc_type") val docType: String,
-    @ColumnInfo(name = "identity_credential_name") val identityCredentialName: String,
+    @PrimaryKey @ColumnInfo(name = "identity_credential_name") val identityCredentialName: String,
     @ColumnInfo(name = "user_visible_name") val userVisibleName: String, // Name displayed in UI, e.g. “P HIN”
     @ColumnInfo(name = "user_visible_document_background") val userVisibleDocumentBackground: Bitmap?,
-    @ColumnInfo(name = "hardware_backed") val hardwareBacked: Boolean // cf. blurb in IdentityCredentialStore docs
+    @ColumnInfo(name = "hardware_backed") val hardwareBacked: Boolean, // cf. blurb in IdentityCredentialStore docs
+    @ColumnInfo(name = "server_url") val serverUrl: String?,
+    @ColumnInfo(name = "provisioning_code") val provisioningCode: String?
 ) : Parcelable

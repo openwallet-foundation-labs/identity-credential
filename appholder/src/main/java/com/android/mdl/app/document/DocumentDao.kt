@@ -28,4 +28,7 @@ interface DocumentDao {
 
     @Delete
     suspend fun delete(document: Document)
+
+    @Query("SELECT * FROM document WHERE identity_credential_name = :credentialName")
+    suspend fun findById(credentialName: String): Document?
 }

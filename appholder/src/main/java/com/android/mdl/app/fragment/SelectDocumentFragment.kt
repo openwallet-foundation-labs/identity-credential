@@ -37,6 +37,9 @@ class SelectDocumentFragment : Fragment() {
         val transferManager = TransferManager.getInstance(requireContext())
         transferManager.stopPresentation()
 
+        // Always check if there are keys needing certificate and call the server when necessary
+        documentManager.refreshAuthKeysNeedingCert()
+
         adapter.submitList(documentManager.getDocuments().toMutableList())
 
         // Location access is needed for BLE to work.

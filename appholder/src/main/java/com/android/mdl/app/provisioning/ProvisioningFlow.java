@@ -125,7 +125,7 @@ public class ProvisioningFlow extends BaseFlow {
                             " challenge: " + Arrays.toString(challenge) +
                             " docType: " + docType);
 
-                    getListener().onMessageProvisioningResponse(challenge);
+                    getListener().onMessageProvisioningResponse(docType, challenge);
 
                 },
                 error -> getListener().onError("" + error.getMessage())) {
@@ -341,7 +341,7 @@ public class ProvisioningFlow extends BaseFlow {
 
         void onMessageReadyToProvision();
 
-        void onMessageProvisioningResponse(@NonNull byte[] challenge);
+        void onMessageProvisioningResponse(@NonNull String docType, @NonNull byte[] challenge);
 
         void onMessageDataToProvision(String visibleName, PersonalizationData personalizationData);
     }

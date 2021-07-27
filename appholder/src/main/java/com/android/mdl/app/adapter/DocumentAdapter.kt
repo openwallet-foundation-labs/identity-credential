@@ -52,8 +52,8 @@ class DocumentAdapter :
     ) : RecyclerView.ViewHolder(binding.root) {
         init {
             binding.setClickListener {
-                binding.document?.let { plant ->
-                    navigateToShare(plant, it)
+                binding.document?.let { doc ->
+                    navigateToShare(doc, it)
                 }
             }
         }

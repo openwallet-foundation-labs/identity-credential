@@ -27,6 +27,8 @@ class DocumentRepository private constructor(private val documentDao: DocumentDa
 
     suspend fun delete(document: Document) = documentDao.delete(document)
 
+    suspend fun findById(credentialName: String) = documentDao.findById(credentialName)
+
     companion object {
 
         // For Singleton instantiation

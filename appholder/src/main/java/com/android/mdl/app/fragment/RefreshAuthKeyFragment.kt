@@ -8,10 +8,10 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import androidx.security.identity.IdentityCredentialStore
 import co.nstant.`in`.cbor.CborBuilder
 import com.android.mdl.app.databinding.FragmentRefreshAuthKeyBinding
 import com.android.mdl.app.document.Document
+import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.FormatUtil
 
@@ -50,21 +50,27 @@ class RefreshAuthKeyFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        startRefreshAuthKeyFlow()
+    }
 
-
-        val store = if (document.hardwareBacked)
-            IdentityCredentialStore.getHardwareInstance(requireContext())
-                ?: IdentityCredentialStore.getSoftwareInstance(requireContext())
-        else
-            IdentityCredentialStore.getSoftwareInstance(requireContext())
-
-        val credential = store.getCredentialByName(
-            document.identityCredentialName,
-            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+    fun onDone() {
+        findNavController().navigate(
+            RefreshAuthKeyFragmentDirections.actionRefreshAuthKeyFragmentToSelectDocumentFragment()
         )
-        credential?.setAvailableAuthenticationKeys(1, 1)
-        val dynAuthKeyCerts = credential?.authKeysNeedingCertification
-        val credentialCertificateChain = credential?.credentialKeyCertificateChain
+    }
+
+    private fun startRefreshAuthKeyFlow() {
+        val credential =
+            DocumentManager.getInstance(requireContext()).getCredential(document)
+
+        if (credential == null) {
+            binding.tvStatusRefreshing.append("\n- Error on retrieving a document for ${document.userVisibleName}\n")
+            return
+        }
+
+        DocumentManager.getInstance(requireContext()).setAvailableAuthKeys(credential)
+        val dynAuthKeyCerts = credential.authKeysNeedingCertification
+        val credentialCertificateChain = credential.credentialKeyCertificateChain
 
         // Start refresh auth key flow
         val refreshAuthKeyFlow =
@@ -94,7 +100,7 @@ class RefreshAuthKeyFragment : Fragment() {
                 binding.tvStatusRefreshing.append(
                     "\n- onMessageProveOwnership: ${FormatUtil.encodeToString(challenge)}\n"
                 )
-                val proveOwnership = credential?.proveOwnership(challenge)
+                val proveOwnership = credential.proveOwnership(challenge)
 
                 refreshAuthKeyFlow.sendMessageProveOwnership(proveOwnership)
             }
@@ -103,7 +109,7 @@ class RefreshAuthKeyFragment : Fragment() {
                 binding.tvStatusRefreshing.append("\n- onMessageCertifyAuthKeysReady")
                 val builderArray = CborBuilder()
                     .addArray()
-                dynAuthKeyCerts?.forEach { cert ->
+                dynAuthKeyCerts.forEach { cert ->
                     builderArray.add(cert.encoded)
                 }
                 val authKeyCerts = FormatUtil.cborEncode(builderArray.end().build()[0])
@@ -113,7 +119,7 @@ class RefreshAuthKeyFragment : Fragment() {
             override fun onMessageStaticAuthData(staticAuthDataList: MutableList<ByteArray>) {
                 binding.tvStatusRefreshing.append("\n- onMessageStaticAuthData ${staticAuthDataList.size} ")
 
-                dynAuthKeyCerts?.forEachIndexed { i, cert ->
+                dynAuthKeyCerts.forEachIndexed { i, cert ->
                     Log.d(
                         LOG_TAG,
                         "Provisioned Isser Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
@@ -126,11 +132,11 @@ class RefreshAuthKeyFragment : Fragment() {
             }
         })
 
-        if (dynAuthKeyCerts?.isNotEmpty() == true) {
+        if (dynAuthKeyCerts.isNotEmpty()) {
             Log.d(LOG_TAG, "Device Keys needing certification ${dynAuthKeyCerts.size}")
             binding.tvStatusRefreshing.append("\n- Device Keys needing certification ${dynAuthKeyCerts.size}")
             // returns the Cose_Sign1 Obj with the MSO in the payload
-            credentialCertificateChain?.first()?.publicKey?.let { publicKey ->
+            credentialCertificateChain.first()?.publicKey?.let { publicKey ->
                 val cborCoseKey = FormatUtil.cborBuildCoseKey(publicKey)
                 refreshAuthKeyFlow.sendMessageCertifyAuthKeys(FormatUtil.cborEncode(cborCoseKey))
             }
@@ -139,11 +145,5 @@ class RefreshAuthKeyFragment : Fragment() {
 
             binding.tvStatusRefreshing.append("\n- No Device Keys Needing Certification for now")
         }
-    }
-
-    fun onDone() {
-        findNavController().navigate(
-            RefreshAuthKeyFragmentDirections.actionRefreshAuthKeyFragmentToSelectDocumentFragment()
-        )
     }
 }
