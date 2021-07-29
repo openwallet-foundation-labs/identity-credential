@@ -38,6 +38,7 @@ buildscript {
         androidx_preference = '1.1.1'
         androidx_room_version = '2.3.0'
         apache_http_version = '4.4.14'
+        volley_version = '1.2.0'
     }
 
     repositories {

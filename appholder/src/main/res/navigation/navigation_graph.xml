@@ -28,6 +28,36 @@
         <action
             android:id="@+id/action_selectDocumentFragment_to_shareDocumentFragment"
             app:destination="@id/shareDocumentFragment" />
+        <action
+            android:id="@+id/action_selectDocumentFragment_to_provisioningFragment"
+            app:destination="@id/provisioningFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/provisioningFragment"
+        android:name="com.android.mdl.app.fragment.ProvisioningFragment"
+        android:label="Select a Document to Share"
+        tools:layout="@layout/fragment_provisioning">
+        <action
+            android:id="@+id/action_provisioningFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
+        <action
+            android:id="@+id/action_provisioningFragment_to_refreshAuthKeyFragment"
+            app:destination="@id/refreshAuthKeyFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/refreshAuthKeyFragment"
+        android:name="com.android.mdl.app.fragment.RefreshAuthKeyFragment"
+        android:label="Select a Document to Share"
+        tools:layout="@layout/fragment_refresh_auth_key">
+        <argument
+            android:name="serverUrl"
+            app:argType="string" />
+        <argument
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
+        <action
+            android:id="@+id/action_refreshAuthKeyFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
     </fragment>
     <fragment
         android:id="@+id/shareDocumentFragment"

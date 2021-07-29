@@ -4,6 +4,13 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <data>
+
+        <variable
+            name="fragment"
+            type="com.android.mdl.app.fragment.SelectDocumentFragment" />
+    </data>
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -40,6 +47,17 @@
                 tools:context=".fragment.SelectDocumentFragment"
                 tools:layout_height="300dp"
                 tools:listitem="@layout/list_item_document" />
+
+            <Button
+                android:id="@+id/bt_add_document"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:onClick="@{() -> fragment.onStartProvisioning()}"
+                android:text="@string/bt_add_document"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/document_list" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
