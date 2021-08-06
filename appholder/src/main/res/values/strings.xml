@@ -23,4 +23,10 @@
     <string name="bio_auth_failed">User authentication has failed</string>
     <string name="fingerprint_removed_error">Biometric Authentication Error</string>
     <string name="fingerprint_removed_error_desc">Fingerprint was removed from the device so the credential cannot be shared anymore.</string>
+    <string name="label_document_name">Name</string>
+    <string name="label_document_type">Document type</string>
+    <string name="bt_check_for_update">Check for Update</string>
+    <string name="bt_delete">Delete</string>
+    <string name="label_date_provisioned">Date Provisioned</string>
+    <string name="label_date_check_update">Last Update Check</string>
 </resources>

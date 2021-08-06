@@ -41,7 +41,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
         this.listener = listener;
     }
 
-    public void sendMessageCertifyAuthKeys(byte[] credentialKeyCertification) {
+    public void sendMessageCertifyAuthKeys(byte[] credentialKey) {
         // Instantiate the RequestQueue.
         RequestQueue queue = Volley.newRequestQueue(context);
 
@@ -75,7 +75,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
                 try {
                     Map map = new Map();
                     map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.CertifyAuthKeys"));
-                    map.put(new UnicodeString("credentialKey"), CborHelper.decode(credentialKeyCertification));
+                    map.put(new UnicodeString("credentialKey"), CborHelper.decode(credentialKey));
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();

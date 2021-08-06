@@ -118,9 +118,7 @@ class DocumentManager private constructor(private val context: Context) {
                         context.resources,
                         R.drawable.driving_license_bg
                     ),
-                    store.capabilities.isHardwareBacked,
-                    null,
-                    null
+                    store.capabilities.isHardwareBacked
                 )
             } catch (e: IdentityCredentialException) {
                 throw IllegalStateException("Error creating dummy credential", e)
@@ -346,6 +344,12 @@ class DocumentManager private constructor(private val context: Context) {
             }
         } else {
             Log.d(LOG_TAG, "No Device Keys Needing Certification for now")
+        }
+    }
+
+    fun updateDocument(document: Document) {
+        runBlocking {
+            documentRepository.insert(document)
         }
     }
 }

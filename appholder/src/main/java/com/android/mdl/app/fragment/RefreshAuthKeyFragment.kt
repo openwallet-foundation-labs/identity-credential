@@ -133,6 +133,8 @@ class RefreshAuthKeyFragment : Fragment() {
         })
 
         if (dynAuthKeyCerts.isNotEmpty()) {
+            //credential.proveOwnership(challenge)
+
             Log.d(LOG_TAG, "Device Keys needing certification ${dynAuthKeyCerts.size}")
             binding.tvStatusRefreshing.append("\n- Device Keys needing certification ${dynAuthKeyCerts.size}")
             // returns the Cose_Sign1 Obj with the MSO in the payload
