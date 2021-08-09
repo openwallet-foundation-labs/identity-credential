@@ -61,6 +61,12 @@
         <action
             android:id="@+id/action_documentDetailFragment_to_updateCheckFragment"
             app:destination="@id/updateCheckFragment" />
+        <action
+            android:id="@+id/action_documentDetailFragment_to_deleteDocumentFragment"
+            app:destination="@id/deleteDocumentFragment" />
+        <action
+            android:id="@+id/action_documentDetailFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
     </fragment>
     <fragment
         android:id="@+id/updateCheckFragment"
@@ -71,8 +77,23 @@
             android:name="document"
             app:argType="com.android.mdl.app.document.Document" />
         <action
+            android:id="@+id/action_updateCheckFragment_to_deleteDocumentFragment"
+            app:destination="@id/deleteDocumentFragment" />
+        <action
             android:id="@+id/action_updateCheckFragment_to_documentDetailFragment"
             app:destination="@id/documentDetailFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/deleteDocumentFragment"
+        android:name="com.android.mdl.app.fragment.DeleteDocumentFragment"
+        android:label="Document deletion"
+        tools:layout="@layout/fragment_update_check">
+        <argument
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
+        <action
+            android:id="@+id/action_deleteDocumentFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
     </fragment>
     <fragment
         android:id="@+id/refreshAuthKeyFragment"

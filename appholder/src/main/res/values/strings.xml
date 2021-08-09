@@ -29,4 +29,5 @@
     <string name="bt_delete">Delete</string>
     <string name="label_date_provisioned">Date Provisioned</string>
     <string name="label_date_check_update">Last Update Check</string>
+    <string name="toast_press_back_twice">Tap back button again to exit</string>
 </resources>

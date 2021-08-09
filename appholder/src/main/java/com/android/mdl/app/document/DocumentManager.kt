@@ -214,6 +214,26 @@ class DocumentManager private constructor(private val context: Context) {
         return store.createCredential(credentialName, docType)
     }
 
+    fun deleteCredential(document: Document, credential: IdentityCredential): ByteArray? {
+        val mStore = if (document.hardwareBacked)
+            IdentityCredentialStore.getHardwareInstance(context)
+                ?: IdentityCredentialStore.getSoftwareInstance(context)
+        else
+            IdentityCredentialStore.getSoftwareInstance(context)
+
+        // Delete data from local storage
+        runBlocking {
+            documentRepository.delete(document)
+        }
+
+        // Delete credential provisioned on IC API
+        return if (mStore.capabilities.isDeleteSupported) {
+            credential.delete(byteArrayOf())
+        } else {
+            mStore.deleteCredentialByName(document.identityCredentialName)
+        }
+    }
+
     fun deleteCredentialByName(credentialName: String) {
         val document = runBlocking {
             documentRepository.findById(credentialName)

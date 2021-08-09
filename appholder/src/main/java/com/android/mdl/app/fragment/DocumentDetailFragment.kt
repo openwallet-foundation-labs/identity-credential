@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
@@ -28,7 +29,16 @@ class DocumentDetailFragment : Fragment() {
         super.onCreate(savedInstanceState)
 
         document = args.document
-
+        // Always return to main fragment
+        requireActivity().onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    findNavController().navigate(
+                        DocumentDetailFragmentDirections.actionDocumentDetailFragmentToSelectDocumentFragment()
+                    )
+                }
+            })
     }
 
     override fun onCreateView(
@@ -59,9 +69,20 @@ class DocumentDetailFragment : Fragment() {
     }
 
     fun onDelete() {
-        Toast.makeText(
-            requireContext(), "Not implemented yet.",
-            Toast.LENGTH_SHORT
-        ).show()
+        if (document.serverUrl == null) {
+            // If server URL is null
+            Toast.makeText(
+                requireContext(), "Document doesn't have server information",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        findNavController().navigate(
+            DocumentDetailFragmentDirections.actionDocumentDetailFragmentToDeleteDocumentFragment(
+                document
+            )
+        )
     }
+
+
 }
