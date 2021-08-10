@@ -41,6 +41,7 @@ The *System of Record* uses a database with the following tables:
   - Has `doc_type`, `access_control_profiles`, `name_spaces` columns
     which describe the document in detail.
   - Is associated with zero or more `issued_documents` rows.
+  - Has `data_timestamp` field with time the data was last updated
 
 - `issued_documents`
   - Primary key is auto-increment.
@@ -57,7 +58,9 @@ The *System of Record* uses a database with the following tables:
 - `configured_documents`
   - Primary key is auto-increment.
   - Represent a document configured on a particular device.
-  - Has `last_updated_timestamp` field with time of last update
+  - Has `last_updated_timestamp` field with time of last update of the document
+  - Has `data_timestamp` copy of the data_timestamp field from the documents at the time of the document was last provisioned or updated
+  - Has `status` for now will only have a value null or `TO_DELETE` to indicate that the mdl app should delete this document in the update check flow
   - Has `credential_key_x509_cert_chain` field which uniquely
     identifies the device
   - Has `proof_of_provisioning` which represents which
@@ -203,4 +206,88 @@ where
 
 ## Update Check
 
-TODO
+- Request:  `com.android.identity_credential.UpdateCredential`
+  - credentialKey: COSE_Key
+- Response: `com.android.identity_credential.UpdateCredentialProveOwnership`
+  - eSessionId: bstr
+  - challenge: bstr
+
+- Request:  `com.android.identity_credential.UpdateCredentialProveOwnershipResponse`
+  - eSessionId: bstr
+  - proofOfOwnershipSignature: COSE_Sign1
+    - payload in signature set are set to bytes of ProofOfOwnership
+    - signature is made with CredentialKey
+- Response: `com.android.identity_credential.UpdateCredentialResponse`
+  - eSessionId: bstr
+  - updateCredentialResult: tstr ("delete"|"no_update"|"update")
+    - "delete" the mdl app should start the delete flow
+    - "no_update" no further messages need to be send
+    - "update" continue update check flow with UpdateCredentialGetDataToUpdate
+
+- Request: `com.android.identity_credential.UpdateCredentialGetDataToUpdate`
+  - eSessionId: bstr
+- Response: `com.android.identity_credential.UpdateCredentialDataToProvisionMessage`
+  - eSessionId: bstr
+  - accessControlProfiles: AccessControlProfiles
+  - nameSpaces: Namespaces
+
+where
+
+    AccessControlProfiles = [ * AccessControlProfile ]
+
+    AccessControlProfile = {
+        "id": uint,
+        ? "readerCertificate" : bstr,
+        ? (
+            "userAuthenticationRequired" : bool,
+            "timeoutMillis" : uint,
+        )
+    }
+
+    Namespaces = {
+        * Namespace => [ + Entry ]
+    },
+
+    Namespace = tstr
+
+    Entry = {
+        "name" : tstr,
+        "value" : any,
+        "accessControlProfiles" : [ * uint ],
+    }
+
+- Request:  `com.android.identity_credential.UpdateCredentialSetProofOfProvisioning`
+  - eSessionId: bstr
+  - proofOfProvisioningSignature: COSE_Sign1
+    - payload in signature set are set to bytes of ProofOfProvisioning
+    - signature is made with CredentialKey
+- Response: `EndSessionMessage`
+  - eSessionId: bstr
+  - reason: "Success"
+  
+
+## Delete
+
+- Request:  `com.android.identity_credential.DeleteCredential`
+  - credentialKey: COSE_Key
+- Response: `com.android.identity_credential.DeleteCredentialProveOwnership`
+  - eSessionId: bstr
+  - challenge: bstr
+
+- Request:  `com.android.identity_credential.DeleteCredentialProveOwnershipResponse`
+  - eSessionId: bstr
+  - proofOfOwnershipSignature: COSE_Sign1
+    - payload in signature set are set to bytes of ProofOfOwnership
+    - signature is made with CredentialKey
+- Response: `com.android.identity_credential.DeleteCredentialReadyForDeletion`
+  - eSessionId: bstr
+  - challenge: bstr
+
+- Request:  `com.android.identity_credential.DeleteCredentialDeleted`
+  - eSessionId: bstr
+  - proofOfDeletionSignature: COSE_Sign1
+    - payload in signature set are set to bytes of proofOfDeletion
+    - signature is made with CredentialKey
+- Response: `EndSessionMessage`
+  - eSessionId: bstr
+  - reason: "Success"

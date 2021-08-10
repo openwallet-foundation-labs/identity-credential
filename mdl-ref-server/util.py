@@ -4,6 +4,7 @@ import cbor
 import datetime
 import hashlib
 import random
+import string
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -17,11 +18,30 @@ from cryptography.x509.oid import NameOID
 
 from asn1crypto.core import Sequence, SequenceOf, Integer
 
-from Crypto.Util.asn1 import DerOctetString
-
 # From "COSE Algorithms" registry
-COSE_LABEL_ALG = -7
-COSE_ALG_ECDSA_256 = 5
+COSE_LABEL_ALG = 1
+COSE_ALG_ECDSA_256 = -7
+
+def generate_x509_cert_issuer_auth(issuer_key_private):
+    issuer = x509.Name([
+        x509.NameAttribute(NameOID.COMMON_NAME, u"State Of Utopia"),
+    ])
+    subject = x509.Name([
+        x509.NameAttribute(NameOID.COMMON_NAME, u"State Of Utopia Issuing Authority Signing Key"),
+    ])
+    builder = (x509.CertificateBuilder()
+               .subject_name(subject)
+               .issuer_name(issuer)
+               .public_key(issuer_key_private.public_key())
+               .serial_number(42)
+               .not_valid_before(datetime.datetime.utcnow())
+               # Our certificate will be valid for 5 years
+               .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365*5)))
+    cert = builder.sign(issuer_key_private, hashes.SHA256())
+    cert_bytes = cert.public_bytes(serialization.Encoding.DER)
+    #print("cert_bytes: %s" % binascii.hexlify(cert_bytes))
+    return cert_bytes    
+
 
 def generate_x509_cert_for_credential_key(credential_key_private):
     subject = issuer = x509.Name([
@@ -53,7 +73,6 @@ def generate_x509_cert_for_auth_key(auth_key_public, credential_key_private, pop
     proof_of_binding_cbor = cbor.dumps(["ProofOfBinding",
                                         pop_sha256,
                                         ])
-    der_encoded_proof_of_binding_cbor = DerOctetString(proof_of_binding_cbor).encode()
     cert = (x509.CertificateBuilder()
             .subject_name(subject)
             .issuer_name(issuer)
@@ -64,7 +83,7 @@ def generate_x509_cert_for_auth_key(auth_key_public, credential_key_private, pop
             .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365))
             .add_extension(
                 x509.UnrecognizedExtension(x509.ObjectIdentifier("1.3.6.1.4.1.11129.2.1.26"),
-                                           der_encoded_proof_of_binding_cbor),
+                                           proof_of_binding_cbor),
                 critical=False)
             ).sign(credential_key_private, hashes.SHA256())
     cert_bytes = cert.public_bytes(serialization.Encoding.DER)
@@ -105,8 +124,11 @@ def from_cose_key(cose_key):
     public_key_numbers = ec.EllipticCurvePublicNumbers(x, y, ec.SECP256R1())
     return public_key_numbers.public_key()
 
-def cose_sign1_sign(private_key, data, data_is_detached = False):
-    unprotected_headers = {}
+def cose_sign1_sign(private_key, data, data_is_detached = False, cert_bytes = None):
+    if not cert_bytes:
+        unprotected_headers = {}
+    else:
+        unprotected_headers = {33:cert_bytes}
     protected_headers = {COSE_LABEL_ALG: COSE_ALG_ECDSA_256}
     encoded_protected_headers = cbor.dumps(protected_headers)
     external_aad = b""
@@ -196,10 +218,7 @@ def auth_key_cert_validate(cert_bytes,
         # TODO: older versions of IC (prior to v202101) do not have ProofOfBinding.
         # Support those as well
         return False
-    der_encoded_proof_of_binding = pob_extension.value.value
-    dos = DerOctetString()
-    dos.decode(der_encoded_proof_of_binding)
-    encoded_proof_of_binding = dos.payload
+    encoded_proof_of_binding = pob_extension.value.value
     proof_of_binding = cbor.loads(encoded_proof_of_binding)
     if (len(proof_of_binding) < 2 or
         proof_of_binding[0] != "ProofOfBinding" or
@@ -221,7 +240,7 @@ def cert_chain_get_public_key(cert_chain):
     cert = x509.load_der_x509_certificate(cert_chain)
     return cert.public_key()
 
-def generate_static_auth_data_for_auth_key(doc_type, name_spaces, credential_key, auth_key, issuer_key):
+def generate_static_auth_data_for_auth_key(doc_type, name_spaces, credential_key, auth_key, issuer_key, issuer_cert):
     # First, randomize the order the digest IDs are used
     num_elems = 0
     for ns_name in name_spaces.keys():
@@ -260,12 +279,13 @@ def generate_static_auth_data_for_auth_key(doc_type, name_spaces, credential_key
             digest_id_mapping_for_ns[elem["name"]] = [digest_id, elem_random]
             digest_id_index += 1
             # Calculate the digest
-            encoded_issuer_signed_item = cbor.dumps({
-                "digestID": digest_id,
+            # TODO: send to the device the issuer signed item bytes
+            encoded_issuer_signed_item = cbor.dumps(cbor.Tag(24, cbor.dumps({
                 "random": elem_random,
-                "elementIdentifier": elem["name"],
-                "elementValue": elem["value"]
-            })
+                "digestID": digest_id,
+                "elementValue": elem["value"],
+                "elementIdentifier": elem["name"]
+            })))
             digest = hashlib.sha256(encoded_issuer_signed_item).digest()
             value_digests_for_ns[digest_id] = digest
             value_digests[ns_name] = value_digests_for_ns
@@ -284,7 +304,7 @@ def generate_static_auth_data_for_auth_key(doc_type, name_spaces, credential_key
     }
 
     device_key_info = {
-        "deviceKey" : to_cose_key(credential_key),
+        "deviceKey" : to_cose_key(auth_key),
         # keyAuthorizations and keyInfo not set
     }
 
@@ -297,8 +317,8 @@ def generate_static_auth_data_for_auth_key(doc_type, name_spaces, credential_key
         "validityInfo" : validity_info,
     }
 
-    mobile_security_object_bytes = cbor.dumps(mobile_security_object)
-    signature_with_mso = cose_sign1_sign(issuer_key, mobile_security_object_bytes)
+    mobile_security_object_bytes = cbor.dumps(cbor.Tag(24, cbor.dumps(mobile_security_object)))  
+    signature_with_mso = cose_sign1_sign(issuer_key, mobile_security_object_bytes, False, issuer_cert)
 
     static_auth_data = {
         "digestIdMapping": digest_id_mapping,
@@ -355,9 +375,12 @@ def setup_test_data(database):
         })
     c.execute("INSERT INTO persons (person_id, name, portrait) VALUES (10, 'Erika Mustermann', ?);",
               [portrait])
-    c.execute("INSERT INTO documents (document_id, person_id, doc_type, access_control_profiles, name_spaces) "
-              "VALUES (11, 10, 'org.iso.18013.5.1.mDL', ?, ?);",
-              (mdl_acp_cbor, mdl_ns_cbor))
+    # get 'now(UTC)' to create a new timestamp for 'data_timestamp'
+    now = datetime.datetime.now(datetime.timezone.utc)
+    data_timestamp = datetime.datetime.timestamp(now)
+    c.execute("INSERT INTO documents (document_id, person_id, doc_type, access_control_profiles, name_spaces, data_timestamp) "
+              "VALUES (11, 10, 'org.iso.18013.5.1.mDL', ?, ?, ?);",
+              (mdl_acp_cbor, mdl_ns_cbor, data_timestamp))
     c.execute("INSERT INTO issued_documents (issued_document_id, document_id, provisioning_code) "
               "VALUES (12, 11, '1001');")
 
@@ -378,10 +401,44 @@ def setup_test_data(database):
         })
     c.execute("INSERT INTO persons (person_id, name, portrait) VALUES (20, 'John Doe', ?);",
               [portrait])
-    c.execute("INSERT INTO documents (document_id, person_id, doc_type, access_control_profiles, name_spaces) "
-              "VALUES (21, 20, 'org.iso.18013.5.1.mDL', ?, ?);",
-              (mdl_acp_cbor, mdl_ns_cbor))
+    # get 'now(UTC)' to create a new timestamp for 'data_timestamp'
+    now = datetime.datetime.now(datetime.timezone.utc)
+    data_timestamp = datetime.datetime.timestamp(now)
+    c.execute("INSERT INTO documents (document_id, person_id, doc_type, access_control_profiles, name_spaces, data_timestamp) "
+              "VALUES (21, 20, 'org.iso.18013.5.1.mDL', ?, ?, ?);",
+              (mdl_acp_cbor, mdl_ns_cbor, data_timestamp))
     c.execute("INSERT INTO issued_documents (issued_document_id, document_id, provisioning_code) "
               "VALUES (22, 21, '2001');")
 
     db.commit()
+
+# Update document test data allowing to simulate the update document behaviour
+# Only add a random value on the document family name and update data_timestamp
+def update_document_test_data(database, document_id):
+    document = database.lookup_document_by_document_id(document_id)
+
+    # Erika Mustermann
+    mdl_ns = cbor.loads(document.name_spaces)
+    family_name = mdl_ns["org.iso.18013.5.1"][0]["value"]
+    if family_name.startswith( "Doe" ):
+        mdl_ns["org.iso.18013.5.1"][0]["value"] = "Doe " + ("".join(random.choice(string.ascii_uppercase) for _ in range(3)).title())
+    elif family_name.startswith( "Mustermann" ):
+        mdl_ns["org.iso.18013.5.1"][0]["value"] = "Mustermann " + ("".join(random.choice(string.ascii_uppercase) for _ in range(3)).title())
+    else:
+        mdl_ns["org.iso.18013.5.1"][0]["value"] = "".join(random.choice(string.ascii_uppercase) for _ in range(3)).title()
+
+    mdl_ns_cbor = cbor.dumps(mdl_ns)
+    # get 'now(UTC)' to create a new timestamp for 'data_timestamp'
+    now = datetime.datetime.now(datetime.timezone.utc)
+    data_timestamp = datetime.datetime.timestamp(now)
+    
+    database.update_document_entry(document_id, mdl_ns_cbor, data_timestamp)
+
+    database.commit()
+
+# Set configured document with status 'TO_DELETE', this will be reflected in the mdl app
+# when the user tries to check for update using the UpdateCheckFlow
+def set_configured_document_to_delete(database, configured_document_id):
+    database.update_configured_documents_status(configured_document_id, 'TO_DELETE')
+
+    database.commit()

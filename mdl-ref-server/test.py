@@ -84,9 +84,9 @@ class certTest(unittest.TestCase):
 class mdlServerTest(tornado.testing.AsyncHTTPTestCase):
 
     def get_app(self):
-        s = server.Server(":memory:")
-        util.setup_test_data(s.database)
-        return s.get_app()
+        self.s = server.Server(":memory:")
+        util.setup_test_data(self.s.database)
+        return self.s.get_app()
 
     def test_happy_path(self):
         path = "/mdlServer"
@@ -225,6 +225,174 @@ class mdlServerTest(tornado.testing.AsyncHTTPTestCase):
         self.assertEqual(session_id, cbor_response["eSessionId"])
         self.assertEqual("Success", cbor_response["reason"])
 
+        # --------------------------------------------------------------------------------
+
+        # Check update. This is a new flow.
+        #
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.UpdateCredential",
+                                  "credentialKey": util.to_cose_key(credential_key.public_key()),
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "com.android.identity_credential.UpdateCredentialProveOwnership")
+        session_id = cbor_response["eSessionId"]
+        self.assertTrue(len(session_id) > 0)
+        challenge = cbor_response["challenge"]
+        self.assertTrue(len(challenge) > 0)
+
+        # Identify ourselves expected no updates
+        #
+        proof_of_ownership = cbor.dumps(["ProofOfOwnership",
+                                         doc_type,
+                                         challenge,
+                                         False])
+        poo_signature = util.cose_sign1_sign(credential_key, proof_of_ownership)
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.UpdateCredentialProveOwnershipResponse",
+                                  "eSessionId": session_id,
+                                  "proofOfOwnershipSignature": poo_signature,
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "com.android.identity_credential.UpdateCredentialResponse")
+        self.assertEqual(session_id, cbor_response["eSessionId"])
+        #self.assertEqual("no_update", cbor_response["updateCredentialResult"])
+
+        # --------------------------------------------------------------------------------
+        
+        # Change the document data in the database.
+        # document_id 11 - Erika
+        util.update_document_test_data(self.s.database, 11)
+
+        # Check update. This is a new flow.
+        #
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.UpdateCredential",
+                                  "credentialKey": util.to_cose_key(credential_key.public_key()),
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "com.android.identity_credential.UpdateCredentialProveOwnership")
+        session_id = cbor_response["eSessionId"]
+        self.assertTrue(len(session_id) > 0)
+        challenge = cbor_response["challenge"]
+        self.assertTrue(len(challenge) > 0)
+
+        # Identify ourselves expected update
+        #
+        proof_of_ownership = cbor.dumps(["ProofOfOwnership",
+                                         doc_type,
+                                         challenge,
+                                         False])
+        poo_signature = util.cose_sign1_sign(credential_key, proof_of_ownership)
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.UpdateCredentialProveOwnershipResponse",
+                                  "eSessionId": session_id,
+                                  "proofOfOwnershipSignature": poo_signature,
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "com.android.identity_credential.UpdateCredentialResponse")
+        self.assertEqual(session_id, cbor_response["eSessionId"])
+        self.assertEqual("update", cbor_response["updateCredentialResult"])
+        
+        # Get data to update (new provisioning)
+        #
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.UpdateCredentialGetDataToUpdate",
+                                  "eSessionId": session_id,
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "com.android.identity_credential.UpdateCredentialDataToProvisionMessage")
+        self.assertEqual(session_id, cbor_response["eSessionId"])
+        access_control_profiles = cbor_response["accessControlProfiles"]
+        self.assertTrue(access_control_profiles and isinstance(access_control_profiles, list))
+        name_spaces = cbor_response["nameSpaces"]
+        self.assertTrue(name_spaces and isinstance(name_spaces, dict))
+
+        # Build ProofOfProvisioning for updated data
+        #
+        proof_of_provisioning = cbor.dumps(["ProofOfProvisioning",
+                                            doc_type,
+                                            access_control_profiles,
+                                            name_spaces,
+                                            False])
+        pop_sha256 = hashlib.sha256(proof_of_provisioning).digest()
+        pop_signature = util.cose_sign1_sign(credential_key, proof_of_provisioning)
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.UpdateCredentialSetProofOfProvisioning",
+                                  "eSessionId": session_id,
+                                  "proofOfProvisioningSignature": pop_signature,
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "EndSessionMessage")
+        self.assertEqual(session_id, cbor_response["eSessionId"])
+        self.assertEqual("Success", cbor_response["reason"])
+
+        # --------------------------------------------------------------------------------
+        
+        # Delete credential. This is a new flow.
+        #
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.DeleteCredential",
+                                  "credentialKey": util.to_cose_key(credential_key.public_key()),
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "com.android.identity_credential.DeleteCredentialProveOwnership")
+        session_id = cbor_response["eSessionId"]
+        self.assertTrue(len(session_id) > 0)
+        challenge = cbor_response["challenge"]
+        self.assertTrue(len(challenge) > 0)
+
+        # Identify ourselves expected update
+        #
+        proof_of_ownership = cbor.dumps(["ProofOfOwnership",
+                                         doc_type,
+                                         challenge,
+                                         False])
+        poo_signature = util.cose_sign1_sign(credential_key, proof_of_ownership)
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.DeleteCredentialProveOwnershipResponse",
+                                  "eSessionId": session_id,
+                                  "proofOfOwnershipSignature": poo_signature,
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "com.android.identity_credential.DeleteCredentialReadyForDeletion")
+        self.assertEqual(session_id, cbor_response["eSessionId"])
+        challenge = cbor_response["challenge"]
+        self.assertTrue(len(challenge) > 0)
+        
+        # Get data to update (new provisioning)
+        #
+        proof_of_deletion = cbor.dumps(["ProofOfDeletion",
+                                         doc_type,
+                                         challenge,
+                                         False])
+        pod_signature = util.cose_sign1_sign(credential_key, proof_of_deletion)
+        response = self.fetch(method="POST", path=path,
+                              body=cbor.dumps({
+                                  "messageType": "com.android.identity_credential.DeleteCredentialDeleted",
+                                  "eSessionId": session_id,
+                                  "proofOfDeletionSignature": pod_signature,
+                              }))
+        self.assertEqual(response.code, 200)
+        cbor_response = cbor.loads(response.body)
+        self.assertEqual(cbor_response["messageType"], "EndSessionMessage")
+        self.assertEqual(session_id, cbor_response["eSessionId"])
+        self.assertEqual("Success", cbor_response["reason"])
 
 if __name__ == '__main__':
         unittest.main()

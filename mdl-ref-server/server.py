@@ -109,12 +109,19 @@ class ProvisioningSession(Session):
         if not util.cose_sign1_verify(self.credential_key, pop_signature, pop):
             raise SessionError("Error verifying proofOfProvisioningSignature")
 
+        # get 'now(UTC)' to create a new timestamp for 'last_updated_timestamp'
+        now = datetime.datetime.now(datetime.timezone.utc)
+        last_updated_timestamp = datetime.datetime.timestamp(now)
+
         # Now that it's provisioned, create a new record in the |configured_documents| table.
         self.server.database.add_configured_documents_entry(
             self.issued_document.issued_document_id,
             self.credential_key_x509_cert_chain,
             pop,
-            0) # TODO: set last_updated_timestamp
+            last_updated_timestamp,
+            self.document.data_timestamp)
+
+        self.server.database.commit()
 
         self.server.end_session(self, handler, "Success", "")
     # ----
@@ -179,6 +186,7 @@ class CertifyAuthKeysSession(Session):
 
         # TODO: take from server so it's shared with tests
         issuer_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
+        issuer_cert = util.generate_x509_cert_issuer_auth(issuer_key)
 
         auth_key_certs = data["authKeyCerts"]
         static_auth_datas = []
@@ -193,7 +201,8 @@ class CertifyAuthKeysSession(Session):
                                                                            cbor.loads(self.document.name_spaces),
                                                                            self.credential_key,
                                                                            auth_key,
-                                                                           issuer_key)
+                                                                           issuer_key,
+                                                                           issuer_cert)
             static_auth_datas.append(static_auth_data)
 
         handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.CertifyAuthKeysResponse",
@@ -202,6 +211,195 @@ class CertifyAuthKeysSession(Session):
                                   }))
     # ----
 
+class UpdateCredentialSession(Session):
+    STATE_NONE = 0
+    STATE_UPDATE_CREDENTIAL_CALLED = 1
+    STATE_UPDATE_CREDENTIAL_PROOF_OF_OWNERSHIP_CALLED = 2
+    STATE_UPDATE_CREDENTIAL_NO_UPDATE = 3
+    STATE_UPDATE_CREDENTIAL_DELETE = 4
+    STATE_UPDATE_CREDENTIAL_UPDATE = 5
+    STATE_UPDATE_CREDENTIAL_GET_UPDATE_DATA_CALLED = 6
+    STATE_UPDATE_CREDENTIAL_SET_PROOF_OF_PROVISIONING_CALLED = 7
+
+    def __init__(self, server, session_id):
+        super().__init__(server, session_id)
+        self.state = UpdateCredentialSession.STATE_NONE
+
+
+    def update_credential(self, handler, data):
+        if self.state != UpdateCredentialSession.STATE_NONE:
+            raise SessionError("called from invalid state (%d)" % (self.state))
+        self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_CALLED
+
+        cose_credential_key = data["credentialKey"]
+        if not cose_credential_key:
+            raise SessionError("No credentialKey")
+        credential_key = util.from_cose_key(cose_credential_key)
+        if not credential_key:
+            raise SessionError("Error decoding COSE_Key for CredentialKey")
+
+        self.configured_document = self.server.database.lookup_configured_document_by_credential_key(credential_key)
+        self.credential_key = util.cert_chain_get_public_key(self.configured_document.credential_key_x509_cert_chain)
+        self.issued_document = self.server.database.lookup_issued_document_by_issued_document_id(
+            self.configured_document.issued_document_id)
+        self.document = self.server.database.lookup_document_by_document_id(
+            self.issued_document.document_id)
+
+        self.prove_ownership_challenge = b"FixedChallengeUpdate"
+        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialProveOwnership",
+                                  "eSessionId" : self.session_id,
+                                  "challenge" : self.prove_ownership_challenge,
+                                  }))
+    # ----
+    def update_credential_prove_ownership_response(self, handler, data):
+        if self.state != UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_CALLED:
+            raise SessionError("called from invalid state (%d)" % (self.state))
+        self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_PROOF_OF_OWNERSHIP_CALLED
+
+        poo_signature = data["proofOfOwnershipSignature"]
+        if not poo_signature:
+            raise SessionError("No proofOfOwnershipSignature")
+        poo = util.cose_sign1_get_data(poo_signature)
+        if not util.cose_sign1_verify(self.credential_key, poo_signature, poo):
+            raise SessionError("Error verifying proofOfOwnershipSignature")
+        # TODO: check challenge
+
+        # Check if there is an update
+        if self.configured_document.status == "TO_DELETE":
+            self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_DELETE
+            handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialResponse",
+                                  "eSessionId" : self.session_id,
+                                  "updateCredentialResult" : "delete",
+                                  }))
+        elif self.document.data_timestamp == self.configured_document.data_timestamp:
+            self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_NO_UPDATE
+            handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialResponse",
+                                  "eSessionId" : self.session_id,
+                                  "updateCredentialResult" : "no_update",
+                                  }))
+        else:
+            self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_UPDATE
+            handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialResponse",
+                                  "eSessionId" : self.session_id,
+                                  "updateCredentialResult" : "update",
+                                  }))
+    # ----
+    def update_credential_get_updated_data(self, handler):
+        if self.state != UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_UPDATE:
+            raise SessionError("called from invalid state (%d)" % (self.state))
+        self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_GET_UPDATE_DATA_CALLED
+
+        access_control_profiles = cbor.loads(self.document.access_control_profiles)
+        name_spaces = cbor.loads(self.document.name_spaces)
+        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialDataToProvisionMessage",
+                                  "eSessionId" : self.session_id,
+                                  "accessControlProfiles" : access_control_profiles,
+                                  "nameSpaces" : name_spaces,
+                                  }))
+    # ----
+    def update_credential_set_proof_of_provisioning(self, handler, data):
+        if self.state != UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_GET_UPDATE_DATA_CALLED:
+            raise SessionError("called from invalid state (%d)" % (self.state))
+        self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_SET_PROOF_OF_PROVISIONING_CALLED
+
+        pop_signature = data["proofOfProvisioningSignature"]
+        if not pop_signature:
+            raise SessionError("No proofOfProvisioningSignature")
+        pop = util.cose_sign1_get_data(pop_signature)
+        if not util.cose_sign1_verify(self.credential_key, pop_signature, pop):
+            raise SessionError("Error verifying proofOfProvisioningSignature")
+
+        # get 'now(UTC)' to create a new timestamp for 'last_updated_timestamp'
+        now = datetime.datetime.now(datetime.timezone.utc)
+        last_updated_timestamp = datetime.datetime.timestamp(now)
+
+        # Now that it's provisioned, create a new record in the |configured_documents| table.
+        self.server.database.update_configured_documents_entry(
+            self.configured_document.configured_document_id,
+            pop,
+            last_updated_timestamp,
+            self.document.data_timestamp)
+
+        self.server.database.commit()
+
+        self.server.end_session(self, handler, "Success", "")
+    # ----
+
+class DeleteCredentialSession(Session):
+    STATE_NONE = 0
+    STATE_DELETE_CREDENTIAL_CALLED = 1
+    STATE_DELETE_CREDENTIAL_PROOF_OF_OWNERSHIP_CALLED = 2
+    STATE_DELETE_CREDENTIAL_DELETED_CALLED = 3
+
+    def __init__(self, server, session_id):
+        super().__init__(server, session_id)
+        self.state = DeleteCredentialSession.STATE_NONE
+
+
+    def delete_credential(self, handler, data):
+        if self.state != DeleteCredentialSession.STATE_NONE:
+            raise SessionError("called from invalid state (%d)" % (self.state))
+        self.state = DeleteCredentialSession.STATE_DELETE_CREDENTIAL_CALLED
+
+        cose_credential_key = data["credentialKey"]
+        if not cose_credential_key:
+            raise SessionError("No credentialKey")
+        credential_key = util.from_cose_key(cose_credential_key)
+        if not credential_key:
+            raise SessionError("Error decoding COSE_Key for CredentialKey")
+
+        self.configured_document = self.server.database.lookup_configured_document_by_credential_key(credential_key)
+        self.credential_key = util.cert_chain_get_public_key(self.configured_document.credential_key_x509_cert_chain)
+        self.issued_document = self.server.database.lookup_issued_document_by_issued_document_id(
+            self.configured_document.issued_document_id)
+        self.document = self.server.database.lookup_document_by_document_id(
+            self.issued_document.document_id)
+
+        self.prove_ownership_challenge = b"FixedChallengeDelete"
+        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.DeleteCredentialProveOwnership",
+                                  "eSessionId" : self.session_id,
+                                  "challenge" : self.prove_ownership_challenge,
+                                  }))
+    # ----
+    def delete_credential_prove_ownership_response(self, handler, data):
+        if self.state != DeleteCredentialSession.STATE_DELETE_CREDENTIAL_CALLED:
+            raise SessionError("called from invalid state (%d)" % (self.state))
+        self.state = DeleteCredentialSession.STATE_DELETE_CREDENTIAL_PROOF_OF_OWNERSHIP_CALLED
+
+        poo_signature = data["proofOfOwnershipSignature"]
+        if not poo_signature:
+            raise SessionError("No proofOfOwnershipSignature")
+        poo = util.cose_sign1_get_data(poo_signature)
+        if not util.cose_sign1_verify(self.credential_key, poo_signature, poo):
+            raise SessionError("Error verifying proofOfOwnershipSignature")
+        # TODO: check challenge
+
+        self.prove_delete_challenge = b"FixedProveDeleteChallenge"
+        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.DeleteCredentialReadyForDeletion",
+                                  "eSessionId" : self.session_id,
+                                  "challenge" : self.prove_delete_challenge,
+                                  }))
+    # ----
+    def delete_credential_deleted(self, handler, data):
+        if self.state != DeleteCredentialSession.STATE_DELETE_CREDENTIAL_PROOF_OF_OWNERSHIP_CALLED:
+            raise SessionError("called from invalid state (%d)" % (self.state))
+        self.state = DeleteCredentialSession.STATE_DELETE_CREDENTIAL_DELETED_CALLED
+
+        pop_deletion = data["proofOfDeletionSignature"]
+        if not pop_deletion:
+            raise SessionError("No proofOfDeletionSignature")
+        pod = util.cose_sign1_get_data(pop_deletion)
+        if not util.cose_sign1_verify(self.credential_key, pop_deletion, pod):
+            raise SessionError("Error verifying proofOfDeletionSignature")
+        
+        # Now that it's deleted, delete the record from |configured_documents| table.
+        self.server.database.delete_configured_documents_entry(
+            self.configured_document.configured_document_id)
+
+        self.server.database.commit()
+
+        self.server.end_session(self, handler, "Success", "")
+    # ----
 
 class MainHandler(tornado.web.RequestHandler):
 
@@ -277,6 +475,60 @@ class MainHandler(tornado.web.RequestHandler):
             except Exception as e:
                 self.server.end_session(session, self, "Failed", str(e))
         # ----
+        elif messageType == "com.android.identity_credential.UpdateCredential":
+            session = self.server.start_session(UpdateCredentialSession)
+            try:
+                session.update_credential(self, data)
+            except Exception as e:
+                self.server.end_session(session, self, "Failed", str(e))
+        elif messageType == "com.android.identity_credential.UpdateCredentialProveOwnershipResponse":
+            session = self.server.lookup_session(data["eSessionId"])
+            if not session:
+                raise tornado.web.HTTPError(500)
+            try:
+                session.update_credential_prove_ownership_response(self, data)
+            except Exception as e:
+                self.server.end_session(session, self, "Failed", str(e))
+        elif messageType == "com.android.identity_credential.UpdateCredentialGetDataToUpdate":
+            session = self.server.lookup_session(data["eSessionId"])
+            if not session:
+                raise tornado.web.HTTPError(500)
+            try:
+                session.update_credential_get_updated_data(self)
+            except Exception as e:
+                self.server.end_session(session, self, "Failed", str(e))
+        elif messageType == "com.android.identity_credential.UpdateCredentialSetProofOfProvisioning":
+            session = self.server.lookup_session(data["eSessionId"])
+            if not session:
+                raise tornado.web.HTTPError(500)
+            try:
+                session.update_credential_set_proof_of_provisioning(self, data)
+            except Exception as e:
+                self.server.end_session(session, self, "Failed", str(e))
+        # ----
+        elif messageType == "com.android.identity_credential.DeleteCredential":
+            session = self.server.start_session(DeleteCredentialSession)
+            try:
+                session.delete_credential(self, data)
+            except Exception as e:
+                self.server.end_session(session, self, "Failed", str(e))
+        elif messageType == "com.android.identity_credential.DeleteCredentialProveOwnershipResponse":
+            session = self.server.lookup_session(data["eSessionId"])
+            if not session:
+                raise tornado.web.HTTPError(500)
+            try:
+                session.delete_credential_prove_ownership_response(self, data)
+            except Exception as e:
+                self.server.end_session(session, self, "Failed", str(e))
+        elif messageType == "com.android.identity_credential.DeleteCredentialDeleted":
+            session = self.server.lookup_session(data["eSessionId"])
+            if not session:
+                raise tornado.web.HTTPError(500)
+            try:
+                session.delete_credential_deleted(self, data)
+            except Exception as e:
+                self.server.end_session(session, self, "Failed", str(e))
+        # ----
         else:
             logger.warning("Unknown message with type '%s'" % messageType)
             raise tornado.web.HTTPError(500)
@@ -318,6 +570,10 @@ class AdminPersonHandler(tornado.web.RequestHandler):
 
     def get(self):
         person_id = int(self.get_argument("person_id"))
+        # if has update_document_id parameters then changes document data
+        update_document_id = self.get_argument("update_document_id", None)
+        if update_document_id:
+            util.update_document_test_data(self.server.database, int(update_document_id))
         person = self.server.database.lookup_person_by_person_id(person_id)
         self.write("""
 <html>
@@ -335,6 +591,7 @@ class AdminPersonHandler(tornado.web.RequestHandler):
                    "<th>DocType</th>"
                    "<th>Access Control Profiles</th>"
                    "<th>Name Spaces</th>"
+                   "<th>Actions</th>"
                    "<th>Issued Documents</th>"
                    "</tr>")
         document_ids = self.server.database.lookup_document_ids_by_person_id(person_id)
@@ -350,6 +607,10 @@ class AdminPersonHandler(tornado.web.RequestHandler):
           self.write("<td>%s</td>" % name_spaces_text)
 
           issued_document_ids = self.server.database.lookup_issued_document_ids_by_document_id(document_id)
+          self.write("<td>")
+          self.write("<br><a href='/admin/person?person_id=%d&update_document_id=%d'>Update Data %d</a>"
+                       % (person_id, document_id, document_id))
+          self.write("</td>")
           self.write("<td>")
           for issued_document_id in issued_document_ids:
             self.write("<br><a href='/admin/issued_document?issued_document_id=%d'>Issued Document %d</a>"
@@ -370,6 +631,10 @@ class AdminIssuedDocumentHandler(tornado.web.RequestHandler):
         issued_document = self.server.database.lookup_issued_document_by_issued_document_id(issued_document_id)
         document = self.server.database.lookup_document_by_document_id(issued_document.document_id)
         person = self.server.database.lookup_person_by_person_id(document.person_id)
+        # if has update_document_id parameters then changes document data
+        delete_configured_document_id = self.get_argument("delete_configured_document_id", None)
+        if delete_configured_document_id:
+            util.set_configured_document_to_delete(self.server.database, int(delete_configured_document_id))
         self.write("""
 <html>
   <head>
@@ -394,7 +659,8 @@ class AdminIssuedDocumentHandler(tornado.web.RequestHandler):
         configured_document_ids = self.server.database.lookup_configured_document_ids_by_issued_document_id(issued_document_id)
         for configured_document_id in configured_document_ids:
           self.write("<tr>")
-          self.write("<td>%d</td>" % configured_document_id)
+          self.write("<td>%d <a href='/admin/issued_document?issued_document_id=%d&delete_configured_document_id=%d'>Delete</a></td>"
+                       % (configured_document_id, issued_document_id, configured_document_id,))
           self.write("<td>TODO</td>")
           self.write("<td>TODO</td>")
           self.write("<td>TODO</td>")

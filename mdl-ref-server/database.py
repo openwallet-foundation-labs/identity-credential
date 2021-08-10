@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS documents (
     doc_type TEXT NOT NULL,
     access_control_profiles BLOB NOT NULL,
     name_spaces BLOB NOT NULL,
+    data_timestamp REAL NOT NULL,
 
     FOREIGN KEY (person_id)
       REFERENCES persons (person_id)
@@ -59,7 +60,9 @@ CREATE TABLE IF NOT EXISTS configured_documents (
     credential_key_x509_cert_chain BLOB,
     encoded_cose_credential_key BLOB,
     proof_of_provisioning BLOB,
-    last_updated_timestamp INTEGER,
+    last_updated_timestamp REAL,
+    data_timestamp REAL NOT NULL,
+    status TEXT,
 
     FOREIGN KEY (issued_document_id)
       REFERENCES issued_documents (issued_document_id)
@@ -72,8 +75,8 @@ CREATE TABLE IF NOT EXISTS endorsed_authentication_keys (
     configured_document_id INTEGER NOT NULL,
     authentication_key_x509_cert BLOB,
     static_auth_datas BLOB,
-    generated_at_timestamp INTEGER NOT NULL,
-    expires_at_timestamp INTEGER NOT NULL,
+    generated_at_timestamp REAL NOT NULL,
+    expires_at_timestamp REAL NOT NULL,
 
     FOREIGN KEY (configured_document_id)
       REFERENCES configured_documents (configured_document_id)
@@ -144,7 +147,8 @@ SELECT document_id,
        person_id,
        doc_type,
        access_control_profiles,
-       name_spaces
+       name_spaces,
+       data_timestamp
        FROM documents
 WHERE document_id = ? LIMIT 1;
 """,
@@ -193,7 +197,10 @@ SELECT configured_document_id,
        issued_document_id,
        credential_key_x509_cert_chain,
        proof_of_provisioning,
-       last_updated_timestamp FROM configured_documents
+       last_updated_timestamp,
+       data_timestamp,
+       status
+ FROM configured_documents
 WHERE encoded_cose_credential_key = ? LIMIT 1;
 """,
                   (encoded_cose_credential_key, ))
@@ -219,7 +226,8 @@ WHERE issued_document_id = ?;
                                        issued_document_id,
                                        credential_key_x509_cert_chain,
                                        proof_of_provisioning,
-                                       last_updated_timestamp):
+                                       last_updated_timestamp,
+                                       data_timestamp):
         public_key = util.cert_chain_get_public_key(credential_key_x509_cert_chain)
         encoded_cose_credential_key = cbor.dumps(util.to_cose_key(public_key))
         c = self.db.cursor()
@@ -229,13 +237,68 @@ INSERT INTO configured_documents (configured_document_id,
                                  credential_key_x509_cert_chain,
                                  encoded_cose_credential_key,
                                  proof_of_provisioning,
-                                 last_updated_timestamp)
-VALUES (NULL, ?, ?, ?, ?, ?)
+                                 last_updated_timestamp,
+                                 data_timestamp)
+VALUES (NULL, ?, ?, ?, ?, ?, ?)
 """, (issued_document_id,
       credential_key_x509_cert_chain,
       encoded_cose_credential_key,
       proof_of_provisioning,
-      last_updated_timestamp))
+      last_updated_timestamp,
+      data_timestamp))
+
+    def update_configured_documents_entry(self,
+                                       configured_document_id,
+                                       proof_of_provisioning,
+                                       last_updated_timestamp,
+                                       data_timestamp):
+        c = self.db.cursor()
+        c.execute("""
+UPDATE configured_documents 
+SET    proof_of_provisioning = ?,
+       last_updated_timestamp = ?,
+       data_timestamp = ?
+WHERE configured_document_id = ?
+""", (proof_of_provisioning,
+      last_updated_timestamp,
+      data_timestamp,
+      configured_document_id))
+
+    def update_configured_documents_status(self,
+                                       configured_document_id,
+                                       status):
+        c = self.db.cursor()
+        c.execute("""
+UPDATE configured_documents 
+SET    status = ?
+WHERE configured_document_id = ?
+""", (status,
+      configured_document_id))
+
+    def update_document_entry(self, 
+                                document_id,
+                                name_spaces,
+                                data_timestamp):
+        c = self.db.cursor()
+        c.execute("""
+UPDATE documents 
+SET    name_spaces = ?,
+       data_timestamp = ?
+WHERE document_id = ?
+""", (name_spaces,
+      data_timestamp,
+      document_id))
+
+    def delete_configured_documents_entry(self,
+                                       configured_document_id):
+        c = self.db.cursor()
+        c.execute("""
+DELETE FROM configured_documents 
+WHERE configured_document_id = ?
+""", (configured_document_id,))
+
+    def commit(self):
+        self.db.commit()
 
 
 class Person:
@@ -251,6 +314,7 @@ class Document:
         self.doc_type = data[2]
         self.access_control_profiles = data[3]
         self.name_spaces = data[4]
+        self.data_timestamp = data[5]
 
 class IssuedDocument:
     def __init__(self, data):
@@ -265,3 +329,5 @@ class ConfiguredDocument:
         self.credential_key_x509_cert_chain = data[2]
         self.proof_of_provisioning = data[3]
         self.last_updated_timestamp = data[4]
+        self.data_timestamp = data[5]
+        self.status = data[6]
