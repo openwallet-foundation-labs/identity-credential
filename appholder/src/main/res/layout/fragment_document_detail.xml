@@ -119,6 +119,43 @@
             app:layout_constraintTop_toTopOf="@id/tv_label_date_check_update"
             tools:text="dd-MM-yyyy" />
 
+        <TextView
+            android:id="@+id/tv_label_refresh_auth_keys"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:text="@string/label_refresh_auth_keys"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_date_check_update" />
+
+        <TextView
+            android:id="@+id/tv_date_refresh_auth_keys"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            app:displayDateTime="@{document.dateRefreshAuthKeys}"
+            app:layout_constraintBottom_toBottomOf="@id/tv_label_refresh_auth_keys"
+            app:layout_constraintStart_toEndOf="@id/tv_label_refresh_auth_keys"
+            app:layout_constraintTop_toTopOf="@id/tv_label_refresh_auth_keys"
+            tools:text="dd-MM-yyyy" />
+
+        <Button
+            android:id="@+id/bt_refresh_auth_keys"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="16dp"
+            android:onClick="@{() -> fragment.onRefreshAuthKeys()}"
+            android:text="@string/bt_refresh_auth_keys"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tv_label_refresh_auth_keys" />
+
         <Button
             android:id="@+id/bt_check_updates"
             android:layout_width="wrap_content"
@@ -128,7 +165,7 @@
             android:text="@string/bt_check_for_update"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_label_date_check_update" />
+            app:layout_constraintTop_toBottomOf="@+id/bt_refresh_auth_keys" />
 
         <Button
             android:id="@+id/bt_delete"

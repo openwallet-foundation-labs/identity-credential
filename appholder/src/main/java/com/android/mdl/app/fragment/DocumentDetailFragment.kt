@@ -68,6 +68,24 @@ class DocumentDetailFragment : Fragment() {
         )
     }
 
+    fun onRefreshAuthKeys() {
+        val serverUrl = document.serverUrl
+        if (serverUrl == null) {
+            // If server URL is null
+            Toast.makeText(
+                requireContext(), "Document doesn't have server information",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        findNavController().navigate(
+            DocumentDetailFragmentDirections.actionDocumentDetailFragmentToRefreshAuthKeyFragment(
+                serverUrl,
+                document
+            )
+        )
+    }
+
     fun onDelete() {
         if (document.serverUrl == null) {
             // If server URL is null

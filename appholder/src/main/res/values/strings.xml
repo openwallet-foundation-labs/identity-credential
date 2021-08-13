@@ -30,4 +30,6 @@
     <string name="label_date_provisioned">Date Provisioned</string>
     <string name="label_date_check_update">Last Update Check</string>
     <string name="toast_press_back_twice">Tap back button again to exit</string>
+    <string name="bt_refresh_auth_keys">Refresh Auth Keys</string>
+    <string name="label_refresh_auth_keys">Last Refresh Auth Keys</string>
 </resources>

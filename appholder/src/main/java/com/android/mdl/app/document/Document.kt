@@ -19,5 +19,6 @@ data class Document(
     @ColumnInfo(name = "server_url") val serverUrl: String? = null,
     @ColumnInfo(name = "provisioning_code") val provisioningCode: String? = null,
     @ColumnInfo(name = "date_provisioned") val dateProvisioned: Calendar = Calendar.getInstance(),
-    @ColumnInfo(name = "date_check_for_update") var dateCheckForUpdate: Calendar? = null
+    @ColumnInfo(name = "date_check_for_update") var dateCheckForUpdate: Calendar? = null,
+    @ColumnInfo(name = "date_refresh_auth_keys") var dateRefreshAuthKeys: Calendar? = null
 ) : Parcelable
