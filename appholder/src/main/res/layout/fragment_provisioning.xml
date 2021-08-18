@@ -13,7 +13,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".fragment.TransferDocumentFragment">
+        tools:context=".fragment.ProvisioningFragment">
 
         <TextView
             android:id="@+id/tv_server_url"

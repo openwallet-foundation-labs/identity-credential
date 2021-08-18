@@ -9,28 +9,23 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.UnicodeString;
 
-public class RefreshAuthenticationKeyFlow extends BaseFlow {
-    private static final String TAG = "RefreshAuthenticationKeyFlow";
+public class DeleteFlow extends BaseFlow {
+    private static final String TAG = "DeleteFlow";
     private final Context context;
     private final String serverUrl;
 
-    private RefreshAuthenticationKeyFlow(@NonNull Context context, String serverUrl) {
+    private DeleteFlow(@NonNull Context context, String serverUrl) {
         this.context = context;
         this.serverUrl = serverUrl;
     }
 
     public static @NonNull
-    RefreshAuthenticationKeyFlow getInstance(@NonNull Context context, String serverUrl) {
-        return new RefreshAuthenticationKeyFlow(context, serverUrl);
+    DeleteFlow getInstance(@NonNull Context context, String serverUrl) {
+        return new DeleteFlow(context, serverUrl);
     }
 
     private Listener getListener() {
@@ -41,7 +36,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
         this.listener = listener;
     }
 
-    public void sendMessageCertifyAuthKeys(byte[] credentialKey) {
+    public void sendMessageDelete(byte[] credentialKey) {
         // Instantiate the RequestQueue.
         RequestQueue queue = Volley.newRequestQueue(context);
 
@@ -49,7 +44,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
         CborRequest cborRequest = new CborRequest(
                 Request.Method.POST, serverUrl,
                 response -> {
-                    if (!hasValidMessageType((Map) response, "com.android.identity_credential.CertifyAuthKeysProveOwnership")) {
+                    if (!hasValidMessageType((Map) response, "com.android.identity_credential.DeleteCredentialProveOwnership")) {
                         return;
                     }
                     if (!hasValidSessionId((Map) response)) {
@@ -74,7 +69,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
             public byte[] getBody() {
                 try {
                     Map map = new Map();
-                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.CertifyAuthKeys"));
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.DeleteCredential"));
                     map.put(new UnicodeString("credentialKey"), CborHelper.decode(credentialKey));
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
@@ -98,15 +93,21 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
         CborRequest cborRequest = new CborRequest(
                 Request.Method.POST, serverUrl,
                 response -> {
-                    if (!hasValidMessageType((Map) response, "com.android.identity_credential.CertifyAuthKeysReady")) {
+                    if (!hasValidMessageType((Map) response, "com.android.identity_credential.DeleteCredentialReadyForDeletion")) {
                         return;
                     }
                     if (!hasValidSessionId((Map) response)) {
                         return;
                     }
+                    byte[] challenge = ((ByteString) ((Map) response).get(new UnicodeString("challenge"))).getBytes();
+                    if (challenge == null || challenge.length == 0) {
+                        String message = "Response error challenge expected found null or empty";
+                        Log.e(TAG, message);
+                        getListener().onError(message);
+                        return;
+                    }
 
-                    getListener().onMessageCertifyAuthKeysReady();
-
+                    getListener().onMessageReadyForDeletion(challenge);
                 },
                 error -> listener.onError("" + error.getMessage())) {
 
@@ -115,7 +116,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
             public byte[] getBody() {
                 try {
                     Map map = new Map();
-                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.CertifyAuthKeysProveOwnershipResponse"));
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.DeleteCredentialProveOwnershipResponse"));
                     map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
                     map.put(new UnicodeString("proofOfOwnershipSignature"), CborHelper.decode(proofOfOwnership));
                     return CborHelper.encode(map);
@@ -132,63 +133,14 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
         queue.add(cborRequest);
     }
 
-    public void sendMessageAuthKeyNeedingCertification(byte[] authKeyNeedingCertification) {
-        // Instantiate the RequestQueue.
-        RequestQueue queue = Volley.newRequestQueue(context);
+    public void sendMessageDeleted(@NonNull byte[] proofOfDeletion) {
+        if (this.serverUrl == null) {
+            String message = "sendMessageProofOfProvisioning serverUrl is null";
+            Log.e(TAG, message);
+            getListener().onError(message);
+            return;
+        }
 
-        // Request a string response from the provided URL.
-        CborRequest cborRequest = new CborRequest(
-                Request.Method.POST, serverUrl,
-                response -> {
-                    if (!hasValidMessageType((Map) response, "com.android.identity_credential.CertifyAuthKeysResponse")) {
-                        return;
-                    }
-                    if (!hasValidSessionId((Map) response)) {
-                        return;
-                    }
-
-                    List<DataItem> staticAuthDataCborList = ((Array) ((Map) response).get(new UnicodeString("staticAuthDatas"))).getDataItems();
-                    if (staticAuthDataCborList == null || staticAuthDataCborList.isEmpty()) {
-                        String message = "Response error staticAuthDatas expected found null or empty";
-                        Log.e(TAG, message);
-                        getListener().onError(message);
-                        return;
-                    }
-
-                    List<byte[]> staticAuthDataList = new ArrayList<>();
-
-                    staticAuthDataCborList.forEach(dataItem -> {
-                        byte[] staticAuthDataBytes = ((ByteString) dataItem).getBytes();
-                        staticAuthDataList.add(staticAuthDataBytes);
-                    });
-
-                    getListener().onMessageStaticAuthData(staticAuthDataList);
-
-                },
-                error -> listener.onError("" + error.getMessage())) {
-
-            @Override
-            public byte[] getBody() {
-                try {
-                    Map map = new Map();
-                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.CertifyAuthKeysSendCerts"));
-                    map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
-                    map.put(new UnicodeString("authKeyCerts"), CborHelper.decode(authKeyNeedingCertification));
-                    return CborHelper.encode(map);
-                } catch (IllegalArgumentException e) {
-                    String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
-                    getListener().onError(message);
-                }
-                return new byte[0];
-            }
-        };
-
-        // Add the request to the RequestQueue.
-        queue.add(cborRequest);
-    }
-
-    public void sendMessageRequestEndSession() {
         // Instantiate the RequestQueue.
         RequestQueue queue = Volley.newRequestQueue(context);
 
@@ -202,23 +154,23 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
                     if (!hasValidSessionId((Map) response)) {
                         return;
                     }
-
                     String reason = ((UnicodeString) ((Map) response).get(new UnicodeString("reason"))).getString();
                     if (reason != null && reason.equals("Success")) {
                         getListener().onMessageSessionEnd(reason);
                     } else {
                         getListener().onError("EndSessionMessage expected 'Success' found '" + reason + "'");
                     }
-
                 },
-                error -> listener.onError("" + error.getMessage())) {
+                error -> getListener().onError("" + error.getMessage())) {
+
 
             @Override
             public byte[] getBody() {
                 try {
                     Map map = new Map();
-                    map.put(new UnicodeString("messageType"), new UnicodeString("RequestEndSession"));
+                    map.put(new UnicodeString("messageType"), new UnicodeString("com.android.identity_credential.DeleteCredentialDeleted"));
                     map.put(new UnicodeString("eSessionId"), new UnicodeString(sessionId));
+                    map.put(new UnicodeString("proofOfDeletionSignature"), CborHelper.decode(proofOfDeletion));
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
@@ -231,15 +183,12 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
 
         // Add the request to the RequestQueue.
         queue.add(cborRequest);
-
     }
 
     public interface Listener extends BaseFlow.Listener {
 
         void onMessageProveOwnership(@NonNull byte[] challenge);
 
-        void onMessageCertifyAuthKeysReady();
-
-        void onMessageStaticAuthData(@NonNull List<byte[]> staticAuthDataList);
+        void onMessageReadyForDeletion(@NonNull byte[] challenge);
     }
 }

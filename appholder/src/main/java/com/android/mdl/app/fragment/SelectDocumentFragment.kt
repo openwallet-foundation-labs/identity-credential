@@ -8,19 +8,43 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.android.mdl.app.R
 import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
+import org.jetbrains.anko.support.v4.toast
 
 
 class SelectDocumentFragment : Fragment() {
     companion object {
         private const val LOG_TAG = "SelectDocumentFragment"
+    }
+
+    private val timeInterval = 2000 // # milliseconds passed between two back presses
+    private var mBackPressed: Long = 0
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Ask to press twice before leave the app
+        requireActivity().onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    if (mBackPressed + timeInterval > System.currentTimeMillis()) {
+                        requireActivity().finish()
+                        return
+                    } else {
+                        toast(getString(R.string.toast_press_back_twice))
+                    }
+                    mBackPressed = System.currentTimeMillis()
+                }
+            })
     }
 
     override fun onCreateView(
@@ -36,9 +60,6 @@ class SelectDocumentFragment : Fragment() {
         // Call stop presentation to finish all presentation that could be running
         val transferManager = TransferManager.getInstance(requireContext())
         transferManager.stopPresentation()
-
-        // Always check if there are keys needing certificate and call the server when necessary
-        documentManager.refreshAuthKeysNeedingCert()
 
         adapter.submitList(documentManager.getDocuments().toMutableList())
 

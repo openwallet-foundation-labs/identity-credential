@@ -9,3 +9,4 @@
 .idea/
 fastlane/report.xml
 app/src/main/res/values/version.xml
+/mdl-ref-server/mdl-server-db.sqlite3

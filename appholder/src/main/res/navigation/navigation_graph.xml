@@ -31,6 +31,9 @@
         <action
             android:id="@+id/action_selectDocumentFragment_to_provisioningFragment"
             app:destination="@id/provisioningFragment" />
+        <action
+            android:id="@+id/action_selectDocumentFragment_to_documentDetailFragment"
+            app:destination="@id/documentDetailFragment" />
     </fragment>
     <fragment
         android:id="@+id/provisioningFragment"
@@ -45,9 +48,57 @@
             app:destination="@id/refreshAuthKeyFragment" />
     </fragment>
     <fragment
+        android:id="@+id/documentDetailFragment"
+        android:name="com.android.mdl.app.fragment.DocumentDetailFragment"
+        android:label="Document detail"
+        tools:layout="@layout/fragment_document_detail">
+        <argument
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
+        <action
+            android:id="@+id/action_documentDetailFragment_to_refreshAuthKeyFragment"
+            app:destination="@id/refreshAuthKeyFragment" />
+        <action
+            android:id="@+id/action_documentDetailFragment_to_updateCheckFragment"
+            app:destination="@id/updateCheckFragment" />
+        <action
+            android:id="@+id/action_documentDetailFragment_to_deleteDocumentFragment"
+            app:destination="@id/deleteDocumentFragment" />
+        <action
+            android:id="@+id/action_documentDetailFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/updateCheckFragment"
+        android:name="com.android.mdl.app.fragment.UpdateCheckFragment"
+        android:label="Document update check"
+        tools:layout="@layout/fragment_update_check">
+        <argument
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
+        <action
+            android:id="@+id/action_updateCheckFragment_to_deleteDocumentFragment"
+            app:destination="@id/deleteDocumentFragment" />
+        <action
+            android:id="@+id/action_updateCheckFragment_to_documentDetailFragment"
+            app:destination="@id/documentDetailFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/deleteDocumentFragment"
+        android:name="com.android.mdl.app.fragment.DeleteDocumentFragment"
+        android:label="Document deletion"
+        tools:layout="@layout/fragment_update_check">
+        <argument
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
+        <action
+            android:id="@+id/action_deleteDocumentFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
+    </fragment>
+    <fragment
         android:id="@+id/refreshAuthKeyFragment"
         android:name="com.android.mdl.app.fragment.RefreshAuthKeyFragment"
-        android:label="Select a Document to Share"
+        android:label="Document refresh auth keys certification"
         tools:layout="@layout/fragment_refresh_auth_key">
         <argument
             android:name="serverUrl"

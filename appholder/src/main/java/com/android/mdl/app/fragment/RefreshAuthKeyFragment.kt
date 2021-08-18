@@ -14,6 +14,7 @@ import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.FormatUtil
+import java.util.*
 
 
 class RefreshAuthKeyFragment : Fragment() {
@@ -60,15 +61,15 @@ class RefreshAuthKeyFragment : Fragment() {
     }
 
     private fun startRefreshAuthKeyFlow() {
-        val credential =
-            DocumentManager.getInstance(requireContext()).getCredential(document)
+        val documentManager = DocumentManager.getInstance(requireContext())
+        val credential = documentManager.getCredential(document)
 
         if (credential == null) {
             binding.tvStatusRefreshing.append("\n- Error on retrieving a document for ${document.userVisibleName}\n")
             return
         }
 
-        DocumentManager.getInstance(requireContext()).setAvailableAuthKeys(credential)
+        documentManager.setAvailableAuthKeys(credential)
         val dynAuthKeyCerts = credential.authKeysNeedingCertification
         val credentialCertificateChain = credential.credentialKeyCertificateChain
 
@@ -132,7 +133,13 @@ class RefreshAuthKeyFragment : Fragment() {
             }
         })
 
+        // Set timestamp for last refresh auth keys
+        document.dateRefreshAuthKeys = Calendar.getInstance()
+        documentManager.updateDocument(document)
+
         if (dynAuthKeyCerts.isNotEmpty()) {
+            //credential.proveOwnership(challenge)
+
             Log.d(LOG_TAG, "Device Keys needing certification ${dynAuthKeyCerts.size}")
             binding.tvStatusRefreshing.append("\n- Device Keys needing certification ${dynAuthKeyCerts.size}")
             // returns the Cose_Sign1 Obj with the MSO in the payload
@@ -144,6 +151,9 @@ class RefreshAuthKeyFragment : Fragment() {
             Log.d(LOG_TAG, "No Device Keys Needing Certification for now")
 
             binding.tvStatusRefreshing.append("\n- No Device Keys Needing Certification for now")
+
+            binding.btDone.visibility = View.VISIBLE
+            binding.loadingProgress.visibility = View.GONE
         }
     }
 }

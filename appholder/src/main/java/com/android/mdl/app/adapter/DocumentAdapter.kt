@@ -56,6 +56,11 @@ class DocumentAdapter :
                     navigateToShare(doc, it)
                 }
             }
+            binding.setClickDetailListener {
+                binding.document?.let { doc ->
+                    navigateToDetail(doc, it)
+                }
+            }
         }
 
         private fun navigateToShare(
@@ -64,6 +69,20 @@ class DocumentAdapter :
         ) {
             val direction =
                 SelectDocumentFragmentDirections.actionSelectDocumentFragmentToShareDocumentFragment(
+                    document
+                )
+
+            if (view.findNavController().currentDestination?.id == R.id.selectDocumentFragment) {
+                view.findNavController().navigate(direction)
+            }
+        }
+
+        private fun navigateToDetail(
+            document: Document,
+            view: View
+        ) {
+            val direction =
+                SelectDocumentFragmentDirections.actionSelectDocumentFragmentToDocumentDetailFragment(
                     document
                 )
 

@@ -20,6 +20,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.room.TypeConverter
 import java.io.ByteArrayOutputStream
+import java.util.*
 
 /**
  * Type converters to allow Room to reference complex data types.
@@ -37,5 +38,12 @@ class Converters {
         if (byteArray == null) return null
         return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
     }
+
+    @TypeConverter
+    fun fromTimestamp(value: Long?): Calendar? =
+        value?.let { Calendar.getInstance().apply { timeInMillis = value } }
+
+    @TypeConverter
+    fun toTimestamp(calendar: Calendar?): Long? = calendar?.timeInMillis
 }
 
