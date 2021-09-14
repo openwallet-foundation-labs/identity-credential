@@ -1,11 +1,8 @@
-
-import argparse
 import cbor
 import datetime
 import hashlib
 import logging
 import random
-
 import tornado.gen
 import tornado.web
 
@@ -17,14 +14,17 @@ logger = logging.getLogger("mdl-ref-server.server")
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import ec
 
+
 class SessionError(Exception):
-  def __init__(self, message):
-    Exception.__init__(self, message)
+    def __init__(self, message):
+        Exception.__init__(self, message)
+
 
 class Session:
     def __init__(self, server, session_id):
         self.server = server
         self.session_id = session_id
+
 
 class ProvisioningSession(Session):
     STATE_NONE = 0
@@ -48,11 +48,13 @@ class ProvisioningSession(Session):
         if not provisioning_code:
             raise SessionError("No provisioning code")
 
-        self.issued_document = self.server.database.lookup_issued_document_by_provisioning_code(provisioning_code)
+        self.issued_document = self.server.database.lookup_issued_document_by_provisioning_code(
+            provisioning_code)
         if not self.issued_document:
             raise SessionError("No issued document for provisioning code")
 
-        self.document = self.server.database.lookup_document_by_document_id(self.issued_document.document_id)
+        self.document = self.server.database.lookup_document_by_document_id(
+            self.issued_document.document_id)
         if not self.document:
             raise SessionError("No document for issued document")
 
@@ -68,11 +70,12 @@ class ProvisioningSession(Session):
         self.state = ProvisioningSession.STATE_START_PROVISIONING_CALLED
 
         self.challenge = b"FixedChallenge"
-        handler.write(cbor.dumps({"messageType": "com.android.identity_credential.ProvisioningResponse",
-                                  "eSessionId": self.session_id,
-                                  "challenge": self.challenge,
-                                  "docType": self.document.doc_type,
-                                  }))
+        handler.write(
+            cbor.dumps({"messageType": "com.android.identity_credential.ProvisioningResponse",
+                        "eSessionId": self.session_id,
+                        "challenge": self.challenge,
+                        "docType": self.document.doc_type,
+                        }))
 
     # ----
 
@@ -90,11 +93,13 @@ class ProvisioningSession(Session):
         self.credential_key = util.cert_chain_get_public_key(cert_chain)
         access_control_profiles = cbor.loads(self.document.access_control_profiles)
         name_spaces = cbor.loads(self.document.name_spaces)
-        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.DataToProvisionMessage",
-                                  "eSessionId" : self.session_id,
-                                  "accessControlProfiles" : access_control_profiles,
-                                  "nameSpaces" : name_spaces,
-                                  }))
+        handler.write(
+            cbor.dumps({"messageType": "com.android.identity_credential.DataToProvisionMessage",
+                        "eSessionId": self.session_id,
+                        "accessControlProfiles": access_control_profiles,
+                        "nameSpaces": name_spaces,
+                        }))
+
     # ----
 
     def set_proof_of_provisioning(self, handler, data):
@@ -137,7 +142,6 @@ class CertifyAuthKeysSession(Session):
         super().__init__(server, session_id)
         self.state = CertifyAuthKeysSession.STATE_NONE
 
-
     def certify_auth_keys(self, handler, data):
         if self.state != CertifyAuthKeysSession.STATE_NONE:
             raise SessionError("called from invalid state (%d)" % (self.state))
@@ -150,18 +154,22 @@ class CertifyAuthKeysSession(Session):
         if not credential_key:
             raise SessionError("Error decoding COSE_Key for CredentialKey")
 
-        self.configured_document = self.server.database.lookup_configured_document_by_credential_key(credential_key)
-        self.credential_key = util.cert_chain_get_public_key(self.configured_document.credential_key_x509_cert_chain)
+        self.configured_document = self.server.database.lookup_configured_document_by_credential_key(
+            credential_key)
+        self.credential_key = util.cert_chain_get_public_key(
+            self.configured_document.credential_key_x509_cert_chain)
         self.issued_document = self.server.database.lookup_issued_document_by_issued_document_id(
             self.configured_document.issued_document_id)
         self.document = self.server.database.lookup_document_by_document_id(
             self.issued_document.document_id)
 
         self.prove_ownership_challenge = b"FixedChallenge"
-        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.CertifyAuthKeysProveOwnership",
-                                  "eSessionId" : self.session_id,
-                                  "challenge" : self.prove_ownership_challenge,
-                                  }))
+        handler.write(cbor.dumps(
+            {"messageType": "com.android.identity_credential.CertifyAuthKeysProveOwnership",
+             "eSessionId": self.session_id,
+             "challenge": self.prove_ownership_challenge,
+             }))
+
     # ----
     def certify_auth_keys_prove_ownership_response(self, handler, data):
         if self.state != CertifyAuthKeysSession.STATE_CERTIFY_AUTH_KEYS_CALLED:
@@ -175,9 +183,11 @@ class CertifyAuthKeysSession(Session):
         if not util.cose_sign1_verify(self.credential_key, poo_signature, poo):
             raise SessionError("Error verifying proofOfOwnershipSignature")
         # TODO: check challenge
-        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.CertifyAuthKeysReady",
-                                  "eSessionId" : self.session_id,
-                                  }))
+        handler.write(
+            cbor.dumps({"messageType": "com.android.identity_credential.CertifyAuthKeysReady",
+                        "eSessionId": self.session_id,
+                        }))
+
     # ----
     def certify_auth_keys_send_certs(self, handler, data):
         if self.state != CertifyAuthKeysSession.STATE_CERTIFY_AUTH_KEYS_CHALLENGE_RESPONSE_CALLED:
@@ -198,18 +208,21 @@ class CertifyAuthKeysSession(Session):
                 raise SessionError("Auth key cert not valid")
             auth_key = util.cert_chain_get_public_key(cert)
             static_auth_data = util.generate_static_auth_data_for_auth_key(self.document.doc_type,
-                                                                           cbor.loads(self.document.name_spaces),
+                                                                           cbor.loads(
+                                                                               self.document.name_spaces),
                                                                            self.credential_key,
                                                                            auth_key,
                                                                            issuer_key,
                                                                            issuer_cert)
             static_auth_datas.append(static_auth_data)
 
-        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.CertifyAuthKeysResponse",
-                                  "eSessionId" : self.session_id,
-                                  "staticAuthDatas" : static_auth_datas,
-                                  }))
+        handler.write(
+            cbor.dumps({"messageType": "com.android.identity_credential.CertifyAuthKeysResponse",
+                        "eSessionId": self.session_id,
+                        "staticAuthDatas": static_auth_datas,
+                        }))
     # ----
+
 
 class UpdateCredentialSession(Session):
     STATE_NONE = 0
@@ -225,7 +238,6 @@ class UpdateCredentialSession(Session):
         super().__init__(server, session_id)
         self.state = UpdateCredentialSession.STATE_NONE
 
-
     def update_credential(self, handler, data):
         if self.state != UpdateCredentialSession.STATE_NONE:
             raise SessionError("called from invalid state (%d)" % (self.state))
@@ -238,18 +250,22 @@ class UpdateCredentialSession(Session):
         if not credential_key:
             raise SessionError("Error decoding COSE_Key for CredentialKey")
 
-        self.configured_document = self.server.database.lookup_configured_document_by_credential_key(credential_key)
-        self.credential_key = util.cert_chain_get_public_key(self.configured_document.credential_key_x509_cert_chain)
+        self.configured_document = self.server.database.lookup_configured_document_by_credential_key(
+            credential_key)
+        self.credential_key = util.cert_chain_get_public_key(
+            self.configured_document.credential_key_x509_cert_chain)
         self.issued_document = self.server.database.lookup_issued_document_by_issued_document_id(
             self.configured_document.issued_document_id)
         self.document = self.server.database.lookup_document_by_document_id(
             self.issued_document.document_id)
 
         self.prove_ownership_challenge = b"FixedChallengeUpdate"
-        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialProveOwnership",
-                                  "eSessionId" : self.session_id,
-                                  "challenge" : self.prove_ownership_challenge,
-                                  }))
+        handler.write(cbor.dumps(
+            {"messageType": "com.android.identity_credential.UpdateCredentialProveOwnership",
+             "eSessionId": self.session_id,
+             "challenge": self.prove_ownership_challenge,
+             }))
+
     # ----
     def update_credential_prove_ownership_response(self, handler, data):
         if self.state != UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_CALLED:
@@ -267,22 +283,26 @@ class UpdateCredentialSession(Session):
         # Check if there is an update
         if self.configured_document.status == "TO_DELETE":
             self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_DELETE
-            handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialResponse",
-                                  "eSessionId" : self.session_id,
-                                  "updateCredentialResult" : "delete",
-                                  }))
+            handler.write(cbor.dumps(
+                {"messageType": "com.android.identity_credential.UpdateCredentialResponse",
+                 "eSessionId": self.session_id,
+                 "updateCredentialResult": "delete",
+                 }))
         elif self.document.data_timestamp == self.configured_document.data_timestamp:
             self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_NO_UPDATE
-            handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialResponse",
-                                  "eSessionId" : self.session_id,
-                                  "updateCredentialResult" : "no_update",
-                                  }))
+            handler.write(cbor.dumps(
+                {"messageType": "com.android.identity_credential.UpdateCredentialResponse",
+                 "eSessionId": self.session_id,
+                 "updateCredentialResult": "no_update",
+                 }))
         else:
             self.state = UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_UPDATE
-            handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialResponse",
-                                  "eSessionId" : self.session_id,
-                                  "updateCredentialResult" : "update",
-                                  }))
+            handler.write(cbor.dumps(
+                {"messageType": "com.android.identity_credential.UpdateCredentialResponse",
+                 "eSessionId": self.session_id,
+                 "updateCredentialResult": "update",
+                 }))
+
     # ----
     def update_credential_get_updated_data(self, handler):
         if self.state != UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_UPDATE:
@@ -291,11 +311,13 @@ class UpdateCredentialSession(Session):
 
         access_control_profiles = cbor.loads(self.document.access_control_profiles)
         name_spaces = cbor.loads(self.document.name_spaces)
-        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.UpdateCredentialDataToProvisionMessage",
-                                  "eSessionId" : self.session_id,
-                                  "accessControlProfiles" : access_control_profiles,
-                                  "nameSpaces" : name_spaces,
-                                  }))
+        handler.write(cbor.dumps({
+            "messageType": "com.android.identity_credential.UpdateCredentialDataToProvisionMessage",
+            "eSessionId": self.session_id,
+            "accessControlProfiles": access_control_profiles,
+            "nameSpaces": name_spaces,
+        }))
+
     # ----
     def update_credential_set_proof_of_provisioning(self, handler, data):
         if self.state != UpdateCredentialSession.STATE_UPDATE_CREDENTIAL_GET_UPDATE_DATA_CALLED:
@@ -325,6 +347,7 @@ class UpdateCredentialSession(Session):
         self.server.end_session(self, handler, "Success", "")
     # ----
 
+
 class DeleteCredentialSession(Session):
     STATE_NONE = 0
     STATE_DELETE_CREDENTIAL_CALLED = 1
@@ -334,7 +357,6 @@ class DeleteCredentialSession(Session):
     def __init__(self, server, session_id):
         super().__init__(server, session_id)
         self.state = DeleteCredentialSession.STATE_NONE
-
 
     def delete_credential(self, handler, data):
         if self.state != DeleteCredentialSession.STATE_NONE:
@@ -348,18 +370,22 @@ class DeleteCredentialSession(Session):
         if not credential_key:
             raise SessionError("Error decoding COSE_Key for CredentialKey")
 
-        self.configured_document = self.server.database.lookup_configured_document_by_credential_key(credential_key)
-        self.credential_key = util.cert_chain_get_public_key(self.configured_document.credential_key_x509_cert_chain)
+        self.configured_document = self.server.database.lookup_configured_document_by_credential_key(
+            credential_key)
+        self.credential_key = util.cert_chain_get_public_key(
+            self.configured_document.credential_key_x509_cert_chain)
         self.issued_document = self.server.database.lookup_issued_document_by_issued_document_id(
             self.configured_document.issued_document_id)
         self.document = self.server.database.lookup_document_by_document_id(
             self.issued_document.document_id)
 
         self.prove_ownership_challenge = b"FixedChallengeDelete"
-        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.DeleteCredentialProveOwnership",
-                                  "eSessionId" : self.session_id,
-                                  "challenge" : self.prove_ownership_challenge,
-                                  }))
+        handler.write(cbor.dumps(
+            {"messageType": "com.android.identity_credential.DeleteCredentialProveOwnership",
+             "eSessionId": self.session_id,
+             "challenge": self.prove_ownership_challenge,
+             }))
+
     # ----
     def delete_credential_prove_ownership_response(self, handler, data):
         if self.state != DeleteCredentialSession.STATE_DELETE_CREDENTIAL_CALLED:
@@ -375,10 +401,12 @@ class DeleteCredentialSession(Session):
         # TODO: check challenge
 
         self.prove_delete_challenge = b"FixedProveDeleteChallenge"
-        handler.write(cbor.dumps({"messageType" : "com.android.identity_credential.DeleteCredentialReadyForDeletion",
-                                  "eSessionId" : self.session_id,
-                                  "challenge" : self.prove_delete_challenge,
-                                  }))
+        handler.write(cbor.dumps(
+            {"messageType": "com.android.identity_credential.DeleteCredentialReadyForDeletion",
+             "eSessionId": self.session_id,
+             "challenge": self.prove_delete_challenge,
+             }))
+
     # ----
     def delete_credential_deleted(self, handler, data):
         if self.state != DeleteCredentialSession.STATE_DELETE_CREDENTIAL_PROOF_OF_OWNERSHIP_CALLED:
@@ -391,7 +419,7 @@ class DeleteCredentialSession(Session):
         pod = util.cose_sign1_get_data(pop_deletion)
         if not util.cose_sign1_verify(self.credential_key, pop_deletion, pod):
             raise SessionError("Error verifying proofOfDeletionSignature")
-        
+
         # Now that it's deleted, delete the record from |configured_documents| table.
         self.server.database.delete_configured_documents_entry(
             self.configured_document.configured_document_id)
@@ -400,6 +428,7 @@ class DeleteCredentialSession(Session):
 
         self.server.end_session(self, handler, "Success", "")
     # ----
+
 
 class MainHandler(tornado.web.RequestHandler):
 
@@ -533,6 +562,7 @@ class MainHandler(tornado.web.RequestHandler):
             logger.warning("Unknown message with type '%s'" % messageType)
             raise tornado.web.HTTPError(500)
 
+
 class AdminHandler(tornado.web.RequestHandler):
 
     def initialize(self, server_object):
@@ -555,13 +585,16 @@ class AdminHandler(tornado.web.RequestHandler):
                    "</tr>")
         persons = self.server.database.lookup_persons()
         for person in persons:
-          self.write("<tr>");
-          self.write("<td>%s</td>" % person.person_id)
-          self.write("<td><a href='/admin/person?person_id=%d'>%s</a></td>" % (person.person_id, person.name))
-          self.write("<td><img src='/admin/portrait?person_id=%d' height=100></td>" % person.person_id)
-          self.write("</tr>");
+            self.write("<tr>");
+            self.write("<td>%s</td>" % person.person_id)
+            self.write("<td><a href='/admin/person?person_id=%d'>%s</a></td>" % (
+                person.person_id, person.name))
+            self.write(
+                "<td><img src='/admin/portrait?person_id=%d' height=100></td>" % person.person_id)
+            self.write("</tr>");
         self.write("</table>")
         self.write("</html>")
+
 
 class AdminPersonHandler(tornado.web.RequestHandler):
 
@@ -596,30 +629,34 @@ class AdminPersonHandler(tornado.web.RequestHandler):
                    "</tr>")
         document_ids = self.server.database.lookup_document_ids_by_person_id(person_id)
         for document_id in document_ids:
-          document = self.server.database.lookup_document_by_document_id(document_id)
-          self.write("<tr>")
-          self.write("<td>%d</td>" % document_id)
-          self.write("<td>%s</td>" % document.doc_type)
+            document = self.server.database.lookup_document_by_document_id(document_id)
+            self.write("<tr>")
+            self.write("<td>%d</td>" % document_id)
+            self.write("<td>%s</td>" % document.doc_type)
 
-          name_spaces_text = util.render_name_spaces_in_html(document.name_spaces)
-          acps_text = str(cbor.loads(document.access_control_profiles))
-          self.write("<td>%s</td>" % acps_text)
-          self.write("<td>%s</td>" % name_spaces_text)
+            name_spaces_text = util.render_name_spaces_in_html(document.name_spaces)
+            acps_text = str(cbor.loads(document.access_control_profiles))
+            self.write("<td>%s</td>" % acps_text)
+            self.write("<td>%s</td>" % name_spaces_text)
 
-          issued_document_ids = self.server.database.lookup_issued_document_ids_by_document_id(document_id)
-          self.write("<td>")
-          self.write("<br><a href='/admin/person?person_id=%d&update_document_id=%d'>Update Data %d</a>"
-                       % (person_id, document_id, document_id))
-          self.write("</td>")
-          self.write("<td>")
-          for issued_document_id in issued_document_ids:
-            self.write("<br><a href='/admin/issued_document?issued_document_id=%d'>Issued Document %d</a>"
-                       % (issued_document_id, issued_document_id))
-          self.write("</td>")
+            issued_document_ids = self.server.database.lookup_issued_document_ids_by_document_id(
+                document_id)
+            self.write("<td>")
+            self.write(
+                "<br><a href='/admin/person?person_id=%d&update_document_id=%d'>Update Data %d</a>"
+                % (person_id, document_id, document_id))
+            self.write("</td>")
+            self.write("<td>")
+            for issued_document_id in issued_document_ids:
+                self.write(
+                    "<br><a href='/admin/issued_document?issued_document_id=%d'>Issued Document %d</a>"
+                    % (issued_document_id, issued_document_id))
+            self.write("</td>")
 
-          self.write("</tr>")
+            self.write("</tr>")
         self.write("</table>")
         self.write("</html>")
+
 
 class AdminIssuedDocumentHandler(tornado.web.RequestHandler):
 
@@ -628,13 +665,15 @@ class AdminIssuedDocumentHandler(tornado.web.RequestHandler):
 
     def get(self):
         issued_document_id = int(self.get_argument("issued_document_id"))
-        issued_document = self.server.database.lookup_issued_document_by_issued_document_id(issued_document_id)
+        issued_document = self.server.database.lookup_issued_document_by_issued_document_id(
+            issued_document_id)
         document = self.server.database.lookup_document_by_document_id(issued_document.document_id)
         person = self.server.database.lookup_person_by_person_id(document.person_id)
         # if has update_document_id parameters then changes document data
         delete_configured_document_id = self.get_argument("delete_configured_document_id", None)
         if delete_configured_document_id:
-            util.set_configured_document_to_delete(self.server.database, int(delete_configured_document_id))
+            util.set_configured_document_to_delete(self.server.database,
+                                                   int(delete_configured_document_id))
         self.write("""
 <html>
   <head>
@@ -656,18 +695,21 @@ class AdminIssuedDocumentHandler(tornado.web.RequestHandler):
                    "<th>Last Updated</th>"
                    "<th>Endorsed Auth Keys</th>"
                    "</tr>")
-        configured_document_ids = self.server.database.lookup_configured_document_ids_by_issued_document_id(issued_document_id)
+        configured_document_ids = self.server.database.lookup_configured_document_ids_by_issued_document_id(
+            issued_document_id)
         for configured_document_id in configured_document_ids:
-          self.write("<tr>")
-          self.write("<td>%d <a href='/admin/issued_document?issued_document_id=%d&delete_configured_document_id=%d'>Delete</a></td>"
-                       % (configured_document_id, issued_document_id, configured_document_id,))
-          self.write("<td>TODO</td>")
-          self.write("<td>TODO</td>")
-          self.write("<td>TODO</td>")
-          self.write("<td>TODO</td>")
-          self.write("</tr>")
+            self.write("<tr>")
+            self.write(
+                "<td>%d <a href='/admin/issued_document?issued_document_id=%d&delete_configured_document_id=%d'>Delete</a></td>"
+                % (configured_document_id, issued_document_id, configured_document_id,))
+            self.write("<td>TODO</td>")
+            self.write("<td>TODO</td>")
+            self.write("<td>TODO</td>")
+            self.write("<td>TODO</td>")
+            self.write("</tr>")
         self.write("</table>")
         self.write("</html>")
+
 
 class AdminPortraitHandler(tornado.web.RequestHandler):
 
@@ -680,6 +722,7 @@ class AdminPortraitHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "image/jpeg")
         self.write(person.portrait)
 
+
 class Server:
     def __init__(self, database_path):
         # map from session_id (str) to Session object
@@ -688,12 +731,12 @@ class Server:
         self.database = database.SystemOfRecord(database_path)
 
         self.tornado_app = tornado.web.Application([
-            #(r"/", MainHandler, {"server_object" : self}),
-            (r"/mdlServer", MainHandler, {"server_object" : self}),
-            (r"/admin", AdminHandler, {"server_object" : self}),
-            (r"/admin/person", AdminPersonHandler, {"server_object" : self}),
-            (r"/admin/issued_document", AdminIssuedDocumentHandler, {"server_object" : self}),
-            (r"/admin/portrait", AdminPortraitHandler, {"server_object" : self}),
+            # (r"/", MainHandler, {"server_object" : self}),
+            (r"/mdlServer", MainHandler, {"server_object": self}),
+            (r"/admin", AdminHandler, {"server_object": self}),
+            (r"/admin/person", AdminPersonHandler, {"server_object": self}),
+            (r"/admin/issued_document", AdminIssuedDocumentHandler, {"server_object": self}),
+            (r"/admin/portrait", AdminPortraitHandler, {"server_object": self}),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static_files"}),
         ], debug=True)
 

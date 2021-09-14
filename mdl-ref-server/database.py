@@ -1,4 +1,3 @@
-
 import cbor
 import logging
 import sqlite3
@@ -7,9 +6,11 @@ import util
 
 logger = logging.getLogger("mdl-ref-server.database")
 
+
 class DatabaseError(Exception):
-  def __init__(self, message):
-    Exception.__init__(self, message)
+    def __init__(self, message):
+        Exception.__init__(self, message)
+
 
 class SystemOfRecord:
     def __init__(self, database_file_path):
@@ -96,7 +97,7 @@ SELECT person_id,
        FROM persons""")
         persons = []
         for person_data in c.fetchall():
-          persons.append(Person(person_data))
+            persons.append(Person(person_data))
         return persons
 
     def lookup_document_ids_by_person_id(self, person_id):
@@ -106,10 +107,10 @@ SELECT document_id
        FROM documents
 WHERE person_id = ?;
 """,
-                  (person_id, ))
+                  (person_id,))
         document_ids = []
         for data in c.fetchall():
-          document_ids.append(data[0])
+            document_ids.append(data[0])
         return document_ids
 
     def lookup_issued_document_ids_by_document_id(self, document_id):
@@ -119,10 +120,10 @@ SELECT issued_document_id
        FROM issued_documents
 WHERE document_id = ?;
 """,
-                  (document_id, ))
+                  (document_id,))
         issued_document_ids = []
         for data in c.fetchall():
-          issued_document_ids.append(data[0])
+            issued_document_ids.append(data[0])
         return issued_document_ids
 
     def lookup_person_by_person_id(self, person_id):
@@ -134,7 +135,7 @@ SELECT person_id,
        FROM persons
 WHERE person_id = ? LIMIT 1;
 """,
-                  (person_id, ))
+                  (person_id,))
         data = c.fetchone()
         if not data:
             raise DatabaseError("No person for given person_id")
@@ -152,7 +153,7 @@ SELECT document_id,
        FROM documents
 WHERE document_id = ? LIMIT 1;
 """,
-                  (document_id, ))
+                  (document_id,))
         data = c.fetchone()
         if not data:
             raise DatabaseError("No document for given document_id")
@@ -167,12 +168,11 @@ SELECT issued_document_id,
        FROM issued_documents
 WHERE provisioning_code = ? LIMIT 1;
 """,
-                  (provisioning_code, ))
+                  (provisioning_code,))
         data = c.fetchone()
         if not data:
             raise DatabaseError("No issued_document for given provisioning_code")
         return IssuedDocument(data)
-
 
     def lookup_issued_document_by_issued_document_id(self, issued_document_id):
         c = self.db.cursor()
@@ -183,7 +183,7 @@ SELECT issued_document_id,
        FROM issued_documents
 WHERE issued_document_id = ? LIMIT 1;
 """,
-                  (issued_document_id, ))
+                  (issued_document_id,))
         data = c.fetchone()
         if not data:
             raise DatabaseError("No issued_document for given issued_document_id")
@@ -203,7 +203,7 @@ SELECT configured_document_id,
  FROM configured_documents
 WHERE encoded_cose_credential_key = ? LIMIT 1;
 """,
-                  (encoded_cose_credential_key, ))
+                  (encoded_cose_credential_key,))
         data = c.fetchone()
         if not data:
             raise DatabaseError("No configured_document for given credential_key")
@@ -216,10 +216,10 @@ SELECT configured_document_id
        FROM configured_documents
 WHERE issued_document_id = ?;
 """,
-                  (issued_document_id, ))
+                  (issued_document_id,))
         configured_document_ids = []
         for data in c.fetchall():
-          configured_document_ids.append(data[0])
+            configured_document_ids.append(data[0])
         return configured_document_ids
 
     def add_configured_documents_entry(self,
@@ -248,10 +248,10 @@ VALUES (NULL, ?, ?, ?, ?, ?, ?)
       data_timestamp))
 
     def update_configured_documents_entry(self,
-                                       configured_document_id,
-                                       proof_of_provisioning,
-                                       last_updated_timestamp,
-                                       data_timestamp):
+                                          configured_document_id,
+                                          proof_of_provisioning,
+                                          last_updated_timestamp,
+                                          data_timestamp):
         c = self.db.cursor()
         c.execute("""
 UPDATE configured_documents 
@@ -265,8 +265,8 @@ WHERE configured_document_id = ?
       configured_document_id))
 
     def update_configured_documents_status(self,
-                                       configured_document_id,
-                                       status):
+                                           configured_document_id,
+                                           status):
         c = self.db.cursor()
         c.execute("""
 UPDATE configured_documents 
@@ -275,10 +275,10 @@ WHERE configured_document_id = ?
 """, (status,
       configured_document_id))
 
-    def update_document_entry(self, 
-                                document_id,
-                                name_spaces,
-                                data_timestamp):
+    def update_document_entry(self,
+                              document_id,
+                              name_spaces,
+                              data_timestamp):
         c = self.db.cursor()
         c.execute("""
 UPDATE documents 
@@ -290,7 +290,7 @@ WHERE document_id = ?
       document_id))
 
     def delete_configured_documents_entry(self,
-                                       configured_document_id):
+                                          configured_document_id):
         c = self.db.cursor()
         c.execute("""
 DELETE FROM configured_documents 
@@ -307,6 +307,7 @@ class Person:
         self.name = data[1]
         self.portrait = data[2]
 
+
 class Document:
     def __init__(self, data):
         self.document_id = data[0]
@@ -316,11 +317,13 @@ class Document:
         self.name_spaces = data[4]
         self.data_timestamp = data[5]
 
+
 class IssuedDocument:
     def __init__(self, data):
         self.issued_document_id = data[0]
         self.document_id = data[1]
         self.provisioning_code = data[2]
+
 
 class ConfiguredDocument:
     def __init__(self, data):
