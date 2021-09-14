@@ -6,11 +6,11 @@ apply plugin: 'androidx.navigation.safeargs'
 apply plugin: 'kotlin-kapt'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 31
     defaultConfig {
         applicationId "com.ul.ims.gmdl"
         minSdkVersion 24
-        targetSdkVersion 29
+        targetSdkVersion 31
         versionCode 9
         versionName "8"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

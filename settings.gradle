@@ -1,2 +1,2 @@
-include ':app', ':appholder', ':appreader', ':offlinetransfer', ':bleofflinetransfer', ':cbordata', ':security', ':nfcengagement', ':wifiofflinetransfer', ':nfcofflinetransfer', ':issuerauthority'
+include ':app', ':appholder', ':appreader', ':appverifier', ':offlinetransfer', ':bleofflinetransfer', ':cbordata', ':security', ':nfcengagement', ':wifiofflinetransfer', ':nfcofflinetransfer', ':issuerauthority'
 rootProject.name = "mDL Ref apps"

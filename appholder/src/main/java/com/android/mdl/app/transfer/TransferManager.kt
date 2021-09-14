@@ -14,6 +14,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.security.identity.*
 import com.android.mdl.app.document.Document
+import com.android.mdl.app.util.FormatUtil
 import com.android.mdl.app.util.TransferStatus
 import java.util.concurrent.Executor
 
@@ -160,6 +161,7 @@ class TransferManager private constructor(private val context: Context) {
                     it.deviceResponseBegin()
 
                     val staticAuthData = issuerSignedResult.staticAuthenticationData
+                    Log.d(LOG_TAG, "StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
                     val (first, second) = Helpers.decodeStaticAuthData(staticAuthData)
                     it.deviceResponseAddDocument(
                         docRequest,
@@ -168,6 +170,8 @@ class TransferManager private constructor(private val context: Context) {
                         first,
                         second
                     )
+                } catch (e: IllegalArgumentException) {
+                    e.printStackTrace()
                 } catch (e: NoAuthenticationKeyAvailableException) {
                     e.printStackTrace()
                 } catch (e: InvalidReaderSignatureException) {

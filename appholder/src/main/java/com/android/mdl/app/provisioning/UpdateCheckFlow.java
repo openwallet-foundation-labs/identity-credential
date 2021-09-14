@@ -181,7 +181,7 @@ public class UpdateCheckFlow extends BaseFlow {
                     accessControlProfiles.forEach(profileDataItem -> {
                         Map profileMap = (Map) profileDataItem;
                         int id = ((UnsignedInteger) profileMap.get(new UnicodeString("id"))).getValue().intValue();
-                        boolean userAuthenticationRequired = ((SimpleValue) profileMap.get(new UnicodeString("userAuthenticationRequired"))) == SimpleValue.TRUE;
+                        boolean userAuthenticationRequired = profileMap.get(new UnicodeString("userAuthenticationRequired")) == SimpleValue.TRUE;
                         int timeoutMillis = ((UnsignedInteger) profileMap.get(new UnicodeString("timeoutMillis"))).getValue().intValue();
 
                         AccessControlProfile accessControlProfile = new AccessControlProfile
@@ -233,14 +233,14 @@ public class UpdateCheckFlow extends BaseFlow {
                                             nameSpace,
                                             name,
                                             accessControlProfileIds,
-                                            ((SimpleValue) value) == SimpleValue.TRUE
+                                            value == SimpleValue.TRUE
                                     );
                                     break;
                             }
                         });
                     });
 
-                    String visibleName = (names.get("given_name") + "0").substring(0, 1) + ". " + names.get("family_name");
+                    String visibleName = (names.get("given_name") + "0").charAt(0) + ". " + names.get("family_name");
 
                     getListener().onMessageDataToUpdate(visibleName, personalizationDataBuilder.build());
 
