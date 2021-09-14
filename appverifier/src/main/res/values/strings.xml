@@ -1,0 +1,45 @@
+<resources>
+    <string name="app_name">App Verifier</string>
+    <!-- Buttons -->
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="cancel">Cancel</string>
+    <string name="custom">Custom</string>
+    <string name="select">Select</string>
+    <string name="transfer">Transfer</string>
+    <string name="ok">OK</string>
+    <string name="family_name">Family Name</string>
+    <string name="given_name">Given Names</string>
+    <string name="birth_date">Date of birth</string>
+    <string name="issue_date">Date of issue</string>
+    <string name="expiry_date">Date of expiry</string>
+    <string name="issuing_country">Issuing country</string>
+    <string name="issuing_authority">Issuing authority</string>
+    <string name="document_number">Licence number</string>
+    <string name="portrait">Portrait of mDL holder</string>
+    <string name="driving_privileges">Categories of vehicles</string>
+    <string name="un_distinguishing_sign">UN distinguishing sign</string>
+    <string name="administrative_number">Administrative number</string>
+    <string name="sex">Sex</string>
+    <string name="height">Height (cm)</string>
+    <string name="weight">Weight (kg)</string>
+    <string name="eye_colour">Eye colour</string>
+    <string name="hair_colour">Hair colour</string>
+    <string name="birth_place">Place of birth</string>
+    <string name="resident_address">Permanent place of residence</string>
+    <string name="portrait_capture_date">Portrait image timestamp</string>
+    <string name="age_in_years">How old are you (in years)?</string>
+    <string name="age_birth_year">In what year were you born?</string>
+    <string name="age_over_18">Age over 18?</string>
+    <string name="age_over_21">Age over 21?</string>
+    <string name="issuing_jurisdiction">Issuing jurisdiction</string>
+    <string name="nationality">Nationality</string>
+    <string name="resident_city">Resident city</string>
+    <string name="resident_state">Resident state</string>
+    <string name="resident_postal_code">Resident postal code</string>
+    <string name="resident_country">Resident country</string>
+    <string name="family_name_national_character">Family name in national characters</string>
+    <string name="given_name_national_character">Given name in national characters</string>
+    <string name="signature_usual_mark">Signature / usual mark</string>
+
+</resources>
