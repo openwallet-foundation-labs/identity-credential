@@ -132,6 +132,12 @@ object FormatUtil {
         return ret
     }
 
+    fun cborPrettyPrint(dataItem: DataItem): String {
+        val sb = java.lang.StringBuilder()
+        cborPrettyPrintDataItem(sb, 0, dataItem)
+        return sb.toString()
+    }
+
     fun cborPrettyPrint(encodedBytes: ByteArray): String {
         val sb = java.lang.StringBuilder()
         val bais = ByteArrayInputStream(encodedBytes)
@@ -178,13 +184,11 @@ object FormatUtil {
                 // Major type 2: a byte string.
                 val value = (dataItem as ByteString).bytes
                 sb.append("[")
-                var count = 0
-                for (b in value) {
+                for ((count, b) in value.withIndex()) {
                     if (count > 0) {
                         sb.append(", ")
                     }
                     sb.append(String.format("0x%02x", b))
-                    count++
                 }
                 sb.append("]")
             }
@@ -203,29 +207,22 @@ object FormatUtil {
                 } else if (cborAreAllDataItemsNonCompound(items)) {
                     // The case where everything fits on one line.
                     sb.append("[")
-                    var count = 0
-                    for (item in items) {
+                    for ((count, item) in items.withIndex()) {
                         cborPrettyPrintDataItem(sb, indent, item)
-                        if (++count < items.size) {
+                        if (count + 1 < items.size) {
                             sb.append(", ")
                         }
                     }
                     sb.append("]")
                 } else {
                     sb.append("[\n$indentString")
-                    var count = 0
-                    for (item in items) {
+                    for ((count, item) in items.withIndex()) {
                         sb.append("  ")
                         cborPrettyPrintDataItem(sb, indent + 2, item)
-                        if (++count < items.size) {
+                        if (count + 1 < items.size) {
                             sb.append(",")
                         }
-                        sb.append(
-                            """
-                            
-                            $indentString
-                            """.trimIndent()
-                        )
+                        sb.append("\n $indentString")
                     }
                     sb.append("]")
                 }
@@ -237,22 +234,16 @@ object FormatUtil {
                     sb.append("{}")
                 } else {
                     sb.append("{\n$indentString")
-                    var count = 0
-                    for (key in keys) {
+                    for ((count, key) in keys.withIndex()) {
                         sb.append("  ")
                         val value = dataItem[key]
                         cborPrettyPrintDataItem(sb, indent + 2, key)
                         sb.append(" : ")
                         cborPrettyPrintDataItem(sb, indent + 2, value)
-                        if (++count < keys.size) {
+                        if (count + 1 < keys.size) {
                             sb.append(",")
                         }
-                        sb.append(
-                            """
-                            
-                            $indentString
-                            """.trimIndent()
-                        )
+                        sb.append("\n $indentString")
                     }
                     sb.append("}")
                 }

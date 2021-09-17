@@ -30,13 +30,15 @@ class TransferManager private constructor(private val context: Context) {
     }
 
 
-    private var deviceRetrievalMethod: ByteArray? = null
+    var deviceRetrievalMethod: ByteArray? = null
+        private set
     private var isoDep: IsoDep? = null
     private var hasStarted = false
     var response: IdentityCredentialVerification.DeviceResponse? = null
         private set
     private var verification: IdentityCredentialVerification? = null
-    private var availableTransferMethods: Collection<ByteArray>? = null
+    var availableTransferMethods: Collection<ByteArray>? = null
+        private set
 
     private var transferStatusLd = MutableLiveData<TransferStatus>()
 
@@ -49,7 +51,9 @@ class TransferManager private constructor(private val context: Context) {
 
     fun setAvailableTransferMethods(availableTransferMethods: Collection<ByteArray>) {
         this.availableTransferMethods = availableTransferMethods
-        if (availableTransferMethods.size == 1) {
+        // Select the first method as default, let the user select other transfer method
+        // if there are more than one
+        if (availableTransferMethods.isNotEmpty()) {
             this.deviceRetrievalMethod = availableTransferMethods.first()
         }
     }
@@ -121,5 +125,9 @@ class TransferManager private constructor(private val context: Context) {
             throw IllegalStateException("It is necessary to start a new engagement.")
 
         verification?.sendRequest(deviceRequest)
+    }
+
+    fun setDeviceRetrievalMethod(deviceRetrievalMethod: ByteArray) {
+        this.deviceRetrievalMethod = deviceRetrievalMethod
     }
 }

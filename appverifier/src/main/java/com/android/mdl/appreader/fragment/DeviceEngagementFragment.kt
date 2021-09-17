@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import co.nstant.`in`.cbor.model.SimpleValue
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentDeviceEngagementBinding
@@ -33,6 +34,8 @@ class DeviceEngagementFragment : Fragment() {
         private const val LOG_TAG = "DeviceEngagementFragment"
     }
 
+    private val args: DeviceEngagementFragmentArgs by navArgs()
+
     private val appPermissions = arrayOf(
         Manifest.permission.CAMERA,
         Manifest.permission.ACCESS_FINE_LOCATION
@@ -44,7 +47,7 @@ class DeviceEngagementFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
-    var mCodeScanner: CodeScanner? = null
+    private var mCodeScanner: CodeScanner? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -154,9 +157,17 @@ class DeviceEngagementFragment : Fragment() {
         transferManager.setAvailableTransferMethods(availableTransferMethods)
 
         if (availableTransferMethods.size == 1) {
-            findNavController().navigate(R.id.action_ScanDeviceEngagement_to_Transfer)
+            findNavController().navigate(
+                DeviceEngagementFragmentDirections.actionScanDeviceEngagementToTransfer(
+                    args.requestDocument
+                )
+            )
         } else {
-            findNavController().navigate(R.id.action_ScanDeviceEngagement_to_SelectTransport)
+            findNavController().navigate(
+                DeviceEngagementFragmentDirections.actionScanDeviceEngagementToSelectTransport(
+                    args.requestDocument
+                )
+            )
         }
     }
 

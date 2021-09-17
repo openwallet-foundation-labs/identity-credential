@@ -41,5 +41,7 @@
     <string name="family_name_national_character">Family name in national characters</string>
     <string name="given_name_national_character">Given name in national characters</string>
     <string name="signature_usual_mark">Signature / usual mark</string>
+    <string name="select_the_transfer_method">Select the transfer method</string>
+    <string name="request_items">Request items</string>
 
 </resources>

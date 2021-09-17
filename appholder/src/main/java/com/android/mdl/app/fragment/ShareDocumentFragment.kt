@@ -11,8 +11,6 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.databinding.FragmentShareDocumentBinding
 import com.android.mdl.app.document.Document
-import com.android.mdl.app.fragment.ShareDocumentFragmentDirections.Companion.actionShareDocumentFragmentToSelectDocumentFragment
-import com.android.mdl.app.fragment.ShareDocumentFragmentDirections.Companion.actionShareDocumentFragmentToUserConsentFragment
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 
@@ -69,13 +67,15 @@ class ShareDocumentFragment : Fragment() {
                 TransferStatus.REQUEST -> {
                     vm.message.set("Request received!")
                     findNavController().navigate(
-                        actionShareDocumentFragmentToUserConsentFragment(document)
+                        ShareDocumentFragmentDirections.actionShareDocumentFragmentToUserConsentFragment(
+                            document
+                        )
                     )
                 }
                 TransferStatus.DISCONNECTED -> {
                     vm.message.set("Disconnected!")
                     findNavController().navigate(
-                        actionShareDocumentFragmentToSelectDocumentFragment()
+                        ShareDocumentFragmentDirections.actionShareDocumentFragmentToSelectDocumentFragment()
                     )
                 }
                 TransferStatus.ERROR -> {
@@ -102,7 +102,7 @@ class ShareDocumentFragment : Fragment() {
     fun onCancel() {
         vm.cancelPresentation()
         findNavController().navigate(
-            actionShareDocumentFragmentToSelectDocumentFragment()
+            ShareDocumentFragmentDirections.actionShareDocumentFragmentToSelectDocumentFragment()
         )
     }
 }

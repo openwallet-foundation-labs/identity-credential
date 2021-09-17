@@ -7,9 +7,7 @@ import androidx.lifecycle.LiveData
 import androidx.security.identity.IdentityCredentialPresentation
 import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.transfer.TransferManager
-import com.android.mdl.app.util.DocumentData.AAMVA_NAMESPACE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
-import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
 import com.android.mdl.app.util.TransferStatus
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
@@ -31,10 +29,10 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
             transferManager.request?.documentRequests?.first { it.docType == MDL_DOCTYPE }
                 ?: throw InvalidRequestMessageException("No DocRequest from reader")
 
-        val issuerSignedEntriesToRequest: MutableMap<String, Collection<String>> = mutableMapOf(
-            Pair(MDL_NAMESPACE, arrayListOf("given_name", "family_name", "portrait")),
-            Pair(AAMVA_NAMESPACE, arrayListOf("real_id"))
-        )
+        val issuerSignedEntriesToRequest = mutableMapOf<String, Collection<String>>()
+        docRequest.namespaces.forEach {
+            issuerSignedEntriesToRequest[it] = docRequest.getEntryNames(it)
+        }
         return transferManager.sendCredential(
             docRequest,
             issuerSignedEntriesToRequest

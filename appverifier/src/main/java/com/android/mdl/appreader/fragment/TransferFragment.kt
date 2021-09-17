@@ -9,9 +9,11 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import androidx.security.identity.IdentityCredentialVerification
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentTransferBinding
+import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.viewModel.TransferViewModel
 
@@ -28,12 +30,21 @@ class TransferFragment : Fragment() {
         private const val AAMVA_NAMESPACE = "org.aamva.18013.5.1"
     }
 
+    private val args: TransferFragmentArgs by navArgs()
     private var _binding: FragmentTransferBinding? = null
 
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
     private lateinit var vm: TransferViewModel
+
+    private lateinit var requestDocument: RequestDocument
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        requestDocument = args.requestDocument
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -94,22 +105,8 @@ class TransferFragment : Fragment() {
 
 
     private fun createRequest(): IdentityCredentialVerification.DeviceRequest {
-        val documentRequestBuilder = IdentityCredentialVerification.DocumentRequest.Builder(
-            MDL_DOCTYPE
-        )
-        documentRequestBuilder.addRequestNamespace(
-            MDL_NAMESPACE, mapOf<String, Boolean>(
-                Pair("family_name", true),
-                Pair("portrait", false)
-            )
-        )
-        documentRequestBuilder.addRequestNamespace(
-            AAMVA_NAMESPACE, mapOf<String, Boolean>(
-                Pair("real_id", false)
-            )
-        )
         val deviceRequestBuilder = IdentityCredentialVerification.DeviceRequest.Builder()
-        deviceRequestBuilder.addDocumentRequest(documentRequestBuilder.build())
+        deviceRequestBuilder.addDocumentRequest(requestDocument.getDocumentRequest())
         return deviceRequestBuilder.build()
     }
 

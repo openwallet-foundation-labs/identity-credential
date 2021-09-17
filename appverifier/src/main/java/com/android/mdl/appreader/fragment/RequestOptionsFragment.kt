@@ -6,8 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentRequestOptionsBinding
+import com.android.mdl.appreader.document.RequestMdl
 import com.android.mdl.appreader.transfer.TransferManager
 
 /**
@@ -21,14 +21,15 @@ class RequestOptionsFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
 
+    // TODO: get intent to retain from user
+    private var mapSelectedDataItems = getSelectRequestMdlFull(false)
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
         _binding = FragmentRequestOptionsBinding.inflate(inflater, container, false)
         return binding.root
-
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -47,18 +48,25 @@ class RequestOptionsFragment : Fragment() {
             binding.cbRequestMdlOlder21.isChecked = false
             binding.cbRequestMdlFull.isChecked = false
             binding.cbRequestMdlCustom.isChecked = false
+            // TODO: get intent to retain from user
+            mapSelectedDataItems = getSelectRequestMdlOlder18(false)
         }
         binding.cbRequestMdlOlder21.setOnClickListener {
             binding.cbRequestMdlOlder18.isChecked = false
             binding.cbRequestMdlOlder21.isChecked = true
             binding.cbRequestMdlFull.isChecked = false
             binding.cbRequestMdlCustom.isChecked = false
+            // TODO: get intent to retain from user
+            mapSelectedDataItems = getSelectRequestMdlOlder21(false)
         }
         binding.cbRequestMdlFull.setOnClickListener {
             binding.cbRequestMdlOlder18.isChecked = false
             binding.cbRequestMdlOlder21.isChecked = false
             binding.cbRequestMdlFull.isChecked = true
             binding.cbRequestMdlCustom.isChecked = false
+            // TODO: get intent to retain from user
+            mapSelectedDataItems = getSelectRequestMdlFull(false)
+
         }
         binding.cbRequestMdlCustom.setOnClickListener {
             binding.cbRequestMdlOlder18.isChecked = false
@@ -69,11 +77,43 @@ class RequestOptionsFragment : Fragment() {
 
         binding.btNext.setOnClickListener {
             if (binding.cbRequestMdlCustom.isChecked) {
-                findNavController().navigate(R.id.action_RequestOptions_to_RequestCustom)
+                findNavController().navigate(
+                    RequestOptionsFragmentDirections.actionRequestOptionsToRequestCustom(
+                        RequestMdl
+                    )
+                )
             } else {
-                findNavController().navigate(R.id.action_RequestOptions_to_ScanDeviceEngagement)
+                val requestDocument = RequestMdl
+                requestDocument.setSelectedDataItems(mapSelectedDataItems)
+                findNavController().navigate(
+                    RequestOptionsFragmentDirections.actionRequestOptionsToScanDeviceEngagement(
+                        requestDocument
+                    )
+                )
             }
         }
+    }
+
+    private fun getSelectRequestMdlFull(intentToRetain: Boolean): Map<String, Boolean> {
+        val map = mutableMapOf<String, Boolean>()
+        RequestMdl.dataItems.forEach {
+            map[it.identifier] = intentToRetain
+        }
+        return map
+    }
+
+    private fun getSelectRequestMdlOlder21(intentToRetain: Boolean): Map<String, Boolean> {
+        val map = mutableMapOf<String, Boolean>()
+        map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
+        map[RequestMdl.DataItems.AGE_OVER_21.identifier] = intentToRetain
+        return map
+    }
+
+    private fun getSelectRequestMdlOlder18(intentToRetain: Boolean): Map<String, Boolean> {
+        val map = mutableMapOf<String, Boolean>()
+        map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
+        map[RequestMdl.DataItems.AGE_OVER_18.identifier] = intentToRetain
+        return map
     }
 
     override fun onDestroyView() {

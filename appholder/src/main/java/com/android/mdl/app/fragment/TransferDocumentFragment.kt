@@ -18,8 +18,6 @@ import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
 import com.android.mdl.app.document.Document
-import com.android.mdl.app.fragment.TransferDocumentFragmentDirections.Companion.actionTransferDocumentFragmentToDocumentSharedFragment
-import com.android.mdl.app.fragment.TransferDocumentFragmentDirections.Companion.actionTransferDocumentFragmentToSelectDocumentFragment
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 import org.jetbrains.anko.support.v4.runOnUiThread
@@ -79,7 +77,7 @@ class TransferDocumentFragment : Fragment() {
                 }
                 TransferStatus.DISCONNECTED -> {
                     findNavController().navigate(
-                        actionTransferDocumentFragmentToDocumentSharedFragment()
+                        TransferDocumentFragmentDirections.actionTransferDocumentFragmentToDocumentSharedFragment()
                     )
                 }
                 TransferStatus.ERROR -> {
@@ -88,7 +86,7 @@ class TransferDocumentFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
                     findNavController().navigate(
-                        actionTransferDocumentFragmentToSelectDocumentFragment()
+                        TransferDocumentFragmentDirections.actionTransferDocumentFragmentToSelectDocumentFragment()
                     )
                 }
             }
@@ -172,7 +170,7 @@ class TransferDocumentFragment : Fragment() {
     fun onDone() {
         vm.cancelPresentation()
         findNavController().navigate(
-            actionTransferDocumentFragmentToSelectDocumentFragment()
+            TransferDocumentFragmentDirections.actionTransferDocumentFragmentToSelectDocumentFragment()
         )
     }
 }

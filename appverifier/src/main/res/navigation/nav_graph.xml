@@ -22,6 +22,10 @@
         android:name="com.android.mdl.appreader.fragment.RequestCustomFragment"
         android:label="Request Custom"
         tools:layout="@layout/fragment_request_custom">
+        <argument
+            android:name="requestDocument"
+            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            app:nullable="false" />
         <action
             android:id="@+id/action_RequestCustom_to_ScanDeviceEngagement"
             app:destination="@id/ScanDeviceEngagement" />
@@ -34,6 +38,10 @@
         android:name="com.android.mdl.appreader.fragment.DeviceEngagementFragment"
         android:label="Device Engagement"
         tools:layout="@layout/fragment_device_engagement">
+        <argument
+            android:name="requestDocument"
+            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            app:nullable="false" />
         <action
             android:id="@+id/action_ScanDeviceEngagement_to_RequestOptions"
             app:destination="@id/RequestOptions" />
@@ -49,6 +57,10 @@
         android:name="com.android.mdl.appreader.fragment.SelectTransportFragment"
         android:label="Select Transport"
         tools:layout="@layout/fragment_select_transport">
+        <argument
+            android:name="requestDocument"
+            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            app:nullable="false" />
         <action
             android:id="@+id/action_SelectTransport_to_Transfer"
             app:destination="@id/Transfer" />
@@ -61,6 +73,10 @@
         android:name="com.android.mdl.appreader.fragment.TransferFragment"
         android:label="Transfer"
         tools:layout="@layout/fragment_transfer">
+        <argument
+            android:name="requestDocument"
+            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            app:nullable="false" />
         <action
             android:id="@+id/action_Transfer_to_ShowDocument"
             app:destination="@id/ShowDocument" />

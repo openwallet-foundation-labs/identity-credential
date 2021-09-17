@@ -13,6 +13,7 @@ import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.security.identity.*
+import androidx.security.identity.ResultData.STATUS_USER_AUTHENTICATION_FAILED
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.util.FormatUtil
 import com.android.mdl.app.util.TransferStatus
@@ -187,13 +188,11 @@ class TransferManager private constructor(private val context: Context) {
         return null
     }
 
-    // If an access control check fails for one of the requested entries or if the entry
-    // doesn't exist, the entry is simply not returned.
-    // TODO: store if authentication is required for each document, than this will be not necessary
+    // Check if the user authentication failed for any of the requested data items
     private fun checkAuthenticationRequired(resultData: ResultData): Boolean {
         resultData.namespaces.forEach { namespace ->
             resultData.getEntryNames(namespace)?.forEach { entryName ->
-                if (resultData.getEntry(namespace, entryName) == null)
+                if (resultData.getStatus(namespace, entryName) == STATUS_USER_AUTHENTICATION_FAILED)
                     return true
             }
         }

@@ -8,7 +8,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.databinding.FragmentDocumentSharedBinding
-import com.android.mdl.app.fragment.DocumentSharedFragmentDirections.Companion.actionDocumentSharedFragmentToSelectDocumentFragment
 import com.android.mdl.app.transfer.TransferManager
 
 class DocumentSharedFragment : Fragment() {
@@ -45,7 +44,7 @@ class DocumentSharedFragment : Fragment() {
 
     fun onDone() {
         findNavController().navigate(
-            actionDocumentSharedFragmentToSelectDocumentFragment()
+            DocumentSharedFragmentDirections.actionDocumentSharedFragmentToSelectDocumentFragment()
         )
     }
 }

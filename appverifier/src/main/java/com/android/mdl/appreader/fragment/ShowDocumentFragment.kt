@@ -23,7 +23,6 @@ class ShowDocumentFragment : Fragment() {
         private const val LOG_TAG = "ShowDocumentFragment"
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
-        private const val AAMVA_NAMESPACE = "org.aamva.18013.5.1"
     }
 
     private var _binding: FragmentShowDocumentBinding? = null

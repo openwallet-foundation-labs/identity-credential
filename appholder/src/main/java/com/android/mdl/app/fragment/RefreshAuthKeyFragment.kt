@@ -123,7 +123,7 @@ class RefreshAuthKeyFragment : Fragment() {
                 dynAuthKeyCerts.forEachIndexed { i, cert ->
                     Log.d(
                         LOG_TAG,
-                        "Provisioned Isser Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
+                        "Provisioned Issuer Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
                                 "for Device Key ${FormatUtil.encodeToString(cert.publicKey.encoded)}"
                     )
                     credential.storeStaticAuthenticationData(cert, staticAuthDataList[i])

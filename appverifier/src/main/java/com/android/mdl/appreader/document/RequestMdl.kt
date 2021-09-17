@@ -2,13 +2,13 @@ package com.android.mdl.appreader.document
 
 import com.android.mdl.appreader.R
 
-object RequestMdl {
-    const val DOCTYPE = "org.iso.18013.5.1.mDL"
+object RequestMdl : RequestDocument() {
+    override val docType = "org.iso.18013.5.1.mDL"
+    override val nameSpace = "org.iso.18013.5.1"
+    override val dataItems = DataItems.values().asList()
 
-    const val NAMESPACE = "org.iso.18013.5.1"
-    const val AAMVA_NAMESPACE = "org.aamva.18013.5.1"
-
-    enum class DataItems(val identifier: String, val stringResourceId: Int) {
+    enum class DataItems(override val identifier: String, override val stringResourceId: Int) :
+        RequestDataItem {
         FAMILY_NAME("family_name", R.string.family_name),
         GIVEN_NAMES("given_name", R.string.given_name),
         BIRTH_DATE("birth_date", R.string.birth_date),
