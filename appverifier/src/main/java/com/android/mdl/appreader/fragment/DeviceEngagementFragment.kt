@@ -4,25 +4,29 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.nfc.NfcAdapter
+import android.nfc.NfcAdapter.ReaderCallback
+import android.nfc.tech.IsoDep
+import android.nfc.tech.Ndef
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Base64
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import co.nstant.`in`.cbor.model.SimpleValue
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentDeviceEngagementBinding
 import com.android.mdl.appreader.transfer.TransferManager
-import com.android.mdl.appreader.util.FormatUtil
+import com.android.mdl.appreader.util.TransferStatus
 import com.budiyev.android.codescanner.CodeScanner
 import com.budiyev.android.codescanner.DecodeCallback
+import java.util.*
 
 
 /**
@@ -32,6 +36,11 @@ class DeviceEngagementFragment : Fragment() {
 
     companion object {
         private const val LOG_TAG = "DeviceEngagementFragment"
+        private const val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
+                or NfcAdapter.FLAG_READER_NFC_B
+                or NfcAdapter.FLAG_READER_NFC_F
+                or NfcAdapter.FLAG_READER_NFC_V
+                or NfcAdapter.FLAG_READER_NFC_BARCODE)
     }
 
     private val args: DeviceEngagementFragmentArgs by navArgs()
@@ -48,6 +57,21 @@ class DeviceEngagementFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var mCodeScanner: CodeScanner? = null
+    private var mNfcAdapter: NfcAdapter? = null
+    private lateinit var transferManager: TransferManager
+
+    private val nfcCallback = ReaderCallback { tag ->
+        Log.d(LOG_TAG, "Tag discovered!")
+        for (tech in tag.techList) {
+            Log.d(LOG_TAG, " tech $tech")
+            if (tech == Ndef::class.java.name) {
+                Log.d(LOG_TAG, "Found ndef tech!")
+                transferManager.setNdefDeviceEngagement(Ndef.get(tag))
+            } else if (tech == IsoDep::class.java.name) {
+                transferManager.setIsoDep(IsoDep.get(tag))
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -55,6 +79,7 @@ class DeviceEngagementFragment : Fragment() {
     ): View {
 
         _binding = FragmentDeviceEngagementBinding.inflate(inflater, container, false)
+        transferManager = TransferManager.getInstance(requireContext())
         return binding.root
 
     }
@@ -68,37 +93,86 @@ class DeviceEngagementFragment : Fragment() {
             requireActivity().runOnUiThread {
                 val qrText = result.text
                 Log.d(LOG_TAG, "qrText: $qrText")
-                val uri = Uri.parse(qrText)
-                if (uri?.scheme != null && uri.scheme.equals("mdoc")) {
-                    val encodedDeviceEngagement = Base64.decode(
-                        uri.encodedSchemeSpecificPart,
-                        Base64.URL_SAFE or Base64.NO_PADDING
-                    )
-                    if (encodedDeviceEngagement != null) {
-                        val encodedHandover = FormatUtil.cborEncode(SimpleValue.NULL)
-                        val availableTransferMethods = FormatUtil.extractDeviceRetrievalMethods(
-                            encodedDeviceEngagement
-                        )
-
-                        onDeviceEngagementReceived(
-                            encodedDeviceEngagement, encodedHandover, availableTransferMethods
-                        )
-                    }
-                }
+                transferManager.setQrDeviceEngagement(qrText)
             }
         }
 
         binding.csScanner.setOnClickListener { mCodeScanner?.startPreview() }
 
+        mNfcAdapter = NfcAdapter.getDefaultAdapter(requireContext())
+
+        transferManager.getTransferStatus().observe(viewLifecycleOwner, {
+            when (it) {
+                TransferStatus.ENGAGED -> {
+                    Log.d(LOG_TAG, "Device engagement received")
+                    onDeviceEngagementReceived()
+                }
+                TransferStatus.CONNECTED -> {
+                    Log.d(LOG_TAG, "Device connected")
+                    Toast.makeText(
+                        requireContext(), "Error invalid callback connected",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                }
+                TransferStatus.RESPONSE -> {
+                    Log.d(LOG_TAG, "Device response received")
+                    Toast.makeText(
+                        requireContext(), "Error invalid callback response",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                }
+                TransferStatus.DISCONNECTED -> {
+                    Log.d(LOG_TAG, "Device disconnected")
+                    Toast.makeText(
+                        requireContext(), "Device disconnected",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                }
+                TransferStatus.ERROR -> {
+                    Log.d(LOG_TAG, "Error received")
+                    Toast.makeText(
+                        requireContext(), "Error connecting to holder",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                }
+            }
+        })
+
+        binding.btCancel.setOnClickListener {
+            findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        enableReader()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        disableReader()
+    }
+
+    private fun enableReader() {
         if (isAllPermissionsGranted()) {
             mCodeScanner?.startPreview()
         } else {
             shouldRequestPermission()
         }
-
-        binding.btCancel.setOnClickListener {
-            findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
+        if (mNfcAdapter?.isEnabled == true) {
+            mNfcAdapter?.enableReaderMode(requireActivity(), nfcCallback, READER_FLAGS, null)
+        } else {
+            Toast.makeText(activity, "NFC adapter is not enabled", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun disableReader() {
+        mCodeScanner?.releaseResources()
+        mNfcAdapter?.disableReaderMode(requireActivity())
     }
 
     private fun shouldRequestPermission() {
@@ -146,17 +220,8 @@ class DeviceEngagementFragment : Fragment() {
         startActivity(intent)
     }
 
-    private fun onDeviceEngagementReceived(
-        encodedDeviceEngagement: ByteArray,
-        encodedHandover: ByteArray,
-        availableTransferMethods: Collection<ByteArray>
-    ) {
-        Log.d(LOG_TAG, "DE: ${FormatUtil.encodeToString(encodedDeviceEngagement)}")
-        val transferManager = TransferManager.getInstance(requireContext())
-        transferManager.startEngagement(encodedDeviceEngagement, encodedHandover)
-        transferManager.setAvailableTransferMethods(availableTransferMethods)
-
-        if (availableTransferMethods.size == 1) {
+    private fun onDeviceEngagementReceived() {
+        if (transferManager.availableTransferMethods?.size == 1) {
             findNavController().navigate(
                 DeviceEngagementFragmentDirections.actionScanDeviceEngagementToTransfer(
                     args.requestDocument

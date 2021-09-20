@@ -62,6 +62,9 @@ class TransferFragment : Fragment() {
 
         vm.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {
+                TransferStatus.ENGAGED -> {
+                    binding.tvStatus.text = "Device engagement received..."
+                }
                 TransferStatus.CONNECTED -> {
                     binding.tvStatus.text = "Connected. Requesting mDoc..."
                     vm.sendRequest(createRequest())

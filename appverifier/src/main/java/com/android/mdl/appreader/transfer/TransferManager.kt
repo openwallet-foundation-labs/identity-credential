@@ -3,6 +3,7 @@ package com.android.mdl.appreader.transfer
 import android.annotation.SuppressLint
 import android.content.Context
 import android.nfc.tech.IsoDep
+import android.nfc.tech.Ndef
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -44,9 +45,16 @@ class TransferManager private constructor(private val context: Context) {
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
-    fun startEngagement(deviceEngagement: ByteArray, handover: ByteArray) {
+    fun setQrDeviceEngagement(qrDeviceEngagement: String) {
         verification = IdentityCredentialVerification(context)
-        verification?.setDeviceEngagement(deviceEngagement, handover)
+        verification?.setDeviceResponseListener(responseListener, context.mainExecutor())
+        verification?.setQrDeviceEngagement(qrDeviceEngagement)
+    }
+
+    fun setNdefDeviceEngagement(ndefTag: Ndef) {
+        verification = IdentityCredentialVerification(context)
+        verification?.setDeviceResponseListener(responseListener, context.mainExecutor())
+        verification?.setNdefDeviceEngagement(ndefTag)
     }
 
     fun setAvailableTransferMethods(availableTransferMethods: Collection<ByteArray>) {
@@ -70,7 +78,6 @@ class TransferManager private constructor(private val context: Context) {
 
         // Start connection
         verification?.let {
-            it.setDeviceResponseListener(responseListener, context.mainExecutor())
             deviceRetrievalMethod?.let { dr ->
                 it.connect(dr, isoDep)
             }
@@ -80,7 +87,11 @@ class TransferManager private constructor(private val context: Context) {
 
     fun stopVerification() {
         verification?.setDeviceResponseListener(null, null)
-        verification?.disconnect()
+        try {
+            verification?.disconnect()
+        } catch (e: RuntimeException) {
+            Log.e(LOG_TAG, "Error ignored.", e)
+        }
         transferStatusLd = MutableLiveData<TransferStatus>()
         destroy()
         hasStarted = false
@@ -93,6 +104,11 @@ class TransferManager private constructor(private val context: Context) {
 
 
     private val responseListener = object : DeviceResponseListener {
+        override fun onDeviceEngagementReceived(deviceRetrievalMethods: Collection<ByteArray>) {
+            setAvailableTransferMethods(deviceRetrievalMethods)
+            transferStatusLd.value = TransferStatus.ENGAGED
+        }
+
         override fun onDeviceConnected() {
             transferStatusLd.value = TransferStatus.CONNECTED
         }
@@ -129,5 +145,9 @@ class TransferManager private constructor(private val context: Context) {
 
     fun setDeviceRetrievalMethod(deviceRetrievalMethod: ByteArray) {
         this.deviceRetrievalMethod = deviceRetrievalMethod
+    }
+
+    fun setIsoDep(isoDep: IsoDep) {
+        this.isoDep = isoDep
     }
 }
