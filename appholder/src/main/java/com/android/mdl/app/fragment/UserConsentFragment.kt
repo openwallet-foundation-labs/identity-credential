@@ -13,7 +13,6 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.databinding.FragmentUserConsentBinding
 import com.android.mdl.app.document.Document
-import com.android.mdl.app.fragment.UserConsentFragmentDirections.Companion.actionUserConsentFragmentToSelectDocumentFragment
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.UserConsentViewModel
 
@@ -73,7 +72,7 @@ class UserConsentFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
                     findNavController().navigate(
-                        actionUserConsentFragmentToSelectDocumentFragment()
+                        UserConsentFragmentDirections.actionUserConsentFragmentToSelectDocumentFragment()
                     )
                 }
                 TransferStatus.ERROR -> {
@@ -82,7 +81,7 @@ class UserConsentFragment : Fragment() {
                         Toast.LENGTH_SHORT
                     ).show()
                     findNavController().navigate(
-                        actionUserConsentFragmentToSelectDocumentFragment()
+                        UserConsentFragmentDirections.actionUserConsentFragmentToSelectDocumentFragment()
                     )
                 }
             }
@@ -107,7 +106,7 @@ class UserConsentFragment : Fragment() {
     fun onCancel() {
         vm.cancelPresentation()
         findNavController().navigate(
-            actionUserConsentFragmentToSelectDocumentFragment()
+            UserConsentFragmentDirections.actionUserConsentFragmentToSelectDocumentFragment()
         )
     }
 }

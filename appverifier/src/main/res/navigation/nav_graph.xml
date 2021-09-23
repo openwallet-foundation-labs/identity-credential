@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/RequestOptions">
+
+    <fragment
+        android:id="@+id/RequestOptions"
+        android:name="com.android.mdl.appreader.fragment.RequestOptionsFragment"
+        android:label="Request Options"
+        tools:layout="@layout/fragment_request_options">
+        <action
+            android:id="@+id/action_RequestOptions_to_ScanDeviceEngagement"
+            app:destination="@id/ScanDeviceEngagement" />
+        <action
+            android:id="@+id/action_RequestOptions_to_RequestCustom"
+            app:destination="@id/RequestCustom" />
+    </fragment>
+    <fragment
+        android:id="@+id/RequestCustom"
+        android:name="com.android.mdl.appreader.fragment.RequestCustomFragment"
+        android:label="Request Custom"
+        tools:layout="@layout/fragment_request_custom">
+        <argument
+            android:name="requestDocument"
+            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            app:nullable="false" />
+        <action
+            android:id="@+id/action_RequestCustom_to_ScanDeviceEngagement"
+            app:destination="@id/ScanDeviceEngagement" />
+        <action
+            android:id="@+id/action_RequestCustom_to_RequestOptions"
+            app:destination="@id/RequestOptions" />
+    </fragment>
+    <fragment
+        android:id="@+id/ScanDeviceEngagement"
+        android:name="com.android.mdl.appreader.fragment.DeviceEngagementFragment"
+        android:label="Device Engagement"
+        tools:layout="@layout/fragment_device_engagement">
+        <argument
+            android:name="requestDocument"
+            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            app:nullable="false" />
+        <action
+            android:id="@+id/action_ScanDeviceEngagement_to_RequestOptions"
+            app:destination="@id/RequestOptions" />
+        <action
+            android:id="@+id/action_ScanDeviceEngagement_to_SelectTransport"
+            app:destination="@id/SelectTransport" />
+        <action
+            android:id="@+id/action_ScanDeviceEngagement_to_Transfer"
+            app:destination="@id/Transfer" />
+    </fragment>
+    <fragment
+        android:id="@+id/SelectTransport"
+        android:name="com.android.mdl.appreader.fragment.SelectTransportFragment"
+        android:label="Select Transport"
+        tools:layout="@layout/fragment_select_transport">
+        <argument
+            android:name="requestDocument"
+            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            app:nullable="false" />
+        <action
+            android:id="@+id/action_SelectTransport_to_Transfer"
+            app:destination="@id/Transfer" />
+        <action
+            android:id="@+id/action_SelectTransport_to_RequestOptions"
+            app:destination="@id/RequestOptions" />
+    </fragment>
+    <fragment
+        android:id="@+id/Transfer"
+        android:name="com.android.mdl.appreader.fragment.TransferFragment"
+        android:label="Transfer"
+        tools:layout="@layout/fragment_transfer">
+        <argument
+            android:name="requestDocument"
+            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            app:nullable="false" />
+        <action
+            android:id="@+id/action_Transfer_to_ShowDocument"
+            app:destination="@id/ShowDocument" />
+        <action
+            android:id="@+id/action_Transfer_to_RequestOptions"
+            app:destination="@id/RequestOptions" />
+    </fragment>
+    <fragment
+        android:id="@+id/ShowDocument"
+        android:name="com.android.mdl.appreader.fragment.ShowDocumentFragment"
+        android:label="Show Document"
+        tools:layout="@layout/fragment_show_document">
+        <action
+            android:id="@+id/action_ShowDocument_to_RequestOptions"
+            app:destination="@id/RequestOptions" />
+    </fragment>
+</navigation>

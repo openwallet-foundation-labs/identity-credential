@@ -100,7 +100,7 @@ class DocumentManager private constructor(private val context: Context) {
                     .putEntryBytestring(MDL_NAMESPACE, "portrait", ids, portrait)
                     .putEntryBoolean(AAMVA_NAMESPACE, "real_id", ids, true)
                     .build()
-                Helpers.provisionSelfSignedCredential(
+                Utility.provisionSelfSignedCredential(
                     store,
                     DUMMY_CREDENTIAL_NAME,
                     iaKeyPair.private,
@@ -345,7 +345,7 @@ class DocumentManager private constructor(private val context: Context) {
                 dynAuthKeyCerts.forEachIndexed { i, cert ->
                     Log.d(
                         LOG_TAG,
-                        "Provisioned Isser Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
+                        "Provisioned Issuer Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
                                 "for Device Key ${FormatUtil.encodeToString(cert.publicKey.encoded)}"
                     )
                     credential.storeStaticAuthenticationData(cert, staticAuthDataList[i])
