@@ -4,10 +4,10 @@ import android.app.Application
 import androidx.biometric.BiometricPrompt.CryptoObject
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import androidx.security.identity.IdentityCredentialPresentation
+import androidx.security.identity.Constants.DEVICE_RESPONSE_STATUS_OK
+import androidx.security.identity.DeviceResponseGenerator
 import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.transfer.TransferManager
-import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.TransferStatus
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
@@ -25,18 +25,27 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         // Currently we don't care about the request, for now we just send the mdoc we have
         // without any regard to what the reader actually requested...
         //
-        val docRequest: IdentityCredentialPresentation.DocumentRequest =
-            transferManager.request?.documentRequests?.first { it.docType == MDL_DOCTYPE }
-                ?: throw InvalidRequestMessageException("No DocRequest from reader")
+        val docRequests =
+            transferManager.getDeviceRequest().docRequests
 
-        val issuerSignedEntriesToRequest = mutableMapOf<String, Collection<String>>()
-        docRequest.namespaces.forEach {
-            issuerSignedEntriesToRequest[it] = docRequest.getEntryNames(it)
+        val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
+        docRequests.forEach { doc ->
+            val issuerSignedEntriesToRequest = mutableMapOf<String, Collection<String>>()
+            doc.namespaces.forEach { ns ->
+                issuerSignedEntriesToRequest[ns] = doc.getEntryNames(ns)
+            }
+            val authNeeded = transferManager.addDocumentToResponse(
+                doc.docType,
+                issuerSignedEntriesToRequest,
+                response
+            )
+            if (authNeeded) {
+                return transferManager.getCryptoObject()
+            }
         }
-        return transferManager.sendCredential(
-            docRequest,
-            issuerSignedEntriesToRequest
-        )
+
+        transferManager.sendResponse(response.generate())
+        return null
     }
 
     fun cancelPresentation() {

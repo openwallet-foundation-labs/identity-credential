@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string-array name="arr_transfer_method">
-        <item>Bluetooth Low Energy</item>
-        <item>Wifi Aware</item>
-        <item>NFC</item>
-    </string-array>
-</resources>

@@ -48,43 +48,41 @@ class ShowDocumentFragment : Fragment() {
 
         var portraitBytes: ByteArray? = null
 
-        val documents = transferManager.response?.documents
+        val documents = transferManager.getDeviceResponse().documents
         binding.tvResults.text = ""
         binding.tvResults.append(
             """
-                Number of documents returned: ${documents?.size ?: 0}
+                Number of documents returned: ${documents.size}
                 
                 """.trimIndent()
         )
         binding.tvResults.append("\n")
-        if (documents != null) {
-            for (doc in documents) {
-                binding.tvResults.append(
-                    """
-                Doctype: ${doc.docType}
-                
-                """.trimIndent()
-                )
-                for (ns in doc.issuerNamespaces) {
-                    binding.tvResults.append("  Namespace: $ns\n")
-                    for (elem in doc.getIssuerEntryNames(ns)) {
-                        val value: ByteArray = doc.getIssuerEntryData(ns, elem)
-                        var valueStr: String
-                        if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "portrait"
-                        ) {
-                            valueStr = String.format("(%d bytes, shown above)", value.size)
-                            portraitBytes = doc.getIssuerEntryByteString(ns, elem)
-                        } else if (doc.docType == MDL_DOCTYPE
-                            && ns == MDL_NAMESPACE && elem == "extra"
-                        ) {
-                            valueStr = String.format("%d bytes extra data", value.size)
-                        } else {
-                            valueStr = FormatUtil.cborPrettyPrint(value)
-                        }
-                        binding.tvResults.append("    $elem -> $valueStr\n")
+        for (doc in documents) {
+            binding.tvResults.append(
+                """
+            Doctype: ${doc.docType}
+            
+            """.trimIndent()
+            )
+            for (ns in doc.issuerNamespaces) {
+                binding.tvResults.append("  Namespace: $ns\n")
+                for (elem in doc.getIssuerEntryNames(ns)) {
+                    val value: ByteArray = doc.getIssuerEntryData(ns, elem)
+                    var valueStr: String
+                    if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "portrait"
+                    ) {
+                        valueStr = String.format("(%d bytes, shown above)", value.size)
+                        portraitBytes = doc.getIssuerEntryByteString(ns, elem)
+                    } else if (doc.docType == MDL_DOCTYPE
+                        && ns == MDL_NAMESPACE && elem == "extra"
+                    ) {
+                        valueStr = String.format("%d bytes extra data", value.size)
+                    } else {
+                        valueStr = FormatUtil.cborPrettyPrint(value)
                     }
-                    binding.tvResults.append("\n")
+                    binding.tvResults.append("    $elem -> $valueStr\n")
                 }
+                binding.tvResults.append("\n")
             }
         }
 

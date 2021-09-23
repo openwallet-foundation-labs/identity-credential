@@ -5,9 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.nfc.NfcAdapter
-import android.nfc.NfcAdapter.ReaderCallback
-import android.nfc.tech.IsoDep
-import android.nfc.tech.Ndef
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -36,11 +33,6 @@ class DeviceEngagementFragment : Fragment() {
 
     companion object {
         private const val LOG_TAG = "DeviceEngagementFragment"
-        private const val READER_FLAGS = (NfcAdapter.FLAG_READER_NFC_A
-                or NfcAdapter.FLAG_READER_NFC_B
-                or NfcAdapter.FLAG_READER_NFC_F
-                or NfcAdapter.FLAG_READER_NFC_V
-                or NfcAdapter.FLAG_READER_NFC_BARCODE)
     }
 
     private val args: DeviceEngagementFragmentArgs by navArgs()
@@ -57,21 +49,7 @@ class DeviceEngagementFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var mCodeScanner: CodeScanner? = null
-    private var mNfcAdapter: NfcAdapter? = null
     private lateinit var transferManager: TransferManager
-
-    private val nfcCallback = ReaderCallback { tag ->
-        Log.d(LOG_TAG, "Tag discovered!")
-        for (tech in tag.techList) {
-            Log.d(LOG_TAG, " tech $tech")
-            if (tech == Ndef::class.java.name) {
-                Log.d(LOG_TAG, "Found ndef tech!")
-                transferManager.setNdefDeviceEngagement(Ndef.get(tag))
-            } else if (tech == IsoDep::class.java.name) {
-                transferManager.setIsoDep(IsoDep.get(tag))
-            }
-        }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -80,6 +58,7 @@ class DeviceEngagementFragment : Fragment() {
 
         _binding = FragmentDeviceEngagementBinding.inflate(inflater, container, false)
         transferManager = TransferManager.getInstance(requireContext())
+        transferManager.initVerificationHelper()
         return binding.root
 
     }
@@ -98,8 +77,6 @@ class DeviceEngagementFragment : Fragment() {
         }
 
         binding.csScanner.setOnClickListener { mCodeScanner?.startPreview() }
-
-        mNfcAdapter = NfcAdapter.getDefaultAdapter(requireContext())
 
         transferManager.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {
@@ -163,16 +140,14 @@ class DeviceEngagementFragment : Fragment() {
         } else {
             shouldRequestPermission()
         }
-        if (mNfcAdapter?.isEnabled == true) {
-            mNfcAdapter?.enableReaderMode(requireActivity(), nfcCallback, READER_FLAGS, null)
-        } else {
-            Toast.makeText(activity, "NFC adapter is not enabled", Toast.LENGTH_LONG).show()
-        }
+        transferManager.setNdefDeviceEngagement(
+            NfcAdapter.getDefaultAdapter(requireContext()),
+            requireActivity()
+        )
     }
 
     private fun disableReader() {
         mCodeScanner?.releaseResources()
-        mNfcAdapter?.disableReaderMode(requireActivity())
     }
 
     private fun shouldRequestPermission() {

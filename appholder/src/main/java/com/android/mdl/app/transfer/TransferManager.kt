@@ -2,22 +2,31 @@ package com.android.mdl.app.transfer
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Color.BLACK
+import android.graphics.Color.WHITE
 import android.nfc.cardemulation.HostApduService
 import android.os.Build
 import android.util.Log
 import android.view.View
-import androidx.biometric.BiometricPrompt.CryptoObject
+import android.widget.ImageView
+import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.core.util.component1
 import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.security.identity.*
-import androidx.security.identity.ResultData.STATUS_USER_AUTHENTICATION_FAILED
+import androidx.security.identity.DeviceRequestParser.DeviceRequest
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.util.FormatUtil
 import com.android.mdl.app.util.TransferStatus
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
+import com.google.zxing.WriterException
+import com.google.zxing.common.BitMatrix
 import java.util.concurrent.Executor
+
 
 class TransferManager private constructor(private val context: Context) {
 
@@ -35,11 +44,12 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     private var store: IdentityCredentialStore? = null
-    private var presentation: IdentityCredentialPresentation? = null
+    private var session: PresentationSession? = null
+    private var presentation: PresentationHelper? = null
     private var document: Document? = null
     private var hasStarted = false
 
-    var request: IdentityCredentialPresentation.DeviceRequest? = null
+    var requestBytes: ByteArray? = null
         private set
     private var transferStatusLd = MutableLiveData<TransferStatus>()
 
@@ -56,9 +66,11 @@ class TransferManager private constructor(private val context: Context) {
         else
             IdentityCredentialStore.getSoftwareInstance(context)
 
-        presentation = store?.getPresentation(
+        session = store?.createPresentationSession(
             IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-        )
+        )?.also {
+            presentation = PresentationHelper(context, it)
+        }
     }
 
     @Throws(IllegalStateException::class)
@@ -69,17 +81,21 @@ class TransferManager private constructor(private val context: Context) {
         // Get an instance of the presentation based on the document
         initiate(document)
 
+        // Add only ble transfer for now
+        val dataRetrievalConfiguration = DataRetrievalConfiguration.Builder()
+            .setBleEnabled(true)
+            .build()
+
         // Setup and begin presentation
         presentation?.let {
-            it.setDeviceRequestListener(requestListener, context.mainExecutor())
-            it.addTransport(IdentityCredentialPresentation.TRANSPORT_BLUETOOTH_LE)
-            it.presentationBegin()
+            it.setListener(requestListener, context.mainExecutor())
+            it.presentationBegin(dataRetrievalConfiguration)
             hasStarted = true
         }
     }
 
-    private val requestListener: IdentityCredentialPresentation.DeviceRequestListener = object :
-        IdentityCredentialPresentation.DeviceRequestListener {
+    private val requestListener: PresentationHelper.Listener = object :
+        PresentationHelper.Listener {
         override fun onDeviceEngagementReady() {
             transferStatusLd.value = TransferStatus.ENGAGEMENT_READY
         }
@@ -96,15 +112,12 @@ class TransferManager private constructor(private val context: Context) {
             transferStatusLd.value = TransferStatus.CONNECTED
         }
 
-        override fun onDeviceRequest(
-            deviceEngagementMethod: Int,
-            deviceRequest: IdentityCredentialPresentation.DeviceRequest
-        ) {
-            request = deviceRequest
+        override fun onDeviceRequest(deviceEngagementMethod: Int, deviceRequestBytes: ByteArray) {
+            requestBytes = deviceRequestBytes
             transferStatusLd.value = TransferStatus.REQUEST
         }
 
-        override fun onDeviceDisconnected() {
+        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
             transferStatusLd.value = TransferStatus.DISCONNECTED
         }
 
@@ -122,54 +135,82 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    fun getDeviceEngagementQrCode(): View? {
-        return presentation?.getDeviceEngagementQrCode(800)
+    fun getDeviceEngagementQrCode(): View {
+        val deviceEngagementForQrCode = presentation?.deviceEngagementForQrCode
+            ?: throw IllegalArgumentException("Device engagement not ready")
+
+        val qrCodeBitmap = encodeQRCodeAsBitmap(deviceEngagementForQrCode)
+        val qrCodeView = ImageView(context)
+        qrCodeView.setImageBitmap(qrCodeBitmap)
+
+        return qrCodeView
+    }
+
+    private fun encodeQRCodeAsBitmap(str: String): Bitmap {
+        val width = 800
+        val result: BitMatrix = try {
+            MultiFormatWriter().encode(
+                str,
+                BarcodeFormat.QR_CODE, width, width, null
+            )
+        } catch (e: WriterException) {
+            throw java.lang.IllegalArgumentException(e)
+        }
+        val w = result.width
+        val h = result.height
+        val pixels = IntArray(w * h)
+        for (y in 0 until h) {
+            val offset = y * w
+            for (x in 0 until w) {
+                pixels[offset + x] = if (result[x, y]) BLACK else WHITE
+            }
+        }
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        bitmap.setPixels(pixels, 0, width, 0, 0, w, h)
+        return bitmap
     }
 
     fun nfcEngagementProcessCommandApdu(service: HostApduService, commandApdu: ByteArray) {
-        presentation?.nfcEngagementProcessCommandApdu(service, commandApdu)
+        presentation?.nfcProcessCommandApdu(service, commandApdu)
     }
 
     fun nfcEngagementOnDeactivated(service: HostApduService, reason: Int) {
-        presentation?.nfcEngagementOnDeactivated(service, reason)
+        presentation?.nfcOnDeactivated(service, reason)
     }
 
     @Throws(IllegalStateException::class)
-    fun sendCredential(
-        docRequest: IdentityCredentialPresentation.DocumentRequest,
-        issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>
-    ): CryptoObject? {
+    fun addDocumentToResponse(
+        docType: String,
+        issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
+        response: DeviceResponseGenerator
+    ): Boolean {
         val credentialName = document?.identityCredentialName
             ?: throw IllegalStateException("Error recovering credential name from document")
 
-        presentation?.let {
-            it.getCredentialForPresentation(credentialName)?.let { c ->
-
-
-                val deviceSignedEntriesToRequest: Map<String, Collection<String>> = HashMap()
+        session?.let {
+            it.getCredentialData(
+                credentialName,
+                CredentialDataRequest.Builder()
+                    .setIssuerSignedEntriesToRequest(issuerSignedEntriesToRequest)
+                    .setAllowUsingExhaustedKeys(true)
+                    .setAllowUsingExpiredKeys(true)
+                    .build()
+            )?.let { c ->
                 try {
-                    val deviceSignedResult: ResultData = c.getEntries(
-                        null, deviceSignedEntriesToRequest, null
-                    )
-                    val issuerSignedResult: ResultData = c.getEntries(
-                        null, issuerSignedEntriesToRequest, null
-                    )
-                    if (checkAuthenticationRequired(deviceSignedResult) ||
-                        checkAuthenticationRequired(issuerSignedResult)
+                    if (c.deviceSignedEntries.isUserAuthenticationNeeded ||
+                        c.issuerSignedEntries.isUserAuthenticationNeeded
                     ) {
-                        return c.cryptoObject
+                        return true
                     }
-                    it.deviceResponseBegin()
+                    val staticAuthData: ByteArray = c.staticAuthenticationData
+                    val (first1, second1) = Utility.decodeStaticAuthData(staticAuthData)
 
-                    val staticAuthData = issuerSignedResult.staticAuthenticationData
                     Log.d(LOG_TAG, "StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
-                    val (first, second) = Helpers.decodeStaticAuthData(staticAuthData)
-                    it.deviceResponseAddDocument(
-                        docRequest,
-                        deviceSignedResult,
-                        issuerSignedResult,
-                        first,
-                        second
+                    response.addDocument(
+                        docType,
+                        c,
+                        first1,
+                        second1
                     )
                 } catch (e: IllegalArgumentException) {
                     e.printStackTrace()
@@ -183,34 +224,41 @@ class TransferManager private constructor(private val context: Context) {
                     e.printStackTrace()
                 }
             }
-            it.deviceResponseSend()
-        }
-        return null
-    }
-
-    // Check if the user authentication failed for any of the requested data items
-    private fun checkAuthenticationRequired(resultData: ResultData): Boolean {
-        resultData.namespaces.forEach { namespace ->
-            resultData.getEntryNames(namespace)?.forEach { entryName ->
-                if (resultData.getStatus(namespace, entryName) == STATUS_USER_AUTHENTICATION_FAILED)
-                    return true
-            }
         }
         return false
     }
 
     private fun destroy() {
-        request = null
+        requestBytes = null
         document = null
         store = null
         presentation = null
     }
 
     fun stopPresentation() {
-        presentation?.setDeviceRequestListener(null, null)
+        presentation?.setListener(null, null)
         presentation?.presentationEnd()
         transferStatusLd = MutableLiveData<TransferStatus>()
         destroy()
         hasStarted = false
+    }
+
+    fun getCryptoObject(): BiometricPrompt.CryptoObject? {
+        return session?.cryptoObject
+    }
+
+    fun sendResponse(deviceResponse: ByteArray) {
+        presentation?.sendDeviceResponse(deviceResponse)
+    }
+
+    fun getDeviceRequest(): DeviceRequest {
+        requestBytes?.let { rb ->
+            presentation?.let { p ->
+                val parser = DeviceRequestParser()
+                parser.setSessionTranscript(p.sessionTranscript)
+                parser.setDeviceRequest(rb)
+                return parser.parse()
+            } ?: throw IllegalStateException("Presentation is null")
+        } ?: throw IllegalStateException("Request not received")
     }
 }

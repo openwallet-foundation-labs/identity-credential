@@ -1,7 +1,7 @@
 package com.android.mdl.appreader.document
 
-import androidx.security.identity.IdentityCredentialVerification
 import java.io.Serializable
+
 
 abstract class RequestDocument : Serializable {
     abstract val docType: String
@@ -20,17 +20,11 @@ abstract class RequestDocument : Serializable {
         this.mapSelectedDataItem = mapSelectedDataItem
     }
 
-    /**
-     * Builds a DocumentRequest based in the select data items. This methods is a helper to create
-     * an instance of IdentityCredentialVerification.DocumentRequest
-     */
-    fun getDocumentRequest(): IdentityCredentialVerification.DocumentRequest {
+    fun getItemsToRequest(): Map<String, Map<String, Boolean>> {
         mapSelectedDataItem?.let {
-            val documentRequestBuilder =
-                IdentityCredentialVerification.DocumentRequest.Builder(docType)
-            documentRequestBuilder.addRequestNamespace(nameSpace, it)
-            return documentRequestBuilder.build()
-        } ?: throw IllegalStateException("Need to setSelectedDataItems first")
+
+            return mapOf(Pair(nameSpace, it))
+        } ?: throw IllegalStateException("No data items selected for this request")
     }
 
     interface RequestDataItem {

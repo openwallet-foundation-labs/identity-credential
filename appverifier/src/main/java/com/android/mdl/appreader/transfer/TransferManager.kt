@@ -1,16 +1,18 @@
 package com.android.mdl.appreader.transfer
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
-import android.nfc.tech.IsoDep
-import android.nfc.tech.Ndef
+import android.nfc.NfcAdapter
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.security.identity.IdentityCredentialVerification
-import androidx.security.identity.IdentityCredentialVerification.DeviceResponseListener
+import androidx.security.identity.DeviceRequestGenerator
+import androidx.security.identity.DeviceResponseParser
+import androidx.security.identity.VerificationHelper
+import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.util.TransferStatus
 import java.util.concurrent.Executor
 
@@ -33,11 +35,10 @@ class TransferManager private constructor(private val context: Context) {
 
     var deviceRetrievalMethod: ByteArray? = null
         private set
-    private var isoDep: IsoDep? = null
     private var hasStarted = false
-    var response: IdentityCredentialVerification.DeviceResponse? = null
+    var responseBytes: ByteArray? = null
         private set
-    private var verification: IdentityCredentialVerification? = null
+    private var verification: VerificationHelper? = null
     var availableTransferMethods: Collection<ByteArray>? = null
         private set
 
@@ -45,16 +46,18 @@ class TransferManager private constructor(private val context: Context) {
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
-    fun setQrDeviceEngagement(qrDeviceEngagement: String) {
-        verification = IdentityCredentialVerification(context)
-        verification?.setDeviceResponseListener(responseListener, context.mainExecutor())
-        verification?.setQrDeviceEngagement(qrDeviceEngagement)
+    fun initVerificationHelper() {
+        verification = VerificationHelper(context)
+        verification?.setListener(responseListener, context.mainExecutor())
     }
 
-    fun setNdefDeviceEngagement(ndefTag: Ndef) {
-        verification = IdentityCredentialVerification(context)
-        verification?.setDeviceResponseListener(responseListener, context.mainExecutor())
-        verification?.setNdefDeviceEngagement(ndefTag)
+    fun setQrDeviceEngagement(qrDeviceEngagement: String) {
+        verification?.setDeviceEngagementFromQrCode(qrDeviceEngagement)
+    }
+
+    fun setNdefDeviceEngagement(adapter: NfcAdapter, activity: Activity) {
+        verification?.setNfcAdapter(adapter, activity)
+        verification?.verificationBegin()
     }
 
     fun setAvailableTransferMethods(availableTransferMethods: Collection<ByteArray>) {
@@ -79,16 +82,16 @@ class TransferManager private constructor(private val context: Context) {
         // Start connection
         verification?.let {
             deviceRetrievalMethod?.let { dr ->
-                it.connect(dr, isoDep)
+                it.connectToDevice(dr)
             }
             hasStarted = true
         }
     }
 
     fun stopVerification() {
-        verification?.setDeviceResponseListener(null, null)
+        verification?.setListener(null, null)
         try {
-            verification?.disconnect()
+            verification?.verificationEnd()
         } catch (e: RuntimeException) {
             Log.e(LOG_TAG, "Error ignored.", e)
         }
@@ -98,13 +101,13 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     private fun destroy() {
-        response = null
+        responseBytes = null
         verification = null
     }
 
 
-    private val responseListener = object : DeviceResponseListener {
-        override fun onDeviceEngagementReceived(deviceRetrievalMethods: Collection<ByteArray>) {
+    private val responseListener = object : VerificationHelper.Listener {
+        override fun onDeviceEngagementReceived(deviceRetrievalMethods: MutableList<ByteArray>) {
             setAvailableTransferMethods(deviceRetrievalMethods)
             transferStatusLd.value = TransferStatus.ENGAGED
         }
@@ -113,12 +116,12 @@ class TransferManager private constructor(private val context: Context) {
             transferStatusLd.value = TransferStatus.CONNECTED
         }
 
-        override fun onResponseReceived(deviceResponse: IdentityCredentialVerification.DeviceResponse) {
-            response = deviceResponse
+        override fun onResponseReceived(deviceResponseBytes: ByteArray) {
+            responseBytes = deviceResponseBytes
             transferStatusLd.value = TransferStatus.RESPONSE
         }
 
-        override fun onDeviceDisconnected() {
+        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
             transferStatusLd.value = TransferStatus.DISCONNECTED
         }
 
@@ -136,18 +139,37 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    fun sendRequest(deviceRequest: IdentityCredentialVerification.DeviceRequest) {
+    fun sendRequest(requestDocument: RequestDocument) {
         if (verification == null)
             throw IllegalStateException("It is necessary to start a new engagement.")
 
-        verification?.sendRequest(deviceRequest)
+        verification?.let {
+            val generator = DeviceRequestGenerator()
+            generator.setSessionTranscript(it.sessionTranscript)
+            generator.addDocumentRequest(
+                requestDocument.docType,
+                requestDocument.getItemsToRequest(),
+                null,
+                null,
+                null
+            )
+            verification?.sendRequest(generator.generate())
+        }
     }
 
     fun setDeviceRetrievalMethod(deviceRetrievalMethod: ByteArray) {
         this.deviceRetrievalMethod = deviceRetrievalMethod
     }
 
-    fun setIsoDep(isoDep: IsoDep) {
-        this.isoDep = isoDep
+    fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {
+        responseBytes?.let { rb ->
+            verification?.let { v ->
+                val parser = DeviceResponseParser()
+                parser.setSessionTranscript(v.sessionTranscript)
+                parser.setEphemeralReaderKey(v.ephemeralReaderKey)
+                parser.setDeviceResponse(rb)
+                return parser.parse()
+            } ?: throw IllegalStateException("Verification is null")
+        } ?: throw IllegalStateException("Response not received")
     }
 }

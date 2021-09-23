@@ -100,7 +100,7 @@ class DocumentManager private constructor(private val context: Context) {
                     .putEntryBytestring(MDL_NAMESPACE, "portrait", ids, portrait)
                     .putEntryBoolean(AAMVA_NAMESPACE, "real_id", ids, true)
                     .build()
-                Helpers.provisionSelfSignedCredential(
+                Utility.provisionSelfSignedCredential(
                     store,
                     DUMMY_CREDENTIAL_NAME,
                     iaKeyPair.private,

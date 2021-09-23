@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <dimen name="qr_width">350dp</dimen>
-    <dimen name="qr_height">350dp</dimen>
-</resources>

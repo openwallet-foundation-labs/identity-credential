@@ -10,7 +10,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import androidx.security.identity.IdentityCredentialVerification
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentTransferBinding
 import com.android.mdl.appreader.document.RequestDocument
@@ -25,9 +24,6 @@ class TransferFragment : Fragment() {
 
     companion object {
         private const val LOG_TAG = "TransferFragment"
-        private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        private const val MDL_NAMESPACE = "org.iso.18013.5.1"
-        private const val AAMVA_NAMESPACE = "org.aamva.18013.5.1"
     }
 
     private val args: TransferFragmentArgs by navArgs()
@@ -67,7 +63,7 @@ class TransferFragment : Fragment() {
                 }
                 TransferStatus.CONNECTED -> {
                     binding.tvStatus.text = "Connected. Requesting mDoc..."
-                    vm.sendRequest(createRequest())
+                    vm.sendRequest(requestDocument)
                 }
                 TransferStatus.RESPONSE -> {
                     Log.d(LOG_TAG, "Navigating to results")
@@ -104,13 +100,6 @@ class TransferFragment : Fragment() {
         binding.btCancel.setOnClickListener {
             findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
         }
-    }
-
-
-    private fun createRequest(): IdentityCredentialVerification.DeviceRequest {
-        val deviceRequestBuilder = IdentityCredentialVerification.DeviceRequest.Builder()
-        deviceRequestBuilder.addDocumentRequest(requestDocument.getDocumentRequest())
-        return deviceRequestBuilder.build()
     }
 
     override fun onDestroyView() {
