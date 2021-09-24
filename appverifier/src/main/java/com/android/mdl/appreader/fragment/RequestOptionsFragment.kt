@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.appreader.databinding.FragmentRequestOptionsBinding
 import com.android.mdl.appreader.document.RequestMdl
+import com.android.mdl.appreader.document.RequestMvr
 import com.android.mdl.appreader.transfer.TransferManager
 
 /**
@@ -41,6 +42,11 @@ class RequestOptionsFragment : Fragment() {
         binding.cbRequestMdl.setOnClickListener {
             // Now we only have mDL option, it is always true
             binding.cbRequestMdl.isChecked = true
+            binding.cbRequestMvr.isChecked = false
+            binding.cbRequestMdlOlder18.isEnabled = true
+            binding.cbRequestMdlOlder21.isEnabled = true
+            binding.cbRequestMdlFull.isEnabled = true
+            binding.cbRequestMdlCustom.isEnabled = true
         }
 
         binding.cbRequestMdlOlder18.setOnClickListener {
@@ -75,15 +81,31 @@ class RequestOptionsFragment : Fragment() {
             binding.cbRequestMdlCustom.isChecked = true
         }
 
+        binding.cbRequestMvr.setOnClickListener {
+            // Now we only have mDL option, it is always true
+            binding.cbRequestMdl.isChecked = false
+            binding.cbRequestMvr.isChecked = true
+            binding.cbRequestMdlOlder18.isEnabled = false
+            binding.cbRequestMdlOlder21.isEnabled = false
+            binding.cbRequestMdlFull.isEnabled = false
+            binding.cbRequestMdlCustom.isEnabled = false
+            // TODO: get intent to retain from user
+            mapSelectedDataItems = getSelectRequestMvrFull(false)
+        }
+
         binding.btNext.setOnClickListener {
-            if (binding.cbRequestMdlCustom.isChecked) {
+            if (binding.cbRequestMdl.isChecked && binding.cbRequestMdlCustom.isChecked) {
                 findNavController().navigate(
                     RequestOptionsFragmentDirections.actionRequestOptionsToRequestCustom(
                         RequestMdl
                     )
                 )
             } else {
-                val requestDocument = RequestMdl
+                val requestDocument = if (binding.cbRequestMdl.isChecked) {
+                    RequestMdl
+                } else {
+                    RequestMvr
+                }
                 requestDocument.setSelectedDataItems(mapSelectedDataItems)
                 findNavController().navigate(
                     RequestOptionsFragmentDirections.actionRequestOptionsToScanDeviceEngagement(
@@ -113,6 +135,14 @@ class RequestOptionsFragment : Fragment() {
         val map = mutableMapOf<String, Boolean>()
         map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
         map[RequestMdl.DataItems.AGE_OVER_18.identifier] = intentToRetain
+        return map
+    }
+
+    private fun getSelectRequestMvrFull(intentToRetain: Boolean): Map<String, Boolean> {
+        val map = mutableMapOf<String, Boolean>()
+        RequestMvr.dataItems.forEach {
+            map[it.identifier] = intentToRetain
+        }
         return map
     }
 

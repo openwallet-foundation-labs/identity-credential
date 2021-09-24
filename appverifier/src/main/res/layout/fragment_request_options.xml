@@ -63,6 +63,16 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_full" />
 
+
+    <CheckBox
+        android:id="@+id/cb_request_mvr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:text="Request mVR"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_custom" />
+
     <Button
         android:id="@+id/bt_next"
         android:layout_width="wrap_content"
@@ -70,6 +80,6 @@
         android:text="@string/next"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cb_request_mdl_custom" />
+        app:layout_constraintTop_toBottomOf="@id/cb_request_mvr" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

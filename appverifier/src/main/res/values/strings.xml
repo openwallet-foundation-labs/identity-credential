@@ -44,4 +44,9 @@
     <string name="select_the_transfer_method">Select the transfer method</string>
     <string name="request_items">Request items</string>
 
+    <string name="registration_info">Vehicle Registration Information</string>
+    <string name="registration_holder">Vehicle Registration Holder Information</string>
+    <string name="basic_vehicle_info">Basic Vehicle Information</string>
+    <string name="vin">Vehicle Identification Number</string>
+
 </resources>

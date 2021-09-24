@@ -8,13 +8,17 @@ import android.security.keystore.KeyProperties
 import android.util.Log
 import androidx.security.identity.*
 import co.nstant.`in`.cbor.CborBuilder
+import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.mdl.app.R
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.AAMVA_NAMESPACE
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
+import com.android.mdl.app.util.DocumentData.DUMMY_MVR_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
+import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
+import com.android.mdl.app.util.DocumentData.MVR_NAMESPACE
 import com.android.mdl.app.util.FormatUtil
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.x500.X500Name
@@ -71,10 +75,115 @@ class DocumentManager private constructor(private val context: Context) {
                 createDummyCredential(store)?.let { document ->
                     documentRepository.insert(document)
                 }
+                // Create dummy mVR document...
+                createDummyMvrDocument(store)?.let { document ->
+                    documentRepository.insert(document)
+                }
             }
         }
 
 
+    }
+
+    private fun createDummyMvrDocument(store: IdentityCredentialStore): Document? {
+        createIssuingAuthorityKeyPair()?.let { iaKeyPair ->
+            val iaSelfSignedCert = getSelfSignedIssuerAuthorityCertificate(iaKeyPair)
+            try {
+                val id = AccessControlProfileId(0)
+                val ids: Collection<AccessControlProfileId> = listOf(id)
+                val profile = AccessControlProfile.Builder(id)
+                    .setUserAuthenticationRequired(false)
+                    .build()
+
+                val validFrom = UnicodeString("2021-04-19T22:00:00Z")
+                validFrom.setTag(0)
+                val validUntil = UnicodeString("2023-04-20T22:00:00Z")
+                validUntil.setTag(0)
+                val registrationInfo = CborBuilder().addMap()
+                    .put("issuingCountry", "UT")
+                    .put("competentAuthority", "RDW")
+                    .put("registrationNumber", "E-01-23")
+                    .put(UnicodeString("validFrom"), validFrom)
+                    .put(UnicodeString("validUntil"), validFrom)
+                    .end()
+                    .build()[0]
+                val issueDate = UnicodeString("2021-04-18")
+                issueDate.setTag(1004)
+                val registrationHolderAddress = CborBuilder().addMap()
+                    .put("streetName", "teststraat")
+                    .put("houseNumber", 86)
+                    .put("postalCode", "1234 AA")
+                    .put("placeOfResidence", "Samplecity")
+                    .end()
+                    .build()[0]
+                val registrationHolderHolderInfo = CborBuilder().addMap()
+                    .put("name", "Sample Name")
+                    .put(UnicodeString("address"), registrationHolderAddress)
+                    .end()
+                    .build()[0]
+                val registrationHolder = CborBuilder().addMap()
+                    .put(UnicodeString("holderInfo"), registrationHolderHolderInfo)
+                    .put("ownershipStatus", 2)
+                    .end()
+                    .build()[0]
+                val basicVehicleInfo = CborBuilder().addMap()
+                    .put(
+                        UnicodeString("vehicle"), CborBuilder().addMap()
+                            .put("make", "Dummymobile")
+                            .end()
+                            .build()[0]
+                    )
+                    .end()
+                    .build()[0]
+
+                val personalizationData = PersonalizationData.Builder()
+                    .addAccessControlProfile(profile)
+                    .putEntry(
+                        MVR_NAMESPACE,
+                        "registration_info",
+                        ids,
+                        FormatUtil.cborEncode(registrationInfo)
+                    )
+                    .putEntry(MVR_NAMESPACE, "issue_date", ids, FormatUtil.cborEncode(issueDate))
+                    .putEntry(
+                        MVR_NAMESPACE,
+                        "registration_holder",
+                        ids,
+                        FormatUtil.cborEncode(registrationHolder)
+                    )
+                    .putEntry(
+                        MVR_NAMESPACE,
+                        "basic_vehicle_info",
+                        ids,
+                        FormatUtil.cborEncode(basicVehicleInfo)
+                    )
+                    .putEntryString(MVR_NAMESPACE, "vin", ids, "1M8GDM9AXKP042788")
+                    .build()
+                Utility.provisionSelfSignedCredential(
+                    store,
+                    DUMMY_MVR_CREDENTIAL_NAME,
+                    iaKeyPair.private,
+                    iaSelfSignedCert,
+                    MVR_DOCTYPE,
+                    personalizationData,
+                    5,
+                    1
+                )
+                return Document(
+                    MVR_DOCTYPE,
+                    DUMMY_MVR_CREDENTIAL_NAME,
+                    DocumentData.MekbStaticData.VISIBLE_NAME.value,
+                    BitmapFactory.decodeResource(
+                        context.resources,
+                        R.drawable.driving_license_bg
+                    ),
+                    store.capabilities.isHardwareBacked
+                )
+            } catch (e: IdentityCredentialException) {
+                throw IllegalStateException("Error creating dummy credential", e)
+            }
+        }
+        return null
     }
 
     private fun createDummyCredential(store: IdentityCredentialStore): Document? {
