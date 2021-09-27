@@ -8,6 +8,10 @@
     <string name="select">Select</string>
     <string name="transfer">Transfer</string>
     <string name="ok">OK</string>
+    <string name="select_the_transfer_method">Select the transfer method</string>
+    <string name="request_items">Request items</string>
+
+    <!-- mDL strings -->
     <string name="family_name">Family Name</string>
     <string name="given_name">Given Names</string>
     <string name="birth_date">Date of birth</string>
@@ -41,9 +45,8 @@
     <string name="family_name_national_character">Family name in national characters</string>
     <string name="given_name_national_character">Given name in national characters</string>
     <string name="signature_usual_mark">Signature / usual mark</string>
-    <string name="select_the_transfer_method">Select the transfer method</string>
-    <string name="request_items">Request items</string>
 
+    <!-- mVR strings -->
     <string name="registration_info">Vehicle Registration Information</string>
     <string name="registration_holder">Vehicle Registration Holder Information</string>
     <string name="basic_vehicle_info">Basic Vehicle Information</string>

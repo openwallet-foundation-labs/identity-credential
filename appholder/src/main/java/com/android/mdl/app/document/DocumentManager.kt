@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.security.keystore.KeyProperties
 import android.util.Log
+import androidx.preference.PreferenceManager
 import androidx.security.identity.*
 import androidx.security.identity.IdentityCredentialStoreCapabilities.FEATURE_VERSION_202201
 import co.nstant.`in`.cbor.CborBuilder
@@ -21,6 +22,7 @@ import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_NAMESPACE
 import com.android.mdl.app.util.FormatUtil
+import com.android.mdl.app.util.PreferencesHelper
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
@@ -59,7 +61,7 @@ class DocumentManager private constructor(private val context: Context) {
             }
     }
 
-    private var store = IdentityCredentialStore.getInstance(context)
+    private lateinit var store: IdentityCredentialStore
 
     // Database to store document information
     private val documentRepository = DocumentRepository.getInstance(
@@ -67,10 +69,32 @@ class DocumentManager private constructor(private val context: Context) {
     )
 
     init {
-        // This app needs feature version 202201, if hardware implementation doesn't support
-        // get software implementation
-        if (store.capabilities.featureVersion != FEATURE_VERSION_202201) {
-            store = IdentityCredentialStore.getSoftwareInstance(context)
+        store = if (PreferencesHelper.hasHardwareBackedPreference(context)) {
+            if (PreferencesHelper.isHardwareBacked(context)) {
+                IdentityCredentialStore.getHardwareInstance(context)!!
+            } else {
+                IdentityCredentialStore.getSoftwareInstance(context)
+            }
+        } else {
+            val mStore = IdentityCredentialStore.getInstance(context)
+            // This app needs feature version 202201, if hardware implementation doesn't support
+            // get software implementation
+            if (mStore.capabilities.featureVersion != FEATURE_VERSION_202201) {
+                PreferencesHelper.setHardwareBacked(context, false)
+                IdentityCredentialStore.getSoftwareInstance(context)
+            } else {
+                PreferencesHelper.setHardwareBacked(context, mStore.capabilities.isHardwareBacked)
+                mStore
+            }
+        }
+
+        // We always use the same implementation once the app is installed
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+        if (!sharedPreferences.contains("com.android.mdl.app.HARDWARE_BACKED")) {
+            sharedPreferences.edit().putBoolean(
+                "com.android.mdl.app.HARDWARE_BACKED",
+                store.capabilities.isHardwareBacked
+            ).apply()
         }
         runBlocking {
             // Load created documents from local database

@@ -8,9 +8,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.databinding.FragmentShareDocumentBinding
-import com.android.mdl.app.document.Document
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 
@@ -20,21 +18,12 @@ class ShareDocumentFragment : Fragment() {
         private const val LOG_TAG = "ShareDocumentFragment"
     }
 
-    private val args: ShareDocumentFragmentArgs by navArgs()
-    private lateinit var document: Document
-
     private var _binding: FragmentShareDocumentBinding? = null
     private lateinit var vm: ShareDocumentViewModel
 
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        document = args.document
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -53,7 +42,7 @@ class ShareDocumentFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        vm.startPresentation(document)
+        vm.startPresentation()
 
         vm.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {
@@ -63,14 +52,12 @@ class ShareDocumentFragment : Fragment() {
                 }
                 TransferStatus.CONNECTED -> {
                     vm.message.set("Connected!")
+                    findNavController().navigate(
+                        ShareDocumentFragmentDirections.actionShareDocumentFragmentToTransferDocumentFragment()
+                    )
                 }
                 TransferStatus.REQUEST -> {
                     vm.message.set("Request received!")
-                    findNavController().navigate(
-                        ShareDocumentFragmentDirections.actionShareDocumentFragmentToUserConsentFragment(
-                            document
-                        )
-                    )
                 }
                 TransferStatus.DISCONNECTED -> {
                     vm.message.set("Disconnected!")

@@ -82,6 +82,12 @@ class SelectDocumentFragment : Fragment() {
         )
     }
 
+    fun onPresentDocuments() {
+        findNavController().navigate(
+            SelectDocumentFragmentDirections.actionSelectDocumentFragmentToShareDocumentFragment()
+        )
+    }
+
     private val permissionsLauncher =
         registerForActivityResult(RequestPermission()) { permission ->
             Log.d(LOG_TAG, "permissionsLauncher $permission")

@@ -13,11 +13,9 @@ import androidx.biometric.BiometricPrompt.CryptoObject
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
-import com.android.mdl.app.document.Document
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 import org.jetbrains.anko.support.v4.runOnUiThread
@@ -30,22 +28,12 @@ class TransferDocumentFragment : Fragment() {
         private const val LOG_TAG = "TransferDocumentFragment"
     }
 
-    private val args: TransferDocumentFragmentArgs by navArgs()
-    private lateinit var document: Document
-
     private var _binding: FragmentTransferDocumentBinding? = null
     private lateinit var vm: TransferDocumentViewModel
 
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        document = args.document
-
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -55,6 +43,7 @@ class TransferDocumentFragment : Fragment() {
         vm = ViewModelProvider(this).get(TransferDocumentViewModel::class.java)
 
         binding.fragment = this
+        binding.vm = vm
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
 
@@ -74,11 +63,30 @@ class TransferDocumentFragment : Fragment() {
                 }
                 TransferStatus.REQUEST -> {
                     Log.d(LOG_TAG, "Request")
+                    // TODO: Add option to the user select the which document share when there
+                    //  are more than one for now we are just returning the first document we found
+                    val requestedDocuments = vm.getRequestedDocuments()
+                    requestedDocuments.forEach {
+                        binding.txtDocuments.append("- ${it.userVisibleName} (${it.docType})\n")
+                    }
+
+                    try {
+                        val cryptoObject = vm.getCryptoObject()
+                        cryptoObject?.let {
+                            // Biometric authentication required
+                            showBiometricPrompt(it)
+                        }
+                    } catch (e: InvalidRequestMessageException) {
+                        Log.e(LOG_TAG, "Send response error: ${e.message}")
+                        Toast.makeText(
+                            requireContext(), "Send response error: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
                 TransferStatus.DISCONNECTED -> {
-                    findNavController().navigate(
-                        TransferDocumentFragmentDirections.actionTransferDocumentFragmentToDocumentSharedFragment()
-                    )
+                    Log.d(LOG_TAG, "Disconnected")
+                    binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
                 }
                 TransferStatus.ERROR -> {
                     Toast.makeText(
@@ -92,21 +100,6 @@ class TransferDocumentFragment : Fragment() {
             }
         }
         )
-
-        try {
-            val cryptoObject = vm.sendResponse()
-            cryptoObject?.let {
-                // Biometric authentication required
-                showBiometricPrompt(it)
-            }
-        } catch (e: InvalidRequestMessageException) {
-            Log.e(LOG_TAG, "Send response error: ${e.message}")
-            Toast.makeText(
-                requireContext(), "Send response error: ${e.message}",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-
     }
 
     private val executor = Executor {
@@ -121,6 +114,7 @@ class TransferDocumentFragment : Fragment() {
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle(getString(R.string.bio_auth_title))
             .setSubtitle(getString(R.string.bio_auth_subtitle))
+            .setDescription(formatEntryNames(vm.getEntryNames()))
             .setNegativeButtonText(getString(R.string.bio_auth_cancel))
             .build()
 
@@ -128,6 +122,20 @@ class TransferDocumentFragment : Fragment() {
 
         // Displays the "log in" prompt.
         biometricPrompt.authenticate(promptInfo, cryptoObject)
+    }
+
+    private fun formatEntryNames(entryNames: List<String>): String {
+        val sb = StringBuffer()
+        entryNames.forEach {
+            val stringId = resources.getIdentifier(it, "string", requireContext().packageName)
+            val entryName = if (stringId != 0) {
+                getString(stringId)
+            } else {
+                it
+            }
+            sb.append("• $entryName \n")
+        }
+        return sb.toString()
     }
 
     private val biometricAuthCallback = object : BiometricPrompt.AuthenticationCallback() {
@@ -144,7 +152,8 @@ class TransferDocumentFragment : Fragment() {
                     Toast.LENGTH_SHORT
                 ).show()
             }
-            onDone()
+            vm.cancelPresentation()
+            binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
         }
 
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {

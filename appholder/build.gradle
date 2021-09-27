@@ -63,6 +63,7 @@ dependencies {
 
     // Volley
     implementation "com.android.volley:volley:$volley_version"
+    implementation 'androidx.preference:preference-ktx:1.1.1'
 
     //Room
     kapt "androidx.room:room-compiler:$androidx_room_version"

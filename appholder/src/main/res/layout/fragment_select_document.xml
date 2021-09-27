@@ -54,10 +54,22 @@
                 android:layout_height="wrap_content"
                 android:onClick="@{() -> fragment.onStartProvisioning()}"
                 android:text="@string/bt_add_document"
-                app:layout_constraintBottom_toBottomOf="parent"
+                android:layout_marginTop="16dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/document_list" />
+
+            <Button
+                android:id="@+id/bt_present_documents"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:onClick="@{() -> fragment.onPresentDocuments()}"
+                android:text="@string/bt_present_documents"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/bt_add_document" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
