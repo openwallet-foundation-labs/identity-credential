@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.security.keystore.KeyProperties
 import android.util.Log
 import androidx.security.identity.*
+import androidx.security.identity.IdentityCredentialStoreCapabilities.FEATURE_VERSION_202201
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.mdl.app.R
@@ -58,7 +59,7 @@ class DocumentManager private constructor(private val context: Context) {
             }
     }
 
-    private val store = IdentityCredentialStore.getInstance(context)
+    private var store = IdentityCredentialStore.getInstance(context)
 
     // Database to store document information
     private val documentRepository = DocumentRepository.getInstance(
@@ -66,6 +67,11 @@ class DocumentManager private constructor(private val context: Context) {
     )
 
     init {
+        // This app needs feature version 202201, if hardware implementation doesn't support
+        // get software implementation
+        if (store.capabilities.featureVersion != FEATURE_VERSION_202201) {
+            store = IdentityCredentialStore.getSoftwareInstance(context)
+        }
         runBlocking {
             // Load created documents from local database
             val documents = documentRepository.getAll()
