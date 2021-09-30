@@ -1,5 +1,6 @@
 package com.android.mdl.app.fragment
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -8,8 +9,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+import androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
 import androidx.biometric.BiometricPrompt
-import androidx.biometric.BiometricPrompt.CryptoObject
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
@@ -66,16 +70,13 @@ class TransferDocumentFragment : Fragment() {
                     // TODO: Add option to the user select the which document share when there
                     //  are more than one for now we are just returning the first document we found
                     val requestedDocuments = vm.getRequestedDocuments()
-                    requestedDocuments.forEach {
-                        binding.txtDocuments.append("- ${it.userVisibleName} (${it.docType})\n")
+                    requestedDocuments.forEach { doc ->
+                        binding.txtDocuments.append("- ${doc.userVisibleName} (${doc.docType})\n")
                     }
 
                     try {
-                        val cryptoObject = vm.getCryptoObject()
-                        cryptoObject?.let {
-                            // Biometric authentication required
-                            showBiometricPrompt(it)
-                        }
+                        // Ask for user consent and send response
+                        sendResponseWithConsent()
                     } catch (e: InvalidRequestMessageException) {
                         Log.e(LOG_TAG, "Send response error: ${e.message}")
                         Toast.makeText(
@@ -110,18 +111,42 @@ class TransferDocumentFragment : Fragment() {
         it.run()
     }
 
-    private fun showBiometricPrompt(cryptoObject: CryptoObject) {
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(getString(R.string.bio_auth_title))
-            .setSubtitle(getString(R.string.bio_auth_subtitle))
-            .setDescription(formatEntryNames(vm.getEntryNames()))
-            .setNegativeButtonText(getString(R.string.bio_auth_cancel))
-            .build()
+    private fun sendResponseWithConsent() {
+        // Ask for biometric authentication when the device has biometric enrolled,
+        // otherwise just ask for consent in a dialog
+        if (BiometricManager.from(requireContext())
+                .canAuthenticate(BIOMETRIC_STRONG) == BIOMETRIC_SUCCESS
+        ) {
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.bio_auth_title))
+                .setSubtitle(getString(R.string.bio_auth_subtitle))
+                .setDescription(formatEntryNames(vm.getEntryNames()))
+                .setAllowedAuthenticators(DEVICE_CREDENTIAL)
+                .build()
 
-        val biometricPrompt = BiometricPrompt(this, executor, biometricAuthCallback)
+            val biometricPrompt = BiometricPrompt(this, executor, biometricAuthCallback)
 
-        // Displays the "log in" prompt.
-        biometricPrompt.authenticate(promptInfo, cryptoObject)
+            val cryptoObject = vm.getCryptoObject()
+            // Displays the "log in" prompt.
+            if (cryptoObject != null) {
+                biometricPrompt.authenticate(promptInfo, cryptoObject)
+            } else {
+                biometricPrompt.authenticate(promptInfo)
+            }
+        } else {
+            // Use the Builder class for convenient dialog construction
+            val builder = AlertDialog.Builder(requireActivity())
+            builder.setTitle(getString(R.string.bio_auth_title))
+            builder.setMessage("${getString(R.string.bio_auth_subtitle)} \n${formatEntryNames(vm.getEntryNames())}")
+            builder.setPositiveButton(R.string.bt_ok) { _, _ ->
+                authenticationSucceeded()
+            }
+            builder.setNegativeButton(R.string.bt_cancel) { _, _ ->
+                authenticationFailed()
+            }
+            builder.create()
+            builder.show()
+        }
     }
 
     private fun formatEntryNames(entryNames: List<String>): String {
@@ -138,35 +163,46 @@ class TransferDocumentFragment : Fragment() {
         return sb.toString()
     }
 
+    // Called when user consent is canceled or failed to provide biometric authentication
+    private fun authenticationFailed() {
+        runOnUiThread {
+            Toast.makeText(
+                requireContext(), getString(R.string.bio_auth_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        vm.cancelPresentation()
+        binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
+    }
+
+    // Called when user gives consent to transfer
+    private fun authenticationSucceeded() {
+        // Send response again after user biometric authentication
+        vm.sendResponse()
+    }
+
     private val biometricAuthCallback = object : BiometricPrompt.AuthenticationCallback() {
 
         override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
             super.onAuthenticationError(errorCode, errString)
             // reached max attempts to authenticate the user, or authentication dialog was cancelled
 
-            Log.d(LOG_TAG, "Attempt to authenticate the user has failed")
+            Log.d(LOG_TAG, "Attempt to authenticate the user has failed $errorCode - $errString")
 
-            runOnUiThread {
-                Toast.makeText(
-                    requireContext(), getString(R.string.bio_auth_failed),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            vm.cancelPresentation()
-            binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
+            authenticationFailed()
         }
 
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
             super.onAuthenticationSucceeded(result)
-
-            // Send response again after user biometric authentication
-            vm.sendResponse()
+            Log.d(LOG_TAG, "User authentication succeeded")
+            authenticationSucceeded()
         }
 
         override fun onAuthenticationFailed() {
             super.onAuthenticationFailed()
 
             Log.d(LOG_TAG, "Attempt to authenticate the user has failed")
+            authenticationFailed()
         }
     }
 
