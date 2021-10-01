@@ -19,6 +19,7 @@ object RequestMdl : RequestDocument() {
         DOCUMENT_NUMBER("document_number", R.string.document_number),
         PORTRAIT("portrait", R.string.portrait),
         DRIVING_PRIVILEGES("driving_privileges", R.string.driving_privileges),
+        UN_DISTINGUISHING_SIGN("un_distinguishing_sign", R.string.un_distinguishing_sign),
         ADMINISTRATIVE_NUMBER("administrative_number", R.string.administrative_number),
         HEIGHT("height", R.string.height),
         WEIGHT("weight", R.string.weight),

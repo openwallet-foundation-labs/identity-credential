@@ -2,12 +2,15 @@ package com.android.mdl.appreader.fragment
 
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.text.Html
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import androidx.security.identity.DeviceResponseParser
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
 import com.android.mdl.appreader.transfer.TransferManager
@@ -30,6 +33,7 @@ class ShowDocumentFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
+    private var portraitBytes: ByteArray? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -37,6 +41,9 @@ class ShowDocumentFragment : Fragment() {
     ): View {
 
         _binding = FragmentShowDocumentBinding.inflate(inflater, container, false)
+
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
+
         return binding.root
 
     }
@@ -46,31 +53,48 @@ class ShowDocumentFragment : Fragment() {
 
         val transferManager = TransferManager.getInstance(requireContext())
 
-        var portraitBytes: ByteArray? = null
-
         val documents = transferManager.getDeviceResponse().documents
-        binding.tvResults.text = ""
-        binding.tvResults.append(
-            """
-                Number of documents returned: ${documents.size}
-                
-                """.trimIndent()
-        )
-        binding.tvResults.append("\n")
-        for (doc in documents) {
-            binding.tvResults.append(
-                """
-            Doctype: ${doc.docType}
-            
-            """.trimIndent()
+        binding.tvResults.text =
+            Html.fromHtml(formatTextResult(documents), Html.FROM_HTML_MODE_COMPACT)
+
+        portraitBytes?.let { pb ->
+            Log.d(LOG_TAG, "Showing portrait " + pb.size + " bytes")
+            binding.ivPortrait.setImageBitmap(
+                BitmapFactory.decodeByteArray(portraitBytes, 0, pb.size)
             )
+        }
+
+
+        binding.btOk.setOnClickListener {
+            findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
+        }
+        binding.btCloseConnection.setOnClickListener {
+            TransferManager.getInstance(requireContext()).stopVerification()
+            binding.btOk.visibility = View.VISIBLE
+            binding.btCloseConnection.visibility = View.GONE
+            binding.btNewRequest.visibility = View.GONE
+        }
+        binding.btNewRequest.setOnClickListener {
+            findNavController().navigate(
+                ShowDocumentFragmentDirections.actionShowDocumentToRequestOptions(true)
+            )
+        }
+    }
+
+    private fun formatTextResult(documents: Collection<DeviceResponseParser.Document>): String {
+        val sb = StringBuffer()
+        sb.append("Number of documents returned: <b>${documents.size}</b>")
+        sb.append("<br><br>")
+        for (doc in documents) {
+            sb.append("<h3>Doctype: ${doc.docType}</h3>")
             for (ns in doc.issuerNamespaces) {
-                binding.tvResults.append("  Namespace: $ns\n")
+                sb.append("<br>")
+                sb.append("<h5>Namespace: $ns</h5>")
+                sb.append("<p>")
                 for (elem in doc.getIssuerEntryNames(ns)) {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
-                    if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "portrait"
-                    ) {
+                    if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "portrait") {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = doc.getIssuerEntryByteString(ns, elem)
                     } else if (doc.docType == MDL_DOCTYPE
@@ -80,22 +104,17 @@ class ShowDocumentFragment : Fragment() {
                     } else {
                         valueStr = FormatUtil.cborPrettyPrint(value)
                     }
-                    binding.tvResults.append("    $elem -> $valueStr\n")
+                    sb.append("<b>$elem</b> -> $valueStr<br>")
                 }
-                binding.tvResults.append("\n")
+                sb.append("</p><br>")
             }
         }
+        return sb.toString()
+    }
 
-        if (portraitBytes != null) {
-            Log.d(LOG_TAG, "Showing portrait " + portraitBytes.size + " bytes")
-            binding.ivPortrait.setImageBitmap(
-                BitmapFactory.decodeByteArray(portraitBytes, 0, portraitBytes.size)
-            )
-        }
-
-        TransferManager.getInstance(requireContext()).stopVerification()
-
-        binding.btOk.setOnClickListener {
+    var callback = object : OnBackPressedCallback(true /* enabled by default */) {
+        override fun handleOnBackPressed() {
+            TransferManager.getInstance(requireContext()).stopVerification()
             findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
         }
     }

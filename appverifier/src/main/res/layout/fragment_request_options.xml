@@ -31,7 +31,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="56dp"
-        android:text="Request older than 18 from mDL"
+        android:text="Older than 18"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl" />
 
@@ -40,19 +40,28 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="56dp"
-        android:text="Request older than 21 from mDL"
+        android:text="Older than 21"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_older_18" />
+
+    <CheckBox
+        android:id="@+id/cb_request_mdl_mandatory"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="56dp"
+        android:checked="true"
+        android:text="Mandatory fields"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_older_21" />
 
     <CheckBox
         android:id="@+id/cb_request_mdl_full"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="56dp"
-        android:checked="true"
-        android:text="Request full mDL"
+        android:text="Full mDL"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_older_21" />
+        app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_mandatory" />
 
     <CheckBox
         android:id="@+id/cb_request_mdl_custom"

@@ -10,12 +10,19 @@
         android:name="com.android.mdl.appreader.fragment.RequestOptionsFragment"
         android:label="Request Options"
         tools:layout="@layout/fragment_request_options">
+        <argument
+            android:name="keepConnection"
+            android:defaultValue="false"
+            app:argType="boolean" />
         <action
             android:id="@+id/action_RequestOptions_to_ScanDeviceEngagement"
             app:destination="@id/ScanDeviceEngagement" />
         <action
             android:id="@+id/action_RequestOptions_to_RequestCustom"
             app:destination="@id/RequestCustom" />
+        <action
+            android:id="@+id/action_RequestOptions_to_Transfer"
+            app:destination="@id/Transfer" />
     </fragment>
     <fragment
         android:id="@+id/RequestCustom"
@@ -26,6 +33,10 @@
             android:name="requestDocument"
             app:argType="com.android.mdl.appreader.document.RequestDocument"
             app:nullable="false" />
+        <argument
+            android:name="keepConnection"
+            android:defaultValue="false"
+            app:argType="boolean" />
         <action
             android:id="@+id/action_RequestCustom_to_ScanDeviceEngagement"
             app:destination="@id/ScanDeviceEngagement" />
@@ -77,6 +88,10 @@
             android:name="requestDocument"
             app:argType="com.android.mdl.appreader.document.RequestDocument"
             app:nullable="false" />
+        <argument
+            android:name="keepConnection"
+            android:defaultValue="false"
+            app:argType="boolean" />
         <action
             android:id="@+id/action_Transfer_to_ShowDocument"
             app:destination="@id/ShowDocument" />

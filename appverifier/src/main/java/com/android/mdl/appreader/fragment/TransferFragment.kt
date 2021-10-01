@@ -33,6 +33,7 @@ class TransferFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
     private lateinit var vm: TransferViewModel
+    private var keepConnection = false
 
     private lateinit var requestDocument: RequestDocument
 
@@ -40,6 +41,7 @@ class TransferFragment : Fragment() {
         super.onCreate(savedInstanceState)
 
         requestDocument = args.requestDocument
+        keepConnection = args.keepConnection
     }
 
     override fun onCreateView(
@@ -55,6 +57,22 @@ class TransferFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        try {
+            if (keepConnection) {
+                vm.sendNewRequest(requestDocument)
+                binding.tvStatus.text = "New request sent..."
+            } else {
+                binding.tvStatus.text = "Trying to connect to mDoc app..."
+                vm.connect()
+            }
+        } catch (e: RuntimeException) {
+            Log.e(LOG_TAG, "Error starting connection: ${e.message}", e)
+            Toast.makeText(
+                requireContext(), "Error starting connection: ${e.message}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
 
         vm.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {
@@ -85,17 +103,6 @@ class TransferFragment : Fragment() {
                 }
             }
         })
-
-        try {
-            binding.tvStatus.text = "Trying to connect to mDoc app..."
-            vm.connect()
-        } catch (e: RuntimeException) {
-            Log.e(LOG_TAG, "Error starting connection: ${e.message}", e)
-            Toast.makeText(
-                requireContext(), "Error starting connection: ${e.message}",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
 
         binding.btCancel.setOnClickListener {
             findNavController().navigate(R.id.action_Transfer_to_RequestOptions)

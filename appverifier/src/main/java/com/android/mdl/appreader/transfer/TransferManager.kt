@@ -157,6 +157,12 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
+    fun sendNewRequest(requestDocument: RequestDocument) {
+        // reset transfer status
+        transferStatusLd = MutableLiveData<TransferStatus>()
+        sendRequest(requestDocument)
+    }
+
     fun setDeviceRetrievalMethod(deviceRetrievalMethod: ByteArray) {
         this.deviceRetrievalMethod = deviceRetrievalMethod
     }

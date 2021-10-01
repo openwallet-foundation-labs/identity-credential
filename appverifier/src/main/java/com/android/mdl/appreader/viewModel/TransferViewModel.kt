@@ -24,4 +24,8 @@ class TransferViewModel(val app: Application) : AndroidViewModel(app) {
     fun sendRequest(requestDocument: RequestDocument) {
         transferManager.sendRequest(requestDocument)
     }
+
+    fun sendNewRequest(requestDocument: RequestDocument) {
+        transferManager.sendNewRequest(requestDocument)
+    }
 }
