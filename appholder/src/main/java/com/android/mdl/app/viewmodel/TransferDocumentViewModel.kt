@@ -43,17 +43,20 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         return requestedDocuments
     }
 
-    fun getEntryNames(): List<String> {
+    fun getEntryNames(): Map<Document, List<String>> {
+        val documents = mutableMapOf<Document, List<String>>()
         val docRequests =
             transferManager.getDeviceRequest().docRequests
 
-        val entryNames = mutableListOf<String>()
         docRequests.forEach { doc ->
+            val entryNames = mutableListOf<String>()
             doc.namespaces.forEach { ns ->
                 entryNames.addAll(doc.getEntryNames(ns))
             }
+            documents[documentManager.getDocuments().first { it.docType == doc.docType }] =
+                entryNames
         }
-        return entryNames
+        return documents
     }
 
     fun getCryptoObject() = transferManager.getCryptoObject()

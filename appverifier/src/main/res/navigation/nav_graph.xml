@@ -34,6 +34,10 @@
             app:argType="com.android.mdl.appreader.document.RequestDocument"
             app:nullable="false" />
         <argument
+            android:name="requestDocumentList"
+            app:argType="com.android.mdl.appreader.document.RequestDocumentList"
+            app:nullable="false" />
+        <argument
             android:name="keepConnection"
             android:defaultValue="false"
             app:argType="boolean" />
@@ -50,8 +54,8 @@
         android:label="Device Engagement"
         tools:layout="@layout/fragment_device_engagement">
         <argument
-            android:name="requestDocument"
-            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            android:name="requestDocumentList"
+            app:argType="com.android.mdl.appreader.document.RequestDocumentList"
             app:nullable="false" />
         <action
             android:id="@+id/action_ScanDeviceEngagement_to_RequestOptions"
@@ -69,8 +73,8 @@
         android:label="Select Transport"
         tools:layout="@layout/fragment_select_transport">
         <argument
-            android:name="requestDocument"
-            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            android:name="requestDocumentList"
+            app:argType="com.android.mdl.appreader.document.RequestDocumentList"
             app:nullable="false" />
         <action
             android:id="@+id/action_SelectTransport_to_Transfer"
@@ -85,8 +89,8 @@
         android:label="Transfer"
         tools:layout="@layout/fragment_transfer">
         <argument
-            android:name="requestDocument"
-            app:argType="com.android.mdl.appreader.document.RequestDocument"
+            android:name="requestDocumentList"
+            app:argType="com.android.mdl.appreader.document.RequestDocumentList"
             app:nullable="false" />
         <argument
             android:name="keepConnection"

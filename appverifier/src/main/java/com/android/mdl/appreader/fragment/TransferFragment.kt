@@ -12,7 +12,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentTransferBinding
-import com.android.mdl.appreader.document.RequestDocument
+import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.viewModel.TransferViewModel
 
@@ -35,12 +35,12 @@ class TransferFragment : Fragment() {
     private lateinit var vm: TransferViewModel
     private var keepConnection = false
 
-    private lateinit var requestDocument: RequestDocument
+    private lateinit var requestDocumentList: RequestDocumentList
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        requestDocument = args.requestDocument
+        requestDocumentList = args.requestDocumentList
         keepConnection = args.keepConnection
     }
 
@@ -60,7 +60,7 @@ class TransferFragment : Fragment() {
 
         try {
             if (keepConnection) {
-                vm.sendNewRequest(requestDocument)
+                vm.sendNewRequest(requestDocumentList)
                 binding.tvStatus.text = "New request sent..."
             } else {
                 binding.tvStatus.text = "Trying to connect to mDoc app..."
@@ -81,7 +81,7 @@ class TransferFragment : Fragment() {
                 }
                 TransferStatus.CONNECTED -> {
                     binding.tvStatus.text = "Connected. Requesting mDoc..."
-                    vm.sendRequest(requestDocument)
+                    vm.sendRequest(requestDocumentList)
                 }
                 TransferStatus.RESPONSE -> {
                     Log.d(LOG_TAG, "Navigating to results")

@@ -20,6 +20,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 import org.jetbrains.anko.support.v4.runOnUiThread
@@ -149,17 +150,22 @@ class TransferDocumentFragment : Fragment() {
         }
     }
 
-    private fun formatEntryNames(entryNames: List<String>): String {
+    private fun formatEntryNames(documents: Map<Document, List<String>>): String {
         val sb = StringBuffer()
-        entryNames.forEach {
-            val stringId = resources.getIdentifier(it, "string", requireContext().packageName)
-            val entryName = if (stringId != 0) {
-                getString(stringId)
-            } else {
-                it
+        documents.forEach { (doc, entryNames) ->
+            sb.append("Document: ${doc.userVisibleName}\n")
+            entryNames.forEach {
+                val stringId = resources.getIdentifier(it, "string", requireContext().packageName)
+                val entryName = if (stringId != 0) {
+                    getString(stringId)
+                } else {
+                    it
+                }
+                sb.append("• $entryName \n")
             }
-            sb.append("• $entryName \n")
+            sb.append("\n")
         }
+
         return sb.toString()
     }
 

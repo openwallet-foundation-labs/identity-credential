@@ -12,7 +12,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.security.identity.DeviceRequestGenerator
 import androidx.security.identity.DeviceResponseParser
 import androidx.security.identity.VerificationHelper
-import com.android.mdl.appreader.document.RequestDocument
+import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.util.TransferStatus
 import java.util.concurrent.Executor
 
@@ -139,28 +139,30 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    fun sendRequest(requestDocument: RequestDocument) {
+    fun sendRequest(requestDocumentList: RequestDocumentList) {
         if (verification == null)
             throw IllegalStateException("It is necessary to start a new engagement.")
 
         verification?.let {
             val generator = DeviceRequestGenerator()
             generator.setSessionTranscript(it.sessionTranscript)
-            generator.addDocumentRequest(
-                requestDocument.docType,
-                requestDocument.getItemsToRequest(),
-                null,
-                null,
-                null
-            )
+            requestDocumentList.getAll().forEach { requestDocument ->
+                generator.addDocumentRequest(
+                    requestDocument.docType,
+                    requestDocument.getItemsToRequest(),
+                    null,
+                    null,
+                    null
+                )
+            }
             verification?.sendRequest(generator.generate())
         }
     }
 
-    fun sendNewRequest(requestDocument: RequestDocument) {
+    fun sendNewRequest(requestDocumentList: RequestDocumentList) {
         // reset transfer status
         transferStatusLd = MutableLiveData<TransferStatus>()
-        sendRequest(requestDocument)
+        sendRequest(requestDocumentList)
     }
 
     fun setDeviceRetrievalMethod(deviceRetrievalMethod: ByteArray) {

@@ -86,7 +86,7 @@ class ShowDocumentFragment : Fragment() {
         sb.append("Number of documents returned: <b>${documents.size}</b>")
         sb.append("<br><br>")
         for (doc in documents) {
-            sb.append("<h3>Doctype: ${doc.docType}</h3>")
+            sb.append("<h3>Doctype: <font color=purple>${doc.docType}</font></h3>")
             for (ns in doc.issuerNamespaces) {
                 sb.append("<br>")
                 sb.append("<h5>Namespace: $ns</h5>")
@@ -112,7 +112,7 @@ class ShowDocumentFragment : Fragment() {
         return sb.toString()
     }
 
-    var callback = object : OnBackPressedCallback(true /* enabled by default */) {
+    private var callback = object : OnBackPressedCallback(true /* enabled by default */) {
         override fun handleOnBackPressed() {
             TransferManager.getInstance(requireContext()).stopVerification()
             findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
