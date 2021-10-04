@@ -15,6 +15,7 @@ import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentRequestCustomBinding
 import com.android.mdl.appreader.document.RequestDocument
+import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.viewModel.RequestCustomViewModel
 
 /**
@@ -31,10 +32,12 @@ class RequestCustomFragment : Fragment() {
 
     private lateinit var vm: RequestCustomViewModel
     private lateinit var requestDocument: RequestDocument
+    private lateinit var requestDocumentList: RequestDocumentList
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestDocument = args.requestDocument
+        requestDocumentList = args.requestDocumentList
     }
 
     override fun onCreateView(
@@ -67,10 +70,15 @@ class RequestCustomFragment : Fragment() {
 
         binding.btNext.setOnClickListener {
             // TODO: get intent to retain from user
-            requestDocument.setSelectedDataItems(vm.getSelectedDataItems(false))
+            //requestDocument.setSelectedDataItems(vm.getSelectedDataItems(false))
+            requestDocumentList.getAll()
+                .find { it.docType == requestDocument.docType && it.nameSpace == requestDocument.nameSpace }
+                .also {
+                    it?.setSelectedDataItems(vm.getSelectedDataItems(false))
+                }
             findNavController().navigate(
                 RequestCustomFragmentDirections.actionRequestCustomToScanDeviceEngagement(
-                    requestDocument
+                    requestDocumentList
                 )
             )
         }

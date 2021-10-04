@@ -6,16 +6,27 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.security.keystore.KeyProperties
 import android.util.Log
+import androidx.preference.PreferenceManager
 import androidx.security.identity.*
+import androidx.security.identity.IdentityCredentialStoreCapabilities.FEATURE_VERSION_202201
 import co.nstant.`in`.cbor.CborBuilder
+import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.mdl.app.R
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.AAMVA_NAMESPACE
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
+import com.android.mdl.app.util.DocumentData.DUMMY_MICOV_CREDENTIAL_NAME
+import com.android.mdl.app.util.DocumentData.DUMMY_MVR_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
+import com.android.mdl.app.util.DocumentData.MICOV_ATT_NAMESPACE
+import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
+import com.android.mdl.app.util.DocumentData.MICOV_VTR_NAMESPACE
+import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
+import com.android.mdl.app.util.DocumentData.MVR_NAMESPACE
 import com.android.mdl.app.util.FormatUtil
+import com.android.mdl.app.util.PreferencesHelper
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
@@ -54,7 +65,7 @@ class DocumentManager private constructor(private val context: Context) {
             }
     }
 
-    private val store = IdentityCredentialStore.getInstance(context)
+    private lateinit var store: IdentityCredentialStore
 
     // Database to store document information
     private val documentRepository = DocumentRepository.getInstance(
@@ -62,6 +73,33 @@ class DocumentManager private constructor(private val context: Context) {
     )
 
     init {
+        store = if (PreferencesHelper.hasHardwareBackedPreference(context)) {
+            if (PreferencesHelper.isHardwareBacked(context)) {
+                IdentityCredentialStore.getHardwareInstance(context)!!
+            } else {
+                IdentityCredentialStore.getSoftwareInstance(context)
+            }
+        } else {
+            val mStore = IdentityCredentialStore.getInstance(context)
+            // This app needs feature version 202201, if hardware implementation doesn't support
+            // get software implementation
+            if (mStore.capabilities.featureVersion != FEATURE_VERSION_202201) {
+                PreferencesHelper.setHardwareBacked(context, false)
+                IdentityCredentialStore.getSoftwareInstance(context)
+            } else {
+                PreferencesHelper.setHardwareBacked(context, mStore.capabilities.isHardwareBacked)
+                mStore
+            }
+        }
+
+        // We always use the same implementation once the app is installed
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+        if (!sharedPreferences.contains("com.android.mdl.app.HARDWARE_BACKED")) {
+            sharedPreferences.edit().putBoolean(
+                "com.android.mdl.app.HARDWARE_BACKED",
+                store.capabilities.isHardwareBacked
+            ).apply()
+        }
         runBlocking {
             // Load created documents from local database
             val documents = documentRepository.getAll()
@@ -71,10 +109,264 @@ class DocumentManager private constructor(private val context: Context) {
                 createDummyCredential(store)?.let { document ->
                     documentRepository.insert(document)
                 }
+                // Create dummy mVR document...
+                createDummyMvrDocument(store)?.let { document ->
+                    documentRepository.insert(document)
+                }
+                // Create dummy micov document...
+                createDummyMicovDocument(store)?.let { document ->
+                    documentRepository.insert(document)
+                }
             }
         }
 
 
+    }
+
+    private fun createDummyMicovDocument(store: IdentityCredentialStore): Document? {
+        createIssuingAuthorityKeyPair()?.let { iaKeyPair ->
+            val iaSelfSignedCert = getSelfSignedIssuerAuthorityCertificate(iaKeyPair)
+            try {
+                val id = AccessControlProfileId(0)
+                val ids: Collection<AccessControlProfileId> = listOf(id)
+                val profile = AccessControlProfile.Builder(id)
+                    .setUserAuthenticationRequired(false)
+                    .build()
+
+                // org.micov.vtr.1
+                val dob = UnicodeString("1964-08-12")
+                dob.setTag(1004)
+                val ra011dt = UnicodeString("2021-04-08")
+                ra011dt.setTag(1004)
+                val ra011nx = UnicodeString("2021-05-20")
+                ra011nx.setTag(1004)
+                val ra012dt = UnicodeString("2021-05-18")
+                ra011dt.setTag(1004)
+                val vRA011 = CborBuilder().addMap()
+                    .put("tg", "840539006")
+                    .put("vp", "1119349007")
+                    .put("mp", "EU/1/20/1528")
+                    .put("ma", "ORG-100030215")
+                    .put("bn", "B12345/67")
+                    .put("dn", "1")
+                    .put("sd", "2")
+                    .put(UnicodeString("dt"), ra011dt)
+                    .put("co", "UT")
+                    .put("ao", "RHI")
+                    .put(UnicodeString("nx"), ra011nx)
+                    .put("is", "SC17")
+                    .put("ci", "URN:UVCI:01:UT:187/37512422923")
+                    .end()
+                    .build()[0]
+                val vRA012 = CborBuilder().addMap()
+                    .put("tg", "840539006")
+                    .put("vp", "1119349007")
+                    .put("mp", "EU/1/20/1528")
+                    .put("ma", "ORG-100030215")
+                    .put("bn", "B67890/12")
+                    .put("dn", "2")
+                    .put("sd", "2")
+                    .put(UnicodeString("dt"), ra012dt)
+                    .put("co", "UT")
+                    .put("ao", "RHI")
+                    .put("is", "SC17")
+                    .put("ci", "URN:UVCI:01:UT:187/37512533044")
+                    .end()
+                    .build()[0]
+                val pidPPN = CborBuilder().addMap()
+                    .put("pty", "PPN")
+                    .put("pnr", "476284728")
+                    .put("pic", "UT")
+                    .end()
+                    .build()[0]
+                val pidDL = CborBuilder().addMap()
+                    .put("pty", "DL")
+                    .put("pnr", "987654321")
+                    .put("pic", "UT")
+                    .end()
+                    .build()[0]
+
+                // org.micov.attestation.1
+                val timeOfTest = UnicodeString("2021-10-12T19:00:00Z")
+                timeOfTest.setTag(0)
+                val seCondExpiry = UnicodeString("2021-10-13T19:00:00Z")
+                seCondExpiry.setTag(0)
+                val ra01Test = CborBuilder().addMap()
+                    .put("Result", "260415000")
+                    .put("TypeOfTest", "LP6464-4")
+                    .put(UnicodeString("TimeOfTest"), timeOfTest)
+                    .end()
+                    .build()[0]
+                val safeEntryLeisure = CborBuilder().addMap()
+                    .put("SeCondFulfilled", 1)
+                    .put("SeCondType", "leisure")
+                    .put(UnicodeString("SeCondExpiry"), seCondExpiry)
+                    .end()
+                    .build()[0]
+                val bitmap = BitmapFactory.decodeResource(
+                    context.resources,
+                    R.drawable.img_erika_portrait
+                )
+                val baos = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
+                val portrait: ByteArray = baos.toByteArray()
+                val personalizationData = PersonalizationData.Builder()
+                    .addAccessControlProfile(profile)
+                    .putEntryString(MICOV_VTR_NAMESPACE, "fn", ids, "Mustermann")
+                    .putEntryString(MICOV_VTR_NAMESPACE, "gn", ids, "Erika")
+                    .putEntry(MICOV_VTR_NAMESPACE, "dob", ids, FormatUtil.cborEncode(dob))
+                    .putEntryInteger(MICOV_VTR_NAMESPACE, "sex", ids, 2)
+                    .putEntry(MICOV_VTR_NAMESPACE, "v_RA01_1", ids, FormatUtil.cborEncode(vRA011))
+                    .putEntry(MICOV_VTR_NAMESPACE, "v_RA01_2", ids, FormatUtil.cborEncode(vRA012))
+                    .putEntry(MICOV_VTR_NAMESPACE, "pid_PPN", ids, FormatUtil.cborEncode(pidPPN))
+                    .putEntry(MICOV_VTR_NAMESPACE, "pid_DL", ids, FormatUtil.cborEncode(pidDL))
+                    .putEntryInteger(MICOV_ATT_NAMESPACE, "1D47_vaccinated", ids, 2)
+                    .putEntryInteger(MICOV_ATT_NAMESPACE, "RA01_vaccinated", ids, 2)
+                    .putEntry(
+                        MICOV_ATT_NAMESPACE,
+                        "RA01_test",
+                        ids,
+                        FormatUtil.cborEncode(ra01Test)
+                    )
+                    .putEntry(
+                        MICOV_ATT_NAMESPACE,
+                        "safeEntryLeisure",
+                        ids,
+                        FormatUtil.cborEncode(safeEntryLeisure)
+                    )
+                    .putEntryBytestring(MICOV_ATT_NAMESPACE, "fac", ids, portrait)
+                    .putEntryString(MICOV_ATT_NAMESPACE, "fni", ids, "M")
+                    .putEntryString(MICOV_ATT_NAMESPACE, "gni", ids, "E")
+                    .putEntryInteger(MICOV_ATT_NAMESPACE, "by", ids, 1964)
+                    .putEntryInteger(MICOV_ATT_NAMESPACE, "bm", ids, 8)
+                    .putEntryInteger(MICOV_ATT_NAMESPACE, "bd", ids, 12)
+                    .build()
+                Utility.provisionSelfSignedCredential(
+                    store,
+                    DUMMY_MICOV_CREDENTIAL_NAME,
+                    iaKeyPair.private,
+                    iaSelfSignedCert,
+                    MICOV_DOCTYPE,
+                    personalizationData,
+                    5,
+                    1
+                )
+                return Document(
+                    MICOV_DOCTYPE,
+                    DUMMY_MICOV_CREDENTIAL_NAME,
+                    DocumentData.MicovStaticData.VISIBLE_NAME.value,
+                    BitmapFactory.decodeResource(
+                        context.resources,
+                        R.drawable.driving_license_bg
+                    ),
+                    store.capabilities.isHardwareBacked
+                )
+            } catch (e: IdentityCredentialException) {
+                throw IllegalStateException("Error creating dummy credential", e)
+            }
+        }
+        return null
+    }
+
+    private fun createDummyMvrDocument(store: IdentityCredentialStore): Document? {
+        createIssuingAuthorityKeyPair()?.let { iaKeyPair ->
+            val iaSelfSignedCert = getSelfSignedIssuerAuthorityCertificate(iaKeyPair)
+            try {
+                val id = AccessControlProfileId(0)
+                val ids: Collection<AccessControlProfileId> = listOf(id)
+                val profile = AccessControlProfile.Builder(id)
+                    .setUserAuthenticationRequired(false)
+                    .build()
+
+                val validFrom = UnicodeString("2021-04-19T22:00:00Z")
+                validFrom.setTag(0)
+                val validUntil = UnicodeString("2023-04-20T22:00:00Z")
+                validUntil.setTag(0)
+                val registrationInfo = CborBuilder().addMap()
+                    .put("issuingCountry", "UT")
+                    .put("competentAuthority", "RDW")
+                    .put("registrationNumber", "E-01-23")
+                    .put(UnicodeString("validFrom"), validFrom)
+                    .put(UnicodeString("validUntil"), validFrom)
+                    .end()
+                    .build()[0]
+                val issueDate = UnicodeString("2021-04-18")
+                issueDate.setTag(1004)
+                val registrationHolderAddress = CborBuilder().addMap()
+                    .put("streetName", "teststraat")
+                    .put("houseNumber", 86)
+                    .put("postalCode", "1234 AA")
+                    .put("placeOfResidence", "Samplecity")
+                    .end()
+                    .build()[0]
+                val registrationHolderHolderInfo = CborBuilder().addMap()
+                    .put("name", "Sample Name")
+                    .put(UnicodeString("address"), registrationHolderAddress)
+                    .end()
+                    .build()[0]
+                val registrationHolder = CborBuilder().addMap()
+                    .put(UnicodeString("holderInfo"), registrationHolderHolderInfo)
+                    .put("ownershipStatus", 2)
+                    .end()
+                    .build()[0]
+                val basicVehicleInfo = CborBuilder().addMap()
+                    .put(
+                        UnicodeString("vehicle"), CborBuilder().addMap()
+                            .put("make", "Dummymobile")
+                            .end()
+                            .build()[0]
+                    )
+                    .end()
+                    .build()[0]
+
+                val personalizationData = PersonalizationData.Builder()
+                    .addAccessControlProfile(profile)
+                    .putEntry(
+                        MVR_NAMESPACE,
+                        "registration_info",
+                        ids,
+                        FormatUtil.cborEncode(registrationInfo)
+                    )
+                    .putEntry(MVR_NAMESPACE, "issue_date", ids, FormatUtil.cborEncode(issueDate))
+                    .putEntry(
+                        MVR_NAMESPACE,
+                        "registration_holder",
+                        ids,
+                        FormatUtil.cborEncode(registrationHolder)
+                    )
+                    .putEntry(
+                        MVR_NAMESPACE,
+                        "basic_vehicle_info",
+                        ids,
+                        FormatUtil.cborEncode(basicVehicleInfo)
+                    )
+                    .putEntryString(MVR_NAMESPACE, "vin", ids, "1M8GDM9AXKP042788")
+                    .build()
+                Utility.provisionSelfSignedCredential(
+                    store,
+                    DUMMY_MVR_CREDENTIAL_NAME,
+                    iaKeyPair.private,
+                    iaSelfSignedCert,
+                    MVR_DOCTYPE,
+                    personalizationData,
+                    5,
+                    1
+                )
+                return Document(
+                    MVR_DOCTYPE,
+                    DUMMY_MVR_CREDENTIAL_NAME,
+                    DocumentData.MekbStaticData.VISIBLE_NAME.value,
+                    BitmapFactory.decodeResource(
+                        context.resources,
+                        R.drawable.driving_license_bg
+                    ),
+                    store.capabilities.isHardwareBacked
+                )
+            } catch (e: IdentityCredentialException) {
+                throw IllegalStateException("Error creating dummy credential", e)
+            }
+        }
+        return null
     }
 
     private fun createDummyCredential(store: IdentityCredentialStore): Document? {
@@ -93,11 +385,51 @@ class DocumentManager private constructor(private val context: Context) {
                 val profile = AccessControlProfile.Builder(id)
                     .setUserAuthenticationRequired(false)
                     .build()
+                val birthDate = UnicodeString("1971-09-01")
+                birthDate.setTag(1004)
+                val issueDate = UnicodeString("2021-04-18")
+                issueDate.setTag(1004)
+                val expiryDate = UnicodeString("2026-08-31")
+                expiryDate.setTag(1004)
+                val issueDateCatA = UnicodeString("2018-08-09")
+                issueDateCatA.setTag(1004)
+                val expiryDateCatA = UnicodeString("2024-10-20")
+                expiryDateCatA.setTag(1004)
+                val issueDateCatB = UnicodeString("2017-02-23")
+                issueDateCatB.setTag(1004)
+                val expiryDateCatB = UnicodeString("2024-10-20")
+                expiryDateCatB.setTag(1004)
+                val drivingPrivileges = CborBuilder().addArray()
+                    .addMap()
+                    .put("vehicle_category_code", "A")
+                    .put(UnicodeString("issue_date"), issueDateCatA)
+                    .put(UnicodeString("expiry_date"), expiryDateCatA)
+                    .end()
+                    .addMap()
+                    .put("vehicle_category_code", "B")
+                    .put(UnicodeString("issue_date"), issueDateCatB)
+                    .put(UnicodeString("expiry_date"), expiryDateCatB)
+                    .end()
+                    .end()
+                    .build()[0]
                 val personalizationData = PersonalizationData.Builder()
                     .addAccessControlProfile(profile)
                     .putEntryString(MDL_NAMESPACE, "given_name", ids, "Erika")
                     .putEntryString(MDL_NAMESPACE, "family_name", ids, "Mustermann")
+                    .putEntry(MDL_NAMESPACE, "birth_date", ids, FormatUtil.cborEncode(birthDate))
                     .putEntryBytestring(MDL_NAMESPACE, "portrait", ids, portrait)
+                    .putEntry(MDL_NAMESPACE, "issue_date", ids, FormatUtil.cborEncode(issueDate))
+                    .putEntry(MDL_NAMESPACE, "expiry_date", ids, FormatUtil.cborEncode(expiryDate))
+                    .putEntryString(MDL_NAMESPACE, "issuing_country", ids, "US")
+                    .putEntryString(MDL_NAMESPACE, "issuing_authority", ids, "Google")
+                    .putEntryString(MDL_NAMESPACE, "document_number", ids, "NDL12345JKL")
+                    .putEntry(
+                        MDL_NAMESPACE,
+                        "driving_privileges",
+                        ids,
+                        FormatUtil.cborEncode(drivingPrivileges)
+                    )
+                    .putEntryString(MDL_NAMESPACE, "un_distinguishing_sign", ids, "US")
                     .putEntryBoolean(AAMVA_NAMESPACE, "real_id", ids, true)
                     .build()
                 Utility.provisionSelfSignedCredential(

@@ -1,5 +1,6 @@
 package com.android.mdl.app.fragment
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -8,12 +9,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
 import androidx.biometric.BiometricPrompt
-import androidx.biometric.BiometricPrompt.CryptoObject
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
@@ -30,22 +32,12 @@ class TransferDocumentFragment : Fragment() {
         private const val LOG_TAG = "TransferDocumentFragment"
     }
 
-    private val args: TransferDocumentFragmentArgs by navArgs()
-    private lateinit var document: Document
-
     private var _binding: FragmentTransferDocumentBinding? = null
     private lateinit var vm: TransferDocumentViewModel
 
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        document = args.document
-
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -55,6 +47,7 @@ class TransferDocumentFragment : Fragment() {
         vm = ViewModelProvider(this).get(TransferDocumentViewModel::class.java)
 
         binding.fragment = this
+        binding.vm = vm
 
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
 
@@ -74,11 +67,27 @@ class TransferDocumentFragment : Fragment() {
                 }
                 TransferStatus.REQUEST -> {
                     Log.d(LOG_TAG, "Request")
+                    // TODO: Add option to the user select the which document share when there
+                    //  are more than one for now we are just returning the first document we found
+                    val requestedDocuments = vm.getRequestedDocuments()
+                    requestedDocuments.forEach { doc ->
+                        binding.txtDocuments.append("- ${doc.userVisibleName} (${doc.docType})\n")
+                    }
+
+                    try {
+                        // Ask for user consent and send response
+                        sendResponseWithConsent()
+                    } catch (e: InvalidRequestMessageException) {
+                        Log.e(LOG_TAG, "Send response error: ${e.message}")
+                        Toast.makeText(
+                            requireContext(), "Send response error: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
                 TransferStatus.DISCONNECTED -> {
-                    findNavController().navigate(
-                        TransferDocumentFragmentDirections.actionTransferDocumentFragmentToDocumentSharedFragment()
-                    )
+                    Log.d(LOG_TAG, "Disconnected")
+                    binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
                 }
                 TransferStatus.ERROR -> {
                     Toast.makeText(
@@ -92,21 +101,6 @@ class TransferDocumentFragment : Fragment() {
             }
         }
         )
-
-        try {
-            val cryptoObject = vm.sendResponse()
-            cryptoObject?.let {
-                // Biometric authentication required
-                showBiometricPrompt(it)
-            }
-        } catch (e: InvalidRequestMessageException) {
-            Log.e(LOG_TAG, "Send response error: ${e.message}")
-            Toast.makeText(
-                requireContext(), "Send response error: ${e.message}",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-
     }
 
     private val executor = Executor {
@@ -117,17 +111,79 @@ class TransferDocumentFragment : Fragment() {
         it.run()
     }
 
-    private fun showBiometricPrompt(cryptoObject: CryptoObject) {
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(getString(R.string.bio_auth_title))
-            .setSubtitle(getString(R.string.bio_auth_subtitle))
-            .setNegativeButtonText(getString(R.string.bio_auth_cancel))
-            .build()
+    private fun sendResponseWithConsent() {
+        // Ask for biometric authentication when the device has biometric enrolled,
+        // otherwise just ask for consent in a dialog
+        if (BiometricManager.from(requireContext())
+                .canAuthenticate(BIOMETRIC_STRONG) == BIOMETRIC_SUCCESS
+        ) {
+            val promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.bio_auth_title))
+                .setSubtitle(getString(R.string.bio_auth_subtitle))
+                .setDescription(formatEntryNames(vm.getEntryNames()))
+                .setNegativeButtonText(getString(R.string.bio_auth_cancel))
+                .build()
 
-        val biometricPrompt = BiometricPrompt(this, executor, biometricAuthCallback)
+            val biometricPrompt = BiometricPrompt(this, executor, biometricAuthCallback)
 
-        // Displays the "log in" prompt.
-        biometricPrompt.authenticate(promptInfo, cryptoObject)
+            val cryptoObject = vm.getCryptoObject()
+            // Displays the "log in" prompt.
+            if (cryptoObject != null) {
+                biometricPrompt.authenticate(promptInfo, cryptoObject)
+            } else {
+                biometricPrompt.authenticate(promptInfo)
+            }
+        } else {
+            // Use the Builder class for convenient dialog construction
+            val builder = AlertDialog.Builder(requireActivity())
+            builder.setTitle(getString(R.string.bio_auth_title))
+            builder.setMessage("${getString(R.string.bio_auth_subtitle)} \n${formatEntryNames(vm.getEntryNames())}")
+            builder.setPositiveButton(R.string.bt_ok) { _, _ ->
+                authenticationSucceeded()
+            }
+            builder.setNegativeButton(R.string.bt_cancel) { _, _ ->
+                authenticationFailed()
+            }
+            builder.create()
+            builder.show()
+        }
+    }
+
+    private fun formatEntryNames(documents: Map<Document, List<String>>): String {
+        val sb = StringBuffer()
+        documents.forEach { (doc, entryNames) ->
+            sb.append("Document: ${doc.userVisibleName}\n")
+            entryNames.forEach {
+                val stringId = resources.getIdentifier(it, "string", requireContext().packageName)
+                val entryName = if (stringId != 0) {
+                    getString(stringId)
+                } else {
+                    it
+                }
+                sb.append("• $entryName \n")
+            }
+            sb.append("\n")
+        }
+
+        return sb.toString()
+    }
+
+    // Called when user consent is canceled or failed to provide biometric authentication
+    private fun authenticationFailed() {
+        runOnUiThread {
+            Toast.makeText(
+                requireContext(), getString(R.string.bio_auth_failed),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+        vm.cancelPresentation()
+        binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
+    }
+
+    // Called when user gives consent to transfer
+    private fun authenticationSucceeded() {
+        // Send response again after user biometric authentication
+        vm.sendResponse()
     }
 
     private val biometricAuthCallback = object : BiometricPrompt.AuthenticationCallback() {
@@ -136,28 +192,22 @@ class TransferDocumentFragment : Fragment() {
             super.onAuthenticationError(errorCode, errString)
             // reached max attempts to authenticate the user, or authentication dialog was cancelled
 
-            Log.d(LOG_TAG, "Attempt to authenticate the user has failed")
+            Log.d(LOG_TAG, "Attempt to authenticate the user has failed $errorCode - $errString")
 
-            runOnUiThread {
-                Toast.makeText(
-                    requireContext(), getString(R.string.bio_auth_failed),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-            onDone()
+            authenticationFailed()
         }
 
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
             super.onAuthenticationSucceeded(result)
-
-            // Send response again after user biometric authentication
-            vm.sendResponse()
+            Log.d(LOG_TAG, "User authentication succeeded")
+            authenticationSucceeded()
         }
 
         override fun onAuthenticationFailed() {
             super.onAuthenticationFailed()
 
             Log.d(LOG_TAG, "Attempt to authenticate the user has failed")
+            authenticationFailed()
         }
     }
 

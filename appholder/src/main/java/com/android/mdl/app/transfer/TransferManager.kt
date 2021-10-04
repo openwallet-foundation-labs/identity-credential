@@ -18,8 +18,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.security.identity.*
 import androidx.security.identity.DeviceRequestParser.DeviceRequest
-import com.android.mdl.app.document.Document
 import com.android.mdl.app.util.FormatUtil
+import com.android.mdl.app.util.PreferencesHelper
 import com.android.mdl.app.util.TransferStatus
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -46,7 +46,6 @@ class TransferManager private constructor(private val context: Context) {
     private var store: IdentityCredentialStore? = null
     private var session: PresentationSession? = null
     private var presentation: PresentationHelper? = null
-    private var document: Document? = null
     private var hasStarted = false
 
     var requestBytes: ByteArray? = null
@@ -55,12 +54,11 @@ class TransferManager private constructor(private val context: Context) {
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
-    private fun initiate(document: Document) {
-        this.document = document
+    private fun initiate() {
 
         // Create identity credential store from hardware or software implementation depending on
-        // what was used to store this specific document.
-        store = if (document.hardwareBacked)
+        // what was used to store the first document on this device.
+        store = if (PreferencesHelper.isHardwareBacked(context))
             IdentityCredentialStore.getHardwareInstance(context)
                 ?: IdentityCredentialStore.getSoftwareInstance(context)
         else
@@ -74,12 +72,12 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     @Throws(IllegalStateException::class)
-    fun startPresentation(document: Document) {
+    fun startPresentation() {
         if (hasStarted)
             throw IllegalStateException("Transfer has already started. It is necessary to stop current presentation before starting a new one.")
 
         // Get an instance of the presentation based on the document
-        initiate(document)
+        initiate()
 
         // Add only ble transfer for now
         val dataRetrievalConfiguration = DataRetrievalConfiguration.Builder()
@@ -89,7 +87,7 @@ class TransferManager private constructor(private val context: Context) {
         // Setup and begin presentation
         presentation?.let {
             it.setListener(requestListener, context.mainExecutor())
-            it.presentationBegin(dataRetrievalConfiguration)
+            it.startListening(dataRetrievalConfiguration)
             hasStarted = true
         }
     }
@@ -180,13 +178,11 @@ class TransferManager private constructor(private val context: Context) {
 
     @Throws(IllegalStateException::class)
     fun addDocumentToResponse(
+        credentialName: String,
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
         response: DeviceResponseGenerator
     ): Boolean {
-        val credentialName = document?.identityCredentialName
-            ?: throw IllegalStateException("Error recovering credential name from document")
-
         session?.let {
             it.getCredentialData(
                 credentialName,
@@ -230,21 +226,26 @@ class TransferManager private constructor(private val context: Context) {
 
     private fun destroy() {
         requestBytes = null
-        document = null
         store = null
         presentation = null
     }
 
     fun stopPresentation() {
         presentation?.setListener(null, null)
-        presentation?.presentationEnd()
+        presentation?.disconnect()
         transferStatusLd = MutableLiveData<TransferStatus>()
         destroy()
         hasStarted = false
     }
 
     fun getCryptoObject(): BiometricPrompt.CryptoObject? {
-        return session?.cryptoObject
+        try {
+            return session?.cryptoObject
+        } catch (e: RuntimeException) {
+            // Error when device doesn't have secure unlock
+            Log.e(LOG_TAG, "getCryptoObject: ${e.message}")
+        }
+        return null
     }
 
     fun sendResponse(deviceResponse: ByteArray) {

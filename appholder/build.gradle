@@ -41,7 +41,10 @@ android {
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+    // Uses module as identity credential api
+    implementation project(path: ':identity')
+    // Uses compiled lib as identity credential api
+    //implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
 
     // Kotlin sdtlib jdk8
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
@@ -63,6 +66,7 @@ dependencies {
 
     // Volley
     implementation "com.android.volley:volley:$volley_version"
+    implementation 'androidx.preference:preference-ktx:1.1.1'
 
     //Room
     kapt "androidx.room:room-compiler:$androidx_room_version"

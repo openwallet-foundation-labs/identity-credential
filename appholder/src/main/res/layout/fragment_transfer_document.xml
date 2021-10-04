@@ -9,6 +9,10 @@
         <variable
             name="fragment"
             type="com.android.mdl.app.fragment.TransferDocumentFragment" />
+
+        <variable
+            name="vm"
+            type="com.android.mdl.app.viewmodel.TransferDocumentViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -17,33 +21,51 @@
         tools:context=".fragment.TransferDocumentFragment">
 
         <TextView
-            android:id="@+id/txt_transferring"
+            android:id="@+id/txt_connection_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
-            android:text="@string/txt_transferring"
+            android:text="@string/connection_mdoc_open"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <ProgressBar
-            android:id="@+id/loading_progress"
-            android:layout_width="wrap_content"
+        <TextView
+            android:id="@+id/txt_documents_sent"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toTopOf="@+id/bt_cancel"
-            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_margin="16dp"
+            android:text="@{vm.documentsSent}"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/txt_transferring" />
+            app:layout_constraintTop_toBottomOf="@id/txt_connection_status" />
+
+        <TextView
+            android:id="@+id/txt_documents"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="32dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/txt_documents_sent" />
 
         <Button
             android:id="@+id/bt_cancel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="64dp"
             android:onClick="@{() -> fragment.onDone()}"
             android:text="@string/bt_cancel"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <ProgressBar
+            android:id="@+id/loading_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="@{vm.inProgress}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/loading_progress" />
+            app:layout_constraintTop_toTopOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

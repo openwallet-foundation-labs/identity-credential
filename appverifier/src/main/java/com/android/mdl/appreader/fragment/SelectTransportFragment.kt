@@ -91,7 +91,7 @@ class SelectTransportFragment : Fragment() {
         binding.btNext.setOnClickListener {
             findNavController().navigate(
                 SelectTransportFragmentDirections.actionSelectTransportToTransfer(
-                    args.requestDocument
+                    args.requestDocumentList
                 )
             )
         }

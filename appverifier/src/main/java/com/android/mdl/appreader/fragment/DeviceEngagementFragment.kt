@@ -199,13 +199,13 @@ class DeviceEngagementFragment : Fragment() {
         if (transferManager.availableTransferMethods?.size == 1) {
             findNavController().navigate(
                 DeviceEngagementFragmentDirections.actionScanDeviceEngagementToTransfer(
-                    args.requestDocument
+                    args.requestDocumentList
                 )
             )
         } else {
             findNavController().navigate(
                 DeviceEngagementFragmentDirections.actionScanDeviceEngagementToSelectTransport(
-                    args.requestDocument
+                    args.requestDocumentList
                 )
             )
         }

@@ -12,7 +12,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.security.identity.DeviceRequestGenerator
 import androidx.security.identity.DeviceResponseParser
 import androidx.security.identity.VerificationHelper
-import com.android.mdl.appreader.document.RequestDocument
+import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.util.TransferStatus
 import java.util.concurrent.Executor
 
@@ -82,7 +82,7 @@ class TransferManager private constructor(private val context: Context) {
         // Start connection
         verification?.let {
             deviceRetrievalMethod?.let { dr ->
-                it.connectToDevice(dr)
+                it.connect(dr)
             }
             hasStarted = true
         }
@@ -91,7 +91,7 @@ class TransferManager private constructor(private val context: Context) {
     fun stopVerification() {
         verification?.setListener(null, null)
         try {
-            verification?.verificationEnd()
+            verification?.disconnect()
         } catch (e: RuntimeException) {
             Log.e(LOG_TAG, "Error ignored.", e)
         }
@@ -139,22 +139,30 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    fun sendRequest(requestDocument: RequestDocument) {
+    fun sendRequest(requestDocumentList: RequestDocumentList) {
         if (verification == null)
             throw IllegalStateException("It is necessary to start a new engagement.")
 
         verification?.let {
             val generator = DeviceRequestGenerator()
             generator.setSessionTranscript(it.sessionTranscript)
-            generator.addDocumentRequest(
-                requestDocument.docType,
-                requestDocument.getItemsToRequest(),
-                null,
-                null,
-                null
-            )
+            requestDocumentList.getAll().forEach { requestDocument ->
+                generator.addDocumentRequest(
+                    requestDocument.docType,
+                    requestDocument.getItemsToRequest(),
+                    null,
+                    null,
+                    null
+                )
+            }
             verification?.sendRequest(generator.generate())
         }
+    }
+
+    fun sendNewRequest(requestDocumentList: RequestDocumentList) {
+        // reset transfer status
+        transferStatusLd = MutableLiveData<TransferStatus>()
+        sendRequest(requestDocumentList)
     }
 
     fun setDeviceRetrievalMethod(deviceRetrievalMethod: ByteArray) {

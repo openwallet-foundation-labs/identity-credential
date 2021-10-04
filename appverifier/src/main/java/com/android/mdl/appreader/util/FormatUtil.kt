@@ -139,6 +139,7 @@ object FormatUtil {
     }
 
     fun cborPrettyPrint(encodedBytes: ByteArray): String {
+        val newLine = "<br>"
         val sb = java.lang.StringBuilder()
         val bais = ByteArrayInputStream(encodedBytes)
         val dataItems = try {
@@ -148,7 +149,7 @@ object FormatUtil {
         }
         for ((count, dataItem) in dataItems.withIndex()) {
             if (count > 0) {
-                sb.append(",\n")
+                sb.append(",$newLine")
             }
             cborPrettyPrintDataItem(sb, 0, dataItem)
         }
@@ -159,9 +160,11 @@ object FormatUtil {
         sb: java.lang.StringBuilder, indent: Int,
         dataItem: DataItem
     ) {
+        val space = "&nbsp;"
+        val newLine = "<br>"
         val indentBuilder = java.lang.StringBuilder()
         for (n in 0 until indent) {
-            indentBuilder.append(' ')
+            indentBuilder.append(space)
         }
         val indentString = indentBuilder.toString()
         if (dataItem.hasTag()) {
@@ -169,7 +172,7 @@ object FormatUtil {
         }
         when (dataItem.majorType) {
             MajorType.INVALID ->                 // TODO: throw
-                sb.append("<invalid>")
+                sb.append("**invalid**")
             MajorType.UNSIGNED_INTEGER -> {
                 // Major type 0: an unsigned integer.
                 val value: BigInteger = (dataItem as UnsignedInteger).value
@@ -215,14 +218,14 @@ object FormatUtil {
                     }
                     sb.append("]")
                 } else {
-                    sb.append("[\n$indentString")
+                    sb.append("[$newLine$indentString")
                     for ((count, item) in items.withIndex()) {
-                        sb.append("  ")
+                        sb.append("$space$space")
                         cborPrettyPrintDataItem(sb, indent + 2, item)
                         if (count + 1 < items.size) {
                             sb.append(",")
                         }
-                        sb.append("\n $indentString")
+                        sb.append("$newLine $indentString")
                     }
                     sb.append("]")
                 }
@@ -233,9 +236,9 @@ object FormatUtil {
                 if (keys.isEmpty()) {
                     sb.append("{}")
                 } else {
-                    sb.append("{\n$indentString")
+                    sb.append("{$newLine$indentString")
                     for ((count, key) in keys.withIndex()) {
-                        sb.append("  ")
+                        sb.append("$space$space")
                         val value = dataItem[key]
                         cborPrettyPrintDataItem(sb, indent + 2, key)
                         sb.append(" : ")
@@ -243,7 +246,7 @@ object FormatUtil {
                         if (count + 1 < keys.size) {
                             sb.append(",")
                         }
-                        sb.append("\n $indentString")
+                        sb.append("$newLine $indentString")
                     }
                     sb.append("}")
                 }

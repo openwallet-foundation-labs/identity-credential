@@ -12,7 +12,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentTransferBinding
-import com.android.mdl.appreader.document.RequestDocument
+import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.viewModel.TransferViewModel
 
@@ -33,13 +33,15 @@ class TransferFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
     private lateinit var vm: TransferViewModel
+    private var keepConnection = false
 
-    private lateinit var requestDocument: RequestDocument
+    private lateinit var requestDocumentList: RequestDocumentList
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        requestDocument = args.requestDocument
+        requestDocumentList = args.requestDocumentList
+        keepConnection = args.keepConnection
     }
 
     override fun onCreateView(
@@ -56,6 +58,22 @@ class TransferFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        try {
+            if (keepConnection) {
+                vm.sendNewRequest(requestDocumentList)
+                binding.tvStatus.text = "New request sent..."
+            } else {
+                binding.tvStatus.text = "Trying to connect to mDoc app..."
+                vm.connect()
+            }
+        } catch (e: RuntimeException) {
+            Log.e(LOG_TAG, "Error starting connection: ${e.message}", e)
+            Toast.makeText(
+                requireContext(), "Error starting connection: ${e.message}",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
         vm.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {
                 TransferStatus.ENGAGED -> {
@@ -63,7 +81,7 @@ class TransferFragment : Fragment() {
                 }
                 TransferStatus.CONNECTED -> {
                     binding.tvStatus.text = "Connected. Requesting mDoc..."
-                    vm.sendRequest(requestDocument)
+                    vm.sendRequest(requestDocumentList)
                 }
                 TransferStatus.RESPONSE -> {
                     Log.d(LOG_TAG, "Navigating to results")
@@ -85,17 +103,6 @@ class TransferFragment : Fragment() {
                 }
             }
         })
-
-        try {
-            binding.tvStatus.text = "Trying to connect to mDoc app..."
-            vm.connect()
-        } catch (e: RuntimeException) {
-            Log.e(LOG_TAG, "Error starting connection: ${e.message}", e)
-            Toast.makeText(
-                requireContext(), "Error starting connection: ${e.message}",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
 
         binding.btCancel.setOnClickListener {
             findNavController().navigate(R.id.action_Transfer_to_RequestOptions)

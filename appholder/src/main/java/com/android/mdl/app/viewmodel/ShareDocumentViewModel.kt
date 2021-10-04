@@ -5,7 +5,6 @@ import android.view.View
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import com.android.mdl.app.document.Document
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 
@@ -23,10 +22,10 @@ class ShareDocumentViewModel(val app: Application) :
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
-    fun startPresentation(document: Document) {
+    fun startPresentation() {
         // No need to call more than once
         if (!hasStarted) {
-            transferManager.startPresentation(document)
+            transferManager.startPresentation()
             hasStarted = true
         }
     }

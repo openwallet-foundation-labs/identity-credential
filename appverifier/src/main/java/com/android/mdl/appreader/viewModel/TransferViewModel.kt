@@ -3,7 +3,7 @@ package com.android.mdl.appreader.viewModel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import com.android.mdl.appreader.document.RequestDocument
+import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
 
@@ -21,7 +21,11 @@ class TransferViewModel(val app: Application) : AndroidViewModel(app) {
         transferManager.connect()
     }
 
-    fun sendRequest(requestDocument: RequestDocument) {
-        transferManager.sendRequest(requestDocument)
+    fun sendRequest(requestDocumentList: RequestDocumentList) {
+        transferManager.sendRequest(requestDocumentList)
+    }
+
+    fun sendNewRequest(requestDocumentList: RequestDocumentList) {
+        transferManager.sendNewRequest(requestDocumentList)
     }
 }

@@ -51,29 +51,10 @@ class DocumentAdapter :
         private val binding: ListItemDocumentBinding
     ) : RecyclerView.ViewHolder(binding.root) {
         init {
-            binding.setClickListener {
-                binding.document?.let { doc ->
-                    navigateToShare(doc, it)
-                }
-            }
             binding.setClickDetailListener {
                 binding.document?.let { doc ->
                     navigateToDetail(doc, it)
                 }
-            }
-        }
-
-        private fun navigateToShare(
-            document: Document,
-            view: View
-        ) {
-            val direction =
-                SelectDocumentFragmentDirections.actionSelectDocumentFragmentToShareDocumentFragment(
-                    document
-                )
-
-            if (view.findNavController().currentDestination?.id == R.id.selectDocumentFragment) {
-                view.findNavController().navigate(direction)
             }
         }
 
