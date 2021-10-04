@@ -82,7 +82,7 @@ class TransferManager private constructor(private val context: Context) {
         // Start connection
         verification?.let {
             deviceRetrievalMethod?.let { dr ->
-                it.connectToDevice(dr)
+                it.connect(dr)
             }
             hasStarted = true
         }
@@ -91,7 +91,7 @@ class TransferManager private constructor(private val context: Context) {
     fun stopVerification() {
         verification?.setListener(null, null)
         try {
-            verification?.verificationEnd()
+            verification?.disconnect()
         } catch (e: RuntimeException) {
             Log.e(LOG_TAG, "Error ignored.", e)
         }

@@ -87,7 +87,7 @@ class TransferManager private constructor(private val context: Context) {
         // Setup and begin presentation
         presentation?.let {
             it.setListener(requestListener, context.mainExecutor())
-            it.presentationBegin(dataRetrievalConfiguration)
+            it.startListening(dataRetrievalConfiguration)
             hasStarted = true
         }
     }
@@ -232,7 +232,7 @@ class TransferManager private constructor(private val context: Context) {
 
     fun stopPresentation() {
         presentation?.setListener(null, null)
-        presentation?.presentationEnd()
+        presentation?.disconnect()
         transferStatusLd = MutableLiveData<TransferStatus>()
         destroy()
         hasStarted = false
