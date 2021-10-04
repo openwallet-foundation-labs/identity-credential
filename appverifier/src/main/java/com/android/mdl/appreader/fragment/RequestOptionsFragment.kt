@@ -8,9 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.databinding.FragmentRequestOptionsBinding
-import com.android.mdl.appreader.document.RequestDocumentList
-import com.android.mdl.appreader.document.RequestMdl
-import com.android.mdl.appreader.document.RequestMvr
+import com.android.mdl.appreader.document.*
 import com.android.mdl.appreader.transfer.TransferManager
 
 /**
@@ -110,14 +108,22 @@ class RequestOptionsFragment : Fragment() {
                     binding.cbRequestMdlMandatory.isChecked ->
                         mdl.setSelectedDataItems(getSelectRequestMdlMandatory(intentToRetain))
                     binding.cbRequestMdlFull.isChecked ->
-                        mdl.setSelectedDataItems(getSelectRequestMdlFull(intentToRetain))
+                        mdl.setSelectedDataItems(getSelectRequestFull(mdl, intentToRetain))
                 }
                 requestDocumentList.addRequestDocument(mdl)
             }
             if (binding.cbRequestMvr.isChecked) {
-                val mvr = RequestMvr
-                mvr.setSelectedDataItems(getSelectRequestMvrFull(intentToRetain))
-                requestDocumentList.addRequestDocument(mvr)
+                val doc = RequestMvr
+                doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
+                requestDocumentList.addRequestDocument(doc)
+            }
+            if (binding.cbRequestMicov.isChecked) {
+                val doc = RequestMicovAtt
+                doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
+                requestDocumentList.addRequestDocument(doc)
+                val doc2 = RequestMicovVtr
+                doc2.setSelectedDataItems(getSelectRequestFull(doc2, intentToRetain))
+                requestDocumentList.addRequestDocument(doc2)
             }
 
             if (binding.cbRequestMdl.isChecked && binding.cbRequestMdlCustom.isChecked) {
@@ -146,14 +152,6 @@ class RequestOptionsFragment : Fragment() {
                 }
             }
         }
-    }
-
-    private fun getSelectRequestMdlFull(intentToRetain: Boolean): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        RequestMdl.dataItems.forEach {
-            map[it.identifier] = intentToRetain
-        }
-        return map
     }
 
     private fun getSelectRequestMdlMandatory(intentToRetain: Boolean): Map<String, Boolean> {
@@ -186,9 +184,12 @@ class RequestOptionsFragment : Fragment() {
         return map
     }
 
-    private fun getSelectRequestMvrFull(intentToRetain: Boolean): Map<String, Boolean> {
+    private fun getSelectRequestFull(
+        requestDocument: RequestDocument,
+        intentToRetain: Boolean
+    ): Map<String, Boolean> {
         val map = mutableMapOf<String, Boolean>()
-        RequestMvr.dataItems.forEach {
+        requestDocument.dataItems.forEach {
             map[it.identifier] = intentToRetain
         }
         return map

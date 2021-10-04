@@ -25,7 +25,9 @@ class ShowDocumentFragment : Fragment() {
     companion object {
         private const val LOG_TAG = "ShowDocumentFragment"
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
+        private const val MICOV_DOCTYPE = "micov.1"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
+        private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
     }
 
     private var _binding: FragmentShowDocumentBinding? = null
@@ -95,6 +97,9 @@ class ShowDocumentFragment : Fragment() {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
                     if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "portrait") {
+                        valueStr = String.format("(%d bytes, shown above)", value.size)
+                        portraitBytes = doc.getIssuerEntryByteString(ns, elem)
+                    } else if (doc.docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && elem == "fac") {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = doc.getIssuerEntryByteString(ns, elem)
                     } else if (doc.docType == MDL_DOCTYPE
