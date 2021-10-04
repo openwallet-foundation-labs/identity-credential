@@ -11,7 +11,6 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
-import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.Fragment
@@ -122,7 +121,7 @@ class TransferDocumentFragment : Fragment() {
                 .setTitle(getString(R.string.bio_auth_title))
                 .setSubtitle(getString(R.string.bio_auth_subtitle))
                 .setDescription(formatEntryNames(vm.getEntryNames()))
-                .setAllowedAuthenticators(DEVICE_CREDENTIAL)
+                .setNegativeButtonText(getString(R.string.bio_auth_cancel))
                 .build()
 
             val biometricPrompt = BiometricPrompt(this, executor, biometricAuthCallback)
