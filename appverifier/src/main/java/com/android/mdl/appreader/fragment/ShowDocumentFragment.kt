@@ -64,6 +64,7 @@ class ShowDocumentFragment : Fragment() {
             binding.ivPortrait.setImageBitmap(
                 BitmapFactory.decodeByteArray(portraitBytes, 0, pb.size)
             )
+            binding.ivPortrait.visibility = View.VISIBLE
         }
 
 
@@ -88,7 +89,9 @@ class ShowDocumentFragment : Fragment() {
         sb.append("Number of documents returned: <b>${documents.size}</b>")
         sb.append("<br><br>")
         for (doc in documents) {
-            sb.append("<h3>Doctype: <font color=purple>${doc.docType}</font></h3>")
+            sb.append("<h3>Doctype: <font color=blue>${doc.docType}</font></h3>")
+            sb.append("Issuer Signed Authenticated: ${getFormattedCheck(doc.issuerSignedAuthenticated)}<br>")
+            sb.append("Device Signed Authenticated: ${getFormattedCheck(doc.deviceSignedAuthenticated)}<br>")
             for (ns in doc.issuerNamespaces) {
                 sb.append("<br>")
                 sb.append("<h5>Namespace: $ns</h5>")
@@ -109,13 +112,29 @@ class ShowDocumentFragment : Fragment() {
                     } else {
                         valueStr = FormatUtil.cborPrettyPrint(value)
                     }
-                    sb.append("<b>$elem</b> -> $valueStr<br>")
+                    sb.append(
+                        "<b>$elem</b> ${
+                            getFormattedCheck(
+                                doc.getIssuerEntryDigestMatch(
+                                    ns,
+                                    elem
+                                )
+                            )
+                        } -> $valueStr<br>"
+                    )
                 }
                 sb.append("</p><br>")
             }
         }
         return sb.toString()
     }
+
+    private fun getFormattedCheck(authenticated: Boolean) = if (authenticated) {
+        "<font color=green>&#10003;</font>"
+    } else {
+        "<font color=red>&#x26A0;</font>"
+    }
+
 
     private var callback = object : OnBackPressedCallback(true /* enabled by default */) {
         override fun handleOnBackPressed() {

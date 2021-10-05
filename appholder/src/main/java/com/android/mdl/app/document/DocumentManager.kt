@@ -124,8 +124,8 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     private fun createDummyMicovDocument(store: IdentityCredentialStore): Document? {
-        createIssuingAuthorityKeyPair()?.let { iaKeyPair ->
-            val iaSelfSignedCert = getSelfSignedIssuerAuthorityCertificate(iaKeyPair)
+        IssuerKeys.getMicovKeyPair(context).let { iaKeyPair ->
+            val iaSelfSignedCert = IssuerKeys.getMicovCertificate(context)
             try {
                 val id = AccessControlProfileId(0)
                 val ids: Collection<AccessControlProfileId> = listOf(id)
@@ -269,8 +269,8 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     private fun createDummyMvrDocument(store: IdentityCredentialStore): Document? {
-        createIssuingAuthorityKeyPair()?.let { iaKeyPair ->
-            val iaSelfSignedCert = getSelfSignedIssuerAuthorityCertificate(iaKeyPair)
+        IssuerKeys.getMekbKeyPair(context).let { iaKeyPair ->
+            val iaSelfSignedCert = IssuerKeys.getMekbCertificate(context)
             try {
                 val id = AccessControlProfileId(0)
                 val ids: Collection<AccessControlProfileId> = listOf(id)
@@ -370,8 +370,8 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     private fun createDummyCredential(store: IdentityCredentialStore): Document? {
-        createIssuingAuthorityKeyPair()?.let { iaKeyPair ->
-            val iaSelfSignedCert = getSelfSignedIssuerAuthorityCertificate(iaKeyPair)
+        IssuerKeys.getMdlKeyPair(context).let { iaKeyPair ->
+            val iaSelfSignedCert = IssuerKeys.getMdlCertificate(context)
             val bitmap = BitmapFactory.decodeResource(
                 context.resources,
                 R.drawable.img_erika_portrait
