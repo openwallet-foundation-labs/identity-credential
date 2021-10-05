@@ -47,12 +47,11 @@ class RequestOptionsFragment : Fragment() {
         }
 
         binding.cbRequestMdl.setOnClickListener {
-            // Now we only have mDL option, it is always true
-            binding.cbRequestMdlOlder18.isEnabled = true
-            binding.cbRequestMdlOlder21.isEnabled = true
-            binding.cbRequestMdlMandatory.isEnabled = true
-            binding.cbRequestMdlFull.isEnabled = true
-            binding.cbRequestMdlCustom.isEnabled = true
+            binding.cbRequestMdlOlder18.isEnabled = binding.cbRequestMdl.isChecked
+            binding.cbRequestMdlOlder21.isEnabled = binding.cbRequestMdl.isChecked
+            binding.cbRequestMdlMandatory.isEnabled = binding.cbRequestMdl.isChecked
+            binding.cbRequestMdlFull.isEnabled = binding.cbRequestMdl.isChecked
+            binding.cbRequestMdlCustom.isEnabled = binding.cbRequestMdl.isChecked
         }
 
         binding.cbRequestMdlOlder18.setOnClickListener {
