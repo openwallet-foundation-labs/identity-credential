@@ -61,4 +61,61 @@ public class Constants {
             DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR})
     public @interface DeviceResponseStatus {
     }
+
+    /**
+     * If this flag is set, {@link PresentationHelper} and {@link VerificationHelper}
+     * will log informational messages.
+     */
+    public static final int LOGGING_FLAG_INFO = (1<<0);
+
+    /**
+     * If this flag is set, {@link PresentationHelper} and {@link VerificationHelper}
+     * will log messages related to Device Engagement.
+     */
+    public static final int LOGGING_FLAG_DEVICE_ENGAGEMENT = (1<<1);
+
+    /**
+     * If this flag is set, {@link PresentationHelper} and {@link VerificationHelper}
+     * will log messages related to session layer encryption including the
+     * the hexadecimal representation of the cleartext messages in {@code SessionData}
+     * and {@code SessionEstablishment} CBOR messages that are sent and received.
+     *
+     * <p>This might generate a lot of data.
+     */
+    public static final int LOGGING_FLAG_SESSION_MESSAGES = (1<<2);
+
+    /**
+     * If this flag is set, {@link PresentationHelper} and {@link VerificationHelper}
+     * will log messages that are transport specific except for the transport-specific
+     * packets.
+     */
+    public static final int LOGGING_FLAG_TRANSPORT_SPECIFIC = (1<<3);
+
+    /**
+     * If this flag is set, {@link PresentationHelper} and {@link VerificationHelper}
+     * will log transport-specific data packets, for example APDUs for NFC transport.
+     *
+     * <p>This might generate a lot of data.
+     */
+    public static final int LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE = (1<<4);
+
+    /**
+     * Logging flags.
+     *
+     * @hide
+     */
+    @Retention(SOURCE)
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    @IntDef(
+        flag=true,
+        value={
+            LOGGING_FLAG_INFO,
+            LOGGING_FLAG_DEVICE_ENGAGEMENT,
+            LOGGING_FLAG_SESSION_MESSAGES,
+            LOGGING_FLAG_TRANSPORT_SPECIFIC,
+            LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE
+        })
+    public @interface LoggingFlag {
+    }
+
 }

@@ -31,6 +31,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
+import androidx.security.identity.Constants.LoggingFlag;
 import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -138,6 +139,7 @@ public class PresentationHelper {
     private byte[] mSelectedNfcFile = null;
     private boolean mUseTransportSpecificSessionTermination;
     private boolean mSendSessionTerminationMessage;
+    private @LoggingFlag int mLoggingFlags = 0;
 
     /**
      * Creates a new {@link PresentationHelper}.
@@ -152,7 +154,22 @@ public class PresentationHelper {
         mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
     }
 
+    /**
+     * Configures the amount of logging messages to emit.
+     *
+     * <p>By default no logging messages are emitted except for warnings and errors. Applications
+     * use this with caution as the emitted log messages may contain PII and secrets.
+     *
+     * @param loggingFlags One or more logging flags e.g. {@link Constants#LOGGING_FLAG_INFO}.
+     */
+    public void setLoggingFlags(@LoggingFlag int loggingFlags) {
+        mLoggingFlags = loggingFlags;
+    }
+
     void reportDeviceEngagementReady() {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "reportDeviceEngagementReady");
+        }
         if (mInhibitCallbacks) {
             return;
         }
@@ -160,6 +177,9 @@ public class PresentationHelper {
             mDeviceRequestListenerExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Calling onDeviceEngagementReady");
+                    }
                     mListener.onDeviceEngagementReady();
                 }
             });
@@ -167,6 +187,9 @@ public class PresentationHelper {
     }
 
     void reportEngagementDetected() {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "reportEngagementDetected");
+        }
         if (mInhibitCallbacks) {
             return;
         }
@@ -174,6 +197,9 @@ public class PresentationHelper {
             mDeviceRequestListenerExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Calling onEngagementDetected");
+                    }
                     mListener.onEngagementDetected();
                 }
             });
@@ -181,6 +207,9 @@ public class PresentationHelper {
     }
 
     void reportDeviceConnecting() {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "reportDeviceConnecting");
+        }
         if (mInhibitCallbacks) {
             return;
         }
@@ -188,6 +217,9 @@ public class PresentationHelper {
             mDeviceRequestListenerExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Calling onDeviceConnecting");
+                    }
                     mListener.onDeviceConnecting();
                 }
             });
@@ -195,6 +227,9 @@ public class PresentationHelper {
     }
 
     void reportDeviceConnected() {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "reportDeviceConnected");
+        }
         if (mInhibitCallbacks) {
             return;
         }
@@ -202,6 +237,9 @@ public class PresentationHelper {
             mDeviceRequestListenerExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Calling onDeviceConnected");
+                    }
                     mListener.onDeviceConnected();
                 }
             });
@@ -210,6 +248,9 @@ public class PresentationHelper {
 
     void reportDeviceRequest(@DeviceEngagementMethod int deviceEngagementMethod,
             @NonNull byte[] deviceRequestBytes) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "reportDeviceRequest");
+        }
         if (mInhibitCallbacks) {
             return;
         }
@@ -217,6 +258,9 @@ public class PresentationHelper {
             mDeviceRequestListenerExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Calling onDeviceRequest");
+                    }
                     mListener.onDeviceRequest(deviceEngagementMethod, deviceRequestBytes);
                 }
             });
@@ -224,6 +268,9 @@ public class PresentationHelper {
     }
 
     void reportDeviceDisconnected(boolean transportSpecificTermination) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "reportDeviceDisconnected");
+        }
         if (mInhibitCallbacks) {
             return;
         }
@@ -231,6 +278,9 @@ public class PresentationHelper {
             mDeviceRequestListenerExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Calling onDeviceDisconnected");
+                    }
                     mListener.onDeviceDisconnected(transportSpecificTermination);
                 }
             });
@@ -238,6 +288,9 @@ public class PresentationHelper {
     }
 
     void reportError(@NonNull Throwable error) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "reportError: ", error);
+        }
         if (mInhibitCallbacks) {
             return;
         }
@@ -245,6 +298,9 @@ public class PresentationHelper {
             mDeviceRequestListenerExecutor.execute(new Runnable() {
                 @Override
                 public void run() {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Calling onError: ", error);
+                    }
                     mListener.onError(error);
                 }
             });
@@ -284,12 +340,21 @@ public class PresentationHelper {
         // and we expect readers to pick the first one.
         //
         if (dataRetrievalConfiguration.isBleEnabled()) {
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                Log.i(TAG, "Adding BLE transport");
+            }
             mTransports.add(new DataTransportBle(mContext));
         }
         if (dataRetrievalConfiguration.isWifiAwareEnabled()) {
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                Log.i(TAG, "Adding Wifi Aware transport");
+            }
             mTransports.add(new DataTransportWifiAware(mContext));
         }
         if (dataRetrievalConfiguration.isNfcEnabled()) {
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                Log.i(TAG, "Adding NFC transport");
+            }
             mTransports.add(new DataTransportNfc(mContext));
         }
 
@@ -306,7 +371,9 @@ public class PresentationHelper {
                 @Override
                 public void onListeningSetupCompleted(
                         @Nullable byte[] encodedDeviceRetrievalMethod) {
-                    //Log.d(TAG, "onListeningSetupCompleted for " + transport);
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "onListeningSetupCompleted for " + transport);
+                    }
                     mNumTransportsStillSettingUp -= 1;
                     if (mNumTransportsStillSettingUp == 0) {
                         allTransportsAreSetup();
@@ -320,13 +387,17 @@ public class PresentationHelper {
 
                 @Override
                 public void onListeningPeerConnected() {
-                    //Log.d(TAG, "onListeningPeerConnected for " + transport);
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "onListeningPeerConnected for " + transport);
+                    }
                     peerHasConnected(transport);
                 }
 
                 @Override
                 public void onListeningPeerDisconnected() {
-                    //Log.d(TAG, "onListeningPeerDisconnected for " + transport);
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "onListeningPeerDisconnected for " + transport);
+                    }
                     transport.close();
                     if (!mReceivedSessionTerminated) {
                         reportError(
@@ -338,29 +409,30 @@ public class PresentationHelper {
 
                 @Override
                 public void onConnectionResult(@Nullable Throwable error) {
-                    //Log.d(TAG, "onConnectionResult for " + transport);
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "onConnectionResult for " + transport);
+                    }
                     throw new IllegalStateException("Unexpected onConnectionResult "
                             + "callback from transport " + transport);
                 }
 
                 @Override
                 public void onConnectionDisconnected() {
-                    //Log.d(TAG, "onConnectionDisconnected for " + transport);
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "onConnectionDisconnected for " + transport);
+                    }
                     throw new IllegalStateException("Unexpected onConnectionDisconnected "
                             + "callback from transport " + transport);
                 }
 
                 @Override
                 public void onError(@NonNull Throwable error) {
-                    //Log.w(TAG, "onError for " + transport + ": " + error);
                     transport.close();
                     reportError(error);
                 }
 
                 @Override
                 public void onMessageReceived(@NonNull byte[] data) {
-                    Log.d(TAG, "onMessageReceived for " + this + ": " + Util.toHex(data));
-
                     Pair<byte[], OptionalInt> decryptedMessage = null;
                     try {
                         decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
@@ -411,6 +483,11 @@ public class PresentationHelper {
                             }
                         }
 
+                        if ((mLoggingFlags & Constants.LOGGING_FLAG_SESSION_MESSAGES) != 0) {
+                            Log.i(TAG, "Message received from reader, decrypted data: "
+                                + Util.toHex(decryptedMessage.first));
+                        }
+
                         reportDeviceRequest(mDeviceEngagementMethod, decryptedMessage.first);
                     } else {
                         // No data, so status must be set.
@@ -419,6 +496,12 @@ public class PresentationHelper {
                             reportError(new Error("No data and no status in SessionData"));
                         } else {
                             int statusCode = decryptedMessage.second.getAsInt();
+
+                            if ((mLoggingFlags & Constants.LOGGING_FLAG_SESSION_MESSAGES) != 0) {
+                                Log.i(TAG, "Message received from reader with status: "
+                                    + statusCode);
+                            }
+
                             if (statusCode == 20) {
                                 mReceivedSessionTerminated = true;
                                 transport.close();
@@ -435,14 +518,19 @@ public class PresentationHelper {
 
                 @Override
                 public void onTransportSpecificSessionTermination() {
-                    Log.d(TAG,
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG,
                             "Received transport-specific session termination");
+                    }
                     mReceivedSessionTerminated = true;
                     transport.close();
                     reportDeviceDisconnected(true);
                 }
 
                 }, mDeviceRequestListenerExecutor);
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                Log.i(TAG, "Listening on transport " + transport);
+            }
             transport.listen();
             mNumTransportsStillSettingUp += 1;
         }
@@ -453,6 +541,9 @@ public class PresentationHelper {
     //  is, set up a timeout to call this.
     //
     void allTransportsAreSetup() {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "All transports are now set up");
+        }
         ArrayList<byte[]> deviceRetrievalMethods = new ArrayList<>();
         for (DataTransport transport : mTransports) {
             byte[] encodedDeviceRetrievalMethod = transport.getEncodedDeviceRetrievalMethod();
@@ -469,8 +560,10 @@ public class PresentationHelper {
                 .add(SimpleValue.NULL)         // Handover Request message
                 .end()
                 .build().get(0));
-        Log.d(TAG, "NFC DE: " + Util.toHex(mEncodedDeviceEngagementForNfc));
-        Log.d(TAG, "NFC handover: " + Util.toHex(mEncodedHandoverForNfc));
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_DEVICE_ENGAGEMENT) != 0) {
+            Log.i(TAG, "NFC DE: " + Util.toHex(mEncodedDeviceEngagementForNfc));
+            Log.i(TAG, "NFC handover: " + Util.toHex(mEncodedHandoverForNfc));
+        }
         reportDeviceEngagementReady();
     }
 
@@ -534,6 +627,10 @@ public class PresentationHelper {
     void peerHasConnected(@NonNull DataTransport transport) {
         // stop listening on other transports
         //
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "Peer has connected on transport " + transport
+                + " - shutting down other transports");
+        }
         for (DataTransport t : mTransports) {
             if (t != transport) {
                 t.setListener(null, null);
@@ -632,7 +729,9 @@ public class PresentationHelper {
 
         peerIsEngaging();
 
-        //Log.d(TAG, "nfcProcessCommandApdu: command: " + Util.toHex(apdu));
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "nfcProcessCommandApdu: command: " + Util.toHex(apdu));
+        }
 
         switch (nfcGetCommandType(apdu)) {
             default:
@@ -662,22 +761,28 @@ public class PresentationHelper {
         }
 
         if (ret != null) {
-            Log.d(TAG, "response: " + Util.toHex(ret));
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+                Log.i(TAG, "APDU response: " + Util.toHex(ret));
+            }
             service.sendResponseApdu(ret);
         }
     }
 
     private @NonNull byte[] nfcEngagementHandleSelectByAid(@NonNull byte[] apdu) {
-        Log.d(TAG, "in nfcEngagementHandleSelectByAid");
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "in nfcEngagementHandleSelectByAid");
+        }
         if (apdu.length < 12) {
             return STATUS_WORD_FILE_NOT_FOUND;
         }
         if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), AID_FOR_MDL)) {
-            Log.d(TAG, "NFC engagement AID selected");
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                Log.i(TAG, "NFC engagement AID selected");
+            }
             return STATUS_WORD_OK;
         } else if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), AID_FOR_MDL_DATA_TRANSFER)) {
             if (mActiveTransport != null) {
-                Log.d(TAG, "Rejecting NFC data transfer, another transport is already active");
+                Log.w(TAG, "Rejecting NFC data transfer, another transport is already active");
                 return STATUS_WORD_FILE_NOT_FOUND;
             }
             for (DataTransport t : mTransports) {
@@ -686,16 +791,19 @@ public class PresentationHelper {
                             new DataTransportNfc.ResponseInterface() {
                                 @Override
                                 public void sendResponseApdu(@NonNull byte[] responseApdu) {
-                                    //Log.d(TAG, "response: " + SUtil.toHex(responseApdu));
                                     mApduService.sendResponseApdu(responseApdu);
                                 }
                             });
 
-                    Log.d(TAG, "NFC data transfer AID selected");
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "NFC data transfer AID selected");
+                    }
                     return STATUS_WORD_OK;
                 }
             }
-            Log.d(TAG, "Rejecting NFC data transfer since it wasn't set up");
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                Log.i(TAG, "Rejecting NFC data transfer since it wasn't set up");
+            }
             return STATUS_WORD_FILE_NOT_FOUND;
         }
         return STATUS_WORD_FILE_NOT_FOUND;
@@ -741,9 +849,13 @@ public class PresentationHelper {
         for (DataTransport t : mTransports) {
             Pair<NdefRecord, byte[]> records = t.getNdefRecords();
             if (records != null) {
-                Log.d(TAG,
-                        "Transport " + t + ": alternativeCarrierRecord: " + Util.toHex(records.second)
-                        + " carrierConfigurationRecord: " + Util.toHex(records.first.getPayload()));
+                if ((mLoggingFlags & Constants.LOGGING_FLAG_DEVICE_ENGAGEMENT) != 0) {
+                    Log.i(TAG,
+                        "Transport " + t + ": alternativeCarrierRecord: " + Util
+                            .toHex(records.second)
+                            + " carrierConfigurationRecord: " + Util
+                            .toHex(records.first.getPayload()));
+                }
                 alternativeCarrierRecords.add(records.second);
                 carrierConfigurationRecords.add(records.first);
             }
@@ -772,7 +884,7 @@ public class PresentationHelper {
     }
 
     private @NonNull byte[] nfcEngagementHandleSelectFile(@NonNull byte[] apdu) {
-        Log.d(TAG, "in nfcEngagementHandleSelectFile");
+        Log.i(TAG, "in nfcEngagementHandleSelectFile");
         if (apdu.length < 7) {
             return STATUS_WORD_FILE_NOT_FOUND;
         }
@@ -782,7 +894,9 @@ public class PresentationHelper {
             mSelectedNfcFile = CAPABILITY_FILE_CONTENTS;
         } else if (fileId == NDEF_FILE_ID) {
             byte[] handoverMessage = nfcCalculateHandover();
-            Log.d(TAG, "handover: " + Util.toHex(handoverMessage));
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_DEVICE_ENGAGEMENT) != 0) {
+                Log.i(TAG, "handoverMessage: " + Util.toHex(handoverMessage));
+            }
             byte[] fileContents = new byte[handoverMessage.length + 2];
             fileContents[0] = (byte) (handoverMessage.length / 256);
             fileContents[1] = (byte) (handoverMessage.length & 0xff);
@@ -795,7 +909,9 @@ public class PresentationHelper {
     }
 
     private @NonNull byte[] nfcEngagementHandleReadBinary(@NonNull byte[] apdu) {
-        Log.d(TAG, "in nfcEngagementHandleReadBinary");
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "in nfcEngagementHandleReadBinary");
+        }
         if (apdu.length < 5) {
             return STATUS_WORD_FILE_NOT_FOUND;
         }
@@ -817,12 +933,16 @@ public class PresentationHelper {
     }
 
     private @NonNull byte[] nfcEngagementHandleUpdateBinary(@NonNull byte[] apdu) {
-        Log.d(TAG, "in nfcEngagementHandleUpdateBinary");
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "in nfcEngagementHandleUpdateBinary");
+        }
         return STATUS_WORD_INSTRUCTION_NOT_SUPPORTED;
     }
 
     private @NonNull byte[] nfcEngagementHandleEnvelope(@NonNull byte[] apdu) {
-        Log.d(TAG, "in nfcEngagementHandleEnvelope");
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "in nfcEngagementHandleEnvelope");
+        }
         if (!(mActiveTransport instanceof DataTransportNfc)) {
             reportError(new Error("Received NFC ENVELOPE but active transport isn't NFC."));
             return STATUS_WORD_INSTRUCTION_NOT_SUPPORTED;
@@ -833,7 +953,9 @@ public class PresentationHelper {
     }
 
     private @NonNull byte[] nfcEngagementHandleResponse(@NonNull byte[] apdu) {
-        Log.d(TAG, "in nfcEngagementHandleResponse");
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "in nfcEngagementHandleResponse");
+        }
         if (!(mActiveTransport instanceof DataTransportNfc)) {
             reportError(new Error("Received NFC GET RESPONSE but active transport isn't NFC."));
             return STATUS_WORD_INSTRUCTION_NOT_SUPPORTED;
@@ -854,7 +976,9 @@ public class PresentationHelper {
      * @param reason the <code>reason</code> value.
      */
     public void nfcOnDeactivated(@NonNull HostApduService service, int reason) {
-        Log.d(TAG, "nfcOnDeactivated, reason: " + reason);
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "nfcOnDeactivated, reason: " + reason);
+        }
         mSelectedNfcFile = null;
     }
 
@@ -872,6 +996,10 @@ public class PresentationHelper {
      * @param deviceResponseBytes the response to send.
      */
     public void sendDeviceResponse(@NonNull byte[] deviceResponseBytes) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_SESSION_MESSAGES) != 0) {
+            Log.i(TAG, "Sending DeviceResponse to reader, cleartext data: "
+                + Util.toHex(deviceResponseBytes));
+        }
         byte[] encryptedData =
                 mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalInt.empty());
         mActiveTransport.sendMessage(encryptedData);
@@ -915,21 +1043,27 @@ public class PresentationHelper {
             if (mSendSessionTerminationMessage && sessionEstablished) {
                 if (mUseTransportSpecificSessionTermination &&
                         mActiveTransport.supportsTransportSpecificTerminationMessage()) {
-                    Log.d(TAG, "Sending transport-specific termination message");
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Sending transport-specific termination message");
+                    }
                     mActiveTransport.sendTransportSpecificTerminationMessage();
                 } else {
-                    Log.d(TAG, "Sending generic session termination message");
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                        Log.i(TAG, "Sending generic session termination message");
+                    }
                     byte[] sessionTermination = mSessionEncryption.encryptMessageToReader(
                             null, OptionalInt.of(20));
                     mActiveTransport.sendMessage(sessionTermination);
                 }
             } else {
-                Log.d(TAG, "Not sending session termination message");
+                if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                    Log.i(TAG, "Not sending session termination message");
+                }
             }
             mActiveTransport.close();
             mActiveTransport = null;
         }
-        if ( mTransports != null) {
+        if (mTransports != null) {
             for (DataTransport transport : mTransports) {
                 transport.close();
             }

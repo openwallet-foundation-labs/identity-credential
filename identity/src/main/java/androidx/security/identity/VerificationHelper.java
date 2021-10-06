@@ -33,6 +33,7 @@ import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import androidx.security.identity.Constants.LoggingFlag;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -84,6 +85,7 @@ public class VerificationHelper {
     boolean mNfcAdapterReaderModeEnabled;
     private boolean mUseTransportSpecificSessionTermination = false;
     private boolean mSendSessionTerminationMessage = true;
+    private @LoggingFlag int mLoggingFlags;
 
     /**
      * Creates a new VerificationHelper object.
@@ -95,6 +97,19 @@ public class VerificationHelper {
         mEphemeralKeyPair = Util.createEphemeralKeyPair();
         mSessionEncryptionReader = null;
     }
+
+    /**
+     * Configures the amount of logging messages to emit.
+     *
+     * <p>By default no logging messages are emitted except for warnings and errors. Applications
+     * use this with caution as the emitted log messages may contain PII and secrets.
+     *
+     * @param loggingFlags One or more logging flags e.g. {@link Constants#LOGGING_FLAG_INFO}.
+     */
+    public void setLoggingFlags(@LoggingFlag int loggingFlags) {
+        mLoggingFlags = loggingFlags;
+    }
+
 
     /**
      * Sets the {@link NfcAdapter} to listen to for incoming device engagement.
