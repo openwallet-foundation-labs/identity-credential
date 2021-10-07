@@ -27,6 +27,7 @@ import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_NAMESPACE
 import com.android.mdl.app.util.FormatUtil
 import com.android.mdl.app.util.PreferencesHelper
+import com.android.mdl.app.util.PreferencesHelper.HARDWARE_BACKED_PREFERENCE
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
@@ -94,9 +95,9 @@ class DocumentManager private constructor(private val context: Context) {
 
         // We always use the same implementation once the app is installed
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        if (!sharedPreferences.contains("com.android.mdl.app.HARDWARE_BACKED")) {
+        if (!sharedPreferences.contains(HARDWARE_BACKED_PREFERENCE)) {
             sharedPreferences.edit().putBoolean(
-                "com.android.mdl.app.HARDWARE_BACKED",
+                HARDWARE_BACKED_PREFERENCE,
                 store.capabilities.isHardwareBacked
             ).apply()
         }
@@ -265,7 +266,6 @@ class DocumentManager private constructor(private val context: Context) {
                 throw IllegalStateException("Error creating dummy credential", e)
             }
         }
-        return null
     }
 
     private fun createDummyMvrDocument(store: IdentityCredentialStore): Document? {
@@ -366,7 +366,6 @@ class DocumentManager private constructor(private val context: Context) {
                 throw IllegalStateException("Error creating dummy credential", e)
             }
         }
-        return null
     }
 
     private fun createDummyCredential(store: IdentityCredentialStore): Document? {
@@ -456,7 +455,6 @@ class DocumentManager private constructor(private val context: Context) {
                 throw IllegalStateException("Error creating dummy credential", e)
             }
         }
-        return null
     }
 
 

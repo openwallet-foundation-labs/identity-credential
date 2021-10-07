@@ -97,4 +97,7 @@
     <string name="by">Birth Year</string>
     <string name="bm">Birth Month</string>
     <string name="bd">Birth Day</string>
+
+    <string name="item_settings">Settings</string>
+    <string name="bt_close_connection">Close Connection</string>
 </resources>

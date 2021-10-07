@@ -7,6 +7,9 @@ import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.navigateUp
+import androidx.navigation.ui.setupActionBarWithNavController
 
 class MainActivity : AppCompatActivity() {
 
@@ -14,12 +17,17 @@ class MainActivity : AppCompatActivity() {
         private const val LOG_TAG = "MainActivity"
     }
 
+    private lateinit var appBarConfiguration: AppBarConfiguration
     private var mAdapter: NfcAdapter? = null
     private var mPendingIntent: PendingIntent? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val navController = findNavController(R.id.nav_host_fragment)
+        appBarConfiguration = AppBarConfiguration(navController.graph)
+        setupActionBarWithNavController(navController, appBarConfiguration)
 
         mAdapter = NfcAdapter.getDefaultAdapter(this)
         // Create a generic PendingIntent that will be deliver to this activity. The NFC stack
@@ -46,6 +54,9 @@ class MainActivity : AppCompatActivity() {
         Log.d(LOG_TAG, "New intent on Activity $intent")
     }
 
-    override fun onSupportNavigateUp() =
-        findNavController(R.id.nav_host_fragment).navigateUp()
+    override fun onSupportNavigateUp(): Boolean {
+        val navController = findNavController(R.id.nav_host_fragment)
+        return navController.navigateUp(appBarConfiguration)
+                || super.onSupportNavigateUp()
+    }
 }

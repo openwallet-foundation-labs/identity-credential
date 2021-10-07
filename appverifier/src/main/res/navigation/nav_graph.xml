@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/RequestOptions"
         android:name="com.android.mdl.appreader.fragment.RequestOptionsFragment"
-        android:label="Request Options"
+        android:label="mDL Ref App - Verifier"
         tools:layout="@layout/fragment_request_options">
         <argument
             android:name="keepConnection"
@@ -23,11 +23,22 @@
         <action
             android:id="@+id/action_RequestOptions_to_Transfer"
             app:destination="@id/Transfer" />
+        <action
+            android:id="@+id/action_RequestOptions_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.android.mdl.appreader.fragment.SettingsFragment"
+        android:label="Settings">
+        <action
+            android:id="@+id/action_settingsFragment_to_RequestOptions"
+            app:destination="@id/RequestOptions" />
     </fragment>
     <fragment
         android:id="@+id/RequestCustom"
         android:name="com.android.mdl.appreader.fragment.RequestCustomFragment"
-        android:label="Request Custom"
+        android:label="Custom Request"
         tools:layout="@layout/fragment_request_custom">
         <argument
             android:name="requestDocument"
@@ -86,7 +97,7 @@
     <fragment
         android:id="@+id/Transfer"
         android:name="com.android.mdl.appreader.fragment.TransferFragment"
-        android:label="Transfer"
+        android:label="Transfer Status"
         tools:layout="@layout/fragment_transfer">
         <argument
             android:name="requestDocumentList"

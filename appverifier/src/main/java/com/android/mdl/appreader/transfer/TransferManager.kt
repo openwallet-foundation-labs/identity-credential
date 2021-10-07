@@ -13,6 +13,7 @@ import androidx.security.identity.DeviceRequestGenerator
 import androidx.security.identity.DeviceResponseParser
 import androidx.security.identity.VerificationHelper
 import com.android.mdl.appreader.document.RequestDocumentList
+import com.android.mdl.appreader.util.PreferencesHelper
 import com.android.mdl.appreader.util.TransferStatus
 import java.util.concurrent.Executor
 
@@ -49,6 +50,7 @@ class TransferManager private constructor(private val context: Context) {
     fun initVerificationHelper() {
         verification = VerificationHelper(context)
         verification?.setListener(responseListener, context.mainExecutor())
+        verification?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
     }
 
     fun setQrDeviceEngagement(qrDeviceEngagement: String) {

@@ -47,12 +47,24 @@
             app:layout_constraintTop_toBottomOf="@id/txt_documents_sent" />
 
         <Button
-            android:id="@+id/bt_cancel"
+            android:id="@+id/bt_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="64dp"
+            android:onClick="@{() -> fragment.onCloseConnection()}"
+            android:text="@string/bt_close_connection"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <Button
+            android:id="@+id/bt_ok"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="64dp"
             android:onClick="@{() -> fragment.onDone()}"
-            android:text="@string/bt_cancel"
+            android:text="@string/bt_ok"
+            android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />

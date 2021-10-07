@@ -1,0 +1,52 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory
+        android:summary="Select at least one option"
+        app:title="Data retrieval options">
+        <SwitchPreference
+            android:defaultValue="true"
+            app:key="ble_transport"
+            app:summaryOff="BLE transfer deactivated"
+            app:summaryOn="BLE transfer activated"
+            app:title="Enable BLE data retrieval" />
+
+        <SwitchPreference
+            app:key="wifi_transport"
+            app:summaryOff="Wifi Aware transfer deactivated"
+            app:summaryOn="Wifi Aware transfer activated"
+            app:title="Enable Wifi Aware data retrieval" />
+
+        <SwitchPreference
+            app:key="nfc_transport"
+            app:summaryOff="NFC transfer deactivated"
+            app:summaryOn="NFC transfer activated"
+            app:title="Enable NFC data retrieval" />
+    </PreferenceCategory>
+    <PreferenceCategory app:title="Debug Logging options">
+        <SwitchPreference
+            android:defaultValue="true"
+            app:key="log_info"
+            app:title="Info" />
+
+        <SwitchPreference
+            android:defaultValue="true"
+            app:key="log_device_engagement"
+            app:title="Device Engagement" />
+
+        <SwitchPreference
+            android:defaultValue="true"
+            app:key="log_session_messages"
+            app:title="Session Messages" />
+
+        <SwitchPreference
+            android:defaultValue="true"
+            app:key="log_transport"
+            app:title="Transport" />
+
+        <SwitchPreference
+            android:defaultValue="true"
+            app:key="log_transport_verbose"
+            app:title="Transport (verbose)" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

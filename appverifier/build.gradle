@@ -71,6 +71,7 @@ dependencies {
     implementation "com.google.zxing:core:3.3.3"
     implementation "org.slf4j:slf4j-api:1.7.25"
     implementation "org.slf4j:slf4j-log4j12:1.7.25"
+    implementation 'androidx.preference:preference-ktx:1.1.1'
 
     // JUnit 4 framework
     testImplementation "junit:junit:$junit_version"

@@ -68,6 +68,7 @@ class TransferManager private constructor(private val context: Context) {
             IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
         )?.also {
             presentation = PresentationHelper(context, it)
+            presentation?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
         }
     }
 
@@ -81,7 +82,9 @@ class TransferManager private constructor(private val context: Context) {
 
         // Add only ble transfer for now
         val dataRetrievalConfiguration = DataRetrievalConfiguration.Builder()
-            .setBleEnabled(true)
+            .setBleEnabled(PreferencesHelper.isBleDataRetrievalEnabled(context))
+            .setWifiAwareEnabled(PreferencesHelper.isWifiDataRetrievalEnabled(context))
+            .setNfcEnabled(PreferencesHelper.isNfcDataRetrievalEnabled(context))
             .build()
 
         // Setup and begin presentation
