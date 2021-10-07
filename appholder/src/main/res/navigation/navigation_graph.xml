@@ -23,7 +23,7 @@
     <fragment
         android:id="@+id/selectDocumentFragment"
         android:name="com.android.mdl.app.fragment.SelectDocumentFragment"
-        android:label="Select a Document to Share"
+        android:label="mDL Ref App - Holder"
         tools:layout="@layout/fragment_select_document">
         <action
             android:id="@+id/action_selectDocumentFragment_to_shareDocumentFragment"
@@ -34,6 +34,17 @@
         <action
             android:id="@+id/action_selectDocumentFragment_to_documentDetailFragment"
             app:destination="@id/documentDetailFragment" />
+        <action
+            android:id="@+id/action_selectDocumentFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.android.mdl.app.fragment.SettingsFragment"
+        android:label="Settings">
+        <action
+            android:id="@+id/action_settingsFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
     </fragment>
     <fragment
         android:id="@+id/provisioningFragment"

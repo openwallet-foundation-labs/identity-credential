@@ -71,5 +71,6 @@
     <string name="micov_att_by">Birth Year</string>
     <string name="micov_att_bm">Birth Month</string>
     <string name="micov_att_bd">Birth Day</string>
+    <string name="item_settings">Settings</string>
 
 </resources>

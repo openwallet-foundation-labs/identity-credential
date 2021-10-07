@@ -1,6 +1,7 @@
 package com.android.mdl.appreader.fragment
 
 import android.os.Bundle
+import android.text.Html
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -74,10 +75,17 @@ class SelectTransportFragment : Fragment() {
             // TODO: use prettier buttonText for support transports, e.g. "TCP 192.168.1.42:1234"
             //   and similar for BLE, Wifi Aware, NFC, etc.
             val optionsText = FormatUtil.cborPrettyPrint(options)
-            val buttonText = "type $type ver $version ($optionsText)"
+            val dataRetrievalName = when (type) {
+                1 -> "<h3>NFC Data Retrieval</h3>"
+                2 -> "<h3>BLE Data Retrieval</h3>"
+                3 -> "<h3>Wifi Aware Data Retrieval</h3>"
+                else -> "<h3>Type: $type Data Retrieval</h3>"
+            }
+            val buttonText =
+                "$dataRetrievalName<p>type <b>$type</b> ver <b>$version</b> ($optionsText)</p>"
 
             val button = RadioButton(requireContext())
-            button.text = buttonText
+            button.text = Html.fromHtml(buttonText, Html.FROM_HTML_MODE_COMPACT)
             button.id = View.generateViewId()
             val encodedDeviceRetrievalMethod = it
             button.isChecked = it.contentEquals(transferManager.deviceRetrievalMethod)

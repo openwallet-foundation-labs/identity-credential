@@ -1,12 +1,11 @@
 package com.android.mdl.appreader.fragment
 
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentRequestOptionsBinding
 import com.android.mdl.appreader.document.*
 import com.android.mdl.appreader.transfer.TransferManager
@@ -34,6 +33,8 @@ class RequestOptionsFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        setHasOptionsMenu(true)
+
         _binding = FragmentRequestOptionsBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -150,6 +151,21 @@ class RequestOptionsFragment : Fragment() {
                     )
                 }
             }
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        inflater.inflate(R.menu.main_menu, menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.item_settings -> {
+                findNavController().navigate(R.id.action_RequestOptions_to_settingsFragment)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 

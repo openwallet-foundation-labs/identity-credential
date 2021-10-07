@@ -87,7 +87,7 @@ class TransferDocumentFragment : Fragment() {
                 }
                 TransferStatus.DISCONNECTED -> {
                     Log.d(LOG_TAG, "Disconnected")
-                    binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
+                    onCloseConnection()
                 }
                 TransferStatus.ERROR -> {
                     Toast.makeText(
@@ -176,8 +176,7 @@ class TransferDocumentFragment : Fragment() {
                 Toast.LENGTH_SHORT
             ).show()
         }
-        vm.cancelPresentation()
-        binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
+        onCloseConnection()
     }
 
     // Called when user gives consent to transfer
@@ -207,7 +206,6 @@ class TransferDocumentFragment : Fragment() {
             super.onAuthenticationFailed()
 
             Log.d(LOG_TAG, "Attempt to authenticate the user has failed")
-            authenticationFailed()
         }
     }
 
@@ -217,8 +215,14 @@ class TransferDocumentFragment : Fragment() {
         }
     }
 
-    fun onDone() {
+    fun onCloseConnection() {
         vm.cancelPresentation()
+        binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
+        binding.btClose.visibility = View.GONE
+        binding.btOk.visibility = View.VISIBLE
+    }
+
+    fun onDone() {
         findNavController().navigate(
             TransferDocumentFragmentDirections.actionTransferDocumentFragmentToSelectDocumentFragment()
         )
