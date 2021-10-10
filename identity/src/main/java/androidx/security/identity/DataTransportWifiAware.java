@@ -197,7 +197,6 @@ public class DataTransportWifiAware extends DataTransport {
         baos.write(0x01); // Length of carrier data reference ("0")
         baos.write('W');  // Carrier data reference
         baos.write(0x01); // Number of auxiliary references
-        baos.write(0x04); // Length of auxiliary reference 0 data ("mdoc");
         byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
         baos.write(auxReference.length);
         baos.write(auxReference, 0, auxReference.length);
