@@ -82,7 +82,9 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 requestedDocument.identityCredentialName,
                 doc.docType,
                 issuerSignedEntriesToRequest,
-                response
+                response,
+                doc.readerAuth,
+                doc.itemsRequest
             )
             if (authNeeded) {
                 inProgress.set(View.GONE)

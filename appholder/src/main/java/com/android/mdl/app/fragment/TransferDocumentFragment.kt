@@ -16,7 +16,6 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
 import com.android.mdl.app.document.Document
@@ -69,20 +68,22 @@ class TransferDocumentFragment : Fragment() {
                     Log.d(LOG_TAG, "Request")
                     // TODO: Add option to the user select the which document share when there
                     //  are more than one for now we are just returning the first document we found
-                    val requestedDocuments = vm.getRequestedDocuments()
-                    requestedDocuments.forEach { doc ->
-                        binding.txtDocuments.append("- ${doc.userVisibleName} (${doc.docType})\n")
-                    }
-
                     try {
+                        val requestedDocuments = vm.getRequestedDocuments()
+                        requestedDocuments.forEach { doc ->
+                            binding.txtDocuments.append("- ${doc.userVisibleName} (${doc.docType})\n")
+                        }
+
                         // Ask for user consent and send response
                         sendResponseWithConsent()
-                    } catch (e: InvalidRequestMessageException) {
-                        Log.e(LOG_TAG, "Send response error: ${e.message}")
+                    } catch (e: Exception) {
+                        val message = "On request received error: ${e.message}"
+                        Log.e(LOG_TAG, message, e)
                         Toast.makeText(
-                            requireContext(), "Send response error: ${e.message}",
+                            requireContext(), message,
                             Toast.LENGTH_SHORT
                         ).show()
+                        binding.txtConnectionStatus.append("\n$message")
                     }
                 }
                 TransferStatus.DISCONNECTED -> {
@@ -182,7 +183,17 @@ class TransferDocumentFragment : Fragment() {
     // Called when user gives consent to transfer
     private fun authenticationSucceeded() {
         // Send response again after user biometric authentication
-        vm.sendResponse()
+        try {
+            vm.sendResponse()
+        } catch (e: Exception) {
+            val message = "Send response error: ${e.message}"
+            Log.e(LOG_TAG, message, e)
+            Toast.makeText(
+                requireContext(), message,
+                Toast.LENGTH_SHORT
+            ).show()
+            binding.txtConnectionStatus.append("\n$message")
+        }
     }
 
     private val biometricAuthCallback = object : BiometricPrompt.AuthenticationCallback() {

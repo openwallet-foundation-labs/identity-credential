@@ -5,6 +5,7 @@ import androidx.preference.PreferenceManager
 import androidx.security.identity.Constants
 
 object PreferencesHelper {
+    private const val READER_AUTHENTICATION = "reader_authentication"
     private const val LOG_INFO = "log_info"
     private const val LOG_DEVICE_ENGAGEMENT = "log_device_engagement"
     private const val LOG_SESSION_MESSAGES = "log_session_messages"
@@ -37,5 +38,10 @@ object PreferencesHelper {
             flags += Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE
         }
         return flags
+    }
+
+    fun getReaderAuth(context: Context): String {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+            .getString(READER_AUTHENTICATION, "0") ?: "0"
     }
 }
