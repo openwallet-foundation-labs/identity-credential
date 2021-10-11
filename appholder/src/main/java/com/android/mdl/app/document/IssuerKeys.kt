@@ -72,4 +72,34 @@ object IssuerKeys {
     fun getMekbCertificate(context: Context) = getCertificate(context, R.raw.google_mekb_ds_cert)
 
     fun getMicovCertificate(context: Context) = getCertificate(context, R.raw.google_micov_ds_cert)
+
+    fun getRABdrCertificate(context: Context) =
+        getCertificate(context, R.raw.bdr_iaca_iso_iec_fdis_18013_5_test_only)
+
+    fun getRACbnCertificate(context: Context) =
+        getCertificate(context, R.raw.cbn_iaca)
+
+    fun getRAPanasonicCertificate(context: Context) =
+        getCertificate(context, R.raw.iaca_zetes)
+
+    fun getRAIdemiaCertificate(context: Context) =
+        getCertificate(context, R.raw.idemia_lahague_interop_readerauthca)
+
+    fun getRAThalesCertificate(context: Context) =
+        getCertificate(context, R.raw.mdl_iaca_thales_multicert)
+
+    fun getRASamsungCertificate(context: Context) =
+        getCertificate(context, R.raw.samsung_iaca_test_cert)
+
+    fun getRAScytalesCertificate(context: Context) =
+        getCertificate(context, R.raw.scytales_root_ca)
+
+    fun getRAUl1Certificate(context: Context) =
+        getCertificate(context, R.raw.ul_cert_ca_01)
+
+    fun getRAUl2Certificate(context: Context) =
+        getCertificate(context, R.raw.ul_cert_ca_02)
+
+    fun getRAGoogleCertificate(context: Context) =
+        getCertificate(context, R.raw.google_mdl_ra_cert)
 }

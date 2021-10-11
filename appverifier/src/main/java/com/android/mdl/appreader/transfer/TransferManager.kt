@@ -13,8 +13,11 @@ import androidx.security.identity.DeviceRequestGenerator
 import androidx.security.identity.DeviceResponseParser
 import androidx.security.identity.VerificationHelper
 import com.android.mdl.appreader.document.RequestDocumentList
+import com.android.mdl.appreader.util.IssuerKeys
 import com.android.mdl.appreader.util.PreferencesHelper
 import com.android.mdl.appreader.util.TransferStatus
+import java.security.PrivateKey
+import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
 
 
@@ -146,6 +149,17 @@ class TransferManager private constructor(private val context: Context) {
             throw IllegalStateException("It is necessary to start a new engagement.")
 
         verification?.let {
+            var readerKey: PrivateKey? = null
+            var readerKeyCertificateChain: Collection<X509Certificate>? = null
+
+            // Check in preferences if reader authentication should be used
+            when (PreferencesHelper.getReaderAuth(context)) {
+                "1" -> {
+                    readerKey = IssuerKeys.getRAGooglePrivateKey(context)
+                    readerKeyCertificateChain = listOf(IssuerKeys.getRAGoogleCertificate(context))
+                }
+            }
+
             val generator = DeviceRequestGenerator()
             generator.setSessionTranscript(it.sessionTranscript)
             requestDocumentList.getAll().forEach { requestDocument ->
@@ -153,8 +167,8 @@ class TransferManager private constructor(private val context: Context) {
                     requestDocument.docType,
                     requestDocument.getItemsToRequest(),
                     null,
-                    null,
-                    null
+                    readerKey,
+                    readerKeyCertificateChain
                 )
             }
             verification?.sendRequest(generator.generate())

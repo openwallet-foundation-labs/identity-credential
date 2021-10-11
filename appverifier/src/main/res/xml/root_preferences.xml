@@ -26,5 +26,14 @@
             app:key="log_transport_verbose"
             app:title="Transport (verbose)" />
     </PreferenceCategory>
+    <PreferenceCategory app:title="Reader Authentication">
+        <ListPreference
+            android:defaultValue="0"
+            android:entries="@array/readerAuthenticationNames"
+            android:entryValues="@array/readerAuthenticationValues"
+            android:summary="%s"
+            app:key="reader_authentication"
+            app:title="Use Reader Authentication" />
+    </PreferenceCategory>
 
 </PreferenceScreen>

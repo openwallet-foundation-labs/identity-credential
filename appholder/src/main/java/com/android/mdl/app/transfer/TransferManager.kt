@@ -69,6 +69,7 @@ class TransferManager private constructor(private val context: Context) {
         )?.also {
             presentation = PresentationHelper(context, it)
             presentation?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
+            presentation?.setSendSessionTerminationMessage(true)
         }
     }
 
@@ -184,16 +185,22 @@ class TransferManager private constructor(private val context: Context) {
         credentialName: String,
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
-        response: DeviceResponseGenerator
+        response: DeviceResponseGenerator,
+        readerAuth: ByteArray?,
+        requestMessage: ByteArray?
     ): Boolean {
         session?.let {
+            val credentialDataRequestBuilder = CredentialDataRequest.Builder()
+                .setIssuerSignedEntriesToRequest(issuerSignedEntriesToRequest)
+                .setAllowUsingExhaustedKeys(true)
+                .setAllowUsingExpiredKeys(true)
+            if (readerAuth != null && requestMessage != null) {
+                credentialDataRequestBuilder.setReaderSignature(readerAuth)
+                credentialDataRequestBuilder.setRequestMessage(requestMessage)
+            }
             it.getCredentialData(
                 credentialName,
-                CredentialDataRequest.Builder()
-                    .setIssuerSignedEntriesToRequest(issuerSignedEntriesToRequest)
-                    .setAllowUsingExhaustedKeys(true)
-                    .setAllowUsingExpiredKeys(true)
-                    .build()
+                credentialDataRequestBuilder.build()
             )?.let { c ->
                 try {
                     if (c.deviceSignedEntries.isUserAuthenticationNeeded ||
