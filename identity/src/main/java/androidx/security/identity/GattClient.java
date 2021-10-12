@@ -351,7 +351,7 @@ class GattClient extends BluetoothGattCallback {
         }
 
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
-            Log.i(TAG, "writing chunk " + Util.toHex(chunk));
+            Log.i(TAG, "writing chunk " + mCharacteristicClient2Server.getUuid() + " " + Util.toHex(chunk));
         }
 
         mCharacteristicClient2Server.setValue(chunk);
