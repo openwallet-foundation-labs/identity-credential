@@ -336,8 +336,11 @@ public class DataTransportBle extends DataTransport {
 
             reportListeningPeerConnecting();
             mGattClient.connect(result.getDevice());
-            mScanner.stopScan(mScanCallback);
-            mScanner = null;
+            mScanner.stopScan(mScanCallback); //
+            Log.d(TAG, "stopScan");
+            //mScanner = null;
+            // TODO: Investigate. When testing with Reader C (which is on iOS) we get two callbacks
+            //  and thus a NullPointerException when calling stopScan().
         }
 
         @Override

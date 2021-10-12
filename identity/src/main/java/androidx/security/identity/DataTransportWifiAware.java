@@ -117,7 +117,8 @@ public class DataTransportWifiAware extends DataTransport {
         salt = new byte[] {};
         mDerivedPassphrase = Base64.encodeToString(
                 Util.computeHkdf("HmacSha256", ikm, salt, info, 32),
-                Base64.URL_SAFE | Base64.NO_PADDING);
+                Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
+        Log.d(TAG, String.format("Passphrase '%s' foo", mDerivedPassphrase));
 
     }
 

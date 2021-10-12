@@ -581,7 +581,8 @@ public class PresentationHelper {
     String getDeviceEngagementForQrCode() {
         String base64EncodedDeviceEngagement =
                 Base64.encodeToString(mEncodedDeviceEngagement,
-                        Base64.URL_SAFE | Base64.NO_PADDING);
+                        Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);
+        Log.d(TAG, "qrCode URI: '" + base64EncodedDeviceEngagement + "'");
         Uri uri = new Uri.Builder()
                 .scheme("mdoc")
                 .encodedOpaquePart(base64EncodedDeviceEngagement)
@@ -909,7 +910,7 @@ public class PresentationHelper {
     }
 
     private @NonNull byte[] nfcEngagementHandleReadBinary(@NonNull byte[] apdu) {
-        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_SESSION_MESSAGES) != 0) {
             Log.i(TAG, "in nfcEngagementHandleReadBinary");
         }
         if (apdu.length < 5) {

@@ -189,6 +189,8 @@ class GattClient extends BluetoothGattCallback {
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
             Log.d(TAG, "Received identValue: " + Util.toHex(identValue));
         }
+        // TODO: maybe comment out or change to warning since it's optional... several readers
+        //  send the wrong value (others send the right one though)
         if (!Arrays.equals(identValue, mIdentValue)) {
             reportError(new Error("Received ident does not match expected ident"));
             return;
