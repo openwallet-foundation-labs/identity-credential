@@ -18,6 +18,7 @@ package androidx.security.identity;
 
 import android.content.Context;
 import android.icu.util.Calendar;
+import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -419,28 +420,33 @@ public class Utility {
 
             List<byte[]> encodedIssuerSignedItemBytesForNs = issuerSignedMapping.get(namespaceName);
             if (encodedIssuerSignedItemBytesForNs == null) {
-                throw new IllegalArgumentException("No namespace " + namespaceName
-                        + " in given issuerSignedMapping");
-            }
-
-            Collection<String> entryNames = issuerSigned.getEntryNames(namespaceName);
-            for (byte[] encodedIssuerSignedItemBytes : encodedIssuerSignedItemBytesForNs) {
-                DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
-                DataItem issuerSignedItem =
+                // Fine if this is null, the verifier might have requested elements in a namespace
+                // we have no issuer-signed values for.
+                Log.w(TAG, "Skipping namespace " + namespaceName + " which is not in "
+                    + "issuerSignedMapping");
+            } else {
+                Collection<String> entryNames = issuerSigned.getEntryNames(namespaceName);
+                for (byte[] encodedIssuerSignedItemBytes : encodedIssuerSignedItemBytesForNs) {
+                    DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
+                    DataItem issuerSignedItem =
                         Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
-                String elemName = Util.cborMapExtractString(issuerSignedItem, "elementIdentifier");
+                    String elemName = Util
+                        .cborMapExtractString(issuerSignedItem, "elementIdentifier");
 
-                if (!entryNames.contains(elemName)) {
-                    continue;
-                }
-                byte[] elemValue = issuerSigned.getEntry(namespaceName, elemName);
-                if (elemValue != null) {
-                    byte[] encodedIssuerSignedItemBytesWithValue =
+                    if (!entryNames.contains(elemName)) {
+                        continue;
+                    }
+                    byte[] elemValue = issuerSigned.getEntry(namespaceName, elemName);
+                    if (elemValue != null) {
+                        byte[] encodedIssuerSignedItemBytesWithValue =
                             Util.issuerSignedItemBytesSetValue(encodedIssuerSignedItemBytes,
-                                    elemValue);
-                    newEncodedIssuerSignedItemBytesForNs.add(encodedIssuerSignedItemBytesWithValue);
+                                elemValue);
+                        newEncodedIssuerSignedItemBytesForNs
+                            .add(encodedIssuerSignedItemBytesWithValue);
+                    }
                 }
             }
+
             if (newEncodedIssuerSignedItemBytesForNs.size() > 0) {
                 newIssuerSignedMapping.put(namespaceName, newEncodedIssuerSignedItemBytesForNs);
             }

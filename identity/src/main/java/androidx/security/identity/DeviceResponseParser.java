@@ -17,6 +17,7 @@
 package androidx.security.identity;
 
 import android.icu.util.Calendar;
+import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -221,6 +222,7 @@ public class DeviceResponseParser {
 
             boolean issuerSignedAuthenticated = Util.coseSign1CheckSignature(
                     issuerAuthDataItem, null, issuerAuthorityKey);
+            Log.d(TAG, "issuerSignedAuthenticated: " + issuerSignedAuthenticated);
             builder.setIssuerSignedAuthenticated(issuerSignedAuthenticated);
             builder.setIssuerCertificateChain(issuerAuthorityCertChain);
 
