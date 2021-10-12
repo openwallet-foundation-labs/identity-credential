@@ -23,6 +23,7 @@ import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
 import android.security.keystore.KeyProperties;
 
+import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -136,6 +137,22 @@ public class Util {
         }
         return sb.toString();
     }
+
+    /** @hide */
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    public static void dumpHex(@NonNull byte[] bytes) {
+        Log.i(TAG, "dumping " + bytes.length + " bytes");
+        int offset = 0;
+        do {
+            StringBuilder sb = new StringBuilder();
+            for (int n = 0; n < 1024 && offset < bytes.length; n++) {
+                byte b = bytes[offset++];
+                sb.append(String.format("%02x", b));
+            }
+            Log.i(TAG, "data: " + sb.toString());
+        } while (offset < bytes.length);
+    }
+
 
     /** @hide */
     @RestrictTo(RestrictTo.Scope.LIBRARY)

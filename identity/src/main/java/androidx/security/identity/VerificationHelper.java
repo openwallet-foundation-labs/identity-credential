@@ -436,7 +436,8 @@ public class VerificationHelper {
                 // currently does not define other kinds of messages).
                 //
                 if (decryptedMessage.first != null) {
-                    Log.d(TAG, "Device Response: " + Util.toHex(decryptedMessage.first));
+                    //Log.d(TAG, "Device Response: " + Util.toHex(decryptedMessage.first));
+                    Util.dumpHex(decryptedMessage.first);
                     reportResponseReceived(decryptedMessage.first);
                 } else {
                     // No data, so status must be set.
