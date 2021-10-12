@@ -29,6 +29,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import androidx.security.identity.Constants.LoggingFlag;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -60,9 +61,13 @@ class GattClient extends BluetoothGattCallback {
     private int mNegotiatedMtu;
     private byte[] mIdentValue;
 
-    GattClient(@NonNull Context context, @NonNull UUID serviceUuid,
+    private final @LoggingFlag int mLoggingFlags;
+
+
+    GattClient(@NonNull Context context, @LoggingFlag int loggingFlags, @NonNull UUID serviceUuid,
             @NonNull byte[] encodedEDeviceKeyBytes) {
         mContext = context;
+        mLoggingFlags = loggingFlags;
         mServiceUuid = serviceUuid;
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
     }
@@ -89,7 +94,9 @@ class GattClient extends BluetoothGattCallback {
 
     @Override
     public void onConnectionStateChange(@NonNull BluetoothGatt gatt, int status, int newState) {
-        //Log.d(TAG, "onConnectionStateChange: status=" + status + " newState=" + newState);
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "onConnectionStateChange: status=" + status + " newState=" + newState);
+        }
         if (newState == BluetoothProfile.STATE_CONNECTED) {
             //Log.d(TAG, "Connected");
             gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
@@ -102,7 +109,9 @@ class GattClient extends BluetoothGattCallback {
 
     @Override
     public void onServicesDiscovered(@NonNull BluetoothGatt gatt, int status) {
-        //Log.d(TAG, "onServicesDiscovered: status=" + status);
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "onServicesDiscovered: status=" + status);
+        }
         if (status == BluetoothGatt.GATT_SUCCESS) {
             boolean haveAllServices = false;
             BluetoothGattService s = gatt.getService(mServiceUuid);
@@ -154,7 +163,9 @@ class GattClient extends BluetoothGattCallback {
             return;
         }
 
-        Log.i(TAG, "Negotiated MTU " + mtu);
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "Negotiated MTU " + mtu);
+        }
 
         // Read ident characteristics...
         //
@@ -175,7 +186,9 @@ class GattClient extends BluetoothGattCallback {
             return;
         }
         byte[] identValue = characteristic.getValue();
-        //Log.d(TAG, "Received identValue: " + SUtil.toHex(identValue));
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.d(TAG, "Received identValue: " + Util.toHex(identValue));
+        }
         if (!Arrays.equals(identValue, mIdentValue)) {
             reportError(new Error("Received ident does not match expected ident"));
             return;
@@ -208,9 +221,11 @@ class GattClient extends BluetoothGattCallback {
     public void onDescriptorWrite(@NonNull BluetoothGatt gatt,
             @NonNull BluetoothGattDescriptor descriptor,
             int status) {
-        //Log.d(TAG,"onDescriptorWrite: " + descriptor.getUuid() + " char="
-        //                + descriptor.getCharacteristic().getUuid() + " status="
-        //                + status);
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.d(TAG, "onDescriptorWrite: " + descriptor.getUuid() + " char="
+                + descriptor.getCharacteristic().getUuid() + " status="
+                + status);
+        }
 
         UUID charUuid = descriptor.getCharacteristic().getUuid();
         if (charUuid.equals(mCharacteristicServer2ClientUuid)
@@ -256,6 +271,11 @@ class GattClient extends BluetoothGattCallback {
             @NonNull BluetoothGattCharacteristic characteristic,
             int status) {
         UUID charUuid = characteristic.getUuid();
+
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "onCharacteristicWrite " + status + " " + charUuid);
+        }
+
         if (charUuid.equals(mCharacteristicStateUuid)) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 reportError(new Error("Unexpected status for writing to State, status=" + status));
@@ -279,7 +299,9 @@ class GattClient extends BluetoothGattCallback {
     @Override
     public void onCharacteristicChanged(@NonNull BluetoothGatt gatt,
             @NonNull BluetoothGattCharacteristic characteristic) {
-        //Log.d(TAG, "in onCharacteristicChanged, uuid=" + characteristic.getUuid());
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "in onCharacteristicChanged, uuid=" + characteristic.getUuid());
+        }
         if (characteristic.getUuid().equals(mCharacteristicServer2ClientUuid)) {
             byte[] data = characteristic.getValue();
 
@@ -317,6 +339,9 @@ class GattClient extends BluetoothGattCallback {
     boolean writeIsOutstanding = false;
 
     void drainWritingQueue() {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "drainWritingQueue " + writeIsOutstanding);
+        }
         if (writeIsOutstanding) {
             return;
         }
@@ -324,6 +349,11 @@ class GattClient extends BluetoothGattCallback {
         if (chunk == null) {
             return;
         }
+
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "writing chunk " + Util.toHex(chunk));
+        }
+
         mCharacteristicClient2Server.setValue(chunk);
         if (!mGatt.writeCharacteristic(mCharacteristicClient2Server)) {
             reportError(new Error("Error writing to Client2Server characteristic"));
@@ -338,6 +368,10 @@ class GattClient extends BluetoothGattCallback {
         if (mNegotiatedMtu == 0) {
             Log.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
             mNegotiatedMtu = 23;
+        }
+
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "sendMessage " + Util.toHex(data));
         }
 
         // Three less the MTU but we also need room for the leading 0x00 or 0x01.

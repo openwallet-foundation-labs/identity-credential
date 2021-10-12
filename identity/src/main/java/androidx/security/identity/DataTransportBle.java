@@ -38,6 +38,7 @@ import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import androidx.security.identity.Constants.LoggingFlag;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -208,8 +209,11 @@ public class DataTransportBle extends DataTransport {
         return null;
     }
 
-    public DataTransportBle(@NonNull Context context) {
+    private @LoggingFlag int mLoggingFlags;
+
+    public DataTransportBle(@NonNull Context context, @LoggingFlag int loggingFlags) {
         super(context);
+        mLoggingFlags = loggingFlags;
     }
 
     private BleOptions parseDeviceRetrievalMethod(byte[] encodedDeviceRetrievalMethod) {
@@ -297,7 +301,7 @@ public class DataTransportBle extends DataTransport {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            mGattClient = new GattClient(mContext, mServiceUuid, mEncodedEDeviceKeyBytes);
+            mGattClient = new GattClient(mContext, mLoggingFlags, mServiceUuid, mEncodedEDeviceKeyBytes);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -407,7 +411,7 @@ public class DataTransportBle extends DataTransport {
 
         BluetoothManager bluetoothManager =
                 (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
-        mGattServer = new GattServer(mContext, bluetoothManager, mServiceUuid,
+        mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes);
         mGattServer.setListener(new GattServer.Listener() {
             @Override

@@ -345,7 +345,7 @@ public class VerificationHelper {
     public void connect(@NonNull byte[] deviceRetrievalMethod) {
         switch (Util.getDeviceRetrievalMethodType(deviceRetrievalMethod)) {
             case DataTransportBle.DEVICE_RETRIEVAL_METHOD_TYPE:
-                mDataTransport = new DataTransportBle(mContext);
+                mDataTransport = new DataTransportBle(mContext, mLoggingFlags);
                 break;
             case DataTransportWifiAware.DEVICE_RETRIEVAL_METHOD_TYPE:
                 mDataTransport = new DataTransportWifiAware(mContext);

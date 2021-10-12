@@ -31,6 +31,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import androidx.security.identity.Constants.LoggingFlag;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -39,6 +40,7 @@ import java.util.UUID;
 class GattServer extends BluetoothGattServerCallback {
     private static final String TAG = "GattServer";
     private final byte[] mEncodedEDeviceKeyBytes;
+    private final @LoggingFlag int mLoggingFlags;
 
     UUID mCharacteristicStateUuid =         UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
@@ -46,7 +48,6 @@ class GattServer extends BluetoothGattServerCallback {
     UUID mCharacteristicIdentUuid =         UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
 
     UUID mClientCharacteristicConfigUuid =  UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
-
 
     private final UUID mServiceUuid;
     private final BluetoothManager mBluetoothManager;
@@ -64,9 +65,11 @@ class GattServer extends BluetoothGattServerCallback {
     BluetoothGattCharacteristic mCharacteristicIdent;
     private byte[] mIdentValue;
 
-    GattServer(@NonNull Context context, @NonNull BluetoothManager bluetoothManager,
+    GattServer(@NonNull Context context, @LoggingFlag int loggingFlags, @NonNull BluetoothManager bluetoothManager,
             @NonNull UUID serviceUuid, @NonNull byte[] encodedEDeviceKeyBytes) {
         mContext = context;
+        Log.i(TAG, "LoggingFlags: " + loggingFlags);
+        mLoggingFlags = loggingFlags;
         mBluetoothManager = bluetoothManager;
         mServiceUuid = serviceUuid;
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
@@ -147,6 +150,9 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "onConnectionStateChange: " + status + " " + newState);
+        }
         if (newState == BluetoothProfile.STATE_CONNECTED) {
             if (mCurrentConnection != null) {
                 Log.w(TAG, "Got a connection but we already have one");
@@ -168,6 +174,9 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
             BluetoothGattCharacteristic characteristic) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "onCharacteristicReadRequest: " + requestId + " " + offset + " " + characteristic.getUuid());
+        }
         if (characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             mGattServer.sendResponse(device,
                     requestId,
@@ -191,6 +200,10 @@ class GattServer extends BluetoothGattServerCallback {
             int offset,
             byte[] value) {
         UUID charUuid = characteristic.getUuid();
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "onCharacteristicWriteRequest: "
+                + characteristic.getUuid() + " " + offset + " " + Util.toHex(value));
+        }
         if (charUuid.equals(mCharacteristicStateUuid)
             && value.length == 1 && value[0] == 0x01) {
             reportPeerConnected();
@@ -223,6 +236,10 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset,
             BluetoothGattDescriptor descriptor) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "onDescriptorReadRequest: "
+                + descriptor.getCharacteristic().getUuid() + " " + offset);
+        }
         /* Do nothing */
     }
 
@@ -231,6 +248,10 @@ class GattServer extends BluetoothGattServerCallback {
             BluetoothGattDescriptor descriptor,
             boolean preparedWrite, boolean responseNeeded,
             int offset, byte[] value) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "onDescriptorWriteRequest: "
+                + descriptor.getCharacteristic().getUuid() + " " + offset + " " + Util.toHex(value));
+        }
         if (responseNeeded) {
             mGattServer.sendResponse(device,
                     requestId,
@@ -243,19 +264,28 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onMtuChanged(BluetoothDevice device, int mtu) {
         mNegotiatedMtu = mtu;
-        Log.i(TAG, "Negotiated MTU " + mtu);
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "Negotiated MTU " + mtu);
+        }
     }
 
     Queue<byte[]> mWritingQueue = new ArrayDeque<>();
     boolean writeIsOutstanding = false;
 
     void drainWritingQueue() {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "drainWritingQueue " + writeIsOutstanding);
+        }
         if (writeIsOutstanding) {
             return;
         }
         byte[] chunk = mWritingQueue.poll();
         if (chunk == null) {
             return;
+        }
+
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "writing chunk to " + mCharacteristicServer2Client.getUuid() + " " + Util.toHex(chunk));
         }
 
         mCharacteristicServer2Client.setValue(chunk);
@@ -269,6 +299,9 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onNotificationSent(BluetoothDevice device, int status) {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "onNotificationSent " + status);
+        }
         if (status != BluetoothGatt.GATT_SUCCESS) {
             reportError(new Error("Error in onNotificationSent status=" + status));
             return;
@@ -281,6 +314,10 @@ class GattServer extends BluetoothGattServerCallback {
         if (mNegotiatedMtu == 0) {
             Log.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
             mNegotiatedMtu = 23;
+        }
+
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "sendMessage " + Util.toHex(data));
         }
 
         // Three less the MTU but we also need room for the leading 0x00 or 0x01.

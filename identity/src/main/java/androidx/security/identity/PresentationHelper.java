@@ -343,7 +343,7 @@ public class PresentationHelper {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
                 Log.i(TAG, "Adding BLE transport");
             }
-            mTransports.add(new DataTransportBle(mContext));
+            mTransports.add(new DataTransportBle(mContext, mLoggingFlags));
         }
         if (dataRetrievalConfiguration.isWifiAwareEnabled()) {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
