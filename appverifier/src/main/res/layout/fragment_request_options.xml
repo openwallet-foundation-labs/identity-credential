@@ -82,7 +82,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_custom" />
 
-
     <CheckBox
         android:id="@+id/cb_request_micov"
         android:layout_width="wrap_content"
@@ -92,6 +91,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/cb_request_mvr" />
 
+    <CheckBox
+        android:id="@+id/cb_request_multi003"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:text="Request Multi-003"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cb_request_micov" />
+
     <Button
         android:id="@+id/bt_next"
         android:layout_width="wrap_content"
@@ -99,6 +107,6 @@
         android:text="@string/next"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/cb_request_micov" />
+        app:layout_constraintTop_toBottomOf="@id/cb_request_multi003" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
