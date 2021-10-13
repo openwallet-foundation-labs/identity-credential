@@ -20,7 +20,7 @@ abstract class RequestDocument : Serializable {
         this.mapSelectedDataItem = mapSelectedDataItem
     }
 
-    fun getItemsToRequest(): Map<String, Map<String, Boolean>> {
+    open fun getItemsToRequest(): Map<String, Map<String, Boolean>> {
         mapSelectedDataItem?.let {
 
             return mapOf(Pair(nameSpace, it))

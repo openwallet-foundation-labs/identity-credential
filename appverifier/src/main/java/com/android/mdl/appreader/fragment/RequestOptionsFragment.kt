@@ -125,6 +125,14 @@ class RequestOptionsFragment : Fragment() {
                 doc2.setSelectedDataItems(getSelectRequestFull(doc2, intentToRetain))
                 requestDocumentList.addRequestDocument(doc2)
             }
+            if (binding.cbRequestMulti003.isChecked) {
+                val doc = RequestMdl
+                val selectMdl = mapOf(Pair("portrait", false), Pair("document_number", false))
+                doc.setSelectedDataItems(selectMdl)
+                requestDocumentList.addRequestDocument(doc)
+                val doc2 = RequestMulti003()
+                requestDocumentList.addRequestDocument(doc2)
+            }
 
             if (binding.cbRequestMdl.isChecked && binding.cbRequestMdlCustom.isChecked) {
                 findNavController().navigate(
