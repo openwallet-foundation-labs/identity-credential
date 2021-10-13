@@ -559,6 +559,8 @@ class DocumentManager private constructor(private val context: Context) {
                 FormatUtil.cborEncode(drivingPrivileges)
             )
             .putEntryString(DocumentData.MDL_NAMESPACE, "un_distinguishing_sign", ids, "US")
+            .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_18", ids, true)
+            .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_21", ids, true)
             .putEntryBoolean(DocumentData.AAMVA_NAMESPACE, "real_id", ids, true)
 
         setAccessControlProfile(personalizationData)
