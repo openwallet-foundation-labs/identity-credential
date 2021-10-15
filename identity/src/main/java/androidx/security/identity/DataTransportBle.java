@@ -78,10 +78,9 @@ public class DataTransportBle extends DataTransport {
     byte[] mEncodedDeviceRetrievalMethod;
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
+    UUID mServiceUuid;
     private @LoggingFlag
     final int mLoggingFlags;
-    UUID mServiceClientUuid;
-    UUID mServiceServerUuid;
     private GattServer mGattServer;
     GattClient mGattClient;
     BluetoothLeScanner mScanner;
@@ -103,7 +102,7 @@ public class DataTransportBle extends DataTransport {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            mGattClient = new GattClient(mContext, mLoggingFlags, mServiceClientUuid, mEncodedEDeviceKeyBytes);
+            mGattClient = new GattClient(mContext, mLoggingFlags, mServiceUuid, mEncodedEDeviceKeyBytes);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -340,14 +339,19 @@ public class DataTransportBle extends DataTransport {
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         };
         ByteBuffer uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
-        // TODO: Fix NFC engagement
-//        uuidBuf.putLong(0, mServiceUuid.getLeastSignificantBits());
-//        uuidBuf.putLong(8, mServiceUuid.getMostSignificantBits());
+        uuidBuf.putLong(0, mServiceUuid.getLeastSignificantBits());
+        uuidBuf.putLong(8, mServiceUuid.getMostSignificantBits());
         System.arraycopy(uuidBuf.array(), 0, oobData, 7, 16);
         // Length is stored in LE...
         oobData[0] = (byte) (oobData.length & 0xff);
         oobData[1] = (byte) (oobData.length / 256);
 //        Log.d(TAG, "Encoding UUID " + mServiceUuid + " in NDEF");
+
+        if (mBleServiceMode == BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE) {
+            oobData[4] = (byte) 0x02;
+        } else if (mBleServiceMode == BLE_PERIPHERAL_SERVER_MODE) {
+            oobData[4] = (byte) 0x00;
+        }
 
         NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
                 "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8),
@@ -381,12 +385,12 @@ public class DataTransportBle extends DataTransport {
         BleOptions options = new BleOptions();
 
 
+        mServiceUuid = UUID.randomUUID();
         if (mBleServiceMode == BLE_CENTRAL_CLIENT_ONLY_MODE ||
                 mBleServiceMode == BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE) {
             // Add support to central client mode
             options.supportsCentralClientMode = true;
-            mServiceClientUuid = UUID.randomUUID();
-            options.centralClientModeUuid = uuidToBytes(mServiceClientUuid);
+            options.centralClientModeUuid = uuidToBytes(mServiceUuid);
             // Central Client Mode
             startScan();
         }
@@ -394,8 +398,7 @@ public class DataTransportBle extends DataTransport {
                 mBleServiceMode == BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE) {
             // Add support to peripheral server mode
             options.supportsPeripheralServerMode = true;
-            mServiceServerUuid = UUID.randomUUID();
-            options.peripheralServerModeUuid = uuidToBytes(mServiceServerUuid);
+            options.peripheralServerModeUuid = uuidToBytes(mServiceUuid);
             // Peripheral Mode
             startAdvertising();
         }
@@ -406,18 +409,18 @@ public class DataTransportBle extends DataTransport {
     }
 
     private void startAdvertising() {
-        if (mServiceServerUuid == null) {
+        if (mServiceUuid == null) {
             if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
                 Log.d(TAG, "Advertising not started, no UUID provided.");
             }
             return;
         }
         if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
-            Log.d(TAG, "Starting advertising on " + mServiceServerUuid);
+            Log.d(TAG, "Starting advertising on " + mServiceUuid);
         }
         BluetoothManager bluetoothManager =
                 (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
-        mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceServerUuid,
+        mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
@@ -470,24 +473,24 @@ public class DataTransportBle extends DataTransport {
                     .build();
             AdvertiseData data = new AdvertiseData.Builder()
                     .setIncludeTxPowerLevel(false)
-                    .addServiceUuid(new ParcelUuid(mServiceServerUuid))
+                    .addServiceUuid(new ParcelUuid(mServiceUuid))
                     .build();
             mBluetoothLeAdvertiser.startAdvertising(settings, data, mAdvertiseCallback);
             if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
-                Log.d(TAG, "Advertising started on " + mServiceServerUuid);
+                Log.d(TAG, "Advertising started on " + mServiceUuid);
             }
         }
     }
 
     private void startScan() {
-        if (mServiceClientUuid == null) {
+        if (mServiceUuid == null) {
             if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
                 Log.d(TAG, "Scan not started, no UUID provided.");
             }
             return;
         }
         if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
-            Log.d(TAG, "Start scanning on " + mServiceClientUuid);
+            Log.d(TAG, "Start scanning on " + mServiceUuid);
         }
 
         // TODO: Check if BLE is enabled and error out if not so...
@@ -497,7 +500,7 @@ public class DataTransportBle extends DataTransport {
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
 
         ScanFilter filter = new ScanFilter.Builder()
-                .setServiceUuid(new ParcelUuid(mServiceClientUuid))
+                .setServiceUuid(new ParcelUuid(mServiceUuid))
                 .build();
 
         ScanSettings settings = new ScanSettings.Builder()
@@ -508,7 +511,7 @@ public class DataTransportBle extends DataTransport {
         mScanner = bluetoothAdapter.getBluetoothLeScanner();
         mScanner.startScan(List.of(filter), settings, mScanCallback);
         if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
-            Log.d(TAG, "Scanning started on " + mServiceClientUuid);
+            Log.d(TAG, "Scanning started on " + mServiceUuid);
         }
 
     }
@@ -545,11 +548,11 @@ public class DataTransportBle extends DataTransport {
 
         // if device retrieval supports client central uses peripheral to advertise
         if (options.supportsCentralClientMode) {
-            mServiceServerUuid = uuidFromBytes(options.centralClientModeUuid);
+            mServiceUuid = uuidFromBytes(options.centralClientModeUuid);
             // Peripheral Mode
             startAdvertising();
         } else if (options.supportsPeripheralServerMode) {
-            mServiceClientUuid = uuidFromBytes(options.peripheralServerModeUuid);
+            mServiceUuid = uuidFromBytes(options.peripheralServerModeUuid);
             // Central Client Mode
             startScan();
         } else {
