@@ -11,7 +11,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@color/cardview_light_background"
-        app:layout_constraintBottom_toTopOf="@+id/bt_ok"
+        app:layout_constraintBottom_toTopOf="@+id/bt_close_termination_message"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -50,26 +50,51 @@
         android:id="@+id/bt_new_request"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="32dp"
         android:text="@string/new_request"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/bt_close_connection"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/bt_close_termination_message" />
+
+    <Button
+        android:id="@+id/bt_close_termination_message"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
+        android:text="Close\n(Message)"
+        android:textSize="4pt"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/sv_document" />
+
+    <Button
+        android:id="@+id/bt_close_transport_specific"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:text="Close\n(Specific)"
+        android:textSize="4pt"
+        app:layout_constraintBottom_toBottomOf="@+id/bt_close_termination_message"
+        app:layout_constraintEnd_toStartOf="@+id/bt_close_connection"
+        app:layout_constraintStart_toEndOf="@+id/bt_close_termination_message"
+        app:layout_constraintTop_toTopOf="@+id/bt_close_termination_message" />
 
     <Button
         android:id="@+id/bt_close_connection"
         style="?attr/materialButtonOutlinedStyle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="32dp"
-        android:text="@string/close_connection"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/bt_new_request"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/sv_document" />
+        android:layout_marginEnd="8dp"
+        android:text="Close\n(None)"
+        android:textSize="4pt"
+        app:layout_constraintBottom_toBottomOf="@+id/bt_close_termination_message"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/bt_close_termination_message" />
 
     <Button
         android:id="@+id/bt_ok"

@@ -93,7 +93,14 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    fun stopVerification() {
+    fun stopVerification(
+        sendSessionTerminationMessage: Boolean,
+        useTransportSpecificSessionTermination: Boolean
+    ) {
+        verification?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
+        verification?.setUseTransportSpecificSessionTermination(
+            useTransportSpecificSessionTermination
+        )
         verification?.setListener(null, null)
         try {
             verification?.disconnect()
