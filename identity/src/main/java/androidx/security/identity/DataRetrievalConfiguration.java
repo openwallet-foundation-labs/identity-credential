@@ -17,6 +17,7 @@
 package androidx.security.identity;
 
 import androidx.annotation.NonNull;
+import androidx.security.identity.Constants.BleDataRetrievalOption;
 
 /**
  * An object to hold configuration about which data retrieval methods to listen on.
@@ -35,6 +36,8 @@ public class DataRetrievalConfiguration {
     boolean mNfcEnabled;
     boolean mWifiAwareEnabled;
     boolean mBleEnabled;
+    @BleDataRetrievalOption int mBleDataRetrievalOptions =
+        Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE;
 
     /**
      * Whether NFC data retrieval is enabled.
@@ -61,6 +64,17 @@ public class DataRetrievalConfiguration {
      */
     public boolean isBleEnabled() {
         return mBleEnabled;
+    }
+
+    /**
+     * Gets the BLE data retrieval options.
+     *
+     * @return One or more data retrieval options, for example
+     * {@link Constants#BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE} and
+     * {@link Constants#BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE}.
+     */
+    public @BleDataRetrievalOption int getBleDataRetrievalOptions() {
+        return mBleDataRetrievalOptions;
     }
 
     /**
@@ -113,11 +127,20 @@ public class DataRetrievalConfiguration {
             return this;
         }
 
-        // TODO: can add setBleDataRetrievalOptions(mode) where mode is one of
-        //  BLE_MDOC_CENTRAL_CLIENT_ONLY_MODE, BLE_MDOC_PERIPHERAL_SERVER_MODE,
-        //  BLE_MDOC_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE
-        //  with the default being BLE_MDOC_CENTRAL_CLIENT_ONLY_MODE.
-
+        /**
+         * Sets which data retrieval options to use when offering BLE data retrieval to the
+         * remote initiator.
+         *
+         * <p>By default this is set to
+         * {@link Constants#BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE}.
+         *
+         * @param bleDataRetrievalOptions one or more BLE data retrieval options.
+         */
+        public @NonNull Builder setBleDataRetrievalOptions(
+            @BleDataRetrievalOption int bleDataRetrievalOptions) {
+            mConfiguration.mBleDataRetrievalOptions = bleDataRetrievalOptions;
+            return this;
+        }
 
         public @NonNull DataRetrievalConfiguration build() {
             return mConfiguration;

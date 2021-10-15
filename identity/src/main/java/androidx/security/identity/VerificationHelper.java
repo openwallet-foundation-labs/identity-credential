@@ -34,6 +34,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import androidx.security.identity.Constants.LoggingFlag;
+import androidx.security.identity.DataTransportBle.BleOptions;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -345,7 +346,17 @@ public class VerificationHelper {
     public void connect(@NonNull byte[] deviceRetrievalMethod) {
         switch (Util.getDeviceRetrievalMethodType(deviceRetrievalMethod)) {
             case DataTransportBle.DEVICE_RETRIEVAL_METHOD_TYPE:
-                mDataTransport = new DataTransportBle(mContext, mLoggingFlags);
+                BleOptions bleOptions = DataTransportBle.parseDeviceRetrievalMethod(deviceRetrievalMethod);
+                // As per 18013-5 section a reader should always prefer mdoc central client mode if it's
+                // available.
+                if (bleOptions.supportsCentralClientMode) {
+                    mDataTransport = new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
+                } else if (bleOptions.supportsPeripheralServerMode) {
+                    mDataTransport = new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags);
+                } else {
+                    throw new IllegalArgumentException(
+                        "Neither mdoc central client nor mdoc peripheral server mode is true");
+                }
                 break;
             case DataTransportWifiAware.DEVICE_RETRIEVAL_METHOD_TYPE:
                 mDataTransport = new DataTransportWifiAware(mContext);

@@ -118,4 +118,32 @@ public class Constants {
     public @interface LoggingFlag {
     }
 
+    /**
+     * Flag indicating that the <em>mdoc central client mode</em> should be supported
+     * for BLE data retrieval.
+     */
+    public static final int BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE = (1<<0);
+
+    /**
+     * Flag indicating that the <em>mdoc peripheral server mode</em> should be supported
+     * for BLE data retrieval.
+     */
+    public static final int BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE = (1<<1);
+
+    /**
+     * BLE data retrieval flags.
+     *
+     * @hide
+     */
+    @Retention(SOURCE)
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    @IntDef(
+        flag=true,
+        value={
+            BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE,
+            BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE
+        })
+    public @interface BleDataRetrievalOption {
+    }
+
 }

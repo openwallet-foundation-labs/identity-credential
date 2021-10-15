@@ -7,6 +7,7 @@ import androidx.security.identity.Constants
 object PreferencesHelper {
     const val HARDWARE_BACKED_PREFERENCE = "com.android.mdl.app.HARDWARE_BACKED"
     const val BLE_DATA_RETRIEVAL = "ble_transport"
+    const val BLE_DATA_RETRIEVAL_PERIPHERAL_MODE = "ble_transport_peripheral_mode"
     const val WIFI_DATA_RETRIEVAL = "wifi_transport"
     const val NFC_DATA_RETRIEVAL = "nfc_transport"
     private const val LOG_INFO = "log_info"
@@ -42,6 +43,12 @@ object PreferencesHelper {
     fun isBleDataRetrievalEnabled(context: Context): Boolean {
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
             BLE_DATA_RETRIEVAL, true
+        )
+    }
+
+    fun isBleDataRetrievalPeripheralModeEnabled(context: Context): Boolean {
+        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
+            BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, true
         )
     }
 

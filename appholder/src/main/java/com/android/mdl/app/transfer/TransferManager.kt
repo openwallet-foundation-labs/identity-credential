@@ -81,9 +81,17 @@ class TransferManager private constructor(private val context: Context) {
         // Get an instance of the presentation based on the document
         initiate()
 
-        // Add only ble transfer for now
+        var bleOptions = 0
+        if (PreferencesHelper.isBleDataRetrievalEnabled(context)) {
+            bleOptions += Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE
+        }
+        if (PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled(context)) {
+            bleOptions += Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE
+        }
+
         val dataRetrievalConfiguration = DataRetrievalConfiguration.Builder()
-            .setBleEnabled(PreferencesHelper.isBleDataRetrievalEnabled(context))
+            .setBleEnabled(bleOptions != 0)
+            .setBleDataRetrievalOptions(bleOptions)
             .setWifiAwareEnabled(PreferencesHelper.isWifiDataRetrievalEnabled(context))
             .setNfcEnabled(PreferencesHelper.isNfcDataRetrievalEnabled(context))
             .build()

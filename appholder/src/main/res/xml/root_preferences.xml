@@ -6,9 +6,16 @@
         <SwitchPreference
             android:defaultValue="true"
             app:key="ble_transport"
-            app:summaryOff="BLE transfer deactivated"
-            app:summaryOn="BLE transfer activated"
-            app:title="Enable BLE data retrieval" />
+            app:summaryOff="BLE central client mode deactivated"
+            app:summaryOn="BLE central client mode activated"
+            app:title="Enable BLE central client mode" />
+
+        <SwitchPreference
+            android:defaultValue="false"
+            app:key="ble_transport_peripheral_mode"
+            app:summaryOff="BLE peripheral mode deactivated"
+            app:summaryOn="BLE peripheral mode activated"
+            app:title="Enable BLE peripheral mode" />
 
         <SwitchPreference
             app:key="wifi_transport"

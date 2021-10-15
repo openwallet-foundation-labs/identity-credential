@@ -31,6 +31,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
+import androidx.security.identity.Constants.BleDataRetrievalOption;
 import androidx.security.identity.Constants.LoggingFlag;
 import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Retention;
@@ -343,7 +344,32 @@ public class PresentationHelper {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
                 Log.i(TAG, "Adding BLE transport");
             }
-            mTransports.add(new DataTransportBle(mContext, mLoggingFlags));
+
+            @BleDataRetrievalOption int opts =
+                dataRetrievalConfiguration.getBleDataRetrievalOptions();
+
+            if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0
+                && (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE) != 0) {
+                // Note that ISO 18013-5 allows for both central client mode and peripheral server
+                // mode being active at the same time... we just don't currently support it in our
+                // APIs.
+                //
+                // Supporting simultaneous use of both these modes is _possible_ but it's messy
+                // because we'd need to merge the DeviceEngagements and NDEF records from both
+                // transports into one. For NFC engagement we'd also need to ensure the transports
+                // for both modes use the same UUID.
+                //
+                reportError(
+                    new Error("central client and peripheral mode cannot be used simultaneously"));
+                return;
+            }
+
+            if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
+                mTransports.add(new DataTransportBleCentralClientMode(mContext, mLoggingFlags));
+            }
+            if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE) != 0) {
+                mTransports.add(new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags));
+            }
         }
         if (dataRetrievalConfiguration.isWifiAwareEnabled()) {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
