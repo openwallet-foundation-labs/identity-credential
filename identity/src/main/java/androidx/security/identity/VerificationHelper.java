@@ -32,8 +32,8 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import androidx.security.identity.Constants.LoggingFlag;
+
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -381,6 +381,7 @@ public class VerificationHelper {
             @Override
             public void onListeningPeerConnected() {
                 Log.d(TAG, "onListeningPeerConnected for " + mDataTransport);
+                reportDeviceConnected();
             }
 
             @Override

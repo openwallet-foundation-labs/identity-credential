@@ -30,8 +30,8 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
-
 import androidx.security.identity.Constants.LoggingFlag;
+
 import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -343,7 +343,9 @@ public class PresentationHelper {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
                 Log.i(TAG, "Adding BLE transport");
             }
-            mTransports.add(new DataTransportBle(mContext, mLoggingFlags));
+            mTransports.add(new DataTransportBle(mContext,
+                    dataRetrievalConfiguration.getBleServiceMode(),
+                    mLoggingFlags));
         }
         if (dataRetrievalConfiguration.isWifiAwareEnabled()) {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
@@ -412,8 +414,7 @@ public class PresentationHelper {
                     if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
                         Log.i(TAG, "onConnectionResult for " + transport);
                     }
-                    throw new IllegalStateException("Unexpected onConnectionResult "
-                            + "callback from transport " + transport);
+                    peerHasConnected(transport);
                 }
 
                 @Override
@@ -421,8 +422,13 @@ public class PresentationHelper {
                     if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
                         Log.i(TAG, "onConnectionDisconnected for " + transport);
                     }
-                    throw new IllegalStateException("Unexpected onConnectionDisconnected "
-                            + "callback from transport " + transport);
+                    transport.close();
+                    if (!mReceivedSessionTerminated) {
+                        reportError(
+                                new Error("Peer disconnected without proper session termination"));
+                    } else {
+                        reportDeviceDisconnected(false);
+                    }
                 }
 
                 @Override

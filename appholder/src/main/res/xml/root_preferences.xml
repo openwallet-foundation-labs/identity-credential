@@ -10,6 +10,15 @@
             app:summaryOn="BLE transfer activated"
             app:title="Enable BLE data retrieval" />
 
+        <ListPreference
+            android:entries="@array/bleOptionNames"
+            android:entryValues="@array/bleOptionValues"
+            android:summary="%s"
+            app:defaultValue="2"
+            app:isPreferenceVisible="false"
+            app:key="ble_option"
+            app:title="Ble Service Mode" />
+
         <SwitchPreference
             app:key="wifi_transport"
             app:summaryOff="Wifi Aware transfer deactivated"

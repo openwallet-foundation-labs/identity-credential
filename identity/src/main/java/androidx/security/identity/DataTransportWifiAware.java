@@ -108,13 +108,13 @@ public class DataTransportWifiAware extends DataTransport {
 
         byte[] ikm = mEncodedEDeviceKeyBytes;
         byte[] info = "NANService".getBytes(StandardCharsets.UTF_8);
-        byte[] salt = new byte[] {};
+        byte[] salt = new byte[]{};
         mServiceName = Util.base16(Util.computeHkdf("HmacSha256", ikm, salt, info, 16));
         Log.d(TAG, String.format("Using service name '%s'", mServiceName));
 
         ikm = mEncodedEDeviceKeyBytes;
         info = "NANPassphrase".getBytes(StandardCharsets.UTF_8);
-        salt = new byte[] {};
+        salt = new byte[]{};
         mDerivedPassphrase = Base64.encodeToString(
                 Util.computeHkdf("HmacSha256", ikm, salt, info, 32),
                 Base64.URL_SAFE | Base64.NO_PADDING | Base64.NO_WRAP);

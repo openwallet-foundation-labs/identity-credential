@@ -17,6 +17,7 @@
 package androidx.security.identity;
 
 import androidx.annotation.NonNull;
+import androidx.security.identity.Constants.BleServiceMode;
 
 /**
  * An object to hold configuration about which data retrieval methods to listen on.
@@ -35,6 +36,8 @@ public class DataRetrievalConfiguration {
     boolean mNfcEnabled;
     boolean mWifiAwareEnabled;
     boolean mBleEnabled;
+    @BleServiceMode
+    int mBleServiceMode;
 
     /**
      * Whether NFC data retrieval is enabled.
@@ -61,6 +64,17 @@ public class DataRetrievalConfiguration {
      */
     public boolean isBleEnabled() {
         return mBleEnabled;
+    }
+
+    /**
+     * BLE should operate as central client, peripheral server or both
+     *
+     * @return {@link BleServiceMode} 0 - only central client mode,
+     * 1 - only peripheral server mode or 2 - central client and peripheral server mode
+     */
+    @BleServiceMode
+    public int getBleServiceMode() {
+        return mBleServiceMode;
     }
 
     /**
@@ -104,20 +118,17 @@ public class DataRetrievalConfiguration {
         /**
          * Set whether to offer BLE data retrieval to remote initiator.
          *
-         * @param enabled {@code true} to enable, {@code false} to disable.
+         * @param enabled        {@code true} to enable, {@code false} to disable.
+         * @param bleServiceMode indicates if ble should operate as central client,
+         *                       peripheral server or both
          * @return the builder.
          */
         public @NonNull
-        Builder setBleEnabled(boolean enabled) {
+        Builder setBleEnabled(boolean enabled, @BleServiceMode int bleServiceMode) {
             mConfiguration.mBleEnabled = enabled;
+            mConfiguration.mBleServiceMode = bleServiceMode;
             return this;
         }
-
-        // TODO: can add setBleDataRetrievalOptions(mode) where mode is one of
-        //  BLE_MDOC_CENTRAL_CLIENT_ONLY_MODE, BLE_MDOC_PERIPHERAL_SERVER_MODE,
-        //  BLE_MDOC_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE
-        //  with the default being BLE_MDOC_CENTRAL_CLIENT_ONLY_MODE.
-
 
         public @NonNull DataRetrievalConfiguration build() {
             return mConfiguration;

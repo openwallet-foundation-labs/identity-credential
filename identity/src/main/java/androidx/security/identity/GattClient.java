@@ -28,8 +28,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import androidx.security.identity.Constants.LoggingFlag;
+
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -52,20 +52,19 @@ class GattClient extends BluetoothGattCallback {
     BluetoothGattCharacteristic mCharacteristicServer2Client;
     BluetoothGattCharacteristic mCharacteristicIdent;
 
-    UUID mCharacteristicStateUuid =         UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
+    private final @LoggingFlag
+    int mLoggingFlags;
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicIdentUuid =         UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
-
-    UUID mClientCharacteristicConfigUuid =  UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+    UUID mCharacteristicStateUuid = UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicIdentUuid = UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
     private int mNegotiatedMtu;
     private byte[] mIdentValue;
-
-    private final @LoggingFlag int mLoggingFlags;
+    UUID mClientCharacteristicConfigUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
 
     GattClient(@NonNull Context context, @LoggingFlag int loggingFlags, @NonNull UUID serviceUuid,
-            @NonNull byte[] encodedEDeviceKeyBytes) {
+               @NonNull byte[] encodedEDeviceKeyBytes) {
         mContext = context;
         mLoggingFlags = loggingFlags;
         mServiceUuid = serviceUuid;
@@ -225,8 +224,8 @@ class GattClient extends BluetoothGattCallback {
             int status) {
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
             Log.d(TAG, "onDescriptorWrite: " + descriptor.getUuid() + " char="
-                + descriptor.getCharacteristic().getUuid() + " status="
-                + status);
+                    + descriptor.getCharacteristic().getUuid() + " status="
+                    + status);
         }
 
         UUID charUuid = descriptor.getCharacteristic().getUuid();

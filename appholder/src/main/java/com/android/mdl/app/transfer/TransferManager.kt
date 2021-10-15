@@ -83,7 +83,10 @@ class TransferManager private constructor(private val context: Context) {
 
         // Add only ble transfer for now
         val dataRetrievalConfiguration = DataRetrievalConfiguration.Builder()
-            .setBleEnabled(PreferencesHelper.isBleDataRetrievalEnabled(context))
+            .setBleEnabled(
+                PreferencesHelper.isBleDataRetrievalEnabled(context),
+                PreferencesHelper.getBleOption(context)
+            )
             .setWifiAwareEnabled(PreferencesHelper.isWifiDataRetrievalEnabled(context))
             .setNfcEnabled(PreferencesHelper.isNfcDataRetrievalEnabled(context))
             .build()

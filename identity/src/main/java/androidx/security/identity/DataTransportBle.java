@@ -17,6 +17,10 @@
 package androidx.security.identity;
 
 import static android.content.Context.BLUETOOTH_SERVICE;
+import static androidx.security.identity.Constants.BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE;
+import static androidx.security.identity.Constants.BLE_CENTRAL_CLIENT_ONLY_MODE;
+import static androidx.security.identity.Constants.BLE_PERIPHERAL_SERVER_MODE;
+import static androidx.security.identity.Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
@@ -37,8 +41,9 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
+import androidx.security.identity.Constants.BleServiceMode;
 import androidx.security.identity.Constants.LoggingFlag;
+
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -58,7 +63,6 @@ import co.nstant.in.cbor.model.Number;
  *
  * BLE data transport implementation conforming to ISO 18013-5.
  *
- * TODO: we currently only support "mdoc central client mode".
  */
 public class DataTransportBle extends DataTransport {
     private static final String TAG = "DataTransportBle";
@@ -74,7 +78,10 @@ public class DataTransportBle extends DataTransport {
     byte[] mEncodedDeviceRetrievalMethod;
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
-    UUID mServiceUuid;
+    private @LoggingFlag
+    final int mLoggingFlags;
+    UUID mServiceClientUuid;
+    UUID mServiceServerUuid;
     private GattServer mGattServer;
     GattClient mGattClient;
     BluetoothLeScanner mScanner;
@@ -93,52 +100,67 @@ public class DataTransportBle extends DataTransport {
         byte[] peripheralServerModeBleDeviceAddress;
     }
 
-    @Override
-    public @Nullable
-    Pair<NdefRecord, byte[]> getNdefRecords() {
-        byte[] oobData;
+    ScanCallback mScanCallback = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            mGattClient = new GattClient(mContext, mLoggingFlags, mServiceClientUuid, mEncodedEDeviceKeyBytes);
+            mGattClient.setListener(new GattClient.Listener() {
+                @Override
+                public void onPeerConnected() {
+                    // Connect to another device with GattClient stop GattServer if started
+                    if (mGattServer != null) {
+                        mGattServer.setListener(null);
+                        mGattServer.stop();
+                        mGattServer = null;
+                    }
+                    reportListeningPeerConnected();
+                }
 
-        // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
-        //
-        oobData = new byte[] {
-                0, 0,
-                // LE Role: Central Only (0x1c)
-                (byte) 0x02, (byte) 0x1c, (byte) 0x01,
-                // Complete List of 128-bit Service UUID’s (0x07)
-                (byte) 0x11, (byte) 0x07,
-                // UUID will be copied here..
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        };
-        ByteBuffer uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
-        uuidBuf.putLong(0, mServiceUuid.getLeastSignificantBits());
-        uuidBuf.putLong(8, mServiceUuid.getMostSignificantBits());
-        System.arraycopy(uuidBuf.array(), 0, oobData, 7, 16);
-        // Length is stored in LE...
-        oobData[0] = (byte) (oobData.length & 0xff);
-        oobData[1] = (byte) (oobData.length / 256);
-        Log.d(TAG, "Encoding UUID " + mServiceUuid + " in NDEF");
+                @Override
+                public void onPeerDisconnected() {
+                    if (mGattClient != null) {
+                        mGattClient.setListener(null);
+                        mGattClient.disconnect();
+                        mGattClient = null;
+                    }
+                    reportListeningPeerDisconnected();
+                }
 
-        NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
-                "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8),
-                "0".getBytes(StandardCharsets.UTF_8),
-                oobData);
+                @Override
+                public void onMessageReceived(@NonNull byte[] data) {
+                    reportMessageReceived(data);
+                }
 
-        // From 7.1 Alternative Carrier Record
-        //
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(0x01); // CPS: active
-        baos.write(0x01); // Length of carrier data reference ("0")
-        baos.write('0');  // Carrier data reference
-        baos.write(0x01); // Number of auxiliary references
-        // Each auxiliary reference consists of a single byte for the lenght and then as
-        // many bytes for the reference itself.
-        byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
-        baos.write(auxReference.length);
-        baos.write(auxReference, 0, auxReference.length);
-        byte[] acRecordPayload = baos.toByteArray();
+                @Override
+                public void onTransportSpecificSessionTermination() {
+                    reportTransportSpecificSessionTermination();
+                }
 
-        return new Pair<>(record, acRecordPayload);
-    }
+                @Override
+                public void onError(@NonNull Throwable error) {
+                    reportError(error);
+                }
+            });
+
+            reportListeningPeerConnecting();
+            mGattClient.connect(result.getDevice());
+            mScanner.stopScan(mScanCallback); //
+            Log.d(TAG, "stopScan");
+            //mScanner = null;
+            // TODO: Investigate. When testing with Reader C (which is on iOS) we get two callbacks
+            //  and thus a NullPointerException when calling stopScan().
+        }
+
+        @Override
+        public void onBatchScanResults(List<ScanResult> results) {
+            Log.w(TAG, "Ignoring unexpected onBatchScanResults");
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            reportError(new Error("BLE scan failed with error code " + errorCode));
+        }
+    };
 
     // Returns DeviceRetrievalMethod CBOR.
     //
@@ -209,11 +231,15 @@ public class DataTransportBle extends DataTransport {
         return null;
     }
 
-    private @LoggingFlag int mLoggingFlags;
+    private int mBleServiceMode;
 
-    public DataTransportBle(@NonNull Context context, @LoggingFlag int loggingFlags) {
+    // Constructor used by the device who offers the device engagement
+    public DataTransportBle(@NonNull Context context,
+                            @BleServiceMode int bleServiceMode,
+                            @LoggingFlag int loggingFlags) {
         super(context);
         mLoggingFlags = loggingFlags;
+        mBleServiceMode = bleServiceMode;
     }
 
     private BleOptions parseDeviceRetrievalMethod(byte[] encodedDeviceRetrievalMethod) {
@@ -262,99 +288,14 @@ public class DataTransportBle extends DataTransport {
     }
 
 
-    @Override
-    public void listen() {
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
-        BleOptions options = new BleOptions();
-
-        mServiceUuid = UUID.randomUUID();
-
-        options.supportsCentralClientMode = true;
-        options.centralClientModeUuid = uuidToBytes(mServiceUuid);
-
-        mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(options);
-        reportListeningSetupCompleted(mEncodedDeviceRetrievalMethod);
-
-        // TODO: Check if BLE is enabled and error out if not so...
-
-        // Start scanning...
-        mBluetoothManager = (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
-        BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
-
-        ScanFilter filter = new ScanFilter.Builder()
-                .setServiceUuid(new ParcelUuid(mServiceUuid))
-                .build();
-
-        ScanSettings settings = new ScanSettings.Builder()
-                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                .build();
-
-        mScanner = bluetoothAdapter.getBluetoothLeScanner();
-        mScanner.startScan(List.of(filter), settings, mScanCallback);
+    // Constructor used by the device who reads the device engagement
+    public DataTransportBle(@NonNull Context context, @LoggingFlag int loggingFlags) {
+        super(context);
+        mLoggingFlags = loggingFlags;
     }
 
-    ScanCallback mScanCallback = new ScanCallback() {
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            mGattClient = new GattClient(mContext, mLoggingFlags, mServiceUuid, mEncodedEDeviceKeyBytes);
-            mGattClient.setListener(new GattClient.Listener() {
-                @Override
-                public void onPeerConnected() {
-                    reportListeningPeerConnected();
-                }
-
-                @Override
-                public void onPeerDisconnected() {
-                    if (mGattClient != null) {
-                        mGattClient.setListener(null);
-                        mGattClient.disconnect();
-                        mGattClient = null;
-                    }
-                    reportListeningPeerDisconnected();
-                }
-
-                @Override
-                public void onMessageReceived(@NonNull byte[] data) {
-                    reportMessageReceived(data);
-                }
-
-                @Override
-                public void onTransportSpecificSessionTermination() {
-                    reportTransportSpecificSessionTermination();
-                }
-
-                @Override
-                public void onError(@NonNull Throwable error) {
-                    reportError(error);
-                }
-            });
-
-            reportListeningPeerConnecting();
-            mGattClient.connect(result.getDevice());
-            mScanner.stopScan(mScanCallback); //
-            Log.d(TAG, "stopScan");
-            //mScanner = null;
-            // TODO: Investigate. When testing with Reader C (which is on iOS) we get two callbacks
-            //  and thus a NullPointerException when calling stopScan().
-        }
-
-        @Override
-        public void onBatchScanResults(List<ScanResult> results) {
-            Log.w(TAG, "Ignoring unexpected onBatchScanResults");
-        }
-
-        @Override
-        public void onScanFailed(int errorCode) {
-            reportError(new Error("BLE scan failed with error code " + errorCode));
-        }
-    };
-
-    static @NonNull byte[] buildDeviceRetrievalMethod(@NonNull BleOptions options) {
+    static @NonNull
+    byte[] buildDeviceRetrievalMethod(@NonNull BleOptions options) {
         CborBuilder ob = new CborBuilder();
         MapBuilder<CborBuilder> omb = ob.addMap();
         omb.put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE,
@@ -382,43 +323,111 @@ public class DataTransportBle extends DataTransport {
         return ret;
     }
 
-    static private byte[] uuidToBytes(UUID uuid) {
-        ByteBuffer data = ByteBuffer.allocate(16);
-        data.order(ByteOrder.BIG_ENDIAN);
-        data.putLong(uuid.getMostSignificantBits());
-        data.putLong(uuid.getLeastSignificantBits());
-        return data.array();
-    }
+    @Override
+    public @Nullable
+    Pair<NdefRecord, byte[]> getNdefRecords() {
+        byte[] oobData;
 
-    static private UUID uuidFromBytes(byte[] bytes) {
-        if (bytes.length != 16) {
-            throw new IllegalStateException("Expected 16 bytes, found " + bytes.length);
-        }
-        ByteBuffer data = ByteBuffer.wrap(bytes, 0, 16);
-        data.order(ByteOrder.BIG_ENDIAN);
-        return new UUID(data.getLong(0), data.getLong(8));
+        // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
+        //
+        oobData = new byte[]{
+                0, 0,
+                // LE Role: Central Only (0x1c)
+                (byte) 0x02, (byte) 0x1c, (byte) 0x01,
+                // Complete List of 128-bit Service UUID’s (0x07)
+                (byte) 0x11, (byte) 0x07,
+                // UUID will be copied here..
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        };
+        ByteBuffer uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
+        // TODO: Fix NFC engagement
+//        uuidBuf.putLong(0, mServiceUuid.getLeastSignificantBits());
+//        uuidBuf.putLong(8, mServiceUuid.getMostSignificantBits());
+        System.arraycopy(uuidBuf.array(), 0, oobData, 7, 16);
+        // Length is stored in LE...
+        oobData[0] = (byte) (oobData.length & 0xff);
+        oobData[1] = (byte) (oobData.length / 256);
+//        Log.d(TAG, "Encoding UUID " + mServiceUuid + " in NDEF");
+
+        NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
+                "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8),
+                "0".getBytes(StandardCharsets.UTF_8),
+                oobData);
+
+        // From 7.1 Alternative Carrier Record
+        //
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(0x01); // CPS: active
+        baos.write(0x01); // Length of carrier data reference ("0")
+        baos.write('0');  // Carrier data reference
+        baos.write(0x01); // Number of auxiliary references
+        // Each auxiliary reference consists of a single byte for the lenght and then as
+        // many bytes for the reference itself.
+        byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+        baos.write(auxReference.length);
+        baos.write(auxReference, 0, auxReference.length);
+        byte[] acRecordPayload = baos.toByteArray();
+
+        return new Pair<>(record, acRecordPayload);
     }
 
     @Override
-    public void connect(@NonNull byte[] encodedDeviceRetrievalMethod) {
+    public void listen() {
         if (mEncodedEDeviceKeyBytes == null) {
             reportError(new Error("EDeviceKeyBytes not set"));
             return;
         }
 
-        // TODO: Check if BLE is enabled and error out if not so...
+        BleOptions options = new BleOptions();
 
-        BleOptions options = parseDeviceRetrievalMethod(encodedDeviceRetrievalMethod);
 
-        mServiceUuid = uuidFromBytes(options.centralClientModeUuid);
+        if (mBleServiceMode == BLE_CENTRAL_CLIENT_ONLY_MODE ||
+                mBleServiceMode == BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE) {
+            // Add support to central client mode
+            options.supportsCentralClientMode = true;
+            mServiceClientUuid = UUID.randomUUID();
+            options.centralClientModeUuid = uuidToBytes(mServiceClientUuid);
+            // Central Client Mode
+            startScan();
+        }
+        if (mBleServiceMode == BLE_PERIPHERAL_SERVER_MODE ||
+                mBleServiceMode == BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE) {
+            // Add support to peripheral server mode
+            options.supportsPeripheralServerMode = true;
+            mServiceServerUuid = UUID.randomUUID();
+            options.peripheralServerModeUuid = uuidToBytes(mServiceServerUuid);
+            // Peripheral Mode
+            startAdvertising();
+        }
 
+        mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(options);
+        reportListeningSetupCompleted(mEncodedDeviceRetrievalMethod);
+
+    }
+
+    private void startAdvertising() {
+        if (mServiceServerUuid == null) {
+            if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+                Log.d(TAG, "Advertising not started, no UUID provided.");
+            }
+            return;
+        }
+        if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.d(TAG, "Starting advertising on " + mServiceServerUuid);
+        }
         BluetoothManager bluetoothManager =
                 (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
-        mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
+        mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceServerUuid,
                 mEncodedEDeviceKeyBytes);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
+                // Connect to another device with GattServer stop GattClient if started
+                if (mGattClient != null) {
+                    mGattClient.setListener(null);
+                    mGattClient.disconnect();
+                    mGattClient = null;
+                }
                 reportConnectionResult(null);
                 // No need to advertise anymore since we now have a client...
                 if (mBluetoothLeAdvertiser != null) {
@@ -461,9 +470,90 @@ public class DataTransportBle extends DataTransport {
                     .build();
             AdvertiseData data = new AdvertiseData.Builder()
                     .setIncludeTxPowerLevel(false)
-                    .addServiceUuid(new ParcelUuid(mServiceUuid))
+                    .addServiceUuid(new ParcelUuid(mServiceServerUuid))
                     .build();
             mBluetoothLeAdvertiser.startAdvertising(settings, data, mAdvertiseCallback);
+            if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+                Log.d(TAG, "Advertising started on " + mServiceServerUuid);
+            }
+        }
+    }
+
+    private void startScan() {
+        if (mServiceClientUuid == null) {
+            if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+                Log.d(TAG, "Scan not started, no UUID provided.");
+            }
+            return;
+        }
+        if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.d(TAG, "Start scanning on " + mServiceClientUuid);
+        }
+
+        // TODO: Check if BLE is enabled and error out if not so...
+
+        // Start scanning...
+        mBluetoothManager = (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
+        BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
+
+        ScanFilter filter = new ScanFilter.Builder()
+                .setServiceUuid(new ParcelUuid(mServiceClientUuid))
+                .build();
+
+        ScanSettings settings = new ScanSettings.Builder()
+                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .build();
+
+        mScanner = bluetoothAdapter.getBluetoothLeScanner();
+        mScanner.startScan(List.of(filter), settings, mScanCallback);
+        if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.d(TAG, "Scanning started on " + mServiceClientUuid);
+        }
+
+    }
+
+    static private byte[] uuidToBytes(UUID uuid) {
+        ByteBuffer data = ByteBuffer.allocate(16);
+        data.order(ByteOrder.BIG_ENDIAN);
+        data.putLong(uuid.getMostSignificantBits());
+        data.putLong(uuid.getLeastSignificantBits());
+        return data.array();
+    }
+
+    static private UUID uuidFromBytes(byte[] bytes) {
+        if (bytes.length != 16) {
+            throw new IllegalStateException("Expected 16 bytes, found " + bytes.length);
+        }
+        ByteBuffer data = ByteBuffer.wrap(bytes, 0, 16);
+        data.order(ByteOrder.BIG_ENDIAN);
+        return new UUID(data.getLong(0), data.getLong(8));
+    }
+
+    @Override
+    public void connect(@NonNull byte[] encodedDeviceRetrievalMethod) {
+        if (mEncodedEDeviceKeyBytes == null) {
+            reportError(new Error("EDeviceKeyBytes not set"));
+            return;
+        }
+
+        mEncodedDeviceRetrievalMethod = encodedDeviceRetrievalMethod;
+
+        // TODO: Check if BLE is enabled and error out if not so...
+
+        BleOptions options = parseDeviceRetrievalMethod(encodedDeviceRetrievalMethod);
+
+        // if device retrieval supports client central uses peripheral to advertise
+        if (options.supportsCentralClientMode) {
+            mServiceServerUuid = uuidFromBytes(options.centralClientModeUuid);
+            // Peripheral Mode
+            startAdvertising();
+        } else if (options.supportsPeripheralServerMode) {
+            mServiceClientUuid = uuidFromBytes(options.peripheralServerModeUuid);
+            // Central Client Mode
+            startScan();
+        } else {
+            reportError(new Error("Needs to support central client or peripheral server mode."));
         }
     }
 

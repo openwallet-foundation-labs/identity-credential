@@ -89,7 +89,7 @@ public class Constants {
      * will log messages that are transport specific except for the transport-specific
      * packets.
      */
-    public static final int LOGGING_FLAG_TRANSPORT_SPECIFIC = (1<<3);
+    public static final int LOGGING_FLAG_TRANSPORT_SPECIFIC = (1 << 3);
 
     /**
      * If this flag is set, {@link PresentationHelper} and {@link VerificationHelper}
@@ -97,7 +97,24 @@ public class Constants {
      *
      * <p>This might generate a lot of data.
      */
-    public static final int LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE = (1<<4);
+    public static final int LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE = (1 << 4);
+
+    /**
+     * Indicates the option of the BLE transport to use only central client mode,
+     * should be used on {@link DataRetrievalConfiguration} when ble data retrieval is enable
+     */
+    public static final int BLE_CENTRAL_CLIENT_ONLY_MODE = 0;
+    /**
+     * Indicates the option of the BLE transport to use only peripheral server mode,
+     * should be used on {@link DataRetrievalConfiguration} when ble data retrieval is enable
+     */
+    public static final int BLE_PERIPHERAL_SERVER_MODE = 1;
+    /**
+     * Indicates the option of the BLE transport to use both central client mode
+     * and peripheral server mode, should be used on {@link DataRetrievalConfiguration}
+     * when ble data retrieval is enable
+     */
+    public static final int BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE = 2;
 
     /**
      * Logging flags.
@@ -107,15 +124,27 @@ public class Constants {
     @Retention(SOURCE)
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef(
-        flag=true,
-        value={
-            LOGGING_FLAG_INFO,
-            LOGGING_FLAG_DEVICE_ENGAGEMENT,
-            LOGGING_FLAG_SESSION_MESSAGES,
-            LOGGING_FLAG_TRANSPORT_SPECIFIC,
-            LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE
-        })
+            flag = true,
+            value = {
+                    LOGGING_FLAG_INFO,
+                    LOGGING_FLAG_DEVICE_ENGAGEMENT,
+                    LOGGING_FLAG_SESSION_MESSAGES,
+                    LOGGING_FLAG_TRANSPORT_SPECIFIC,
+                    LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE
+            })
     public @interface LoggingFlag {
     }
 
+    /**
+     * Ble service mode.
+     *
+     * @hide
+     */
+    @Retention(SOURCE)
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    @IntDef({BLE_CENTRAL_CLIENT_ONLY_MODE,
+            BLE_PERIPHERAL_SERVER_MODE,
+            BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE})
+    public @interface BleServiceMode {
+    }
 }

@@ -9,6 +9,7 @@ object PreferencesHelper {
     const val BLE_DATA_RETRIEVAL = "ble_transport"
     const val WIFI_DATA_RETRIEVAL = "wifi_transport"
     const val NFC_DATA_RETRIEVAL = "nfc_transport"
+    const val BLE_OPTION = "ble_option"
     private const val LOG_INFO = "log_info"
     private const val LOG_DEVICE_ENGAGEMENT = "log_device_engagement"
     private const val LOG_SESSION_MESSAGES = "log_session_messages"
@@ -43,6 +44,11 @@ object PreferencesHelper {
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
             BLE_DATA_RETRIEVAL, true
         )
+    }
+
+    fun getBleOption(context: Context): Int {
+        return PreferenceManager.getDefaultSharedPreferences(context).getString(BLE_OPTION, "2")
+            ?.toInt() ?: 2
     }
 
     fun isWifiDataRetrievalEnabled(context: Context): Boolean {

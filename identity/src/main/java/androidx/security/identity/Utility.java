@@ -423,15 +423,15 @@ public class Utility {
                 // Fine if this is null, the verifier might have requested elements in a namespace
                 // we have no issuer-signed values for.
                 Log.w(TAG, "Skipping namespace " + namespaceName + " which is not in "
-                    + "issuerSignedMapping");
+                        + "issuerSignedMapping");
             } else {
                 Collection<String> entryNames = issuerSigned.getEntryNames(namespaceName);
                 for (byte[] encodedIssuerSignedItemBytes : encodedIssuerSignedItemBytesForNs) {
                     DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
                     DataItem issuerSignedItem =
-                        Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
+                            Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
                     String elemName = Util
-                        .cborMapExtractString(issuerSignedItem, "elementIdentifier");
+                            .cborMapExtractString(issuerSignedItem, "elementIdentifier");
 
                     if (!entryNames.contains(elemName)) {
                         continue;
@@ -439,10 +439,10 @@ public class Utility {
                     byte[] elemValue = issuerSigned.getEntry(namespaceName, elemName);
                     if (elemValue != null) {
                         byte[] encodedIssuerSignedItemBytesWithValue =
-                            Util.issuerSignedItemBytesSetValue(encodedIssuerSignedItemBytes,
-                                elemValue);
+                                Util.issuerSignedItemBytesSetValue(encodedIssuerSignedItemBytes,
+                                        elemValue);
                         newEncodedIssuerSignedItemBytesForNs
-                            .add(encodedIssuerSignedItemBytesWithValue);
+                                .add(encodedIssuerSignedItemBytesWithValue);
                     }
                 }
             }

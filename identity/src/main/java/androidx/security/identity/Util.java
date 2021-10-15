@@ -22,8 +22,8 @@ import android.icu.util.Calendar;
 import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
 import android.security.keystore.KeyProperties;
-
 import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -127,9 +127,12 @@ public class Util {
         return data;
     }
 
-    /** @hide */
+    /**
+     * @hide
+     */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull String toHex(@NonNull byte[] bytes) {
+    public static @NonNull
+    String toHex(@NonNull byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (int n = 0; n < bytes.length; n++) {
             byte b = bytes[n];
@@ -138,7 +141,9 @@ public class Util {
         return sb.toString();
     }
 
-    /** @hide */
+    /**
+     * @hide
+     */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static void dumpHex(@NonNull byte[] bytes) {
         Log.i(TAG, "dumping " + bytes.length + " bytes");
@@ -154,9 +159,12 @@ public class Util {
     }
 
 
-    /** @hide */
+    /**
+     * @hide
+     */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull String base16(@NonNull byte[] bytes) {
+    public static @NonNull
+    String base16(@NonNull byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (int n = 0; n < bytes.length; n++) {
             byte b = bytes[n];
