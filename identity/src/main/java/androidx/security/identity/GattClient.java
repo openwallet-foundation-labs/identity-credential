@@ -52,12 +52,14 @@ class GattClient extends BluetoothGattCallback {
     BluetoothGattCharacteristic mCharacteristicServer2Client;
     BluetoothGattCharacteristic mCharacteristicIdent;
 
-    UUID mCharacteristicStateUuid =         UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicIdentUuid =         UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicStateUuid;
+    UUID mCharacteristicClient2ServerUuid;
+    UUID mCharacteristicServer2ClientUuid;
+    UUID mCharacteristicIdentUuid;
 
+    // This is what the 16-bit UUID 0x29 0x02 is encoded like.
     UUID mClientCharacteristicConfigUuid =  UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
     private int mNegotiatedMtu;
     private byte[] mIdentValue;
 
@@ -65,11 +67,19 @@ class GattClient extends BluetoothGattCallback {
 
 
     GattClient(@NonNull Context context, @LoggingFlag int loggingFlags, @NonNull UUID serviceUuid,
-            @NonNull byte[] encodedEDeviceKeyBytes) {
+        @NonNull byte[] encodedEDeviceKeyBytes,
+        @NonNull UUID characteristicStateUuid,
+        @NonNull UUID characteristicClient2ServerUuid,
+        @NonNull UUID characteristicServer2ClientUuid,
+        @Nullable UUID characteristicIdentUuid) {
         mContext = context;
         mLoggingFlags = loggingFlags;
         mServiceUuid = serviceUuid;
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
+        mCharacteristicStateUuid = characteristicStateUuid;
+        mCharacteristicClient2ServerUuid = characteristicClient2ServerUuid;
+        mCharacteristicServer2ClientUuid = characteristicServer2ClientUuid;
+        mCharacteristicIdentUuid = characteristicIdentUuid;
     }
 
     void setListener(@Nullable Listener listener) {
@@ -113,24 +123,33 @@ class GattClient extends BluetoothGattCallback {
             Log.i(TAG, "onServicesDiscovered: status=" + status);
         }
         if (status == BluetoothGatt.GATT_SUCCESS) {
-            boolean haveAllServices = false;
             BluetoothGattService s = gatt.getService(mServiceUuid);
             if (s != null) {
                 mCharacteristicState = s.getCharacteristic(mCharacteristicStateUuid);
-                mCharacteristicClient2Server = s.getCharacteristic(mCharacteristicClient2ServerUuid);
-                mCharacteristicServer2Client = s.getCharacteristic(mCharacteristicServer2ClientUuid);
-                mCharacteristicIdent = s.getCharacteristic(mCharacteristicIdentUuid);
-                if (mCharacteristicState != null
-                        && mCharacteristicClient2Server != null
-                        && mCharacteristicServer2Client != null
-                        && mCharacteristicIdent != null) {
-                    haveAllServices = true;
+                if (mCharacteristicState == null) {
+                    reportError(new Error("State characteristic not found"));
+                    return;
                 }
-            }
 
-            if (!haveAllServices) {
-                reportError(new Error("Required characteristics not found on Gatt server"));
-                return;
+                mCharacteristicClient2Server = s.getCharacteristic(mCharacteristicClient2ServerUuid);
+                if (mCharacteristicClient2Server == null) {
+                    reportError(new Error("Client2Server characteristic not found"));
+                    return;
+                }
+
+                mCharacteristicServer2Client = s.getCharacteristic(mCharacteristicServer2ClientUuid);
+                if (mCharacteristicServer2Client == null) {
+                    reportError(new Error("Server2Client characteristic not found"));
+                    return;
+                }
+
+                if (mCharacteristicIdentUuid != null) {
+                    mCharacteristicIdent = s.getCharacteristic(mCharacteristicIdentUuid);
+                    if (mCharacteristicIdent == null) {
+                        reportError(new Error("Ident characteristic not found"));
+                        return;
+                    }
+                }
             }
 
             // Start by bumping MTU, callback in onMtuChanged()...
@@ -167,12 +186,18 @@ class GattClient extends BluetoothGattCallback {
             Log.i(TAG, "Negotiated MTU " + mtu);
         }
 
-        // Read ident characteristics...
-        //
-        // TODO: maybe skip this, it's optional after all...
-        //
-        if (!gatt.readCharacteristic(mCharacteristicIdent)) {
-            reportError(new Error("Error reading from ident characteristic"));
+        if (mCharacteristicIdent != null) {
+            // Read ident characteristics...
+            //
+            // TODO: maybe skip this, it's optional after all...
+            //
+            if (!gatt.readCharacteristic(mCharacteristicIdent)) {
+                reportError(new Error("Error reading from ident characteristic"));
+            }
+            // Callback happens in onDescriptorRead() right below...
+            //
+        } else {
+            afterIdentObtained(gatt);
         }
     }
 
@@ -182,7 +207,7 @@ class GattClient extends BluetoothGattCallback {
             int status) {
         if (!characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             reportError(new Error("Unexpected onCharacteristicRead for characteristic "
-                    + characteristic.getUuid() + ", expected " + mCharacteristicIdentUuid));
+                + characteristic.getUuid() + ", expected " + mCharacteristicIdentUuid));
             return;
         }
         byte[] identValue = characteristic.getValue();
@@ -196,6 +221,10 @@ class GattClient extends BluetoothGattCallback {
             return;
         }
 
+        afterIdentObtained(gatt);
+    }
+
+    private void afterIdentObtained(@NonNull BluetoothGatt gatt) {
         if (!gatt.setCharacteristicNotification(mCharacteristicServer2Client, true)) {
             reportError(new Error("Error setting notification on Server2Client"));
             return;

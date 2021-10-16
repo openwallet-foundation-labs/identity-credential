@@ -49,6 +49,11 @@ import java.util.UUID;
 public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     private static final String TAG = "DataTransportBlePeripheralServerMode";
 
+    UUID mCharacteristicStateUuid =         UUID.fromString("00000001-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000002-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000003-a123-48ce-896b-4c76973373e6");
+    // Note: Ident UUID not used in peripheral server mode
+
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
     byte[] mEncodedDeviceRetrievalMethod;
@@ -57,6 +62,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     BluetoothLeScanner mScanner;
     byte[] mEncodedEDeviceKeyBytes;
     private UUID mServiceUuid;
+    private long mTimeScanningStartedMillis;
 
     public DataTransportBlePeripheralServerMode(@NonNull Context context,
         @LoggingFlag int loggingFlags) {
@@ -97,8 +103,11 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         options.supportsPeripheralServerMode = true;
         options.peripheralServerModeUuid = uuidToBytes(mServiceUuid);
 
-
-        // TODO: mac address
+        // TODO: It would be nice if we got get the MAC address that will be assigned to
+        //  this advertisement so we can send it to the mDL reader, out of band. Android
+        //  currently doesn't have any APIs to do this but it's possible this could be
+        //  added without violating the security/privacy goals behind removing identifiers.
+        //
 
         mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(options);
         reportListeningSetupCompleted(mEncodedDeviceRetrievalMethod);
@@ -106,7 +115,9 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         // TODO: Check if BLE is enabled and error out if not so...
 
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
-            mEncodedEDeviceKeyBytes);
+            mEncodedEDeviceKeyBytes,
+            mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+            mCharacteristicServer2ClientUuid, null);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
@@ -210,6 +221,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
             .build();
 
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            mTimeScanningStartedMillis = System.currentTimeMillis();
             Log.i(TAG, "Started scanning for UUID " + mServiceUuid);
         }
         mScanner = bluetoothAdapter.getBluetoothLeScanner();
@@ -219,7 +231,10 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            mGattClient = new GattClient(mContext, mLoggingFlags, mServiceUuid, mEncodedEDeviceKeyBytes);
+            mGattClient = new GattClient(mContext, mLoggingFlags,
+                mServiceUuid, mEncodedEDeviceKeyBytes,
+                mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+                mCharacteristicServer2ClientUuid, null);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -253,10 +268,19 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
             });
 
             reportListeningPeerConnecting();
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
+                Log.i(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
+                    + "Connecting to device with address " + result.getDevice().getAddress());
+            }
             mGattClient.connect(result.getDevice());
-            mScanner.stopScan(mScanCallback); //
-            Log.d(TAG, "stopScan");
-            //mScanner = null;
+            if (mScanner != null) {
+                if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                    Log.i(TAG, "Stopped scanning for UUID " + mServiceUuid);
+                }
+                mScanner.stopScan(mScanCallback);
+                mScanner = null;
+            }
             // TODO: Investigate. When testing with Reader C (which is on iOS) we get two callbacks
             //  and thus a NullPointerException when calling stopScan().
         }

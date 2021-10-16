@@ -51,6 +51,11 @@ import java.util.UUID;
 public class DataTransportBleCentralClientMode extends DataTransportBle {
     private static final String TAG = "DataTransportBleCentralClientMode";
 
+    UUID mCharacteristicStateUuid =         UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicIdentUuid =         UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
+
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
     byte[] mEncodedDeviceRetrievalMethod;
@@ -59,6 +64,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     BluetoothLeScanner mScanner;
     byte[] mEncodedEDeviceKeyBytes;
     private UUID mServiceUuid;
+    private long mTimeScanningStartedMillis;
 
     public DataTransportBleCentralClientMode(@NonNull Context context,
         @LoggingFlag int loggingFlags) {
@@ -110,6 +116,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
 
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
             Log.i(TAG, "Started scanning for UUID " + mServiceUuid);
+            mTimeScanningStartedMillis = System.currentTimeMillis();
         }
         mScanner = bluetoothAdapter.getBluetoothLeScanner();
         mScanner.startScan(List.of(filter), settings, mScanCallback);
@@ -118,7 +125,10 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            mGattClient = new GattClient(mContext, mLoggingFlags, mServiceUuid, mEncodedEDeviceKeyBytes);
+            mGattClient = new GattClient(mContext, mLoggingFlags,
+                mServiceUuid, mEncodedEDeviceKeyBytes,
+                mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+                mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -152,6 +162,11 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
             });
 
             reportListeningPeerConnecting();
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
+                Log.i(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
+                    + "Connecting to device with address " + result.getDevice().getAddress());
+            }
             mGattClient.connect(result.getDevice());
             if (mScanner != null) {
                 if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
@@ -191,7 +206,9 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         BluetoothManager bluetoothManager =
                 (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
-                mEncodedEDeviceKeyBytes);
+                mEncodedEDeviceKeyBytes,
+            mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+            mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
