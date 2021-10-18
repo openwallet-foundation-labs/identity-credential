@@ -102,7 +102,6 @@ public class DataTransportBle extends DataTransport {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
-            mGattClient = new GattClient(mContext, mLoggingFlags, mServiceUuid, mEncodedEDeviceKeyBytes);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -384,7 +383,6 @@ public class DataTransportBle extends DataTransport {
 
         BleOptions options = new BleOptions();
 
-
         mServiceUuid = UUID.randomUUID();
         if (mBleServiceMode == BLE_CENTRAL_CLIENT_ONLY_MODE ||
                 mBleServiceMode == BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE) {
@@ -392,7 +390,10 @@ public class DataTransportBle extends DataTransport {
             options.supportsCentralClientMode = true;
             options.centralClientModeUuid = uuidToBytes(mServiceUuid);
             // Central Client Mode
-            startScan();
+            startScan(UUID.fromString("00000005-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000006-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000007-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000008-a123-48ce-896b-4c76973373e6"));
         }
         if (mBleServiceMode == BLE_PERIPHERAL_SERVER_MODE ||
                 mBleServiceMode == BLE_CENTRAL_CLIENT_AND_PERIPHERAL_SERVER_MODE) {
@@ -400,7 +401,10 @@ public class DataTransportBle extends DataTransport {
             options.supportsPeripheralServerMode = true;
             options.peripheralServerModeUuid = uuidToBytes(mServiceUuid);
             // Peripheral Mode
-            startAdvertising();
+            startAdvertising(UUID.fromString("00000001-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000002-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000003-a123-48ce-896b-4c76973373e6"),
+                    null);
         }
 
         mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(options);
@@ -408,7 +412,10 @@ public class DataTransportBle extends DataTransport {
 
     }
 
-    private void startAdvertising() {
+    private void startAdvertising(@NonNull UUID characteristicStateUuid,
+                                  @NonNull UUID characteristicClient2ServerUuid,
+                                  @NonNull UUID characteristicServer2ClientUuid,
+                                  @Nullable UUID characteristicIdentUuid) {
         if (mServiceUuid == null) {
             if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
                 Log.d(TAG, "Advertising not started, no UUID provided.");
@@ -421,7 +428,11 @@ public class DataTransportBle extends DataTransport {
         BluetoothManager bluetoothManager =
                 (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
-                mEncodedEDeviceKeyBytes);
+                mEncodedEDeviceKeyBytes,
+                characteristicStateUuid,
+                characteristicClient2ServerUuid,
+                characteristicServer2ClientUuid,
+                characteristicIdentUuid);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
@@ -482,7 +493,10 @@ public class DataTransportBle extends DataTransport {
         }
     }
 
-    private void startScan() {
+    private void startScan(@NonNull UUID characteristicStateUuid,
+                           @NonNull UUID characteristicClient2ServerUuid,
+                           @NonNull UUID characteristicServer2ClientUuid,
+                           @Nullable UUID characteristicIdentUuid) {
         if (mServiceUuid == null) {
             if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
                 Log.d(TAG, "Scan not started, no UUID provided.");
@@ -509,6 +523,11 @@ public class DataTransportBle extends DataTransport {
                 .build();
 
         mScanner = bluetoothAdapter.getBluetoothLeScanner();
+        mGattClient = new GattClient(mContext, mLoggingFlags, mServiceUuid, mEncodedEDeviceKeyBytes,
+                characteristicStateUuid,
+                characteristicClient2ServerUuid,
+                characteristicServer2ClientUuid,
+                characteristicIdentUuid);
         mScanner.startScan(List.of(filter), settings, mScanCallback);
         if ((mLoggingFlags & LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
             Log.d(TAG, "Scanning started on " + mServiceUuid);
@@ -546,15 +565,22 @@ public class DataTransportBle extends DataTransport {
 
         BleOptions options = parseDeviceRetrievalMethod(encodedDeviceRetrievalMethod);
 
+        // Use characteristics for the reader
         // if device retrieval supports client central uses peripheral to advertise
         if (options.supportsCentralClientMode) {
             mServiceUuid = uuidFromBytes(options.centralClientModeUuid);
             // Peripheral Mode
-            startAdvertising();
+            startAdvertising(UUID.fromString("00000005-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000006-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000007-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000008-a123-48ce-896b-4c76973373e6"));
         } else if (options.supportsPeripheralServerMode) {
             mServiceUuid = uuidFromBytes(options.peripheralServerModeUuid);
             // Central Client Mode
-            startScan();
+            startScan(UUID.fromString("00000001-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000002-a123-48ce-896b-4c76973373e6"),
+                    UUID.fromString("00000003-a123-48ce-896b-4c76973373e6"),
+                    null);
         } else {
             reportError(new Error("Needs to support central client or peripheral server mode."));
         }

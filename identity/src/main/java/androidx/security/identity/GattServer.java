@@ -43,11 +43,12 @@ class GattServer extends BluetoothGattServerCallback {
     private final @LoggingFlag
     int mLoggingFlags;
 
-    UUID mCharacteristicStateUuid = UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicIdentUuid = UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicStateUuid;
+    UUID mCharacteristicClient2ServerUuid;
+    UUID mCharacteristicServer2ClientUuid;
+    UUID mCharacteristicIdentUuid;
 
+    // This is what the 16-bit UUID 0x29 0x02 is encoded like.
     UUID mClientCharacteristicConfigUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
     private final UUID mServiceUuid;
@@ -67,13 +68,21 @@ class GattServer extends BluetoothGattServerCallback {
     private byte[] mIdentValue;
 
     GattServer(@NonNull Context context, @LoggingFlag int loggingFlags, @NonNull BluetoothManager bluetoothManager,
-               @NonNull UUID serviceUuid, @NonNull byte[] encodedEDeviceKeyBytes) {
+               @NonNull UUID serviceUuid, @NonNull byte[] encodedEDeviceKeyBytes,
+               @NonNull UUID characteristicStateUuid,
+               @NonNull UUID characteristicClient2ServerUuid,
+               @NonNull UUID characteristicServer2ClientUuid,
+               @Nullable UUID characteristicIdentUuid) {
         mContext = context;
         Log.i(TAG, "LoggingFlags: " + loggingFlags);
         mLoggingFlags = loggingFlags;
         mBluetoothManager = bluetoothManager;
         mServiceUuid = serviceUuid;
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
+        mCharacteristicStateUuid = characteristicStateUuid;
+        mCharacteristicClient2ServerUuid = characteristicClient2ServerUuid;
+        mCharacteristicServer2ClientUuid = characteristicServer2ClientUuid;
+        mCharacteristicIdentUuid = characteristicIdentUuid;
     }
 
     void setListener(@Nullable Listener listener) {
@@ -128,11 +137,13 @@ class GattServer extends BluetoothGattServerCallback {
         mCharacteristicServer2Client = c;
 
         // Ident
-        c = new BluetoothGattCharacteristic(mCharacteristicIdentUuid,
-                BluetoothGattCharacteristic.PROPERTY_READ,
-                BluetoothGattCharacteristic.PERMISSION_READ);
-        service.addCharacteristic(c);
-        mCharacteristicIdent = c;
+        if (mCharacteristicIdentUuid != null) {
+            c = new BluetoothGattCharacteristic(mCharacteristicIdentUuid,
+                    BluetoothGattCharacteristic.PROPERTY_READ,
+                    BluetoothGattCharacteristic.PERMISSION_READ);
+            service.addCharacteristic(c);
+            mCharacteristicIdent = c;
+        }
 
         mGattServer.addService(service);
 
@@ -174,11 +185,12 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
-            BluetoothGattCharacteristic characteristic) {
+                                            BluetoothGattCharacteristic characteristic) {
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
             Log.i(TAG, "onCharacteristicReadRequest: " + requestId + " " + offset + " " + characteristic.getUuid());
         }
-        if (characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
+        if (mCharacteristicIdentUuid != null
+                && characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             mGattServer.sendResponse(device,
                     requestId,
                     BluetoothGatt.GATT_SUCCESS,
@@ -194,12 +206,12 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onCharacteristicWriteRequest(BluetoothDevice device,
-            int requestId,
-            BluetoothGattCharacteristic characteristic,
-            boolean preparedWrite,
-            boolean responseNeeded,
-            int offset,
-            byte[] value) {
+                                             int requestId,
+                                             BluetoothGattCharacteristic characteristic,
+                                             boolean preparedWrite,
+                                             boolean responseNeeded,
+                                             int offset,
+                                             byte[] value) {
         UUID charUuid = characteristic.getUuid();
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
             Log.i(TAG, "onCharacteristicWriteRequest: "
@@ -236,7 +248,7 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset,
-            BluetoothGattDescriptor descriptor) {
+                                        BluetoothGattDescriptor descriptor) {
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
             Log.i(TAG, "onDescriptorReadRequest: "
                     + descriptor.getCharacteristic().getUuid() + " " + offset);
@@ -246,9 +258,9 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onDescriptorWriteRequest(BluetoothDevice device, int requestId,
-            BluetoothGattDescriptor descriptor,
-            boolean preparedWrite, boolean responseNeeded,
-            int offset, byte[] value) {
+                                         BluetoothGattDescriptor descriptor,
+                                         boolean preparedWrite, boolean responseNeeded,
+                                         int offset, byte[] value) {
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
             Log.i(TAG, "onDescriptorWriteRequest: "
                     + descriptor.getCharacteristic().getUuid() + " " + offset + " " + Util.toHex(value));
