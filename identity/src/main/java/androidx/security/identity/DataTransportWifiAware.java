@@ -46,6 +46,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import androidx.security.identity.Constants.LoggingFlag;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -60,6 +61,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.Random;
@@ -70,10 +72,8 @@ import java.util.concurrent.TimeUnit;
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.builder.ArrayBuilder;
 import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
-import co.nstant.in.cbor.model.Number;
 
 /**
  * @hide
@@ -87,14 +87,12 @@ public class DataTransportWifiAware extends DataTransport {
     public static final int RETRIEVAL_OPTION_KEY_BAND_INFO_SUPPORTED_BANDS = 3;
 
     private static final String TAG = "DataTransportWifiAware";
-    byte[] mEncodedDeviceRetrievalMethod;
 
     BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
     private byte[] mEncodedEDeviceKeyBytes;
     String mServiceName;
     private WifiAwareManager mWifiAwareManager;
     WifiAwareSession mSession;
-    private WifiOptions mOptions;
     ServerSocket mListenerServerSocket;
     Socket mInitiatorSocket;
     Socket mListenerSocket;
@@ -122,95 +120,171 @@ public class DataTransportWifiAware extends DataTransport {
 
     }
 
-    @Override
-    public @Nullable
-    Pair<NdefRecord, byte[]> getNdefRecords() {
+    public DataTransportWifiAware(@NonNull Context context) {
+        super(context);
+    }
 
-        // The NdefRecord and its OOB data is defined in "Wi-Fi Aware Specification", table 142.
-        //
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            // Spec says: The NFC Handover Selector shall include the Cipher Suite Info field with
-            // one or multiple NAN Cipher Suite IDs in the WiFi Aware Carrier Configuration Record
-            // to indicate the supported NAN cipher suite(s)."
-            //
-            int numCipherSuitesSupported = 0;
-            if ((mCipherSuites & Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128) != 0) {
-                numCipherSuitesSupported++;
-            }
-            if ((mCipherSuites & Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256) != 0) {
-                numCipherSuitesSupported++;
-            }
-            baos.write(1 + numCipherSuitesSupported);
-            baos.write(0x01); // Data Type 0x01 - Cipher Suite Info
-            if ((mCipherSuites & Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128) != 0) {
-                baos.write(0x01); // NCS-SK-128
-            }
-            if ((mCipherSuites & Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256) != 0) {
-                baos.write(0x02); // NCS-SK-256
-            }
-
-            // Spec says: "If the NFC Handover Selector indicates an NCS-SK cipher suite, it shall
-            // include a Pass-phrase Info field in the Wi-Fi Aware Carrier Configuration Record
-            // to specify the selected pass-phrase for the supported cipher suite."
-            //
-            // Additionally, 18013-5 says: "If NFC is used for device engagement, either the
-            // Pass-phrase Info or the DH Info shall be explicitly transferred from the mdoc to
-            // the mdoc reader during device engagement according to the Wi-Fi Alliance
-            // Neighbor Awareness Networking Specification section 12."
-            //
-            // So we have to make up a passphrase.
-            //
-            byte[] encodedPassphrase =
-                    mOptions.passphraseInfoPassphrase.getBytes(StandardCharsets.UTF_8);
-            baos.write(1 + encodedPassphrase.length);
-            baos.write(0x03); // Data Type 0x03 - Pass-phrase Info
-            baos.write(encodedPassphrase);
-
-            // Spec says: "The NFC Handover Selector shall also include a Band Info field in the
-            // Wi-Fi Aware Configuration Record to indicate the supported NAN operating band(s)."
-            //
-            baos.write(1 + mOptions.bandInfoSupportedBands.length);
-            baos.write(0x04); // Data Type 0x04 - Band Info
-            baos.write(mOptions.bandInfoSupportedBands);
-
-            // Spec says: "The Channel Info field serves as a placeholder for future extension, and
-            // may optionally be included in the Wi-Fi Aware Carrier Configuration Record in the
-            // NFC Handover Select message."
-            //
-            // We don't include this for now.
-            //
-        } catch (IOException e) {
-            reportError(e);
-            return null;
+    static class DataRetrievalAddressWifiAware extends DataRetrievalAddress {
+        // TODO: support MAC address
+        DataRetrievalAddressWifiAware(@Nullable String passphraseInfoPassphrase,
+            OptionalInt channelInfoChannelNumber,
+            OptionalInt channelInfOperatingClass,
+            @Nullable byte[] bandInfoSupportedBands) {
+            this.passphraseInfoPassphrase = passphraseInfoPassphrase;
+            this.channelInfoChannelNumber = channelInfoChannelNumber;
+            this.channelInfOperatingClass = channelInfOperatingClass;
+            this.bandInfoSupportedBands = bandInfoSupportedBands;
         }
-        byte[] oobData = baos.toByteArray();
 
-        NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
+        @Nullable String passphraseInfoPassphrase;
+        OptionalInt channelInfoChannelNumber;
+        OptionalInt channelInfOperatingClass;
+        @Nullable byte[] bandInfoSupportedBands;
+
+        @Override
+        @NonNull DataTransport getDataTransport(
+            @NonNull Context context, @LoggingFlag int loggingFlags) {
+            return new DataTransportWifiAware(context /*, loggingFlags*/);
+        }
+
+        @Override
+        Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
+            // The NdefRecord and its OOB data is defined in "Wi-Fi Aware Specification", table 142.
+            //
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            try {
+                // TODO: use getCharacteristics()
+                int cipherSuites = Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128;
+
+                // Spec says: The NFC Handover Selector shall include the Cipher Suite Info field with
+                // one or multiple NAN Cipher Suite IDs in the WiFi Aware Carrier Configuration Record
+                // to indicate the supported NAN cipher suite(s)."
+                //
+                int numCipherSuitesSupported = 0;
+                if ((cipherSuites & Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128) != 0) {
+                    numCipherSuitesSupported++;
+                }
+                if ((cipherSuites & Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256) != 0) {
+                    numCipherSuitesSupported++;
+                }
+                baos.write(1 + numCipherSuitesSupported);
+                baos.write(0x01); // Data Type 0x01 - Cipher Suite Info
+                if ((cipherSuites & Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128) != 0) {
+                    baos.write(0x01); // NCS-SK-128
+                }
+                if ((cipherSuites & Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256) != 0) {
+                    baos.write(0x02); // NCS-SK-256
+                }
+
+                // Spec says: "If the NFC Handover Selector indicates an NCS-SK cipher suite, it shall
+                // include a Pass-phrase Info field in the Wi-Fi Aware Carrier Configuration Record
+                // to specify the selected pass-phrase for the supported cipher suite."
+                //
+                // Additionally, 18013-5 says: "If NFC is used for device engagement, either the
+                // Pass-phrase Info or the DH Info shall be explicitly transferred from the mdoc to
+                // the mdoc reader during device engagement according to the Wi-Fi Alliance
+                // Neighbor Awareness Networking Specification section 12."
+                //
+                // So we have to make up a passphrase.
+                //
+                byte[] encodedPassphrase = passphraseInfoPassphrase.getBytes(StandardCharsets.UTF_8);
+                baos.write(1 + encodedPassphrase.length);
+                baos.write(0x03); // Data Type 0x03 - Pass-phrase Info
+                baos.write(encodedPassphrase);
+
+                // Spec says: "The NFC Handover Selector shall also include a Band Info field in the
+                // Wi-Fi Aware Configuration Record to indicate the supported NAN operating band(s)."
+                //
+                baos.write(1 + bandInfoSupportedBands.length);
+                baos.write(0x04); // Data Type 0x04 - Band Info
+                baos.write(bandInfoSupportedBands);
+
+                // Spec says: "The Channel Info field serves as a placeholder for future extension, and
+                // may optionally be included in the Wi-Fi Aware Carrier Configuration Record in the
+                // NFC Handover Select message."
+                //
+                // We don't include this for now.
+                //
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+            byte[] oobData = baos.toByteArray();
+
+            NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
                 "application/vnd.wfa.nan".getBytes(StandardCharsets.UTF_8),
                 "W".getBytes(StandardCharsets.UTF_8),
                 oobData);
 
-        // From 7.1 Alternative Carrier Record
-        //
-        baos = new ByteArrayOutputStream();
-        baos.write(0x01); // CPS: active
-        baos.write(0x01); // Length of carrier data reference ("0")
-        baos.write('W');  // Carrier data reference
-        baos.write(0x01); // Number of auxiliary references
-        byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
-        baos.write(auxReference.length);
-        baos.write(auxReference, 0, auxReference.length);
-        byte[] acRecordPayload = baos.toByteArray();
+            // From 7.1 Alternative Carrier Record
+            //
+            baos = new ByteArrayOutputStream();
+            baos.write(0x01); // CPS: active
+            baos.write(0x01); // Length of carrier data reference ("0")
+            baos.write('W');  // Carrier data reference
+            baos.write(0x01); // Number of auxiliary references
+            byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+            baos.write(auxReference.length);
+            baos.write(auxReference, 0, auxReference.length);
+            byte[] acRecordPayload = baos.toByteArray();
 
-        return new Pair<>(record, acRecordPayload);
+            return new Pair<>(record, acRecordPayload);
+        }
+
+        @Override
+        void addDeviceRetrievalMethodsEntry(ArrayBuilder<CborBuilder> arrayBuilder,
+            List<DataRetrievalAddress> listeningAddresses) {
+
+            ArrayBuilder<ArrayBuilder<CborBuilder>> innerArrayBuilder = arrayBuilder.addArray();
+            innerArrayBuilder
+                .add(DEVICE_RETRIEVAL_METHOD_TYPE)
+                .add(DEVICE_RETRIEVAL_METHOD_VERSION);
+
+            MapBuilder<ArrayBuilder<ArrayBuilder<CborBuilder>>> mapBuilder =
+                innerArrayBuilder.addMap();
+
+            mapBuilder.put(RETRIEVAL_OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE,
+                passphraseInfoPassphrase);
+            if (channelInfoChannelNumber.isPresent()) {
+                mapBuilder.put(RETRIEVAL_OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER,
+                    channelInfoChannelNumber.getAsInt());
+            }
+            if (channelInfOperatingClass.isPresent()) {
+                mapBuilder.put(RETRIEVAL_OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS,
+                    channelInfOperatingClass.getAsInt());
+            }
+            mapBuilder.put(RETRIEVAL_OPTION_KEY_BAND_INFO_SUPPORTED_BANDS, bandInfoSupportedBands);
+            mapBuilder.end();
+            innerArrayBuilder.end();
+        }
+
+        @Override
+        public @NonNull String toString() {
+            StringBuilder builder = new StringBuilder("wifi_aware");
+            if (passphraseInfoPassphrase != null) {
+                builder.append(":passphrase=");
+                builder.append(passphraseInfoPassphrase);
+            }
+            if (channelInfoChannelNumber.isPresent()) {
+                builder.append(":channel_info_channel_number=");
+                builder.append(channelInfoChannelNumber.getAsInt());
+            }
+            if (channelInfOperatingClass.isPresent()) {
+                builder.append(":channel_info_operating_class=");
+                builder.append(channelInfOperatingClass.getAsInt());
+            }
+            if (bandInfoSupportedBands != null) {
+                builder.append(":base_info_supported_bands=");
+                builder.append(Util.toHex(bandInfoSupportedBands));
+            }
+            return builder.toString();
+        }
     }
 
-    // Returns DeviceRetrievalMethod CBOR.
-    //
-    public static @Nullable byte[] parseNdefRecord(@NonNull NdefRecord record) {
-        String passphrase = null;
-        byte[] bandInfo = null;
+    public static @Nullable List<DataRetrievalAddress> parseNdefRecord(@NonNull NdefRecord record) {
+        String passphraseInfoPassphrase = null;
+        byte[] bandInfoSupportedBands = null;
+        OptionalInt channelInfoChannelNumber = OptionalInt.empty();
+        OptionalInt channelInfoOperatingClass = OptionalInt.empty();
 
         // See above for OOB data and where it's defined.
         //
@@ -226,10 +300,10 @@ public class DataTransportWifiAware extends DataTransport {
                 // passphrase
                 byte[] encodedPassphrase = new byte[len - 1];
                 payload.get(encodedPassphrase, 0, len - 1);
-                passphrase = new String(encodedPassphrase, StandardCharsets.UTF_8);
+                passphraseInfoPassphrase = new String(encodedPassphrase, StandardCharsets.UTF_8);
             } else if (type == 0x04 && len > 1) {
-                bandInfo = new byte[len - 1];
-                payload.get(bandInfo, 0, len - 1);
+                bandInfoSupportedBands = new byte[len - 1];
+                payload.get(bandInfoSupportedBands, 0, len - 1);
             } else {
                 // TODO: add support for other options...
                 Log.d(TAG, String.format("Skipping unknown type %d of length %d", type, len));
@@ -237,60 +311,51 @@ public class DataTransportWifiAware extends DataTransport {
             payload.position(offset + len - 1);
         }
 
-        WifiOptions options = new WifiOptions();
-        options.passphraseInfoPassphrase = passphrase;
-        options.bandInfoSupportedBands = bandInfo;
-        return buildDeviceRetrievalMethod(options);
+        List<DataRetrievalAddress> addresses = new ArrayList<>();
+        addresses.add(new DataRetrievalAddressWifiAware(passphraseInfoPassphrase,
+            channelInfoChannelNumber, channelInfoOperatingClass, bandInfoSupportedBands));
+        return addresses;
     }
 
-    public DataTransportWifiAware(@NonNull Context context) {
-        super(context);
+    static public @Nullable
+    List<DataRetrievalAddress> parseDeviceRetrievalMethod(int version, DataItem[] items) {
+        if (version > DEVICE_RETRIEVAL_METHOD_VERSION) {
+            Log.w(TAG, "Unexpected version " + version + " for retrieval method");
+            return null;
+        }
+        if (items.length < 3 || !(items[2] instanceof Map)) {
+            Log.w(TAG, "Item 3 in device retrieval array is not a map");
+        }
+        Map options = ((Map) items[2]);
+
+        String passphraseInfoPassphrase = null;
+        if (Util.cborMapHasKey(options, 0)) {
+            passphraseInfoPassphrase = Util.cborMapExtractString(options, 0);
+        }
+        OptionalInt channelInfoChannelNumber = OptionalInt.empty();
+        if (Util.cborMapHasKey(options, 1)) {
+            channelInfoChannelNumber = OptionalInt.of(Util.cborMapExtractNumber(options, 1));
+        }
+        OptionalInt channelInfoOperatingClass = OptionalInt.empty();
+        if (Util.cborMapHasKey(options, 2)) {
+            channelInfoOperatingClass = OptionalInt.of(Util.cborMapExtractNumber(options, 2));
+        }
+        byte[] bandInfoSupportedBands = null;
+        if (Util.cborMapHasKey(options, 3)) {
+            bandInfoSupportedBands = Util.cborMapExtractByteString(options, 3);
+        }
+
+        List<DataRetrievalAddress> addresses = new ArrayList<>();
+        addresses.add(new DataRetrievalAddressWifiAware(passphraseInfoPassphrase,
+            channelInfoChannelNumber, channelInfoOperatingClass, bandInfoSupportedBands));
+        return addresses;
     }
 
-    static class WifiOptions {
-        String passphraseInfoPassphrase        = null;        // null if not set
-        OptionalInt channelInfoOperatingClass  = OptionalInt.empty();
-        OptionalInt channelInfoChannelNumber   = OptionalInt.empty();
-        byte[] bandInfoSupportedBands          = null;          // null if not set
-    }
+    private DataRetrievalAddressWifiAware mListeningAddress;
 
-    private WifiOptions parseDeviceRetrievalMethod(byte[] encodedDeviceRetrievalMethod) {
-        DataItem d = Util.cborDecode(encodedDeviceRetrievalMethod);
-        if (!(d instanceof Array)) {
-            throw new IllegalArgumentException("Given CBOR is not an array");
-        }
-        DataItem[] items = ((Array) d).getDataItems().toArray(new DataItem[0]);
-        if (items.length != 3) {
-            throw new IllegalArgumentException("Expected three elements, found " + items.length);
-        }
-        if (!(items[0] instanceof Number)
-                || !(items[1] instanceof Number)
-                || !(items[2] instanceof Map)) {
-            throw new IllegalArgumentException("Items not of required type");
-        }
-        int type = ((Number) items[0]).getValue().intValue();
-        int version = ((Number) items[1]).getValue().intValue();
-        if (type != DEVICE_RETRIEVAL_METHOD_TYPE
-                || version > DEVICE_RETRIEVAL_METHOD_VERSION) {
-            throw new IllegalArgumentException("Unexpected type or version");
-        }
-        DataItem optionsMap = items[2];
-        WifiOptions options = new WifiOptions();
-        if (Util.cborMapHasKey(optionsMap, 0)) {
-            options.passphraseInfoPassphrase = Util.cborMapExtractString(optionsMap, 0);
-        }
-        if (Util.cborMapHasKey(optionsMap, 1)) {
-            options.channelInfoChannelNumber =
-                    OptionalInt.of(Util.cborMapExtractNumber(optionsMap, 1));
-        }
-        if (Util.cborMapHasKey(optionsMap, 2)) {
-            options.channelInfoOperatingClass =
-                    OptionalInt.of(Util.cborMapExtractNumber(optionsMap, 2));
-        }
-        if (Util.cborMapHasKey(optionsMap, 3)) {
-            options.bandInfoSupportedBands = Util.cborMapExtractByteString(optionsMap, 3);
-        }
-        return options;
+    @Override
+    public @NonNull DataRetrievalAddress getListeningAddress() {
+        return mListeningAddress;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -339,22 +404,24 @@ public class DataTransportWifiAware extends DataTransport {
                 },
                 null);
 
-        mOptions = new WifiOptions();
-
         // Passphrase is mandatory for NFC so we always set it...
         //
         byte[] passphraseBytes = new byte[16];
         Random r = new SecureRandom();
         r.nextBytes(passphraseBytes);
-        mOptions.passphraseInfoPassphrase = Util.base16(passphraseBytes);
+        String passphraseInfoPassphrase = Util.base16(passphraseBytes);
         WifiManager wm = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
         int supportedBandsBitmap = 0x04;   // Bit 2: 2.4 GHz
         if (wm.is5GHzBandSupported()) {
             supportedBandsBitmap |= 0x10;  // Bit 4: 4.9 and 5 GHz
         }
-        mOptions.bandInfoSupportedBands = new byte[] {(byte) (supportedBandsBitmap & 0xff)};
-        mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(mOptions);
-        reportListeningSetupCompleted(mEncodedDeviceRetrievalMethod);
+        byte[] bandInfoSupportedBands = new byte[] {(byte) (supportedBandsBitmap & 0xff)};
+
+        mListeningAddress = new DataRetrievalAddressWifiAware(passphraseInfoPassphrase,
+            OptionalInt.empty(), OptionalInt.empty(),
+            bandInfoSupportedBands);
+
+        reportListeningSetupCompleted(mListeningAddress);
 
         Characteristics characteristics = mWifiAwareManager.getCharacteristics();
         if (characteristics != null) {
@@ -382,7 +449,7 @@ public class DataTransportWifiAware extends DataTransport {
 
         listenOnServerSocket();
 
-        String passphrase = mOptions.passphraseInfoPassphrase;
+        String passphrase = mListeningAddress.passphraseInfoPassphrase;
         if (passphrase == null) {
             passphrase = mDerivedPassphrase;
         }
@@ -453,40 +520,15 @@ public class DataTransportWifiAware extends DataTransport {
         socketServerThread.start();
     }
 
-    static byte[] buildDeviceRetrievalMethod(WifiOptions options) {
-        CborBuilder builder = new CborBuilder();
-        ArrayBuilder<CborBuilder> arrayBuilder = builder.addArray();
-        arrayBuilder.add(DEVICE_RETRIEVAL_METHOD_TYPE);
-        arrayBuilder.add(DEVICE_RETRIEVAL_METHOD_VERSION);
-        MapBuilder<ArrayBuilder<CborBuilder>> mapBuilder = arrayBuilder.addMap();
-        if (options.passphraseInfoPassphrase != null) {
-            mapBuilder.put(RETRIEVAL_OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE,
-                    options.passphraseInfoPassphrase);
-        }
-        if (options.channelInfoOperatingClass.isPresent()) {
-            mapBuilder.put(RETRIEVAL_OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS,
-                    options.channelInfoOperatingClass.getAsInt());
-        }
-        if (options.channelInfoChannelNumber.isPresent()) {
-            mapBuilder.put(RETRIEVAL_OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER,
-                    options.channelInfoChannelNumber.getAsInt());
-        }
-        if (options.bandInfoSupportedBands != null) {
-            mapBuilder.put(RETRIEVAL_OPTION_KEY_BAND_INFO_SUPPORTED_BANDS,
-                    options.bandInfoSupportedBands);
-        }
-        mapBuilder.end();
-        arrayBuilder.end();
-        return Util.cborEncode(builder.build().get(0));
-    }
+    DataRetrievalAddressWifiAware mConnectAddress;
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
-    public void connect(@NonNull byte[] encodedDeviceRetrievalMethod) {
+    public void connect(@NonNull DataRetrievalAddress genericAddress) {
+        mConnectAddress = (DataRetrievalAddressWifiAware) genericAddress;
+
         mWifiAwareManager =
                 (WifiAwareManager) mContext.getSystemService(Context.WIFI_AWARE_SERVICE);
-
-        mOptions = parseDeviceRetrievalMethod(encodedDeviceRetrievalMethod);
 
         mWifiAwareManager.attach(
                 new AttachCallback() {
@@ -554,7 +596,7 @@ public class DataTransportWifiAware extends DataTransport {
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     void initiatorOnMessageReceived(SubscribeDiscoverySession session, PeerHandle peerHandle) {
-        String passphrase = mOptions.passphraseInfoPassphrase;
+        String passphrase = mConnectAddress.passphraseInfoPassphrase;
         if (passphrase == null) {
             passphrase = mDerivedPassphrase;
         }
@@ -659,12 +701,6 @@ public class DataTransportWifiAware extends DataTransport {
         } catch (IOException e) {
             reportConnectionResult(e);
         }
-    }
-
-    @Override
-    public @NonNull
-    byte[] getEncodedDeviceRetrievalMethod() {
-        return mEncodedDeviceRetrievalMethod;
     }
 
     @Override

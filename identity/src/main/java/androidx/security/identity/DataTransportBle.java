@@ -8,15 +8,16 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.security.identity.Constants.LoggingFlag;
 import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.builder.ArrayBuilder;
 import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
-import co.nstant.in.cbor.model.Number;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public abstract class DataTransportBle extends DataTransport {
@@ -38,103 +39,6 @@ public abstract class DataTransportBle extends DataTransport {
     mLoggingFlags = loggingFlags;
   }
 
-  // Returns DeviceRetrievalMethod CBOR or null if the record is not invalid.
-  //
-  public static @Nullable byte[] parseNdefRecord(@NonNull NdefRecord record) {
-      boolean centralClient = false;
-      boolean peripheral = false;
-      UUID uuid = null;
-      boolean gotLeRole = false;
-      boolean gotUuid = false;
-
-      // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
-      //
-      ByteBuffer payload = ByteBuffer.wrap(record.getPayload()).order(ByteOrder.LITTLE_ENDIAN);
-      // We ignore length and just chew through all data...
-      //
-      payload.position(2);
-      while (payload.remaining() > 0) {
-          Log.d(TAG, "hasR: " + payload.hasRemaining() + " rem: " + payload.remaining());
-          int len = payload.get();
-          int type = payload.get();
-          Log.d(TAG, String.format("type %d len %d", type, len));
-          if (type == 0x1c && len == 2) {
-              gotLeRole = true;
-              int value = payload.get();
-              if (value == 0x00) {
-                  peripheral = true;
-              } else if (value == 0x01) {
-                  centralClient = true;
-              } else if (value == 0x02) {
-                  centralClient = true;
-                  peripheral = true;
-              } else {
-                  Log.d(TAG, String.format("Invalid value %d for LE role", value));
-                  return null;
-              }
-          } else if (type == 0x07) {
-              int uuidLen = len - 1;
-              if (uuidLen % 16 != 0) {
-                  Log.d(TAG, String.format("UUID len %d is not divisible by 16", uuidLen));
-                  return null;
-              }
-              // We only use the last UUID...
-              for (int n = 0; n < uuidLen; n += 16) {
-                  long lsb = payload.getLong();
-                  long msb = payload.getLong();
-                  uuid = new UUID(msb, lsb);
-                  gotUuid = true;
-              }
-          } else {
-              Log.d(TAG, String.format("Skipping unknown type %d of length %d", type, len));
-              payload.position(payload.position() + len - 1);
-          }
-      }
-
-      if (gotLeRole && gotUuid) {
-          BleOptions options = new BleOptions();
-          // If the the mdoc says it can do both central and peripheral, prefer central client.
-          if (centralClient) {
-              options.supportsCentralClientMode = true;
-              options.centralClientModeUuid = DataTransportBle.uuidToBytes(uuid);
-          } else {
-              options.supportsPeripheralServerMode = true;
-              options.peripheralServerModeUuid = DataTransportBle.uuidToBytes(uuid);
-          }
-          return DataTransportBle.buildDeviceRetrievalMethod(options);
-      }
-
-      return null;
-  }
-
-  static @NonNull byte[] buildDeviceRetrievalMethod(@NonNull BleOptions options) {
-      CborBuilder ob = new CborBuilder();
-      MapBuilder<CborBuilder> omb = ob.addMap();
-      omb.put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE,
-              options.supportsPeripheralServerMode);
-      omb.put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE,
-              options.supportsCentralClientMode);
-      if (options.peripheralServerModeUuid != null) {
-          omb.put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID, options.peripheralServerModeUuid);
-      }
-      if (options.centralClientModeUuid != null) {
-          omb.put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID, options.centralClientModeUuid);
-      }
-      if (options.peripheralServerModeBleDeviceAddress != null) {
-          omb.put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS,
-                  options.peripheralServerModeBleDeviceAddress);
-      }
-
-      byte[] ret = Util.cborEncode(new CborBuilder()
-              .addArray()
-              .add(DEVICE_RETRIEVAL_METHOD_TYPE)
-              .add(DEVICE_RETRIEVAL_METHOD_VERSION)
-              .add(ob.build().get(0))
-              .end()
-              .build().get(0));
-      return ret;
-  }
-
   protected static byte[] uuidToBytes(UUID uuid) {
       ByteBuffer data = ByteBuffer.allocate(16);
       data.order(ByteOrder.BIG_ENDIAN);
@@ -152,51 +56,335 @@ public abstract class DataTransportBle extends DataTransport {
       return new UUID(data.getLong(0), data.getLong(8));
   }
 
-  static BleOptions parseDeviceRetrievalMethod(byte[] encodedDeviceRetrievalMethod) {
-      DataItem d = Util.cborDecode(encodedDeviceRetrievalMethod);
-      if (!(d instanceof Array)) {
-          throw new IllegalArgumentException("Given CBOR is not an array");
+  public static @Nullable List<DataRetrievalAddress> parseNdefRecord(@NonNull NdefRecord record) {
+    boolean centralClient = false;
+    boolean peripheral = false;
+    UUID uuid = null;
+    boolean gotLeRole = false;
+    boolean gotUuid = false;
+
+    // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
+    //
+    ByteBuffer payload = ByteBuffer.wrap(record.getPayload()).order(ByteOrder.LITTLE_ENDIAN);
+
+    // We ignore length and just chew through all data...
+    //
+    payload.position(2);
+    while (payload.remaining() > 0) {
+      Log.d(TAG, "hasR: " + payload.hasRemaining() + " rem: " + payload.remaining());
+      int len = payload.get();
+      int type = payload.get();
+      Log.d(TAG, String.format("type %d len %d", type, len));
+      if (type == 0x1c && len == 2) {
+        gotLeRole = true;
+        int value = payload.get();
+        if (value == 0x00) {
+          peripheral = true;
+        } else if (value == 0x01) {
+          centralClient = true;
+        } else if (value == 0x02 || value == 0x03) {
+          centralClient = true;
+          peripheral = true;
+        } else {
+          Log.w(TAG, String.format("Invalid value %d for LE role", value));
+          return null;
+        }
+      } else if (type == 0x07) {
+        int uuidLen = len - 1;
+        if (uuidLen % 16 != 0) {
+          Log.w(TAG, String.format("UUID len %d is not divisible by 16", uuidLen));
+          return null;
+        }
+        // We only use the last UUID...
+        for (int n = 0; n < uuidLen; n += 16) {
+          long lsb = payload.getLong();
+          long msb = payload.getLong();
+          uuid = new UUID(msb, lsb);
+          gotUuid = true;
+        }
+      } else {
+        Log.d(TAG, String.format("Skipping unknown type %d of length %d", type, len));
+        payload.position(payload.position() + len - 1);
       }
-      DataItem[] items = ((Array) d).getDataItems().toArray(new DataItem[0]);
-      if (items.length != 3) {
-          throw new IllegalArgumentException("Expected three elements, found " + items.length);
-      }
-      if (!(items[0] instanceof Number)
-              || !(items[1] instanceof Number)
-              || !(items[2] instanceof Map)) {
-          throw new IllegalArgumentException("Items not of required type");
-      }
-      int type = ((Number) items[0]).getValue().intValue();
-      int version = ((Number) items[1]).getValue().intValue();
-      if (type != DEVICE_RETRIEVAL_METHOD_TYPE
-              || version > DEVICE_RETRIEVAL_METHOD_VERSION) {
-          throw new IllegalArgumentException("Unexpected type or version");
-      }
-      Map options = ((Map) items[2]);
-      BleOptions result = new BleOptions();
-      if (Util.cborMapHasKey(options, RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE)) {
-          result.supportsPeripheralServerMode = Util.cborMapExtractBoolean(options,
-              RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE);
-      }
-      if (Util.cborMapHasKey(options, RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE)) {
-          result.supportsCentralClientMode = Util.cborMapExtractBoolean(options,
-              RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE);
-      }
-      if (Util.cborMapHasKey(options, RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID)) {
-          result.peripheralServerModeUuid = Util.cborMapExtractByteString(options,
-              RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID);
-      }
-      if (Util.cborMapHasKey(options, RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID)) {
-          result.centralClientModeUuid = Util.cborMapExtractByteString(options,
-              RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID);
-      }
-      if (Util.cborMapHasKey(options,
-          RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)) {
-          result.peripheralServerModeBleDeviceAddress = Util.cborMapExtractByteString(options,
-              RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS);
-      }
-      return result;
+    }
+
+    if (!gotLeRole) {
+      Log.w(TAG, "Did not find LE role");
+      return null;
+    }
+    if (!gotUuid) {
+      Log.w(TAG, "Did not find UUID");
+      return null;
+    }
+
+    List<DataRetrievalAddress> addresses = new ArrayList<>();
+    if (centralClient) {
+        addresses.add(new DataRetrievalAddressBleCentralClientMode(uuid));
+    }
+    if (peripheral) {
+      addresses.add(new DataRetrievalAddressBlePeripheralServerMode(uuid));
+    }
+
+    if (addresses.size() > 0) {
+      return addresses;
+    }
+    return null;
   }
+
+  static abstract class DataRetrievalAddressBle extends DataRetrievalAddress {
+
+    UUID uuid;
+
+    DataRetrievalAddressBle findOtherBleAddress(List<DataRetrievalAddress> listeningAddresses) {
+      for (DataRetrievalAddress address : listeningAddresses) {
+        if (address != this && (address instanceof DataRetrievalAddressBle)) {
+          return (DataRetrievalAddressBle) address;
+        }
+      }
+      return null;
+    }
+
+    boolean isOtherBleAddressFirst(List<DataRetrievalAddress> listeningAddresses,
+        DataRetrievalAddress otherAddress) {
+      for (DataRetrievalAddress address : listeningAddresses) {
+        if (address == this) {
+          return false;
+        } else if (address == otherAddress) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // This is the same for both mdoc central client mode and mdoc peripheral server mode.
+    @Override
+    Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
+      // If we have two entries, only generate NDEF records for the first.
+      DataRetrievalAddressBle otherAddress = findOtherBleAddress(listeningAddresses);
+      if (otherAddress != null) {
+        if (isOtherBleAddressFirst(listeningAddresses, otherAddress)) {
+          return null;
+        }
+      }
+
+      boolean centralClientSupported = false;
+      boolean peripheralServerSupported = false;
+      if (otherAddress == null) {
+        if (this instanceof DataRetrievalAddressBleCentralClientMode) {
+          centralClientSupported = true;
+        } else {
+          peripheralServerSupported = true;
+        }
+      } else {
+        centralClientSupported = true;
+        peripheralServerSupported = true;
+        if (!uuid.equals(otherAddress.uuid)) {
+          throw new IllegalStateException("UUIDs for BLE addresses are not identical");
+        }
+      }
+
+      byte[] oobData;
+      // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
+      //
+      // See section 1.17.2 for values
+      //
+      int leRole = 0;
+      if (centralClientSupported && peripheralServerSupported) {
+        // Peripheral and Central Role supported,
+        // Central Role preferred for connection
+        // establishment
+        leRole = 0x03;
+      } else if (centralClientSupported) {
+        // Only Central Role supported
+        leRole = 0x01;
+      } else if (peripheralServerSupported) {
+        // Only Peripheral Role supported
+        leRole = 0x00;
+      }
+
+      oobData = new byte[] {
+          0, 0,
+          // LE Role
+          (byte) 0x02, (byte) 0x1c, (byte) leRole,
+          // Complete List of 128-bit Service UUID’s (0x07)
+          (byte) 0x11, (byte) 0x07,
+          // UUID will be copied here..
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      };
+      ByteBuffer uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
+      uuidBuf.putLong(0, uuid.getLeastSignificantBits());
+      uuidBuf.putLong(8, uuid.getMostSignificantBits());
+      System.arraycopy(uuidBuf.array(), 0, oobData, 7, 16);
+      // Length is stored in LE...
+      oobData[0] = (byte) (oobData.length & 0xff);
+      oobData[1] = (byte) (oobData.length / 256);
+      Log.d(TAG, "Encoding UUID " + uuid + " in NDEF");
+
+      NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
+          "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8),
+          "0".getBytes(StandardCharsets.UTF_8),
+          oobData);
+
+      // From 7.1 Alternative Carrier Record
+      //
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      baos.write(0x01); // CPS: active
+      baos.write(0x01); // Length of carrier data reference ("0")
+      baos.write('0');  // Carrier data reference
+      baos.write(0x01); // Number of auxiliary references
+      // Each auxiliary reference consists of a single byte for the length and then as
+      // many bytes for the reference itself.
+      byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+      baos.write(auxReference.length);
+      baos.write(auxReference, 0, auxReference.length);
+      byte[] acRecordPayload = baos.toByteArray();
+
+      return new Pair<>(record, acRecordPayload);
+    }
+
+  }
+
+  static class DataRetrievalAddressBleCentralClientMode extends DataRetrievalAddressBle {
+    DataRetrievalAddressBleCentralClientMode(UUID uuid) {
+      this.uuid = uuid;
+    }
+
+    @Override
+    @NonNull DataTransport getDataTransport(
+        @NonNull Context context, @LoggingFlag int loggingFlags) {
+      return new DataTransportBleCentralClientMode(context, loggingFlags);
+    }
+
+    @Override
+    void addDeviceRetrievalMethodsEntry(ArrayBuilder<CborBuilder> arrayBuilder,
+        List<DataRetrievalAddress> listeningAddresses) {
+
+      DataRetrievalAddress otherAddress = findOtherBleAddress(listeningAddresses);
+      if (otherAddress != null) {
+        if (isOtherBleAddressFirst(listeningAddresses, otherAddress)) {
+          return;
+        }
+        arrayBuilder.addArray()
+            .add(DEVICE_RETRIEVAL_METHOD_TYPE)
+            .add(DEVICE_RETRIEVAL_METHOD_VERSION)
+            .addMap()
+            .put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, true)
+            .put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, true)
+            .put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID,
+                uuidToBytes(((DataRetrievalAddressBlePeripheralServerMode) otherAddress).uuid))
+            .put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID, uuidToBytes(uuid))
+            .end()
+            .end();
+      } else {
+        arrayBuilder.addArray()
+            .add(DEVICE_RETRIEVAL_METHOD_TYPE)
+            .add(DEVICE_RETRIEVAL_METHOD_VERSION)
+            .addMap()
+            .put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, false)
+            .put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, true)
+            .put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID, uuidToBytes(uuid))
+            .end()
+            .end();
+      }
+    }
+
+    @Override
+    public @NonNull String toString() {
+      return "ble:mdoc_central_client_mode:uuid=" + uuid;
+    }
+  }
+
+  static class DataRetrievalAddressBlePeripheralServerMode extends DataRetrievalAddressBle {
+    // TODO: support MAC address
+    DataRetrievalAddressBlePeripheralServerMode(UUID uuid) {
+      this.uuid = uuid;
+    }
+
+    @Override
+    @NonNull DataTransport getDataTransport(
+        @NonNull Context context, @LoggingFlag int loggingFlags) {
+      return new DataTransportBlePeripheralServerMode(context, loggingFlags);
+    }
+
+    @Override
+    void addDeviceRetrievalMethodsEntry(ArrayBuilder<CborBuilder> arrayBuilder,
+        List<DataRetrievalAddress> listeningAddresses) {
+
+      DataRetrievalAddress otherAddress = findOtherBleAddress(listeningAddresses);
+      if (otherAddress != null) {
+        if (isOtherBleAddressFirst(listeningAddresses, otherAddress)) {
+          return;
+        }
+        arrayBuilder.addArray()
+            .add(DEVICE_RETRIEVAL_METHOD_TYPE)
+            .add(DEVICE_RETRIEVAL_METHOD_VERSION)
+            .addMap()
+            .put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, true)
+            .put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, true)
+            .put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID, uuidToBytes(uuid))
+            .put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID,
+                uuidToBytes(((DataRetrievalAddressBleCentralClientMode) otherAddress).uuid))
+            .end()
+            .end();
+      } else {
+        arrayBuilder.addArray()
+            .add(DEVICE_RETRIEVAL_METHOD_TYPE)
+            .add(DEVICE_RETRIEVAL_METHOD_VERSION)
+            .addMap()
+            .put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, true)
+            .put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, false)
+            .put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID, uuidToBytes(uuid))
+            .end()
+            .end();
+      }
+    }
+
+    @Override
+    public @NonNull String toString() {
+      return "ble:mdoc_peripheral_server_mode:uuid=" + uuid;
+    }
+  }
+
+  static public @Nullable
+  List<DataRetrievalAddress> parseDeviceRetrievalMethod(int version, DataItem[] items) {
+    if (version > DEVICE_RETRIEVAL_METHOD_VERSION) {
+      Log.w(TAG, "Unexpected version " + version + " for retrieval method");
+      return null;
+    }
+    if (items.length < 3 || !(items[2] instanceof Map)) {
+      Log.w(TAG, "Item 3 in device retrieval array is not a map");
+    }
+    Map options = ((Map) items[2]);
+
+    List<DataRetrievalAddress> addresses = new ArrayList<>();
+    if (Util.cborMapHasKey(options, RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE)
+      && Util.cborMapExtractBoolean(options, RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE)) {
+      if (Util.cborMapHasKey(options, RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID)) {
+        byte[] uuidBytes = Util.cborMapExtractByteString(options,
+            RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID);
+        addresses.add(new DataRetrievalAddressBleCentralClientMode(uuidFromBytes(uuidBytes)));
+      } else {
+        Log.w(TAG, "No UUID field for mdoc central client mode");
+      }
+    }
+
+    if (Util.cborMapHasKey(options, RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE)
+      && Util.cborMapExtractBoolean(options, RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE)) {
+      if (Util.cborMapHasKey(options, RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID)) {
+        byte[] uuidBytes = Util.cborMapExtractByteString(options,
+            RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID);
+        addresses.add(new DataRetrievalAddressBlePeripheralServerMode(uuidFromBytes(uuidBytes)));
+      } else {
+        Log.w(TAG, "No UUID field for mdoc peripheral server mode");
+      }
+    }
+
+    if (addresses.size() > 0) {
+      return addresses;
+    }
+    return null;
+  }
+
 
   static protected @Nullable
   Pair<NdefRecord, byte[]> buildNdefRecords(boolean centralClientSupported,
@@ -260,14 +448,5 @@ public abstract class DataTransportBle extends DataTransport {
     byte[] acRecordPayload = baos.toByteArray();
 
     return new Pair<>(record, acRecordPayload);
-  }
-
-
-  static class BleOptions {
-      boolean supportsPeripheralServerMode;
-      boolean supportsCentralClientMode;
-      byte[] peripheralServerModeUuid;
-      byte[] centralClientModeUuid;
-      byte[] peripheralServerModeBleDeviceAddress;
   }
 }

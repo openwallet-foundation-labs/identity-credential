@@ -51,47 +51,19 @@ class SelectTransportFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val transferManager = TransferManager.getInstance(requireContext())
 
-        transferManager.availableTransferMethods?.forEach {
-            val transferMethod = FormatUtil.cborDecode(it)
-            if (transferMethod !is Array) {
-                Log.d(LOG_TAG, "entry in DeviceRetrievalMethods array is not an array")
-                return@forEach
-            }
-            val items: List<DataItem> = transferMethod.dataItems
-            if (items.size < 3) {
-                Log.d(LOG_TAG, "DeviceRetrievalMethod - array less than three items")
-                return@forEach
-            }
-            if (!(items[0] is Number && items[1] is Number && items[2] is Map)) {
-                Log.d(LOG_TAG, "DeviceRetrievalMethod - wrong types for elements")
-                return@forEach
-            }
-            val type = (items[0] as Number).value.toInt()
-            val version = (items[1] as Number).value.toInt()
-            val options = items[2] as Map
-
-            // TODO: make the RadioButton unselectable if we don't support the transport type
-
-            // TODO: use prettier buttonText for support transports, e.g. "TCP 192.168.1.42:1234"
-            //   and similar for BLE, Wifi Aware, NFC, etc.
-            val optionsText = FormatUtil.cborPrettyPrint(options)
-            val dataRetrievalName = when (type) {
-                1 -> "<h3>NFC Data Retrieval</h3>"
-                2 -> "<h3>BLE Data Retrieval</h3>"
-                3 -> "<h3>Wifi Aware Data Retrieval</h3>"
-                else -> "<h3>Type: $type Data Retrieval</h3>"
-            }
-            val buttonText =
-                "$dataRetrievalName<p>type <b>$type</b> ver <b>$version</b> ($optionsText)</p>"
+        transferManager.availableMdocAddresses?.forEach {
+            // For now just use the raw textual representation.
+            //
+            val buttonText = it.toString()
 
             val button = RadioButton(requireContext())
             button.text = Html.fromHtml(buttonText, Html.FROM_HTML_MODE_COMPACT)
             button.id = View.generateViewId()
             val encodedDeviceRetrievalMethod = it
-            button.isChecked = it.contentEquals(transferManager.deviceRetrievalMethod)
+            button.isChecked = (it.toString() == transferManager.mdocAddress.toString())
             button.setOnClickListener {
                 Log.d(LOG_TAG, "optionsText '$buttonText' was selected")
-                transferManager.setDeviceRetrievalMethod(encodedDeviceRetrievalMethod)
+                transferManager.setMdocAddress(encodedDeviceRetrievalMethod)
             }
             binding.rgTransferMethod.addView(button)
         }

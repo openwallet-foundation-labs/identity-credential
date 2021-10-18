@@ -47,7 +47,7 @@ public class DataTransportTcpTest {
 
         prover.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable byte[] encodedDeviceRetrievalMethod) {
+            public void onListeningSetupCompleted(@NonNull DataRetrievalAddress address) {
                 proverSetupCompletedCondVar.open();
             }
 
@@ -121,7 +121,7 @@ public class DataTransportTcpTest {
 
         prover.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable byte[] encodedDeviceRetrievalMethod) {
+            public void onListeningSetupCompleted(@NonNull DataRetrievalAddress address) {
                 proverListeningSetupCompleteCondVar.open();
             }
 
@@ -167,7 +167,7 @@ public class DataTransportTcpTest {
 
         verifier.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable byte[] encodedDeviceRetrievalMethod) {
+            public void onListeningSetupCompleted(@NonNull DataRetrievalAddress address) {
             }
 
             @Override
@@ -212,8 +212,8 @@ public class DataTransportTcpTest {
 
         prover.listen();
         Assert.assertTrue(proverListeningSetupCompleteCondVar.block(5000));
-        byte[] encodedDeviceRetrievalMethod = prover.getEncodedDeviceRetrievalMethod();
-        verifier.connect(encodedDeviceRetrievalMethod);
+        DataRetrievalAddress listeningAddress = prover.getListeningAddress();
+        verifier.connect(listeningAddress);
 
         Assert.assertTrue(proverPeerConnectingCondVar.block(5000));
         Assert.assertTrue(verifierPeerConnectedCondVar.block(5000));

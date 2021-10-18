@@ -196,7 +196,7 @@ class DeviceEngagementFragment : Fragment() {
     }
 
     private fun onDeviceEngagementReceived() {
-        if (transferManager.availableTransferMethods?.size == 1) {
+        if (transferManager.availableMdocAddresses?.size == 1) {
             findNavController().navigate(
                 DeviceEngagementFragmentDirections.actionScanDeviceEngagementToTransfer(
                     args.requestDocumentList

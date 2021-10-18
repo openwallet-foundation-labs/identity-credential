@@ -24,6 +24,12 @@ import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import co.nstant.in.cbor.model.Array;
+import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.Number;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Executor;
 
 /**
@@ -62,23 +68,23 @@ public abstract class DataTransport {
      * pass the value they generate and initiators (e.g. mdoc reader apps) will pass the value
      * they receive through device engagement.
      *
-     * <p>This should be called before calling {@link #listen()} or {@link #connect(byte[])}.
+     * <p>This should be called before calling {@link #listen()} or
+     * {@link #connect(DataRetrievalAddress)}.
      *
      * @param encodedEDeviceKeyBytes bytes of <code>EDeviceKeyBytes</code> CBOR.
      */
     abstract public void setEDeviceKeyBytes(@NonNull byte[] encodedEDeviceKeyBytes);
 
     /**
-     * Connects to the address specified in the <code>DeviceRetrievalMethod</code> CBOR passed in
-     * the <code>encodedDeviceRetrievalMethod</code> parameter.
+     * Connects to the mdoc.
      *
      * <p>This is an asynchronous operation, {@link Listener#onConnectionResult(boolean)}
      * is called with whether the connection attempt worked.
      *
-     * @param encodedDeviceRetrievalMethod bytes of <code>DeviceRetrievalMethod</code> CBOR.
-     * @throws IllegalArgumentException if the given CBOR doesn't match the expected format.
+     * @param address a {@link DataRetrievalAddress}.
+     * @throws IllegalArgumentException if the given address is malformed.
      */
-    abstract public void connect(@NonNull byte[] encodedDeviceRetrievalMethod);
+    abstract public void connect(@NonNull DataRetrievalAddress address);
 
     /**
      * Starts listening on the transport.
@@ -88,8 +94,8 @@ public abstract class DataTransport {
      * as part of the <code>DeviceRetrievalMethod</code> CBOR returned.
      *
      * <p>This is an asynchronous operation. When listening has been set up the
-     * {@link Listener#onListeningSetupCompleted(byte[])} method is called with the bytes of the
-     * <code>DeviceRetrievalMethod</code> CBOR or <code>null</code> if the operation fails. When a
+     * {@link Listener#onListeningSetupCompleted(DataRetrievalAddress)} method is called with
+     * address the listener is listening to or <code>null</code> if the operation fails. When a
      * peer connects {@link Listener#onListeningPeerConnected()} is called. Only a single peer
      * will be allowed to connect. When the peer disconnects
      * {@link Listener#onListeningPeerDisconnected()} is called.
@@ -97,28 +103,14 @@ public abstract class DataTransport {
     abstract public void listen();
 
     /**
-     * Gets the <code>DeviceRetrievalMethod</code> CBOR.
+     * Gets the address that can be used to connecting to the listening transport.
      *
-     * If this is a listening transport, this returns the same bytes as returned by
-     * {@link Listener#onListeningSetupCompleted(byte[])} (byte[])}, if it's a
-     * connecting transport it returns the same bytes as passed to the {@link #connect(byte[])}
-     * method.
+     * <p>This is the same address which is returned by the
+     * {@link Listener#onListeningSetupCompleted(DataRetrievalAddress)} callback.
      *
-     * @return bytes of <code>DeviceRetrievalMethod</code> CBOR.
+     * @return A {@link DataRetrievalAddress}.
      */
-    abstract public @NonNull byte[] getEncodedDeviceRetrievalMethod();
-
-    /**
-     * Gets a {@link NdefRecord}s for a listening transport or <code>null</code> if one isn't
-     * defined for this kind of transport.
-     *
-     * <p>The first record is for the Alternative Carrier Configuration Record, the second one is
-     * for payload a Alternative Carrier Record which goes into Handover Select record.
-     *
-     * @return A pair of a {@link NdefRecord} and byte-array or <code>null</code>.
-     */
-    abstract public @Nullable
-    Pair<NdefRecord, byte[]> getNdefRecords();
+    abstract public @NonNull DataRetrievalAddress getListeningAddress();
 
     /**
      * If this is a listening transport, stops listening and disconnects any peer already
@@ -137,8 +129,8 @@ public abstract class DataTransport {
      * Sends data to the remote peer.
      *
      * <p>This is an asynchronous operation, data will be sent by another thread. It's safe to
-     * call this right after {@link #connect(byte[])}, data will be queued up and sent once
-     * a connection has been established.
+     * call this right after {@link #connect(DataRetrievalAddress)}, data will be queued up and
+     * sent once a connection has been established.
      *
      * @param data the data to send
      */
@@ -188,7 +180,7 @@ public abstract class DataTransport {
         mInhibitCallbacks = true;
     }
 
-    protected void reportListeningSetupCompleted(@NonNull byte[] encodedDeviceRetrievalMethod) {
+    protected void reportListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
         if (mListener != null && !mInhibitCallbacks) {
             final Listener listener = mListener;
             mListenerExecutor.execute(
@@ -196,7 +188,7 @@ public abstract class DataTransport {
                         @Override
                         public void run() {
                             if (!mInhibitCallbacks) {
-                                listener.onListeningSetupCompleted(encodedDeviceRetrievalMethod);
+                                listener.onListeningSetupCompleted(address);
                             }
                         }
                     }
@@ -344,12 +336,11 @@ public abstract class DataTransport {
 
         /**
          * Called on a listening transport when listening setup has completed and
-         * the <code>DeviceRetrievalMethod</code> CBOR is available.
+         * an address for how to connect it ready.
          *
-         * @return bytes of <code>DeviceRetrievalMethod</code> CBOR or <code>null</code> if an
-         *   error occurred setting up the listener.
+         * @return a {@link DataRetrievalAddress} or {@code null} if listening failed.
          */
-        void onListeningSetupCompleted(@Nullable byte[] encodedDeviceRetrievalMethod);
+        void onListeningSetupCompleted(@Nullable DataRetrievalAddress address);
 
         /**
          * Called when a listening transport first sees a new connection.
@@ -415,5 +406,98 @@ public abstract class DataTransport {
          */
         void onError(@NonNull Throwable error);
     }
+
+    /**
+     * Returns a list of addresses (typically one) inferred from parsing DeviceRetrievalMethod CBOR.
+     *
+     * @param encodedDeviceRetrievalMethod bytes of DeviceRetrievalMethod CBOR.
+     * @return List of {@link DataRetrievalAddress} or <code>null</code> if none were found.
+     */
+    static public @Nullable List<DataRetrievalAddress> parseDeviceRetrievalMethod(
+        @NonNull byte[] encodedDeviceRetrievalMethod) {
+
+        DataItem d = Util.cborDecode(encodedDeviceRetrievalMethod);
+        if (!(d instanceof Array)) {
+            throw new IllegalArgumentException("Given CBOR is not an array");
+        }
+        DataItem[] items = ((Array) d).getDataItems().toArray(new DataItem[0]);
+        if (items.length < 2) {
+            throw new IllegalArgumentException("Expected two elems or more, got " + items.length);
+        }
+        if (!(items[0] instanceof Number) || !(items[1] instanceof Number)) {
+            throw new IllegalArgumentException("Items not of required type");
+        }
+        int type = ((Number) items[0]).getValue().intValue();
+        int version = ((Number) items[1]).getValue().intValue();
+
+        switch (type) {
+            case DataTransportBle.DEVICE_RETRIEVAL_METHOD_TYPE:
+                return DataTransportBle.parseDeviceRetrievalMethod(version, items);
+
+            case DataTransportWifiAware.DEVICE_RETRIEVAL_METHOD_TYPE:
+                return DataTransportWifiAware.parseDeviceRetrievalMethod(version, items);
+
+            case DataTransportNfc.DEVICE_RETRIEVAL_METHOD_TYPE:
+                return DataTransportNfc.parseDeviceRetrievalMethod2(version, items);
+
+            case DataTransportTcp.DEVICE_RETRIEVAL_METHOD_TYPE:
+                return DataTransportTcp.parseDeviceRetrievalMethod(version, items);
+
+            default:
+                Log.w(TAG, "Unsupported device engagement with type " + type);
+                return null;
+        }
+    }
+
+    /**
+     * Returns a list of addresses (typically one) inferred from parsing an NDEF record.
+     *
+     * @param record an NDEF record.
+     * @return List of {@link DataRetrievalAddress} or <code>null</code> if none were found.
+     */
+    static public @Nullable List<DataRetrievalAddress> parseNdefRecord(
+        @NonNull NdefRecord record) {
+        // BLE Carrier Configuration record
+        //
+        if (record.getTnf() == 0x02
+            && Arrays.equals(record.getType(),
+            "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8))
+            && Arrays.equals(record.getId(), "0".getBytes(StandardCharsets.UTF_8))) {
+            return DataTransportBle.parseNdefRecord(record);
+        }
+
+        // Wifi Aware Carrier Configuration record
+        //
+        if (record.getTnf() == 0x02
+            && Arrays.equals(record.getType(),
+            "application/vnd.wfa.nan".getBytes(StandardCharsets.UTF_8))
+            && Arrays.equals(record.getId(), "W".getBytes(StandardCharsets.UTF_8))) {
+            return DataTransportWifiAware.parseNdefRecord(record);
+        }
+
+        // NFC Carrier Configuration record
+        //
+        if (record.getTnf() == 0x02
+            && Arrays.equals(record.getType(),
+            "iso.org:18013:nfc".getBytes(StandardCharsets.UTF_8))
+            && Arrays.equals(record.getId(), "nfc".getBytes(StandardCharsets.UTF_8))) {
+            return DataTransportNfc.parseNdefRecord(record);
+        }
+
+        // Generic Carrier Configuration record
+        //
+        // (TODO: remove before landing b/c application/vnd.android.ic.dmr is not registered)
+        //
+        if (record.getTnf() == 0x02
+            && Arrays.equals(record.getType(),
+            "application/vnd.android.ic.dmr".getBytes(StandardCharsets.UTF_8))) {
+            Log.d(TAG, "Woot, got generic DRM " + Util.toHex(record.getPayload()));
+            byte[] deviceRetrievalMethod = record.getPayload();
+            return parseDeviceRetrievalMethod(deviceRetrievalMethod);
+        }
+
+        return null;
+    }
+
 }
 

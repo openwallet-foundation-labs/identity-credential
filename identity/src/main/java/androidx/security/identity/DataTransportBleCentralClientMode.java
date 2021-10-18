@@ -58,7 +58,6 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
-    byte[] mEncodedDeviceRetrievalMethod;
     private GattServer mGattServer;
     GattClient mGattClient;
     BluetoothLeScanner mScanner;
@@ -76,10 +75,15 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
     }
 
+    private DataRetrievalAddress mListeningAddress;
+
     @Override
-    public @Nullable
-    Pair<NdefRecord, byte[]> getNdefRecords() {
-        return buildNdefRecords(true, false, mServiceUuid);
+    public @NonNull DataRetrievalAddress getListeningAddress() {
+        return mListeningAddress;
+    }
+
+    public void setServiceUuid(@NonNull UUID serviceUuid) {
+        mServiceUuid = serviceUuid;
     }
 
     @Override
@@ -89,15 +93,13 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
             return;
         }
 
-        BleOptions options = new BleOptions();
+        if (mServiceUuid == null) {
+            mServiceUuid = UUID.randomUUID();
+        }
 
-        mServiceUuid = UUID.randomUUID();
+        mListeningAddress = new DataRetrievalAddressBleCentralClientMode(mServiceUuid);
 
-        options.supportsCentralClientMode = true;
-        options.centralClientModeUuid = uuidToBytes(mServiceUuid);
-
-        mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(options);
-        reportListeningSetupCompleted(mEncodedDeviceRetrievalMethod);
+        reportListeningSetupCompleted(mListeningAddress);
 
         // TODO: Check if BLE is enabled and error out if not so...
 
@@ -191,17 +193,18 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     };
 
     @Override
-    public void connect(@NonNull byte[] encodedDeviceRetrievalMethod) {
+    public void connect(@NonNull DataRetrievalAddress genericAddress) {
+        DataRetrievalAddressBleCentralClientMode address =
+            (DataRetrievalAddressBleCentralClientMode) genericAddress;
+
+        // TODO: Check if BLE is enabled and error out if not so...
+
         if (mEncodedEDeviceKeyBytes == null) {
             reportError(new Error("EDeviceKeyBytes not set"));
             return;
         }
 
-        // TODO: Check if BLE is enabled and error out if not so...
-
-        BleOptions options = parseDeviceRetrievalMethod(encodedDeviceRetrievalMethod);
-
-        mServiceUuid = uuidFromBytes(options.centralClientModeUuid);
+        mServiceUuid = address.uuid;
 
         BluetoothManager bluetoothManager =
                 (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
@@ -331,11 +334,5 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
         return true;
-    }
-
-    @Override
-    public @NonNull
-    byte[] getEncodedDeviceRetrievalMethod() {
-        return mEncodedDeviceRetrievalMethod;
     }
 }

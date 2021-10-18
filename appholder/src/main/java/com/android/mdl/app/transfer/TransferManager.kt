@@ -89,7 +89,7 @@ class TransferManager private constructor(private val context: Context) {
             bleOptions += Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE
         }
 
-        val dataRetrievalConfiguration = DataRetrievalConfiguration.Builder()
+        val dataRetrievalConfiguration = DataRetrievalListenerConfiguration.Builder()
             .setBleEnabled(bleOptions != 0)
             .setBleDataRetrievalOptions(bleOptions)
             .setWifiAwareEnabled(PreferencesHelper.isWifiDataRetrievalEnabled(context))

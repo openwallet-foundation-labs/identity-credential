@@ -16,18 +16,20 @@
 
 package androidx.security.identity;
 
+import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.security.identity.Constants.BleDataRetrievalOption;
 
 /**
  * An object to hold configuration about which data retrieval methods to listen on.
  *
- * <p>This is used by the application to specify which data retrieval methods are offered to the
- * initiator of a transaction. This is used by {@link PresentationHelper}.
+ * <p>In ISO/IEC 18013-5 this is used by the mdoc to specify which data retrieval methods
+ * are offered to mdoc reader.
  *
- * <p>By default all data retrieval methods are disabled.
+ * <p>Applications are expected to use a {@link Builder} to build an instance of this class
+ * and use it with {@link PresentationHelper#startListening(DataRetrievalListenerConfiguration)}.
  */
-public class DataRetrievalConfiguration {
+public class DataRetrievalListenerConfiguration {
 
     // Note: one reason for this class is that we expect this to be used in VerificationHelper
     //       class for QR code reverse engagement (will be part of of 23220-4 and 18013-7)
@@ -78,17 +80,20 @@ public class DataRetrievalConfiguration {
     }
 
     /**
-     * A builder for {@link DataRetrievalConfiguration}.
+     * A builder for {@link DataRetrievalListenerConfiguration}.
+     *
+     * <p>By default all data retrieval methods are disabled, the application is expected
+     * to manually configure which transports it wants to listen on.
      */
     public static final class Builder {
-        private final DataRetrievalConfiguration mConfiguration;
+        private final DataRetrievalListenerConfiguration mConfiguration;
 
         /**
-         * Creates a new builder for a {@link DataRetrievalConfiguration}.
+         * Creates a new builder for a {@link DataRetrievalListenerConfiguration}.
          *
          */
         public Builder() {
-            mConfiguration = new DataRetrievalConfiguration();
+            mConfiguration = new DataRetrievalListenerConfiguration();
         }
 
         /**
@@ -142,7 +147,8 @@ public class DataRetrievalConfiguration {
             return this;
         }
 
-        public @NonNull DataRetrievalConfiguration build() {
+        public @NonNull
+        DataRetrievalListenerConfiguration build() {
             return mConfiguration;
         }
     }

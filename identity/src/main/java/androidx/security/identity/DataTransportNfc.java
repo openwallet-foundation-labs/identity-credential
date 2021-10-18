@@ -25,6 +25,8 @@ import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import androidx.security.identity.Constants.LoggingFlag;
+import co.nstant.in.cbor.builder.ArrayBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,16 +35,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.UUID;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
 
 import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
-import co.nstant.in.cbor.model.Number;
 
 /**
  * @hide
@@ -54,7 +54,6 @@ public class DataTransportNfc extends DataTransport {
     public static final int RETRIEVAL_OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH = 1;
     private static final String TAG = "DataTransportNfc";
 
-    byte[] mEncodedDeviceRetrievalMethod;
     private NfcOptions mOptions;
     IsoDep mIsoDep;
     ArrayList<byte[]> mListenerRemainingChunks;
@@ -85,7 +84,7 @@ public class DataTransportNfc extends DataTransport {
         int responseDataFieldMaxLength;
     }
 
-    private void encodeInt(int dataType, int value, ByteArrayOutputStream baos) {
+    static void encodeInt(int dataType, int value, ByteArrayOutputStream baos) {
         if (value < 0x100) {
             baos.write(0x02); // Length
             baos.write(dataType);
@@ -104,64 +103,86 @@ public class DataTransportNfc extends DataTransport {
         }
     }
 
-    @Override
-    public @Nullable
-    Pair<NdefRecord, byte[]> getNdefRecords() {
-        byte[] carrierDataReference = "nfc".getBytes(StandardCharsets.UTF_8);
+    static class DataRetrievalAddressNfc extends DataRetrievalAddress {
+        DataRetrievalAddressNfc(int commandDataFieldMaxLength, int responseDataFieldMaxLength) {
+            this.commandDataFieldMaxLength = commandDataFieldMaxLength;
+            this.responseDataFieldMaxLength = responseDataFieldMaxLength;
+        }
 
-        // This is defined by ISO 18013-5 8.2.2.2 Alternative Carrier Record for device
-        // retrieval using NFC.
-        //
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(0x01);  // Version
-        encodeInt(0x01, mOptions.commandDataFieldMaxLength, baos);
-        encodeInt(0x02, mOptions.responseDataFieldMaxLength, baos);
-        byte[] oobData = baos.toByteArray();
+        int commandDataFieldMaxLength;
+        int responseDataFieldMaxLength;
 
-        NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
+        @Override
+        @NonNull DataTransport getDataTransport(
+            @NonNull Context context, @LoggingFlag int loggingFlags) {
+            return new DataTransportNfc(context /*, loggingFlags*/);
+        }
+
+        @Override
+        Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
+            byte[] carrierDataReference = "nfc".getBytes(StandardCharsets.UTF_8);
+
+            // This is defined by ISO 18013-5 8.2.2.2 Alternative Carrier Record for device
+            // retrieval using NFC.
+            //
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            baos.write(0x01);  // Version
+            encodeInt(0x01, commandDataFieldMaxLength, baos);
+            encodeInt(0x02, responseDataFieldMaxLength, baos);
+            byte[] oobData = baos.toByteArray();
+
+            NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
                 "iso.org:18013:nfc".getBytes(StandardCharsets.UTF_8),
                 carrierDataReference,
                 oobData);
 
-        // From 7.1 Alternative Carrier Record
-        //
-        baos = new ByteArrayOutputStream();
-        baos.write(0x01); // CPS: active
-        baos.write(carrierDataReference.length); // Length of carrier data reference
-        try {
-            baos.write(carrierDataReference);
-        } catch (IOException e) {
-            reportError(e);
-            return null;
-        }
-        baos.write(0x01); // Number of auxiliary references
-        byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
-        baos.write(auxReference.length);  // Length of auxiliary reference 0 data
-        baos.write(auxReference, 0, auxReference.length);
-        byte[] acRecordPayload = baos.toByteArray();
+            // From 7.1 Alternative Carrier Record
+            //
+            baos = new ByteArrayOutputStream();
+            baos.write(0x01); // CPS: active
+            baos.write(carrierDataReference.length); // Length of carrier data reference
+            try {
+                baos.write(carrierDataReference);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+            baos.write(0x01); // Number of auxiliary references
+            byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+            baos.write(auxReference.length);  // Length of auxiliary reference 0 data
+            baos.write(auxReference, 0, auxReference.length);
+            byte[] acRecordPayload = baos.toByteArray();
 
-        return new Pair<>(record, acRecordPayload);
+            return new Pair<>(record, acRecordPayload);
+        }
+
+        @Override
+        void addDeviceRetrievalMethodsEntry(ArrayBuilder<CborBuilder> arrayBuilder,
+            List<DataRetrievalAddress> listeningAddresses) {
+            arrayBuilder.addArray()
+                .add(DEVICE_RETRIEVAL_METHOD_TYPE)
+                .add(DEVICE_RETRIEVAL_METHOD_VERSION)
+                .addMap()
+                .put(RETRIEVAL_OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH, commandDataFieldMaxLength)
+                .put(RETRIEVAL_OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH,
+                    responseDataFieldMaxLength)
+                .end()
+                .end();
+        }
+
+        @Override
+        public @NonNull String toString() {
+            return "nfc:cmd_max_length=" + commandDataFieldMaxLength
+                + ":resp_max_length=" + responseDataFieldMaxLength;
+        }
     }
 
-    // Returns DeviceRetrievalMethod CBOR.
-    //
-    public static @Nullable byte[] parseNdefRecord(@NonNull NdefRecord record) {
-        boolean centralClient = false;
-        boolean peripheral = false;
-        UUID uuid = null;
-        boolean gotLeRole = false;
-        boolean gotUuid = false;
-
-        // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
-        //
+    public static @Nullable List<DataRetrievalAddress> parseNdefRecord(@NonNull NdefRecord record) {
         ByteBuffer payload = ByteBuffer.wrap(record.getPayload()).order(ByteOrder.LITTLE_ENDIAN);
         int version = payload.get();
         if (version != 0x01) {
             Log.w(TAG, "Expected version 0x01, found " + version);
             return null;
         }
-
-        NfcOptions options = new NfcOptions();
 
         int cmdLen = payload.get() & 0xff;
         int cmdType = payload.get() & 0xff;
@@ -173,10 +194,11 @@ public class DataTransportNfc extends DataTransport {
             Log.w(TAG, "expected cmdLen in range 2-3, got " + cmdLen);
             return null;
         }
-        options.commandDataFieldMaxLength = 0;
+
+        int commandDataFieldMaxLength = 0;
         for (int n = 0; n < cmdLen - 1; n++) {
-            options.commandDataFieldMaxLength *= 256;
-            options.commandDataFieldMaxLength += payload.get() & 0xff;
+            commandDataFieldMaxLength *= 256;
+            commandDataFieldMaxLength += payload.get() & 0xff;
         }
 
         int rspLen = payload.get() & 0xff;
@@ -189,43 +211,46 @@ public class DataTransportNfc extends DataTransport {
             Log.w(TAG, "expected rspLen in range 2-4, got " + rspLen);
             return null;
         }
-        options.responseDataFieldMaxLength = 0;
+
+        int responseDataFieldMaxLength = 0;
         for (int n = 0; n < rspLen - 1; n++) {
-            options.responseDataFieldMaxLength *= 256;
-            options.responseDataFieldMaxLength += payload.get() & 0xff;
+            responseDataFieldMaxLength *= 256;
+            responseDataFieldMaxLength += payload.get() & 0xff;
         }
 
-        return buildDeviceRetrievalMethod(options);
+        List<DataRetrievalAddress> addresses = new ArrayList<>();
+        addresses.add(new DataRetrievalAddressNfc(commandDataFieldMaxLength,
+            responseDataFieldMaxLength));
+        return addresses;
     }
 
+    static public @Nullable
+    List<DataRetrievalAddress> parseDeviceRetrievalMethod2(int version, DataItem[] items) {
+        if (version > DEVICE_RETRIEVAL_METHOD_VERSION) {
+            Log.w(TAG, "Unexpected version " + version + " for retrieval method");
+            return null;
+        }
+        if (items.length < 3 || !(items[2] instanceof Map)) {
+            Log.w(TAG, "Item 3 in device retrieval array is not a map");
+        }
+        Map options = ((Map) items[2]);
 
-    private NfcOptions parseDeviceRetrievalMethod(byte[] encodedDeviceRetrievalMethod) {
-        DataItem d = Util.cborDecode(encodedDeviceRetrievalMethod);
-        if (!(d instanceof Array)) {
-            throw new IllegalArgumentException("Given CBOR is not an array");
-        }
-        DataItem[] items = ((Array) d).getDataItems().toArray(new DataItem[0]);
-        if (items.length != 3) {
-            throw new IllegalArgumentException("Expected three elements, found " + items.length);
-        }
-        if (!(items[0] instanceof Number)
-                || !(items[1] instanceof Number)
-                || !(items[2] instanceof Map)) {
-            throw new IllegalArgumentException("Items not of required type");
-        }
-        int type = ((Number) items[0]).getValue().intValue();
-        int version = ((Number) items[1]).getValue().intValue();
-        if (type != DEVICE_RETRIEVAL_METHOD_TYPE
-                || version > DEVICE_RETRIEVAL_METHOD_VERSION) {
-            throw new IllegalArgumentException("Unexpected type or version");
-        }
-        DataItem optionsMap = items[2];
-        NfcOptions options = new NfcOptions();
-        options.commandDataFieldMaxLength = Util.cborMapExtractNumber(optionsMap,
-                RETRIEVAL_OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH);
-        options.responseDataFieldMaxLength = Util.cborMapExtractNumber(optionsMap,
-                RETRIEVAL_OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH);
-        return options;
+        int commandDataFieldMaxLength = Util.cborMapExtractNumber(options,
+            RETRIEVAL_OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH);
+        int responseDataFieldMaxLength = Util.cborMapExtractNumber(options,
+            RETRIEVAL_OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH);
+
+        List<DataRetrievalAddress> addresses = new ArrayList<>();
+        addresses.add(new DataRetrievalAddressNfc(commandDataFieldMaxLength,
+            responseDataFieldMaxLength));
+        return addresses;
+    }
+
+    private DataRetrievalAddress mListeningAddress;
+
+    @Override
+    public @NonNull DataRetrievalAddress getListeningAddress() {
+        return mListeningAddress;
     }
 
     @Override
@@ -243,8 +268,10 @@ public class DataTransportNfc extends DataTransport {
         //
         mOptions.commandDataFieldMaxLength = 0xffff;
         mOptions.responseDataFieldMaxLength = 0x10000;
-        mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(mOptions);
-        reportListeningSetupCompleted(mEncodedDeviceRetrievalMethod);
+
+        mListeningAddress = new DataRetrievalAddressNfc(0xffff, 0x10000);
+
+        reportListeningSetupCompleted(mListeningAddress);
 
         mListenerStillActive = true;
         setupListenerWritingThread();
@@ -701,9 +728,13 @@ public class DataTransportNfc extends DataTransport {
     }
 
     @Override
-    public void connect(@NonNull byte[] encodedDeviceRetrievalMethod) {
-        mEncodedDeviceRetrievalMethod = encodedDeviceRetrievalMethod;
-        mOptions = parseDeviceRetrievalMethod(encodedDeviceRetrievalMethod);
+    public void connect(@NonNull DataRetrievalAddress genericAddress) {
+        DataRetrievalAddressNfc address = (DataRetrievalAddressNfc) genericAddress;
+
+        // TODO: hack
+        mOptions = new NfcOptions();
+        mOptions.commandDataFieldMaxLength = address.commandDataFieldMaxLength;
+        mOptions.responseDataFieldMaxLength = address.responseDataFieldMaxLength;
 
         if (mIsoDep == null) {
             reportConnectionResult(new Error("NFC IsoDep not set"));
@@ -925,13 +956,6 @@ public class DataTransportNfc extends DataTransport {
         transceiverThread.start();
 
     }
-
-    @Override
-    public @NonNull
-    byte[] getEncodedDeviceRetrievalMethod() {
-        return mEncodedDeviceRetrievalMethod;
-    }
-
 
     @Override
     public void close() {

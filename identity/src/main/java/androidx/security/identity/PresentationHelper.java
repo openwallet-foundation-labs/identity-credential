@@ -44,6 +44,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 
 import co.nstant.in.cbor.CborBuilder;
@@ -334,55 +335,56 @@ public class PresentationHelper {
      * <p>When a remote verifier device connects and makes a request for documents, the
      * {@link Listener#onDeviceRequest(int, byte[])}  callback will be invoked.
      *
-     * @param dataRetrievalConfiguration the data retrieval methods to start listening on.
+     * @param dataRetrievalListenerConfiguration the data retrieval methods to start listening on.
      */
-    public void startListening(@NonNull DataRetrievalConfiguration dataRetrievalConfiguration) {
+    public void startListening(@NonNull DataRetrievalListenerConfiguration dataRetrievalListenerConfiguration) {
         // The order here matters... it will be the same order in the the array in the QR code
         // and we expect readers to pick the first one.
         //
-        if (dataRetrievalConfiguration.isBleEnabled()) {
-            if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
-                Log.i(TAG, "Adding BLE transport");
-            }
-
+        if (dataRetrievalListenerConfiguration.isBleEnabled()) {
             @BleDataRetrievalOption int opts =
-                dataRetrievalConfiguration.getBleDataRetrievalOptions();
+                dataRetrievalListenerConfiguration.getBleDataRetrievalOptions();
 
-            if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0
-                && (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE) != 0) {
-                // Note that ISO 18013-5 allows for both central client mode and peripheral server
-                // mode being active at the same time... we just don't currently support it in our
-                // APIs.
-                //
-                // Supporting simultaneous use of both these modes is _possible_ but it's messy
-                // because we'd need to merge the DeviceEngagements and NDEF records from both
-                // transports into one. For NFC engagement we'd also need to ensure the transports
-                // for both modes use the same UUID.
-                //
-                reportError(
-                    new Error("central client and peripheral mode cannot be used simultaneously"));
-                return;
-            }
+            // Use same UUID for both mdoc central client mode and mdoc peripheral server mode.
+            // Why? Because it's required by ISO 18013-5 when using NFC static handover.
+            UUID serviceUuid = UUID.randomUUID();
 
             if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
-                mTransports.add(new DataTransportBleCentralClientMode(mContext, mLoggingFlags));
+                DataTransportBleCentralClientMode bleTransport =
+                    new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
+                bleTransport.setServiceUuid(serviceUuid);
+                if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                    Log.i(TAG, "Adding BLE mdoc central client mode transport");
+                }
+                mTransports.add(bleTransport);
             }
             if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE) != 0) {
-                mTransports.add(new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags));
+                DataTransportBlePeripheralServerMode bleTransport =
+                    new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags);
+                bleTransport.setServiceUuid(serviceUuid);
+                if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+                    Log.i(TAG, "Adding BLE mdoc peripheral server mode transport");
+                }
+                mTransports.add(bleTransport);
             }
         }
-        if (dataRetrievalConfiguration.isWifiAwareEnabled()) {
+        if (dataRetrievalListenerConfiguration.isWifiAwareEnabled()) {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
                 Log.i(TAG, "Adding Wifi Aware transport");
             }
             mTransports.add(new DataTransportWifiAware(mContext));
         }
-        if (dataRetrievalConfiguration.isNfcEnabled()) {
+        if (dataRetrievalListenerConfiguration.isNfcEnabled()) {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
                 Log.i(TAG, "Adding NFC transport");
             }
             mTransports.add(new DataTransportNfc(mContext));
         }
+
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
+            Log.i(TAG, "Adding TCP transport");
+        }
+        //mTransports.add(new DataTransportTcp(mContext)); // TODO: remove
 
         byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
                 Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()))));
@@ -395,8 +397,7 @@ public class PresentationHelper {
         for (DataTransport transport : mTransports) {
             transport.setListener(new DataTransport.Listener() {
                 @Override
-                public void onListeningSetupCompleted(
-                        @Nullable byte[] encodedDeviceRetrievalMethod) {
+                public void onListeningSetupCompleted(@NonNull DataRetrievalAddress address) {
                     if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
                         Log.i(TAG, "onListeningSetupCompleted for " + transport);
                     }
@@ -570,15 +571,22 @@ public class PresentationHelper {
         if ((mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0) {
             Log.i(TAG, "All transports are now set up");
         }
-        ArrayList<byte[]> deviceRetrievalMethods = new ArrayList<>();
+
+        // Calculate DeviceEngagement and Handover for QR code...
+        //
+        List<DataRetrievalAddress> listeningAddresses = new ArrayList<>();
         for (DataTransport transport : mTransports) {
-            byte[] encodedDeviceRetrievalMethod = transport.getEncodedDeviceRetrievalMethod();
-            if (encodedDeviceRetrievalMethod != null) {
-                deviceRetrievalMethods.add(encodedDeviceRetrievalMethod);
-            }
+            listeningAddresses.add(transport.getListeningAddress());
         }
-        mEncodedDeviceEngagement = generateDeviceEngagement(deviceRetrievalMethods);
+        mEncodedDeviceEngagement = generateDeviceEngagement(listeningAddresses);
         mEncodedHandover = Util.cborEncode(SimpleValue.NULL);
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_DEVICE_ENGAGEMENT) != 0) {
+            Log.d(TAG, "QR DE: " + Util.toHex(mEncodedDeviceEngagement));
+            Log.d(TAG, "QR handover: " + Util.toHex(mEncodedHandover));
+        }
+
+        // Calculate DeviceEngagement and Handover for NFC static handover...
+        //
         mEncodedDeviceEngagementForNfc = generateDeviceEngagement(null);
         mEncodedHandoverForNfc = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -681,7 +689,7 @@ public class PresentationHelper {
     // If deviceRetrievalMethods is null, it's for NFC
     //
     private @NonNull
-    byte[] generateDeviceEngagement(@Nullable Collection<byte[]> deviceRetrievalMethods) {
+    byte[] generateDeviceEngagement(@Nullable List<DataRetrievalAddress> listeningAddresses) {
 
         DataItem eDeviceKeyBytes = Util.cborBuildTaggedByteString(
                 Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic())));
@@ -694,12 +702,11 @@ public class PresentationHelper {
                 .build().get(0);
 
         DataItem deviceRetrievalMethodsDataItem = null;
-        if (deviceRetrievalMethods != null) {
+        if (listeningAddresses != null) {
             CborBuilder deviceRetrievalMethodsBuilder = new CborBuilder();
             ArrayBuilder<CborBuilder> arrayBuilder = deviceRetrievalMethodsBuilder.addArray();
-            for (byte[] encodedDeviceRetrievalMethod : deviceRetrievalMethods) {
-                DataItem deviceRetrievalMethod = Util.cborDecode(encodedDeviceRetrievalMethod);
-                arrayBuilder.add(deviceRetrievalMethod);
+            for (DataRetrievalAddress address : listeningAddresses) {
+                address.addDeviceRetrievalMethodsEntry(arrayBuilder, listeningAddresses);
             }
             arrayBuilder.end();
             deviceRetrievalMethodsDataItem = deviceRetrievalMethodsBuilder.build().get(0);
@@ -869,23 +876,34 @@ public class PresentationHelper {
         return hsPayload;
     }
 
+    // Returns the bytes of the Handover Select message...
+    //
     private @NonNull byte[] nfcCalculateHandover() {
         Collection<NdefRecord> carrierConfigurationRecords = new ArrayList<>();
         List<byte[]> alternativeCarrierRecords = new ArrayList<>();
 
-        for (DataTransport t : mTransports) {
-            Pair<NdefRecord, byte[]> records = t.getNdefRecords();
+        List<DataRetrievalAddress> listeningAddresses = new ArrayList<>();
+        for (DataTransport transport : mTransports) {
+            listeningAddresses.add(transport.getListeningAddress());
+        }
+        for (DataRetrievalAddress address : listeningAddresses) {
+
+            Pair<NdefRecord, byte[]> records = address.createNdefRecords(listeningAddresses);
             if (records != null) {
                 if ((mLoggingFlags & Constants.LOGGING_FLAG_DEVICE_ENGAGEMENT) != 0) {
                     Log.i(TAG,
-                        "Transport " + t + ": alternativeCarrierRecord: " + Util
-                            .toHex(records.second)
-                            + " carrierConfigurationRecord: " + Util
-                            .toHex(records.first.getPayload()));
+                        "Address " + address + ": alternativeCarrierRecord: "
+                            + Util.toHex(records.second) + " carrierConfigurationRecord: "
+                            + Util.toHex(records.first.getPayload()));
                 }
                 alternativeCarrierRecords.add(records.second);
                 carrierConfigurationRecords.add(records.first);
+            } else {
+                if ((mLoggingFlags & Constants.LOGGING_FLAG_DEVICE_ENGAGEMENT) != 0) {
+                    Log.i(TAG, "Address " + address + " yielded no NDEF records");
+                }
             }
+
         }
 
         NdefRecord[] arrayOfRecords = new NdefRecord[carrierConfigurationRecords.size() + 2];
@@ -1052,7 +1070,7 @@ public class PresentationHelper {
     /**
      * Stops the presentation and shuts down all transports used and stops listening on
      * transports previously brought into a listening state using
-     * {@link #startListening(DataRetrievalConfiguration)}.
+     * {@link #startListening(DataRetrievalListenerConfiguration)}.
      *
      * <p>If connected to a mdoc verifier also sends a session termination message prior to
      * disconnecting if applicable. See {@link #setSendSessionTerminationMessage(boolean)} and

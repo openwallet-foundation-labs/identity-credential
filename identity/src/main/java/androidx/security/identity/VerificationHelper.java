@@ -34,7 +34,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import androidx.security.identity.Constants.LoggingFlag;
-import androidx.security.identity.DataTransportBle.BleOptions;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -168,7 +167,7 @@ public class VerificationHelper {
      * <p>This method parses the QR code device engagement.  If a valid device engagement is
      * received the {@link Listener#onDeviceEngagementReceived(List)} will be called.
      *
-     * This method must be called before {@link #connect(byte[])}.
+     * <p>This method must be called before {@link #connect(DataRetrievalAddress)}.
      *
      * @param qrDeviceEngagement text form qrCode device engagement
      * @return {@code true} if parsing succeeded, {@code false} otherwise.
@@ -189,10 +188,29 @@ public class VerificationHelper {
                         Util.extractDeviceRetrievalMethods(
                                 encodedDeviceEngagement);
 
-                if (!readerAvailableDeviceRetrievalMethods.isEmpty()) {
-                    reportDeviceEngagementReceived(readerAvailableDeviceRetrievalMethods);
+                List<DataRetrievalAddress> addresses = new ArrayList<>();
+                for (byte[] deviceRetrievalMethod : readerAvailableDeviceRetrievalMethods) {
+                    List<DataRetrievalAddress> addressesFromMethod =
+                        DataTransport.parseDeviceRetrievalMethod(deviceRetrievalMethod);
+                    if (addressesFromMethod == null) {
+                        Log.w(TAG, "Ignoring unknown device retrieval method with payload "
+                            + Util.toHex(deviceRetrievalMethod));
+                    } else {
+                        addresses.addAll(addressesFromMethod);
+                    }
+                }
+                for (DataRetrievalAddress address : addresses) {
+                    Log.i(TAG, "Have address " + address);
+                }
+                if (!addresses.isEmpty()) {
+                    reportDeviceEngagementReceived(addresses);
                     return;
                 }
+
+                //if (!readerAvailableDeviceRetrievalMethods.isEmpty()) {
+                //    reportDeviceEngagementReceived(readerAvailableDeviceRetrievalMethods);
+                //    return;
+                //}
             }
         }
         reportError(new IllegalArgumentException("Invalid QR Code device engagement text."));
@@ -210,6 +228,7 @@ public class VerificationHelper {
         handoverSelectMessage = m.toByteArray();
         Log.d(TAG, "In decodeNdefTag, handoverSelectMessage: " + Util.toHex(m.toByteArray()));
 
+        List<DataRetrievalAddress> addresses = new ArrayList<>();
         for (NdefRecord r : m.getRecords()) {
             Log.d(TAG, " record: " + Util.toHex(r.getPayload()));
 
@@ -254,62 +273,25 @@ public class VerificationHelper {
                 Log.d(TAG, "Woot, got DE: " + Util.toHex(encodedDeviceEngagement));
             }
 
-            // BLE Carrier Configuration record
+            // This parses the varies carrier specific NDEF records, see
+            // DataTransport.parseNdefRecord() for details.
             //
-            if (r.getTnf() == 0x02
-                    && Arrays.equals(r.getType(),
-                    "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8))
-                    && Arrays.equals(r.getId(), "0".getBytes(StandardCharsets.UTF_8))) {
-                Log.d(TAG, "Woot, got BLE OOB " + Util.toHex(r.getPayload()));
-                byte[] deviceRetrievalMethod = DataTransportBle.parseNdefRecord(r);
-                if (deviceRetrievalMethod != null) {
-                    Log.d(TAG, "WOOT we have a BLE DRM!");
-                    deviceRetrievalMethods.add(deviceRetrievalMethod);
+            if (r.getTnf() == 2) {
+                List<DataRetrievalAddress> addressesFromMethod = DataTransport.parseNdefRecord(r);
+                if (addressesFromMethod != null) {
+                    addresses.addAll(addressesFromMethod);
+                } else {
+                    Log.w(TAG, "Ignoring NdefRecord: " + r);
                 }
             }
 
-            // Wifi Aware Carrier Configuration record
-            //
-            if (r.getTnf() == 0x02
-                    && Arrays.equals(r.getType(),
-                    "application/vnd.wfa.nan".getBytes(StandardCharsets.UTF_8))
-                    && Arrays.equals(r.getId(), "W".getBytes(StandardCharsets.UTF_8))) {
-                Log.d(TAG, "Woot, got Wifi-Aware OOB " + Util.toHex(r.getPayload()));
-                byte[] deviceRetrievalMethod = DataTransportWifiAware.parseNdefRecord(r);
-                if (deviceRetrievalMethod != null) {
-                    Log.d(TAG, "WOOT we have a Wifi-Aware DRM!");
-                    deviceRetrievalMethods.add(deviceRetrievalMethod);
-                }
-            }
-
-            // NFC Carrier Configuration record
-            //
-            if (r.getTnf() == 0x02
-                    && Arrays.equals(r.getType(),
-                    "iso.org:18013:nfc".getBytes(StandardCharsets.UTF_8))
-                    && Arrays.equals(r.getId(), "nfc".getBytes(StandardCharsets.UTF_8))) {
-                Log.d(TAG, "Woot, got NFC OOB " + Util.toHex(r.getPayload()));
-                byte[] deviceRetrievalMethod = DataTransportNfc.parseNdefRecord(r);
-                if (deviceRetrievalMethod != null) {
-                    Log.d(TAG, "WOOT we have a NFC DRM!");
-                    deviceRetrievalMethods.add(deviceRetrievalMethod);
-                }
-            }
-
-            // Generic Carrier Configuration record
-            //
-            // (TODO: remove before landing b/c application/vnd.android.ic.dmr is not registered)
-            //
-            if (r.getTnf() == 0x02
-                    && Arrays.equals(r.getType(),
-                    "application/vnd.android.ic.dmr".getBytes(StandardCharsets.UTF_8))) {
-                Log.d(TAG, "Woot, got generic DRM " + Util.toHex(r.getPayload()));
-                byte[] deviceRetrievalMethod = r.getPayload();
-                deviceRetrievalMethods.add(deviceRetrievalMethod);
-            }
         }
 
-        if (validHandoverSelectMessage && deviceRetrievalMethods.size() > 0) {
+        for (DataRetrievalAddress address : addresses) {
+            Log.i(TAG, "Have address " + address);
+        }
+
+        if (validHandoverSelectMessage && !addresses.isEmpty()) {
             Log.d(TAG, "Received DE through NFC");
             byte[] readerHandover = Util.cborEncode(new CborBuilder()
                     .addArray()
@@ -318,7 +300,7 @@ public class VerificationHelper {
                     .end()
                     .build().get(0));
             setDeviceEngagement(encodedDeviceEngagement, readerHandover);
-            reportDeviceEngagementReceived(deviceRetrievalMethods);
+            reportDeviceEngagementReceived(addresses);
         } else {
             reportError(new IllegalArgumentException("Ndef tag is not valid."));
         }
@@ -336,51 +318,27 @@ public class VerificationHelper {
     }
 
     /**
-     * Establishes connection to remote mdoc using the given <code>deviceRetrievalMethod</code>.
+     * Establishes connection to remote mdoc using the given <code>DataRetrievalAddress</code>.
      *
      * <p>This method should be called after receiving the
      * {@link Listener#onDeviceEngagementReceived(List)} callback.
      *
-     * @param deviceRetrievalMethod selected transfer method
+     * @param address the address/method to connect to.
      */
-    public void connect(@NonNull byte[] deviceRetrievalMethod) {
-        switch (Util.getDeviceRetrievalMethodType(deviceRetrievalMethod)) {
-            case DataTransportBle.DEVICE_RETRIEVAL_METHOD_TYPE:
-                BleOptions bleOptions = DataTransportBle.parseDeviceRetrievalMethod(deviceRetrievalMethod);
-                // As per 18013-5 section a reader should always prefer mdoc central client mode if it's
-                // available.
-                if (bleOptions.supportsCentralClientMode) {
-                    mDataTransport = new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
-                } else if (bleOptions.supportsPeripheralServerMode) {
-                    mDataTransport = new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags);
-                } else {
-                    throw new IllegalArgumentException(
-                        "Neither mdoc central client nor mdoc peripheral server mode is true");
-                }
-                break;
-            case DataTransportWifiAware.DEVICE_RETRIEVAL_METHOD_TYPE:
-                mDataTransport = new DataTransportWifiAware(mContext);
-                break;
-            case DataTransportNfc.DEVICE_RETRIEVAL_METHOD_TYPE:
-                mDataTransport = new DataTransportNfc(mContext);
-                if (mNfcIsoDep == null) {
-                    Log.e(TAG, "IsoDep is null for NFC transport");
-                    throw new IllegalArgumentException("IsoDep is null for NFC transport");
-                }
-                // TODO: remove, see comment in DataTransportNfc.java
-                ((DataTransportNfc) mDataTransport).setIsoDep(mNfcIsoDep);
-                break;
-            case DataTransportTcp.DEVICE_RETRIEVAL_METHOD_TYPE:
-                mDataTransport = new DataTransportTcp(mContext);
-                break;
-            default:
-                Log.e(TAG, "Unsupported Transport Selected: " + deviceRetrievalMethod);
-                throw new IllegalArgumentException("Unsupported Transport Selected");
+    public void connect(@NonNull DataRetrievalAddress address) {
+
+        mDataTransport = address.getDataTransport(mContext, mLoggingFlags);
+        if (mDataTransport instanceof DataTransportNfc) {
+            if (mNfcIsoDep == null) {
+                Log.e(TAG, "IsoDep is null for NFC transport");
+                throw new IllegalArgumentException("IsoDep is null for NFC transport");
+            }
+            ((DataTransportNfc) mDataTransport).setIsoDep(mNfcIsoDep);
         }
 
         mDataTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable byte[] encodedDeviceRetrievalMethod) {
+            public void onListeningSetupCompleted(@NonNull DataRetrievalAddress address) {
                 Log.d(TAG, "onListeningSetupCompleted for " + mDataTransport);
             }
 
@@ -483,7 +441,7 @@ public class VerificationHelper {
             DataItem eDeviceKeyBytesDataItem = Util.cborMapExtractArray(deDataItem, 1).get(1);
             byte[] encodedEDeviceKeyBytes = Util.cborEncode(eDeviceKeyBytesDataItem);
             mDataTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
-            mDataTransport.connect(deviceRetrievalMethod);
+            mDataTransport.connect(address);
         } catch (Exception e) {
             Log.e(TAG, "Error connecting", e);
             reportError(e);
@@ -512,11 +470,10 @@ public class VerificationHelper {
         }
     }
 
-    void reportDeviceEngagementReceived(@NonNull List<byte[]> deviceRetrievalMethods) {
+    void reportDeviceEngagementReceived(@NonNull List<DataRetrievalAddress> addresses) {
         if (mListener != null) {
             mDeviceResponseListenerExecutor.execute(
-                    () -> mListener.onDeviceEngagementReceived(
-                            deviceRetrievalMethods));
+                    () -> mListener.onDeviceEngagementReceived(addresses));
         }
     }
 
@@ -695,12 +652,9 @@ public class VerificationHelper {
          *
          * <p>This is called either in response to {@link #setDeviceEngagementFromQrCode(String)}
          * or as a result of a NFC tap. The application should call
-         * {@link #connect(byte[])} in response to this callback.
-         *
-         * TODO: add parameter "List<byte[]> alternativeCarrierConfigurations"
-         *  and also similar in connect().
+         * {@link #connect(DataRetrievalAddress)} in response to this callback.
          */
-        void onDeviceEngagementReceived(@NonNull List<byte[]> deviceRetrievalMethods);
+        void onDeviceEngagementReceived(@NonNull List<DataRetrievalAddress> addresses);
 
         /**
          * Called when connected to a remote mdoc device.

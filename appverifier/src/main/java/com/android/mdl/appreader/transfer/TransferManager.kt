@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.security.identity.DataRetrievalAddress
 import androidx.security.identity.DeviceRequestGenerator
 import androidx.security.identity.DeviceResponseParser
 import androidx.security.identity.VerificationHelper
@@ -37,13 +38,13 @@ class TransferManager private constructor(private val context: Context) {
     }
 
 
-    var deviceRetrievalMethod: ByteArray? = null
+    var mdocAddress: DataRetrievalAddress? = null
         private set
     private var hasStarted = false
     var responseBytes: ByteArray? = null
         private set
     private var verification: VerificationHelper? = null
-    var availableTransferMethods: Collection<ByteArray>? = null
+    var availableMdocAddresses: Collection<DataRetrievalAddress>? = null
         private set
 
     private var transferStatusLd = MutableLiveData<TransferStatus>()
@@ -65,12 +66,12 @@ class TransferManager private constructor(private val context: Context) {
         verification?.verificationBegin()
     }
 
-    fun setAvailableTransferMethods(availableTransferMethods: Collection<ByteArray>) {
-        this.availableTransferMethods = availableTransferMethods
+    fun setAvailableTransferMethods(availableMdocAddresses: Collection<DataRetrievalAddress>) {
+        this.availableMdocAddresses = availableMdocAddresses
         // Select the first method as default, let the user select other transfer method
         // if there are more than one
-        if (availableTransferMethods.isNotEmpty()) {
-            this.deviceRetrievalMethod = availableTransferMethods.first()
+        if (availableMdocAddresses.isNotEmpty()) {
+            this.mdocAddress = availableMdocAddresses.first()
         }
     }
 
@@ -81,12 +82,12 @@ class TransferManager private constructor(private val context: Context) {
         if (verification == null)
             throw IllegalStateException("It is necessary to start a new engagement.")
 
-        if (deviceRetrievalMethod == null)
-            throw IllegalStateException("No retrieval method select.")
+        if (mdocAddress == null)
+            throw IllegalStateException("No mdoc address selected.")
 
         // Start connection
         verification?.let {
-            deviceRetrievalMethod?.let { dr ->
+            mdocAddress?.let { dr ->
                 it.connect(dr)
             }
             hasStarted = true
@@ -112,8 +113,8 @@ class TransferManager private constructor(private val context: Context) {
 
 
     private val responseListener = object : VerificationHelper.Listener {
-        override fun onDeviceEngagementReceived(deviceRetrievalMethods: MutableList<ByteArray>) {
-            setAvailableTransferMethods(deviceRetrievalMethods)
+        override fun onDeviceEngagementReceived(addresses: MutableList<DataRetrievalAddress>) {
+            setAvailableTransferMethods(addresses)
             transferStatusLd.value = TransferStatus.ENGAGED
         }
 
@@ -181,8 +182,8 @@ class TransferManager private constructor(private val context: Context) {
         sendRequest(requestDocumentList)
     }
 
-    fun setDeviceRetrievalMethod(deviceRetrievalMethod: ByteArray) {
-        this.deviceRetrievalMethod = deviceRetrievalMethod
+    fun setMdocAddress(address: DataRetrievalAddress) {
+        this.mdocAddress = address
     }
 
     fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {

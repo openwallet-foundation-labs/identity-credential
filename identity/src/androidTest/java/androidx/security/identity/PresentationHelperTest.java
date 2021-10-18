@@ -255,7 +255,7 @@ public class PresentationHelperTest {
                 }, executor);
 
         // Use empty data retrieval configuration (we already added TCP transport above)
-        presentation.startListening(new DataRetrievalConfiguration.Builder().build());
+        presentation.startListening(new DataRetrievalListenerConfiguration.Builder().build());
         Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
         byte[] encodedDeviceEngagement = presentation.getDeviceEngagementForQrCodeRaw();
 
@@ -277,7 +277,7 @@ public class PresentationHelperTest {
                 OptionalInt.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable byte[] encodedDeviceRetrievalMethod) {
+            public void onListeningSetupCompleted(@NonNull DataRetrievalAddress address) {
             }
 
             @Override
@@ -342,7 +342,7 @@ public class PresentationHelperTest {
             }
         }, executor);
 
-        verifierTransport.connect(proverTransport.getEncodedDeviceRetrievalMethod());
+        verifierTransport.connect(proverTransport.getListeningAddress());
         Assert.assertTrue(condVarDeviceConnecting.block(5000));
         Assert.assertTrue(condVarDeviceConnected.block(5000));
         verifierTransport.sendMessage(sessionEstablishment);
@@ -418,7 +418,7 @@ public class PresentationHelperTest {
 
                 }, executor);
         // Use empty data retrieval configuration (we already added TCP transport above)
-        presentation.startListening(new DataRetrievalConfiguration.Builder().build());
+        presentation.startListening(new DataRetrievalListenerConfiguration.Builder().build());
         Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
         byte[] encodedDeviceEngagement = presentation.getDeviceEngagementForQrCodeRaw();
 
@@ -440,7 +440,7 @@ public class PresentationHelperTest {
                 OptionalInt.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable byte[] encodedDeviceRetrievalMethod) {
+            public void onListeningSetupCompleted(@NonNull DataRetrievalAddress address) {
             }
 
             @Override
@@ -477,7 +477,7 @@ public class PresentationHelperTest {
             }
         }, executor);
 
-        verifierTransport.connect(proverTransport.getEncodedDeviceRetrievalMethod());
+        verifierTransport.connect(proverTransport.getListeningAddress());
         Assert.assertTrue(condVarDeviceConnecting.block(5000));
         Assert.assertTrue(condVarDeviceConnected.block(5000));
         verifierTransport.sendMessage(sessionEstablishment);

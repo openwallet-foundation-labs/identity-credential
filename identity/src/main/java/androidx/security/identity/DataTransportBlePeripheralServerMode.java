@@ -56,7 +56,6 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
-    byte[] mEncodedDeviceRetrievalMethod;
     private GattServer mGattServer;
     GattClient mGattClient;
     BluetoothLeScanner mScanner;
@@ -74,10 +73,15 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
     }
 
+    private DataRetrievalAddress mListeningAddress;
+
     @Override
-    public @Nullable
-    Pair<NdefRecord, byte[]> getNdefRecords() {
-        return buildNdefRecords(false, true, mServiceUuid);
+    public @NonNull DataRetrievalAddress getListeningAddress() {
+        return mListeningAddress;
+    }
+
+    public void setServiceUuid(@NonNull UUID serviceUuid) {
+        mServiceUuid = serviceUuid;
     }
 
     @Override
@@ -91,17 +95,11 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
             (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
         BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
 
-        String macAddress = bluetoothAdapter.getAddress();
-        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
-            Log.i(TAG, "MAC address to convey in DE: " + macAddress);
+        if (mServiceUuid == null) {
+            mServiceUuid = UUID.randomUUID();
         }
 
-        BleOptions options = new BleOptions();
-
-        mServiceUuid = UUID.randomUUID();
-
-        options.supportsPeripheralServerMode = true;
-        options.peripheralServerModeUuid = uuidToBytes(mServiceUuid);
+        mListeningAddress = new DataRetrievalAddressBlePeripheralServerMode(mServiceUuid);
 
         // TODO: It would be nice if we got get the MAC address that will be assigned to
         //  this advertisement so we can send it to the mDL reader, out of band. Android
@@ -109,8 +107,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         //  added without violating the security/privacy goals behind removing identifiers.
         //
 
-        mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(options);
-        reportListeningSetupCompleted(mEncodedDeviceRetrievalMethod);
+        reportListeningSetupCompleted(mListeningAddress);
 
         // TODO: Check if BLE is enabled and error out if not so...
 
@@ -193,19 +190,19 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         }
     };
 
-
     @Override
-    public void connect(@NonNull byte[] encodedDeviceRetrievalMethod) {
+    public void connect(@NonNull DataRetrievalAddress genericAddress) {
+        DataRetrievalAddressBlePeripheralServerMode address =
+            (DataRetrievalAddressBlePeripheralServerMode) genericAddress;
+
+        // TODO: Check if BLE is enabled and error out if not so...
+
         if (mEncodedEDeviceKeyBytes == null) {
             reportError(new Error("EDeviceKeyBytes not set"));
             return;
         }
 
-        // TODO: Check if BLE is enabled and error out if not so...
-
-        BleOptions options = parseDeviceRetrievalMethod(encodedDeviceRetrievalMethod);
-
-        mServiceUuid = uuidFromBytes(options.peripheralServerModeUuid);
+        mServiceUuid = address.uuid;
 
         // Start scanning...
         mBluetoothManager = (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
@@ -343,11 +340,5 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
         return true;
-    }
-
-    @Override
-    public @NonNull
-    byte[] getEncodedDeviceRetrievalMethod() {
-        return mEncodedDeviceRetrievalMethod;
     }
 }

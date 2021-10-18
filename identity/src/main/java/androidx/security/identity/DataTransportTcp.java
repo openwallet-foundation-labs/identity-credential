@@ -20,11 +20,14 @@ import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.nfc.NdefRecord;
 import android.text.format.Formatter;
+import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import androidx.security.identity.Constants.LoggingFlag;
+import co.nstant.in.cbor.builder.ArrayBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,6 +38,8 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
@@ -56,7 +61,6 @@ public class DataTransportTcp extends DataTransport {
     private static final String TAG = "DataTransportTcp";
     Socket mSocket;
     BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
-    byte[] mEncodedDeviceRetrievalMethod;
     ServerSocket mServerSocket = null;
 
     public DataTransportTcp(@NonNull Context context) {
@@ -73,62 +77,92 @@ public class DataTransportTcp extends DataTransport {
         // Not used.
     }
 
-    // (TODO: remove before landing b/c application/vnd.android.ic.dmr is not registered)
-    //
-    @Override
-    public @Nullable
-    Pair<NdefRecord, byte[]> getNdefRecords() {
-        byte[] reference = String.format("%d", DEVICE_RETRIEVAL_METHOD_TYPE)
+    static class DataRetrievalAddressTcp extends DataRetrievalAddress {
+        DataRetrievalAddressTcp(String host, int port) {
+            this.host = host;
+            this.port = port;
+        }
+
+        String host;
+        int port;
+
+        @Override
+        @NonNull DataTransport getDataTransport(
+            @NonNull Context context, @LoggingFlag int loggingFlags) {
+            return new DataTransportTcp(context /*, loggingFlags*/);
+        }
+
+        @Override
+        Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
+            byte[] reference = String.format("%d", DEVICE_RETRIEVAL_METHOD_TYPE)
                 .getBytes(StandardCharsets.UTF_8);
-        NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
+            NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
                 "application/vnd.android.ic.dmr".getBytes(StandardCharsets.UTF_8),
                 reference,
-                mEncodedDeviceRetrievalMethod);
+                buildDeviceRetrievalMethod(host, port));
 
-        // From 7.1 Alternative Carrier Record
-        //
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(0x01); // CPS: active
-        baos.write(reference.length); // Length of carrier data reference ("0")
-        try {
-            baos.write(reference);
-        } catch (IOException e) {
-            reportError(e);
-            return null;
+            // From 7.1 Alternative Carrier Record
+            //
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            baos.write(0x01); // CPS: active
+            baos.write(reference.length); // Length of carrier data reference ("0")
+            try {
+                baos.write(reference);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+            baos.write(0x01); // Number of auxiliary references
+            byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+            baos.write(auxReference.length);
+            baos.write(auxReference, 0, auxReference.length);
+            byte[] acRecordPayload = baos.toByteArray();
+
+            return new Pair<>(record, acRecordPayload);
         }
-        baos.write(0x01); // Number of auxiliary references
-        baos.write(0x04); // Length of auxiliary reference 0 data ("mdoc");
-        byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
-        baos.write(auxReference.length);
-        baos.write(auxReference, 0, auxReference.length);
-        byte[] acRecordPayload = baos.toByteArray();
 
-        return new Pair<>(record, acRecordPayload);
+        @Override
+        void addDeviceRetrievalMethodsEntry(ArrayBuilder<CborBuilder> arrayBuilder,
+            List<DataRetrievalAddress> listeningAddresses) {
+            arrayBuilder.addArray()
+                .add(DEVICE_RETRIEVAL_METHOD_TYPE)
+                .add(DEVICE_RETRIEVAL_METHOD_VERSION)
+                .addMap()
+                .put(RETRIEVAL_OPTION_KEY_ADDRESS, host)
+                .put(RETRIEVAL_OPTION_KEY_PORT, port)
+                .end()
+                .end();
+        }
+
+        @Override
+        public @NonNull String toString() {
+            return "tcp:host=" + host + ":port=" + port;
+        }
     }
 
-    private Pair<String, Integer> parseDeviceRetrievalMethod(byte[] encodedDeviceRetrievalMethod) {
-        DataItem d = Util.cborDecode(encodedDeviceRetrievalMethod);
-        if (!(d instanceof Array)) {
-            throw new IllegalArgumentException("Given CBOR is not an array");
+    static public @Nullable
+    List<DataRetrievalAddress> parseDeviceRetrievalMethod(int version, DataItem[] items) {
+        if (version > DEVICE_RETRIEVAL_METHOD_VERSION) {
+            Log.w(TAG, "Unexpected version " + version + " for retrieval method");
+            return null;
         }
-        DataItem[] items = ((Array) d).getDataItems().toArray(new DataItem[0]);
-        if (items.length != 3) {
-            throw new IllegalArgumentException("Expected three elements, found " + items.length);
+        if (items.length < 3 || !(items[2] instanceof Map)) {
+            Log.w(TAG, "Item 3 in device retrieval array is not a map");
         }
-        if (!(items[0] instanceof Number)
-                || !(items[1] instanceof Number)
-                || !(items[2] instanceof Map)) {
-            throw new IllegalArgumentException("Items not of required type");
-        }
-        int type = ((Number) items[0]).getValue().intValue();
-        int version = ((Number) items[1]).getValue().intValue();
-        if (type != DEVICE_RETRIEVAL_METHOD_TYPE
-                || version > DEVICE_RETRIEVAL_METHOD_VERSION) {
-            throw new IllegalArgumentException("Unexpected type or version");
-        }
-        String address = Util.cborMapExtractString(items[2], RETRIEVAL_OPTION_KEY_ADDRESS);
-        int port = Util.cborMapExtractNumber(items[2], RETRIEVAL_OPTION_KEY_PORT);
-        return Pair.create(address, port);
+        Map options = ((Map) items[2]);
+
+        String host = Util.cborMapExtractString(options, RETRIEVAL_OPTION_KEY_ADDRESS);
+        int port = Util.cborMapExtractNumber(options, RETRIEVAL_OPTION_KEY_PORT);
+
+        List<DataRetrievalAddress> addresses = new ArrayList<>();
+        addresses.add(new DataRetrievalAddressTcp(host, port));
+        return addresses;
+    }
+
+    private DataRetrievalAddressTcp mListeningAddress;
+
+    @Override
+    public @NonNull DataRetrievalAddress getListeningAddress() {
+        return mListeningAddress;
     }
 
     @Override
@@ -171,12 +205,13 @@ public class DataTransportTcp extends DataTransport {
         });
         socketServerThread.start();
 
-        mEncodedDeviceRetrievalMethod = buildDeviceRetrievalMethod(address, port);
-        reportListeningSetupCompleted(mEncodedDeviceRetrievalMethod);
+        mListeningAddress = new DataRetrievalAddressTcp(address, port);
+
+        reportListeningSetupCompleted(mListeningAddress);
     }
 
-    private byte[] buildDeviceRetrievalMethod(String address, int port) {
-        mEncodedDeviceRetrievalMethod = Util.cborEncode(new CborBuilder()
+    static byte[] buildDeviceRetrievalMethod(String address, int port) {
+        byte[] encodedDeviceRetrievalMethod = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(DEVICE_RETRIEVAL_METHOD_TYPE)
                 .add(DEVICE_RETRIEVAL_METHOD_VERSION)
@@ -186,7 +221,7 @@ public class DataTransportTcp extends DataTransport {
                 .end()
                 .end()
                 .build().get(0));
-        return mEncodedDeviceRetrievalMethod;
+        return encodedDeviceRetrievalMethod;
     }
 
     // Should be called from worker thread to handle incoming messages from the peer.
@@ -235,24 +270,21 @@ public class DataTransportTcp extends DataTransport {
     }
 
     @Override
-    public void connect(@NonNull byte[] encodedDeviceRetrievalMethod) {
-        mEncodedDeviceRetrievalMethod = encodedDeviceRetrievalMethod;
-        Pair<String, Integer> addressAndPort =
-                parseDeviceRetrievalMethod(encodedDeviceRetrievalMethod);
+    public void connect(@NonNull DataRetrievalAddress genericAddress) {
+        DataRetrievalAddressTcp address = (DataRetrievalAddressTcp) genericAddress;
 
         // This hack is here solely here to work around that the app apparently can only
         // connect to its own port using 127.0.0.1 and not IP on the Wifi interface.
         //
-        final String address =
-                addressAndPort.first.equals(getWifiIpAddress(mContext)) ? "127.0.0.1" :
-                        addressAndPort.first;
-        int port = addressAndPort.second;
+        final String ipAddress =
+                address.host.equals(getWifiIpAddress(mContext)) ? "127.0.0.1" : address.host;
+        int port = address.port;
 
         mSocket = new Socket();
         Thread socketReaderThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                SocketAddress endpoint = new InetSocketAddress(address, port);
+                SocketAddress endpoint = new InetSocketAddress(ipAddress, port);
                 try {
                     mSocket.connect(endpoint);
                 } catch (IOException e) {
@@ -274,12 +306,6 @@ public class DataTransportTcp extends DataTransport {
             }
         });
         socketReaderThread.start();
-    }
-
-    @Override
-    public @NonNull
-    byte[] getEncodedDeviceRetrievalMethod() {
-        return mEncodedDeviceRetrievalMethod;
     }
 
     void setupWritingThread() {
