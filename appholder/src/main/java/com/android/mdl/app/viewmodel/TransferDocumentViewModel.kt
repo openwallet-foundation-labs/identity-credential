@@ -100,5 +100,12 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         return null
     }
 
-    fun cancelPresentation() = transferManager.stopPresentation()
+    fun cancelPresentation(
+        sendSessionTerminationMessage: Boolean,
+        useTransportSpecificSessionTermination: Boolean
+    ) =
+        transferManager.stopPresentation(
+            sendSessionTerminationMessage,
+            useTransportSpecificSessionTermination
+        )
 }

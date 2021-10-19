@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -15,6 +16,7 @@ import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.FormatUtil
+import com.android.mdl.appreader.util.TransferStatus
 
 
 /**
@@ -36,6 +38,7 @@ class ShowDocumentFragment : Fragment() {
     // onDestroyView.
     private val binding get() = _binding!!
     private var portraitBytes: ByteArray? = null
+    private lateinit var transferManager: TransferManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -43,7 +46,7 @@ class ShowDocumentFragment : Fragment() {
     ): View {
 
         _binding = FragmentShowDocumentBinding.inflate(inflater, container, false)
-
+        transferManager = TransferManager.getInstance(requireContext())
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
 
         return binding.root
@@ -52,8 +55,6 @@ class ShowDocumentFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        val transferManager = TransferManager.getInstance(requireContext())
 
         val documents = transferManager.getDeviceResponse().documents
         binding.tvResults.text =
@@ -72,21 +73,21 @@ class ShowDocumentFragment : Fragment() {
             findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
         }
         binding.btCloseConnection.setOnClickListener {
-            TransferManager.getInstance(requireContext()).stopVerification(
+            transferManager.stopVerification(
                 sendSessionTerminationMessage = false,
                 useTransportSpecificSessionTermination = false
             )
             hideButtons()
         }
         binding.btCloseTransportSpecific.setOnClickListener {
-            TransferManager.getInstance(requireContext()).stopVerification(
+            transferManager.stopVerification(
                 sendSessionTerminationMessage = true,
                 useTransportSpecificSessionTermination = true
             )
             hideButtons()
         }
         binding.btCloseTerminationMessage.setOnClickListener {
-            TransferManager.getInstance(requireContext()).stopVerification(
+            transferManager.stopVerification(
                 sendSessionTerminationMessage = true,
                 useTransportSpecificSessionTermination = false
             )
@@ -97,6 +98,38 @@ class ShowDocumentFragment : Fragment() {
                 ShowDocumentFragmentDirections.actionShowDocumentToRequestOptions(true)
             )
         }
+        transferManager.getTransferStatus().observe(viewLifecycleOwner, {
+            when (it) {
+                TransferStatus.ENGAGED -> {
+                    Log.d(LOG_TAG, "Device engagement received.")
+                }
+                TransferStatus.CONNECTED -> {
+                    Log.d(LOG_TAG, "Device connected received.")
+                }
+                TransferStatus.RESPONSE -> {
+                    Log.d(LOG_TAG, "Device response received.")
+                }
+                TransferStatus.DISCONNECTED -> {
+                    Log.d(LOG_TAG, "Device disconnected received.")
+                    transferManager.stopVerification(
+                        sendSessionTerminationMessage = false,
+                        useTransportSpecificSessionTermination = false
+                    )
+                    hideButtons()
+                }
+                TransferStatus.ERROR -> {
+                    Toast.makeText(
+                        requireContext(), "Error with the connection.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    transferManager.stopVerification(
+                        sendSessionTerminationMessage = false,
+                        useTransportSpecificSessionTermination = false
+                    )
+                    hideButtons()
+                }
+            }
+        })
     }
 
     private fun hideButtons() {

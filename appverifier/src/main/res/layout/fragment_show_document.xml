@@ -68,6 +68,7 @@
         android:text="Close\n(Message)"
         android:textSize="4pt"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/bt_close_transport_specific"
         app:layout_constraintTop_toBottomOf="@+id/sv_document" />
 
     <Button
@@ -94,6 +95,7 @@
         android:textSize="4pt"
         app:layout_constraintBottom_toBottomOf="@+id/bt_close_termination_message"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/bt_close_transport_specific"
         app:layout_constraintTop_toTopOf="@+id/bt_close_termination_message" />
 
     <Button

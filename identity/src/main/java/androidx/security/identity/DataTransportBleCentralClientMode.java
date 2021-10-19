@@ -30,15 +30,12 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
-import android.nfc.NdefRecord;
 import android.os.ParcelUuid;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
 import androidx.security.identity.Constants.LoggingFlag;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -232,6 +229,12 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
             }
 
             @Override
+            public void onTransportSpecificSessionTermination() {
+                Log.d(TAG, "onTransportSpecificSessionTermination");
+                reportTransportSpecificSessionTermination();
+            }
+
+            @Override
             public void onMessageReceived(@NonNull byte[] data) {
                 reportMessageReceived(data);
             }
@@ -324,8 +327,11 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     @Override
     public void sendTransportSpecificTerminationMessage() {
         if (mGattServer == null) {
-            // TODO: this is wrong.. actually implement this for holder too.
-            reportError(new Error("Transport-specific termination only available for reader"));
+            if (mGattClient == null) {
+                reportError(new Error("Transport-specific termination not available"));
+                return;
+            }
+            mGattClient.sendTransportSpecificTermination();
             return;
         }
         mGattServer.sendTransportSpecificTermination();

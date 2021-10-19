@@ -31,7 +31,10 @@ class ShareDocumentViewModel(val app: Application) :
     }
 
     fun cancelPresentation() {
-        transferManager.stopPresentation()
+        transferManager.stopPresentation(
+            sendSessionTerminationMessage = true,
+            useTransportSpecificSessionTermination = false
+        )
         hasStarted = false
         message.set("Presentation canceled")
     }
