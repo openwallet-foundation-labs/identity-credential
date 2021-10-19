@@ -72,16 +72,39 @@ class ShowDocumentFragment : Fragment() {
             findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
         }
         binding.btCloseConnection.setOnClickListener {
-            TransferManager.getInstance(requireContext()).stopVerification()
-            binding.btOk.visibility = View.VISIBLE
-            binding.btCloseConnection.visibility = View.GONE
-            binding.btNewRequest.visibility = View.GONE
+            TransferManager.getInstance(requireContext()).stopVerification(
+                sendSessionTerminationMessage = false,
+                useTransportSpecificSessionTermination = false
+            )
+            hideButtons()
+        }
+        binding.btCloseTransportSpecific.setOnClickListener {
+            TransferManager.getInstance(requireContext()).stopVerification(
+                sendSessionTerminationMessage = true,
+                useTransportSpecificSessionTermination = true
+            )
+            hideButtons()
+        }
+        binding.btCloseTerminationMessage.setOnClickListener {
+            TransferManager.getInstance(requireContext()).stopVerification(
+                sendSessionTerminationMessage = true,
+                useTransportSpecificSessionTermination = false
+            )
+            hideButtons()
         }
         binding.btNewRequest.setOnClickListener {
             findNavController().navigate(
                 ShowDocumentFragmentDirections.actionShowDocumentToRequestOptions(true)
             )
         }
+    }
+
+    private fun hideButtons() {
+        binding.btOk.visibility = View.VISIBLE
+        binding.btCloseConnection.visibility = View.GONE
+        binding.btCloseTransportSpecific.visibility = View.GONE
+        binding.btCloseTerminationMessage.visibility = View.GONE
+        binding.btNewRequest.visibility = View.GONE
     }
 
     private fun formatTextResult(documents: Collection<DeviceResponseParser.Document>): String {
@@ -135,10 +158,12 @@ class ShowDocumentFragment : Fragment() {
         "<font color=red>&#x26A0;</font>"
     }
 
-
     private var callback = object : OnBackPressedCallback(true /* enabled by default */) {
         override fun handleOnBackPressed() {
-            TransferManager.getInstance(requireContext()).stopVerification()
+            TransferManager.getInstance(requireContext()).stopVerification(
+                sendSessionTerminationMessage = true,
+                useTransportSpecificSessionTermination = true
+            )
             findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
         }
     }
