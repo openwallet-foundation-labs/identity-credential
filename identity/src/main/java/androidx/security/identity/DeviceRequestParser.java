@@ -19,7 +19,11 @@ package androidx.security.identity;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import androidx.security.identity.DeviceResponseParser.Document;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SignatureException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,6 +80,10 @@ public class DeviceRequestParser {
 
     /**
      * Parses the device request.
+     *
+     * <p>This parser will successfully parse requests where the request is signed by the reader
+     * but the signature check fails. The method {@link DocumentRequest#getReaderAuthenticated()}
+     * can used to get additional information whether {@code ItemsRequest} was authenticated.
      *
      * @return a {@link DeviceRequestParser.DeviceRequest} with the parsed data.
      * @exception IllegalArgumentException if the given data isn't valid CBOR or not conforming
@@ -160,6 +168,7 @@ public class DeviceRequestParser {
                     DataItem readerAuth = ((Map) docRequestDataItem).get(new UnicodeString(
                             "readerAuth"));
                     byte[] encodedReaderAuth = null;
+                    boolean readerAuthenticated = false;
                     if (readerAuth != null) {
                         encodedReaderAuth = Util.cborEncode(readerAuth);
 
@@ -183,11 +192,9 @@ public class DeviceRequestParser {
                                         Util.cborBuildTaggedByteString(
                                                 encodedReaderAuthentication));
 
-                        if (!Util.coseSign1CheckSignature(readerAuth,
-                                readerAuthenticationBytes,  // detached content
-                                readerKey)) {
-                            throw new IllegalArgumentException("Error verifying readerAuth");
-                        }
+                        readerAuthenticated = Util.coseSign1CheckSignature(readerAuth,
+                            readerAuthenticationBytes,  // detached content
+                            readerKey);
                     }
 
                     DataItem requestInfoDataItem = ((Map) itemsRequest).get(
@@ -204,7 +211,8 @@ public class DeviceRequestParser {
 
                     String docType = Util.cborMapExtractString(itemsRequest, "docType");
                     DocumentRequest.Builder builder = new DocumentRequest.Builder(docType,
-                            encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain);
+                        encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain,
+                        readerAuthenticated);
 
                     // parse nameSpaces
                     DataItem nameSpaces = Util.cborMapExtractMap(itemsRequest, "nameSpaces");
@@ -245,14 +253,16 @@ public class DeviceRequestParser {
      */
     public static class DocumentRequest {
         DocumentRequest(@NonNull String docType, @NonNull byte[] encodedItemsRequest,
-                @Nullable java.util.Map<String, byte[]> requestInfo,
-                @Nullable byte[] encodedReaderAuth,
-                @Nullable Collection<X509Certificate> readerCertChain) {
+            @Nullable java.util.Map<String, byte[]> requestInfo,
+            @Nullable byte[] encodedReaderAuth,
+            @Nullable Collection<X509Certificate> readerCertChain,
+            boolean readerAuthenticated) {
             mDocType = docType;
             mRequestInfo = requestInfo;
             mEncodedItemsRequest = encodedItemsRequest;
             mEncodedReaderAuth = encodedReaderAuth;
             mReaderCertificateChain = readerCertChain;
+            mReaderAuthenticated = readerAuthenticated;
         }
 
         String mDocType = null;
@@ -261,6 +271,7 @@ public class DeviceRequestParser {
         byte[] mEncodedReaderAuth = null;
         java.util.Map<String, java.util.Map<String, Boolean>> mRequestMap = new LinkedHashMap<>();
         Collection<X509Certificate> mReaderCertificateChain = null;
+        boolean mReaderAuthenticated = false;
 
         /**
          * Returns the document type (commonly referred to as <code>docType</code>) in the request.
@@ -315,6 +326,28 @@ public class DeviceRequestParser {
         }
 
         /**
+         * Returns whether {@code ItemsRequest} was authenticated.
+         *
+         * <p>This returns {@code true} if and only if the {@code ItemsRequest} CBOR was
+         * signed by the leaf certificate in the X509 certificate chain presented by the
+         * reader.
+         *
+         * <p>This should only be called if the request is signed by the reader - that is, if
+         * {@link #getReaderAuth()} and {@link #getReaderCertificateChain()} both returns
+         * a value that isn't {@code null}. If this isn't the case, {@code false} is returned.
+         *
+         * <p>If {@code true} is returned it only means that the signature was well-formed,
+         * not that the key-pair used to make the signature is trusted. Applications may
+         * examine the X509 certificate chain presented by the reader to determine if they
+         * trust any of the public keys in there.
+         *
+         * @return {@link true} if {@code ItemsRequest} was authenticated, {@code false} otherwise.
+         */
+        public boolean getReaderAuthenticated() {
+            return mReaderAuthenticated;
+        }
+
+        /**
          * Gets the names of namespaces that the reader requested.
          *
          * @return Collection of names of namespaces in the request.
@@ -364,11 +397,13 @@ public class DeviceRequestParser {
             private final DeviceRequestParser.DocumentRequest mResult;
 
             Builder(@NonNull String docType, @NonNull byte[] encodedItemsRequest,
-                    java.util.Map<String, byte[]> requestInfo,
-                    @Nullable byte[] encodedReaderAuth,
-                    @Nullable Collection<X509Certificate> readerCertChain) {
+                java.util.Map<String, byte[]> requestInfo,
+                @Nullable byte[] encodedReaderAuth,
+                @Nullable Collection<X509Certificate> readerCertChain,
+                boolean readerAuthenticated) {
                 this.mResult = new DeviceRequestParser.DocumentRequest(docType,
-                        encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain);
+                        encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain,
+                    readerAuthenticated);
             }
 
             Builder addEntry(String namespaceName, String entryName, boolean intentToRetain) {

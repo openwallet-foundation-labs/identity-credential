@@ -66,6 +66,8 @@ public class DeviceRequestParserTest {
         Assert.assertArrayEquals(Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_READER_AUTH),
                 dr.getReaderAuth());
 
+        Assert.assertTrue(dr.getReaderAuthenticated());
+
         Assert.assertArrayEquals(new String[]{"org.iso.18013.5.1"}, dr.getNamespaces().toArray());
         Assert.assertEquals(6, dr.getEntryNames("org.iso.18013.5.1").size());
         Assert.assertTrue(dr.getIntentToRetain("org.iso.18013.5.1", "family_name"));
@@ -90,5 +92,55 @@ public class DeviceRequestParserTest {
         } catch (IllegalArgumentException expected) {
         }
     }
+
+    @Test
+    @SmallTest
+    public void testDeviceRequestParserWithVectorsMalformedReaderSignature() {
+        // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
+        byte[] encodedSessionTranscriptBytes = Util.fromHex(
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
+        byte[] encodedSessionTranscript = Util.cborEncode(
+            Util.cborExtractTaggedAndEncodedCbor(
+                Util.cborDecode(encodedSessionTranscriptBytes)));
+
+        // We know the COSE_Sign1 signature for reader authentication is at index 655 and
+        // starts with 1f340006... Poison that so we can check whether signature verification
+        // detects it...
+        byte[] encodedDeviceRequest = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST);
+        Assert.assertEquals((byte) 0x1f, encodedDeviceRequest[655]);
+        encodedDeviceRequest[655] = 0x1e;
+
+        DeviceRequestParser parser = new DeviceRequestParser();
+        parser.setDeviceRequest(encodedDeviceRequest);
+        parser.setSessionTranscript(encodedSessionTranscript);
+        DeviceRequestParser.DeviceRequest request = parser.parse();
+
+        Assert.assertEquals("1.0", request.getVersion());
+
+        Collection<DeviceRequestParser.DocumentRequest> docRequests = request.getDocRequests();
+        Assert.assertEquals(1, docRequests.size());
+        DeviceRequestParser.DocumentRequest dr = docRequests.iterator().next();
+
+        Assert.assertEquals("org.iso.18013.5.1.mDL", dr.getDocType());
+        Assert.assertArrayEquals(Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_ITEMS_REQUEST),
+            dr.getItemsRequest());
+
+        Collection<X509Certificate> readerCertChain = dr.getReaderCertificateChain();
+        Assert.assertEquals(1, readerCertChain.size());
+        X509Certificate readerCert = readerCertChain.iterator().next();
+        try {
+            Assert.assertArrayEquals(Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_READER_CERT),
+                readerCert.getEncoded());
+        } catch (CertificateEncodingException e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+
+        Assert.assertFalse(dr.getReaderAuthenticated());
+    }
+
+    // TODO: add tests where the reader uses non-P256 curves (e.g. Brainpool, 25519) to sign
+    //  the request and make sure this works with the API (or at least doesn't throw an
+    //  exception)
 
 }
