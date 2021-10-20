@@ -270,4 +270,9 @@ public class DeviceRequestParserTest {
 
     // TODO: add tests for Curve25519 and Curve448 curves.
 
+    // TODO: Have a request signed by an unsupported curve and make sure DeviceRequestParser
+    //   fails gracefully.. that is, should successfully parse the request message but the
+    //   getReaderAuthenticated() method should return false.
+    //
+
 }
