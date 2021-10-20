@@ -20,8 +20,10 @@ import android.security.keystore.KeyProperties;
 
 import androidx.test.filters.SmallTest;
 
+import java.security.Signature;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
@@ -102,17 +104,21 @@ public class DeviceRequestGeneratorTest {
                 "foo", Util.cborEncodeString("bar"),
                 "bar", Util.cborEncodeNumber(42));
 
+        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
+        Signature signature = Signature.getInstance("SHA256withECDSA", bcProvider);
+        signature.initSign(readerKeyPair.getPrivate());
+
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
                 .setSessionTranscript(encodedSessionTranscript)
                 .addDocumentRequest(MDL_DOCTYPE,
                         mdlItemsToRequest,
                         mdlRequestInfo,
-                        readerKeyPair.getPrivate(),
+                        signature,
                         readerCertChain)
                 .addDocumentRequest(MVR_DOCTYPE,
                         mvrItemsToRequest,
                         null,
-                        readerKeyPair.getPrivate(),
+                        signature,
                         readerCertChain)
                 .generate();
 
@@ -129,6 +135,7 @@ public class DeviceRequestGeneratorTest {
                 deviceRequest.getDocRequests().iterator();
 
         DeviceRequestParser.DocumentRequest docRequest = it.next();
+        Assert.assertTrue(docRequest.getReaderAuthenticated());
         Assert.assertEquals(MDL_DOCTYPE, docRequest.getDocType());
         Assert.assertEquals(2, docRequest.getNamespaces().size());
         Assert.assertEquals(2, docRequest.getEntryNames(MDL_NAMESPACE).size());
@@ -158,6 +165,7 @@ public class DeviceRequestGeneratorTest {
         Assert.assertArrayEquals(Util.cborEncodeNumber(42), requestInfo.get("bar"));
 
         docRequest = it.next();
+        Assert.assertTrue(docRequest.getReaderAuthenticated());
         Assert.assertEquals(MVR_DOCTYPE, docRequest.getDocType());
         Assert.assertEquals(1, docRequest.getNamespaces().size());
         Assert.assertEquals(1, docRequest.getEntryNames(MVR_NAMESPACE).size());

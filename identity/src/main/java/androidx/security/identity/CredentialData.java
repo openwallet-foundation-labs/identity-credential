@@ -555,7 +555,7 @@ class CredentialData {
             byte[] dataToSign = dtsBaos.toByteArray();
 
             signatureBytes = Util.cborEncode(Util.coseSign1Sign(key,
-                    dataToSign,
+                "SHA256withECDSA", dataToSign,
                     null,
                     null));
         } catch (CborException e) {
@@ -584,7 +584,7 @@ class CredentialData {
             byte[] dataToSign = dtsBaos.toByteArray();
 
             signatureBytes = Util.cborEncode(Util.coseSign1Sign(key,
-                    dataToSign,
+                "SHA256withECDSA", dataToSign,
                     null,
                     null));
         } catch (CborException e) {

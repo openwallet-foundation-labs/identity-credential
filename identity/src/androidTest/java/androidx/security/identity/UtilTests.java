@@ -30,6 +30,10 @@ import android.security.keystore.KeyProperties;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.MediumTest;
 
+import java.security.Signature;
+import org.bouncycastle.jce.ECNamedCurveTable;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -434,22 +438,136 @@ public class UtilTests {
     }
 
     @Test
-    public void coseSignAndVerify() throws Exception {
-        KeyPair keyPair = coseGenerateKeyPair();
+    public void coseSignAndVerify_P256() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
+            new BouncyCastleProvider());
+        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp256r1");
+        kpg.initialize(ecSpec);
+        KeyPair keyPair = kpg.generateKeyPair();
+
         byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
         byte[] detachedContent = new byte[]{};
-        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), data, detachedContent, null);
+        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
+            detachedContent, null);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
         assertArrayEquals(data, Util.coseSign1GetData(sig));
         assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
     }
 
     @Test
+    public void coseSignAndVerify_P384() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
+            new BouncyCastleProvider());
+        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp384r1");
+        kpg.initialize(ecSpec);
+        KeyPair keyPair = kpg.generateKeyPair();
+
+        byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
+        byte[] detachedContent = new byte[]{};
+        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA384withECDSA", data,
+            detachedContent, null);
+        assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
+        assertArrayEquals(data, Util.coseSign1GetData(sig));
+        assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
+    }
+
+    @Test
+    public void coseSignAndVerify_P521() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
+            new BouncyCastleProvider());
+        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp521r1");
+        kpg.initialize(ecSpec);
+        KeyPair keyPair = kpg.generateKeyPair();
+
+        byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
+        byte[] detachedContent = new byte[]{};
+        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA512withECDSA", data,
+            detachedContent, null);
+        assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
+        assertArrayEquals(data, Util.coseSign1GetData(sig));
+        assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
+    }
+
+    @Test
+    public void coseSignAndVerify_brainpoolP256r1() throws Exception {
+        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
+            bcProvider);
+        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("brainpoolP256r1");
+        kpg.initialize(ecSpec);
+        KeyPair keyPair = kpg.generateKeyPair();
+
+        byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
+        byte[] detachedContent = new byte[]{};
+
+        Signature s = Signature.getInstance("SHA256withECDSA", bcProvider);
+        s.initSign(keyPair.getPrivate());
+
+        DataItem sig = Util.coseSign1Sign(s, data, detachedContent, null);
+        assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
+        assertArrayEquals(data, Util.coseSign1GetData(sig));
+        assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
+    }
+
+    @Test
+    public void coseSignAndVerify_brainpoolP384r1() throws Exception {
+        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
+            bcProvider);
+        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("brainpoolP384r1");
+        kpg.initialize(ecSpec);
+        KeyPair keyPair = kpg.generateKeyPair();
+
+        byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
+        byte[] detachedContent = new byte[]{};
+
+        Signature s = Signature.getInstance("SHA384withECDSA", bcProvider);
+        s.initSign(keyPair.getPrivate());
+
+        DataItem sig = Util.coseSign1Sign(s, data, detachedContent, null);
+        assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
+        assertArrayEquals(data, Util.coseSign1GetData(sig));
+        assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
+    }
+
+    @Test
+    public void coseSignAndVerify_brainpoolP512r1() throws Exception {
+        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
+            bcProvider);
+        ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("brainpoolP512r1");
+        kpg.initialize(ecSpec);
+        KeyPair keyPair = kpg.generateKeyPair();
+
+        byte[] data = new byte[]{0x10, 0x11, 0x12, 0x13};
+        byte[] detachedContent = new byte[]{};
+
+        Signature s = Signature.getInstance("SHA512withECDSA", bcProvider);
+        s.initSign(keyPair.getPrivate());
+
+        DataItem sig = Util.coseSign1Sign(s, data, detachedContent, null);
+        assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
+        assertArrayEquals(data, Util.coseSign1GetData(sig));
+        assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
+    }
+
+    // TODO: add tests for Curve25519 and Curve448 curves.
+
+    @Test
     public void coseSignAndVerifyDetachedContent() throws Exception {
         KeyPair keyPair = coseGenerateKeyPair();
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
-        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), data, detachedContent, null);
+        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data, detachedContent, null);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
         assertArrayEquals(data, Util.coseSign1GetData(sig));
         assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
@@ -462,7 +580,7 @@ public class UtilTests {
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         LinkedList<X509Certificate> certs = new LinkedList<X509Certificate>();
         certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
-        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), data, detachedContent, certs);
+        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data, detachedContent, certs);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
         assertArrayEquals(data, Util.coseSign1GetData(sig));
         assertEquals(certs, Util.coseSign1GetX5Chain(sig));
@@ -477,7 +595,7 @@ public class UtilTests {
         certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
         certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
         certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
-        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), data, detachedContent, certs);
+        DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data, detachedContent, certs);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
         assertArrayEquals(data, Util.coseSign1GetData(sig));
         assertEquals(certs, Util.coseSign1GetX5Chain(sig));

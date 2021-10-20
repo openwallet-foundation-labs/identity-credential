@@ -16,8 +16,29 @@
 
 package androidx.security.identity;
 
+import android.security.keystore.KeyProperties;
+import androidx.security.identity.DeviceRequestParser.DocumentRequest;
 import androidx.test.filters.SmallTest;
 
+import java.io.ByteArrayInputStream;
+import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.Signature;
+import java.security.cert.CertificateFactory;
+import java.security.spec.ECGenParameterSpec;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.Map;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.ECNamedCurveTable;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.math.ec.ECConstants;
+import org.bouncycastle.math.ec.ECCurve;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -139,8 +160,114 @@ public class DeviceRequestParserTest {
         Assert.assertFalse(dr.getReaderAuthenticated());
     }
 
-    // TODO: add tests where the reader uses non-P256 curves (e.g. Brainpool, 25519) to sign
-    //  the request and make sure this works with the API (or at least doesn't throw an
-    //  exception)
+    private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
+    private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
+
+    void testDeviceRequestParserReaderAuthHelper(
+        String curveName, String algorithm) throws Exception {
+        byte[] encodedSessionTranscript = Util.cborEncodeBytestring(new byte[] {0x01, 0x02});
+
+        Map<String, Map<String, Boolean>> mdlItemsToRequest = Map.of(
+            MDL_NAMESPACE, Map.of("family_name", true, "portrait", false));
+
+        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC, bcProvider);
+        ECGenParameterSpec ecSpec = new ECGenParameterSpec(curveName);
+        kpg.initialize(ecSpec);
+        KeyPair readerKeyPair = kpg.generateKeyPair();
+
+        kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
+        ecSpec = new ECGenParameterSpec("prime256v1");
+        kpg.initialize(ecSpec);
+        KeyPair trustPointKeyPair = kpg.generateKeyPair();
+
+        X500Name issuer = new X500Name("CN=Some Reader Authority");
+        X500Name subject = new X500Name("CN=Some Reader Key");
+
+        // Valid from now to five years from now.
+        Date now = new Date();
+        final long kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000;
+        Date expirationDate = new Date(now.getTime() + 5 * kMilliSecsInOneYear);
+        BigInteger serial = new BigInteger("42");
+        JcaX509v3CertificateBuilder builder =
+            new JcaX509v3CertificateBuilder(issuer,
+                serial,
+                now,
+                expirationDate,
+                subject,
+                readerKeyPair.getPublic());
+
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withECDSA")
+            .build(trustPointKeyPair.getPrivate());
+        byte[] encodedCert = builder.build(signer).getEncoded();
+
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        ByteArrayInputStream bais = new ByteArrayInputStream(encodedCert);
+        X509Certificate readerCert = (X509Certificate) cf.generateCertificate(bais);
+
+        ArrayList<X509Certificate> readerCertChain = new ArrayList<>();
+        readerCertChain.add(readerCert);
+
+        Map<String, byte[]> mdlRequestInfo = Map.of(
+            "foo", Util.cborEncodeString("bar"),
+            "bar", Util.cborEncodeNumber(42));
+
+        Signature signature = Signature.getInstance(algorithm, bcProvider);
+        signature.initSign(readerKeyPair.getPrivate());
+
+        byte[] encodedDeviceRequest = new DeviceRequestGenerator()
+            .setSessionTranscript(encodedSessionTranscript)
+            .addDocumentRequest(MDL_DOCTYPE,
+                mdlItemsToRequest,
+                mdlRequestInfo,
+                signature,
+                readerCertChain)
+            .generate();
+
+        DeviceRequestParser.DeviceRequest deviceRequest = new DeviceRequestParser()
+            .setSessionTranscript(encodedSessionTranscript)
+            .setDeviceRequest(encodedDeviceRequest)
+            .parse();
+        Assert.assertEquals("1.0", deviceRequest.getVersion());
+        Collection<DeviceRequestParser.DocumentRequest> documentRequests =
+            deviceRequest.getDocRequests();
+        Iterator<DocumentRequest> it =
+            deviceRequest.getDocRequests().iterator();
+        DeviceRequestParser.DocumentRequest docRequest = it.next();
+        Assert.assertTrue(docRequest.getReaderAuthenticated());
+    }
+
+    @Test @SmallTest
+    public void testDeviceRequestParserReaderAuth_P256() throws Exception {
+        testDeviceRequestParserReaderAuthHelper("secp256r1","SHA256withECDSA");
+    }
+
+    @Test @SmallTest
+    public void testDeviceRequestParserReaderAuth_P384() throws Exception {
+        testDeviceRequestParserReaderAuthHelper("secp384r1","SHA384withECDSA");
+    }
+
+    @Test @SmallTest
+    public void testDeviceRequestParserReaderAuth_P521() throws Exception {
+        testDeviceRequestParserReaderAuthHelper("secp521r1","SHA512withECDSA");
+    }
+
+    @Test @SmallTest
+    public void testDeviceRequestParserReaderAuth_brainpoolP256r1() throws Exception {
+        testDeviceRequestParserReaderAuthHelper("brainpoolP256r1","SHA256withECDSA");
+    }
+
+    @Test @SmallTest
+    public void testDeviceRequestParserReaderAuth_brainpoolP384r1() throws Exception {
+        testDeviceRequestParserReaderAuthHelper("brainpoolP384r1","SHA384withECDSA");
+    }
+
+    @Test @SmallTest
+    public void testDeviceRequestParserReaderAuth_brainpoolP512r1() throws Exception {
+        testDeviceRequestParserReaderAuthHelper("brainpoolP512r1","SHA512withECDSA");
+    }
+
+    // TODO: add tests for Curve25519 and Curve448 curves.
 
 }

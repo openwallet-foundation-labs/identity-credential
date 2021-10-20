@@ -28,7 +28,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
+import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1OctetString;
 
 import java.io.ByteArrayInputStream;
@@ -98,6 +100,9 @@ import co.nstant.in.cbor.model.SimpleValueType;
 import co.nstant.in.cbor.model.SpecialType;
 import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
+import org.bouncycastle.asn1.ASN1Primitive;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.DERSequenceGenerator;
 
 /**
  * @hide
@@ -499,49 +504,57 @@ public class Util {
     private static final int COSE_LABEL_ALG = 1;
     private static final int COSE_LABEL_X5CHAIN = 33;  // temporary identifier
 
-    // From "COSE Algorithms" registry
+    // From RFC 8152: Table 5: ECDSA Algorithm Values
     private static final int COSE_ALG_ECDSA_256 = -7;
+    private static final int COSE_ALG_ECDSA_384 = -35;
+    private static final int COSE_ALG_ECDSA_512 = -36;
     private static final int COSE_ALG_HMAC_256_256 = 5;
 
-    private static byte[] signatureDerToCose(byte[] signature) {
-        if (signature.length > 128) {
-            throw new IllegalArgumentException(
-                    "Unexpected length " + signature.length + ", expected less than 128");
-        }
-        if (signature[0] != 0x30) {
-            throw new IllegalArgumentException("Unexpected first byte " + signature[0]
-                    + ", expected 0x30");
-        }
-        if ((signature[1] & 0x80) != 0x00) {
-            throw new IllegalArgumentException(
-                    "Unexpected second byte " + signature[1] + ", bit 7 shouldn't be set");
-        }
-        int rOffset = 2;
-        int rSize = signature[rOffset + 1];
-        byte[] rBytes = stripLeadingZeroes(
-                Arrays.copyOfRange(signature, rOffset + 2, rOffset + rSize + 2));
+    /*
+     * From RFC 8152 section 8.1 ECDSA:
+     *
+     * The signature algorithm results in a pair of integers (R, S).  These
+     * integers will be the same length as the length of the key used for
+     * the signature process.  The signature is encoded by converting the
+     * integers into byte strings of the same length as the key size.  The
+     * length is rounded up to the nearest byte and is left padded with zero
+     * bits to get to the correct length.  The two integers are then
+     * concatenated together to form a byte string that is the resulting
+     * signature.
+     */
+    private static byte[] signatureDerToCose(byte[] signature, int keySize) {
 
-        int sOffset = rOffset + 2 + rSize;
-        int sSize = signature[sOffset + 1];
-        byte[] sBytes = stripLeadingZeroes(
-                Arrays.copyOfRange(signature, sOffset + 2, sOffset + sSize + 2));
-
-        if (rBytes.length > 32) {
-            throw new IllegalArgumentException(
-                    "rBytes.length is " + rBytes.length + " which is > 32");
+        ASN1Primitive asn1;
+        try {
+            asn1 = new ASN1InputStream(new ByteArrayInputStream(signature)).readObject();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Error decoding DER signature", e);
         }
-        if (sBytes.length > 32) {
-            throw new IllegalArgumentException(
-                    "sBytes.length is " + sBytes.length + " which is > 32");
+        if (!(asn1 instanceof ASN1Sequence)) {
+            throw new IllegalArgumentException("Not a ASN1 sequence");
         }
+        ASN1Encodable[] asn1Encodables = ((ASN1Sequence) asn1).toArray();
+        if (asn1Encodables.length != 2) {
+            throw new IllegalArgumentException("Expected two items in sequence");
+        }
+        if (!(asn1Encodables[0].toASN1Primitive() instanceof ASN1Integer)) {
+            throw new IllegalArgumentException("First item is not an integer");
+        }
+        BigInteger r = ((ASN1Integer) (asn1Encodables[0].toASN1Primitive())).getValue();
+        if (!(asn1Encodables[1].toASN1Primitive() instanceof ASN1Integer)) {
+            throw new IllegalArgumentException("Second item is not an integer");
+        }
+        BigInteger s = ((ASN1Integer) (asn1Encodables[1].toASN1Primitive())).getValue();
 
+        byte[] rBytes = stripLeadingZeroes(r.toByteArray());
+        byte[] sBytes = stripLeadingZeroes(s.toByteArray());
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
-            for (int n = 0; n < 32 - rBytes.length; n++) {
+            for (int n = 0; n < keySize - rBytes.length; n++) {
                 baos.write(0x00);
             }
             baos.write(rBytes);
-            for (int n = 0; n < 32 - sBytes.length; n++) {
+            for (int n = 0; n < keySize - sBytes.length; n++) {
                 baos.write(0x00);
             }
             baos.write(sBytes);
@@ -552,46 +565,22 @@ public class Util {
         return baos.toByteArray();
     }
 
-    // Adds leading 0x00 if the first encoded byte MSB is set.
-    private static byte[] encodePositiveBigInteger(BigInteger i) {
-        byte[] bytes = i.toByteArray();
-        if ((bytes[0] & 0x80) != 0) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try {
-                baos.write(0x00);
-                baos.write(bytes);
-            } catch (IOException e) {
-                throw new IllegalStateException("Failed writing data", e);
-            }
-            bytes = baos.toByteArray();
-        }
-        return bytes;
-    }
-
     private static byte[] signatureCoseToDer(byte[] signature) {
-        if (signature.length != 64) {
-            throw new IllegalArgumentException(
-                    "signature.length is " + signature.length + ", expected 64");
-        }
-        // r and s are always positive and may use all 256 bits so use the constructor which
+        // r and s are always positive and may use all bits so use the constructor which
         // parses them as unsigned.
-        BigInteger r = new BigInteger(1, Arrays.copyOfRange(signature, 0, 32));
-        BigInteger s = new BigInteger(1, Arrays.copyOfRange(signature, 32, 64));
-        byte[] rBytes = encodePositiveBigInteger(r);
-        byte[] sBytes = encodePositiveBigInteger(s);
+        BigInteger r = new BigInteger(1, Arrays.copyOfRange(
+            signature, 0, signature.length/2));
+        BigInteger s = new BigInteger(1, Arrays.copyOfRange(
+            signature, signature.length/2, signature.length));
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
-            baos.write(0x30);
-            baos.write(2 + rBytes.length + 2 + sBytes.length);
-            baos.write(0x02);
-            baos.write(rBytes.length);
-            baos.write(rBytes);
-            baos.write(0x02);
-            baos.write(sBytes.length);
-            baos.write(sBytes);
+            DERSequenceGenerator seq = new DERSequenceGenerator(baos);
+            seq.addObject(new ASN1Integer(r.toByteArray()));
+            seq.addObject(new ASN1Integer(s.toByteArray()));
+            seq.close();
         } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+            throw new IllegalStateException("Error generating DER signature", e);
         }
         return baos.toByteArray();
     }
@@ -609,9 +598,24 @@ public class Util {
             throw new IllegalArgumentException("data and detachedContent cannot both be non-empty");
         }
 
+        int keySize;
+        int alg;
+        if (s.getAlgorithm() == "SHA256withECDSA") {
+            keySize = 32;
+            alg = COSE_ALG_ECDSA_256;
+        } else if (s.getAlgorithm() == "SHA384withECDSA") {
+            keySize = 48;
+            alg = COSE_ALG_ECDSA_384;
+        } else if (s.getAlgorithm() == "SHA512withECDSA") {
+            keySize = 64;
+            alg = COSE_ALG_ECDSA_512;
+        } else {
+            throw new IllegalArgumentException("Unsupported algorithm " + s.getAlgorithm());
+        }
+
         CborBuilder protectedHeaders = new CborBuilder();
         MapBuilder<CborBuilder> protectedHeadersMap = protectedHeaders.addMap();
-        protectedHeadersMap.put(COSE_LABEL_ALG, COSE_ALG_ECDSA_256);
+        protectedHeadersMap.put(COSE_LABEL_ALG, alg);
         byte[] protectedHeadersBytes = cborEncode(protectedHeaders.build().get(0));
 
         byte[] toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent);
@@ -620,7 +624,7 @@ public class Util {
         try {
             s.update(toBeSigned);
             byte[] derSignature = s.sign();
-            coseSignature = signatureDerToCose(derSignature);
+            coseSignature = signatureDerToCose(derSignature, keySize);
         } catch (SignatureException e) {
             throw new IllegalStateException("Error signing data", e);
         }
@@ -655,23 +659,39 @@ public class Util {
         return builder.build().get(0);
     }
 
-    /** @hide */
+    /**
+     * Note: this uses the default JCA provider which may not support a lot of curves, for
+     * example it doesn't support Brainpool curves. If you need to use such curves, use
+     * {@link #coseSign1Sign(Signature, byte[], byte[], Collection)} instead with a
+     * Signature created using a provider that does have support.
+     *
+     * Currently only ECDSA signatures are supported.
+     *
+     * TODO: add support and tests for Ed25519 and Ed448.
+     *
+     * @hide
+     * */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static @NonNull DataItem coseSign1Sign(@NonNull PrivateKey key,
-            @Nullable byte[] data,
-            @Nullable byte[] additionalData,
-            @Nullable Collection<X509Certificate> certificateChain) {
+        String algorithm, @Nullable byte[] data,
+        @Nullable byte[] additionalData,
+        @Nullable Collection<X509Certificate> certificateChain) {
         try {
-            Signature s = Signature.getInstance("SHA256withECDSA");
+            Signature s = Signature.getInstance(algorithm);
             s.initSign(key);
             return coseSign1Sign(s, data, additionalData, certificateChain);
-        } catch (NoSuchAlgorithmException
-                | InvalidKeyException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new IllegalStateException("Caught exception", e);
         }
     }
 
-    /** @hide */
+    /**
+     * Currently only ECDSA signatures are supported.
+     *
+     * TODO: add support and tests for Ed25519 and Ed448.
+     *
+     * @hide
+     */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static boolean coseSign1CheckSignature(@NonNull DataItem coseSign1,
             @NonNull byte[] detachedContent, @NonNull PublicKey publicKey)  {
@@ -717,11 +737,32 @@ public class Util {
             throw new IllegalArgumentException("data and detachedContent cannot both be non-empty");
         }
 
+        DataItem protectedHeaders = cborDecode(encodedProtectedHeaders);
+        int alg = cborMapExtractNumber((Map) protectedHeaders, COSE_LABEL_ALG);
+        String signature;
+        switch (alg) {
+            case COSE_ALG_ECDSA_256:
+                signature = "SHA256withECDSA";
+                break;
+            case COSE_ALG_ECDSA_384:
+                signature = "SHA384withECDSA";
+                break;
+            case COSE_ALG_ECDSA_512:
+                signature = "SHA512withECDSA";
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported COSE alg " + alg);
+        }
+
         byte[] toBeSigned = Util.coseBuildToBeSigned(encodedProtectedHeaders, payload,
                 detachedContent);
 
         try {
-            Signature verifier = Signature.getInstance("SHA256withECDSA");
+            // Use BouncyCastle provider for verification since it supports a lot more curves than
+            // the default provider, including the brainpool curves
+            //
+            Signature verifier = Signature.getInstance(signature,
+                new org.bouncycastle.jce.provider.BouncyCastleProvider());
             verifier.initVerify(publicKey);
             verifier.update(toBeSigned);
             return verifier.verify(derSignature);

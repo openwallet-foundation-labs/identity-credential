@@ -18,6 +18,7 @@ import com.android.mdl.appreader.util.IssuerKeys
 import com.android.mdl.appreader.util.PreferencesHelper
 import com.android.mdl.appreader.util.TransferStatus
 import java.security.PrivateKey
+import java.security.Signature
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
 
@@ -150,13 +151,15 @@ class TransferManager private constructor(private val context: Context) {
             throw IllegalStateException("It is necessary to start a new engagement.")
 
         verification?.let {
-            var readerKey: PrivateKey? = null
+            var signature: Signature? = null
             var readerKeyCertificateChain: Collection<X509Certificate>? = null
 
             // Check in preferences if reader authentication should be used
             when (PreferencesHelper.getReaderAuth(context)) {
                 "1" -> {
-                    readerKey = IssuerKeys.getRAGooglePrivateKey(context)
+                    var readerKey = IssuerKeys.getRAGooglePrivateKey(context)
+                    signature = Signature.getInstance("SHA256withECDSA")
+                    signature.initSign(readerKey)
                     readerKeyCertificateChain = listOf(IssuerKeys.getRAGoogleCertificate(context))
                 }
             }
@@ -168,7 +171,7 @@ class TransferManager private constructor(private val context: Context) {
                     requestDocument.docType,
                     requestDocument.getItemsToRequest(),
                     null,
-                    readerKey,
+                    signature,
                     readerKeyCertificateChain
                 )
             }

@@ -371,7 +371,7 @@ public class Utility {
             issuerAuthorityCertChain.add(issuingAuthorityCertificate);
             byte[] encodedIssuerAuth =
                     Util.cborEncode(Util.coseSign1Sign(issuingAuthorityKey,
-                            taggedEncodedMso,
+                        "SHA256withECDSA", taggedEncodedMso,
                             null,
                             issuerAuthorityCertChain));
 

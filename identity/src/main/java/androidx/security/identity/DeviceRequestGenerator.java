@@ -19,7 +19,10 @@ package androidx.security.identity;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
 import java.util.Map;
@@ -29,6 +32,7 @@ import co.nstant.in.cbor.builder.ArrayBuilder;
 import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnicodeString;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 /**
  * Helper class for building <code>DeviceRequest</code> <a href="http://cbor.io/">CBOR</a>
@@ -71,9 +75,9 @@ public class DeviceRequestGenerator {
      *                       names into the intent-to-retain for each data element.
      * @param requestInfo <code>null</code> or additional information provided. This is
      *                    a map from keys and the values must be valid CBOR.
-     * @param readerKey <code>null</code> if not signing the request, otherwise a
-     *                  {@link PrivateKey} to be used for signing the request.
-     * @param readerKeyCertificateChain <code>null</code> if <code>readerKey</code> is
+     * @param readerKeySignature <code>null</code> if not signing the request, otherwise a
+     *                          {@link Signature} to be used for signing the request.
+     * @param readerKeyCertificateChain <code>null</code> if <code>readerKeySignature</code> is
      *                                  <code>null</code>, otherwise a chain of X.509
      *                                  certificates for <code>readerKey</code>.
      * @return the <code>DeviceRequestGenerator</code>.
@@ -81,7 +85,7 @@ public class DeviceRequestGenerator {
     public @NonNull DeviceRequestGenerator addDocumentRequest(@NonNull String docType,
             @NonNull Map<String, Map<String, Boolean>> itemsToRequest,
             @Nullable Map<String, byte[]> requestInfo,
-            @Nullable PrivateKey readerKey,
+            @Nullable Signature readerKeySignature,
             @Nullable Collection<X509Certificate> readerKeyCertificateChain) {
 
         CborBuilder nameSpacesBuilder = new CborBuilder();
@@ -116,7 +120,7 @@ public class DeviceRequestGenerator {
         DataItem itemsRequestBytesDataItem = Util.cborBuildTaggedByteString(encodedItemsRequest);
 
         DataItem readerAuth = null;
-        if (readerKey != null) {
+        if (readerKeySignature != null) {
             if (readerKeyCertificateChain == null) {
                 throw new IllegalArgumentException("readerKey is provided but no cert chain");
             }
@@ -137,10 +141,10 @@ public class DeviceRequestGenerator {
                             Util.cborBuildTaggedByteString(
                                     encodedReaderAuthentication));
 
-            readerAuth = Util.coseSign1Sign(readerKey,
-                    null,
-                    readerAuthenticationBytes,
-                    readerKeyCertificateChain);
+            readerAuth = Util.coseSign1Sign(readerKeySignature,
+                null,
+                readerAuthenticationBytes,
+                readerKeyCertificateChain);
         }
 
         CborBuilder docRequestBuilder = new CborBuilder();

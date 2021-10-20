@@ -445,7 +445,7 @@ public class ReaderAuthTest {
                 Util.cborEncode(Util.cborBuildTaggedByteString((readerAuthentication)));
         byte[] readerSignature = Util.cborEncode(
                 Util.coseSign1Sign(readerKeyToSignWith.getPrivate(),
-                null, // payload
+                    "SHA256withECDSA", null, // payload
                 readerAuthenticationBytes, // detached content
                 readerCertificateChainToPresent)); // certificate-chain
 

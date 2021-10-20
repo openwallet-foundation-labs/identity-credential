@@ -179,7 +179,7 @@ class SoftwareWritableIdentityCredential extends WritableIdentityCredential {
             byte[] dataToSign = dtsBaos.toByteArray();
 
             signature = Util.coseSign1Sign(key,
-                    dataToSign,
+                "SHA256withECDSA", dataToSign,
                     null,
                     null);
         } catch (CborException e) {
