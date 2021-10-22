@@ -17,7 +17,6 @@ import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.util.IssuerKeys
 import com.android.mdl.appreader.util.PreferencesHelper
 import com.android.mdl.appreader.util.TransferStatus
-import java.security.PrivateKey
 import java.security.Signature
 import java.security.cert.X509Certificate
 import java.util.concurrent.Executor
@@ -95,7 +94,14 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    fun stopVerification() {
+    fun stopVerification(
+        sendSessionTerminationMessage: Boolean,
+        useTransportSpecificSessionTermination: Boolean
+    ) {
+        verification?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
+        verification?.setUseTransportSpecificSessionTermination(
+            useTransportSpecificSessionTermination
+        )
         verification?.setListener(null, null)
         try {
             verification?.disconnect()

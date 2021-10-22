@@ -28,8 +28,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import androidx.security.identity.Constants.LoggingFlag;
+
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -426,6 +426,14 @@ class GattClient extends BluetoothGattCallback {
             offset += size;
         } while (offset < data.length);
         drainWritingQueue();
+    }
+
+    public void sendTransportSpecificTermination() {
+        byte[] terminationCode = new byte[]{(byte) 0x02};
+        mCharacteristicState.setValue(terminationCode);
+        if (!mGatt.writeCharacteristic(mCharacteristicState)) {
+            reportError(new Error("Error writing to state characteristic"));
+        }
     }
 
     void reportPeerConnected() {

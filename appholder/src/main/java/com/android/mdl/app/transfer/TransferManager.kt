@@ -248,9 +248,20 @@ class TransferManager private constructor(private val context: Context) {
         presentation = null
     }
 
-    fun stopPresentation() {
+    fun stopPresentation(
+        sendSessionTerminationMessage: Boolean,
+        useTransportSpecificSessionTermination: Boolean
+    ) {
+        presentation?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
+        presentation?.setUseTransportSpecificSessionTermination(
+            useTransportSpecificSessionTermination
+        )
         presentation?.setListener(null, null)
-        presentation?.disconnect()
+        try {
+            presentation?.disconnect()
+        } catch (e: RuntimeException) {
+            Log.e(LOG_TAG, "Error ignored.", e)
+        }
         transferStatusLd = MutableLiveData<TransferStatus>()
         destroy()
         hasStarted = false
