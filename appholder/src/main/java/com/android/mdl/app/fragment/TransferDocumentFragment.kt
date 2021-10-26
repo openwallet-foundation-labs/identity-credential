@@ -88,7 +88,10 @@ class TransferDocumentFragment : Fragment() {
                 }
                 TransferStatus.DISCONNECTED -> {
                     Log.d(LOG_TAG, "Disconnected")
-                    onCloseConnection()
+                    onCloseConnection(
+                        sendSessionTerminationMessage = true,
+                        useTransportSpecificSessionTermination = false
+                    )
                 }
                 TransferStatus.ERROR -> {
                     Toast.makeText(
@@ -177,7 +180,10 @@ class TransferDocumentFragment : Fragment() {
                 Toast.LENGTH_SHORT
             ).show()
         }
-        onCloseConnection()
+        onCloseConnection(
+            sendSessionTerminationMessage = true,
+            useTransportSpecificSessionTermination = false
+        )
     }
 
     // Called when user gives consent to transfer
@@ -226,10 +232,15 @@ class TransferDocumentFragment : Fragment() {
         }
     }
 
-    fun onCloseConnection() {
-        vm.cancelPresentation()
+    fun onCloseConnection(
+        sendSessionTerminationMessage: Boolean,
+        useTransportSpecificSessionTermination: Boolean
+    ) {
+        vm.cancelPresentation(sendSessionTerminationMessage, useTransportSpecificSessionTermination)
         binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
-        binding.btClose.visibility = View.GONE
+        binding.btCloseConnection.visibility = View.GONE
+        binding.btCloseTerminationMessage.visibility = View.GONE
+        binding.btCloseTransportSpecific.visibility = View.GONE
         binding.btOk.visibility = View.VISIBLE
     }
 

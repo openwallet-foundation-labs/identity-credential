@@ -26,7 +26,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val navController = findNavController(R.id.nav_host_fragment)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
+        appBarConfiguration = AppBarConfiguration(
+            setOf(
+                R.id.RequestOptions,
+                R.id.SelectTransport,
+                R.id.ShowDocument,
+                R.id.Transfer
+            )
+        )
         setupActionBarWithNavController(navController, appBarConfiguration)
 
         mAdapter = NfcAdapter.getDefaultAdapter(this)

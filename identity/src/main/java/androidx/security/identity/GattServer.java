@@ -30,8 +30,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import androidx.security.identity.Constants.LoggingFlag;
+
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -214,11 +214,17 @@ class GattServer extends BluetoothGattServerCallback {
         UUID charUuid = characteristic.getUuid();
         if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
             Log.i(TAG, "onCharacteristicWriteRequest: "
-                + characteristic.getUuid() + " " + offset + " " + Util.toHex(value));
+                    + characteristic.getUuid() + " " + offset + " " + Util.toHex(value));
         }
-        if (charUuid.equals(mCharacteristicStateUuid)
-            && value.length == 1 && value[0] == 0x01) {
-            reportPeerConnected();
+        if (charUuid.equals(mCharacteristicStateUuid) && value.length == 1) {
+            if (value[0] == 0x01) {
+                reportPeerConnected();
+            } else if (value[0] == 0x02) {
+                reportTransportSpecificSessionTermination();
+            } else {
+                reportError(new Error("Invalid byte " + value[0] + " for state "
+                        + "characteristic"));
+            }
         } else if (charUuid.equals(mCharacteristicClient2ServerUuid)) {
             if (value.length < 1) {
                 reportError(new Error("Invalid value with length " + value.length));
@@ -379,10 +385,21 @@ class GattServer extends BluetoothGattServerCallback {
         }
     }
 
+    void reportTransportSpecificSessionTermination() {
+        if (mListener != null && !mInhibitCallbacks) {
+            mListener.onTransportSpecificSessionTermination();
+        }
+    }
+
     interface Listener {
         void onPeerConnected();
+
         void onPeerDisconnected();
+
         void onMessageReceived(@NonNull byte[] data);
+
+        void onTransportSpecificSessionTermination();
+
         void onError(@NonNull Throwable error);
     }
 

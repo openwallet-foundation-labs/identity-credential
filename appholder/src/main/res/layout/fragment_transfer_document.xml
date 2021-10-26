@@ -47,15 +47,47 @@
             app:layout_constraintTop_toBottomOf="@id/txt_documents_sent" />
 
         <Button
-            android:id="@+id/bt_close"
+            android:id="@+id/bt_close_termination_message"
+            style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_marginBottom="64dp"
-            android:onClick="@{() -> fragment.onCloseConnection()}"
-            android:text="@string/bt_close_connection"
+            android:onClick="@{() -> fragment.onCloseConnection(true, false)}"
+            android:text="Close\n(Message)"
+            android:textSize="4pt"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/bt_close_transport_specific"
             app:layout_constraintStart_toStartOf="parent" />
+
+        <Button
+            android:id="@+id/bt_close_transport_specific"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:onClick="@{() -> fragment.onCloseConnection(true, true)}"
+            android:text="Close\n(Specific)"
+            android:textSize="4pt"
+            app:layout_constraintBottom_toBottomOf="@+id/bt_close_termination_message"
+            app:layout_constraintEnd_toStartOf="@+id/bt_close_connection"
+            app:layout_constraintStart_toEndOf="@+id/bt_close_termination_message"
+            app:layout_constraintTop_toTopOf="@+id/bt_close_termination_message" />
+
+        <Button
+            android:id="@+id/bt_close_connection"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:onClick="@{() -> fragment.onCloseConnection(false, false)}"
+            android:text="Close\n(None)"
+            android:textSize="4pt"
+            app:layout_constraintBottom_toBottomOf="@+id/bt_close_termination_message"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/bt_close_transport_specific"
+            app:layout_constraintTop_toTopOf="@+id/bt_close_termination_message" />
 
         <Button
             android:id="@+id/bt_ok"

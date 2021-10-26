@@ -59,7 +59,10 @@ class SelectDocumentFragment : Fragment() {
         val documentManager = DocumentManager.getInstance(requireContext())
         // Call stop presentation to finish all presentation that could be running
         val transferManager = TransferManager.getInstance(requireContext())
-        transferManager.stopPresentation()
+        transferManager.stopPresentation(
+            sendSessionTerminationMessage = true,
+            useTransportSpecificSessionTermination = false
+        )
 
         adapter.submitList(documentManager.getDocuments().toMutableList())
 
