@@ -90,7 +90,7 @@
     <string name="micov.1_1D47_vaccinated">Indication of vaccination against Yellow Fever</string>
     <string name="RA01_vaccinated">Indication of vaccination against COVID-19</string>
     <string name="RA01_test">Indication of test event for COVID-19</string>
-    <string name="safeEntryLeisure">Safe entry indication</string>
+    <string name="safeEntry_Leisure">Safe entry indication</string>
     <string name="fac">Facial Image</string>
     <string name="fni">Family Name Initial</string>
     <string name="gni">Given Name Initial</string>

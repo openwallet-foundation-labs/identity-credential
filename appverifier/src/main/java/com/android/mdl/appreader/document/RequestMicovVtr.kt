@@ -3,7 +3,7 @@ package com.android.mdl.appreader.document
 import com.android.mdl.appreader.R
 
 object RequestMicovVtr : RequestDocument() {
-    override val docType = "micov.1"
+    override val docType = "org.micov.1"
     override val nameSpace = "org.micov.vtr.1"
     override val dataItems = DataItems.values().asList()
 
