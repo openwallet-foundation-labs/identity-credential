@@ -19,6 +19,7 @@
     <string name="bt_ok">OK</string>
     <string name="bio_auth_title">Authenticate to share data</string>
     <string name="bio_auth_subtitle">The verifier is requesting the following information</string>
+    <string name="bio_auth_verifier_subtitle">Verifier %1$s is requesting the following information</string>
     <string name="bio_auth_cancel">Cancel</string>
     <string name="bio_auth_failed">User authentication has failed</string>
     <string name="fingerprint_removed_error">Biometric Authentication Error</string>
@@ -90,7 +91,7 @@
     <string name="micov.1_1D47_vaccinated">Indication of vaccination against Yellow Fever</string>
     <string name="RA01_vaccinated">Indication of vaccination against COVID-19</string>
     <string name="RA01_test">Indication of test event for COVID-19</string>
-    <string name="safeEntryLeisure">Safe entry indication</string>
+    <string name="safeEntry_Leisure">Safe entry indication</string>
     <string name="fac">Facial Image</string>
     <string name="fni">Family Name Initial</string>
     <string name="gni">Given Name Initial</string>

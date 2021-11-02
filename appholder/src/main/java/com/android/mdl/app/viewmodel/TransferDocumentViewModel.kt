@@ -8,6 +8,7 @@ import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.security.identity.Constants.DEVICE_RESPONSE_STATUS_OK
+import androidx.security.identity.DeviceRequestParser
 import androidx.security.identity.DeviceResponseGenerator
 import androidx.security.identity.InvalidRequestMessageException
 import com.android.mdl.app.R
@@ -31,17 +32,10 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
-    fun getRequestedDocuments(): List<Document> {
-        val requestedDocuments = mutableListOf<Document>()
+    fun getRequestedDocuments(): Collection<DeviceRequestParser.DocumentRequest> =
+        transferManager.getDeviceRequest().docRequests
 
-        val docRequests =
-            transferManager.getDeviceRequest().docRequests
-        docRequests.forEach { doc ->
-            requestedDocuments.add(
-                documentManager.getDocuments().first { it.docType == doc.docType })
-        }
-        return requestedDocuments
-    }
+    fun getDocuments() = documentManager.getDocuments()
 
     fun getEntryNames(): Map<Document, List<String>> {
         val documents = mutableMapOf<Document, List<String>>()
@@ -67,24 +61,22 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         // Currently we don't care about the request, for now we just send the mdoc we have
         // without any regard to what the reader actually requested...
         //
-        val docRequests =
-            transferManager.getDeviceRequest().docRequests
-
+        val documents = getDocuments()
         val requestedDocuments = getRequestedDocuments()
         val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
-        docRequests.forEach { doc ->
-            val requestedDocument = requestedDocuments.first { it.docType == doc.docType }
+        requestedDocuments.forEach { reqDoc ->
+            val doc = documents.first { it.docType == reqDoc.docType }
             val issuerSignedEntriesToRequest = mutableMapOf<String, Collection<String>>()
-            doc.namespaces.forEach { ns ->
-                issuerSignedEntriesToRequest[ns] = doc.getEntryNames(ns)
+            reqDoc.namespaces.forEach { ns ->
+                issuerSignedEntriesToRequest[ns] = reqDoc.getEntryNames(ns)
             }
             val authNeeded = transferManager.addDocumentToResponse(
-                requestedDocument.identityCredentialName,
+                doc.identityCredentialName,
                 doc.docType,
                 issuerSignedEntriesToRequest,
                 response,
-                doc.readerAuth,
-                doc.itemsRequest
+                reqDoc.readerAuth,
+                reqDoc.itemsRequest
             )
             if (authNeeded) {
                 inProgress.set(View.GONE)

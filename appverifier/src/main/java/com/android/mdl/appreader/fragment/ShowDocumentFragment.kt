@@ -14,8 +14,10 @@ import androidx.navigation.fragment.findNavController
 import androidx.security.identity.DeviceResponseParser
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
+import com.android.mdl.appreader.issuerauth.SimpleIssuerTrustStore
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.FormatUtil
+import com.android.mdl.appreader.util.IssuerKeys
 import com.android.mdl.appreader.util.TransferStatus
 
 
@@ -27,7 +29,7 @@ class ShowDocumentFragment : Fragment() {
     companion object {
         private const val LOG_TAG = "ShowDocumentFragment"
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        private const val MICOV_DOCTYPE = "micov.1"
+        private const val MICOV_DOCTYPE = "org.micov.1"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
         private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
     }
@@ -141,13 +143,36 @@ class ShowDocumentFragment : Fragment() {
     }
 
     private fun formatTextResult(documents: Collection<DeviceResponseParser.Document>): String {
+        // Create the trustManager to validate the DS Certificate against the list of known
+        // certificates in the app
+        val simpleIssuerTrustStore =
+            SimpleIssuerTrustStore(IssuerKeys.getTrustedIssuerCertificates(requireContext()))
+
         val sb = StringBuffer()
         sb.append("Number of documents returned: <b>${documents.size}</b>")
         sb.append("<br><br>")
         for (doc in documents) {
             sb.append("<h3>Doctype: <font color=blue>${doc.docType}</font></h3>")
-            sb.append("Issuer Signed Authenticated: ${getFormattedCheck(doc.issuerSignedAuthenticated)}<br>")
-            sb.append("Device Signed Authenticated: ${getFormattedCheck(doc.deviceSignedAuthenticated)}<br>")
+            val certPath =
+                simpleIssuerTrustStore.createCertificationTrustPath(doc.issuerCertificateChain.toList())
+            val isDSTrusted = simpleIssuerTrustStore.validateCertificationTrustPath(certPath)
+            var commonName = ""
+            // Use the issuer certificate chain if we could not build the certificate trust path
+            val certChain = if (certPath?.isNotEmpty() == true) {
+                certPath
+            } else {
+                doc.issuerCertificateChain.toList()
+            }
+
+            certChain.last().issuerX500Principal.name.split(",").forEach { line ->
+                val (key, value) = line.split("=", limit = 2)
+                if (key == "CN") {
+                    commonName = "($value)"
+                }
+            }
+            sb.append("${getFormattedCheck(isDSTrusted)}Issuer’s DS Key Recognized: $commonName<br>")
+            sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
+            sb.append("${getFormattedCheck(doc.deviceSignedAuthenticated)}Device Signed Authenticated<br>")
             for (ns in doc.issuerNamespaces) {
                 sb.append("<br>")
                 sb.append("<h5>Namespace: $ns</h5>")
@@ -169,14 +194,9 @@ class ShowDocumentFragment : Fragment() {
                         valueStr = FormatUtil.cborPrettyPrint(value)
                     }
                     sb.append(
-                        "<b>$elem</b> ${
-                            getFormattedCheck(
-                                doc.getIssuerEntryDigestMatch(
-                                    ns,
-                                    elem
-                                )
-                            )
-                        } -> $valueStr<br>"
+                        "${
+                            getFormattedCheck(doc.getIssuerEntryDigestMatch(ns, elem))
+                        }<b>$elem</b> -> $valueStr<br>"
                     )
                 }
                 sb.append("</p><br>")
@@ -186,9 +206,9 @@ class ShowDocumentFragment : Fragment() {
     }
 
     private fun getFormattedCheck(authenticated: Boolean) = if (authenticated) {
-        "<font color=green>&#10003;</font>"
+        "<font color=green>&#x2714;</font> "
     } else {
-        "<font color=red>&#x26A0;</font>"
+        "<font color=red>&#x274C;</font> "
     }
 
     private var callback = object : OnBackPressedCallback(true /* enabled by default */) {

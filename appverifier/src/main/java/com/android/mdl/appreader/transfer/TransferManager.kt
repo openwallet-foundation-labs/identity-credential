@@ -14,11 +14,18 @@ import androidx.security.identity.DeviceRequestGenerator
 import androidx.security.identity.DeviceResponseParser
 import androidx.security.identity.VerificationHelper
 import com.android.mdl.appreader.document.RequestDocumentList
+import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
+import com.android.mdl.appreader.readercertgen.SupportedCurves.*
 import com.android.mdl.appreader.util.IssuerKeys
 import com.android.mdl.appreader.util.PreferencesHelper
 import com.android.mdl.appreader.util.TransferStatus
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.KeyFactory
+import java.security.PrivateKey
 import java.security.Signature
 import java.security.cert.X509Certificate
+import java.security.spec.PKCS8EncodedKeySpec
+import java.util.*
 import java.util.concurrent.Executor
 
 
@@ -160,13 +167,79 @@ class TransferManager private constructor(private val context: Context) {
             var signature: Signature? = null
             var readerKeyCertificateChain: Collection<X509Certificate>? = null
 
+
+//            SupportedCurves.values().forEach { curve ->
+//                val keyPair =
+//                    ReaderCertificateGenerator.generateECDSAKeyPair(curve.name)
+//                val readerCA = IssuerKeys.getGoogleReaderCA(context)
+//                val readerCertificate =
+//                    ReaderCertificateGenerator.createReaderCertificate(keyPair, readerCA, getReaderCAPrivateKey())
+//                Log.d(LOG_TAG, "${curve.name} - $readerCertificate")
+//                //readerKeyCertificateChain = listOf(readerCertificate)
+//            }
+
+            val provider = BouncyCastleProvider()
+
+            Log.d(LOG_TAG, "Curve used: ${PreferencesHelper.getReaderAuth(context)}")
             // Check in preferences if reader authentication should be used
-            when (PreferencesHelper.getReaderAuth(context)) {
-                "1" -> {
-                    var readerKey = IssuerKeys.getRAGooglePrivateKey(context)
-                    signature = Signature.getInstance("SHA256withECDSA")
-                    signature.initSign(readerKey)
-                    readerKeyCertificateChain = listOf(IssuerKeys.getRAGoogleCertificate(context))
+            when (val curveName = PreferencesHelper.getReaderAuth(context)) {
+                SECP256R1.name, BRAINPOOLP256R1.name -> {
+                    val keyPair = ReaderCertificateGenerator.generateECDSAKeyPair(curveName)
+
+                    signature = Signature.getInstance("SHA256withECDSA", provider)
+                    signature.initSign(keyPair.private)
+
+                    val readerCA = IssuerKeys.getGoogleReaderCA(context)
+                    val readerCertificate =
+                        ReaderCertificateGenerator.createReaderCertificate(
+                            keyPair,
+                            readerCA,
+                            getReaderCAPrivateKey()
+                        )
+                    readerKeyCertificateChain = listOf(readerCertificate)
+                }
+                SECP384R1.name, BRAINPOOLP384R1.name -> {
+                    val keyPair = ReaderCertificateGenerator.generateECDSAKeyPair(curveName)
+
+                    signature = Signature.getInstance("SHA384withECDSA", provider)
+                    signature.initSign(keyPair.private)
+
+                    val readerCA = IssuerKeys.getGoogleReaderCA(context)
+                    val readerCertificate =
+                        ReaderCertificateGenerator.createReaderCertificate(
+                            keyPair,
+                            readerCA,
+                            getReaderCAPrivateKey()
+                        )
+                    readerKeyCertificateChain = listOf(readerCertificate)
+                }
+                SECP521R1.name, BRAINPOOLP512R1.name -> {
+                    val keyPair = ReaderCertificateGenerator.generateECDSAKeyPair(curveName)
+
+                    signature = Signature.getInstance("SHA512withECDSA", provider)
+                    signature.initSign(keyPair.private)
+
+                    val readerCA = IssuerKeys.getGoogleReaderCA(context)
+                    val readerCertificate =
+                        ReaderCertificateGenerator.createReaderCertificate(
+                            keyPair,
+                            readerCA,
+                            getReaderCAPrivateKey()
+                        )
+                    readerKeyCertificateChain = listOf(readerCertificate)
+                }
+                ED25519.name, ED448.name -> {
+                    val keyPair = ReaderCertificateGenerator.generateECDSAKeyPair(curveName)
+
+                    signature = Signature.getInstance(curveName, provider)
+                    signature.initSign(keyPair.private)
+
+                    val readerCA = IssuerKeys.getGoogleReaderCA(context)
+                    val readerCertificate =
+                        ReaderCertificateGenerator.createReaderCertificate(
+                            keyPair, readerCA, getReaderCAPrivateKey()
+                        )
+                    readerKeyCertificateChain = listOf(readerCertificate)
                 }
             }
 
@@ -183,6 +256,14 @@ class TransferManager private constructor(private val context: Context) {
             }
             verification?.sendRequest(generator.generate())
         }
+    }
+
+    private fun getReaderCAPrivateKey(): PrivateKey {
+        val keyBytes: ByteArray = Base64.getDecoder()
+            .decode("ME4CAQAwEAYHKoZIzj0CAQYFK4EEACIENzA1AgEBBDCI6BG/yRDzi307Rqq2Ndw5mYi2y4MR+n6IDqjl2Qw/Sdy8D5eCzp8mlcL/vCWnEq0=")
+        val spec = PKCS8EncodedKeySpec(keyBytes)
+        val kf = KeyFactory.getInstance("EC")
+        return kf.generatePrivate(spec)
     }
 
     fun sendNewRequest(requestDocumentList: RequestDocumentList) {

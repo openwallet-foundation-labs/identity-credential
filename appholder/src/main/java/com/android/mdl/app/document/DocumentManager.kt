@@ -307,7 +307,7 @@ class DocumentManager private constructor(private val context: Context) {
             )
             .putEntry(
                 DocumentData.MICOV_ATT_NAMESPACE,
-                "safeEntryLeisure",
+                "safeEntry_Leisure",
                 ids,
                 FormatUtil.cborEncode(safeEntryLeisure)
             )
@@ -549,16 +549,16 @@ class DocumentManager private constructor(private val context: Context) {
                 ids,
                 FormatUtil.cborEncode(expiryDate)
             )
-            .putEntryString(DocumentData.MDL_NAMESPACE, "issuing_country", ids, "US")
+            .putEntryString(DocumentData.MDL_NAMESPACE, "issuing_country", ids, "UT")
             .putEntryString(DocumentData.MDL_NAMESPACE, "issuing_authority", ids, "Google")
-            .putEntryString(DocumentData.MDL_NAMESPACE, "document_number", ids, "NDL12345JKL")
+            .putEntryString(DocumentData.MDL_NAMESPACE, "document_number", ids, "987654321")
             .putEntry(
                 DocumentData.MDL_NAMESPACE,
                 "driving_privileges",
                 ids,
                 FormatUtil.cborEncode(drivingPrivileges)
             )
-            .putEntryString(DocumentData.MDL_NAMESPACE, "un_distinguishing_sign", ids, "US")
+            .putEntryString(DocumentData.MDL_NAMESPACE, "un_distinguishing_sign", ids, "UT")
             .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_18", ids, true)
             .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_21", ids, true)
             .putEntryBoolean(DocumentData.AAMVA_NAMESPACE, "real_id", ids, true)

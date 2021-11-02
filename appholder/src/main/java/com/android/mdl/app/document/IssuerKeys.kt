@@ -102,4 +102,24 @@ object IssuerKeys {
 
     fun getRAGoogleCertificate(context: Context) =
         getCertificate(context, R.raw.google_mdl_ra_cert)
+
+    fun getTrustedIssuerCertificates(context: Context) =
+        listOf(
+            getCertificate(context, R.raw.bdr_iaca_iso_iec_fdis_18013_5_test_only),
+            getCertificate(context, R.raw.cbn_iaca),
+            getCertificate(context, R.raw.google_mdl_ra_cert),
+            getCertificate(context, R.raw.google_micov_ds_cert),
+            getCertificate(context, R.raw.google_mdl_ds_cert),
+            getCertificate(context, R.raw.google_mekb_ds_cert),
+            getCertificate(context, R.raw.google_micov_iaca_cert),
+            getCertificate(context, R.raw.google_reader_ca),
+            getCertificate(context, R.raw.iaca_zetes),
+            getCertificate(context, R.raw.idemia_lahague_interop_readerauthca),
+            getCertificate(context, R.raw.mdl_iaca_thales_multicert),
+            getCertificate(context, R.raw.samsung_iaca_test_cert),
+            getCertificate(context, R.raw.scytales_root_ca),
+            getCertificate(context, R.raw.ul_cert_ca_02),
+            getCertificate(context, R.raw.ul_cert_ca_01),
+        )
+
 }
