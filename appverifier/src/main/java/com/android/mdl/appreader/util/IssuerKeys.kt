@@ -44,6 +44,9 @@ object IssuerKeys {
     fun getRAGoogleCertificate(context: Context) =
         getCertificate(context, R.raw.google_mdl_ra_cert)
 
+    fun getGoogleReaderCA(context: Context) =
+        getCertificate(context, R.raw.google_reader_ca)
+
     fun getTrustedIssuerCertificates(context: Context) =
         listOf(
             getCertificate(context, R.raw.google_mdl_iaca_cert),

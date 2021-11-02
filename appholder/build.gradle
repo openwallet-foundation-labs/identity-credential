@@ -92,6 +92,6 @@ dependencies {
 
     // BouncyCastle
     implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_version"
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.56")
+    implementation("org.bouncycastle:bcpkix-jdk15on:$bouncy_castle_version")
 
 }

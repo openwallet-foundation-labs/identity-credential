@@ -1,4 +1,4 @@
-package com.android.mdl.appreader.issuerauth;
+package com.android.mdl.app.readerauth;
 
 import org.bouncycastle.asn1.x500.X500Name;
 
@@ -22,7 +22,7 @@ import java.util.Map;
  * This trust manager is non-specific to mDL in the sense that it doesn't validate the country and optional state according to the rules
  * set in ISO/IEC 18013-5:2021.
  */
-public class SimpleIssuerTrustStore implements IssuerTrustStore {
+public class SimpleReaderTrustStore implements ReaderTrustStore {
 
 	private static final int DIGITAL_SIGNATURE = 0;
 	private static final int KEY_CERT_SIGN = 5;
@@ -34,7 +34,7 @@ public class SimpleIssuerTrustStore implements IssuerTrustStore {
 	 *
 	 * @param trustStore any key store containing trusted certificates (the so-called certificate entries)
 	 */
-	public SimpleIssuerTrustStore(KeyStore trustStore) {
+	public SimpleReaderTrustStore(KeyStore trustStore) {
 		// retrieve all trusted certificates from the store to be able to reference them
 		// quickly without having to iterate over them
 		try {
@@ -61,7 +61,7 @@ public class SimpleIssuerTrustStore implements IssuerTrustStore {
 		}
 	}
 
-	public SimpleIssuerTrustStore(List<X509Certificate> trustedCertificates) {
+	public SimpleReaderTrustStore(List<X509Certificate> trustedCertificates) {
 		for (X509Certificate trustedCert : trustedCertificates) {
 			trustedCertMap.put(new X500Name(trustedCert.getSubjectX500Principal().getName()), trustedCert);
 		}
@@ -125,7 +125,7 @@ public class SimpleIssuerTrustStore implements IssuerTrustStore {
 	 * <li>No check is performed on extended key usage / OID</li>
 	 * </ul>
 	 *
-	 * @see IssuerTrustStore#validateCertificationTrustPath(List)
+	 * @see ReaderTrustStore#validateCertificationTrustPath(List)
 	 */
 	@Override
 	public boolean validateCertificationTrustPath(List<X509Certificate> certificationTrustPath) {

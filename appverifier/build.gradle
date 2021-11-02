@@ -81,4 +81,7 @@ dependencies {
     // Cbor Library
     implementation "co.nstant.in:cbor:$cbor_version"
 
+    // BouncyCastle
+    implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_version"
+    implementation "org.bouncycastle:bcpkix-jdk15on:$bouncy_castle_version"
 }
