@@ -103,6 +103,9 @@ object IssuerKeys {
     fun getRAGoogleCertificate(context: Context) =
         getCertificate(context, R.raw.google_mdl_ra_cert)
 
+    fun getRANistCertificate(context: Context) =
+        getCertificate(context, R.raw.nist_readerauth_rootcert)
+
     fun getTrustedIssuerCertificates(context: Context) =
         listOf(
             getCertificate(context, R.raw.bdr_iaca_iso_iec_fdis_18013_5_test_only),
@@ -120,6 +123,7 @@ object IssuerKeys {
             getCertificate(context, R.raw.scytales_root_ca),
             getCertificate(context, R.raw.ul_cert_ca_02),
             getCertificate(context, R.raw.ul_cert_ca_01),
+            getCertificate(context, R.raw.nist_readerauth_rootcert),
         )
 
 }
