@@ -181,15 +181,18 @@ public class DeviceResponseGenerator {
      * @return the bytes of <code>DeviceResponse</code> CBOR.
      */
     public @NonNull byte[] generate() {
-        byte[] deviceResponse = Util.cborEncode(new CborBuilder()
-                .addMap()
-                .put("version", "1.0")
-                .put(new UnicodeString("documents"), mDocumentsBuilder.end().build().get(0))
-                .putArray("documentErrors")
-                .end()
-                .put("status", mStatusCode)
-                .end()
-                .build().get(0));
+        CborBuilder deviceResponseBuilder = new CborBuilder();
+        MapBuilder<CborBuilder> mapBuilder = deviceResponseBuilder.addMap();
+        mapBuilder.put("version", "1.0");
+        mapBuilder.put(new UnicodeString("documents"), mDocumentsBuilder.end().build().get(0));
+        // TODO: The documentErrors map entry should only be present if there is a non-zero
+        //  number of elements in the array. Right now we don't have a way for the application
+        //  to convey document errors but when we add that API we'll need to do something so
+        //  it is included here.
+        mapBuilder.put("status", mStatusCode);
+        mapBuilder.end();
+
+        byte[] deviceResponse = Util.cborEncode(deviceResponseBuilder.build().get(0));
         return deviceResponse;
     }
 }
