@@ -19,6 +19,7 @@ import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.IssuerKeys
 import com.android.mdl.appreader.util.TransferStatus
+import org.jetbrains.anko.attr
 
 
 /**
@@ -152,7 +153,12 @@ class ShowDocumentFragment : Fragment() {
         sb.append("Number of documents returned: <b>${documents.size}</b>")
         sb.append("<br><br>")
         for (doc in documents) {
-            sb.append("<h3>Doctype: <font color=blue>${doc.docType}</font></h3>")
+            // Get primary color from theme to use in the HTML formatted document.
+            val color = String.format(
+                "#%06X",
+                0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data
+            )
+            sb.append("<h3>Doctype: <font color=\"$color\">${doc.docType}</font></h3>")
             val certPath =
                 simpleIssuerTrustStore.createCertificationTrustPath(doc.issuerCertificateChain.toList())
             val isDSTrusted = simpleIssuerTrustStore.validateCertificationTrustPath(certPath)

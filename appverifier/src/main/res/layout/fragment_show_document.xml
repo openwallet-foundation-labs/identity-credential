@@ -10,7 +10,6 @@
         android:id="@+id/sv_document"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="@color/cardview_light_background"
         app:layout_constraintBottom_toTopOf="@+id/bt_close_termination_message"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
