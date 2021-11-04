@@ -63,13 +63,9 @@ public abstract class DataTransportBle extends DataTransport {
     boolean gotLeRole = false;
     boolean gotUuid = false;
 
-    // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
+    // See createNdefRecords() method for how this data is encoded.
     //
     ByteBuffer payload = ByteBuffer.wrap(record.getPayload()).order(ByteOrder.LITTLE_ENDIAN);
-
-    // We ignore length and just chew through all data...
-    //
-    payload.position(2);
     while (payload.remaining() > 0) {
       Log.d(TAG, "hasR: " + payload.hasRemaining() + " rem: " + payload.remaining());
       int len = payload.get();
@@ -202,22 +198,29 @@ public abstract class DataTransportBle extends DataTransport {
         leRole = 0x00;
       }
 
+      // See "3 Handover to a Bluetooth Carrier" of "Bluetooth® Secure Simple Pairing Using
+      // NFC Application Document" Version 1.2. This says:
+      //
+      //   For Bluetooth LE OOB the name “application/vnd.bluetooth.le.oob” is used as the [NDEF]
+      //   record type name. The payload of this type of record is then defined by the Advertising
+      //   and Scan Response Data (AD) format that is specified in the Bluetooth Core Specification
+      //   ([BLUETOOTH_CORE], Volume 3, Part C, Section 11).
+      //
+      // Looking that up it says it's just a sequence of {length, AD type, AD data} where each
+      // AD is defined in the "Bluetooth Supplement to the Core Specification" document.
+      //
       oobData = new byte[] {
-          0, 0,
           // LE Role
           (byte) 0x02, (byte) 0x1c, (byte) leRole,
           // Complete List of 128-bit Service UUID’s (0x07)
           (byte) 0x11, (byte) 0x07,
-          // UUID will be copied here..
+          // UUID will be copied here (offset 5)..
           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       };
       ByteBuffer uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
       uuidBuf.putLong(0, uuid.getLeastSignificantBits());
       uuidBuf.putLong(8, uuid.getMostSignificantBits());
-      System.arraycopy(uuidBuf.array(), 0, oobData, 7, 16);
-      // Length is stored in LE...
-      oobData[0] = (byte) (oobData.length & 0xff);
-      oobData[1] = (byte) (oobData.length / 256);
+      System.arraycopy(uuidBuf.array(), 0, oobData, 5, 16);
       Log.d(TAG, "Encoding UUID " + uuid + " in NDEF");
 
       NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
