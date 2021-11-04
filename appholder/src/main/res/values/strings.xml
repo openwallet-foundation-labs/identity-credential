@@ -19,7 +19,7 @@
     <string name="bt_ok">OK</string>
     <string name="bio_auth_title">Authenticate to share data</string>
     <string name="bio_auth_subtitle">The verifier is requesting the following information</string>
-    <string name="bio_auth_verifier_subtitle">Verifier %1$s is requesting the following information</string>
+    <string name="bio_auth_verifier_subtitle">Verifier \"%1$s\" is requesting the following information</string>
     <string name="bio_auth_cancel">Cancel</string>
     <string name="bio_auth_failed">User authentication has failed</string>
     <string name="fingerprint_removed_error">Biometric Authentication Error</string>

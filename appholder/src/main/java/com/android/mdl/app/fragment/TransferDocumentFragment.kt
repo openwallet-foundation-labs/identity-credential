@@ -91,7 +91,7 @@ class TransferDocumentFragment : Fragment() {
                                         readerChain
                                     }
 
-                                    certChain.last().issuerX500Principal.name.split(",")
+                                    certChain.first().subjectX500Principal.name.split(",")
                                         .forEach { line ->
                                             val (key, value) = line.split("=", limit = 2)
                                             if (key == "CN") {

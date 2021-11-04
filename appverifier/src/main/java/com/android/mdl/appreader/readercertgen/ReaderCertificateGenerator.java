@@ -52,7 +52,7 @@ public final class ReaderCertificateGenerator {
 
 			@Override
 			public String subjectDN() {
-				return "C=UT, CN=Google TEST RA mDL";
+				return "C=UT, CN=Google mDoc Reader";
 			}
 
 			@Override
