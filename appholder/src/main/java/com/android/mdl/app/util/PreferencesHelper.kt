@@ -15,7 +15,7 @@ object PreferencesHelper {
     private const val LOG_SESSION_MESSAGES = "log_session_messages"
     private const val LOG_TRANSPORT = "log_transport"
     private const val LOG_TRANSPORT_VERBOSE = "log_transport_verbose"
-    const val USE_READER_AUTH = "use_reader_authentication"
+//    const val USE_READER_AUTH = "use_reader_authentication"
 
     fun setHardwareBacked(context: Context, isHardwareBacked: Boolean) {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -93,8 +93,10 @@ object PreferencesHelper {
     }
 
     fun isReaderAuthenticationEnabled(context: Context): Boolean {
-        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            USE_READER_AUTH, false
-        )
+//        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
+//            USE_READER_AUTH, false
+//        )
+        // Just returning false now as we are not using ACP to control the reader authentication
+        return false
     }
 }
