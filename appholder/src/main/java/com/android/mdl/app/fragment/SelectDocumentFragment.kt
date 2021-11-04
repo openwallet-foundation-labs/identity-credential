@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.*
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -26,6 +27,19 @@ class SelectDocumentFragment : Fragment() {
 
     private val timeInterval = 2000 // # milliseconds passed between two back presses
     private var mBackPressed: Long = 0
+
+    private val appPermissions:Array<String> =
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            arrayOf(
+                Manifest.permission.BLUETOOTH_ADVERTISE,
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT,
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            )
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,14 +80,17 @@ class SelectDocumentFragment : Fragment() {
 
         adapter.submitList(documentManager.getDocuments().toMutableList())
 
-        // Location access is needed for BLE to work.
-        //
-        if (ContextCompat.checkSelfPermission(
+        val permissionsNeeded = appPermissions.filter { permission ->
+            ContextCompat.checkSelfPermission(
                 requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
+                permission
             ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionsLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+
+        if (permissionsNeeded.isNotEmpty()) {
+            permissionsLauncher.launch(
+                permissionsNeeded.toTypedArray()
+            )
         }
 
         return binding.root
@@ -107,15 +124,18 @@ class SelectDocumentFragment : Fragment() {
     }
 
     private val permissionsLauncher =
-        registerForActivityResult(RequestPermission()) { permission ->
-            Log.d(LOG_TAG, "permissionsLauncher $permission")
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            permissions.entries.forEach {
+                Log.d(LOG_TAG, "permissionsLauncher ${it.key} = ${it.value}")
 
-            if (!permission) {
-                Toast.makeText(
-                    activity,
-                    "Need location permission to scan for BLE devices",
-                    Toast.LENGTH_LONG
-                ).show()
+                if (!it.value) {
+                    Toast.makeText(
+                        activity,
+                        "The ${it.key} permission is required for BLE",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@registerForActivityResult
+                }
             }
         }
 }
