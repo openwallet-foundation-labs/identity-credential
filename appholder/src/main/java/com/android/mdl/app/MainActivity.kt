@@ -41,7 +41,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, javaClass).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        mPendingIntent = PendingIntent.getActivity(this, 0, intent, 0)
+        mPendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
     }
 
     override fun onResume() {
