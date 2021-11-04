@@ -55,12 +55,12 @@
             app:key="log_transport_verbose"
             app:title="Transport (verbose)" />
     </PreferenceCategory>
-    <PreferenceCategory app:title="Reader Authentication">
-        <SwitchPreference
-            android:defaultValue="false"
-            app:key="use_reader_authentication"
-            app:summary="Reader is using reader certificate"
-            app:title="Use reader authentication" />
-    </PreferenceCategory>
-
+    <!--    For now we are removing the option to use ACP with reader authentication -->
+    <!--    <PreferenceCategory app:title="Reader Authentication">-->
+    <!--        <SwitchPreference-->
+    <!--            android:defaultValue="false"-->
+    <!--            app:key="use_reader_authentication"-->
+    <!--            app:summary="Reader is using reader certificate"-->
+    <!--            app:title="Use reader authentication" />-->
+    <!--    </PreferenceCategory>-->
 </PreferenceScreen>

@@ -5,11 +5,9 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreference
 import com.android.mdl.app.R
-import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.util.PreferencesHelper.BLE_DATA_RETRIEVAL
 import com.android.mdl.app.util.PreferencesHelper.BLE_DATA_RETRIEVAL_PERIPHERAL_MODE
 import com.android.mdl.app.util.PreferencesHelper.NFC_DATA_RETRIEVAL
-import com.android.mdl.app.util.PreferencesHelper.USE_READER_AUTH
 import com.android.mdl.app.util.PreferencesHelper.WIFI_DATA_RETRIEVAL
 
 class SettingsFragment : PreferenceFragmentCompat() {
@@ -27,13 +25,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 }
                 true
             }
-            USE_READER_AUTH -> {
-                val documentManager = DocumentManager.getInstance(requireContext())
-                documentManager.provisionMdlDocument()
-                documentManager.provisionMvrDocument()
-                documentManager.provisionMicovDocument()
-                true
-            }
+//            USE_READER_AUTH -> {
+//                val documentManager = DocumentManager.getInstance(requireContext())
+//                documentManager.provisionMdlDocument()
+//                documentManager.provisionMvrDocument()
+//                documentManager.provisionMicovDocument()
+//                true
+//            }
             else -> super.onPreferenceTreeClick(preference)
         }
 
