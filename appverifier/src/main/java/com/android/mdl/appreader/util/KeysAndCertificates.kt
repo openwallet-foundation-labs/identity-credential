@@ -11,7 +11,7 @@ import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
 
-object IssuerKeys {
+object KeysAndCertificates {
     private fun getKeyBytes(keyInputStream: InputStream): ByteArray {
         val keyBytes = keyInputStream.readBytes()
         val publicKeyPEM = String(keyBytes, StandardCharsets.US_ASCII)
@@ -52,6 +52,18 @@ object IssuerKeys {
             getCertificate(context, R.raw.google_mdl_iaca_cert),
             getCertificate(context, R.raw.google_mekb_iaca_cert),
             getCertificate(context, R.raw.google_micov_csca_cert),
+            getCertificate(context, R.raw.cbn_iaca),
+            getCertificate(context, R.raw.hidtestcscamicov_cert),
+            getCertificate(context, R.raw.hidtestiacamdl_cert),
+            getCertificate(context, R.raw.hidtestiacamekb_cert),
+            getCertificate(context, R.raw.iaca_utms),
+            getCertificate(context, R.raw.iaca_zetes),
+            getCertificate(context, R.raw.idemia_lahague_interop_iaca),
+            getCertificate(context, R.raw.louisiana_department_of_motor_vehicles_cert),
+            getCertificate(context, R.raw.mdl_iaca_thales_multicert),
+            getCertificate(context, R.raw.scytales_root_ca),
+            getCertificate(context, R.raw.ul_cert_iaca_01),
+            getCertificate(context, R.raw.ul_cert_iaca_02),
         )
 
 }

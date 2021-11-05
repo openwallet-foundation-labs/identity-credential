@@ -19,7 +19,7 @@ import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
 import com.android.mdl.app.document.Document
-import com.android.mdl.app.document.IssuerKeys
+import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.readerauth.SimpleReaderTrustStore
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
@@ -74,7 +74,7 @@ class TransferDocumentFragment : Fragment() {
                     //  are more than one for now we are just returning the first document we found
                     try {
                         val trustStore = SimpleReaderTrustStore(
-                            IssuerKeys.getTrustedIssuerCertificates(requireContext())
+                            KeysAndCertificates.getTrustedReaderCertificates(requireContext())
                         )
                         val requestedDocuments = vm.getRequestedDocuments()
                         requestedDocuments.forEach { reqDoc ->

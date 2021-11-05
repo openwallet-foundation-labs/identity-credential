@@ -17,7 +17,7 @@ import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
 import com.android.mdl.appreader.issuerauth.SimpleIssuerTrustStore
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.FormatUtil
-import com.android.mdl.appreader.util.IssuerKeys
+import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import org.jetbrains.anko.attr
 
@@ -147,7 +147,7 @@ class ShowDocumentFragment : Fragment() {
         // Create the trustManager to validate the DS Certificate against the list of known
         // certificates in the app
         val simpleIssuerTrustStore =
-            SimpleIssuerTrustStore(IssuerKeys.getTrustedIssuerCertificates(requireContext()))
+            SimpleIssuerTrustStore(KeysAndCertificates.getTrustedIssuerCertificates(requireContext()))
 
         val sb = StringBuffer()
         sb.append("Number of documents returned: <b>${documents.size}</b>")

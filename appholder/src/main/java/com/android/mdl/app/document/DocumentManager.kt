@@ -64,57 +64,7 @@ class DocumentManager private constructor(private val context: Context) {
 
     private val id = AccessControlProfileId(0)
     private val profile = AccessControlProfile.Builder(id)
-        .setUserAuthenticationRequired(false)
-        .build()
-    private val idReaderAuth = AccessControlProfileId(1)
-    private val profileReaderAuth = AccessControlProfile.Builder(idReaderAuth)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRABdrCertificate(context))
-        .build()
-    private val idReaderAuth2 = AccessControlProfileId(2)
-    private val profileReaderAuth2 = AccessControlProfile.Builder(idReaderAuth2)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRACbnCertificate(context))
-        .build()
-    private val idReaderAuth3 = AccessControlProfileId(3)
-    private val profileReaderAuth3 = AccessControlProfile.Builder(idReaderAuth3)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRAPanasonicCertificate(context))
-        .build()
-    private val idReaderAuth4 = AccessControlProfileId(4)
-    private val profileReaderAuth4 = AccessControlProfile.Builder(idReaderAuth4)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRAIdemiaCertificate(context))
-        .build()
-    private val idReaderAuth5 = AccessControlProfileId(5)
-    private val profileReaderAuth5 = AccessControlProfile.Builder(idReaderAuth5)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRAThalesCertificate(context))
-        .build()
-    private val idReaderAuth6 = AccessControlProfileId(6)
-    private val profileReaderAuth6 = AccessControlProfile.Builder(idReaderAuth6)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRASamsungCertificate(context))
-        .build()
-    private val idReaderAuth7 = AccessControlProfileId(7)
-    private val profileReaderAuth7 = AccessControlProfile.Builder(idReaderAuth7)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRAScytalesCertificate(context))
-        .build()
-    private val idReaderAuth8 = AccessControlProfileId(8)
-    private val profileReaderAuth8 = AccessControlProfile.Builder(idReaderAuth8)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRAUl1Certificate(context))
-        .build()
-    private val idReaderAuth9 = AccessControlProfileId(9)
-    private val profileReaderAuth9 = AccessControlProfile.Builder(idReaderAuth9)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRAUl2Certificate(context))
-        .build()
-    private val idReaderAuth10 = AccessControlProfileId(10)
-    private val profileReaderAuth10 = AccessControlProfile.Builder(idReaderAuth10)
-        .setUserAuthenticationRequired(false)
-        .setReaderCertificate(IssuerKeys.getRAGoogleCertificate(context))
+        .setUserAuthenticationRequired(false)  // TODO: set to true at some point
         .build()
 
     private var ids: Collection<AccessControlProfileId> = listOf(id)
@@ -187,7 +137,7 @@ class DocumentManager private constructor(private val context: Context) {
 
     fun provisionMicovDocument() {
 
-        val iaSelfSignedCert = IssuerKeys.getMicovCertificate(context)
+        val iaSelfSignedCert = KeysAndCertificates.getMicovDsCertificate(context)
 
         ids = getAccessProfileIds()
 
@@ -324,7 +274,7 @@ class DocumentManager private constructor(private val context: Context) {
         Utility.provisionSelfSignedCredential(
             store,
             DUMMY_MICOV_CREDENTIAL_NAME,
-            IssuerKeys.getMicovKeyPair(context).private,
+            KeysAndCertificates.getMicovDsKeyPair(context).private,
             iaSelfSignedCert,
             MICOV_DOCTYPE,
             personalizationData.build(),
@@ -335,40 +285,12 @@ class DocumentManager private constructor(private val context: Context) {
 
     // Access control profile based on settings
     private fun getAccessProfileIds(): Collection<AccessControlProfileId> {
-        return if (PreferencesHelper.isReaderAuthenticationEnabled(context))
-            listOf(
-                idReaderAuth,
-                idReaderAuth2,
-                idReaderAuth3,
-                idReaderAuth4,
-                idReaderAuth5,
-                idReaderAuth6,
-                idReaderAuth7,
-                idReaderAuth8,
-                idReaderAuth9,
-                idReaderAuth10,
-            )
-        else
-            listOf(id)
+        return listOf(id)
     }
 
     // Access control profile based on settings
     private fun setAccessControlProfile(personalizationData: PersonalizationData.Builder) {
-        if (PreferencesHelper.isReaderAuthenticationEnabled(context)) {
-            personalizationData
-                .addAccessControlProfile(profileReaderAuth)
-                .addAccessControlProfile(profileReaderAuth2)
-                .addAccessControlProfile(profileReaderAuth3)
-                .addAccessControlProfile(profileReaderAuth4)
-                .addAccessControlProfile(profileReaderAuth5)
-                .addAccessControlProfile(profileReaderAuth6)
-                .addAccessControlProfile(profileReaderAuth7)
-                .addAccessControlProfile(profileReaderAuth8)
-                .addAccessControlProfile(profileReaderAuth9)
-                .addAccessControlProfile(profileReaderAuth10)
-        } else {
-            personalizationData.addAccessControlProfile(profile)
-        }
+        personalizationData.addAccessControlProfile(profile)
     }
 
     private fun createDummyMvrDocument(store: IdentityCredentialStore): Document {
@@ -391,7 +313,7 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun provisionMvrDocument() {
-        val iaSelfSignedCert = IssuerKeys.getMekbCertificate(context)
+        val iaSelfSignedCert = KeysAndCertificates.getMekbDsCertificate(context)
         ids = getAccessProfileIds()
 
         val validFrom = UnicodeString("2021-04-19T22:00:00Z")
@@ -462,7 +384,7 @@ class DocumentManager private constructor(private val context: Context) {
         Utility.provisionSelfSignedCredential(
             store,
             DUMMY_MVR_CREDENTIAL_NAME,
-            IssuerKeys.getMekbKeyPair(context).private,
+            KeysAndCertificates.getMekbDsKeyPair(context).private,
             iaSelfSignedCert,
             MVR_DOCTYPE,
             personalizationData.build(),
@@ -490,7 +412,7 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun provisionMdlDocument() {
-        val iaSelfSignedCert = IssuerKeys.getMdlCertificate(context)
+        val iaSelfSignedCert = KeysAndCertificates.getMdlDsCertificate(context)
         val bitmap = BitmapFactory.decodeResource(
             context.resources,
             R.drawable.img_erika_portrait
@@ -568,7 +490,7 @@ class DocumentManager private constructor(private val context: Context) {
         Utility.provisionSelfSignedCredential(
             store,
             DUMMY_CREDENTIAL_NAME,
-            IssuerKeys.getMdlKeyPair(context).private,
+            KeysAndCertificates.getMdlDsKeyPair(context).private,
             iaSelfSignedCert,
             MDL_DOCTYPE,
             personalizationData.build(),

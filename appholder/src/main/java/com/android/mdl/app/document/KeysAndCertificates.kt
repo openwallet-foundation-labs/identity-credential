@@ -14,7 +14,7 @@ import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.X509EncodedKeySpec
 import java.util.*
 
-object IssuerKeys {
+object KeysAndCertificates {
 
     private fun getCertificate(context: Context, resourceId: Int): X509Certificate {
         val certInputStream = context.resources.openRawResource(resourceId)
@@ -49,81 +49,41 @@ object IssuerKeys {
         return kf.generatePublic(spec)
     }
 
-    fun getMdlKeyPair(context: Context) =
+    fun getMdlDsKeyPair(context: Context) =
         KeyPair(
             getPublicKey(context, R.raw.google_mdl_ds_pubkey),
             getPrivateKey(context, R.raw.google_mdl_ds_privkey)
         )
 
-    fun getMekbKeyPair(context: Context) =
+    fun getMekbDsKeyPair(context: Context) =
         KeyPair(
             getPublicKey(context, R.raw.google_mekb_ds_pubkey),
             getPrivateKey(context, R.raw.google_mekb_ds_privkey)
         )
 
-    fun getMicovKeyPair(context: Context) =
+    fun getMicovDsKeyPair(context: Context) =
         KeyPair(
             getPublicKey(context, R.raw.google_micov_ds_pubkey),
             getPrivateKey(context, R.raw.google_micov_ds_privkey)
         )
 
-    fun getMdlCertificate(context: Context) = getCertificate(context, R.raw.google_mdl_ds_cert)
+    fun getMdlDsCertificate(context: Context) = getCertificate(context, R.raw.google_mdl_ds_cert)
 
-    fun getMekbCertificate(context: Context) = getCertificate(context, R.raw.google_mekb_ds_cert)
+    fun getMekbDsCertificate(context: Context) = getCertificate(context, R.raw.google_mekb_ds_cert)
 
-    fun getMicovCertificate(context: Context) = getCertificate(context, R.raw.google_micov_ds_cert)
+    fun getMicovDsCertificate(context: Context) = getCertificate(context, R.raw.google_micov_ds_cert)
 
-    fun getRABdrCertificate(context: Context) =
-        getCertificate(context, R.raw.bdr_iaca_iso_iec_fdis_18013_5_test_only)
-
-    fun getRACbnCertificate(context: Context) =
-        getCertificate(context, R.raw.cbn_iaca)
-
-    fun getRAPanasonicCertificate(context: Context) =
-        getCertificate(context, R.raw.iaca_zetes)
-
-    fun getRAIdemiaCertificate(context: Context) =
-        getCertificate(context, R.raw.idemia_lahague_interop_readerauthca)
-
-    fun getRAThalesCertificate(context: Context) =
-        getCertificate(context, R.raw.mdl_iaca_thales_multicert)
-
-    fun getRASamsungCertificate(context: Context) =
-        getCertificate(context, R.raw.samsung_iaca_test_cert)
-
-    fun getRAScytalesCertificate(context: Context) =
-        getCertificate(context, R.raw.scytales_root_ca)
-
-    fun getRAUl1Certificate(context: Context) =
-        getCertificate(context, R.raw.ul_cert_ca_01)
-
-    fun getRAUl2Certificate(context: Context) =
-        getCertificate(context, R.raw.ul_cert_ca_02)
-
-    fun getRAGoogleCertificate(context: Context) =
-        getCertificate(context, R.raw.google_mdl_ra_cert)
-
-    fun getRANistCertificate(context: Context) =
-        getCertificate(context, R.raw.nist_readerauth_rootcert)
-
-    fun getTrustedIssuerCertificates(context: Context) =
+    fun getTrustedReaderCertificates(context: Context) =
         listOf(
-            getCertificate(context, R.raw.bdr_iaca_iso_iec_fdis_18013_5_test_only),
-            getCertificate(context, R.raw.cbn_iaca),
-            getCertificate(context, R.raw.google_mdl_ra_cert),
-            getCertificate(context, R.raw.google_micov_ds_cert),
-            getCertificate(context, R.raw.google_mdl_ds_cert),
-            getCertificate(context, R.raw.google_mekb_ds_cert),
-            getCertificate(context, R.raw.google_micov_iaca_cert),
             getCertificate(context, R.raw.google_reader_ca),
+            getCertificate(context, R.raw.nist_readerauth_rootcert),
+            getCertificate(context, R.raw.hidtestiacamdl_cert),
             getCertificate(context, R.raw.iaca_zetes),
             getCertificate(context, R.raw.idemia_lahague_interop_readerauthca),
-            getCertificate(context, R.raw.mdl_iaca_thales_multicert),
-            getCertificate(context, R.raw.samsung_iaca_test_cert),
+            getCertificate(context, R.raw.louisiana_department_of_motor_vehicles_cert),
             getCertificate(context, R.raw.scytales_root_ca),
-            getCertificate(context, R.raw.ul_cert_ca_02),
             getCertificate(context, R.raw.ul_cert_ca_01),
-            getCertificate(context, R.raw.nist_readerauth_rootcert),
+            getCertificate(context, R.raw.ul_cert_ca_02),
         )
 
 }

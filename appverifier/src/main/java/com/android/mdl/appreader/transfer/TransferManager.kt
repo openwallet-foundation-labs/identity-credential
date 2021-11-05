@@ -16,7 +16,7 @@ import androidx.security.identity.VerificationHelper
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
 import com.android.mdl.appreader.readercertgen.SupportedCurves.*
-import com.android.mdl.appreader.util.IssuerKeys
+import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.PreferencesHelper
 import com.android.mdl.appreader.util.TransferStatus
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -193,7 +193,7 @@ class TransferManager private constructor(private val context: Context) {
                     signature = Signature.getInstance("SHA256withECDSA", provider)
                     signature.initSign(keyPair.private)
 
-                    val readerCA = IssuerKeys.getGoogleReaderCA(context)
+                    val readerCA = KeysAndCertificates.getGoogleReaderCA(context)
                     val readerCertificate =
                         ReaderCertificateGenerator.createReaderCertificate(
                             keyPair,
@@ -208,7 +208,7 @@ class TransferManager private constructor(private val context: Context) {
                     signature = Signature.getInstance("SHA384withECDSA", provider)
                     signature.initSign(keyPair.private)
 
-                    val readerCA = IssuerKeys.getGoogleReaderCA(context)
+                    val readerCA = KeysAndCertificates.getGoogleReaderCA(context)
                     val readerCertificate =
                         ReaderCertificateGenerator.createReaderCertificate(
                             keyPair,
@@ -223,7 +223,7 @@ class TransferManager private constructor(private val context: Context) {
                     signature = Signature.getInstance("SHA512withECDSA", provider)
                     signature.initSign(keyPair.private)
 
-                    val readerCA = IssuerKeys.getGoogleReaderCA(context)
+                    val readerCA = KeysAndCertificates.getGoogleReaderCA(context)
                     val readerCertificate =
                         ReaderCertificateGenerator.createReaderCertificate(
                             keyPair,
@@ -238,7 +238,7 @@ class TransferManager private constructor(private val context: Context) {
                     signature = Signature.getInstance(curveName, provider)
                     signature.initSign(keyPair.private)
 
-                    val readerCA = IssuerKeys.getGoogleReaderCA(context)
+                    val readerCA = KeysAndCertificates.getGoogleReaderCA(context)
                     val readerCertificate =
                         ReaderCertificateGenerator.createReaderCertificate(
                             keyPair, readerCA, getReaderCAPrivateKey()
@@ -263,6 +263,8 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     private fun getReaderCAPrivateKey(): PrivateKey {
+        // TODO: should get private key from KeysAndCertificates class instead of
+        //  hard-coding it here.
         val keyBytes: ByteArray = Base64.getDecoder()
             .decode("ME4CAQAwEAYHKoZIzj0CAQYFK4EEACIENzA1AgEBBDCI6BG/yRDzi307Rqq2Ndw5mYi2y4MR+n6IDqjl2Qw/Sdy8D5eCzp8mlcL/vCWnEq0=")
         val spec = PKCS8EncodedKeySpec(keyBytes)
