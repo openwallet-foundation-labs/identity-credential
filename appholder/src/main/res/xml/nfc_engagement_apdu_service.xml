@@ -21,7 +21,11 @@
     android:requireDeviceUnlock="true">
 
     <aid-group android:description="@string/engagement_aid_group_desc" android:category="other">
-        <aid-filter android:name="D2760000850101"/> <!-- NFC Type 4 Tag -->
+        <!-- NFC Type 4 Tag -->
+        <aid-filter android:name="D2760000850101"/>
+
+        <!-- Defined in ISO 18013-5:2021 clause 8.3.3.1.2 -->
+        <aid-filter android:name="A0000002480400"/>
     </aid-group>
 
 </host-apdu-service>
