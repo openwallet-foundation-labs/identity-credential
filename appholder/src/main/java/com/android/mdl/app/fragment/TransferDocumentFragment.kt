@@ -35,7 +35,8 @@ class TransferDocumentFragment : Fragment() {
 
     private var _binding: FragmentTransferDocumentBinding? = null
     private lateinit var vm: TransferDocumentViewModel
-    private var commonName = ""
+    private var readerCommonName = ""
+    private var readerIsTrusted: Boolean = false
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -95,15 +96,17 @@ class TransferDocumentFragment : Fragment() {
                                         .forEach { line ->
                                             val (key, value) = line.split("=", limit = 2)
                                             if (key == "CN") {
-                                                commonName = value
+                                                readerCommonName = value
                                             }
                                         }
 
                                     // Add some information about the reader certificate used
                                     if (trustStore.validateCertificationTrustPath(trustPath)) {
-                                        binding.txtDocuments.append("- Trusted reader auth used: ($commonName)\n")
+                                        readerIsTrusted = true
+                                        binding.txtDocuments.append("- Trusted reader auth used: ($readerCommonName)\n")
                                     } else {
-                                        binding.txtDocuments.append("- Not trusted reader auth used: ($commonName)\n")
+                                        readerIsTrusted = false
+                                        binding.txtDocuments.append("- Not trusted reader auth used: ($readerCommonName)\n")
                                     }
                                 }
                             }
@@ -190,10 +193,14 @@ class TransferDocumentFragment : Fragment() {
     }
 
     private fun getSubtitle(): String {
-        return if (commonName != "") {
-            getString(R.string.bio_auth_verifier_subtitle, commonName)
+        return if (readerCommonName != "") {
+            if (readerIsTrusted) {
+                getString(R.string.bio_auth_verifier_trusted_with_name, readerCommonName)
+            } else {
+                getString(R.string.bio_auth_verifier_untrusted_with_name, readerCommonName)
+            }
         } else {
-            getString(R.string.bio_auth_subtitle)
+            getString(R.string.bio_auth_verifier_anonymous)
         }
 
     }
