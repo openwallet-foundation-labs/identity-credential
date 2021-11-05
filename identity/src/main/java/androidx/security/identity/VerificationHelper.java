@@ -82,6 +82,7 @@ public class VerificationHelper {
     NfcAdapter mNfcAdapter;
     Activity mNfcAdapterActivity;
     IsoDep mNfcIsoDep;
+    DataRetrievalAddress mConnectWaitingForIsoDepAddress;
     boolean mNfcAdapterReaderModeEnabled;
     private boolean mUseTransportSpecificSessionTermination = false;
     private boolean mSendSessionTerminationMessage = true;
@@ -150,6 +151,17 @@ public class VerificationHelper {
 
                                     } else if (tech.equals(IsoDep.class.getName())) {
                                         mNfcIsoDep = IsoDep.get(tag);
+                                        // If we're doing QR code engagement _and_ NFC data transfer
+                                        // it's possible that we're now in a state where we're
+                                        // waiting for the reader to be in the NFC field... see
+                                        // also comment in connect() for this case...
+                                        if (mConnectWaitingForIsoDepAddress != null) {
+                                            Log.i(TAG, "NFC data transfer + QR engagement, "
+                                                + "reader is now in field");
+                                            mDeviceResponseListenerExecutor.execute(
+                                                () -> connect(mConnectWaitingForIsoDepAddress)
+                                            );
+                                        }
                                     }
                                 }
                             }
@@ -330,8 +342,15 @@ public class VerificationHelper {
         mDataTransport = address.getDataTransport(mContext, mLoggingFlags);
         if (mDataTransport instanceof DataTransportNfc) {
             if (mNfcIsoDep == null) {
-                Log.e(TAG, "IsoDep is null for NFC transport");
-                throw new IllegalArgumentException("IsoDep is null for NFC transport");
+                // This can happen if using NFC data transfer with QR code engagement
+                // which is allowed by ISO 18013-5:2021 (even though it's really
+                // weird). In this case we just sit and wait until the tag (reader)
+                // is detected... once detected, this routine can just call connect()
+                // again.
+                mConnectWaitingForIsoDepAddress = address;
+                Log.i(TAG, "In connect() with NFC data transfer, waiting for IsoDep");
+                reportMoveIntoNfcField();
+                return;
             }
             ((DataTransportNfc) mDataTransport).setIsoDep(mNfcIsoDep);
         }
@@ -460,6 +479,13 @@ public class VerificationHelper {
         if (mListener != null) {
             mDeviceResponseListenerExecutor.execute(
                     () -> mListener.onResponseReceived(deviceResponseBytes));
+        }
+    }
+
+    void reportMoveIntoNfcField() {
+        if (mListener != null) {
+            mDeviceResponseListenerExecutor.execute(
+                () -> mListener.onMoveIntoNfcField());
         }
     }
 
@@ -655,6 +681,15 @@ public class VerificationHelper {
          * {@link #connect(DataRetrievalAddress)} in response to this callback.
          */
         void onDeviceEngagementReceived(@NonNull List<DataRetrievalAddress> addresses);
+
+        /**
+         * Called when NFC data transfer has been selected but the mdoc reader device isn't yet
+         * in the NFC field of the mdoc device.
+         *
+         * <p>The application should instruct the user to move the mdoc reader device into
+         * the NFC field.
+         */
+        void onMoveIntoNfcField();
 
         /**
          * Called when connected to a remote mdoc device.

@@ -79,6 +79,9 @@ class TransferFragment : Fragment() {
                 TransferStatus.ENGAGED -> {
                     binding.tvStatus.text = "Device engagement received..."
                 }
+                TransferStatus.MOVE_INTO_NFC_FIELD -> {
+                    binding.tvStatus.text = "Move reader into NFC field..."
+                }
                 TransferStatus.CONNECTED -> {
                     binding.tvStatus.text = "Connected. Requesting mDoc..."
                     vm.sendRequest(requestDocumentList)

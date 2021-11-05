@@ -132,6 +132,10 @@ class TransferManager private constructor(private val context: Context) {
             transferStatusLd.value = TransferStatus.ENGAGED
         }
 
+        override fun onMoveIntoNfcField() {
+            transferStatusLd.value = TransferStatus.MOVE_INTO_NFC_FIELD
+        }
+
         override fun onDeviceConnected() {
             transferStatusLd.value = TransferStatus.CONNECTED
         }
