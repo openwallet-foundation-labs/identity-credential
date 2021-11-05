@@ -147,7 +147,12 @@ public class VerificationHelper {
                                     if (tech.equals(Ndef.class.getName())) {
                                         Log.d(TAG, "Found ndef tech!");
 
-                                        setNdefDeviceEngagement(Ndef.get(tag));
+                                        if (mDeviceEngagement != null) {
+                                            Log.i(TAG, "Already have device engagement "
+                                                + "so not inspecting what was received via NFC");
+                                        } else {
+                                            setNdefDeviceEngagement(Ndef.get(tag));
+                                        }
 
                                     } else if (tech.equals(IsoDep.class.getName())) {
                                         mNfcIsoDep = IsoDep.get(tag);
