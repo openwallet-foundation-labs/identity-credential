@@ -47,7 +47,7 @@ class ShareDocumentFragment : Fragment() {
         vm.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {
                 TransferStatus.ENGAGEMENT_READY -> {
-                    vm.message.set("Engagement Ready!")
+                    vm.message.set("Scan QR code or NFC tap with mdoc verifier device")
                     vm.setDeviceEngagement()
                 }
                 TransferStatus.CONNECTED -> {
