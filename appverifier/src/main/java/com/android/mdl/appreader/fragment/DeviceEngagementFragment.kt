@@ -38,14 +38,15 @@ class DeviceEngagementFragment : Fragment() {
     private val args: DeviceEngagementFragmentArgs by navArgs()
 
     private val appPermissions:List<String> get() {
-        var permissions = mutableListOf(Manifest.permission.CAMERA)
+        var permissions = mutableListOf(
+            Manifest.permission.CAMERA,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        )
 
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
             permissions.add(Manifest.permission.BLUETOOTH_SCAN)
             permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
-        } else {
-            permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
         }
 
         return permissions

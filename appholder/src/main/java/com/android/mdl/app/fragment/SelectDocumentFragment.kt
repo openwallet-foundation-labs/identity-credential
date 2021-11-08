@@ -31,6 +31,7 @@ class SelectDocumentFragment : Fragment() {
     private val appPermissions:Array<String> =
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.BLUETOOTH_ADVERTISE,
                 Manifest.permission.BLUETOOTH_SCAN,
                 Manifest.permission.BLUETOOTH_CONNECT,
