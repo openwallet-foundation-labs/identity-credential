@@ -150,8 +150,9 @@ class ShowDocumentFragment : Fragment() {
             SimpleIssuerTrustStore(KeysAndCertificates.getTrustedIssuerCertificates(requireContext()))
 
         val sb = StringBuffer()
-        sb.append("Number of documents returned: <b>${documents.size}</b>")
-        sb.append("<br><br>")
+        sb.append("Number of documents returned: <b>${documents.size}</b><br>")
+        sb.append("Address: <b>" + transferManager.mdocAddress + "</b><br>")
+        sb.append("<br>")
         for (doc in documents) {
             // Get primary color from theme to use in the HTML formatted document.
             val color = String.format(
