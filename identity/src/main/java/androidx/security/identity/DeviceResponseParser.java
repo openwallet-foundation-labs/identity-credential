@@ -332,6 +332,12 @@ public class DeviceResponseParser {
                 byte[] tagInResponse = Util.coseMac0GetTag(deviceMac);
                 byte[] expectedTag = Util.coseMac0GetTag(expectedMac);
                 deviceSignedAuthenticated = Arrays.equals(expectedTag, tagInResponse);
+                if (deviceSignedAuthenticated) {
+                    Log.i(TAG, "Verified DeviceSigned using MAC");
+                } else {
+                    Log.i(TAG, "Device MAC mismatch, got " + Util.toHex(tagInResponse)
+                        + " expected " + Util.toHex(expectedTag));
+                }
             }
             builder.setDeviceSignedAuthenticated(deviceSignedAuthenticated);
 
