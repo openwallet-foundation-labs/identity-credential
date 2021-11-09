@@ -170,8 +170,7 @@ class ShowDocumentFragment : Fragment() {
             } else {
                 doc.issuerCertificateChain.toList()
             }
-
-            certChain.last().issuerX500Principal.name.split(",").forEach { line ->
+            certChain.last().issuerX500Principal.name.split("[^\\\\],".toRegex()).forEach { line ->
                 val (key, value) = line.split("=", limit = 2)
                 if (key == "CN") {
                     commonName = "($value)"
