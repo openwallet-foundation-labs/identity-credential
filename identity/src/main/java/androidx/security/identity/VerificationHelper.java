@@ -423,6 +423,7 @@ public class VerificationHelper {
                 } catch (Exception e) {
                     mDataTransport.close();
                     reportError(new Error("Error decrypting message from device", e));
+                    return;
                 }
 
                 // If there's data in the message, assume it's DeviceResponse (ISO 18013-5
