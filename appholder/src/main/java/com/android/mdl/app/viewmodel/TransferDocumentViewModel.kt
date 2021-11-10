@@ -1,6 +1,7 @@
 package com.android.mdl.app.viewmodel
 
 import android.app.Application
+import android.util.Log
 import android.view.View
 import androidx.biometric.BiometricPrompt.CryptoObject
 import androidx.databinding.ObservableField
@@ -16,6 +17,7 @@ import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
+import java.util.NoSuchElementException
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
@@ -43,12 +45,16 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
             transferManager.getDeviceRequest().docRequests
 
         docRequests.forEach { doc ->
-            val entryNames = mutableListOf<String>()
-            doc.namespaces.forEach { ns ->
-                entryNames.addAll(doc.getEntryNames(ns))
+            try {
+                val entryNames = mutableListOf<String>()
+                doc.namespaces.forEach { ns ->
+                    entryNames.addAll(doc.getEntryNames(ns))
+                }
+                documents[documentManager.getDocuments().first { it.docType == doc.docType }] =
+                    entryNames
+            } catch (e : NoSuchElementException) {
+                Log.w(LOG_TAG, "No document for docType " + doc.docType)
             }
-            documents[documentManager.getDocuments().first { it.docType == doc.docType }] =
-                entryNames
         }
         return documents
     }
@@ -65,23 +71,27 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         val requestedDocuments = getRequestedDocuments()
         val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
         requestedDocuments.forEach { reqDoc ->
-            val doc = documents.first { it.docType == reqDoc.docType }
-            val issuerSignedEntriesToRequest = mutableMapOf<String, Collection<String>>()
-            reqDoc.namespaces.forEach { ns ->
-                issuerSignedEntriesToRequest[ns] = reqDoc.getEntryNames(ns)
-            }
-            val authNeeded = transferManager.addDocumentToResponse(
-                doc.identityCredentialName,
-                doc.docType,
-                issuerSignedEntriesToRequest,
-                response,
-                reqDoc.readerAuth,
-                reqDoc.itemsRequest
-            )
-            if (authNeeded) {
-                inProgress.set(View.GONE)
-                inProgress.notifyChange()
-                return transferManager.getCryptoObject()
+            try {
+                val doc = documents.first { it.docType == reqDoc.docType }
+                val issuerSignedEntriesToRequest = mutableMapOf<String, Collection<String>>()
+                reqDoc.namespaces.forEach { ns ->
+                    issuerSignedEntriesToRequest[ns] = reqDoc.getEntryNames(ns)
+                }
+                val authNeeded = transferManager.addDocumentToResponse(
+                    doc.identityCredentialName,
+                    doc.docType,
+                    issuerSignedEntriesToRequest,
+                    response,
+                    reqDoc.readerAuth,
+                    reqDoc.itemsRequest
+                )
+                if (authNeeded) {
+                    inProgress.set(View.GONE)
+                    inProgress.notifyChange()
+                    return transferManager.getCryptoObject()
+                }
+            } catch (e : NoSuchElementException) {
+                Log.w(LOG_TAG, "No document for docType " + reqDoc.docType)
             }
         }
 
