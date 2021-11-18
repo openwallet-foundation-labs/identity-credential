@@ -110,7 +110,11 @@ class TransferDocumentFragment : Fragment() {
                                     }
                                 }
                             }
-                            binding.txtDocuments.append("- ${doc?.userVisibleName} (${doc?.docType})\n")
+                            if (doc != null) {
+                                binding.txtDocuments.append("- ${doc?.userVisibleName} (${doc?.docType})\n")
+                            } else {
+                                binding.txtDocuments.append("- No document found for ${reqDoc.docType}\n")
+                            }
                         }
 
                         // Ask for user consent and send response
