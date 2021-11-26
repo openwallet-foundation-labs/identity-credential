@@ -52,6 +52,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000002-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000003-a123-48ce-896b-4c76973373e6");
     // Note: Ident UUID not used in peripheral server mode
+    UUID mCharacteristicL2CAPUuid = UUID.fromString("0000000a-a123-48ce-896b-4c76973373e6");
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
@@ -75,12 +76,131 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     private DataRetrievalAddress mListeningAddress;
 
     @Override
-    public @NonNull DataRetrievalAddress getListeningAddress() {
+    public @NonNull
+    DataRetrievalAddress getListeningAddress() {
         return mListeningAddress;
     }
 
     public void setServiceUuid(@NonNull UUID serviceUuid) {
         mServiceUuid = serviceUuid;
+    }
+
+    ScanCallback mScanCallback = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            mGattClient = new GattClient(mContext, mLoggingFlags,
+                    mServiceUuid, mEncodedEDeviceKeyBytes,
+                    mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+                    mCharacteristicServer2ClientUuid, null,
+                    mCharacteristicL2CAPUuid);
+            mGattClient.setListener(new GattClient.Listener() {
+                @Override
+                public void onPeerConnected() {
+                    reportConnectionResult(null);
+                }
+
+                @Override
+                public void onPeerDisconnected() {
+                    if (mGattClient != null) {
+                        mGattClient.setListener(null);
+                        mGattClient.disconnect();
+                        mGattClient = null;
+                    }
+                    reportConnectionDisconnected();
+                }
+
+                @Override
+                public void onMessageReceived(@NonNull byte[] data) {
+                    reportMessageReceived(data);
+                }
+
+                @Override
+                public void onTransportSpecificSessionTermination() {
+                    reportTransportSpecificSessionTermination();
+                }
+
+                @Override
+                public void onError(@NonNull Throwable error) {
+                    reportError(error);
+                }
+            });
+
+            reportListeningPeerConnecting();
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
+                Log.i(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
+                        + "Connecting to device with address " + result.getDevice().getAddress());
+            }
+            mGattClient.connect(result.getDevice());
+            if (mScanner != null) {
+                if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                    Log.i(TAG, "Stopped scanning for UUID " + mServiceUuid);
+                }
+                mScanner.stopScan(mScanCallback);
+                mScanner = null;
+            }
+            // TODO: Investigate. When testing with Reader C (which is on iOS) we get two callbacks
+            //  and thus a NullPointerException when calling stopScan().
+        }
+
+        @Override
+        public void onBatchScanResults(List<ScanResult> results) {
+            Log.w(TAG, "Ignoring unexpected onBatchScanResults");
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            reportError(new Error("BLE scan failed with error code " + errorCode));
+        }
+    };
+
+    /**
+     * Callback to receive information about the advertisement process.
+     */
+    AdvertiseCallback mAdvertiseCallback = new AdvertiseCallback() {
+        @Override
+        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+        }
+
+        @Override
+        public void onStartFailure(int errorCode) {
+            reportError(new Error("BLE advertise failed with error code " + errorCode));
+        }
+    };
+
+    @Override
+    public void connect(@NonNull DataRetrievalAddress genericAddress) {
+        DataRetrievalAddressBlePeripheralServerMode address =
+                (DataRetrievalAddressBlePeripheralServerMode) genericAddress;
+
+        // TODO: Check if BLE is enabled and error out if not so...
+
+        if (mEncodedEDeviceKeyBytes == null) {
+            reportError(new Error("EDeviceKeyBytes not set"));
+            return;
+        }
+
+        mServiceUuid = address.uuid;
+
+        // Start scanning...
+        mBluetoothManager = (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
+        BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
+
+        ScanFilter filter = new ScanFilter.Builder()
+                .setServiceUuid(new ParcelUuid(mServiceUuid))
+                .build();
+
+        ScanSettings settings = new ScanSettings.Builder()
+                .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                .build();
+
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            mTimeScanningStartedMillis = System.currentTimeMillis();
+            Log.i(TAG, "Started scanning for UUID " + mServiceUuid);
+        }
+        mScanner = bluetoothAdapter.getBluetoothLeScanner();
+        mScanner.startScan(List.of(filter), settings, mScanCallback);
     }
 
     @Override
@@ -91,7 +211,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         }
 
         BluetoothManager bluetoothManager =
-            (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
+                (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
         BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
 
         if (mServiceUuid == null) {
@@ -111,9 +231,10 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         // TODO: Check if BLE is enabled and error out if not so...
 
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
-            mEncodedEDeviceKeyBytes,
-            mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-            mCharacteristicServer2ClientUuid, null);
+                mEncodedEDeviceKeyBytes,
+                mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+                mCharacteristicServer2ClientUuid, null,
+                mCharacteristicL2CAPUuid);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
@@ -180,123 +301,6 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         }
 
     }
-
-    /**
-     * Callback to receive information about the advertisement process.
-     */
-    AdvertiseCallback mAdvertiseCallback = new AdvertiseCallback() {
-        @Override
-        public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-        }
-
-        @Override
-        public void onStartFailure(int errorCode) {
-            reportError(new Error("BLE advertise failed with error code " + errorCode));
-        }
-    };
-
-    @Override
-    public void connect(@NonNull DataRetrievalAddress genericAddress) {
-        DataRetrievalAddressBlePeripheralServerMode address =
-            (DataRetrievalAddressBlePeripheralServerMode) genericAddress;
-
-        // TODO: Check if BLE is enabled and error out if not so...
-
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
-        mServiceUuid = address.uuid;
-
-        // Start scanning...
-        mBluetoothManager = (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
-        BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
-
-        ScanFilter filter = new ScanFilter.Builder()
-            .setServiceUuid(new ParcelUuid(mServiceUuid))
-            .build();
-
-        ScanSettings settings = new ScanSettings.Builder()
-            .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-            .build();
-
-        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
-            mTimeScanningStartedMillis = System.currentTimeMillis();
-            Log.i(TAG, "Started scanning for UUID " + mServiceUuid);
-        }
-        mScanner = bluetoothAdapter.getBluetoothLeScanner();
-        mScanner.startScan(List.of(filter), settings, mScanCallback);
-    }
-
-    ScanCallback mScanCallback = new ScanCallback() {
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            mGattClient = new GattClient(mContext, mLoggingFlags,
-                mServiceUuid, mEncodedEDeviceKeyBytes,
-                mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                mCharacteristicServer2ClientUuid, null);
-            mGattClient.setListener(new GattClient.Listener() {
-                @Override
-                public void onPeerConnected() {
-                    reportConnectionResult(null);
-                }
-
-                @Override
-                public void onPeerDisconnected() {
-                    if (mGattClient != null) {
-                        mGattClient.setListener(null);
-                        mGattClient.disconnect();
-                        mGattClient = null;
-                    }
-                    reportConnectionDisconnected();
-                }
-
-                @Override
-                public void onMessageReceived(@NonNull byte[] data) {
-                    reportMessageReceived(data);
-                }
-
-                @Override
-                public void onTransportSpecificSessionTermination() {
-                    reportTransportSpecificSessionTermination();
-                }
-
-                @Override
-                public void onError(@NonNull Throwable error) {
-                    reportError(error);
-                }
-            });
-
-            reportListeningPeerConnecting();
-            if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
-                long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
-                Log.i(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
-                    + "Connecting to device with address " + result.getDevice().getAddress());
-            }
-            mGattClient.connect(result.getDevice());
-            if (mScanner != null) {
-                if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
-                    Log.i(TAG, "Stopped scanning for UUID " + mServiceUuid);
-                }
-                mScanner.stopScan(mScanCallback);
-                mScanner = null;
-            }
-            // TODO: Investigate. When testing with Reader C (which is on iOS) we get two callbacks
-            //  and thus a NullPointerException when calling stopScan().
-        }
-
-        @Override
-        public void onBatchScanResults(List<ScanResult> results) {
-            Log.w(TAG, "Ignoring unexpected onBatchScanResults");
-        }
-
-        @Override
-        public void onScanFailed(int errorCode) {
-            reportError(new Error("BLE scan failed with error code " + errorCode));
-        }
-    };
 
     @Override
     public void close() {

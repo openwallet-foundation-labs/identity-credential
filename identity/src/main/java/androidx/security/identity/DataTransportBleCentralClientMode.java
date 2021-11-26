@@ -48,10 +48,11 @@ import java.util.UUID;
 public class DataTransportBleCentralClientMode extends DataTransportBle {
     private static final String TAG = "DataTransportBleCentralClientMode";
 
-    UUID mCharacteristicStateUuid =         UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicStateUuid = UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicIdentUuid =         UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicIdentUuid = UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicL2CAPUuid = UUID.fromString("0000000b-a123-48ce-896b-4c76973373e6");
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
@@ -125,9 +126,10 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             mGattClient = new GattClient(mContext, mLoggingFlags,
-                mServiceUuid, mEncodedEDeviceKeyBytes,
-                mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid);
+                    mServiceUuid, mEncodedEDeviceKeyBytes,
+                    mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+                    mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
+                    mCharacteristicL2CAPUuid);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -207,8 +209,9 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
                 (BluetoothManager) mContext.getSystemService(BLUETOOTH_SERVICE);
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
-            mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-            mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid);
+                mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+                mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
+                mCharacteristicL2CAPUuid);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {

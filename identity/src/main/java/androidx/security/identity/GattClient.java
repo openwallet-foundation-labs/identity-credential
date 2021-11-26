@@ -23,7 +23,9 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -31,6 +33,7 @@ import androidx.annotation.Nullable;
 import androidx.security.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Queue;
@@ -46,32 +49,37 @@ class GattClient extends BluetoothGattCallback {
     private boolean mInhibitCallbacks = false;
 
     BluetoothGatt mGatt;
+    BluetoothGattCharacteristic mCharacteristicL2CAP;
 
     BluetoothGattCharacteristic mCharacteristicState;
     BluetoothGattCharacteristic mCharacteristicClient2Server;
     BluetoothGattCharacteristic mCharacteristicServer2Client;
     BluetoothGattCharacteristic mCharacteristicIdent;
+    UUID mCharacteristicL2CAPUuid;
 
     UUID mCharacteristicStateUuid;
     UUID mCharacteristicClient2ServerUuid;
     UUID mCharacteristicServer2ClientUuid;
     UUID mCharacteristicIdentUuid;
+    private BluetoothSocket mSocket;
 
     // This is what the 16-bit UUID 0x29 0x02 is encoded like.
     UUID mClientCharacteristicConfigUuid =  UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
 
     private int mNegotiatedMtu;
     private byte[] mIdentValue;
+    private boolean supportL2CAP = false;
 
     private final @LoggingFlag int mLoggingFlags;
 
 
     GattClient(@NonNull Context context, @LoggingFlag int loggingFlags, @NonNull UUID serviceUuid,
-        @NonNull byte[] encodedEDeviceKeyBytes,
-        @NonNull UUID characteristicStateUuid,
-        @NonNull UUID characteristicClient2ServerUuid,
-        @NonNull UUID characteristicServer2ClientUuid,
-        @Nullable UUID characteristicIdentUuid) {
+               @NonNull byte[] encodedEDeviceKeyBytes,
+               @NonNull UUID characteristicStateUuid,
+               @NonNull UUID characteristicClient2ServerUuid,
+               @NonNull UUID characteristicServer2ClientUuid,
+               @Nullable UUID characteristicIdentUuid,
+               @Nullable UUID characteristicL2CAPUuid) {
         mContext = context;
         mLoggingFlags = loggingFlags;
         mServiceUuid = serviceUuid;
@@ -80,6 +88,7 @@ class GattClient extends BluetoothGattCallback {
         mCharacteristicClient2ServerUuid = characteristicClient2ServerUuid;
         mCharacteristicServer2ClientUuid = characteristicServer2ClientUuid;
         mCharacteristicIdentUuid = characteristicIdentUuid;
+        mCharacteristicL2CAPUuid = characteristicL2CAPUuid;
     }
 
     void setListener(@Nullable Listener listener) {
@@ -96,6 +105,14 @@ class GattClient extends BluetoothGattCallback {
 
     void disconnect() {
         mInhibitCallbacks = true;
+        try {
+            if (mSocket != null) {
+                mSocket.close();
+            }
+        } catch (IOException e) {
+            // Ignoring this error
+            Log.e(TAG, " Error closing socket connection " + e.getMessage(), e);
+        }
         if (mGatt != null) {
             mGatt.disconnect();
             mGatt = null;
@@ -125,6 +142,12 @@ class GattClient extends BluetoothGattCallback {
         if (status == BluetoothGatt.GATT_SUCCESS) {
             BluetoothGattService s = gatt.getService(mServiceUuid);
             if (s != null) {
+                mCharacteristicL2CAP = s.getCharacteristic(mCharacteristicL2CAPUuid);
+                if (mCharacteristicL2CAP != null) {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                        Log.i(TAG, "L2CAP characteristic found " + mCharacteristicL2CAPUuid);
+                    }
+                }
                 mCharacteristicState = s.getCharacteristic(mCharacteristicStateUuid);
                 if (mCharacteristicState == null) {
                     reportError(new Error("State characteristic not found"));
@@ -152,6 +175,17 @@ class GattClient extends BluetoothGattCallback {
                 }
             }
 
+            // Use L2CAP if supported by GattServer and by this OS version
+            supportL2CAP = mCharacteristicL2CAP != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                Log.i(TAG, "Is L2CAP supported: " + supportL2CAP);
+            }
+            if (supportL2CAP) {
+                if (!gatt.readCharacteristic(mCharacteristicL2CAP)) {
+                    reportError(new Error("Error reading PSM from L2CAP characteristic"));
+                }
+            }
+
             // Start by bumping MTU, callback in onMtuChanged()...
             //
             // As per BT specs, maximum MTU is 517 so we request that. We might not get
@@ -164,7 +198,7 @@ class GattClient extends BluetoothGattCallback {
             // it'll be via BluetoothGattServerCallback.onMtuChanged(), see GattServer.java
             // for that in our implementation.
             //
-            if (!gatt.requestMtu(517)) {
+            if (!supportL2CAP && !gatt.requestMtu(517)) {
                 reportError(new Error("Error requesting MTU"));
                 return;
             }
@@ -205,23 +239,88 @@ class GattClient extends BluetoothGattCallback {
     public void onCharacteristicRead(@NonNull BluetoothGatt gatt,
             @NonNull BluetoothGattCharacteristic characteristic,
             int status) {
-        if (!characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
-            reportError(new Error("Unexpected onCharacteristicRead for characteristic "
-                + characteristic.getUuid() + ", expected " + mCharacteristicIdentUuid));
-            return;
-        }
-        byte[] identValue = characteristic.getValue();
-        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
-            Log.d(TAG, "Received identValue: " + Util.toHex(identValue));
-        }
-        // TODO: maybe comment out or change to warning since it's optional... several readers
-        //  send the wrong value (others send the right one though)
-        if (!Arrays.equals(identValue, mIdentValue)) {
-            reportError(new Error("Received ident does not match expected ident"));
-            return;
-        }
+        if (characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
+            byte[] identValue = characteristic.getValue();
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                Log.d(TAG, "Received identValue: " + Util.toHex(identValue));
+            }
+            // TODO: maybe comment out or change to warning since it's optional... several readers
+            //  send the wrong value (others send the right one though)
+            if (!Arrays.equals(identValue, mIdentValue)) {
+                reportError(new Error("Received ident does not match expected ident"));
+                return;
+            }
 
-        afterIdentObtained(gatt);
+            afterIdentObtained(gatt);
+        } else if (characteristic.getUuid().equals(mCharacteristicL2CAPUuid)) {
+            byte[] psmValue = characteristic.getValue();
+            if (psmValue == null || psmValue.length != 1) {
+                reportError(new Error("Invalid PSM value received on L2CAP characteristic"));
+                return;
+            }
+            if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                Log.d(TAG, "Received psmValue: " + Util.toHex(psmValue));
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    mSocket = mGatt.getDevice().createInsecureL2capChannel(psmValue[0] & 0xFF);
+                    mSocket.connect();
+                    if (mSocket.isConnected()) {
+                        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                            Log.d(TAG, "Connected using L2CAP on PSM: " + psmValue[0]);
+                        }
+                        reportPeerConnected();
+                        listenSocket();
+                    }
+                } catch (IOException e) {
+                    Log.e(TAG, "Error connecting to socket L2CAP " + e.getMessage(), e);
+                    reportError(new Error("Error connecting to socket L2CAP"));
+                }
+            }
+        } else {
+            reportError(new Error("Unexpected onCharacteristicRead for characteristic "
+                    + characteristic.getUuid() + ", expected " + mCharacteristicIdentUuid));
+            return;
+        }
+    }
+
+    private void listenSocket() {
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+            Log.i(TAG, "Start reading socket input");
+        }
+        byte[] mmBuffer = new byte[1024 * 16];
+        int numBytes; // bytes returned from read()
+        // Keep listening to the InputStream until an exception occurs.
+        while (true) {
+            try {
+                // Read from the InputStream.
+                numBytes = mSocket.getInputStream().read(mmBuffer);
+                if (numBytes == -1) {
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                        Log.i(TAG, "Stop listening from socket");
+                    }
+                    reportPeerDisconnected();
+                    break;
+                }
+                if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                    Log.i(TAG, "Chunk received by socket: (" + numBytes + ") " + Util.toHex(mmBuffer));
+                }
+                // Report message received.
+                mIncomingMessage.write(mmBuffer, 0, numBytes);
+                if (numBytes < mmBuffer.length) {
+                    // Last chunk received.
+                    byte[] entireMessage = mIncomingMessage.toByteArray();
+                    if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
+                        Log.i(TAG, "Entire message received by socket: (" + entireMessage.length + ") " + Util.toHex(entireMessage));
+                    }
+                    mIncomingMessage.reset();
+                    reportMessageReceived(entireMessage);
+                }
+            } catch (IOException e) {
+                Log.d(TAG, "Input stream was disconnected", e);
+                break;
+            }
+        }
     }
 
     private void afterIdentObtained(@NonNull BluetoothGatt gatt) {
@@ -395,14 +494,23 @@ class GattClient extends BluetoothGattCallback {
 
 
     void sendMessage(@NonNull byte[] data) {
-        int mtu = mNegotiatedMtu;
+        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
+            Log.i(TAG, "sendMessage " + Util.toHex(data));
+        }
+
+        if (supportL2CAP && mSocket != null && mSocket.isConnected()) {
+            try {
+                mSocket.getOutputStream().write(data);
+                return;
+            } catch (IOException e) {
+                Log.e(TAG, "Error sending message by L2CAP socket " + e.getMessage(), e);
+                reportError(new Error("Error sending message by L2CAP socket"));
+            }
+        }
+
         if (mNegotiatedMtu == 0) {
             Log.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
             mNegotiatedMtu = 23;
-        }
-
-        if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE) != 0) {
-            Log.i(TAG, "sendMessage " + Util.toHex(data));
         }
 
         // Three less the MTU but we also need room for the leading 0x00 or 0x01.
@@ -429,6 +537,11 @@ class GattClient extends BluetoothGattCallback {
     }
 
     public void sendTransportSpecificTermination() {
+        if (supportL2CAP && mSocket != null && mSocket.isConnected()) {
+            // L2CAP doesn't read characteristics
+            // Send message to close connection status '20'
+            sendMessage(Util.fromHex("a16673746174757314"));
+        }
         byte[] terminationCode = new byte[]{(byte) 0x02};
         mCharacteristicState.setValue(terminationCode);
         if (!mGatt.writeCharacteristic(mCharacteristicState)) {
