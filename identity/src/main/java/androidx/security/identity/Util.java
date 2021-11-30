@@ -22,8 +22,8 @@ import android.icu.util.Calendar;
 import android.icu.util.GregorianCalendar;
 import android.icu.util.TimeZone;
 import android.security.keystore.KeyProperties;
-
 import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -32,6 +32,10 @@ import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Primitive;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.DERSequenceGenerator;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -100,9 +104,6 @@ import co.nstant.in.cbor.model.SimpleValueType;
 import co.nstant.in.cbor.model.SpecialType;
 import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
-import org.bouncycastle.asn1.ASN1Primitive;
-import org.bouncycastle.asn1.ASN1Sequence;
-import org.bouncycastle.asn1.DERSequenceGenerator;
 
 /**
  * @hide
@@ -502,6 +503,7 @@ public class Util {
     }
 
     private static final int COSE_LABEL_ALG = 1;
+    private static final int COSE_LABEL_CRV = -1;
     private static final int COSE_LABEL_X5CHAIN = 33;  // temporary identifier
 
     // From RFC 8152: Table 5: ECDSA Algorithm Values
@@ -509,6 +511,8 @@ public class Util {
     private static final int COSE_ALG_ECDSA_384 = -35;
     private static final int COSE_ALG_ECDSA_512 = -36;
     private static final int COSE_ALG_HMAC_256_256 = 5;
+    // From RFC 8152: Table 6: EdDSA Algorithm Values
+    private static final int COSE_ALG_EDDSA = -8;
 
     /*
      * From RFC 8152 section 8.1 ECDSA:
@@ -585,79 +589,7 @@ public class Util {
         return baos.toByteArray();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull DataItem coseSign1Sign(@NonNull Signature s,
-            @Nullable byte[] data,
-            @Nullable byte[] detachedContent,
-            @Nullable Collection<X509Certificate> certificateChain) {
-
-        int dataLen = (data != null ? data.length : 0);
-        int detachedContentLen = (detachedContent != null ? detachedContent.length : 0);
-        if (dataLen > 0 && detachedContentLen > 0) {
-            throw new IllegalArgumentException("data and detachedContent cannot both be non-empty");
-        }
-
-        int keySize;
-        int alg;
-        if (s.getAlgorithm() == "SHA256withECDSA") {
-            keySize = 32;
-            alg = COSE_ALG_ECDSA_256;
-        } else if (s.getAlgorithm() == "SHA384withECDSA") {
-            keySize = 48;
-            alg = COSE_ALG_ECDSA_384;
-        } else if (s.getAlgorithm() == "SHA512withECDSA") {
-            keySize = 64;
-            alg = COSE_ALG_ECDSA_512;
-        } else {
-            throw new IllegalArgumentException("Unsupported algorithm " + s.getAlgorithm());
-        }
-
-        CborBuilder protectedHeaders = new CborBuilder();
-        MapBuilder<CborBuilder> protectedHeadersMap = protectedHeaders.addMap();
-        protectedHeadersMap.put(COSE_LABEL_ALG, alg);
-        byte[] protectedHeadersBytes = cborEncode(protectedHeaders.build().get(0));
-
-        byte[] toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent);
-
-        byte[] coseSignature = null;
-        try {
-            s.update(toBeSigned);
-            byte[] derSignature = s.sign();
-            coseSignature = signatureDerToCose(derSignature, keySize);
-        } catch (SignatureException e) {
-            throw new IllegalStateException("Error signing data", e);
-        }
-
-        CborBuilder builder = new CborBuilder();
-        ArrayBuilder<CborBuilder> array = builder.addArray();
-        array.add(protectedHeadersBytes);
-        MapBuilder<ArrayBuilder<CborBuilder>> unprotectedHeaders = array.addMap();
-        try {
-            if (certificateChain != null && certificateChain.size() > 0) {
-                if (certificateChain.size() == 1) {
-                    X509Certificate cert = certificateChain.iterator().next();
-                    unprotectedHeaders.put(COSE_LABEL_X5CHAIN, cert.getEncoded());
-                } else {
-                    ArrayBuilder<MapBuilder<ArrayBuilder<CborBuilder>>> x5chainsArray =
-                            unprotectedHeaders.putArray(COSE_LABEL_X5CHAIN);
-                    for (X509Certificate cert : certificateChain) {
-                        x5chainsArray.add(cert.getEncoded());
-                    }
-                }
-            }
-        } catch (CertificateEncodingException e) {
-            throw new IllegalStateException("Error encoding certificate", e);
-        }
-        if (data == null || data.length == 0) {
-            array.add(new SimpleValue(SimpleValueType.NULL));
-        } else {
-            array.add(data);
-        }
-        array.add(coseSignature);
-
-        return builder.build().get(0);
-    }
+    private static final int COSE_KEY_CRV = -1;
 
     /**
      * Note: this uses the default JCA provider which may not support a lot of curves, for
@@ -685,91 +617,7 @@ public class Util {
         }
     }
 
-    /**
-     * Currently only ECDSA signatures are supported.
-     *
-     * TODO: add support and tests for Ed25519 and Ed448.
-     *
-     * @hide
-     */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean coseSign1CheckSignature(@NonNull DataItem coseSign1,
-            @NonNull byte[] detachedContent, @NonNull PublicKey publicKey)  {
-        if (coseSign1.getMajorType() != MajorType.ARRAY) {
-            throw new IllegalArgumentException("Data item is not an array");
-        }
-        List<DataItem> items = ((co.nstant.in.cbor.model.Array) coseSign1).getDataItems();
-        if (items.size() < 4) {
-            throw new IllegalArgumentException("Expected at least four items in COSE_Sign1 array");
-        }
-        if (items.get(0).getMajorType() != MajorType.BYTE_STRING) {
-            throw new IllegalArgumentException("Item 0 (protected headers) is not a byte-string");
-        }
-        byte[] encodedProtectedHeaders = ((co.nstant.in.cbor.model.ByteString) items.get(
-                0)).getBytes();
-        byte[] payload = new byte[0];
-        if (items.get(2).getMajorType() == MajorType.SPECIAL) {
-            if (((co.nstant.in.cbor.model.Special) items.get(2)).getSpecialType()
-                    != SpecialType.SIMPLE_VALUE) {
-                throw new IllegalArgumentException(
-                        "Item 2 (payload) is a special but not a simple value");
-            }
-            SimpleValue simple = (co.nstant.in.cbor.model.SimpleValue) items.get(2);
-            if (simple.getSimpleValueType() != SimpleValueType.NULL) {
-                throw new IllegalArgumentException(
-                        "Item 2 (payload) is a simple but not the value null");
-            }
-        } else if (items.get(2).getMajorType() == MajorType.BYTE_STRING) {
-            payload = ((co.nstant.in.cbor.model.ByteString) items.get(2)).getBytes();
-        } else {
-            throw new IllegalArgumentException("Item 2 (payload) is not nil or byte-string");
-        }
-        if (items.get(3).getMajorType() != MajorType.BYTE_STRING) {
-            throw new IllegalArgumentException("Item 3 (signature) is not a byte-string");
-        }
-        byte[] coseSignature = ((co.nstant.in.cbor.model.ByteString) items.get(3)).getBytes();
-
-        byte[] derSignature = signatureCoseToDer(coseSignature);
-
-        int dataLen = payload.length;
-        int detachedContentLen = (detachedContent != null ? detachedContent.length : 0);
-        if (dataLen > 0 && detachedContentLen > 0) {
-            throw new IllegalArgumentException("data and detachedContent cannot both be non-empty");
-        }
-
-        DataItem protectedHeaders = cborDecode(encodedProtectedHeaders);
-        int alg = cborMapExtractNumber((Map) protectedHeaders, COSE_LABEL_ALG);
-        String signature;
-        switch (alg) {
-            case COSE_ALG_ECDSA_256:
-                signature = "SHA256withECDSA";
-                break;
-            case COSE_ALG_ECDSA_384:
-                signature = "SHA384withECDSA";
-                break;
-            case COSE_ALG_ECDSA_512:
-                signature = "SHA512withECDSA";
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported COSE alg " + alg);
-        }
-
-        byte[] toBeSigned = Util.coseBuildToBeSigned(encodedProtectedHeaders, payload,
-                detachedContent);
-
-        try {
-            // Use BouncyCastle provider for verification since it supports a lot more curves than
-            // the default provider, including the brainpool curves
-            //
-            Signature verifier = Signature.getInstance(signature,
-                new org.bouncycastle.jce.provider.BouncyCastleProvider());
-            verifier.initVerify(publicKey);
-            verifier.update(toBeSigned);
-            return verifier.verify(derSignature);
-        } catch (SignatureException | NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IllegalStateException("Error verifying signature", e);
-        }
-    }
+    private static final int COSE_KEY_X = -2;
 
     private static @NonNull byte[] coseBuildToBeMACed(@NonNull byte[] encodedProtectedHeaders,
             @NonNull byte[] payload,
@@ -960,14 +808,218 @@ public class Util {
         return payload;
     }
 
-    /** @hide
-     * Returns the empty collection if no x5chain is included in the structure.
-     *
-     * Throws exception if the given bytes aren't valid COSE_Sign1.
-     *
+    private static final int COSE_KEY_Y = -3;
+
+    private static final int COSE_KEY_KTY = 1;
+    private static final int COSE_KEY_TYPE_EC2 = 2;
+    private static final int COSE_KEY_CRV_ED25519 = 6;
+    private static final int COSE_KEY_CRV_ED448 = 7;
+
+    /**
+     * @hide
      */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull Collection<X509Certificate> coseSign1GetX5Chain(
+    public static @NonNull
+    DataItem coseSign1Sign(@NonNull Signature s,
+                           @Nullable byte[] data,
+                           @Nullable byte[] detachedContent,
+                           @Nullable Collection<X509Certificate> certificateChain) {
+
+        int dataLen = (data != null ? data.length : 0);
+        int detachedContentLen = (detachedContent != null ? detachedContent.length : 0);
+        if (dataLen > 0 && detachedContentLen > 0) {
+            throw new IllegalArgumentException("data and detachedContent cannot both be non-empty");
+        }
+
+        int keySize;
+        int alg;
+        int crv = 0;
+        if (s.getAlgorithm() == "SHA256withECDSA") {
+            keySize = 32;
+            alg = COSE_ALG_ECDSA_256;
+        } else if (s.getAlgorithm() == "SHA384withECDSA") {
+            keySize = 48;
+            alg = COSE_ALG_ECDSA_384;
+        } else if (s.getAlgorithm() == "SHA512withECDSA") {
+            keySize = 64;
+            alg = COSE_ALG_ECDSA_512;
+        } else if ("ED25519".equals(s.getAlgorithm())) {
+            crv = COSE_KEY_CRV_ED25519;
+            keySize = 32;
+            alg = COSE_ALG_EDDSA;
+        } else if ("ED448".equals(s.getAlgorithm())) {
+            crv = COSE_KEY_CRV_ED448;
+            keySize = 56;
+            alg = COSE_ALG_EDDSA;
+        } else {
+            throw new IllegalArgumentException("Unsupported algorithm " + s.getAlgorithm());
+        }
+
+        CborBuilder protectedHeaders = new CborBuilder();
+        MapBuilder<CborBuilder> protectedHeadersMap = protectedHeaders.addMap();
+        protectedHeadersMap.put(COSE_LABEL_ALG, alg);
+        // Only for ED25519 and ED448
+        if (alg == COSE_ALG_EDDSA) {
+            protectedHeadersMap.put(COSE_LABEL_CRV, crv);
+        }
+        byte[] protectedHeadersBytes = cborEncode(protectedHeaders.build().get(0));
+
+        byte[] toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent);
+
+        final byte[] coseSignature;
+        try {
+            s.update(toBeSigned);
+            if (alg != COSE_ALG_EDDSA) {
+                byte[] derSignature = s.sign();
+                coseSignature = signatureDerToCose(derSignature, keySize);
+            } else {
+                coseSignature = s.sign();
+            }
+        } catch (SignatureException e) {
+            throw new IllegalStateException("Error signing data", e);
+        }
+
+        CborBuilder builder = new CborBuilder();
+        ArrayBuilder<CborBuilder> array = builder.addArray();
+        array.add(protectedHeadersBytes);
+        MapBuilder<ArrayBuilder<CborBuilder>> unprotectedHeaders = array.addMap();
+        try {
+            if (certificateChain != null && certificateChain.size() > 0) {
+                if (certificateChain.size() == 1) {
+                    X509Certificate cert = certificateChain.iterator().next();
+                    unprotectedHeaders.put(COSE_LABEL_X5CHAIN, cert.getEncoded());
+                } else {
+                    ArrayBuilder<MapBuilder<ArrayBuilder<CborBuilder>>> x5chainsArray =
+                            unprotectedHeaders.putArray(COSE_LABEL_X5CHAIN);
+                    for (X509Certificate cert : certificateChain) {
+                        x5chainsArray.add(cert.getEncoded());
+                    }
+                }
+            }
+        } catch (CertificateEncodingException e) {
+            throw new IllegalStateException("Error encoding certificate", e);
+        }
+        if (data == null || data.length == 0) {
+            array.add(new SimpleValue(SimpleValueType.NULL));
+        } else {
+            array.add(data);
+        }
+        array.add(coseSignature);
+
+        return builder.build().get(0);
+    }
+
+    private static final int COSE_KEY_EC2_CRV_P256 = 1;
+
+    /**
+     * Currently only ECDSA signatures are supported.
+     * <p>
+     * TODO: add support and tests for Ed25519 and Ed448.
+     *
+     * @hide
+     */
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    public static boolean coseSign1CheckSignature(@NonNull DataItem coseSign1,
+                                                  @NonNull byte[] detachedContent, @NonNull PublicKey publicKey) {
+        if (coseSign1.getMajorType() != MajorType.ARRAY) {
+            throw new IllegalArgumentException("Data item is not an array");
+        }
+        List<DataItem> items = ((co.nstant.in.cbor.model.Array) coseSign1).getDataItems();
+        if (items.size() < 4) {
+            throw new IllegalArgumentException("Expected at least four items in COSE_Sign1 array");
+        }
+        if (items.get(0).getMajorType() != MajorType.BYTE_STRING) {
+            throw new IllegalArgumentException("Item 0 (protected headers) is not a byte-string");
+        }
+        byte[] encodedProtectedHeaders = ((co.nstant.in.cbor.model.ByteString) items.get(
+                0)).getBytes();
+        byte[] payload = new byte[0];
+        if (items.get(2).getMajorType() == MajorType.SPECIAL) {
+            if (((co.nstant.in.cbor.model.Special) items.get(2)).getSpecialType()
+                    != SpecialType.SIMPLE_VALUE) {
+                throw new IllegalArgumentException(
+                        "Item 2 (payload) is a special but not a simple value");
+            }
+            SimpleValue simple = (co.nstant.in.cbor.model.SimpleValue) items.get(2);
+            if (simple.getSimpleValueType() != SimpleValueType.NULL) {
+                throw new IllegalArgumentException(
+                        "Item 2 (payload) is a simple but not the value null");
+            }
+        } else if (items.get(2).getMajorType() == MajorType.BYTE_STRING) {
+            payload = ((co.nstant.in.cbor.model.ByteString) items.get(2)).getBytes();
+        } else {
+            throw new IllegalArgumentException("Item 2 (payload) is not nil or byte-string");
+        }
+        if (items.get(3).getMajorType() != MajorType.BYTE_STRING) {
+            throw new IllegalArgumentException("Item 3 (signature) is not a byte-string");
+        }
+        byte[] coseSignature = ((co.nstant.in.cbor.model.ByteString) items.get(3)).getBytes();
+
+        final byte[] signatureValue;
+
+        int dataLen = payload.length;
+        int detachedContentLen = (detachedContent != null ? detachedContent.length : 0);
+        if (dataLen > 0 && detachedContentLen > 0) {
+            throw new IllegalArgumentException("data and detachedContent cannot both be non-empty");
+        }
+
+        DataItem protectedHeaders = cborDecode(encodedProtectedHeaders);
+        int alg = cborMapExtractNumber((Map) protectedHeaders, COSE_LABEL_ALG);
+        String signature;
+        switch (alg) {
+            case COSE_ALG_ECDSA_256:
+                signature = "SHA256withECDSA";
+                signatureValue = signatureCoseToDer(coseSignature);
+                break;
+            case COSE_ALG_ECDSA_384:
+                signature = "SHA384withECDSA";
+                signatureValue = signatureCoseToDer(coseSignature);
+                break;
+            case COSE_ALG_ECDSA_512:
+                signature = "SHA512withECDSA";
+                signatureValue = signatureCoseToDer(coseSignature);
+                break;
+            case COSE_ALG_EDDSA:
+                int crv = cborMapExtractNumber((Map) protectedHeaders, COSE_LABEL_CRV);
+                signatureValue = coseSignature;
+                Log.d(TAG, "coseSignature " + toHex(signatureValue));
+                if (crv == COSE_KEY_CRV_ED448) {
+                    signature = "ED448";
+                } else if (crv == COSE_KEY_CRV_ED25519) {
+                    signature = "ED25519";
+                } else {
+                    throw new IllegalArgumentException("Unsupported COSE alg " + alg + " with curve " + crv);
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported COSE alg " + alg);
+        }
+
+        byte[] toBeSigned = Util.coseBuildToBeSigned(encodedProtectedHeaders, payload,
+                detachedContent);
+
+        try {
+            // Use BouncyCastle provider for verification since it supports a lot more curves than
+            // the default provider, including the brainpool curves
+            //
+            Signature verifier = Signature.getInstance(signature,
+                    new org.bouncycastle.jce.provider.BouncyCastleProvider());
+            verifier.initVerify(publicKey);
+            verifier.update(toBeSigned);
+            return verifier.verify(signatureValue);
+        } catch (SignatureException | NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IllegalStateException("Error verifying signature", e);
+        }
+    }
+
+    /**
+     * @hide Returns the empty collection if no x5chain is included in the structure.
+     * <p>
+     * Throws exception if the given bytes aren't valid COSE_Sign1.
+     */
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    public static @NonNull
+    Collection<X509Certificate> coseSign1GetX5Chain(
             @NonNull DataItem coseSign1) {
         ArrayList<X509Certificate> ret = new ArrayList<>();
         if (coseSign1.getMajorType() != MajorType.ARRAY) {
@@ -984,7 +1036,8 @@ public class Util {
         DataItem x5chainItem = map.get(new UnsignedInteger(COSE_LABEL_X5CHAIN));
         if (x5chainItem != null) {
             try {
-                CertificateFactory factory = CertificateFactory.getInstance("X.509");
+                // Use BounceCastleProvider to support EdDSA curves
+                CertificateFactory factory = CertificateFactory.getInstance("X.509", new BouncyCastleProvider());
                 if (x5chainItem instanceof ByteString) {
                     ByteArrayInputStream certBais = new ByteArrayInputStream(
                             ((ByteString) x5chainItem).getBytes());
@@ -1009,13 +1062,6 @@ public class Util {
         return ret;
     }
 
-    private static final int COSE_KEY_KTY = 1;
-    private static final int COSE_KEY_TYPE_EC2 = 2;
-    private static final int COSE_KEY_EC2_CRV = -1;
-    private static final int COSE_KEY_EC2_X = -2;
-    private static final int COSE_KEY_EC2_Y = -3;
-    private static final int COSE_KEY_EC2_CRV_P256 = 1;
-
     /** @hide */
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static @NonNull DataItem cborBuildCoseKey(@NonNull PublicKey key) {
@@ -1028,9 +1074,9 @@ public class Util {
         DataItem item = new CborBuilder()
                 .addMap()
                 .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
-                .put(COSE_KEY_EC2_CRV, COSE_KEY_EC2_CRV_P256)
-                .put(COSE_KEY_EC2_X, x)
-                .put(COSE_KEY_EC2_Y, y)
+                .put(COSE_KEY_CRV, COSE_KEY_EC2_CRV_P256)
+                .put(COSE_KEY_X, x)
+                .put(COSE_KEY_Y, y)
                 .end()
                 .build().get(0);
         return item;
@@ -1263,12 +1309,12 @@ public class Util {
         if (kty != COSE_KEY_TYPE_EC2) {
             throw new IllegalArgumentException("Expected COSE_KEY_TYPE_EC2, got " + kty);
         }
-        int crv = cborMapExtractNumber(coseKey, COSE_KEY_EC2_CRV);
+        int crv = cborMapExtractNumber(coseKey, COSE_KEY_CRV);
         if (crv != COSE_KEY_EC2_CRV_P256) {
             throw new IllegalArgumentException("Expected COSE_KEY_EC2_CRV_P256, got " + crv);
         }
-        byte[] encodedX = cborMapExtractByteString(coseKey, COSE_KEY_EC2_X);
-        byte[] encodedY = cborMapExtractByteString(coseKey, COSE_KEY_EC2_Y);
+        byte[] encodedX = cborMapExtractByteString(coseKey, COSE_KEY_X);
+        byte[] encodedY = cborMapExtractByteString(coseKey, COSE_KEY_Y);
 
         BigInteger x = new BigInteger(1, encodedX);
         BigInteger y = new BigInteger(1, encodedY);
