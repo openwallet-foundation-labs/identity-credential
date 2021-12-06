@@ -48,11 +48,11 @@ import java.util.UUID;
 public class DataTransportBleCentralClientMode extends DataTransportBle {
     private static final String TAG = "DataTransportBleCentralClientMode";
 
-    UUID mCharacteristicStateUuid = UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicStateUuid =         UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicIdentUuid = UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
-    UUID mCharacteristicL2CAPUuid = UUID.fromString("0000000b-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicIdentUuid =         UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicL2CAPUuid =         UUID.fromString("0000000b-a123-48ce-896b-4c76973373e6");
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
@@ -64,7 +64,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     private long mTimeScanningStartedMillis;
 
     public DataTransportBleCentralClientMode(@NonNull Context context,
-        @LoggingFlag int loggingFlags) {
+                                             @LoggingFlag int loggingFlags) {
         super(context, loggingFlags);
     }
 
@@ -166,7 +166,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
             if ((mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC) != 0) {
                 long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
                 Log.i(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
-                    + "Connecting to device with address " + result.getDevice().getAddress());
+                        + "Connecting to device with address " + result.getDevice().getAddress());
             }
             mGattClient.connect(result.getDevice());
             if (mScanner != null) {
@@ -194,7 +194,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     @Override
     public void connect(@NonNull DataRetrievalAddress genericAddress) {
         DataRetrievalAddressBleCentralClientMode address =
-            (DataRetrievalAddressBleCentralClientMode) genericAddress;
+                (DataRetrievalAddressBleCentralClientMode) genericAddress;
 
         // TODO: Check if BLE is enabled and error out if not so...
 
@@ -342,6 +342,11 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
 
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
-        return true;
+        if (mGattServer != null) {
+            return mGattServer.supportsTransportSpecificTerminationMessage();
+        } else if (mGattClient != null) {
+            return mGattClient.supportsTransportSpecificTerminationMessage();
+        }
+        return false;
     }
 }
