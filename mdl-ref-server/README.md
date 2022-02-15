@@ -179,30 +179,32 @@ where
     StaticAuthDatas = [ StaticAuthData ]
 
     StaticAuthData = {
-        "digestIdMapping" : DigestIdMapping,
-        "issuerAuth" : IssuerAuth,
+        "digestIdMapping": DigestIdMapping,
+        "issuerAuth" : IssuerAuth
     }
 
     DigestIdMapping = {
-        + NameSpace => DigestIdMappingPerNamespace
+        NameSpace => [ + IssuerSignedItemWithoutValueBytes ]
     }
 
-    DigestIdMappingPerNamespace = {
-        + Name => DigestIdMappingPerElement
-    }
-
-    DigestIdMappingPerElement = [
-        DigestID,
-        Random,
-    ]
-
-    DigestID = uint
-    Random = bstr
-
-    ; Defined in ISO 18013-5
-    ;
+    NameSpace = tstr
+    DataElementIdentifier = tstr
     IssuerAuth = COSE_Sign1 ; The payload is MobileSecurityObjectBytes
 
+    IssuerSignedItemWithoutValueBytes = #6.24(bstr .cbor IssuerSignedItemWithoutValue)
+
+    IssuerSignedItemWithoutValue = {
+      "digestID" : uint,                           ; Digest ID for issuer data auth
+      "random" : bstr,                             ; Random value for issuer data auth
+      "elementIdentifier" : DataElementIdentifier, ; Data element identifier
+      "elementValue" : nil                         ; Data element value is UNSET
+    }
+
+Note that IsserSignedItemWithoutValue is similar to IssuerSignedItem
+as defined in ISO 18013-5 clause 8.3.2.1.2.2 "Device retrieval mdoc
+response" except that the value for the "elementValue" key is set to
+nil instead of the actual value. At presentation time the value will
+be substituted in after retrieving it via the Identity Credential API.
 
 ## Update Check
 
