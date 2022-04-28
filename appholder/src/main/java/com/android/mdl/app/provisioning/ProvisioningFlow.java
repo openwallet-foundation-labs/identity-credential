@@ -5,9 +5,9 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.security.identity.AccessControlProfile;
-import androidx.security.identity.AccessControlProfileId;
-import androidx.security.identity.PersonalizationData;
+import com.android.identity.AccessControlProfile;
+import com.android.identity.AccessControlProfileId;
+import com.android.identity.PersonalizationData;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;

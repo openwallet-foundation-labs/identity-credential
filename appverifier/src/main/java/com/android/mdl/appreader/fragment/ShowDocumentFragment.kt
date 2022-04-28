@@ -11,7 +11,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import androidx.security.identity.DeviceResponseParser
+import com.android.identity.DeviceResponseParser
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
 import com.android.mdl.appreader.issuerauth.SimpleIssuerTrustStore

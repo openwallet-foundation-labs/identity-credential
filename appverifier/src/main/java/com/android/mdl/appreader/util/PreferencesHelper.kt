@@ -2,7 +2,7 @@ package com.android.mdl.appreader.util
 
 import android.content.Context
 import androidx.preference.PreferenceManager
-import androidx.security.identity.Constants
+import com.android.identity.Constants
 
 object PreferencesHelper {
     private const val READER_AUTHENTICATION = "reader_authentication"
@@ -20,22 +20,22 @@ object PreferencesHelper {
         if (PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(LOG_DEVICE_ENGAGEMENT, true)
         ) {
-            flags += Constants.LOGGING_FLAG_DEVICE_ENGAGEMENT
+            flags += Constants.LOGGING_FLAG_ENGAGEMENT
         }
         if (PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(LOG_SESSION_MESSAGES, true)
         ) {
-            flags += Constants.LOGGING_FLAG_SESSION_MESSAGES
+            flags += Constants.LOGGING_FLAG_SESSION
         }
         if (PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(LOG_TRANSPORT, true)
         ) {
-            flags += Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC
+            flags += Constants.LOGGING_FLAG_TRANSPORT
         }
         if (PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(LOG_TRANSPORT_VERBOSE, true)
         ) {
-            flags += Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE
+            flags += Constants.LOGGING_FLAG_TRANSPORT_VERBOSE
         }
         return flags
     }

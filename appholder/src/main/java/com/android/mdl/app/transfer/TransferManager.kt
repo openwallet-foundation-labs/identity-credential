@@ -16,8 +16,8 @@ import androidx.core.util.component1
 import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.security.identity.*
-import androidx.security.identity.DeviceRequestParser.DeviceRequest
+import com.android.identity.*
+import com.android.identity.DeviceRequestParser.DeviceRequest
 import com.android.mdl.app.util.FormatUtil
 import com.android.mdl.app.util.PreferencesHelper
 import com.android.mdl.app.util.TransferStatus

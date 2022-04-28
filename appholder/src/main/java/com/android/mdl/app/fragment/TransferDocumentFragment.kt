@@ -79,7 +79,7 @@ class TransferDocumentFragment : Fragment() {
                         val requestedDocuments = vm.getRequestedDocuments()
                         requestedDocuments.forEach { reqDoc ->
                             val doc = vm.getDocuments().find { reqDoc.docType == it.docType }
-                            if (reqDoc.readerAuthenticated) {
+                            if (reqDoc.readerAuth != null && reqDoc.readerAuthenticated) {
                                 val readerChain = reqDoc.readerCertificateChain
                                 if (readerChain != null) {
                                     val trustPath =

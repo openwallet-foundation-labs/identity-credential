@@ -7,8 +7,8 @@ import android.graphics.BitmapFactory
 import android.security.keystore.KeyProperties
 import android.util.Log
 import androidx.preference.PreferenceManager
-import androidx.security.identity.*
-import androidx.security.identity.IdentityCredentialStoreCapabilities.FEATURE_VERSION_202201
+import com.android.identity.*
+import com.android.identity.IdentityCredentialStoreCapabilities.FEATURE_VERSION_202201
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.mdl.app.R

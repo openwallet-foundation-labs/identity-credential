@@ -4,15 +4,16 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.nfc.NfcAdapter
+import android.nfc.Tag
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.security.identity.DataRetrievalAddress
-import androidx.security.identity.DeviceRequestGenerator
-import androidx.security.identity.DeviceResponseParser
-import androidx.security.identity.VerificationHelper
+import com.android.identity.DataRetrievalAddress
+import com.android.identity.DeviceRequestGenerator
+import com.android.identity.DeviceResponseParser
+import com.android.identity.VerificationHelper
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
 import com.android.mdl.appreader.readercertgen.SupportedCurves.*
@@ -69,8 +70,19 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun setNdefDeviceEngagement(adapter: NfcAdapter, activity: Activity) {
-        verification?.setNfcAdapter(adapter, activity)
-        verification?.verificationBegin()
+        adapter.enableReaderMode(
+            activity, readerModeListener,
+            NfcAdapter.FLAG_READER_NFC_A
+                    + NfcAdapter.FLAG_READER_NFC_B
+                    + NfcAdapter.FLAG_READER_NFC_F
+                    + NfcAdapter.FLAG_READER_NFC_V
+                    + NfcAdapter.FLAG_READER_NFC_BARCODE,
+            null)
+        verification?.startListening()
+    }
+
+    private val readerModeListener = NfcAdapter.ReaderCallback { tag ->
+        verification?.nfcProcessOnTagDiscovered(tag)
     }
 
     fun setAvailableTransferMethods(availableMdocAddresses: Collection<DataRetrievalAddress>) {

@@ -2,7 +2,7 @@ package com.android.mdl.app.util
 
 import android.content.Context
 import androidx.preference.PreferenceManager
-import androidx.security.identity.Constants
+import com.android.identity.Constants
 
 object PreferencesHelper {
     const val HARDWARE_BACKED_PREFERENCE = "com.android.mdl.app.HARDWARE_BACKED"
@@ -72,22 +72,22 @@ object PreferencesHelper {
         if (PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(LOG_DEVICE_ENGAGEMENT, false)
         ) {
-            flags += Constants.LOGGING_FLAG_DEVICE_ENGAGEMENT
+            flags += Constants.LOGGING_FLAG_ENGAGEMENT
         }
         if (PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(LOG_SESSION_MESSAGES, false)
         ) {
-            flags += Constants.LOGGING_FLAG_SESSION_MESSAGES
+            flags += Constants.LOGGING_FLAG_SESSION
         }
         if (PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(LOG_TRANSPORT, false)
         ) {
-            flags += Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC
+            flags += Constants.LOGGING_FLAG_TRANSPORT
         }
         if (PreferenceManager.getDefaultSharedPreferences(context)
                 .getBoolean(LOG_TRANSPORT_VERBOSE, false)
         ) {
-            flags += Constants.LOGGING_FLAG_TRANSPORT_SPECIFIC_VERBOSE
+            flags += Constants.LOGGING_FLAG_TRANSPORT_VERBOSE
         }
         return flags
     }

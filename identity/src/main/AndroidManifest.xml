@@ -14,23 +14,6 @@
      limitations under the License.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="androidx.security.identity.credential">
-
-  <uses-permission android:name="android.permission.INTERNET" />
-  <!-- As of API 31 BLE doesn't need location permission, but WiFi aware still requires it. -->
-  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-  <uses-permission android:name="android.permission.LOCAL_MAC_ADDRESS" />
-
-  <!-- Legacy bluetooth permissions -->
-  <uses-permission android:name="android.permission.BLUETOOTH"
-                   android:maxSdkVersion="30" />
-  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
-                   android:maxSdkVersion="30" />
-
-  <!-- Bluetooth permissions for Android 12+ -->
-  <uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
-  <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
-  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    package="com.android.identity"
+    android:exported="true">
 </manifest>

@@ -8,10 +8,10 @@ import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import androidx.security.identity.Constants.DEVICE_RESPONSE_STATUS_OK
-import androidx.security.identity.DeviceRequestParser
-import androidx.security.identity.DeviceResponseGenerator
-import androidx.security.identity.InvalidRequestMessageException
+import com.android.identity.Constants.DEVICE_RESPONSE_STATUS_OK
+import com.android.identity.DeviceRequestParser
+import com.android.identity.DeviceResponseGenerator
+import com.android.identity.InvalidRequestMessageException
 import com.android.mdl.app.R
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
@@ -35,14 +35,14 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
     fun getRequestedDocuments(): Collection<DeviceRequestParser.DocumentRequest> =
-        transferManager.getDeviceRequest().docRequests
+        transferManager.getDeviceRequest().documentRequests
 
     fun getDocuments() = documentManager.getDocuments()
 
     fun getEntryNames(): Map<Document, List<String>> {
         val documents = mutableMapOf<Document, List<String>>()
         val docRequests =
-            transferManager.getDeviceRequest().docRequests
+            transferManager.getDeviceRequest().documentRequests
 
         docRequests.forEach { doc ->
             try {
