@@ -1,16 +1,13 @@
 plugins {
     id 'com.android.library'
-    id 'kotlin-android'
 }
 
 android {
-    compileSdkVersion 31
+    compileSdk 31
 
     defaultConfig {
         minSdkVersion 24
-        targetSdkVersion 31
-        versionCode 1
-        versionName "1.0"
+        targetSdkVersion 30
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -29,20 +26,14 @@ android {
 }
 
 dependencies {
-    implementation("androidx.annotation:annotation:1.2.0")
+    implementation("androidx.annotation:annotation:$androidx_annotation_version")
     implementation "androidx.biometric:biometric:$androidx_biometrics"
     implementation "co.nstant.in:cbor:$cbor_version"
-    implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_version"
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.56")
+    implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_bcprov_version"
+    implementation("org.bouncycastle:bcpkix-jdk15on:$bouncy_castle_bcpkix_version")
 
     // JUnit 4 framework
     testImplementation "junit:junit:$junit_version"
     androidTestImplementation "androidx.test.ext:junit:$junit_test"
     androidTestImplementation "androidx.test.espresso:espresso-core:$espresso_core_version"
-
-//    androidTestImplementation(libs.testExtJunit)
-//    androidTestImplementation(libs.testCore)
-//    androidTestImplementation(libs.testRunner)
-//    androidTestImplementation(libs.testRules)
-//    androidTestImplementation(libs.mockitoCore)
 }

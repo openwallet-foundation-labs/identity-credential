@@ -27,7 +27,8 @@ buildscript {
         qrcode_version = '2.1.0'
         cbor_version = '0.8'
         constraint_layout_version = '2.1.0-beta01'
-        bouncy_castle_version = '1.65'
+        bouncy_castle_bcprov_version = '1.65'
+        bouncy_castle_bcpkix_version = '1.56'
         rxandroid_version = '2.1.1'
         rxjava_version = '2.2.21'
         androidx_annotation_version = '1.2.0'
@@ -36,7 +37,7 @@ buildscript {
         androidx_identity_credential = '1.0.0-alpha02'
         androidx_biometrics = '1.2.0-alpha03'
         androidx_preference = '1.1.1'
-        androidx_room_version = '2.3.0'
+        androidx_room_version = '2.4.2'
         apache_http_version = '4.4.14'
         volley_version = '1.2.0'
     }
