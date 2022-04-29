@@ -19,4 +19,3 @@ This additional functionality will will be merged into the Jetpack
 repository in the near future.
 
 This is not an officially supported Google product.
-
