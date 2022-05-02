@@ -1,2 +1,2 @@
 include ':appholder', ':appverifier',':identity'
-rootProject.name = "mDL Ref apps"
+rootProject.name = 'Identity Credential'
