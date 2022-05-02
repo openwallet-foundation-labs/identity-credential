@@ -3,7 +3,7 @@
 This repository contains libraries and applications related to the
 [Android Identity Credential API](https://developer.android.com/reference/android/security/identity/IdentityCredentialStore)
 provided in the Android Framework as of Android 11 as well as
-[ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html).
+[ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html)
 and related standards.
 
 ## Android Identity Credential Library
@@ -11,7 +11,7 @@ and related standards.
 This library has two goals. The first goal is to provide a compatibility-layer for the
 Android Identity Credential API when running on a device where this API is not implemented (for
 example, a device running an older Android version). This is achieved by using
-[https://developer.android.com/training/articles/keystore](Android Keystore APIs)
+[Android Keystore APIs](https://developer.android.com/training/articles/keystore)
 when the hardware-backed Identity Credential APIs are not available.
 
 The other goal of the library is to provide high-level primitives that any *mdoc* or
