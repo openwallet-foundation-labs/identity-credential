@@ -18,6 +18,13 @@
             app:title="Enable BLE peripheral mode" />
 
         <SwitchPreference
+            android:defaultValue="true"
+            app:key="ble_l2cap"
+            app:summaryOff="Preferred not use L2CAP"
+            app:summaryOn="Preferred use L2CAP"
+            app:title="Enable BLE with L2CAP" />
+
+        <SwitchPreference
             app:key="wifi_transport"
             app:summaryOff="Wifi Aware transfer deactivated"
             app:summaryOn="Wifi Aware transfer activated"

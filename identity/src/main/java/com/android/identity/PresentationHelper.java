@@ -306,11 +306,14 @@ public class PresentationHelper {
             // Use same UUID for both mdoc central client mode and mdoc peripheral server mode.
             // Why? Because it's required by ISO 18013-5 when using NFC static handover.
             UUID serviceUuid = UUID.randomUUID();
+            // Option to indicate if L2CAP should be used if supported
+            boolean supportL2cap = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) !=0;
 
             if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
                 DataTransportBleCentralClientMode bleTransport =
                         new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
+                bleTransport.setSupportL2CAP(supportL2cap);
                 mLog.info("Adding BLE mdoc central client mode transport");
                 mTransports.add(bleTransport);
             }
@@ -318,6 +321,7 @@ public class PresentationHelper {
                 DataTransportBlePeripheralServerMode bleTransport =
                         new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
+                bleTransport.setSupportL2CAP(supportL2cap);
                 mLog.info("Adding BLE mdoc peripheral server mode transport");
                 mTransports.add(bleTransport);
             }

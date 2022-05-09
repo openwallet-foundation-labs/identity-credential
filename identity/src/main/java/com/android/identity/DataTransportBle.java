@@ -52,6 +52,8 @@ public abstract class DataTransportBle extends DataTransport {
     private static final String TAG = "DataTransportBle";
     @LoggingFlag
     protected int mLoggingFlags;
+    // Indicates to use L2CAP for BLE transfer by default
+    protected boolean mSupportL2CAP = true;
 
     public DataTransportBle(
             @NonNull Context context, @LoggingFlag int loggingFlags) {
@@ -256,6 +258,10 @@ public abstract class DataTransportBle extends DataTransport {
         byte[] acRecordPayload = baos.toByteArray();
 
         return new Pair<>(record, acRecordPayload);
+    }
+
+    public void setSupportL2CAP(boolean mSupportL2CAP) {
+        this.mSupportL2CAP = mSupportL2CAP;
     }
 
     static abstract class DataRetrievalAddressBle extends DataRetrievalAddress {

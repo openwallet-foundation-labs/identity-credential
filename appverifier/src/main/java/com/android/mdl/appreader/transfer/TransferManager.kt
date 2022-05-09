@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.nfc.NfcAdapter
-import android.nfc.Tag
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -118,9 +117,13 @@ class TransferManager private constructor(private val context: Context) {
         useTransportSpecificSessionTermination: Boolean
     ) {
         verification?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
-        verification?.setUseTransportSpecificSessionTermination(
-            useTransportSpecificSessionTermination
-        )
+        try {
+            verification?.setUseTransportSpecificSessionTermination(
+                useTransportSpecificSessionTermination
+            )
+        } catch (e: IllegalStateException) {
+            Log.e(LOG_TAG, "Error ignored.", e)
+        }
         verification?.setListener(null, null)
         try {
             verification?.disconnect()

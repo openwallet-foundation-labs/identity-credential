@@ -51,6 +51,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicIdentUuid = UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
+    UUID mCharacteristicL2CAPUuid =         UUID.fromString("0000000b-a123-48ce-896b-4c76973373e6");
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
@@ -62,10 +63,15 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
+            UUID characteristicL2CAPUuid = null;
+            if (mSupportL2CAP) {
+                characteristicL2CAPUuid = mCharacteristicL2CAPUuid;
+            }
             mGattClient = new GattClient(mContext, mLoggingFlags,
                     mServiceUuid, mEncodedEDeviceKeyBytes,
                     mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                    mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid);
+                    mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
+                    characteristicL2CAPUuid);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -223,10 +229,15 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         mServiceUuid = address.uuid;
 
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
+        UUID characteristicL2CAPUuid = null;
+        if (mSupportL2CAP) {
+            characteristicL2CAPUuid = mCharacteristicL2CAPUuid;
+        }
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
                 mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid);
+                mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
+                characteristicL2CAPUuid);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
@@ -352,6 +363,11 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
 
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
-        return true;
+        if (mGattServer != null) {
+            return mGattServer.supportsTransportSpecificTerminationMessage();
+        } else if (mGattClient != null) {
+            return mGattClient.supportsTransportSpecificTerminationMessage();
+        }
+        return false;
     }
 }

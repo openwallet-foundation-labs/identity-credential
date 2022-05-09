@@ -51,6 +51,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000002-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000003-a123-48ce-896b-4c76973373e6");
     // Note: Ident UUID not used in peripheral server mode
+    UUID mCharacteristicL2CAPUuid =         UUID.fromString("0000000a-a123-48ce-896b-4c76973373e6");
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
@@ -75,10 +76,15 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
+            UUID characteristicL2CAPUuid = null;
+            if (mSupportL2CAP) {
+                characteristicL2CAPUuid = mCharacteristicL2CAPUuid;
+            }
             mGattClient = new GattClient(mContext, mLoggingFlags,
                     mServiceUuid, mEncodedEDeviceKeyBytes,
                     mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                    mCharacteristicServer2ClientUuid, null);
+                    mCharacteristicServer2ClientUuid, null,
+                    characteristicL2CAPUuid);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -191,10 +197,15 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
         // TODO: Check if BLE is enabled and error out if not so...
 
+        UUID characteristicL2CAPUuid = null;
+        if (mSupportL2CAP) {
+            characteristicL2CAPUuid = mCharacteristicL2CAPUuid;
+        }
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
                 mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                mCharacteristicServer2ClientUuid, null);
+                mCharacteristicServer2ClientUuid, null,
+                characteristicL2CAPUuid);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
@@ -362,6 +373,11 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
-        return true;
+        if (mGattServer != null) {
+            return mGattServer.supportsTransportSpecificTerminationMessage();
+        } else if (mGattClient != null) {
+            return mGattClient.supportsTransportSpecificTerminationMessage();
+        }
+        return false;
     }
 }
