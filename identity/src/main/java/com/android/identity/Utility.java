@@ -74,7 +74,7 @@ public class Utility {
      *     }
      *
      *     DigestIdMapping = {
-     *         NameSpace => [ + IssuerSignedItemBytes ]
+     *         NameSpace =&gt; [ + IssuerSignedItemBytes ]
      *     }
      *
      *     ; Defined in ISO 18013-5

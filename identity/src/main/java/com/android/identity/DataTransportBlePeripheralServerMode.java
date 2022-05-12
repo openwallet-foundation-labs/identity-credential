@@ -40,10 +40,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * @hide BLE data transport implementation conforming to ISO 18013-5 mdoc
+ * BLE data transport implementation conforming to ISO 18013-5 mdoc
  * peripheral server mode.
  */
-public class DataTransportBlePeripheralServerMode extends DataTransportBle {
+class DataTransportBlePeripheralServerMode extends DataTransportBle {
     private static final String TAG = "DataTransportBlePeripheralServerMode";
     final Util.Logger mLog;
 

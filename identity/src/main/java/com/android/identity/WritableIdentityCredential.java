@@ -17,7 +17,6 @@
 package com.android.identity;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RestrictTo;
 
 import java.security.cert.X509Certificate;
 import java.util.Collection;
@@ -35,9 +34,8 @@ import java.util.Collection;
  */
 public abstract class WritableIdentityCredential {
     /**
-     * @hide
+     * @hidden
      */
-    @RestrictTo(RestrictTo.Scope.SUBCLASSES)
     protected WritableIdentityCredential() {}
 
     /**

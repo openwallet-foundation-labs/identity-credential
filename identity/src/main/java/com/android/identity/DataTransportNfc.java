@@ -44,9 +44,9 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 
 /**
- * @hide
+ * NFC data transport
  */
-public class DataTransportNfc extends DataTransport {
+class DataTransportNfc extends DataTransport {
     public static final int DEVICE_RETRIEVAL_METHOD_TYPE = 1;
     public static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;
     public static final int RETRIEVAL_OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH = 0;

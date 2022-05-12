@@ -113,7 +113,7 @@ public final class DeviceResponseParser {
      * {@link Document#getIssuerSignedAuthenticated()}
      * can be used to get additional information about this.
      *
-     * @return a {@link DeviceResponseParser.DeviceResponse]} with the parsed data.
+     * @return a {@link DeviceResponseParser.DeviceResponse} with the parsed data.
      * @exception IllegalArgumentException if the given data isn't valid CBOR or not conforming
      * to the CDDL for its type.
      * @exception IllegalStateException if required data hasn't been set using the setter

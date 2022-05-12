@@ -49,11 +49,11 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 
 /**
- * @hide
+ * TCP data transport.
  *
- * This is public only because it's used in the Identity Credential test app
+ * <p>This is a private non-standardized data transport. It is only here for testing purposes.
  */
-public class DataTransportTcp extends DataTransport {
+class DataTransportTcp extends DataTransport {
     private static final String TAG = "DataTransportTcp";
     static final int DEVICE_RETRIEVAL_METHOD_TYPE = -18224;  // Google specific method 0
     static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;

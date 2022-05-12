@@ -337,7 +337,7 @@ public final class DeviceRequestParser {
          * examine the X509 certificate chain presented by the reader to determine if they
          * trust any of the public keys in there.
          *
-         * @return {@link true} if {@code ItemsRequest} was authenticated, {@code false} otherwise.
+         * @return {@code true} if {@code ItemsRequest} was authenticated, {@code false} otherwise.
          * @throws IllegalStateException if the reader didn't sign the request, that is
          *   if {@link #getReaderAuth()} returns a non-null value.
          */
