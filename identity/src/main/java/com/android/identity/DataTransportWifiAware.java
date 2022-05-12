@@ -16,7 +16,6 @@
 
 package com.android.identity;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -78,10 +77,10 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 
 /**
- * @hide
+ * Wifi Aware data transport.
  */
 @RequiresApi(Build.VERSION_CODES.Q)
-public class DataTransportWifiAware extends DataTransport {
+class DataTransportWifiAware extends DataTransport {
     public static final int DEVICE_RETRIEVAL_METHOD_TYPE = 3;
     public static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;
     public static final int RETRIEVAL_OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE = 0;

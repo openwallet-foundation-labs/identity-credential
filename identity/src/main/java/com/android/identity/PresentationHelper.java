@@ -30,7 +30,6 @@ import android.util.Pair;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 import com.android.identity.Constants.BleDataRetrievalOption;
 import com.android.identity.Constants.LoggingFlag;
 
@@ -262,11 +261,9 @@ public class PresentationHelper {
     }
 
     /**
-     * Used by PresentationHelperTest.java and testapp.
-     *
-     * @hide
+     * Used by PresentationHelperTest.java.
      */
-    public void addDataTransport(@NonNull DataTransport transport) {
+    void addDataTransport(@NonNull DataTransport transport) {
         mTransports.add(transport);
     }
 
@@ -565,9 +562,9 @@ public class PresentationHelper {
     }
 
     /**
-     * @hide For use in PresentationHelperTest.java only.
+     * For use in PresentationHelperTest.java only.
      */
-    public @NonNull
+    @NonNull
     byte[] getDeviceEngagementForQrCodeRaw() {
         return mEncodedDeviceEngagement;
     }
@@ -991,7 +988,7 @@ public class PresentationHelper {
      * @param listener the listener or <code>null</code> to stop listening.
      * @param executor a {@link Executor} to do the call in or <code>null</code> if
      *                 <code>listener</code> is <code>null</code>.
-     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@link null}
+     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
      * listener.
      */
     public void setListener(@Nullable Listener listener, @Nullable Executor executor) {
@@ -1009,7 +1006,7 @@ public class PresentationHelper {
      *
      * <p>If connected to a mdoc verifier also sends a session termination message prior to
      * disconnecting if applicable. See {@link #setSendSessionTerminationMessage(boolean)} and
-     * {@link #setUseTransportSpecificSessionTermination(boolean) for how to configure this.
+     * {@link #setUseTransportSpecificSessionTermination(boolean)} for how to configure this.
      *
      * <p>No callbacks will be done on a listener registered with
      * {@link #setListener(Listener, Executor)} after calling this.
@@ -1099,9 +1096,8 @@ public class PresentationHelper {
         mSendSessionTerminationMessage = sendSessionTerminationMessage;
     }
 
-    /** @hide */
+    /** @hidden */
     @Retention(RetentionPolicy.SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef(value = {DEVICE_ENGAGEMENT_METHOD_UNKNOWN,
             DEVICE_ENGAGEMENT_METHOD_QR_CODE,
             DEVICE_ENGAGEMENT_METHOD_NFC})

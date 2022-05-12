@@ -52,8 +52,6 @@ import co.nstant.in.cbor.model.Number;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
- * @hide
- *
  * A helper class for encrypting and decrypting messages exchanged with a remote
  * mDL reader, conforming to ISO 18013-5 9.1.1 Session encryption.
  */

@@ -23,7 +23,6 @@ import android.icu.util.Calendar;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 
 import java.lang.annotation.Retention;
 import java.security.PublicKey;
@@ -64,9 +63,8 @@ public abstract class ResultData {
     public static final int STATUS_NO_ACCESS_CONTROL_PROFILES = 6;
 
     /**
-     * @hide
+     * @hidden
      */
-    @RestrictTo(RestrictTo.Scope.SUBCLASSES)
     protected ResultData() {}
 
     /**
@@ -98,11 +96,11 @@ public abstract class ResultData {
      *
      * <pre>
      *   DeviceNameSpaces = {
-     *     * NameSpace => DeviceSignedItems
+     *     * NameSpace =&gt; DeviceSignedItems
      *   }
      *
      *   DeviceSignedItems = {
-     *     + DataItemName => DataItemValue
+     *     + DataItemName =&gt; DataItemValue
      *   }
      *
      *   NameSpace = tstr
@@ -325,10 +323,9 @@ public abstract class ResultData {
 
     /**
      * The type of the entry status.
-     * @hide
+     * @hidden
      */
     @Retention(SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef({STATUS_OK, STATUS_NO_SUCH_ENTRY, STATUS_NOT_REQUESTED, STATUS_NOT_IN_REQUEST_MESSAGE,
                         STATUS_USER_AUTHENTICATION_FAILED, STATUS_READER_AUTHENTICATION_FAILED,
                         STATUS_NO_ACCESS_CONTROL_PROFILES})

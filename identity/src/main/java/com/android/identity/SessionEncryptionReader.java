@@ -55,8 +55,6 @@ import co.nstant.in.cbor.model.UnsignedInteger;
 
 
 /**
- * @hide
- *
  * A helper class for encrypting and decrypting messages exchanged with a remote
  * mDL prover, conforming to ISO 18013-5 9.1.1 Session encryption.
  */

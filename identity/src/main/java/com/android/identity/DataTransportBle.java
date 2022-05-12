@@ -39,9 +39,9 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 
 /**
- * @hide
+ * BLE data transport
  */
-public abstract class DataTransportBle extends DataTransport {
+abstract class DataTransportBle extends DataTransport {
     public static final int DEVICE_RETRIEVAL_METHOD_TYPE = 2;
     public static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;
     public static final int RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE = 0;

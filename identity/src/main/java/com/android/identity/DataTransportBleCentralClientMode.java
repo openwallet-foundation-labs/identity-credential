@@ -40,10 +40,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * @hide BLE data transport implementation conforming to ISO 18013-5 mdoc
+ * BLE data transport implementation conforming to ISO 18013-5 mdoc
  * central client mode.
  */
-public class DataTransportBleCentralClientMode extends DataTransportBle {
+class DataTransportBleCentralClientMode extends DataTransportBle {
     private static final String TAG = "DataTransportBleCentralClientMode";
     final Util.Logger mLog;
 

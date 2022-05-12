@@ -665,7 +665,7 @@ public class VerificationHelper {
      * @param listener the listener or <code>null</code> to stop listening.
      * @param executor an {@link Executor} to do the call in or <code>null</code> if
      *                 <code>listener</code> is <code>null</code>.
-     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@link null}
+     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
      * listener.
      */
     public void setListener(@Nullable Listener listener,

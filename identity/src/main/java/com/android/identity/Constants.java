@@ -19,7 +19,6 @@ package com.android.identity;
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
 import androidx.annotation.IntDef;
-import androidx.annotation.RestrictTo;
 
 import java.lang.annotation.Retention;
 
@@ -92,8 +91,6 @@ public class Constants {
     public static final int LOGGING_FLAG_TRANSPORT_VERBOSE = (1 << 4);
 
     /**
-     * @hide
-     *
      * Constant to request maximum amount of logging when using {@link PresentationHelper} and
      * {@link VerificationHelper}.
      *
@@ -117,10 +114,9 @@ public class Constants {
      *
      * These values are defined in ISO/IEC 18013-5 Table 8.
      *
-     * @hide
+     * @hidden
      */
     @Retention(SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef({DEVICE_RESPONSE_STATUS_OK,
             DEVICE_RESPONSE_STATUS_GENERAL_ERROR,
             DEVICE_RESPONSE_STATUS_CBOR_DECODING_ERROR,
@@ -131,10 +127,9 @@ public class Constants {
     /**
      * Logging flags.
      *
-     * @hide
+     * @hidden
      */
     @Retention(SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef(
             flag = true,
             value = {
@@ -150,10 +145,9 @@ public class Constants {
     /**
      * BLE data retrieval flags.
      *
-     * @hide
+     * @hidden
      */
     @Retention(SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef(
             flag = true,
             value = {
