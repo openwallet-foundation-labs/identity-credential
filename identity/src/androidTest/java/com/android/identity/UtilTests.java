@@ -669,4 +669,71 @@ public class UtilTests {
         assertEquals("one\ntwo\nfoo\nfour",
                 Util.replaceLine("one\ntwo\nthree\nfour", -2, "foo"));
     }
+
+    // This test makes sure that Util.issuerSignedItemBytesSetValue() preserves the map order.
+    //
+    @Test
+    public void testIssuerSignedItemBytesSetValue() {
+        DataItem di;
+        byte[] encoded;
+        byte[] encodedWithValueTagged;
+        byte[] encodedWithValue;
+        byte[] encodedDataElement = Util.cborEncodeString("A String");
+
+        // Just try two different orders, canonical and non-canonical.
+
+        // Canonical:
+        di = new CborBuilder()
+                .addMap()
+                .put("random", new byte[]{1, 2, 3})
+                .put("digestID", 42)
+                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
+                .put("elementIdentifier", "foo")
+                .end()
+                .build().get(0);
+        encoded = Util.cborEncodeWithoutCanonicalizing(di);
+        assertEquals("{\n" +
+                "  'random' : [0x01, 0x02, 0x03],\n" +
+                "  'digestID' : 42,\n" +
+                "  'elementValue' : null,\n" +
+                "  'elementIdentifier' : 'foo'\n" +
+                "}", Util.cborPrettyPrint(encoded));
+        encodedWithValueTagged = Util.issuerSignedItemBytesSetValue(
+                Util.cborEncode(Util.cborBuildTaggedByteString(encoded)), encodedDataElement);
+        encodedWithValue = Util.cborExtractTaggedCbor(encodedWithValueTagged);
+        assertEquals("{\n" +
+                "  'random' : [0x01, 0x02, 0x03],\n" +
+                "  'digestID' : 42,\n" +
+                "  'elementValue' : 'A String',\n" +
+                "  'elementIdentifier' : 'foo'\n" +
+                "}", Util.cborPrettyPrint(encodedWithValue));
+
+        // Non-canonical:
+        di = new CborBuilder()
+                .addMap()
+                .put("digestID", 42)
+                .put("random", new byte[]{1, 2, 3})
+                .put("elementIdentifier", "foo")
+                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
+                .end()
+                .build().get(0);
+        encoded = Util.cborEncodeWithoutCanonicalizing(di);
+        assertEquals("{\n" +
+                "  'digestID' : 42,\n" +
+                "  'random' : [0x01, 0x02, 0x03],\n" +
+                "  'elementIdentifier' : 'foo',\n" +
+                "  'elementValue' : null\n" +
+                "}", Util.cborPrettyPrint(encoded));
+        encodedWithValueTagged = Util.issuerSignedItemBytesSetValue(
+                Util.cborEncode(Util.cborBuildTaggedByteString(encoded)), encodedDataElement);
+        encodedWithValue = Util.cborExtractTaggedCbor(encodedWithValueTagged);
+        assertEquals("{\n" +
+                "  'digestID' : 42,\n" +
+                "  'random' : [0x01, 0x02, 0x03],\n" +
+                "  'elementIdentifier' : 'foo',\n" +
+                "  'elementValue' : 'A String'\n" +
+                "}", Util.cborPrettyPrint(encodedWithValue));
+
+
+    }
 }

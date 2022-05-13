@@ -90,7 +90,7 @@ public class Utility {
      *       "digestID" : uint,                           ; Digest ID for issuer data auth
      *       "random" : bstr,                             ; Random value for issuer data auth
      *       "elementIdentifier" : DataElementIdentifier, ; Data element identifier
-     *       "elementValue" : DataElementValue            ; Data element value
+     *       "elementValue" : NULL                        ; Placeholder for Data element value
      *     }
      * </pre>
      *
