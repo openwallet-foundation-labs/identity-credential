@@ -25,7 +25,7 @@ buildscript {
         material_version = "1.0.0"
         anko_version = '0.10.8'
         qrcode_version = '2.1.0'
-        cbor_version = '0.8'
+        cbor_version = '0.9'
         constraint_layout_version = '2.1.0-beta01'
         bouncy_castle_bcprov_version = '1.65'
         bouncy_castle_bcpkix_version = '1.56'

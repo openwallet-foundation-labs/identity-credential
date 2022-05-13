@@ -199,6 +199,19 @@ class Util {
     }
 
     static @NonNull
+    byte[] cborEncodeWithoutCanonicalizing(@NonNull DataItem dataItem) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            new CborEncoder(baos).nonCanonical().encode(dataItem);
+        } catch (CborException e) {
+            // This should never happen and we don't want cborEncode() to throw since that
+            // would complicate all callers. Log it instead.
+            throw new IllegalStateException("Unexpected failure encoding data", e);
+        }
+        return baos.toByteArray();
+    }
+
+    static @NonNull
     byte[] cborEncodeBoolean(boolean value) {
         return cborEncode(new CborBuilder().add(value).build().get(0));
     }
@@ -874,6 +887,21 @@ class Util {
         DataItem item = new ByteString(encodedCbor);
         item.setTag(CBOR_SEMANTIC_TAG_ENCODED_CBOR);
         return item;
+    }
+
+    /**
+     * For a #6.24(bstr), extracts the bytes.
+     */
+    static @NonNull
+    byte[] cborExtractTaggedCbor(@NonNull byte[] encodedTaggedBytestring) {
+        DataItem item = cborDecode(encodedTaggedBytestring);
+        if (!(item instanceof ByteString)) {
+            throw new IllegalArgumentException("Item is not a ByteString");
+        }
+        if (!item.hasTag() || item.getTag().getValue() != CBOR_SEMANTIC_TAG_ENCODED_CBOR) {
+            throw new IllegalArgumentException("ByteString is not tagged with tag 24");
+        }
+        return ((ByteString) item).getBytes();
     }
 
     /**
@@ -1644,8 +1672,6 @@ class Util {
     byte[] issuerSignedItemBytesSetValue(
             @NonNull byte[] encodedIssuerSignedItemBytes,
             @NonNull byte[] encodedElementValue) {
-        // TODO: do this in a way where the map order is preserved.
-        //
         DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
         DataItem issuerSignedItemElem =
                 Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
@@ -1656,8 +1682,9 @@ class Util {
         DataItem elementValue = Util.cborDecode(encodedElementValue);
         issuerSignedItem.put(new UnicodeString("elementValue"), elementValue);
 
+        // By using the non-canonical encoder the order is preserved.
         DataItem newIssuerSignedItemBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncode(issuerSignedItem));
+                Util.cborEncodeWithoutCanonicalizing(issuerSignedItem));
 
         return Util.cborEncode(newIssuerSignedItemBytes);
     }
