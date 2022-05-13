@@ -313,7 +313,11 @@ class Util {
 
     static @NonNull
     Calendar cborDecodeDateTime(@NonNull byte[] data) {
-        DataItem di = cborDecode(data);
+        return cborDecodeDateTime(cborDecode(data));
+    }
+
+    static @NonNull
+    Calendar cborDecodeDateTime(DataItem di) {
         if (!(di instanceof co.nstant.in.cbor.model.UnicodeString)) {
             throw new IllegalArgumentException("Passed in data is not a Unicode-string");
         }
@@ -1172,6 +1176,17 @@ class Util {
             throw new IllegalArgumentException("Expected SimpleValue");
         }
         return ((SimpleValue) item).getSimpleValueType() == SimpleValueType.TRUE;
+    }
+
+    static Calendar cborMapExtractDateTime(@NonNull DataItem map, String key) {
+        if (!(map instanceof Map)) {
+            throw new IllegalArgumentException("Expected map");
+        }
+        DataItem item = ((Map) map).get(new UnicodeString(key));
+        if (item == null || !(item instanceof UnicodeString)) {
+            throw new IllegalArgumentException("Expected ByteString");
+        }
+        return cborDecodeDateTime(item);
     }
 
     static @NonNull
