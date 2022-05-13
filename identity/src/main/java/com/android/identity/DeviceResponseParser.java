@@ -21,6 +21,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -181,6 +182,16 @@ public final class DeviceResponseParser {
             return Pair.create(deviceKey, ret);
         }
 
+        private void parseValidityInfo(DataItem mso, Document.Builder builder) {
+            DataItem map = Util.cborMapExtractMap(mso, "validityInfo");
+            builder.setValidityInfoSigned(Util.cborMapExtractDateTime(map, "signed"));
+            builder.setValidityInfoValidFrom(Util.cborMapExtractDateTime(map, "validFrom"));
+            builder.setValidityInfoValidUntil(Util.cborMapExtractDateTime(map, "validUntil"));
+            if (Util.cborMapHasKey(map, "expectedUpdate")) {
+                builder.setValidityInfoExpectedUpdate(Util.cborMapExtractDateTime(map, "expectedUpdate"));
+            }
+        }
+
         // Returns the DeviceKey from the MSO
         //
         private @NonNull
@@ -222,6 +233,8 @@ public final class DeviceResponseParser {
                     parseMso(mobileSecurityObject, expectedDocType);
             deviceKey = msoResult.first;
             Map<String, Map<Integer, byte[]>> digestMapping = msoResult.second;
+
+            parseValidityInfo(mobileSecurityObject, builder);
 
             DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
             Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
@@ -300,6 +313,7 @@ public final class DeviceResponseParser {
                                 Util.cborBuildTaggedByteString(encodedDeviceAuthentication));
                 deviceSignedAuthenticated = Util.coseSign1CheckSignature(
                         deviceSignature, deviceAuthenticationBytes, deviceKey);
+                builder.setDeviceSignedAuthenticatedViaSignature(true);
             } else {
                 DataItem deviceMac = ((co.nstant.in.cbor.model.Map) deviceAuth).get(
                         new UnicodeString("deviceMac"));
@@ -366,6 +380,7 @@ public final class DeviceResponseParser {
                     DataItem issuerSigned = Util.cborMapExtractMap(documentDataItem,
                             "issuerSigned");
                     PublicKey deviceKey = parseIssuerSigned(docType, issuerSigned, builder);
+                    builder.setDeviceKey(deviceKey);
 
                     DataItem deviceSigned = Util.cborMapExtractMap(documentDataItem,
                             "deviceSigned");
@@ -444,13 +459,19 @@ public final class DeviceResponseParser {
             }
         }
 
-        String mDocType = null;
+        String mDocType;
         Map<String, Map<String, EntryData>> mDeviceData = new LinkedHashMap<>();
         Map<String, Map<String, EntryData>> mIssuerData = new LinkedHashMap<>();
-        List<X509Certificate> mIssuerCertificateChain = null;
-        int mNumIssuerEntryDigestMatchFailures = 0;
-        boolean mDeviceSignedAuthenticated = false;
-        boolean mIssuerSignedAuthenticated = false;
+        List<X509Certificate> mIssuerCertificateChain;
+        int mNumIssuerEntryDigestMatchFailures;
+        boolean mDeviceSignedAuthenticated;
+        boolean mIssuerSignedAuthenticated;
+        Calendar mValidityInfoSigned;
+        Calendar mValidityInfoValidFrom;
+        Calendar mValidityInfoValidUntil;
+        Calendar mValidityInfoExpectedUpdate;
+        PublicKey mDeviceKey;
+        boolean mDeviceSignedAuthenticatedViaSignature;
 
         /**
          * Returns the type of document (commonly referred to as <code>docType</code>).
@@ -459,6 +480,57 @@ public final class DeviceResponseParser {
          */
         public @NonNull String getDocType() {
             return mDocType;
+        }
+
+        /**
+         * Returns the <code>signed</code> date from the MSO.
+         *
+         * @return a {@code Calendar} for when the MSO was signed.
+         */
+        public @NonNull
+        Calendar getValidityInfoSigned() {
+            return mValidityInfoSigned;
+        }
+
+        /**
+         * Returns the <code>validFrom</code> date from the MSO.
+         *
+         * @return a {@code Calendar} for when the MSO is valid from.
+         */
+        public @NonNull
+        Calendar getValidityInfoValidFrom() {
+            return mValidityInfoValidFrom;
+        }
+
+        /**
+         * Returns the <code>validUntil</code> date from the MSO.
+         *
+         * @return a {@code Calendar} for when the MSO is valid until.
+         */
+        public @NonNull
+        Calendar getValidityInfoValidUntil() {
+            return mValidityInfoValidUntil;
+        }
+
+        /**
+         * Returns the <code>expectedUpdate</code> date from the MSO.
+         *
+         * @return a {@code Calendar} for when the MSO is valid until or {@code null} if
+         *   this isn't set.
+         */
+        public @Nullable
+        Calendar getValidityInfoExpectedUpdate() {
+            return mValidityInfoExpectedUpdate;
+        }
+
+        /**
+         * Returns the <code>DeviceKey</code> from the MSO.
+         *
+         * @return a {@code PublicKey} representing the <code>DeviceKey</code>.
+         */
+        public @NonNull
+        PublicKey getDeviceKey() {
+            return mDeviceKey;
         }
 
         /**
@@ -651,6 +723,16 @@ public final class DeviceResponseParser {
         }
 
         /**
+         * Returns whether {@code DeviceSigned} was authenticated using ECDSA signature or
+         * using a MAC.
+         *
+         * @return {@code true} if ECDSA signature was used, {@code false} otherwise.
+         */
+        public boolean getDeviceSignedAuthenticatedViaSignature() {
+            return mDeviceSignedAuthenticatedViaSignature;
+        }
+
+        /**
          * Gets the names of namespaces with retrieved entries of the device-signed data.
          *
          * <p>If the document doesn't contain any device-signed data, this returns the empty
@@ -809,12 +891,44 @@ public final class DeviceResponseParser {
                 return this;
             }
 
-            public void setDeviceSignedAuthenticated(boolean deviceSignedAuthenticated) {
+            Builder setDeviceSignedAuthenticated(boolean deviceSignedAuthenticated) {
                 mResult.mDeviceSignedAuthenticated = deviceSignedAuthenticated;
+                return this;
             }
 
-            public void setIssuerSignedAuthenticated(boolean issuerSignedAuthenticated) {
+            Builder setIssuerSignedAuthenticated(boolean issuerSignedAuthenticated) {
                 mResult.mIssuerSignedAuthenticated = issuerSignedAuthenticated;
+                return this;
+            }
+
+            Builder setValidityInfoSigned(@NonNull Calendar value) {
+                mResult.mValidityInfoSigned = value;
+                return this;
+            }
+
+            Builder setValidityInfoValidFrom(@NonNull Calendar value) {
+                mResult.mValidityInfoValidFrom = value;
+                return this;
+            }
+
+            Builder setValidityInfoValidUntil(@NonNull Calendar value) {
+                mResult.mValidityInfoValidUntil = value;
+                return this;
+            }
+
+            Builder setValidityInfoExpectedUpdate(@NonNull Calendar value) {
+                mResult.mValidityInfoExpectedUpdate = value;
+                return this;
+            }
+
+            Builder setDeviceKey(@NonNull PublicKey deviceKey) {
+                mResult.mDeviceKey = deviceKey;
+                return this;
+            }
+
+            Builder setDeviceSignedAuthenticatedViaSignature(boolean value) {
+                mResult.mDeviceSignedAuthenticatedViaSignature = value;
+                return this;
             }
 
             Document build() {
