@@ -307,13 +307,13 @@ public class PresentationHelper {
             // Why? Because it's required by ISO 18013-5 when using NFC static handover.
             UUID serviceUuid = UUID.randomUUID();
             // Option to indicate if L2CAP should be used if supported
-            boolean supportL2cap = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) !=0;
+            boolean supportL2CAP = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) !=0;
 
             if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
                 DataTransportBleCentralClientMode bleTransport =
                         new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setSupportL2CAP(supportL2cap);
+                bleTransport.setSupportL2CAP(supportL2CAP);
                 mLog.info("Adding BLE mdoc central client mode transport");
                 mTransports.add(bleTransport);
             }
@@ -321,7 +321,7 @@ public class PresentationHelper {
                 DataTransportBlePeripheralServerMode bleTransport =
                         new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setSupportL2CAP(supportL2cap);
+                bleTransport.setSupportL2CAP(supportL2CAP);
                 mLog.info("Adding BLE mdoc peripheral server mode transport");
                 mTransports.add(bleTransport);
             }
@@ -1081,8 +1081,13 @@ public class PresentationHelper {
      * what transport specific session termination is.
      *
      * @return <code>true</code> if transport specific termination is available.
+     *
+     * @throws IllegalStateException if called when there is no current connection available.
      */
     public boolean isTransportSpecificTerminationSupported() {
+        if (mActiveTransport == null) {
+            throw new IllegalStateException("There is no connection is not available");
+        }
         return mActiveTransport.supportsTransportSpecificTerminationMessage();
     }
 

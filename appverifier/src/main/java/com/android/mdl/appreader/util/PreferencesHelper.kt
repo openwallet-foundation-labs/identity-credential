@@ -5,12 +5,19 @@ import androidx.preference.PreferenceManager
 import com.android.identity.Constants
 
 object PreferencesHelper {
+    private const val BLE_DATA_L2CAP = "ble_l2cap"
     private const val READER_AUTHENTICATION = "reader_authentication"
     private const val LOG_INFO = "log_info"
     private const val LOG_DEVICE_ENGAGEMENT = "log_device_engagement"
     private const val LOG_SESSION_MESSAGES = "log_session_messages"
     private const val LOG_TRANSPORT = "log_transport"
     private const val LOG_TRANSPORT_VERBOSE = "log_transport_verbose"
+
+    fun isBleL2capEnabled(context: Context): Boolean {
+        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
+            BLE_DATA_L2CAP, true
+        )
+    }
 
     fun getLoggingFlags(context: Context): Int {
         var flags = 0

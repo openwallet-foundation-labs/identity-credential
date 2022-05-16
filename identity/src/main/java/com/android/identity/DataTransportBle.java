@@ -260,6 +260,12 @@ public abstract class DataTransportBle extends DataTransport {
         return new Pair<>(record, acRecordPayload);
     }
 
+    /**
+     * Sets the preference to use L2CAP if available.
+     * Used by PresentationHelper and VerificationHelper to inform the user preference.
+     *
+     * @param mSupportL2CAP indicates if it should use L2CAP socket if available.
+     */
     public void setSupportL2CAP(boolean mSupportL2CAP) {
         this.mSupportL2CAP = mSupportL2CAP;
     }

@@ -62,6 +62,7 @@ class TransferManager private constructor(private val context: Context) {
         verification = VerificationHelper(context)
         verification?.setListener(responseListener, context.mainExecutor())
         verification?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
+        verification?.setSupportL2CAP(PreferencesHelper.isBleL2capEnabled(context))
     }
 
     fun setQrDeviceEngagement(qrDeviceEngagement: String) {
