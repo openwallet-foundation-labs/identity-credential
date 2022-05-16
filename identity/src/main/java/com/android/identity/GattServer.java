@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Queue;
 import java.util.UUID;
 
@@ -315,7 +316,7 @@ class GattServer extends BluetoothGattServerCallback {
             mLog.transport("Start reading socket input");
         }
         // We can check better/right buffer size to use with L2CAP
-        byte[] mmBuffer = new byte[32027];
+        byte[] mmBuffer = new byte[1024 * 16];
         int numBytes; // bytes returned from read()
         // Keep listening to the InputStream until an exception occurs.
         while (mSocket.isConnected()) {
@@ -334,11 +335,15 @@ class GattServer extends BluetoothGattServerCallback {
                 }
                 // Report message received.
                 mIncomingMessage.write(mmBuffer, 0, numBytes);
-                if (numBytes < mmBuffer.length) {
-                    // Last chunk received.
-                    byte[] entireMessage = mIncomingMessage.toByteArray();
+                byte[] entireMessage = mIncomingMessage.toByteArray();
+                long size = getMessageSize(entireMessage);
+                // Check last chunk received
+                // - if bytes received is less than buffer
+                // - or message length is equal as expected size of the message
+                if (numBytes < mmBuffer.length || (size != -1 && entireMessage.length == size)) {
                     if (mLog.isTransportEnabled()) {
-                        mLog.transport("Entire message received by socket: (" + entireMessage.length + ") " + Util.toHex(entireMessage));
+                        mLog.transport("Data size from message: (" + size + ") message size: (" + entireMessage.length + ")");
+                        mLog.transport("Message: " + Util.toHex(entireMessage));
                     }
                     mIncomingMessage.reset();
                     reportMessageReceived(entireMessage);
@@ -347,6 +352,97 @@ class GattServer extends BluetoothGattServerCallback {
                 reportError(new Error("Error on listening input stream from socket L2CAP"));
                 break;
             }
+        }
+    }
+
+    // Returns the message size based in the expected CBOR structure {"data": h'...'}
+    // Works with a map of one element as 'data' key, needs improvement to be flexible
+    private long getMessageSize(byte[] message) {
+        // Check if it is a map with "data" as key
+        if (message == null || message.length < 7) {
+            return -1;
+        }
+        //A1             # map(1)
+        //   64          # text(4)
+        //      64617461 # "data"
+        byte[] mapDataKey = new byte[]{
+                (byte) 0xa1, (byte) 0x64, (byte) 0x64, (byte) 0x61, (byte) 0x74, (byte) 0x61
+        };
+        byte[] messageStart = Arrays.copyOf(message, 6);
+        if (!Arrays.equals(mapDataKey, messageStart)) {
+            return -1;
+        }
+        // Get data byte array
+        byte[] messageData = Arrays.copyOfRange(message, 6, message.length);
+
+        // Get length expected based on the major type as byte array
+        long size = getExpectedValueSize(messageData);
+        if (size < 0) {
+            return -1;
+        }
+        // Plus the messageStart bytes: map, major type and key value length
+        return size + mapDataKey.length;
+    }
+
+    // Returns the length expected plus the length of the bytes used to inform the length in CBOR
+    private long getExpectedValueSize(byte[] data) {
+        if (data == null || data.length < 1) {
+            return -1;
+        }
+        int initialByte = data[0];
+        switch (initialByte & 31) {
+            case 24:
+                // 1 byte length
+                if (data.length < 2) {
+                    return -1;
+                }
+                return data[1] + 2;
+            case 25:
+                // 2 byte length
+                if (data.length < 3) {
+                    return -1;
+                }
+                long value2bytes = 0;
+                value2bytes |= (data[1] & 0xFF) << 8;
+                value2bytes |= (data[2] & 0xFF) << 0;
+                return value2bytes + 3;
+            case 26:
+                // 4 byte length
+                if (data.length < 5) {
+                    return -1;
+                }
+                long value4bytes = 0;
+                value4bytes |= (long) (data[1] & 0xFF) << 24;
+                value4bytes |= (long) (data[2] & 0xFF) << 16;
+                value4bytes |= (long) (data[3] & 0xFF) << 8;
+                value4bytes |= (long) (data[4] & 0xFF) << 0;
+                return value4bytes + 5;
+            case 27:
+                // 8 byte length
+                if (data.length < 9) {
+                    return -1;
+                }
+                long value8bytes = 0;
+                value8bytes |= (long) (data[1] & 0xFF) << 56;
+                value8bytes |= (long) (data[2] & 0xFF) << 48;
+                value8bytes |= (long) (data[3] & 0xFF) << 40;
+                value8bytes |= (long) (data[4] & 0xFF) << 32;
+                value8bytes |= (long) (data[5] & 0xFF) << 24;
+                value8bytes |= (long) (data[6] & 0xFF) << 16;
+                value8bytes |= (long) (data[7] & 0xFF) << 8;
+                value8bytes |= (long) (data[8] & 0xFF) << 0;
+                return value8bytes + 9;
+            case 28:
+            case 29:
+            case 30:
+                // Reserved 28-30
+                return -1;
+            case 31:
+                // Indefinite
+                return -1;
+            default:
+                // Direct 0-23
+                return (initialByte & 31) + 1;
         }
     }
 
