@@ -16,6 +16,7 @@
 
 package com.android.identity;
 
+import android.annotation.SuppressLint;
 import android.icu.util.Calendar;
 import android.os.Build;
 
@@ -23,6 +24,7 @@ import androidx.annotation.DoNotInline;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.annotation.VisibleForTesting;
 import androidx.biometric.BiometricPrompt;
 
 import java.nio.ByteBuffer;
@@ -239,7 +241,8 @@ class HardwareIdentityCredential extends IdentityCredential {
 
         for (String namespaceName : rd.getNamespaces()) {
             for (String entryName : rd.getEntryNames(namespaceName)) {
-                int status = rd.getStatus(namespaceName, entryName);
+                @ResultData.Status int status = convertFromAndroidStatus(
+                    rd.getStatus(namespaceName, entryName));
                 if (status == ResultData.STATUS_OK) {
                     byte[] value = rd.getEntry(namespaceName, entryName);
                     builder.addEntry(namespaceName, entryName, value);
@@ -250,6 +253,19 @@ class HardwareIdentityCredential extends IdentityCredential {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Returns the {@link ResultData} status code corresponding to
+     * the given one from {@link android.security.identity.ResultData}.
+     */
+    @SuppressLint("WrongConstant")
+    @VisibleForTesting
+    static @ResultData.Status
+    int convertFromAndroidStatus(int status) {
+        // Because our status codes are defined consistently with the ones in the Android platform,
+        // no conversion is needed.
+        return status;
     }
 
     @Override
