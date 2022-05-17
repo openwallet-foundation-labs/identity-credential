@@ -246,9 +246,9 @@ class Util {
      */
     static @NonNull
     DataItem cborBuildDateTime(@NonNull Calendar calendar) {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
         if (calendar.isSet(Calendar.MILLISECOND) && calendar.get(Calendar.MILLISECOND) != 0) {
-            df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+            df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US);
         }
         df.setTimeZone(calendar.getTimeZone());
         Date val = calendar.getTime();
@@ -268,7 +268,7 @@ class Util {
      */
     static @NonNull
     DataItem cborBuildDateTimeFor18013_5(@NonNull Calendar calendar) {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
         df.setTimeZone(TimeZone.GMT_ZONE);
         Date val = calendar.getTime();
         String dateString = df.format(val);
