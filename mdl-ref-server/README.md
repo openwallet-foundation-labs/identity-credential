@@ -15,7 +15,7 @@ to a separate repo at some point. This is all currently a work in progress, use
 at your own risk etc. etc.
 
 # How to run the reference server
-It is possible to run the server directly and via Docker
+It is possible to run the server directly and via Docker.
 
 ## Directly
 
@@ -29,11 +29,7 @@ provisioning protocol itself is rooted under the `/mdlServer` URI.
 
 ## Via Docker
 
-Make sure that Docker and Docker-compose have been installed. Simply open a terminal window in this folder and run:
-
-```
-docker-compose up
-```
+Make sure that Docker and Docker-compose have been installed. Simply open a terminal window in this folder and run: `[sudo] docker-compose up`
 
 # Data Model
 
