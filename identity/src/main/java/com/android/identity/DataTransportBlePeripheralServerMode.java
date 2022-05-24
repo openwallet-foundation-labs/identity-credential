@@ -83,7 +83,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             UUID characteristicL2CAPUuid = null;
-            if (mSupportL2CAP) {
+            if (mUseL2CAPIfAvailable) {
                 characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
             }
             mGattClient = new GattClient(mContext, mLoggingFlags,
@@ -204,7 +204,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         // TODO: Check if BLE is enabled and error out if not so...
 
         UUID characteristicL2CAPUuid = null;
-        if (mSupportL2CAP) {
+        if (mUseL2CAPIfAvailable) {
             characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
         }
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,

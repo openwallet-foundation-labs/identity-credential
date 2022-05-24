@@ -16,7 +16,6 @@
 
 package com.android.identity;
 
-import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.AdvertiseCallback;
@@ -71,7 +70,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             UUID characteristicL2CAPUuid = null;
-            if (mSupportL2CAP) {
+            if (mUseL2CAPIfAvailable) {
                 characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
             }
             mGattClient = new GattClient(mContext, mLoggingFlags,
@@ -237,7 +236,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
 
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
         UUID characteristicL2CAPUuid = null;
-        if (mSupportL2CAP) {
+        if (mUseL2CAPIfAvailable) {
             characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
         }
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,

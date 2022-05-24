@@ -53,7 +53,7 @@ public abstract class DataTransportBle extends DataTransport {
     @LoggingFlag
     protected int mLoggingFlags;
     // Indicates to use L2CAP for BLE transfer by default
-    protected boolean mSupportL2CAP = true;
+    protected boolean mUseL2CAPIfAvailable = true;
 
     public DataTransportBle(
             @NonNull Context context, @LoggingFlag int loggingFlags) {
@@ -264,10 +264,10 @@ public abstract class DataTransportBle extends DataTransport {
      * Sets the preference to use L2CAP if available.
      * Used by PresentationHelper and VerificationHelper to inform the user preference.
      *
-     * @param mSupportL2CAP indicates if it should use L2CAP socket if available.
+     * @param useL2CAPIfAvailable indicates if it should use L2CAP socket if available.
      */
-    public void setSupportL2CAP(boolean mSupportL2CAP) {
-        this.mSupportL2CAP = mSupportL2CAP;
+    public void setUseL2CAPIfAvailable(boolean useL2CAPIfAvailable) {
+        this.mUseL2CAPIfAvailable = useL2CAPIfAvailable;
     }
 
     static abstract class DataRetrievalAddressBle extends DataRetrievalAddress {

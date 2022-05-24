@@ -112,8 +112,7 @@ public class Constants {
      */
     public static final int BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE = (1 << 1);
     /**
-     * Flag indicating that the <em>mdoc BLE L2CAP</em> should be used if supported
-     * for BLE data retrieval.
+     * Flag indicating that L2CAP should be used for data retrieval if available and supported.
      */
     public static final int BLE_DATA_RETRIEVAL_OPTION_L2CAP = (1 << 2);
 

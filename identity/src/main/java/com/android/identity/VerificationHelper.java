@@ -398,7 +398,7 @@ public class VerificationHelper {
             ((DataTransportNfc) mDataTransport).setIsoDep(mNfcIsoDep);
         } else if (mDataTransport instanceof DataTransportBle) {
             // Set the preference for using L2CAP
-            ((DataTransportBle) mDataTransport).setSupportL2CAP(mSupportL2CAP);
+            ((DataTransportBle) mDataTransport).setUseL2CAPIfAvailable(mSupportL2CAP);
         }
 
         mDataTransport.setListener(new DataTransport.Listener() {

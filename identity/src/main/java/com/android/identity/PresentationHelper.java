@@ -24,7 +24,6 @@ import android.nfc.cardemulation.HostApduService;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Base64;
-import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.IntDef;
@@ -313,7 +312,7 @@ public class PresentationHelper {
                 DataTransportBleCentralClientMode bleTransport =
                         new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setSupportL2CAP(supportL2CAP);
+                bleTransport.setUseL2CAPIfAvailable(supportL2CAP);
                 mLog.info("Adding BLE mdoc central client mode transport");
                 mTransports.add(bleTransport);
             }
@@ -321,7 +320,7 @@ public class PresentationHelper {
                 DataTransportBlePeripheralServerMode bleTransport =
                         new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setSupportL2CAP(supportL2CAP);
+                bleTransport.setUseL2CAPIfAvailable(supportL2CAP);
                 mLog.info("Adding BLE mdoc peripheral server mode transport");
                 mTransports.add(bleTransport);
             }
