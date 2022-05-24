@@ -16,7 +16,6 @@
 
 package com.android.identity;
 
-import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.AdvertiseCallback;
@@ -51,7 +50,14 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000002-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000003-a123-48ce-896b-4c76973373e6");
     // Note: Ident UUID not used in peripheral server mode
-    UUID mCharacteristicL2CAPUuid =         UUID.fromString("0000000a-a123-48ce-896b-4c76973373e6");
+    /**
+     * In _mdoc peripheral server mode_ the _mdoc_ acts as the GATT server and the _mdoc reader_ acts as the
+     * GATT client. According to ISO 18013-5 Table A.1 this means that in _mdoc peripheral server mode_
+     * the GATT server (for the _mdoc_) should advertise
+     * UUID 0000000A-A123-48CE896B-4C76973373E6 and the GATT client (for the _mdoc reader_) should
+     * connect to that UUID.
+     */
+    UUID mCharacteristicL2CAPUuidMdoc = UUID.fromString("0000000a-a123-48ce-896b-4c76973373e6");
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
@@ -78,7 +84,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         public void onScanResult(int callbackType, ScanResult result) {
             UUID characteristicL2CAPUuid = null;
             if (mSupportL2CAP) {
-                characteristicL2CAPUuid = mCharacteristicL2CAPUuid;
+                characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
             }
             mGattClient = new GattClient(mContext, mLoggingFlags,
                     mServiceUuid, mEncodedEDeviceKeyBytes,
@@ -199,7 +205,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
         UUID characteristicL2CAPUuid = null;
         if (mSupportL2CAP) {
-            characteristicL2CAPUuid = mCharacteristicL2CAPUuid;
+            characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
         }
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
@@ -333,6 +339,7 @@ public class DataTransportBlePeripheralServerMode extends DataTransportBle {
         if (mGattServer != null) {
             mGattServer.setListener(null);
             mGattServer.stop();
+            mGattServer = null;
         }
         if (mScanner != null) {
             try {

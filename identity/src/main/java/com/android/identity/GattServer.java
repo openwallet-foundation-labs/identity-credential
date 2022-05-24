@@ -78,7 +78,7 @@ class GattServer extends BluetoothGattServerCallback {
     private int mNegotiatedMtu = 0;
     private BluetoothSocket mSocket;
     private byte[] mIdentValue;
-    private boolean mSupportL2CAP = false;
+    private boolean mUsingL2CAP = false;
 
     GattServer(@NonNull Context context, @LoggingFlag int loggingFlags,
                @NonNull BluetoothManager bluetoothManager,
@@ -167,11 +167,11 @@ class GattServer extends BluetoothGattServerCallback {
         }
 
         // Offers support to L2CAP when we have UUID characteristic and the OS version support it
-        mSupportL2CAP = (mCharacteristicL2CAPUuid != null) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q);
+        mUsingL2CAP = (mCharacteristicL2CAPUuid != null) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q);
         if (mLog.isTransportEnabled()) {
-            mLog.transport("Is L2CAP supported: " + mSupportL2CAP);
+            mLog.transport("Is L2CAP supported: " + mUsingL2CAP);
         }
-        if (mSupportL2CAP) {
+        if (mUsingL2CAP) {
             c = new BluetoothGattCharacteristic(mCharacteristicL2CAPUuid,
                     BluetoothGattCharacteristic.PROPERTY_READ,
                     BluetoothGattCharacteristic.PERMISSION_READ);
@@ -186,14 +186,14 @@ class GattServer extends BluetoothGattServerCallback {
             return false;
         }
 
-        if (mSupportL2CAP) {
+        if (mUsingL2CAP) {
             try {
                 mServerSocket = mBluetoothManager.getAdapter().listenUsingInsecureL2capChannel();
             } catch (IOException e) {
                 // It is unable to listen L2CAP channel
                 Log.w(TAG, "Unable to listen L2CAP channel " + e.getMessage());
                 mServerSocket = null;
-                mSupportL2CAP = false;
+                mUsingL2CAP = false;
             }
         }
         return true;
@@ -201,24 +201,7 @@ class GattServer extends BluetoothGattServerCallback {
 
     void stop() {
         mInhibitCallbacks = true;
-        try {
-            if (mServerSocket != null) {
-                mServerSocket.close();
-                mServerSocket = null;
-            }
-        } catch (IOException e) {
-            // Ignoring this error
-            Log.e(TAG, " Error closing server socket connection " + e.getMessage(), e);
-        }
-        try {
-            if (mSocket != null) {
-                mSocket.close();
-                mSocket = null;
-            }
-        } catch (IOException e) {
-            // Ignoring this error
-            Log.e(TAG, " Error closing socket connection " + e.getMessage(), e);
-        }
+        closeServerSocket();
         if (mGattServer != null) {
             try {
                 if (mCurrentConnection != null) {
@@ -271,7 +254,7 @@ class GattServer extends BluetoothGattServerCallback {
             }
         } else if (mCharacteristicL2CAP != null
                 && characteristic.getUuid().equals(mCharacteristicL2CAPUuid)) {
-            if (!mSupportL2CAP) {
+            if (!mUsingL2CAP) {
                 reportError(new Error("Unexpected read request for L2CAP characteristic, not supported"));
                 return;
             }
@@ -297,18 +280,22 @@ class GattServer extends BluetoothGattServerCallback {
     }
 
     private void acceptConnection() {
-        try {
-            mSocket = mServerSocket.accept();
-            if (mSocket.isConnected()) {
-                // Stop accepting new connections
-                mServerSocket.close();
-                reportPeerConnected();
-                listenSocket();
+        Thread socketServerThread = new Thread(() -> {
+            try {
+                mSocket = mServerSocket.accept();
+                if (mSocket.isConnected()) {
+                    // Stop accepting new connections
+                    mServerSocket.close();
+                    mServerSocket = null;
+                    reportPeerConnected();
+                    listenSocket();
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Error getting connection from socket server for L2CAP " + e.getMessage(), e);
+                reportError(new Error("Error getting connection from socket server for L2CAP", e));
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Error getting connection from socket server for L2CAP " + e.getMessage(), e);
-            reportError(new Error("Error getting connection from socket server for L2CAP"));
-        }
+        });
+        socketServerThread.start();
     }
 
     private void listenSocket() {
@@ -508,7 +495,17 @@ class GattServer extends BluetoothGattServerCallback {
             // Ignoring this error
             Log.e(TAG, " Error closing server socket connection " + e.getMessage(), e);
         }
-        mSupportL2CAP = false;
+        try {
+            if (mSocket != null && mSocket.isConnected()) {
+                // Stop accepting new connections
+                mSocket.close();
+                mSocket = null;
+            }
+        } catch (IOException e) {
+            // Ignoring this error
+            Log.e(TAG, " Error closing server socket connection " + e.getMessage(), e);
+        }
+        mUsingL2CAP = false;
     }
 
     @Override
@@ -670,7 +667,7 @@ class GattServer extends BluetoothGattServerCallback {
 
     // When using L2CAP it doesn't support characteristics notification
     public boolean supportsTransportSpecificTerminationMessage() {
-        return !mSupportL2CAP;
+        return !mUsingL2CAP;
     }
 
     public void sendTransportSpecificTermination() {

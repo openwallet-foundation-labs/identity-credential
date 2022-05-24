@@ -114,10 +114,6 @@ class ShowDocumentFragment : Fragment() {
                 }
                 TransferStatus.DISCONNECTED -> {
                     Log.d(LOG_TAG, "Device disconnected received.")
-                    transferManager.stopVerification(
-                        sendSessionTerminationMessage = false,
-                        useTransportSpecificSessionTermination = false
-                    )
                     hideButtons()
                 }
                 TransferStatus.ERROR -> {
@@ -125,10 +121,7 @@ class ShowDocumentFragment : Fragment() {
                         requireContext(), "Error with the connection.",
                         Toast.LENGTH_SHORT
                     ).show()
-                    transferManager.stopVerification(
-                        sendSessionTerminationMessage = false,
-                        useTransportSpecificSessionTermination = false
-                    )
+                    transferManager.disconnect()
                     hideButtons()
                 }
             }
@@ -220,10 +213,7 @@ class ShowDocumentFragment : Fragment() {
 
     private var callback = object : OnBackPressedCallback(true /* enabled by default */) {
         override fun handleOnBackPressed() {
-            TransferManager.getInstance(requireContext()).stopVerification(
-                sendSessionTerminationMessage = true,
-                useTransportSpecificSessionTermination = true
-            )
+            TransferManager.getInstance(requireContext()).disconnect()
             findNavController().navigate(R.id.action_ShowDocument_to_RequestOptions)
         }
     }

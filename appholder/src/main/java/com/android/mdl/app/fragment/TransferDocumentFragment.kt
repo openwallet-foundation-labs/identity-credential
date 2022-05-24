@@ -21,6 +21,7 @@ import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.readerauth.SimpleReaderTrustStore
+import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 import org.jetbrains.anko.support.v4.runOnUiThread
@@ -131,23 +132,28 @@ class TransferDocumentFragment : Fragment() {
                 }
                 TransferStatus.DISCONNECTED -> {
                     Log.d(LOG_TAG, "Disconnected")
-                    onCloseConnection(
-                        sendSessionTerminationMessage = true,
-                        useTransportSpecificSessionTermination = false
-                    )
+                    hideButtons()
+                    TransferManager.getInstance(requireContext()).disconnect()
                 }
                 TransferStatus.ERROR -> {
                     Toast.makeText(
                         requireContext(), "An error occurred.",
                         Toast.LENGTH_SHORT
                     ).show()
-                    findNavController().navigate(
-                        TransferDocumentFragmentDirections.actionTransferDocumentFragmentToSelectDocumentFragment()
-                    )
+                    hideButtons()
+                    TransferManager.getInstance(requireContext()).disconnect()
                 }
             }
         }
         )
+    }
+
+    private fun hideButtons() {
+        binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
+        binding.btCloseConnection.visibility = View.GONE
+        binding.btCloseTerminationMessage.visibility = View.GONE
+        binding.btCloseTransportSpecific.visibility = View.GONE
+        binding.btOk.visibility = View.VISIBLE
     }
 
     private val executor = Executor {
@@ -293,11 +299,7 @@ class TransferDocumentFragment : Fragment() {
         useTransportSpecificSessionTermination: Boolean
     ) {
         vm.cancelPresentation(sendSessionTerminationMessage, useTransportSpecificSessionTermination)
-        binding.txtConnectionStatus.text = getString(R.string.connection_mdoc_closed)
-        binding.btCloseConnection.visibility = View.GONE
-        binding.btCloseTerminationMessage.visibility = View.GONE
-        binding.btCloseTransportSpecific.visibility = View.GONE
-        binding.btOk.visibility = View.VISIBLE
+        hideButtons()
     }
 
     fun onDone() {

@@ -126,6 +126,10 @@ class TransferManager private constructor(private val context: Context) {
             Log.e(LOG_TAG, "Error ignored.", e)
         }
         verification?.setListener(null, null)
+        disconnect()
+    }
+
+    fun disconnect(){
         try {
             verification?.disconnect()
         } catch (e: RuntimeException) {

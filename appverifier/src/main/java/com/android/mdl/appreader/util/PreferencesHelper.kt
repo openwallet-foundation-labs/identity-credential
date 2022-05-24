@@ -15,7 +15,7 @@ object PreferencesHelper {
 
     fun isBleL2capEnabled(context: Context): Boolean {
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            BLE_DATA_L2CAP, true
+            BLE_DATA_L2CAP, false
         )
     }
 

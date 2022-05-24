@@ -263,6 +263,10 @@ class TransferManager private constructor(private val context: Context) {
         } catch (e: IllegalStateException) {
             Log.e(LOG_TAG, "Error ignored.", e)
         }
+        disconnect()
+    }
+
+    fun disconnect() {
         presentation?.setListener(null, null)
         try {
             presentation?.disconnect()

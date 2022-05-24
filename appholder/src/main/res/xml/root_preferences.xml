@@ -18,7 +18,7 @@
             app:title="Enable BLE peripheral mode" />
 
         <SwitchPreference
-            android:defaultValue="true"
+            android:defaultValue="false"
             app:key="ble_l2cap"
             app:summaryOff="Preferred not use L2CAP"
             app:summaryOn="Preferred use L2CAP"
