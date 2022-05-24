@@ -1,0 +1,6 @@
+version: '3.8'
+services:
+  mdl-ref-server:
+    build: .
+    ports:
+      - "18013:18013"
