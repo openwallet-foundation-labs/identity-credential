@@ -64,6 +64,14 @@ object KeysAndCertificates {
             getCertificate(context, R.raw.scytales_root_ca),
             getCertificate(context, R.raw.ul_cert_iaca_01),
             getCertificate(context, R.raw.ul_cert_iaca_02),
+            getCertificate(context, R.raw.apple_iaca),
+            getCertificate(context, R.raw.fast_google_root_certificate),
+            getCertificate(context, R.raw.bdr_iaca),
+            getCertificate(context, R.raw.cacert_youniqx),
+            getCertificate(context, R.raw.cbn_iaca_ky),
+            getCertificate(context, R.raw.clear_iaca_root_cert),
+            getCertificate(context, R.raw.rdw_mekb_testset),
+            getCertificate(context, R.raw.ul_micov_testset),
         )
 
 }
