@@ -84,6 +84,9 @@ object KeysAndCertificates {
             getCertificate(context, R.raw.scytales_root_ca),
             getCertificate(context, R.raw.ul_cert_ca_01),
             getCertificate(context, R.raw.ul_cert_ca_02),
+            getCertificate(context, R.raw.hid_test_reader_ca_mdl_cert),
+            getCertificate(context, R.raw.utms_reader_ca),
+            getCertificate(context, R.raw.zetes_reader_ca),
         )
 
 }
