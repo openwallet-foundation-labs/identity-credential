@@ -44,7 +44,7 @@ import java.util.UUID;
  * central client mode.
  */
 class DataTransportBleCentralClientMode extends DataTransportBle {
-    private static final String TAG = "DataTransportBleCentralClientMode";
+    private static final String TAG = "DataTransportBleCCM"; // limit to <= 23 chars
     final Util.Logger mLog;
 
     UUID mCharacteristicStateUuid = UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");

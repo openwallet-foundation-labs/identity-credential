@@ -44,7 +44,7 @@ import java.util.UUID;
  * peripheral server mode.
  */
 class DataTransportBlePeripheralServerMode extends DataTransportBle {
-    private static final String TAG = "DataTransportBlePeripheralServerMode";
+    private static final String TAG = "DataTransportBlePSM"; // limit to <= 23 chars
     final Util.Logger mLog;
 
     UUID mCharacteristicStateUuid = UUID.fromString("00000001-a123-48ce-896b-4c76973373e6");
