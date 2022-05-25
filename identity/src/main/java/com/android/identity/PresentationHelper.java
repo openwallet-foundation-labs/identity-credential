@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.content.Context;
 import android.net.Uri;
 import android.nfc.NdefMessage;
@@ -24,7 +26,6 @@ import android.nfc.cardemulation.HostApduService;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Base64;
-import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.IntDef;
@@ -197,7 +198,7 @@ public class PresentationHelper {
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceEngagementReady());
+            executor.execute(listener::onDeviceEngagementReady);
         }
     }
 
@@ -206,7 +207,7 @@ public class PresentationHelper {
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onEngagementDetected());
+            executor.execute(listener::onEngagementDetected);
         }
     }
 
@@ -215,7 +216,7 @@ public class PresentationHelper {
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceConnecting());
+            executor.execute(listener::onDeviceConnecting);
         }
     }
 
@@ -224,7 +225,7 @@ public class PresentationHelper {
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceConnected());
+            executor.execute(listener::onDeviceConnected);
         }
     }
 
@@ -404,7 +405,7 @@ public class PresentationHelper {
                     try {
                         decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
                         mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_QR_CODE;
-                    } catch (Exception e) {
+                    } catch (RuntimeException e) {
                         transport.close();
                         reportError(new Error("Error decrypting message from reader", e));
                         return;
@@ -417,7 +418,7 @@ public class PresentationHelper {
                             try {
                                 decryptedMessage =
                                     mSessionEncryptionForNfc.decryptMessageFromReader(data);
-                            } catch (Exception e) {
+                            } catch (RuntimeException e) {
                                 transport.close();
                                 reportError(new Error("Error decrypting message from reader", e));
                                 return;
@@ -804,7 +805,7 @@ public class PresentationHelper {
         for (int n = 0; n < alternativeCarrierRecords.size(); n++) {
             byte[] acRecordPayload = alternativeCarrierRecords.get(n);
             acRecords[n] = new NdefRecord((short) 0x01,
-                    "ac".getBytes(StandardCharsets.UTF_8),
+                    "ac".getBytes(UTF_8),
                     null,
                     acRecordPayload);
         }
@@ -819,7 +820,7 @@ public class PresentationHelper {
     //
     private @NonNull
     byte[] nfcCalculateHandover() {
-        Collection<NdefRecord> carrierConfigurationRecords = new ArrayList<>();
+        List<NdefRecord> carrierConfigurationRecords = new ArrayList<>();
         List<byte[]> alternativeCarrierRecords = new ArrayList<>();
 
         List<DataRetrievalAddress> listeningAddresses = new ArrayList<>();
@@ -847,13 +848,13 @@ public class PresentationHelper {
 
         byte[] hsPayload = nfcCalculateStaticHandoverSelectPayload(alternativeCarrierRecords);
         arrayOfRecords[0] = new NdefRecord((short) 0x01,
-                "Hs".getBytes(StandardCharsets.UTF_8),
+                "Hs".getBytes(UTF_8),
                 null,
                 hsPayload);
 
         arrayOfRecords[1] = new NdefRecord((short) 0x04,
-                "iso.org:18013:deviceengagement".getBytes(StandardCharsets.UTF_8),
-                "mdoc".getBytes(StandardCharsets.UTF_8),
+                "iso.org:18013:deviceengagement".getBytes(UTF_8),
+                "mdoc".getBytes(UTF_8),
                 mEncodedDeviceEngagementForNfc);
 
         int n = 2;
