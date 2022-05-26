@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -172,12 +174,12 @@ final class SessionEncryptionReader {
                     Util.cborBuildTaggedByteString(mEncodedSessionTranscript));
             byte[] salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes);
 
-            byte[] info = "SKDevice".getBytes(StandardCharsets.UTF_8);
+            byte[] info = "SKDevice".getBytes(UTF_8);
             byte[] derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
 
             mSKDevice = new SecretKeySpec(derivedKey, "AES");
 
-            info = "SKReader".getBytes(StandardCharsets.UTF_8);
+            info = "SKReader".getBytes(UTF_8);
             derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
             mSKReader = new SecretKeySpec(derivedKey, "AES");
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {

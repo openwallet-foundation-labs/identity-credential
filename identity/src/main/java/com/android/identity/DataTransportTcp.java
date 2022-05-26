@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.nfc.NdefRecord;
@@ -314,7 +316,7 @@ class DataTransportTcp extends DataTransport {
     @Override
     void sendMessage(@NonNull byte[] data) {
         ByteBuffer bb = ByteBuffer.allocate(8 + data.length);
-        bb.put("GmDL".getBytes(StandardCharsets.UTF_8));
+        bb.put("GmDL".getBytes(UTF_8))
         bb.putInt(data.length);
         bb.put(data);
         mWriterQueue.add(bb.array());
@@ -348,9 +350,9 @@ class DataTransportTcp extends DataTransport {
         @Override
         Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
             byte[] reference = String.format("%d", DEVICE_RETRIEVAL_METHOD_TYPE)
-                    .getBytes(StandardCharsets.UTF_8);
+                    .getBytes(UTF_8);
             NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
-                    "application/vnd.android.ic.dmr".getBytes(StandardCharsets.UTF_8),
+                    "application/vnd.android.ic.dmr".getBytes(UTF_8),
                     reference,
                     buildDeviceRetrievalMethod(host, port));
 
@@ -365,7 +367,7 @@ class DataTransportTcp extends DataTransport {
                 throw new IllegalStateException(e);
             }
             baos.write(0x01); // Number of auxiliary references
-            byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+            byte[] auxReference = "mdoc".getBytes(UTF_8);
             baos.write(auxReference.length);
             baos.write(auxReference, 0, auxReference.length);
             byte[] acRecordPayload = baos.toByteArray();
