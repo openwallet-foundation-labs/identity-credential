@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.content.Context;
 import android.nfc.NdefRecord;
 import android.util.Log;
@@ -237,8 +239,8 @@ abstract class DataTransportBle extends DataTransport {
         Log.d(TAG, "Encoding UUID " + serviceUuid + " in NDEF");
 
         NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
-                "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8),
-                "0".getBytes(StandardCharsets.UTF_8),
+                "application/vnd.bluetooth.le.oob".getBytes(UTF_8),
+                "0".getBytes(UTF_8),
                 oobData);
 
         // From 7.1 Alternative Carrier Record
@@ -250,7 +252,7 @@ abstract class DataTransportBle extends DataTransport {
         baos.write(0x01); // Number of auxiliary references
         // Each auxiliary reference consists of a single byte for the length and then as
         // many bytes for the reference itself.
-        byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+        byte[] auxReference = "mdoc".getBytes(UTF_8);
         baos.write(auxReference.length);
         baos.write(auxReference, 0, auxReference.length);
         byte[] acRecordPayload = baos.toByteArray();
@@ -358,8 +360,8 @@ abstract class DataTransportBle extends DataTransport {
             Log.d(TAG, "Encoding UUID " + uuid + " in NDEF");
 
             NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
-                    "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8),
-                    "0".getBytes(StandardCharsets.UTF_8),
+                    "application/vnd.bluetooth.le.oob".getBytes(UTF_8),
+                    "0".getBytes(UTF_8),
                     oobData);
 
             // From 7.1 Alternative Carrier Record
@@ -371,7 +373,7 @@ abstract class DataTransportBle extends DataTransport {
             baos.write(0x01); // Number of auxiliary references
             // Each auxiliary reference consists of a single byte for the length and then as
             // many bytes for the reference itself.
-            byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+            byte[] auxReference = "mdoc".getBytes(UTF_8);
             baos.write(auxReference.length);
             baos.write(auxReference, 0, auxReference.length);
             byte[] acRecordPayload = baos.toByteArray();

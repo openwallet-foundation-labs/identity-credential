@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.content.Context;
 import android.nfc.NdefRecord;
 import android.os.Build;
@@ -126,8 +128,8 @@ abstract class DataTransport {
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
-                "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8))
-                && Arrays.equals(record.getId(), "0".getBytes(StandardCharsets.UTF_8))) {
+                "application/vnd.bluetooth.le.oob".getBytes(UTF_8))
+                && Arrays.equals(record.getId(), "0".getBytes(UTF_8))) {
             return DataTransportBle.parseNdefRecord(record);
         }
 
@@ -135,8 +137,8 @@ abstract class DataTransport {
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
-                "application/vnd.wfa.nan".getBytes(StandardCharsets.UTF_8))
-                && Arrays.equals(record.getId(), "W".getBytes(StandardCharsets.UTF_8))) {
+                "application/vnd.wfa.nan".getBytes(UTF_8))
+                && Arrays.equals(record.getId(), "W".getBytes(UTF_8))) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 return DataTransportWifiAware.parseNdefRecord(record);
             } else {
@@ -150,8 +152,8 @@ abstract class DataTransport {
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
-                "iso.org:18013:nfc".getBytes(StandardCharsets.UTF_8))
-                && Arrays.equals(record.getId(), "nfc".getBytes(StandardCharsets.UTF_8))) {
+                "iso.org:18013:nfc".getBytes(UTF_8))
+                && Arrays.equals(record.getId(), "nfc".getBytes(UTF_8))) {
             return DataTransportNfc.parseNdefRecord(record);
         }
 
@@ -159,7 +161,7 @@ abstract class DataTransport {
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
-                "application/vnd.android.ic.dmr".getBytes(StandardCharsets.UTF_8))) {
+                "application/vnd.android.ic.dmr".getBytes(UTF_8))) {
             byte[] deviceRetrievalMethod = record.getPayload();
             return parseDeviceRetrievalMethod(deviceRetrievalMethod);
         }

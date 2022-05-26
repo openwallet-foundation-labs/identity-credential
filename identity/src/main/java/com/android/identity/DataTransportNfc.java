@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.content.Context;
 import android.nfc.NdefRecord;
 import android.nfc.tech.IsoDep;
@@ -939,7 +941,7 @@ class DataTransportNfc extends DataTransport {
 
         @Override
         Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
-            byte[] carrierDataReference = "nfc".getBytes(StandardCharsets.UTF_8);
+            byte[] carrierDataReference = "nfc".getBytes(UTF_8);
 
             // This is defined by ISO 18013-5 8.2.2.2 Alternative Carrier Record for device
             // retrieval using NFC.
@@ -951,7 +953,7 @@ class DataTransportNfc extends DataTransport {
             byte[] oobData = baos.toByteArray();
 
             NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
-                    "iso.org:18013:nfc".getBytes(StandardCharsets.UTF_8),
+                    "iso.org:18013:nfc".getBytes(UTF_8),
                     carrierDataReference,
                     oobData);
 
@@ -966,7 +968,7 @@ class DataTransportNfc extends DataTransport {
                 throw new IllegalStateException(e);
             }
             baos.write(0x01); // Number of auxiliary references
-            byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+            byte[] auxReference = "mdoc".getBytes(UTF_8);
             baos.write(auxReference.length);  // Length of auxiliary reference 0 data
             baos.write(auxReference, 0, auxReference.length);
             byte[] acRecordPayload = baos.toByteArray();

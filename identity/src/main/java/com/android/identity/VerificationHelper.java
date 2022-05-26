@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
@@ -270,7 +272,7 @@ public class VerificationHelper {
             // version 1.5 (encoded as 0x15 below).
             //
             if (r.getTnf() == NdefRecord.TNF_WELL_KNOWN
-                    && Arrays.equals(r.getType(), "Hs".getBytes(StandardCharsets.UTF_8))) {
+                    && Arrays.equals(r.getType(), "Hs".getBytes(UTF_8))) {
                 byte[] payload = r.getPayload();
                 if (payload.length >= 1 && payload[0] == 0x15) {
                     // The NDEF payload of the Handover Select Record SHALL consist of a single
@@ -294,8 +296,8 @@ public class VerificationHelper {
             //
             if (r.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE
                     && Arrays.equals(r.getType(),
-                    "iso.org:18013:deviceengagement".getBytes(StandardCharsets.UTF_8))
-                    && Arrays.equals(r.getId(), "mdoc".getBytes(StandardCharsets.UTF_8))) {
+                    "iso.org:18013:deviceengagement".getBytes(UTF_8))
+                    && Arrays.equals(r.getId(), "mdoc".getBytes(UTF_8))) {
                 encodedDeviceEngagement = r.getPayload();
                 if (mLog.isEngagementEnabled()) {
                     mLog.engagement(

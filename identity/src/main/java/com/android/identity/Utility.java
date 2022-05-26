@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.icu.util.Calendar;
 import android.util.Log;
 import android.util.Pair;
@@ -253,7 +255,7 @@ public class Utility {
             int numAuthKeys,
             int maxUsesPerKey) throws IdentityCredentialException {
 
-        final byte[] provisioningChallenge = "dummyChallenge".getBytes(StandardCharsets.UTF_8);
+        final byte[] provisioningChallenge = "dummyChallenge".getBytes(UTF_8);
 
         store.deleteCredentialByName(credentialName);
         WritableIdentityCredential wc = store.createCredential(credentialName, docType);
