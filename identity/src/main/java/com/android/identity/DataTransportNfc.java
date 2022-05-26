@@ -216,7 +216,7 @@ class DataTransportNfc extends DataTransport {
     }
 
     void setupListenerWritingThread() {
-        Thread transceiverThread = new Thread(new Runnable() {
+        Thread transceiverThread = new Thread() {
             @Override
             public void run() {
                 while (mListenerStillActive) {
@@ -268,7 +268,7 @@ class DataTransportNfc extends DataTransport {
                     sendNextChunk(false);
                 }
             }
-        });
+        };
         transceiverThread.start();
     }
 
@@ -658,7 +658,7 @@ class DataTransportNfc extends DataTransport {
         Log.d(TAG, "maxTransceiveLength: " + maxTransceiveLength);
         Log.d(TAG, "isExtendedLengthApduSupported: " + mIsoDep.isExtendedLengthApduSupported());
 
-        Thread transceiverThread = new Thread(new Runnable() {
+        Thread transceiverThread = new Thread() {
             @Override
             public void run() {
                 try {
@@ -887,7 +887,7 @@ class DataTransportNfc extends DataTransport {
                 Log.d(TAG, "Ending transceiver thread");
                 mIsoDep = null;
             }
-        });
+        };
         transceiverThread.start();
 
     }

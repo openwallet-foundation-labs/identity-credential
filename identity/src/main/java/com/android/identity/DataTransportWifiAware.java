@@ -340,7 +340,7 @@ class DataTransportWifiAware extends DataTransport {
     }
 
     private void listenOnServerSocket() {
-        Thread socketServerThread = new Thread(new Runnable() {
+        Thread socketServerThread = new Thread() {
             @Override
             public void run() {
                 try {
@@ -348,12 +348,12 @@ class DataTransportWifiAware extends DataTransport {
                     //
                     mListenerSocket = mListenerServerSocket.accept();
 
-                    Thread writingThread = new Thread(new Runnable() {
+                    Thread writingThread = new Thread() {
                         @Override
                         public void run() {
                             writeToSocket(true, mListenerSocket);
                         }
-                    });
+                    };
                     writingThread.start();
 
                     reportListeningPeerConnected();
@@ -364,7 +364,7 @@ class DataTransportWifiAware extends DataTransport {
                     reportError(e);
                 }
             }
-        });
+        };
         socketServerThread.start();
     }
 
@@ -526,20 +526,20 @@ class DataTransportWifiAware extends DataTransport {
         try {
             mInitiatorSocket = network.getSocketFactory().createSocket(peerIpv6, peerPort);
 
-            Thread writingThread = new Thread(new Runnable() {
+            Thread writingThread = new Thread() {
                 @Override
                 public void run() {
                     writeToSocket(false, mInitiatorSocket);
                 }
-            });
+            };
             writingThread.start();
 
-            Thread listenerThread = new Thread(new Runnable() {
+            Thread listenerThread = new Thread() {
                 @Override
                 public void run() {
                     readFromSocket(false, mInitiatorSocket);
                 }
-            });
+            };
             listenerThread.start();
             reportConnectionResult(null);
         } catch (IOException e) {

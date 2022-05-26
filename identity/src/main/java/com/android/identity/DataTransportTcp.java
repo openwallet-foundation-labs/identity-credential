@@ -136,7 +136,7 @@ class DataTransportTcp extends DataTransport {
             return;
         }
         int port = mServerSocket.getLocalPort();
-        Thread socketServerThread = new Thread(new Runnable() {
+        Thread socketServerThread = new Thread() {
             @Override
             public void run() {
                 try {
@@ -161,7 +161,7 @@ class DataTransportTcp extends DataTransport {
                     reportError(e);
                 }
             }
-        });
+        };
         socketServerThread.start();
 
         mListeningAddress = new DataRetrievalAddressTcp(address, port);
@@ -227,7 +227,7 @@ class DataTransportTcp extends DataTransport {
         int port = address.port;
 
         mSocket = new Socket();
-        Thread socketReaderThread = new Thread(new Runnable() {
+        Thread socketReaderThread = new Thread() {
             @Override
             public void run() {
                 SocketAddress endpoint = new InetSocketAddress(ipAddress, port);
@@ -249,12 +249,12 @@ class DataTransportTcp extends DataTransport {
                     reportConnectionDisconnected();
                 }
             }
-        });
+        };
         socketReaderThread.start();
     }
 
     void setupWritingThread() {
-        mSocketWriterThread = new Thread(new Runnable() {
+        mSocketWriterThread = new Thread() {
             @Override
             public void run() {
                 while (mSocket.isConnected()) {
@@ -282,7 +282,7 @@ class DataTransportTcp extends DataTransport {
                     }
                 }
             }
-        });
+        };
         mSocketWriterThread.start();
     }
 
