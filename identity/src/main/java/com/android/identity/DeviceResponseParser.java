@@ -199,7 +199,6 @@ public final class DeviceResponseParser {
                 String expectedDocType,
                 DataItem issuerSigned,
                 Document.Builder builder) {
-            PublicKey deviceKey;
 
             MessageDigest digester;
             try {
@@ -231,7 +230,7 @@ public final class DeviceResponseParser {
 
             Pair<PublicKey, Map<String, Map<Integer, byte[]>>> msoResult =
                     parseMso(mobileSecurityObject, expectedDocType);
-            deviceKey = msoResult.first;
+            final PublicKey deviceKey = msoResult.first;
             Map<String, Map<Integer, byte[]>> digestMapping = msoResult.second;
 
             parseValidityInfo(mobileSecurityObject, builder);
