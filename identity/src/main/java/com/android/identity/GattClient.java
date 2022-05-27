@@ -16,7 +16,6 @@
 
 package com.android.identity;
 
-import android.Manifest;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
