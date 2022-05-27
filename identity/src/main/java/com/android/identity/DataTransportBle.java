@@ -201,8 +201,6 @@ abstract class DataTransportBle extends DataTransport {
     Pair<NdefRecord, byte[]> buildNdefRecords(boolean centralClientSupported,
             boolean peripheralServerSupported,
             @NonNull UUID serviceUuid) {
-        byte[] oobData;
-
         // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
         //
         // See section 1.17.2 for values
@@ -221,7 +219,7 @@ abstract class DataTransportBle extends DataTransport {
             leRole = 0x00;
         }
 
-        oobData = new byte[]{
+        byte[] oobData = new byte[]{
                 0, 0,
                 // LE Role
                 (byte) 0x02, (byte) 0x1c, (byte) leRole,
@@ -313,7 +311,6 @@ abstract class DataTransportBle extends DataTransport {
                 }
             }
 
-            byte[] oobData;
             // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
             //
             // See section 1.17.2 for values
@@ -346,7 +343,7 @@ abstract class DataTransportBle extends DataTransport {
             // Looking that up it says it's just a sequence of {length, AD type, AD data} where each
             // AD is defined in the "Bluetooth Supplement to the Core Specification" document.
             //
-            oobData = new byte[]{
+            byte[] oobData = new byte[]{
                     // LE Role
                     (byte) 0x02, (byte) 0x1c, (byte) leRole,
                     // Complete List of 128-bit Service UUID’s (0x07)
