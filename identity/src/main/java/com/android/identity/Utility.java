@@ -24,7 +24,6 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
