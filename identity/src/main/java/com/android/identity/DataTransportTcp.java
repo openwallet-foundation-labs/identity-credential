@@ -316,7 +316,7 @@ class DataTransportTcp extends DataTransport {
     @Override
     void sendMessage(@NonNull byte[] data) {
         ByteBuffer bb = ByteBuffer.allocate(8 + data.length);
-        bb.put("GmDL".getBytes(UTF_8))
+        bb.put("GmDL".getBytes(UTF_8));
         bb.putInt(data.length);
         bb.put(data);
         mWriterQueue.add(bb.array());
