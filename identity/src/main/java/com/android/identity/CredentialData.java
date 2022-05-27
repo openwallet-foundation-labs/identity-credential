@@ -29,6 +29,7 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
+import java.util.Locale;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -1160,7 +1161,8 @@ class CredentialData {
                 try {
                     // Calculate name to use and be careful to avoid collisions when
                     // re-certifying an already populated slot.
-                    String aliasForAuthKey = mCredentialKeyAlias + String.format("_auth_%d", n);
+                    String aliasForAuthKey = mCredentialKeyAlias + String.format(Locale.US,
+                            "_auth_%d", n);
                     if (aliasForAuthKey.equals(data.mAlias)) {
                         aliasForAuthKey = aliasForAuthKey + "_";
                     }

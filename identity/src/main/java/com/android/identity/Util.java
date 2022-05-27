@@ -1343,7 +1343,7 @@ class Util {
         String indentString = indentBuilder.toString();
 
         if (dataItem.hasTag()) {
-            sb.append(String.format("tag %d ", dataItem.getTag().getValue()));
+            sb.append(String.format(Locale.US, "tag %d ", dataItem.getTag().getValue()));
         }
 
         switch (dataItem.getMajorType()) {
