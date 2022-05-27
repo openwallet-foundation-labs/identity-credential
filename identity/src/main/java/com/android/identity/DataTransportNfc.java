@@ -66,7 +66,6 @@ class DataTransportNfc extends DataTransport {
     boolean mListenerStillActive;
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     int numChunksReceived = 0;
-    private NfcOptions mOptions;
     private DataRetrievalAddress mListeningAddress;
 
     public DataTransportNfc(@NonNull Context context) {
@@ -172,22 +171,6 @@ class DataTransportNfc extends DataTransport {
         return addresses;
     }
 
-    static byte[] buildDeviceRetrievalMethod(NfcOptions options) {
-        byte[] encodedDeviceRetrievalMethod = Util.cborEncode(new CborBuilder()
-                .addArray()
-                .add(DEVICE_RETRIEVAL_METHOD_TYPE)
-                .add(DEVICE_RETRIEVAL_METHOD_VERSION)
-                .addMap()
-                .put(RETRIEVAL_OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH,
-                        options.commandDataFieldMaxLength)
-                .put(RETRIEVAL_OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH,
-                        options.responseDataFieldMaxLength)
-                .end()
-                .end()
-                .build().get(0));
-        return encodedDeviceRetrievalMethod;
-    }
-
     @Override
     public void setEDeviceKeyBytes(@NonNull byte[] encodedEDeviceKeyBytes) {
         // Not used.
@@ -201,8 +184,6 @@ class DataTransportNfc extends DataTransport {
 
     @Override
     public void listen() {
-        mOptions = new NfcOptions();
-
         // From ISO 18013-5 8.3.3.1.2 Data retrieval using near field communication (NFC):
         //
         // NOTE 2: The minimum and maximum possible values for the command data field limit are
@@ -211,11 +192,8 @@ class DataTransportNfc extends DataTransport {
         // '01 00 00', i.e. the limit is between 256 and 65 536 bytes (inclusive).
 
         // TODO: get these from underlying hardware instead of assuming they're the top limit.
-        //
-        mOptions.commandDataFieldMaxLength = 0xffff;
-        mOptions.responseDataFieldMaxLength = 0x10000;
-
-        mListeningAddress = new DataRetrievalAddressNfc(0xffff, 0x10000);
+        mListeningAddress = new DataRetrievalAddressNfc(
+            /* commandDataFieldMaxLength= */ 0xffff, /* responseDataFieldMaxLength= */ 0x10000);
 
         reportListeningSetupCompleted(mListeningAddress);
 
@@ -651,12 +629,8 @@ class DataTransportNfc extends DataTransport {
 
     @Override
     public void connect(@NonNull DataRetrievalAddress genericAddress) {
-        DataRetrievalAddressNfc address = (DataRetrievalAddressNfc) genericAddress;
-
-        // TODO: hack
-        mOptions = new NfcOptions();
-        mOptions.commandDataFieldMaxLength = address.commandDataFieldMaxLength;
-        mOptions.responseDataFieldMaxLength = address.responseDataFieldMaxLength;
+        // TODO: genericAddress is instanceof DataRetrievalAddressNfc, but right now we're
+        // not using its fields commandDataFieldMaxLength and responseDataFieldMaxLength.
 
         if (mIsoDep == null) {
             reportConnectionResult(new Error("NFC IsoDep not set"));
@@ -925,11 +899,6 @@ class DataTransportNfc extends DataTransport {
 
     public interface ResponseInterface {
         void sendResponseApdu(@NonNull byte[] responseApdu);
-    }
-
-    static class NfcOptions {
-        int commandDataFieldMaxLength;
-        int responseDataFieldMaxLength;
     }
 
     static class DataRetrievalAddressNfc extends DataRetrievalAddress {
