@@ -16,6 +16,9 @@
 
 package com.android.identity;
 
+import static java.util.concurrent.TimeUnit.DAYS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import android.content.Context;
 import android.icu.util.Calendar;
 import android.security.keystore.KeyGenParameterSpec;
@@ -28,7 +31,6 @@ import androidx.annotation.NonNull;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
@@ -167,7 +169,7 @@ class CredentialData {
 
             String name = ((UnicodeString) map.get(new UnicodeString("name"))).getString();
 
-            Collection<AccessControlProfileId> accessControlProfileIds = new ArrayList<>();
+            List<AccessControlProfileId> accessControlProfileIds = new ArrayList<>();
             Array accessControlProfileArray =
                     (Array) map.get(
                             new UnicodeString("accessControlProfiles"));
@@ -261,9 +263,8 @@ class CredentialData {
             X500Name subject = new X500Name("CN=Android Identity Credential Authentication Key");
 
             Date now = new Date();
-            final long kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000;
-            Date expirationDate = new Date(now.getTime() + kMilliSecsInOneYear);
-            BigInteger serial = new BigInteger("1");
+            Date expirationDate = new Date(now.getTime() + MILLISECONDS.convert(365, DAYS));
+            BigInteger serial = BigInteger.ONE;
             JcaX509v3CertificateBuilder builder =
                     new JcaX509v3CertificateBuilder(issuer,
                             serial,

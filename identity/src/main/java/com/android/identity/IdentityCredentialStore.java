@@ -220,7 +220,7 @@ public abstract class IdentityCredentialStore {
      *
      * @param credentialName The name used to identify the credential.
      * @param docType        The document type for the credential.
-     * @return A @{link WritableIdentityCredential} that can be used to create a new credential.
+     * @return A {@link WritableIdentityCredential} that can be used to create a new credential.
      * @throws AlreadyPersonalizedException if a credential with the given name already exists.
      * @throws DocTypeNotSupportedException if the given document type isn't supported by the store.
      */

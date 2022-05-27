@@ -270,7 +270,7 @@ abstract class DataTransport {
      * @param listener the listener or <code>null</code> to stop listening.
      * @param executor a {@link Executor} to do the call in or <code>null</code> if
      *                 <code>listener</code> is <code>null</code>.
-     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@link null}
+     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
      * listener.
      */
     void setListener(@Nullable Listener listener, @Nullable Executor executor) {
@@ -302,7 +302,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onListeningPeerConnecting());
+            executor.execute(listener::onListeningPeerConnecting);
         }
     }
 
@@ -310,7 +310,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onListeningPeerConnected());
+            executor.execute(listener::onListeningPeerConnected);
         }
     }
 
@@ -318,7 +318,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onListeningPeerDisconnected());
+            executor.execute(listener::onListeningPeerDisconnected);
         }
     }
 
@@ -334,7 +334,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onConnectionDisconnected());
+            executor.execute(listener::onConnectionDisconnected);
         }
     }
 
@@ -350,7 +350,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onTransportSpecificSessionTermination());
+            executor.execute(listener::onTransportSpecificSessionTermination);
         }
     }
 
@@ -370,8 +370,6 @@ abstract class DataTransport {
         /**
          * Called on a listening transport when listening setup has completed and
          * an address for how to connect is ready.
-         *
-         * @return a {@link DataRetrievalAddress} or {@code null} if listening failed.
          */
         void onListeningSetupCompleted(@Nullable DataRetrievalAddress address);
 
