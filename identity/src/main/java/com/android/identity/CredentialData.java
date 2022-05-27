@@ -387,14 +387,14 @@ class CredentialData {
         data.mAcpTimeoutKeyAliases = new HashMap<>();
         for (AccessControlProfile profile : personalizationData.getAccessControlProfiles()) {
             boolean isAuthRequired = profile.isUserAuthenticationRequired();
-            long timeoutSeconds = profile.getUserAuthenticationTimeout();
+            long timeoutMillis = profile.getUserAuthenticationTimeout();
             if (isAuthRequired) {
                 // Always make sure the per-reader-session key exists since this is what we're
                 // going to be handing out a Cipher for when returning a CryptoObject at
                 // presentation time.
                 ensurePerReaderSessionKey(credentialName, data);
 
-                ensureAcpTimoutKeyForProfile(credentialName, data, profile, timeoutSeconds);
+                ensureAcpTimoutKeyForProfile(credentialName, data, profile, timeoutMillis);
             }
         }
 
