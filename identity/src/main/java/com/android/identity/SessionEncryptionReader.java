@@ -25,7 +25,6 @@ import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
