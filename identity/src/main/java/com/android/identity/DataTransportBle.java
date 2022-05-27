@@ -33,6 +33,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import co.nstant.in.cbor.CborBuilder;
@@ -95,7 +96,7 @@ abstract class DataTransportBle extends DataTransport {
             Log.d(TAG, "hasR: " + payload.hasRemaining() + " rem: " + payload.remaining());
             int len = payload.get();
             int type = payload.get();
-            Log.d(TAG, String.format("type %d len %d", type, len));
+            Log.d(TAG, String.format(Locale.US, "type %d len %d", type, len));
             if (type == 0x1c && len == 2) {
                 gotLeRole = true;
                 int value = payload.get();

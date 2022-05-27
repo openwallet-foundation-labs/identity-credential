@@ -66,6 +66,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.OptionalInt;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
@@ -519,8 +520,8 @@ class DataTransportWifiAware extends DataTransport {
 
         // TODO: it's not clear whether port should be included here, we include it for now...
         //
-        mInitiatorIPv6HostString = String.format("[%s]:%d", strippedAddress.getHostAddress(),
-                peerPort);
+        mInitiatorIPv6HostString = String.format(Locale.US,
+                "[%s]:%d", strippedAddress.getHostAddress(), peerPort);
         Log.d(TAG, "Connecting to " + mInitiatorIPv6HostString);
 
         try {
@@ -672,7 +673,7 @@ class DataTransportWifiAware extends DataTransport {
                     return;
                 }
                 Log.d(TAG, "read line '" + line + "'");
-                if (line.toLowerCase().startsWith("content-length:")) {
+                if (line.toLowerCase(Locale.US).startsWith("content-length:")) {
                     try {
                         contentLength = Integer.parseInt(line.substring(15).trim());
                     } catch (NumberFormatException e) {

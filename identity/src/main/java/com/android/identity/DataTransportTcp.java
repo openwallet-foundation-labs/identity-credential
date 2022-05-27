@@ -41,6 +41,7 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
@@ -349,7 +350,7 @@ class DataTransportTcp extends DataTransport {
 
         @Override
         Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
-            byte[] reference = String.format("%d", DEVICE_RETRIEVAL_METHOD_TYPE)
+            byte[] reference = String.format(Locale.US, "%d", DEVICE_RETRIEVAL_METHOD_TYPE)
                     .getBytes(UTF_8);
             NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
                     "application/vnd.android.ic.dmr".getBytes(UTF_8),
