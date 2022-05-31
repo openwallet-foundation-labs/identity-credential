@@ -147,7 +147,7 @@ public final class DeviceResponseParser {
 
         // Returns deviceKey and digestIdMapping. The byte[] is the digest.
         //
-        private @NonNull Pair<PublicKey, Map<String, Map<Integer, byte[]>>> parseMso(DataItem mso,
+        private @NonNull Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(DataItem mso,
                 String expectedDoctype) {
             /* don't care about version for now */
             String digestAlgorithm = Util.cborMapExtractString(mso, "digestAlgorithm");
@@ -162,13 +162,12 @@ public final class DeviceResponseParser {
             }
             DataItem valueDigests = Util.cborMapExtract(mso, "valueDigests");
             Collection<String> nameSpaceNames = Util.cborMapExtractMapStringKeys(valueDigests);
-            Map<String, Map<Integer, byte[]>> ret = new HashMap<>();
+            Map<String, Map<Long, byte[]>> ret = new HashMap<>();
             for (String nameSpaceName : nameSpaceNames) {
                 DataItem elementMap = Util.cborMapExtract(valueDigests, nameSpaceName);
-                Collection<Integer> elementDigestIDs = Util.cborMapExtractMapNumberKeys(
-                        elementMap);
-                Map<Integer, byte[]> innerRet = new HashMap<>();
-                for (int elementDigestID : elementDigestIDs) {
+                Collection<Long> elementDigestIDs = Util.cborMapExtractMapNumberKeys(elementMap);
+                Map<Long, byte[]> innerRet = new HashMap<>();
+                for (Long elementDigestID : elementDigestIDs) {
                     byte[] digest = Util.cborMapExtractByteString(elementMap, elementDigestID);
                     innerRet.put(elementDigestID, digest);
                 }
@@ -228,17 +227,17 @@ public final class DeviceResponseParser {
             DataItem mobileSecurityObject = Util.cborExtractTaggedAndEncodedCbor(
                     mobileSecurityObjectBytes);
 
-            Pair<PublicKey, Map<String, Map<Integer, byte[]>>> msoResult =
+            Pair<PublicKey, Map<String, Map<Long, byte[]>>> msoResult =
                     parseMso(mobileSecurityObject, expectedDocType);
             final PublicKey deviceKey = msoResult.first;
-            Map<String, Map<Integer, byte[]>> digestMapping = msoResult.second;
+            Map<String, Map<Long, byte[]>> digestMapping = msoResult.second;
 
             parseValidityInfo(mobileSecurityObject, builder);
 
             DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
             Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
             for (String nameSpace : nameSpacesKeys) {
-                Map<Integer, byte[]> innerDigestMapping = digestMapping.get(nameSpace);
+                Map<Long, byte[]> innerDigestMapping = digestMapping.get(nameSpace);
                 if (innerDigestMapping == null) {
                     throw new IllegalArgumentException("No digestID MSO entry for namespace "
                             + nameSpace);
@@ -260,7 +259,7 @@ public final class DeviceResponseParser {
                     String elementName = Util.cborMapExtractString(issuerSignedItem,
                             "elementIdentifier");
                     DataItem elementValue = Util.cborMapExtract(issuerSignedItem, "elementValue");
-                    int digestId = Util.cborMapExtractNumber(issuerSignedItem, "digestID");
+                    long digestId = Util.cborMapExtractNumber(issuerSignedItem, "digestID");
 
                     byte[] digest = innerDigestMapping.get(digestId);
                     if (digest == null) {
@@ -420,7 +419,7 @@ public final class DeviceResponseParser {
         }
 
         private @Constants.DeviceResponseStatus
-        int mResultStatus = Constants.DEVICE_RESPONSE_STATUS_OK;
+        long mResultStatus = Constants.DEVICE_RESPONSE_STATUS_OK;
 
         /**
          * Gets the top-level status in the <code>DeviceResponse</code> CBOR.
@@ -435,7 +434,7 @@ public final class DeviceResponseParser {
          * {@link Constants#DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR}.
          */
         @Constants.DeviceResponseStatus public
-        int getStatus() {
+        long getStatus() {
             return mResultStatus;
         }
     }

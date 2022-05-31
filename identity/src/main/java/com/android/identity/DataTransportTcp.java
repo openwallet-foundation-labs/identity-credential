@@ -94,10 +94,15 @@ class DataTransportTcp extends DataTransport {
         Map options = ((Map) items[2]);
 
         String host = Util.cborMapExtractString(options, RETRIEVAL_OPTION_KEY_ADDRESS);
-        int port = Util.cborMapExtractNumber(options, RETRIEVAL_OPTION_KEY_PORT);
+        long port = Util.cborMapExtractNumber(options, RETRIEVAL_OPTION_KEY_PORT);
+
+        if (port > 65535) {
+            Log.w(TAG, "Port is invalid: " + port);
+            return null;
+        }
 
         List<DataRetrievalAddress> addresses = new ArrayList<>();
-        addresses.add(new DataRetrievalAddressTcp(host, port));
+        addresses.add(new DataRetrievalAddressTcp(host, (int)port));
         return addresses;
     }
 

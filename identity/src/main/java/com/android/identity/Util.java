@@ -112,20 +112,20 @@ import co.nstant.in.cbor.model.UnsignedInteger;
  */
 class Util {
     private static final String TAG = "Util";
-    private static final int COSE_LABEL_ALG = 1;
-    private static final int COSE_LABEL_X5CHAIN = 33;  // temporary identifier
+    private static final long COSE_LABEL_ALG = 1;
+    private static final long COSE_LABEL_X5CHAIN = 33;  // temporary identifier
     // From RFC 8152: Table 5: ECDSA Algorithm Values
-    private static final int COSE_ALG_ECDSA_256 = -7;
-    private static final int COSE_ALG_ECDSA_384 = -35;
-    private static final int COSE_ALG_ECDSA_512 = -36;
-    private static final int COSE_ALG_HMAC_256_256 = 5;
-    private static final int CBOR_SEMANTIC_TAG_ENCODED_CBOR = 24;
-    private static final int COSE_KEY_KTY = 1;
-    private static final int COSE_KEY_TYPE_EC2 = 2;
-    private static final int COSE_KEY_EC2_CRV = -1;
-    private static final int COSE_KEY_EC2_X = -2;
-    private static final int COSE_KEY_EC2_Y = -3;
-    private static final int COSE_KEY_EC2_CRV_P256 = 1;
+    private static final long COSE_ALG_ECDSA_256 = -7;
+    private static final long COSE_ALG_ECDSA_384 = -35;
+    private static final long COSE_ALG_ECDSA_512 = -36;
+    private static final long COSE_ALG_HMAC_256_256 = 5;
+    private static final long CBOR_SEMANTIC_TAG_ENCODED_CBOR = 24;
+    private static final long COSE_KEY_KTY = 1;
+    private static final long COSE_KEY_TYPE_EC2 = 2;
+    private static final long COSE_KEY_EC2_CRV = -1;
+    private static final long COSE_KEY_EC2_X = -2;
+    private static final long COSE_KEY_EC2_Y = -3;
+    private static final long COSE_KEY_EC2_CRV_P256 = 1;
 
     // Not called.
     private Util() {
@@ -591,7 +591,7 @@ class Util {
         }
 
         int keySize;
-        int alg;
+        long alg;
         if (s.getAlgorithm().equals("SHA256withECDSA")) {
             keySize = 32;
             alg = COSE_ALG_ECDSA_256;
@@ -725,20 +725,16 @@ class Util {
         }
 
         DataItem protectedHeaders = cborDecode(encodedProtectedHeaders);
-        int alg = cborMapExtractNumber((Map) protectedHeaders, COSE_LABEL_ALG);
+        long alg = cborMapExtractNumber((Map) protectedHeaders, COSE_LABEL_ALG);
         String signature;
-        switch (alg) {
-            case COSE_ALG_ECDSA_256:
-                signature = "SHA256withECDSA";
-                break;
-            case COSE_ALG_ECDSA_384:
-                signature = "SHA384withECDSA";
-                break;
-            case COSE_ALG_ECDSA_512:
-                signature = "SHA512withECDSA";
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported COSE alg " + alg);
+        if (alg == COSE_ALG_ECDSA_256) {
+            signature = "SHA256withECDSA";
+        } else if (alg == COSE_ALG_ECDSA_384) {
+            signature = "SHA384withECDSA";
+        } else if (alg == COSE_ALG_ECDSA_512) {
+            signature = "SHA512withECDSA";
+        } else {
+            throw new IllegalArgumentException("Unsupported COSE alg " + alg);
         }
 
         byte[] toBeSigned = Util.coseBuildToBeSigned(encodedProtectedHeaders, payload,
@@ -1012,21 +1008,21 @@ class Util {
         return item != null;
     }
 
-    static boolean cborMapHasKey(@NonNull DataItem map, int key) {
+    static boolean cborMapHasKey(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
         return item != null;
     }
 
-    static int cborMapExtractNumber(@NonNull DataItem map, int key) {
+    static long cborMapExtractNumber(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
-        return castTo(Number.class, item).getValue().intValue();
+        return castTo(Number.class, item).getValue().longValue();
     }
 
-    static int cborMapExtractNumber(@NonNull DataItem map, @NonNull String key) {
+    static long cborMapExtractNumber(@NonNull DataItem map, @NonNull String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
-        return castTo(Number.class, item).getValue().intValue();
+        return castTo(Number.class, item).getValue().longValue();
     }
 
     static @NonNull
@@ -1037,8 +1033,7 @@ class Util {
     }
 
     static @NonNull
-    String cborMapExtractString(@NonNull DataItem map,
-            int key) {
+    String cborMapExtractString(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
         return castTo(UnicodeString.class, item).getString();
@@ -1052,7 +1047,7 @@ class Util {
     }
 
     static @NonNull
-    List<DataItem> cborMapExtractArray(@NonNull DataItem map, int key) {
+    List<DataItem> cborMapExtractArray(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
         return castTo(Array.class, item).getDataItems();
@@ -1076,16 +1071,16 @@ class Util {
 
     static @NonNull
     Collection<Integer> cborMapExtractMapNumberKeys(@NonNull DataItem map) {
-        List<Integer> ret = new ArrayList<>();
+        List<Long> ret = new ArrayList<>();
         for (DataItem item : castTo(Map.class, map).getKeys()) {
-            ret.add(castTo(Number.class, item).getValue().intValue());
+            ret.add(castTo(Number.class, item).getValue().longValue());
         }
         return ret;
     }
 
     static @NonNull
     byte[] cborMapExtractByteString(@NonNull DataItem map,
-            int key) {
+            long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
         return castTo(ByteString.class, item).getBytes();
@@ -1103,7 +1098,7 @@ class Util {
         return castTo(SimpleValue.class, item).getSimpleValueType() == SimpleValueType.TRUE;
     }
 
-    static boolean cborMapExtractBoolean(@NonNull DataItem map, int key) {
+    static boolean cborMapExtractBoolean(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
         return castTo(SimpleValue.class, item).getSimpleValueType() == SimpleValueType.TRUE;
@@ -1126,11 +1121,11 @@ class Util {
 
     static @NonNull
     PublicKey coseKeyDecode(@NonNull DataItem coseKey) {
-        int kty = cborMapExtractNumber(coseKey, COSE_KEY_KTY);
+        long kty = cborMapExtractNumber(coseKey, COSE_KEY_KTY);
         if (kty != COSE_KEY_TYPE_EC2) {
             throw new IllegalArgumentException("Expected COSE_KEY_TYPE_EC2, got " + kty);
         }
-        int crv = cborMapExtractNumber(coseKey, COSE_KEY_EC2_CRV);
+        long crv = cborMapExtractNumber(coseKey, COSE_KEY_EC2_CRV);
         if (crv != COSE_KEY_EC2_CRV_P256) {
             throw new IllegalArgumentException("Expected COSE_KEY_EC2_CRV_P256, got " + crv);
         }
@@ -1513,7 +1508,7 @@ class Util {
     }
 
     static @NonNull
-    DataItem calcIssuerSignedItemBytes(int digestID,
+    DataItem calcIssuerSignedItemBytes(long digestID,
             @NonNull byte[] random,
             @NonNull String elementIdentifier,
             @NonNull DataItem elementValue) {
@@ -1646,9 +1641,9 @@ class Util {
         return ret;
     }
 
-    static int getDeviceRetrievalMethodType(@NonNull byte[] encodeDeviceRetrievalMethod) {
+    static long getDeviceRetrievalMethodType(@NonNull byte[] encodeDeviceRetrievalMethod) {
         List<DataItem> di = ((Array) Util.cborDecode(encodeDeviceRetrievalMethod)).getDataItems();
-        return ((co.nstant.in.cbor.model.Number) di.get(0)).getValue().intValue();
+        return ((co.nstant.in.cbor.model.Number) di.get(0)).getValue().longValue();
     }
 
     static @NonNull KeyPair createEphemeralKeyPair() {

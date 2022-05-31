@@ -67,7 +67,7 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
@@ -116,8 +116,8 @@ class DataTransportWifiAware extends DataTransport {
     List<DataRetrievalAddress> parseNdefRecord(@NonNull NdefRecord record) {
         String passphraseInfoPassphrase = null;
         byte[] bandInfoSupportedBands = null;
-        OptionalInt channelInfoChannelNumber = OptionalInt.empty();
-        OptionalInt channelInfoOperatingClass = OptionalInt.empty();
+        OptionalLong channelInfoChannelNumber = OptionalLong.empty();
+        OptionalLong channelInfoOperatingClass = OptionalLong.empty();
 
         // See above for OOB data and where it's defined.
         //
@@ -165,13 +165,13 @@ class DataTransportWifiAware extends DataTransport {
         if (Util.cborMapHasKey(options, 0)) {
             passphraseInfoPassphrase = Util.cborMapExtractString(options, 0);
         }
-        OptionalInt channelInfoChannelNumber = OptionalInt.empty();
+        OptionalLong channelInfoChannelNumber = OptionalLong.empty();
         if (Util.cborMapHasKey(options, 1)) {
-            channelInfoChannelNumber = OptionalInt.of(Util.cborMapExtractNumber(options, 1));
+            channelInfoChannelNumber = OptionalLong.of(Util.cborMapExtractNumber(options, 1));
         }
-        OptionalInt channelInfoOperatingClass = OptionalInt.empty();
+        OptionalLong channelInfoOperatingClass = OptionalLong.empty();
         if (Util.cborMapHasKey(options, 2)) {
-            channelInfoOperatingClass = OptionalInt.of(Util.cborMapExtractNumber(options, 2));
+            channelInfoOperatingClass = OptionalLong.of(Util.cborMapExtractNumber(options, 2));
         }
         byte[] bandInfoSupportedBands = null;
         if (Util.cborMapHasKey(options, 3)) {
@@ -268,7 +268,7 @@ class DataTransportWifiAware extends DataTransport {
         byte[] bandInfoSupportedBands = new byte[]{(byte) (supportedBandsBitmap & 0xff)};
 
         mListeningAddress = new DataRetrievalAddressWifiAware(passphraseInfoPassphrase,
-                OptionalInt.empty(), OptionalInt.empty(),
+                OptionalLong.empty(), OptionalLong.empty(),
                 bandInfoSupportedBands);
 
         reportListeningSetupCompleted(mListeningAddress);
@@ -720,14 +720,14 @@ class DataTransportWifiAware extends DataTransport {
     static class DataRetrievalAddressWifiAware extends DataRetrievalAddress {
         @Nullable
         String passphraseInfoPassphrase;
-        OptionalInt channelInfoChannelNumber;
-        OptionalInt channelInfOperatingClass;
+        OptionalLong channelInfoChannelNumber;
+        OptionalLong channelInfOperatingClass;
         @Nullable
         byte[] bandInfoSupportedBands;
         // TODO: support MAC address
         DataRetrievalAddressWifiAware(@Nullable String passphraseInfoPassphrase,
-                OptionalInt channelInfoChannelNumber,
-                OptionalInt channelInfOperatingClass,
+                OptionalLong channelInfoChannelNumber,
+                OptionalLong channelInfOperatingClass,
                 @Nullable byte[] bandInfoSupportedBands) {
             this.passphraseInfoPassphrase = passphraseInfoPassphrase;
             this.channelInfoChannelNumber = channelInfoChannelNumber;
@@ -847,11 +847,11 @@ class DataTransportWifiAware extends DataTransport {
                     passphraseInfoPassphrase);
             if (channelInfoChannelNumber.isPresent()) {
                 mapBuilder.put(RETRIEVAL_OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER,
-                        channelInfoChannelNumber.getAsInt());
+                        channelInfoChannelNumber.getAsLong());
             }
             if (channelInfOperatingClass.isPresent()) {
                 mapBuilder.put(RETRIEVAL_OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS,
-                        channelInfOperatingClass.getAsInt());
+                        channelInfOperatingClass.getAsLong());
             }
             mapBuilder.put(RETRIEVAL_OPTION_KEY_BAND_INFO_SUPPORTED_BANDS, bandInfoSupportedBands);
             mapBuilder.end();
@@ -868,11 +868,11 @@ class DataTransportWifiAware extends DataTransport {
             }
             if (channelInfoChannelNumber.isPresent()) {
                 builder.append(":channel_info_channel_number=");
-                builder.append(channelInfoChannelNumber.getAsInt());
+                builder.append(channelInfoChannelNumber.getAsLong());
             }
             if (channelInfOperatingClass.isPresent()) {
                 builder.append(":channel_info_operating_class=");
-                builder.append(channelInfOperatingClass.getAsInt());
+                builder.append(channelInfOperatingClass.getAsLong());
             }
             if (bandInfoSupportedBands != null) {
                 builder.append(":base_info_supported_bands=");
