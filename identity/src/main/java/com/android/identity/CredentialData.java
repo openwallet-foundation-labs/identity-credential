@@ -356,7 +356,7 @@ class CredentialData {
      * @param certificateChain    the certificate chain for the credential key.
      * @param personalizationData the data for the credential.
      * @param isReplacement       set to true if this replaces an existing credential
-     * @return a new @{link CredentialData} object
+     * @return a new {@link CredentialData} object
      */
     static CredentialData createCredentialData(Context context,
             String docType,
