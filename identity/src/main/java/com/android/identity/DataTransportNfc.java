@@ -152,14 +152,21 @@ class DataTransportNfc extends DataTransport {
         }
         Map options = ((Map) items[2]);
 
-        int commandDataFieldMaxLength = Util.cborMapExtractNumber(options,
+        long commandDataFieldMaxLength = Util.cborMapExtractNumber(options,
                 RETRIEVAL_OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH);
-        int responseDataFieldMaxLength = Util.cborMapExtractNumber(options,
+        long responseDataFieldMaxLength = Util.cborMapExtractNumber(options,
                 RETRIEVAL_OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH);
 
+        if (commandDataFieldMaxLength > Integer.MAX_VALUE ||
+                responseDataFieldMaxLength  > Integer.MAX_VALUE) {
+            Log.w(TAG, "Invalid max length. Command max: " + commandDataFieldMaxLength +
+                    ", response max: " + responseDataFieldMaxLength);
+            return null;
+        }
+
         List<DataRetrievalAddress> addresses = new ArrayList<>();
-        addresses.add(new DataRetrievalAddressNfc(commandDataFieldMaxLength,
-                responseDataFieldMaxLength));
+        addresses.add(new DataRetrievalAddressNfc((int)commandDataFieldMaxLength,
+                (int)responseDataFieldMaxLength));
         return addresses;
     }
 
