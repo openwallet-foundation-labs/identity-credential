@@ -1050,19 +1050,13 @@ public class PresentationHelper {
      * <p>As per <a href="https://www.iso.org/standard/69084.html">ISO/IEC 18013-5</a>
      * transport-specific session-termination is currently only supported for BLE. The
      * {@link #isTransportSpecificTerminationSupported()} method can be used to determine whether
-     * it's available for the current transport.
+     * it's available for the current transport. If the current transport does not support
+     * the feature, then this method is a noop.
      *
      * @param useTransportSpecificSessionTermination Whether to use transport-specific session
-     *                                               termination.
-     * @throws IllegalStateException if {@link #isTransportSpecificTerminationSupported()}
-     *   indicates that this is not available for the current transport.
      */
     public void setUseTransportSpecificSessionTermination(
             boolean useTransportSpecificSessionTermination) {
-        if (!isTransportSpecificTerminationSupported()) {
-            throw new IllegalStateException("Transport-specific session termination is not "
-                    + "supported");
-        }
         mUseTransportSpecificSessionTermination = useTransportSpecificSessionTermination;
     }
 
