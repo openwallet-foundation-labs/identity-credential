@@ -1,7 +1,24 @@
+/*
+ * Copyright 2022 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.android.identity;
 
 import static com.android.identity.IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import android.content.Context;
 import android.icu.util.Calendar;
@@ -48,8 +65,7 @@ public class IdentityCredentialTest {
    */
   @MediumTest
   @Test
-  public void storeStaticAuthenticationData()
-          throws IdentityCredentialException {
+  public void storeStaticAuthenticationData() throws IdentityCredentialException {
     checkStaticAuthData(1, 100); // 1 key x 100 bytes of static authentication data = 100 Bytes
     checkStaticAuthData(3, 100);
     checkStaticAuthData(100, 100); // 100 keys x 100 Bytes = 10 KBytes
@@ -58,8 +74,7 @@ public class IdentityCredentialTest {
 
   @LargeTest
   @Test
-  public void storeStaticAuthenticationDataLarge()
-          throws IdentityCredentialException {
+  public void storeStaticAuthenticationDataLarge() throws IdentityCredentialException {
     Assume.assumeTrue("Test fails on API <= 28", VERSION.SDK_INT >= 29 /* Android 10+ */);
     // Per b/234563696, I've confirmed these failing on:
     // Pixel 2 API 24
@@ -75,37 +90,30 @@ public class IdentityCredentialTest {
     final int usesPerKey = 3;
     ProvisioningTest.createCredential(store, CREDENTIAL_NAME);
     try {
-      IdentityCredential credential = Preconditions.checkNotNull(getCredentialIfPresent());
-
+      IdentityCredential credential = Preconditions.checkNotNull(
+              store.getCredentialByName(CREDENTIAL_NAME, CIPHER_SUITE));
       storeFakeStaticAuthData(credential, usesPerKey, numAuthKeys, staticAuthDataSizeBytes);
 
       // Check that this doesn't throw (it did throw in internal b/234563696).
       try {
-        getCredentialIfPresent();
+        store.getCredentialByName(CREDENTIAL_NAME, CIPHER_SUITE);
       } catch (RuntimeException e) {
-        String msg = String.format(Locale.US,
+        fail(String.format(Locale.US,
                 "Failed to load credential for %d authKeys with %d bytes static auth data each",
-                numAuthKeys, staticAuthDataSizeBytes);
-        throw new IdentityCredentialException(msg, e);
+                numAuthKeys, staticAuthDataSizeBytes));
       }
     } finally {
-      deleteCredentialFromStoreIfPresent();
+      // deleteCredentialByName() is deprecated, but its suggested replacement
+      // (credential.delete()) is unreliable because it requires loading the credential
+      // first, which can fail (e.g. b/234563696).
+      store.deleteCredentialByName(CREDENTIAL_NAME);
     }
   }
 
-  @Before
-  public void setUp() {
-    deleteCredentialFromStoreIfPresent(); // clean up in case a previous test didn't
-  }
-
-  @After
-  public void tearDown() {
-    deleteCredentialFromStoreIfPresent();
-    store = null;
-  }
-
   private static void storeFakeStaticAuthData(IdentityCredential credential,
-          int maxUsesPerKey, int numKeys, int staticAuthDataSizeBytes) {
+          int maxUsesPerKey, int numKeys, int staticAuthDataSizeBytes)
+          throws UnknownAuthenticationKeyException {
+    // Arbitrary but deterministic fake staticAuthData for testing
     Random random = new Random(31337 + numKeys);
     credential.setAvailableAuthenticationKeys(numKeys, maxUsesPerKey);
     Collection<X509Certificate> authKeys = credential.getAuthKeysNeedingCertification();
@@ -116,54 +124,31 @@ public class IdentityCredentialTest {
       random.nextBytes(staticAuthData);
       Calendar expirationDate = Calendar.getInstance();
       expirationDate.add(Calendar.YEAR, 1);
-      try {
-        credential.storeStaticAuthenticationData(authKey, expirationDate, staticAuthData);
-      } catch (UnknownAuthenticationKeyException e) {
-        throw new AssertionFailedError("Auth authKey not recognized: " + e);
-      }
+      credential.storeStaticAuthenticationData(authKey, expirationDate, staticAuthData);
     }
-  }
-
-  private @Nullable IdentityCredential getCredentialIfPresent() {
-    try {
-      return store.getCredentialByName(CREDENTIAL_NAME, CIPHER_SUITE);
-    } catch (CipherSuiteNotSupportedException e) {
-      throw new AssertionFailedError("Unexpected exception: " + e);
-    }
-  }
-
-  private void deleteCredentialFromStoreIfPresent() {
-    store.deleteCredentialByName(CREDENTIAL_NAME);
-    // The above method is deprecated, but works even if the credential is corrupted, whereas the
-    // following can throw RuntimeException in that case (e.g. b/234563696):
-    // IdentityCredential credential = getCredentialIfPresent();
-    // if (credential != null) {
-    //   credential.delete("fake challenge for deletion".getBytes(UTF_8));
-    // }
   }
 
   // parameters: { store, storeName }
   @Parameters(name = "{1}")
-  public static Collection<Object[]> stores() {
-    List<IdentityCredentialStore> stores = new ArrayList<>();
+  public static Collection<Object[]> parameters() {
+    List<IdentityCredentialStore> resultStores = new ArrayList<>();
     Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
     IdentityCredentialStore defaultStore = IdentityCredentialStore.getInstance(appContext);
-    // Usually, the default instance's implementation will be one of these; on the odd chance
-    // that it isn't, add it to make sure it is covered.
-    if (!Arrays.asList(SoftwareIdentityCredentialStore.class, HardwareIdentityCredentialStore.class)
-            .contains(defaultStore.getClass())) {
-      stores.add(defaultStore);
-    }
-    stores.add(IdentityCredentialStore.getSoftwareInstance(appContext));
+    resultStores.add(IdentityCredentialStore.getSoftwareInstance(appContext));
     IdentityCredentialStore hwStore = IdentityCredentialStore.getHardwareInstance(appContext);
     if (hwStore != null) {
-      stores.add(hwStore);
+      resultStores.add(hwStore);
     }
     if (IdentityCredentialStore.isDirectAccessSupported(appContext)) {
-      stores.add(IdentityCredentialStore.getDirectAccessInstance(appContext));
+      resultStores.add(IdentityCredentialStore.getDirectAccessInstance(appContext));
+    }
+    // Usually, the default instance's implementation will be one of the earlier ones; on the
+    // odd chance that it isn't, add it to make sure it is covered.
+    if (resultStores.stream().noneMatch(o -> o.getClass().equals(defaultStore.getClass()))) {
+      resultStores.add(0, defaultStore);
     }
 
-    List<Object[]> result = stores
+    List<Object[]> result = resultStores
             .stream()
             .map(store -> new Object[]{store, store.getClass().getSimpleName()})
             .collect(Collectors.toList());
