@@ -186,7 +186,7 @@ final class SessionEncryptionDevice {
         if (!mEReaderKeyReceived) {
             // If it's the first message, retrieve reader key and setup crypto
             DataItem dataItemEReaderKey = map.get(new UnicodeString("eReaderKey"));
-            if (dataItemEReaderKey == null || !(dataItemEReaderKey instanceof ByteString)) {
+            if (!(dataItemEReaderKey instanceof ByteString)) {
                 throw new IllegalArgumentException("No 'eReaderKey' item found or not bstr");
             }
             byte[] eReaderKeyBytes = ((ByteString) dataItemEReaderKey).getBytes();

@@ -301,27 +301,18 @@ class Util {
     static @NonNull
     String cborDecodeString(@NonNull byte[] data) {
         DataItem dataItem = cborDecode(data);
-        if (!(dataItem instanceof UnicodeString)) {
-            throw new IllegalArgumentException("Given CBOR is not a tstr");
-        }
-        return ((UnicodeString) dataItem).getString();
+        return castTo(UnicodeString.class, dataItem).getString();
     }
 
     static long cborDecodeLong(@NonNull byte[] data) {
         DataItem dataItem = cborDecode(data);
-        if (!(dataItem instanceof Number)) {
-            throw new IllegalArgumentException("Given CBOR is not a Number");
-        }
-        return ((co.nstant.in.cbor.model.Number) dataItem).getValue().longValue();
+        return castTo(Number.class, dataItem).getValue().longValue();
     }
 
     static @NonNull
     byte[] cborDecodeByteString(@NonNull byte[] data) {
         DataItem dataItem = cborDecode(data);
-        if (!(dataItem instanceof ByteString)) {
-            throw new IllegalArgumentException("Given CBOR is not a bstr");
-        }
-        return ((co.nstant.in.cbor.model.ByteString) dataItem).getBytes();
+        return castTo(ByteString.class, dataItem).getBytes();
     }
 
     static @NonNull
@@ -370,6 +361,23 @@ class Util {
         c.setTimeZone(parsedTz);
         c.setTime(date);
         return c;
+    }
+
+    /**
+     * Similar to a typecast of {@code value} to the given type {@code clazz}, except:
+     * <ul>
+     *   <li>Throws {@code IllegalArgumentException} instead of {@code ClassCastException} if
+     *       {@code !clazz.isAssignableFrom(value.getClass())}.</li>
+     *   <li>Also throws {@code IllegalArgumentException} if {@code value == null}.</li>
+     * </ul>
+     */
+    static @NonNull<T extends V, V> T castTo(Class<T> clazz, V value) {
+        if (value == null || !clazz.isAssignableFrom(value.getClass())) {
+            String valueStr = (value == null) ? "null" : value.getClass().toString();
+            throw new IllegalArgumentException("Expected type " + clazz + ", got type " + valueStr);
+        } else {
+            return (T) value;
+        }
     }
 
     /**
@@ -522,21 +530,12 @@ class Util {
         } catch (IOException e) {
             throw new IllegalArgumentException("Error decoding DER signature", e);
         }
-        if (!(asn1 instanceof ASN1Sequence)) {
-            throw new IllegalArgumentException("Not a ASN1 sequence");
-        }
-        ASN1Encodable[] asn1Encodables = ((ASN1Sequence) asn1).toArray();
+        ASN1Encodable[] asn1Encodables = castTo(ASN1Sequence.class, asn1).toArray();
         if (asn1Encodables.length != 2) {
             throw new IllegalArgumentException("Expected two items in sequence");
         }
-        if (!(asn1Encodables[0].toASN1Primitive() instanceof ASN1Integer)) {
-            throw new IllegalArgumentException("First item is not an integer");
-        }
-        BigInteger r = ((ASN1Integer) asn1Encodables[0].toASN1Primitive()).getValue();
-        if (!(asn1Encodables[1].toASN1Primitive() instanceof ASN1Integer)) {
-            throw new IllegalArgumentException("Second item is not an integer");
-        }
-        BigInteger s = ((ASN1Integer) asn1Encodables[1].toASN1Primitive()).getValue();
+        BigInteger r = castTo(ASN1Integer.class, asn1Encodables[0].toASN1Primitive()).getValue();
+        BigInteger s = castTo(ASN1Integer.class, asn1Encodables[1].toASN1Primitive()).getValue();
 
         byte[] rBytes = stripLeadingZeroes(r.toByteArray());
         byte[] sBytes = stripLeadingZeroes(s.toByteArray());
@@ -829,18 +828,12 @@ class Util {
 
     static @NonNull
     byte[] coseMac0GetTag(@NonNull DataItem coseMac0) {
-        if (!(coseMac0 instanceof Array)) {
-            throw new IllegalArgumentException("coseMac0 is not an array");
-        }
-        List<DataItem> items = ((Array) coseMac0).getDataItems();
+        List<DataItem> items = castTo(Array.class, coseMac0).getDataItems();
         if (items.size() < 4) {
             throw new IllegalArgumentException("coseMac0 have less than 4 elements");
         }
         DataItem tagItem = items.get(3);
-        if (!(tagItem instanceof ByteString)) {
-            throw new IllegalArgumentException("tag in coseMac0 is not a ByteString");
-        }
-        return ((ByteString) tagItem).getBytes();
+        return castTo(ByteString.class, tagItem).getBytes();
     }
 
     /**
@@ -895,13 +888,11 @@ class Util {
     static @NonNull
     byte[] cborExtractTaggedCbor(@NonNull byte[] encodedTaggedBytestring) {
         DataItem item = cborDecode(encodedTaggedBytestring);
-        if (!(item instanceof ByteString)) {
-            throw new IllegalArgumentException("Item is not a ByteString");
-        }
+        ByteString itemByteString = castTo(ByteString.class, item);
         if (!item.hasTag() || item.getTag().getValue() != CBOR_SEMANTIC_TAG_ENCODED_CBOR) {
             throw new IllegalArgumentException("ByteString is not tagged with tag 24");
         }
-        return ((ByteString) item).getBytes();
+        return itemByteString.getBytes();
     }
 
     /**
@@ -910,13 +901,11 @@ class Util {
      */
     static @NonNull
     DataItem cborExtractTaggedAndEncodedCbor(@NonNull DataItem item) {
-        if (!(item instanceof ByteString)) {
-            throw new IllegalArgumentException("Item is not a ByteString");
-        }
+        ByteString itemByteString = castTo(ByteString.class, item);
         if (!item.hasTag() || item.getTag().getValue() != CBOR_SEMANTIC_TAG_ENCODED_CBOR) {
             throw new IllegalArgumentException("ByteString is not tagged with tag 24");
         }
-        byte[] encodedCbor = ((ByteString) item).getBytes();
+        byte[] encodedCbor = itemByteString.getBytes();
         DataItem embeddedItem = cborDecode(encodedCbor);
         return embeddedItem;
     }
@@ -929,7 +918,7 @@ class Util {
         if (coseSign1.getMajorType() != MajorType.ARRAY) {
             throw new IllegalArgumentException("Data item is not an array");
         }
-        List<DataItem> items = ((co.nstant.in.cbor.model.Array) coseSign1).getDataItems();
+        List<DataItem> items = castTo(co.nstant.in.cbor.model.Array.class, coseSign1).getDataItems();
         if (items.size() < 4) {
             throw new IllegalArgumentException("Expected at least four items in COSE_Sign1 array");
         }
@@ -940,13 +929,13 @@ class Util {
                 throw new IllegalArgumentException(
                         "Item 2 (payload) is a special but not a simple value");
             }
-            SimpleValue simple = (co.nstant.in.cbor.model.SimpleValue) items.get(2);
+            SimpleValue simple = castTo(co.nstant.in.cbor.model.SimpleValue.class, items.get(2));
             if (simple.getSimpleValueType() != SimpleValueType.NULL) {
                 throw new IllegalArgumentException(
                         "Item 2 (payload) is a simple but not the value null");
             }
         } else if (items.get(2).getMajorType() == MajorType.BYTE_STRING) {
-            payload = ((co.nstant.in.cbor.model.ByteString) items.get(2)).getBytes();
+            payload = castTo(co.nstant.in.cbor.model.ByteString.class, items.get(2)).getBytes();
         } else {
             throw new IllegalArgumentException("Item 2 (payload) is not nil or byte-string");
         }
@@ -965,7 +954,7 @@ class Util {
         if (coseSign1.getMajorType() != MajorType.ARRAY) {
             throw new IllegalArgumentException("Data item is not an array");
         }
-        List<DataItem> items = ((co.nstant.in.cbor.model.Array) coseSign1).getDataItems();
+        List<DataItem> items = castTo(co.nstant.in.cbor.model.Array.class, coseSign1).getDataItems();
         if (items.size() < 4) {
             throw new IllegalArgumentException("Expected at least four items in COSE_Sign1 array");
         }
@@ -979,16 +968,12 @@ class Util {
                 CertificateFactory factory = CertificateFactory.getInstance("X.509");
                 if (x5chainItem instanceof ByteString) {
                     ByteArrayInputStream certBais = new ByteArrayInputStream(
-                            ((ByteString) x5chainItem).getBytes());
+                            castTo(ByteString.class, x5chainItem).getBytes());
                     ret.add((X509Certificate) factory.generateCertificate(certBais));
                 } else if (x5chainItem instanceof Array) {
-                    for (DataItem certItem : ((Array) x5chainItem).getDataItems()) {
-                        if (!(certItem instanceof ByteString)) {
-                            throw new IllegalArgumentException(
-                                    "Unexpected type for array item in x5chain value");
-                        }
+                    for (DataItem certItem : castTo(Array.class, x5chainItem).getDataItems()) {
                         ByteArrayInputStream certBais = new ByteArrayInputStream(
-                                ((ByteString) certItem).getBytes());
+                                castTo(ByteString.class, certItem).getBytes());
                         ret.add((X509Certificate) factory.generateCertificate(certBais));
                     }
                 } else {
@@ -1021,137 +1006,77 @@ class Util {
     }
 
     static boolean cborMapHasKey(@NonNull DataItem map, @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
         return item != null;
     }
 
     static boolean cborMapHasKey(@NonNull DataItem map, int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
         return item != null;
     }
 
     static int cborMapExtractNumber(@NonNull DataItem map, int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (item == null || !(item instanceof Number)) {
-            throw new IllegalArgumentException("Expected Number");
-        }
-        return ((Number) item).getValue().intValue();
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(Number.class, item).getValue().intValue();
     }
 
     static int cborMapExtractNumber(@NonNull DataItem map, @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof Number)) {
-            throw new IllegalArgumentException("Expected Number");
-        }
-        return ((Number) item).getValue().intValue();
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(Number.class, item).getValue().intValue();
     }
 
     static @NonNull
     String cborMapExtractString(@NonNull DataItem map,
             @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (!(item instanceof UnicodeString)) {
-            throw new IllegalArgumentException("Expected UnicodeString");
-        }
-        return ((UnicodeString) item).getString();
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(UnicodeString.class, item).getString();
     }
 
     static @NonNull
     String cborMapExtractString(@NonNull DataItem map,
             int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (!(item instanceof UnicodeString)) {
-            throw new IllegalArgumentException("Expected UnicodeString");
-        }
-        return ((UnicodeString) item).getString();
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(UnicodeString.class, item).getString();
     }
 
     static @NonNull
     List<DataItem> cborMapExtractArray(@NonNull DataItem map,
             @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof Array)) {
-            throw new IllegalArgumentException("Expected Array");
-        }
-        return ((Array) item).getDataItems();
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(Array.class, item).getDataItems();
     }
 
     static @NonNull
     List<DataItem> cborMapExtractArray(@NonNull DataItem map, int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (item == null || !(item instanceof Array)) {
-            throw new IllegalArgumentException("Expected Array");
-        }
-        return ((Array) item).getDataItems();
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(Array.class, item).getDataItems();
     }
 
     static @NonNull
     DataItem cborMapExtractMap(@NonNull DataItem map,
             @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof Map)) {
-            throw new IllegalArgumentException("Expected Map");
-        }
-        return item;
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(Map.class, item);
     }
 
     static @NonNull
     Collection<String> cborMapExtractMapStringKeys(@NonNull DataItem map) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        ArrayList<String> ret = new ArrayList<>();
-        for (DataItem item : ((Map) map).getKeys()) {
-            if (!(item instanceof UnicodeString)) {
-                throw new IllegalArgumentException("Expected UnicodeString");
-            }
-            ret.add(((UnicodeString) item).getString());
+        List<String> ret = new ArrayList<>();
+        for (DataItem item : castTo(Map.class, map).getKeys()) {
+            ret.add(castTo(UnicodeString.class, item).getString());
         }
         return ret;
     }
 
     static @NonNull
     Collection<Integer> cborMapExtractMapNumberKeys(@NonNull DataItem map) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        ArrayList<Integer> ret = new ArrayList<>();
-        for (DataItem item : ((Map) map).getKeys()) {
-            if (!(item instanceof Number)) {
-                throw new IllegalArgumentException("Expected Number");
-            }
-            ret.add(((Number) item).getValue().intValue());
+        List<Integer> ret = new ArrayList<>();
+        for (DataItem item : castTo(Map.class, map).getKeys()) {
+            ret.add(castTo(Number.class, item).getValue().intValue());
         }
         return ret;
     }
@@ -1159,70 +1084,38 @@ class Util {
     static @NonNull
     byte[] cborMapExtractByteString(@NonNull DataItem map,
             int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (item == null || !(item instanceof ByteString)) {
-            throw new IllegalArgumentException("Expected ByteString");
-        }
-        return ((ByteString) item).getBytes();
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(ByteString.class, item).getBytes();
     }
 
     static @NonNull
     byte[] cborMapExtractByteString(@NonNull DataItem map,
             @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof ByteString)) {
-            throw new IllegalArgumentException("Expected ByteString");
-        }
-        return ((ByteString) item).getBytes();
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(ByteString.class, item).getBytes();
     }
 
     static boolean cborMapExtractBoolean(@NonNull DataItem map, @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof SimpleValue)) {
-            throw new IllegalArgumentException("Expected SimpleValue");
-        }
-        return ((SimpleValue) item).getSimpleValueType() == SimpleValueType.TRUE;
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(SimpleValue.class, item).getSimpleValueType() == SimpleValueType.TRUE;
     }
 
     static boolean cborMapExtractBoolean(@NonNull DataItem map, int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (item == null || !(item instanceof SimpleValue)) {
-            throw new IllegalArgumentException("Expected SimpleValue");
-        }
-        return ((SimpleValue) item).getSimpleValueType() == SimpleValueType.TRUE;
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(SimpleValue.class, item).getSimpleValueType() == SimpleValueType.TRUE;
     }
 
     static Calendar cborMapExtractDateTime(@NonNull DataItem map, String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof UnicodeString)) {
-            throw new IllegalArgumentException("Expected ByteString");
-        }
-        return cborDecodeDateTime(item);
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        UnicodeString unicodeString = castTo(UnicodeString.class, item);
+        return cborDecodeDateTime(unicodeString);
     }
 
     static @NonNull
     DataItem cborMapExtract(@NonNull DataItem map, @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
         if (item == null) {
             throw new IllegalArgumentException("Expected item");
         }
@@ -1594,26 +1487,17 @@ class Util {
             if (dataItems.size() != 1) {
                 throw new IllegalArgumentException("Expected 1 item, found " + dataItems.size());
             }
-            if (!(dataItems.get(0) instanceof Array)) {
-                throw new IllegalArgumentException("Item is not a map");
-            }
-            Array array = (Array) dataItems.get(0);
+            Array array = castTo(Array.class, dataItems.get(0));
             List<DataItem> items = array.getDataItems();
             if (items.size() < 2) {
                 throw new IllegalArgumentException(
                         "Expected at least 2 array items, found " + items.size());
             }
-            if (!(items.get(0) instanceof UnicodeString)) {
-                throw new IllegalArgumentException("First array item is not a string");
-            }
-            String id = ((UnicodeString) items.get(0)).getString();
+            String id = castTo(UnicodeString.class, items.get(0)).getString();
             if (!id.equals("ProofOfBinding")) {
                 throw new IllegalArgumentException("Expected ProofOfBinding, got " + id);
             }
-            if (!(items.get(1) instanceof ByteString)) {
-                throw new IllegalArgumentException("Second array item is not a bytestring");
-            }
-            byte[] popSha256 = ((ByteString) items.get(1)).getBytes();
+            byte[] popSha256 = castTo(ByteString.class, items.get(1)).getBytes();
             if (popSha256.length != 32) {
                 throw new IllegalArgumentException(
                         "Expected bstr to be 32 bytes, it is " + popSha256.length);
@@ -1675,10 +1559,7 @@ class Util {
         DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
         DataItem issuerSignedItemElem =
                 Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
-        if (!(issuerSignedItemElem instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        Map issuerSignedItem = (Map) issuerSignedItemElem;
+        Map issuerSignedItem = castTo(Map.class, issuerSignedItemElem);
         DataItem elementValue = Util.cborDecode(encodedElementValue);
         issuerSignedItem.put(new UnicodeString("elementValue"), elementValue);
 
