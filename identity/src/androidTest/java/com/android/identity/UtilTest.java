@@ -20,6 +20,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import android.icu.util.Calendar;
 import android.icu.util.GregorianCalendar;
@@ -43,6 +44,7 @@ import java.security.KeyPairGenerator;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.util.LinkedList;
+import java.util.Random;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -735,5 +737,49 @@ public class UtilTest {
                 "}", Util.cborPrettyPrint(encodedWithValue));
 
 
+    }
+
+    @Test
+    public void toHex() {
+        assertEquals("", Util.toHex(new byte[0]));
+        assertEquals("00ff13ab0b",
+                Util.toHex(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B}));
+    }
+
+    @Test
+    public void fromHex() {
+        try {
+            Util.fromHex("0");
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
+        // TODO: This fails, uncomment this once the bug is fixed.
+        // try {
+        //   Util.fromHex("XX");
+        //   fail();
+        // } catch (IllegalArgumentException expected) {
+        // }
+        assertArrayEquals(new byte[0], Util.fromHex(""));
+        assertArrayEquals(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B},
+                Util.fromHex("00ff13ab0b"));
+        assertArrayEquals(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B},
+                Util.fromHex("00FF13AB0B"));
+    }
+
+    @Test
+    public void toHexFromHexRoundTrip() {
+        Random random = new Random(31337); // deterministic but arbitrary
+        for (int numBytes : new int[]{0, 1, 2, 10, 50000}) {
+            byte[] bytes = new byte[numBytes];
+            random.nextBytes(bytes);
+            assertArrayEquals(bytes, Util.fromHex(Util.toHex(bytes)));
+        }
+    }
+
+    @Test
+    public void base16() {
+        assertEquals("", Util.base16(new byte[0]));
+        assertEquals("00FF13AB0B",
+                Util.base16(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B}));
     }
 }
