@@ -740,6 +740,20 @@ public class UtilTest {
     }
 
     @Test
+    public void toHexThrows() {
+        assertThrows(NullPointerException.class, () -> Util.toHex((byte[]) null));
+        assertThrows(NullPointerException.class, () -> Util.toHex((byte[]) null, 0, 0));
+        // Either NullPointerException or IllegalArgumentException would be reasonable, this
+        // test ensures our exception behaviour doesn't accidentally change.
+        assertThrows(NullPointerException.class, () -> Util.toHex((byte[]) null, 1, 0));
+
+        byte[] twoBytes = {0x17, 0x18};
+        assertThrows(IllegalArgumentException.class, () -> Util.toHex(twoBytes, -1, 2));
+        assertThrows(IllegalArgumentException.class, () -> Util.toHex(twoBytes, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> Util.toHex(twoBytes, 2, 1));
+    }
+
+    @Test
     public void toHex() {
         assertEquals("", Util.toHex(new byte[0]));
         assertEquals("00ff13ab0b",
@@ -747,17 +761,40 @@ public class UtilTest {
     }
 
     @Test
+    public void toHexRange() {
+        // arbitrary values in arbitrary large array
+        byte[] manyBytes = new byte[50000];
+        new Random().nextBytes(manyBytes);
+        manyBytes[31337] = 0x13;
+        manyBytes[31338] = (byte) 0xAB;
+        assertEquals("13ab", Util.toHex(manyBytes, 31337, 31339));
+        assertEquals("1718", Util.toHex(new byte[]{0x17, 0x18}, 0, 2));
+    }
+
+    @Test
+    public void fromHexThrows() {
+        assertThrows(NullPointerException.class, () -> Util.fromHex((String) null));
+
+        assertThrows(IllegalArgumentException.class, () -> Util.fromHex("0"));
+        assertThrows(IllegalArgumentException.class, () -> Util.fromHex("XX"));
+    }
+
+    // TODO: Replace with Assert.assertThrows() once we use a recent enough version of JUnit.
+    /** Asserts that the given {@code runnable} throws the given exception class, or a subclass. */
+    private static void assertThrows(
+            Class<? extends RuntimeException> expected, Runnable runnable) {
+        try {
+            runnable.run();
+            fail("Expected " + expected + " was not thrown");
+        } catch (RuntimeException e) {
+            Class actual = e.getClass();
+            assertTrue("Unexpected Exception class: " + actual,
+                    expected.isAssignableFrom(actual));
+        }
+    }
+
+    @Test
     public void fromHex() {
-        try {
-            Util.fromHex("0");
-            fail();
-        } catch (IllegalArgumentException expected) {
-        }
-        try {
-            Util.fromHex("XX");
-            fail();
-        } catch (IllegalArgumentException expected) {
-        }
         assertArrayEquals(new byte[0], Util.fromHex(""));
         assertArrayEquals(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B},
                 Util.fromHex("00ff13ab0b"));
