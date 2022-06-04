@@ -753,12 +753,11 @@ public class UtilTest {
             fail();
         } catch (IllegalArgumentException expected) {
         }
-        // TODO: This fails, uncomment this once the bug is fixed.
-        // try {
-        //   Util.fromHex("XX");
-        //   fail();
-        // } catch (IllegalArgumentException expected) {
-        // }
+        try {
+            Util.fromHex("XX");
+            fail();
+        } catch (IllegalArgumentException expected) {
+        }
         assertArrayEquals(new byte[0], Util.fromHex(""));
         assertArrayEquals(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B},
                 Util.fromHex("00ff13ab0b"));

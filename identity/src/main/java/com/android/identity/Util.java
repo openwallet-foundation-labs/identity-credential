@@ -139,14 +139,14 @@ class Util {
     static @NonNull
     byte[] fromHex(@NonNull String stringWithHex) {
         int stringLength = stringWithHex.length();
-        if ((stringLength & 1) != 0) {
-            throw new IllegalArgumentException("Invalid length of hex string");
+        if ((stringLength % 2) != 0) {
+            throw new IllegalArgumentException("Invalid length of hex string: " + stringLength);
         }
         int numBytes = stringLength / 2;
         byte[] data = new byte[numBytes];
         for (int n = 0; n < numBytes; n++) {
-            data[n] = (byte) ((Character.digit(stringWithHex.charAt(n * 2), 16) << 4)
-                    + Character.digit(stringWithHex.charAt(n * 2 + 1), 16));
+            String byteStr = stringWithHex.substring(2 * n, 2 * n + 2);
+            data[n] = (byte) Integer.parseInt(byteStr, 16);
         }
         return data;
     }
