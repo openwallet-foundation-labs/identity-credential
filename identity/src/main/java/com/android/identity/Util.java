@@ -28,6 +28,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import androidx.annotation.VisibleForTesting;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Integer;
@@ -153,8 +154,18 @@ class Util {
 
     static @NonNull
     String toHex(@NonNull byte[] bytes) {
+        return toHex(bytes, 0, bytes.length);
+    }
+
+    @VisibleForTesting
+    static @NonNull String toHex(@NonNull byte[] bytes, int from, int to) {
+        if (from < 0 || to > bytes.length || from > to) {
+            String msg = String.format(Locale.US, "Expected 0 <= from <= to <= %d, got %d, %d.",
+                    bytes.length, from, to);
+            throw new IllegalArgumentException(msg);
+        }
         StringBuilder sb = new StringBuilder();
-        for (int n = 0; n < bytes.length; n++) {
+        for (int n = from; n < to; n++) {
             byte b = bytes[n];
             sb.append(String.format("%02x", b));
         }
@@ -164,25 +175,16 @@ class Util {
     static void dumpHex(@NonNull String tag, @NonNull String message,
             @NonNull byte[] bytes) {
         Log.i(tag, message + " (" + bytes.length + " bytes)");
-        int offset = 0;
-        do {
-            StringBuilder sb = new StringBuilder();
-            for (int n = 0; n < 1024 && offset < bytes.length; n++) {
-                byte b = bytes[offset++];
-                sb.append(String.format("%02x", b));
-            }
-            Log.i(tag, "data: " + sb.toString());
-        } while (offset < bytes.length);
+        final int chunkSize = 1024;
+        for (int offset = 0; offset < bytes.length; offset += chunkSize) {
+            String s = toHex(bytes, offset, Math.min(bytes.length, offset + chunkSize));
+            Log.i(tag, "data: " + s);
+        }
     }
 
     static @NonNull
     String base16(@NonNull byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (int n = 0; n < bytes.length; n++) {
-            byte b = bytes[n];
-            sb.append(String.format("%02X", b));
-        }
-        return sb.toString();
+        return toHex(bytes).toUpperCase(Locale.ROOT);
     }
 
     static @NonNull
