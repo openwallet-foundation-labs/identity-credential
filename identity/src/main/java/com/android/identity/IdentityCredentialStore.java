@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static com.android.identity.IdentityCredentialStoreCapabilities.FEATURE_VERSION_BASE;
+
 import android.content.Context;
 import android.os.Build;
 
@@ -23,6 +25,7 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.IdentityCredentialStoreCapabilities.FeatureVersion;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.security.cert.X509Certificate;
@@ -132,35 +135,71 @@ public abstract class IdentityCredentialStore {
      */
     public static final int CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256 = 1;
 
-
     /**
-     * @deprecated Use {@link #getDefaultInstance(Context)} instead.
+     * @deprecated Use {@code getDefaultInstance(context, FEATURE_VERSION_BASE)} instead.
      */
     @Deprecated // TODO: Delete this method sufficiently long after June 2022, e.g. EOY 2022.
     public static @NonNull IdentityCredentialStore getInstance(@NonNull Context context) {
-        return getDefaultInstance(context);
+        return getDefaultInstance(context, FEATURE_VERSION_BASE);
     }
 
     /**
-     * Gets the default {@link IdentityCredentialStore} instance. This does not guarantee any
-     * particular {@link IdentityCredentialStoreCapabilities}, in particular it may be hardware-
-     * or software backed. The kind of instance returned by this method may change over time even
-     * on the same device, for example a device might gain the capability of a hardware-backed
-     * instance through an Android version upgrade.
+     * Get the default {@link IdentityCredentialStore} instance with no regard for featureVersion,
+     * as if implemented as {@code getDefaultInstance(context, FEATURE_VERSION_BASE)}.
      *
      * @param context the application context.
      * @return the {@link IdentityCredentialStore}.
      */
     public static @NonNull IdentityCredentialStore getDefaultInstance(@NonNull Context context) {
+        return getDefaultInstance(context, FEATURE_VERSION_BASE);
+    }
+
+    /**
+     * Returns a (hardware or software backed) default instance with particular feature
+     * capabilities.
+     *
+     * While capabilities corresponding to feature versions are guaranteed to be supported by
+     * the returned instance if this method doesn't throw, that instance may be either hardware-
+     * or software backed; moreover, sw/hw backing may change over time even on the same device,
+     * for example a device might gain the capability of a hardware-backed instance through an
+     * Android version upgrade.
+     *
+     * @param context the application context.
+     * @param requiredFeatureVersion The minimum feature version that the caller requires, or
+     *        {@link IdentityCredentialStoreCapabilities#FEATURE_VERSION_BASE} if the store
+     *        implementation should be selected with no regard for feature version. If hardware
+     *        backing is not supported either more generally (see note above) or for the requested
+     *        feature version, this method will fall back to a software implementation if possible.
+     * @return An {@link IdentityCredentialStore} that supports at least the given
+     *         {@code requiredFeatureVersion}.
+     * @throws IllegalArgumentException if no available instance of
+     *         {@link IdentityCredentialStore}, not even software-backed, supports at least the
+     *         given {@code requiredFeatureVersion}; this should only happen if the requested
+     *         version is larger than any of the versions defined at compile time in
+     *         {@link IdentityCredentialStoreCapabilities}.
+     */
+    public static @NonNull IdentityCredentialStore getDefaultInstance(@NonNull Context context,
+            @FeatureVersion int requiredFeatureVersion) {
         Context appContext = context.getApplicationContext();
+        IdentityCredentialStore result = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            IdentityCredentialStore store =
+            IdentityCredentialStore hwStore =
                     HardwareIdentityCredentialStore.getInstanceIfSupported(appContext);
-            if (store != null) {
-                return store;
+            if (hwStore != null) {
+                IdentityCredentialStoreCapabilities capabilities = hwStore.getCapabilities();
+                if (capabilities.isFeatureVersionSupported(requiredFeatureVersion)) {
+                    result = hwStore;
+                }
             }
         }
-        return SoftwareIdentityCredentialStore.getInstance(appContext);
+        if (result == null) {
+            result = SoftwareIdentityCredentialStore.getInstance(appContext);
+        }
+        if (!result.getCapabilities().isFeatureVersionSupported(requiredFeatureVersion)) {
+            throw new IllegalArgumentException("No implementation supports feature version "
+                    + requiredFeatureVersion);
+        }
+        return result;
     }
 
     /**

@@ -76,16 +76,10 @@ class DocumentManager private constructor(private val context: Context) {
             IdentityCredentialStore.getSoftwareInstance(context)
         }
     } else {
-        val mStore = IdentityCredentialStore.getDefaultInstance(context)
-        // This app needs feature version 202201, if hardware implementation doesn't support
-        // get software implementation
-        if (mStore.capabilities.featureVersion != FEATURE_VERSION_202201) {
-            PreferencesHelper.setHardwareBacked(context, false)
-            IdentityCredentialStore.getSoftwareInstance(context)
-        } else {
-            PreferencesHelper.setHardwareBacked(context, mStore.capabilities.isHardwareBacked)
-            mStore
-        }
+        // This app needs feature version 202201, which may only be supported by the software
+        // implementation.
+        val mStore = IdentityCredentialStore.getDefaultInstance(context, FEATURE_VERSION_202201);
+        PreferencesHelper.setHardwareBacked(context, mStore.capabilities.isHardwareBacked)
     }
 
     // Database to store document information

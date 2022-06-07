@@ -18,8 +18,10 @@ package com.android.identity;
 
 import android.icu.util.Calendar;
 
+import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
-
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.security.cert.X509Certificate;
 import java.util.Set;
 
@@ -48,6 +50,12 @@ public class IdentityCredentialStoreCapabilities {
     IdentityCredentialStoreCapabilities() {}
 
     /**
+     * The feature version corresponding to no version-dependent features being supported.
+     * This version is guaranteed to be {@code <=} any other documented feature version.
+     */
+    public static final int FEATURE_VERSION_BASE = Integer.MIN_VALUE;
+
+    /**
      * The feature version corresponding to features included in the Identity Credential API
      * shipped in Android 11.
      */
@@ -72,12 +80,28 @@ public class IdentityCredentialStoreCapabilities {
     public static final int FEATURE_VERSION_202201 = 202201;
 
     /**
+     * Feature versions. {@code int} values other than these are discouraged because their semantics
+     * match those of the next equal-or-higher defined version.
+     */
+    @Retention(RetentionPolicy.CLASS)
+    @IntDef({FEATURE_VERSION_BASE, FEATURE_VERSION_202009, FEATURE_VERSION_202101, FEATURE_VERSION_202201})
+    public @interface FeatureVersion {}
+
+    /**
      * Returns the feature version of the {@link IdentityCredentialStore}.
      *
      * @return the feature version.
      */
-    public int getFeatureVersion() {
+    public @FeatureVersion int getFeatureVersion() {
         throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Returns whether the associated {@link IdentityCredentialStore} supports the features up
+     * to at least the specified version.
+     */
+    final boolean isFeatureVersionSupported(@FeatureVersion int featureVersion) {
+        return getFeatureVersion() >= featureVersion;
     }
 
     /**
