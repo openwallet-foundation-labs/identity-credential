@@ -36,6 +36,9 @@ android {
         dataBinding true
         viewBinding true
     }
+    lintOptions {
+        lintConfig file("lint.xml")
+    }
     namespace 'com.android.mdl.app'
 
 }

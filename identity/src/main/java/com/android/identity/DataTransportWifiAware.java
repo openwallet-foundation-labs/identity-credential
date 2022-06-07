@@ -19,6 +19,7 @@ package com.android.identity;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -881,6 +882,7 @@ class DataTransportWifiAware extends DataTransport {
         }
     }
 
+    @TargetApi(30)
     @RequiresApi(30)
     static class Api30Impl {
         private Api30Impl() {
