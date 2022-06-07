@@ -83,18 +83,18 @@ import java.security.cert.X509Certificate;
  * of the methods in that class will state whether it's implemented in the software-based
  * implementation.
  *
- * <p>When provisioning a document, applications should use {@link #getInstance(Context)} to
- * obtain an {@link IdentityCredentialStore} instance. This method returns a hardware-backed
+ * <p>When provisioning a document, applications should use {@link #getDefaultInstance(Context)}
+ * to obtain an {@link IdentityCredentialStore} instance. This method returns a hardware-backed
  * store if available and a software-based store if not and the application should use
  * {@link IdentityCredentialStoreCapabilities} to examine if the store supports the
  * capabilities required by the application. In the negative, the application can
  * obtain the software-based store by calling {@link #getSoftwareInstance(Context)}.
  *
  * <p>Since it's possible for an OS upgrade on a device to include an updated version of the
- * drivers used for secure hardware, it's possible that {@link #getInstance(Context)} returns the
- * software implementation at one point and the hardware implementation at a later point.
- * Therefore, applications should only use {@link #getInstance(Context)} only when creating a
- * credential, record whether it's hardware- or software-backed (using
+ * drivers used for secure hardware, it's possible that {@link #getDefaultInstance(Context)}
+ * returns the software implementation at one point and the hardware implementation at a later
+ * point. Therefore, applications should only use {@link #getDefaultInstance(Context)} only when
+ * creating a credential, record whether it's hardware- or software-backed (using
  * {@link IdentityCredentialStoreCapabilities#isHardwareBacked()}, and then use this information
  * when retrieving the credential (using either {@link #getSoftwareInstance(Context)} or
  * {@link #getHardwareInstance(Context)}).
@@ -132,13 +132,26 @@ public abstract class IdentityCredentialStore {
      */
     public static final int CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256 = 1;
 
+
     /**
-     * Gets the default {@link IdentityCredentialStore}.
+     * @deprecated Use {@link #getDefaultInstance(Context)} instead.
+     */
+    @Deprecated // TODO: Delete this method sufficiently long after June 2022, e.g. EOY 2022.
+    public static @NonNull IdentityCredentialStore getInstance(@NonNull Context context) {
+        return getDefaultInstance(context);
+    }
+
+    /**
+     * Gets the default {@link IdentityCredentialStore} instance. This does not guarantee any
+     * particular {@link IdentityCredentialStoreCapabilities}, in particular it may be hardware-
+     * or software backed. The kind of instance returned by this method may change over time even
+     * on the same device, for example a device might gain the capability of a hardware-backed
+     * instance through an Android version upgrade.
      *
      * @param context the application context.
      * @return the {@link IdentityCredentialStore}.
      */
-    public static @NonNull IdentityCredentialStore getInstance(@NonNull Context context) {
+    public static @NonNull IdentityCredentialStore getDefaultInstance(@NonNull Context context) {
         Context appContext = context.getApplicationContext();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             IdentityCredentialStore store =
