@@ -133,7 +133,7 @@ public class IdentityCredentialTest {
   public static Collection<Object[]> parameters() {
     List<IdentityCredentialStore> resultStores = new ArrayList<>();
     Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
-    IdentityCredentialStore defaultStore = IdentityCredentialStore.getInstance(appContext);
+    IdentityCredentialStore defaultStore = IdentityCredentialStore.getDefaultInstance(appContext);
     resultStores.add(IdentityCredentialStore.getSoftwareInstance(appContext));
     IdentityCredentialStore hwStore = IdentityCredentialStore.getHardwareInstance(appContext);
     if (hwStore != null) {
