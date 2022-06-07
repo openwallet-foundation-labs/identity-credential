@@ -17,6 +17,10 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    lintOptions {
+        lintConfig file("lint.xml")
+    }
+
     namespace "com.android.identity"
 }
 
