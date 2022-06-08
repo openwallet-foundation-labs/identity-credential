@@ -338,165 +338,178 @@ public class PresentationHelper {
             t.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
         }
 
+        // Careful, we're using the user-provided Executor below so these callbacks might happen
+        // in another thread than we're in right now. For example this happens if using
+        // ThreadPoolExecutor.
+        //
+        // In particular, it means we need locking around `mNumTransportsStillSettingUp`. We'll
+        // use the monitor for the PresentationHelper object for to achieve that.
+        //
+        final PresentationHelper helper = this;
         mNumTransportsStillSettingUp = 0;
-        for (DataTransport transport : mTransports) {
-            transport.setListener(new DataTransport.Listener() {
-                @Override
-                public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
-                    mLog.info("onListeningSetupCompleted for " + transport);
-                    mNumTransportsStillSettingUp -= 1;
-                    if (mNumTransportsStillSettingUp == 0) {
-                        allTransportsAreSetup();
+
+        synchronized (helper) {
+            for (DataTransport transport : mTransports) {
+                transport.setListener(new DataTransport.Listener() {
+                    @Override
+                    public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+                        mLog.info("onListeningSetupCompleted for " + transport);
+                        synchronized (helper) {
+                            mNumTransportsStillSettingUp -= 1;
+                            if (mNumTransportsStillSettingUp == 0) {
+                                allTransportsAreSetup();
+                            }
+                        }
                     }
-                }
 
-                @Override
-                public void onListeningPeerConnecting() {
-                    peerIsConnecting(transport);
-                }
-
-                @Override
-                public void onListeningPeerConnected() {
-                    mLog.info("onListeningPeerConnected for " + transport);
-                    peerHasConnected(transport);
-                }
-
-                @Override
-                public void onListeningPeerDisconnected() {
-                    mLog.info("onListeningPeerDisconnected for " + transport);
-                    transport.close();
-                    if (!mReceivedSessionTerminated) {
-                        reportError(
-                                new Error("Peer disconnected without proper session termination"));
-                    } else {
-                        reportDeviceDisconnected(false);
+                    @Override
+                    public void onListeningPeerConnecting() {
+                        peerIsConnecting(transport);
                     }
-                }
 
-                @Override
-                public void onConnectionResult(@Nullable Throwable error) {
-                    mLog.info("onConnectionResult for " + transport);
-                    if (error != null) {
-                        throw new IllegalStateException("Unexpected onConnectionResult "
-                                + "callback from transport " + transport, error);
+                    @Override
+                    public void onListeningPeerConnected() {
+                        mLog.info("onListeningPeerConnected for " + transport);
+                        peerHasConnected(transport);
                     }
-                    throw new IllegalStateException("Unexpected onConnectionResult "
-                            + "callback from transport " + transport);
-                }
 
-                @Override
-                public void onConnectionDisconnected() {
-                    mLog.info("onConnectionDisconnected for " + transport);
-                    throw new IllegalStateException("Unexpected onConnectionDisconnected "
-                            + "callback from transport " + transport);
-                }
-
-                @Override
-                public void onError(@NonNull Throwable error) {
-                    transport.close();
-                    reportError(error);
-                }
-
-                @Override
-                public void onMessageReceived(@NonNull byte[] data) {
-                    Pair<byte[], OptionalLong> decryptedMessage = null;
-                    try {
-                        decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
-                        mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_QR_CODE;
-                    } catch (RuntimeException e) {
+                    @Override
+                    public void onListeningPeerDisconnected() {
+                        mLog.info("onListeningPeerDisconnected for " + transport);
                         transport.close();
-                        reportError(new Error("Error decrypting message from reader", e));
-                        return;
-                    }
-                    // If decryption failed it could be just because the reader engaged
-                    // using NFC and not QR code... so try using the session encryption
-                    // for NFC and see if that works...
-                    if (decryptedMessage == null) {
-                        if (mSessionEncryptionForNfc != null) {
-                            try {
-                                decryptedMessage =
-                                    mSessionEncryptionForNfc.decryptMessageFromReader(data);
-                            } catch (RuntimeException e) {
-                                transport.close();
-                                reportError(new Error("Error decrypting message from reader", e));
-                                return;
-                            }
-                            if (decryptedMessage != null) {
-                                // This worked, switch to NFC for future messages..
-                                //
-                                mSessionEncryption = mSessionEncryptionForNfc;
-                                mSessionEncryptionForNfc = null;
-                                mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_NFC;
-                            }
-                        }
-                    }
-                    if (decryptedMessage == null) {
-                        mLog.info("Decryption failed!");
-                        transport.close();
-                        reportError(new Error("Error decrypting message from reader"));
-                        return;
-                    }
-
-                    // If there's data in the message, assume it's DeviceRequest (ISO 18013-5
-                    // currently does not define other kinds of messages).
-                    //
-                    if (decryptedMessage.first != null) {
-                        // Only initialize the PresentationSession a single time.
-                        //
-                        if (mSessionEncryption.getNumMessagesEncrypted() == 0) {
-                            mPresentationSession.setSessionTranscript(
-                                    mSessionEncryption.getSessionTranscript());
-                            try {
-                                mPresentationSession.setReaderEphemeralPublicKey(
-                                        mSessionEncryption.getEphemeralReaderPublicKey());
-                            } catch (InvalidKeyException e) {
-                                transport.close();
-                                reportError(new Error("Reader ephemeral public key is invalid", e));
-                                return;
-                            }
-                        }
-
-                        if (mLog.isSessionEnabled()) {
-                            Util.dumpHex(TAG, "Received DeviceRequest", decryptedMessage.first);
-                        }
-
-                        reportDeviceRequest(mDeviceEngagementMethod, decryptedMessage.first);
-                    } else {
-                        // No data, so status must be set.
-                        if (!decryptedMessage.second.isPresent()) {
-                            transport.close();
-                            reportError(new Error("No data and no status in SessionData"));
+                        if (!mReceivedSessionTerminated) {
+                            reportError(
+                                    new Error("Peer disconnected without proper session termination"));
                         } else {
-                            long statusCode = decryptedMessage.second.getAsLong();
-
-                            mLog.session("Message received from reader with status: " + statusCode);
-
-                            if (statusCode == 20) {
-                                mReceivedSessionTerminated = true;
-                                transport.close();
-                                reportDeviceDisconnected(false);
-                            } else {
-                                transport.close();
-                                reportError(new Error("Expected status code 20, got "
-                                        + statusCode + " instead"));
-                            }
+                            reportDeviceDisconnected(false);
                         }
                     }
 
-                }
+                    @Override
+                    public void onConnectionResult(@Nullable Throwable error) {
+                        mLog.info("onConnectionResult for " + transport);
+                        if (error != null) {
+                            throw new IllegalStateException("Unexpected onConnectionResult "
+                                    + "callback from transport " + transport, error);
+                        }
+                        throw new IllegalStateException("Unexpected onConnectionResult "
+                                + "callback from transport " + transport);
+                    }
 
-                @Override
-                public void onTransportSpecificSessionTermination() {
-                    mLog.info("Received transport-specific session termination");
-                    mReceivedSessionTerminated = true;
-                    transport.close();
-                    reportDeviceDisconnected(true);
-                }
+                    @Override
+                    public void onConnectionDisconnected() {
+                        mLog.info("onConnectionDisconnected for " + transport);
+                        throw new IllegalStateException("Unexpected onConnectionDisconnected "
+                                + "callback from transport " + transport);
+                    }
 
-            }, mDeviceRequestListenerExecutor);
-            mLog.info("Listening on transport " + transport);
-            transport.listen();
-            mNumTransportsStillSettingUp += 1;
+                    @Override
+                    public void onError(@NonNull Throwable error) {
+                        transport.close();
+                        reportError(error);
+                    }
+
+                    @Override
+                    public void onMessageReceived(@NonNull byte[] data) {
+                        Pair<byte[], OptionalLong> decryptedMessage = null;
+                        try {
+                            decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
+                            mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_QR_CODE;
+                        } catch (RuntimeException e) {
+                            transport.close();
+                            reportError(new Error("Error decrypting message from reader", e));
+                            return;
+                        }
+                        // If decryption failed it could be just because the reader engaged
+                        // using NFC and not QR code... so try using the session encryption
+                        // for NFC and see if that works...
+                        if (decryptedMessage == null) {
+                            if (mSessionEncryptionForNfc != null) {
+                                try {
+                                    decryptedMessage =
+                                            mSessionEncryptionForNfc.decryptMessageFromReader(data);
+                                } catch (RuntimeException e) {
+                                    transport.close();
+                                    reportError(new Error("Error decrypting message from reader", e));
+                                    return;
+                                }
+                                if (decryptedMessage != null) {
+                                    // This worked, switch to NFC for future messages..
+                                    //
+                                    mSessionEncryption = mSessionEncryptionForNfc;
+                                    mSessionEncryptionForNfc = null;
+                                    mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_NFC;
+                                }
+                            }
+                        }
+                        if (decryptedMessage == null) {
+                            mLog.info("Decryption failed!");
+                            transport.close();
+                            reportError(new Error("Error decrypting message from reader"));
+                            return;
+                        }
+
+                        // If there's data in the message, assume it's DeviceRequest (ISO 18013-5
+                        // currently does not define other kinds of messages).
+                        //
+                        if (decryptedMessage.first != null) {
+                            // Only initialize the PresentationSession a single time.
+                            //
+                            if (mSessionEncryption.getNumMessagesEncrypted() == 0) {
+                                mPresentationSession.setSessionTranscript(
+                                        mSessionEncryption.getSessionTranscript());
+                                try {
+                                    mPresentationSession.setReaderEphemeralPublicKey(
+                                            mSessionEncryption.getEphemeralReaderPublicKey());
+                                } catch (InvalidKeyException e) {
+                                    transport.close();
+                                    reportError(new Error("Reader ephemeral public key is invalid", e));
+                                    return;
+                                }
+                            }
+
+                            if (mLog.isSessionEnabled()) {
+                                Util.dumpHex(TAG, "Received DeviceRequest", decryptedMessage.first);
+                            }
+
+                            reportDeviceRequest(mDeviceEngagementMethod, decryptedMessage.first);
+                        } else {
+                            // No data, so status must be set.
+                            if (!decryptedMessage.second.isPresent()) {
+                                transport.close();
+                                reportError(new Error("No data and no status in SessionData"));
+                            } else {
+                                long statusCode = decryptedMessage.second.getAsLong();
+
+                                mLog.session("Message received from reader with status: " + statusCode);
+
+                                if (statusCode == 20) {
+                                    mReceivedSessionTerminated = true;
+                                    transport.close();
+                                    reportDeviceDisconnected(false);
+                                } else {
+                                    transport.close();
+                                    reportError(new Error("Expected status code 20, got "
+                                            + statusCode + " instead"));
+                                }
+                            }
+                        }
+
+                    }
+
+                    @Override
+                    public void onTransportSpecificSessionTermination() {
+                        mLog.info("Received transport-specific session termination");
+                        mReceivedSessionTerminated = true;
+                        transport.close();
+                        reportDeviceDisconnected(true);
+                    }
+
+                }, mDeviceRequestListenerExecutor);
+                mLog.info("Listening on transport " + transport);
+                transport.listen();
+                mNumTransportsStillSettingUp += 1;
+            }
         }
 
     }
