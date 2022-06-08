@@ -65,7 +65,7 @@ import co.nstant.in.cbor.model.UnsignedInteger;
 @MediumTest
 @RunWith(AndroidJUnit4.class)
 @SuppressWarnings("deprecation")
-public class UtilTests {
+public class UtilTest {
     @Test
     public void prettyPrintMultipleCompleteTypes() throws CborException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
