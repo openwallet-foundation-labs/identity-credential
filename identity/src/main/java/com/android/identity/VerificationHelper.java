@@ -382,6 +382,14 @@ public class VerificationHelper {
             ((DataTransportNfc) mDataTransport).setIsoDep(mNfcIsoDep);
         }
 
+        // Careful, we're using the user-provided Executor below so these callbacks might happen
+        // in another thread than we're in right now. For example this happens if using
+        // ThreadPoolExecutor.
+        //
+        // If it turns out that we're going to access shared state we might need locking /
+        // synchronization.
+        //
+
         mDataTransport.setListener(new DataTransport.Listener() {
             @Override
             public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
