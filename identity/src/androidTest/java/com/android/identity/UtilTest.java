@@ -814,6 +814,7 @@ public class UtilTest {
 
     @Test
     public void base16() {
+        assertThrows(NullPointerException.class, () -> Util.base16(null));
         assertEquals("", Util.base16(new byte[0]));
         assertEquals("00FF13AB0B",
                 Util.base16(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B}));
