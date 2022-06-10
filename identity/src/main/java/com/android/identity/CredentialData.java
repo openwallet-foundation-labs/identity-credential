@@ -29,6 +29,8 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Locale;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -728,8 +730,28 @@ class CredentialData {
         return baos.toByteArray();
     }
 
+    final int CHUNKED_ENCRYPTED_MAX_CHUNK_SIZE = 16384;
+    final String CHUNKED_ENCRYPTED_MAGIC = "ChunkedEncryptedData";
+
     private byte[] saveToDiskEncrypt(byte[] cleartextDataToSaveBytes) {
-        byte[] dataToSaveBytes;
+        // Because some older Android versions have a buggy Android Keystore where encryption
+        // only works with small amounts of data (b/234563696) chop the cleartext into smaller
+        // chunks and encrypt them separately. Store on disk as CBOR using the following CDDL
+        //
+        //  ChunkedEncryptedData = [
+        //    "ChunkedEncryptedData",
+        //    [+ bstr],
+        //  ]
+        //
+        // so we can easily tell if the data on disk is from a version of the library that
+        // does this. In particular it means the decryption routine can simply test if the
+        // data loaded from disk has the string "ChunkedEncryptedData" at offset 2.
+        //
+        CborBuilder builder = new CborBuilder();
+        ArrayBuilder<CborBuilder> arrayBuilder = builder.addArray();
+        arrayBuilder.add(CHUNKED_ENCRYPTED_MAGIC);
+        ArrayBuilder<ArrayBuilder<CborBuilder>> innerArrayBuilder = arrayBuilder.addArray();
+
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
             ks.load(null);
@@ -737,15 +759,33 @@ class CredentialData {
 
             KeyStore.Entry entry = ks.getEntry(dataKeyAlias, null);
             SecretKey secretKey = ((KeyStore.SecretKeyEntry) entry).getSecretKey();
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
 
-            byte[] cipherText = cipher.doFinal(
-                    cleartextDataToSaveBytes); // This includes the auth tag
-            ByteBuffer byteBuffer = ByteBuffer.allocate(12 + cipherText.length);
-            byteBuffer.put(cipher.getIV());
-            byteBuffer.put(cipherText);
-            dataToSaveBytes = byteBuffer.array();
+            int offset = 0;
+            boolean lastChunk = false;
+            do {
+                int chunkSize = cleartextDataToSaveBytes.length - offset;
+                if (chunkSize <= CHUNKED_ENCRYPTED_MAX_CHUNK_SIZE) {
+                    lastChunk = true;
+                } else {
+                    chunkSize = CHUNKED_ENCRYPTED_MAX_CHUNK_SIZE;
+                }
+
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+                // Produced cipherText includes auth tag
+                byte[] cipherTextForChunk = cipher.doFinal(
+                        cleartextDataToSaveBytes,
+                        offset,
+                        chunkSize);
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                baos.write(cipher.getIV());
+                baos.write(cipherTextForChunk);
+                byte[] cipherTextForChunkWithIV = baos.toByteArray();
+
+                innerArrayBuilder.add(cipherTextForChunkWithIV);
+                offset += chunkSize;
+            } while (!lastChunk);
         } catch (NoSuchPaddingException
                 | BadPaddingException
                 | NoSuchAlgorithmException
@@ -757,7 +797,7 @@ class CredentialData {
                 | KeyStoreException e) {
             throw new RuntimeException("Error encrypting CBOR for saving to disk", e);
         }
-        return dataToSaveBytes;
+        return Util.cborEncodeWithoutCanonicalizing(builder.build().get(0));
     }
 
     private void saveToDiskAuthKeys(MapBuilder<CborBuilder> map) {
@@ -862,7 +902,89 @@ class CredentialData {
         return true;
     }
 
+    private byte[] loadFromDiskDecryptChunkedEncrypted(String dataKeyAlias, byte[] encryptedFileData) {
+        // In this case we're dealing with data from a version of the library that chunks the
+        // data to encrypt and stores the ciphertexts in a CBOR structure as per the CDDL defined
+        // in saveToDiskEncrypt() namely
+        //
+        //  ChunkedEncryptedData = [
+        //    "ChunkedEncryptedData",
+        //    [+ bstr],
+        //  ]
+        //
+        ByteArrayInputStream bais = new ByteArrayInputStream(encryptedFileData);
+        List<DataItem> dataItems;
+        try {
+            dataItems = new CborDecoder(bais).decode();
+        } catch (CborException e) {
+            throw new RuntimeException("Error decoding ChunkedEncryptedData CBOR");
+        }
+        if (dataItems.size() != 1) {
+            throw new RuntimeException("Expected one item, found " + dataItems.size());
+        }
+        if (!(dataItems.get(0) instanceof Array)) {
+            throw new RuntimeException("Item is not a array");
+        }
+        Array array = (co.nstant.in.cbor.model.Array) dataItems.get(0);
+        if (array.getDataItems().size() < 2) {
+            throw new RuntimeException("Expected 2+ items, found " + array.getDataItems().size());
+        }
+        if (!(array.getDataItems().get(1) instanceof Array)) {
+            throw new RuntimeException("Second item in outer array is not a array");
+        }
+        Array innerArray = (co.nstant.in.cbor.model.Array) array.getDataItems().get(1);
+
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+            KeyStore.Entry entry = ks.getEntry(dataKeyAlias, null);
+            SecretKey secretKey = ((KeyStore.SecretKeyEntry) entry).getSecretKey();
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            for (DataItem item : ((Array) innerArray).getDataItems()) {
+                if (!(item instanceof ByteString)) {
+                    throw new RuntimeException("Item in inner array is not a bstr");
+                }
+                byte[] encryptedChunk = ((ByteString) item).getBytes();
+
+                ByteBuffer byteBuffer = ByteBuffer.wrap(encryptedChunk);
+                byte[] iv = new byte[12];
+                byteBuffer.get(iv);
+                byte[] cipherText = new byte[encryptedChunk.length - 12];
+                byteBuffer.get(cipherText);
+
+                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+                cipher.init(Cipher.DECRYPT_MODE, secretKey, new GCMParameterSpec(128, iv));
+                byte[] decryptedChunk = cipher.doFinal(cipherText);
+                baos.write(decryptedChunk);
+            }
+            return baos.toByteArray();
+
+        } catch (InvalidAlgorithmParameterException
+                | NoSuchPaddingException
+                | BadPaddingException
+                | NoSuchAlgorithmException
+                | CertificateException
+                | InvalidKeyException
+                | IOException
+                | IllegalBlockSizeException
+                | UnrecoverableEntryException
+                | KeyStoreException e) {
+            throw new RuntimeException("Error decrypting chunk", e);
+        }
+    }
+
     private byte[] loadFromDiskDecrypt(String dataKeyAlias, byte[] encryptedFileData) {
+        // See saveToDiskEncrypt() for how newer versions of the library store the encrypted
+        // data in chunks.
+        final byte[] magic = CHUNKED_ENCRYPTED_MAGIC.getBytes(StandardCharsets.UTF_8);
+        if (encryptedFileData.length >= 2 + magic.length) {
+            if (Arrays.equals(Arrays.copyOfRange(encryptedFileData, 2, magic.length + 2),
+                    magic)) {
+                return loadFromDiskDecryptChunkedEncrypted(dataKeyAlias, encryptedFileData);
+            }
+        }
+
         byte[] fileData = null;
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
