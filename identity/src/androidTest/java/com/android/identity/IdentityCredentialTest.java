@@ -75,14 +75,11 @@ public class IdentityCredentialTest {
   @LargeTest
   @Test
   public void storeStaticAuthenticationDataLarge() throws IdentityCredentialException {
-    Assume.assumeTrue("Test fails on API <= 28", VERSION.SDK_INT >= 29 /* Android 10+ */);
-    // Per b/234563696, I've confirmed these failing on:
-    // Pixel 2 API 24
-    // Pixel 2 API 26
-    // Pixel 3 API 28
-    checkStaticAuthData(10, 10000); // fails
-    checkStaticAuthData(100, 1000); // flaky
-    checkStaticAuthData(100, 10000); // fails
+    // Some of these tests used to fail with older Android Keystore implementations (API
+    // 28 or earlier), see b/234563696 for details.
+    checkStaticAuthData(10, 10000);
+    checkStaticAuthData(100, 1000);
+    checkStaticAuthData(100, 10000);
   }
 
   private void checkStaticAuthData(int numAuthKeys, int staticAuthDataSizeBytes)
@@ -98,6 +95,7 @@ public class IdentityCredentialTest {
       try {
         store.getCredentialByName(CREDENTIAL_NAME, CIPHER_SUITE);
       } catch (RuntimeException e) {
+        e.printStackTrace();
         fail(String.format(Locale.US,
                 "Failed to load credential for %d authKeys with %d bytes static auth data each",
                 numAuthKeys, staticAuthDataSizeBytes));
