@@ -1070,7 +1070,7 @@ class Util {
     }
 
     static @NonNull
-    Collection<Integer> cborMapExtractMapNumberKeys(@NonNull DataItem map) {
+    Collection<Long> cborMapExtractMapNumberKeys(@NonNull DataItem map) {
         List<Long> ret = new ArrayList<>();
         for (DataItem item : castTo(Map.class, map).getKeys()) {
             ret.add(castTo(Number.class, item).getValue().longValue());

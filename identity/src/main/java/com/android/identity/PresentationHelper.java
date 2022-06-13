@@ -42,7 +42,7 @@ import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 
@@ -399,7 +399,7 @@ public class PresentationHelper {
 
                 @Override
                 public void onMessageReceived(@NonNull byte[] data) {
-                    Pair<byte[], OptionalInt> decryptedMessage = null;
+                    Pair<byte[], OptionalLong> decryptedMessage = null;
                     try {
                         decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
                         mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_QR_CODE;
@@ -467,7 +467,7 @@ public class PresentationHelper {
                             transport.close();
                             reportError(new Error("No data and no status in SessionData"));
                         } else {
-                            int statusCode = decryptedMessage.second.getAsInt();
+                            long statusCode = decryptedMessage.second.getAsLong();
 
                             mLog.session("Message received from reader with status: " + statusCode);
 
@@ -975,7 +975,7 @@ public class PresentationHelper {
             Util.dumpHex(TAG, "Sending DeviceResponse", deviceResponseBytes);
         }
         byte[] encryptedData =
-                mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalInt.empty());
+                mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalLong.empty());
         mActiveTransport.sendMessage(encryptedData);
     }
 
@@ -1025,7 +1025,7 @@ public class PresentationHelper {
                 } else {
                     mLog.info("Sending generic session termination message");
                     byte[] sessionTermination = mSessionEncryption.encryptMessageToReader(
-                            null, OptionalInt.of(20));
+                            null, OptionalLong.of(20));
                     mActiveTransport.sendMessage(sessionTermination);
                 }
             } else {
