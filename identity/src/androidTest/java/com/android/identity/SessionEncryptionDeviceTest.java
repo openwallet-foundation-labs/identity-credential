@@ -28,7 +28,7 @@ import org.junit.runner.RunWith;
 
 import java.math.BigInteger;
 import java.security.PrivateKey;
-import java.util.OptionalInt;
+import java.util.OptionalLong;
 
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
@@ -58,7 +58,7 @@ public class SessionEncryptionDeviceTest {
                 eDeviceKeyPrivate, encodedDeviceEngagement, encodedHandover);
 
         // Check that decryption works.
-        Pair<byte[], OptionalInt> result = sessionEncryption.decryptMessageFromReader(
+        Pair<byte[], OptionalLong> result = sessionEncryption.decryptMessageFromReader(
                 Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT));
         Assert.assertFalse(result.second.isPresent());
         Assert.assertArrayEquals(
@@ -80,18 +80,18 @@ public class SessionEncryptionDeviceTest {
                 Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA),
                 sessionEncryption.encryptMessageToReader(
                         Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE),
-                        OptionalInt.empty()));
+                        OptionalLong.empty()));
 
         // Check that we parse status correctly.
         result = sessionEncryption.decryptMessageFromReader(
                 Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION));
-        Assert.assertEquals(20, result.second.getAsInt());
+        Assert.assertEquals(20, result.second.getAsLong());
         Assert.assertNull(result.first);
 
         // Check we can generate messages with status.
         Assert.assertArrayEquals(
                 Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION),
-                sessionEncryption.encryptMessageToReader(null, OptionalInt.of(20)));
+                sessionEncryption.encryptMessageToReader(null, OptionalLong.of(20)));
     }
 
 }

@@ -96,7 +96,7 @@ class DataTransportTcp extends DataTransport {
         String host = Util.cborMapExtractString(options, RETRIEVAL_OPTION_KEY_ADDRESS);
         long port = Util.cborMapExtractNumber(options, RETRIEVAL_OPTION_KEY_PORT);
 
-        if (port > 65535) {
+        if (!isValidServerPort(port)) {
             Log.w(TAG, "Port is invalid: " + port);
             return null;
         }
@@ -335,6 +335,12 @@ class DataTransportTcp extends DataTransport {
     @Override
     boolean supportsTransportSpecificTerminationMessage() {
         return false;
+    }
+
+    private static boolean isValidServerPort(long port) {
+        // 0 is not valid, as that is the wildcard port, telling the OS to pick a free port for
+        // us. A server could never be listening on port 0.
+        return port > 0 && port <= 65535;
     }
 
     static class DataRetrievalAddressTcp extends DataRetrievalAddress {

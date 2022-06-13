@@ -19,6 +19,7 @@ package com.android.identity;
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
 import androidx.annotation.IntDef;
+import androidx.annotation.LongDef;
 
 import java.lang.annotation.Retention;
 
@@ -33,14 +34,14 @@ public class Constants {
      *
      * <p>This value is defined in ISO/IEC 18013-5 Table 8.
      */
-    public static final int DEVICE_RESPONSE_STATUS_OK = 0;
+    public static final long DEVICE_RESPONSE_STATUS_OK = 0;
     /**
      * The mdoc returns an error without any given
      * reason. No data is returned.
      *
      * <p>This value is defined in ISO/IEC 18013-5 Table 8.
      */
-    public static final int DEVICE_RESPONSE_STATUS_GENERAL_ERROR = 10;
+    public static final long DEVICE_RESPONSE_STATUS_GENERAL_ERROR = 10;
     /**
      * The mdoc indicates an error during CBOR decoding
      * that the data received is not valid CBOR. Returning
@@ -48,7 +49,7 @@ public class Constants {
      *
      * <p>This value is defined in ISO/IEC 18013-5 Table 8.
      */
-    public static final int DEVICE_RESPONSE_STATUS_CBOR_DECODING_ERROR = 11;
+    public static final long DEVICE_RESPONSE_STATUS_CBOR_DECODING_ERROR = 11;
     /**
      * The mdoc indicates an error during CBOR
      * validation, e.g. wrong CBOR structures. Returning
@@ -56,7 +57,7 @@ public class Constants {
      *
      * <p>This value is defined in ISO/IEC 18013-5 Table 8.
      */
-    public static final int DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR = 12;
+    public static final long DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR = 12;
     /**
      * If this flag is set, {@link PresentationHelper} and {@link VerificationHelper}
      * will log informational messages.
@@ -117,7 +118,7 @@ public class Constants {
      * @hidden
      */
     @Retention(SOURCE)
-    @IntDef({DEVICE_RESPONSE_STATUS_OK,
+    @LongDef({DEVICE_RESPONSE_STATUS_OK,
             DEVICE_RESPONSE_STATUS_GENERAL_ERROR,
             DEVICE_RESPONSE_STATUS_CBOR_DECODING_ERROR,
             DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR})

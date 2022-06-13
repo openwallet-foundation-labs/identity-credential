@@ -32,7 +32,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.OptionalLong;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -111,7 +111,7 @@ final class SessionEncryptionDevice {
      *                                  message from the reader has been received.
      */
     public @NonNull byte[] encryptMessageToReader(@Nullable byte[] messagePlaintext,
-            @NonNull OptionalInt statusCode) {
+            @NonNull OptionalLong statusCode) {
         if (!mEReaderKeyReceived) {
             throw new IllegalStateException("Cannot send messages to reader until a message "
                     + "from the reader has been received");
@@ -146,7 +146,7 @@ final class SessionEncryptionDevice {
             mapBuilder.put("data", messageCiphertextAndAuthTag);
         }
         if (statusCode.isPresent()) {
-            mapBuilder.put("status", statusCode.getAsInt());
+            mapBuilder.put("status", statusCode.getAsLong());
         }
         mapBuilder.end();
         return Util.cborEncode(builder.build().get(0));
@@ -166,7 +166,7 @@ final class SessionEncryptionDevice {
      *         status, as described above.
      * @exception IllegalArgumentException if the passed in data does not conform to the CDDL.
      */
-    public @Nullable Pair<byte[], OptionalInt> decryptMessageFromReader(
+    public @Nullable Pair<byte[], OptionalLong> decryptMessageFromReader(
             @NonNull byte[] messageData) {
         ByteArrayInputStream bais = new ByteArrayInputStream(messageData);
         List<DataItem> dataItems = null;
@@ -206,13 +206,13 @@ final class SessionEncryptionDevice {
             messageCiphertext = ((ByteString) dataItemData).getBytes();
         }
 
-        OptionalInt status = OptionalInt.empty();
+        OptionalLong status = OptionalLong.empty();
         DataItem dataItemStatus = map.get(new UnicodeString("status"));
         if (dataItemStatus != null) {
             if (!(dataItemStatus instanceof Number)) {
                 throw new IllegalArgumentException("status is not a number");
             }
-            status = OptionalInt.of(((Number) dataItemStatus).getValue().intValue());
+            status = OptionalLong.of(((Number) dataItemStatus).getValue().longValue());
         }
 
         byte[] plainText = null;
@@ -279,7 +279,7 @@ final class SessionEncryptionDevice {
 
     /**
      * Gets the number of messages encrypted with
-     * {@link #encryptMessageToReader(byte[], OptionalInt)} .
+     * {@link #encryptMessageToReader(byte[], OptionalLong)} .
      *
      * @return Number of messages encrypted.
      */
