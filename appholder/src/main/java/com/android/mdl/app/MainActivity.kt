@@ -12,7 +12,7 @@ import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 
 class MainActivity : AppCompatActivity() {
-
+//BREAK THE BUILD
     companion object {
         private const val LOG_TAG = "MainActivity"
     }
