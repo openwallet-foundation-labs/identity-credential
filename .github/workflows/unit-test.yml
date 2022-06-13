@@ -27,6 +27,8 @@ jobs:
           maven.google.com:443
           mp1yacprodeus1file3.blob.core.windows.net:443
           services.gradle.org:443
+          downloads.gradle-dn.com:443
+          jcenter.bintray.com:443
 
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3
     - name: set up JDK 11
