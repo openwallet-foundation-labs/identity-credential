@@ -181,7 +181,10 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun nfcEngagementProcessCommandApdu(service: HostApduService, commandApdu: ByteArray) {
-        presentation?.nfcProcessCommandApdu(service, commandApdu)
+        presentation?.setNfcResponder {
+            service.sendResponseApdu(it)
+        }
+        presentation?.nfcProcessCommandApdu(commandApdu)
     }
 
     fun nfcEngagementOnDeactivated(service: HostApduService, reason: Int) {
