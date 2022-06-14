@@ -157,8 +157,10 @@ class DataTransportNfc extends DataTransport {
         long responseDataFieldMaxLength = Util.cborMapExtractNumber(options,
                 RETRIEVAL_OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH);
 
-        if (commandDataFieldMaxLength > Integer.MAX_VALUE ||
-                responseDataFieldMaxLength  > Integer.MAX_VALUE) {
+        if (commandDataFieldMaxLength > Integer.MAX_VALUE
+            || commandDataFieldMaxLength <= 0
+            || responseDataFieldMaxLength  > Integer.MAX_VALUE
+            || responseDataFieldMaxLength  <= 0 ) {
             Log.w(TAG, "Invalid max length. Command max: " + commandDataFieldMaxLength +
                     ", response max: " + responseDataFieldMaxLength);
             return null;
