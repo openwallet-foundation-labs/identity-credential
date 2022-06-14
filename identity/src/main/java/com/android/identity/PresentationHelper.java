@@ -79,9 +79,11 @@ import co.nstant.in.cbor.model.UnsignedInteger;
  * transfer it should also be registered for AID <code>A0 00 00 02 48 04 00</code> (as per
  * ISO/IEC 18013-5 section 8.3.3.1.2). In both cases
  * {@link HostApduService#processCommandApdu(byte[], Bundle)} calls should be forwarded to
- * {@link #nfcProcessCommandApdu(HostApduService, byte[])} and
+ * {@link #nfcProcessCommandApdu(byte[])} and
  * {@link HostApduService#onDeactivated(int)} calls should be forwarded to
- * {@link #nfcOnDeactivated(HostApduService, int)}.
+ * {@link #nfcOnDeactivated(HostApduService, int)}. The application should also use
+ * {@link #setNfcResponder(NfcResponder)} to set up a {@link NfcResponder} to send
+ * response APDUs back to the reader.
  *
  * <p>Unlike {@link IdentityCredentialStore}, {@link IdentityCredential},
  * {@link WritableIdentityCredential}, and {@link PresentationSession} this class is never backed
@@ -150,7 +152,6 @@ public class PresentationHelper {
     int mNumTransportsStillSettingUp;
     boolean mReceivedSessionTerminated;
     int mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_UNKNOWN;
-    HostApduService mApduService;
     @LoggingFlag
     int mLoggingFlags = 0;
     private ArrayList<DataTransport> mTransports = new ArrayList<>();
@@ -161,6 +162,7 @@ public class PresentationHelper {
     private boolean mUseTransportSpecificSessionTermination;
     private boolean mSendSessionTerminationMessage;
     Util.Logger mLog;
+    private NfcResponder mNfcResponder;
 
     /**
      * Creates a new {@link PresentationHelper}.
@@ -282,7 +284,8 @@ public class PresentationHelper {
      * the data to put in a QR code which can be displayed in the application.
      *
      * <p>For NFC engagement, the application should pass <code>APDUs</code> to
-     * {@link #nfcProcessCommandApdu(HostApduService, byte[])}.
+     * {@link #nfcProcessCommandApdu(byte[])} and set up a way for to send APDU responses
+     * back using {@link #setNfcResponder(NfcResponder)}.
      *
      * <p>When a remote verifier device connects and makes a request for documents, the
      * {@link Listener#onDeviceRequest(int, byte[])}  callback will be invoked.
@@ -694,16 +697,16 @@ public class PresentationHelper {
      * verifier using the passed-in {@link HostApduService}.
      *
      * <p>Applications should call this method in their
-     * {@link HostApduService#processCommandApdu(byte[], Bundle)} callback.
+     * {@link HostApduService#processCommandApdu(byte[], Bundle)} callback if they are
+     * using NFC engagement or NFC data transfer.
      *
-     * @param service the {@link HostApduService} owned by the application.
+     * <p>If this is used, the application must have set a {@link PresentationHelper.NfcResponder}
+     * using {@link #setNfcResponder(NfcResponder)}.
+     *
      * @param apdu    the APDU.
      */
-    public void nfcProcessCommandApdu(@NonNull HostApduService service,
-            @NonNull byte[] apdu) {
+    public void nfcProcessCommandApdu(@NonNull byte[] apdu) {
         byte[] ret = null;
-
-        mApduService = service;
 
         peerIsEngaging();
 
@@ -742,7 +745,11 @@ public class PresentationHelper {
             if (mLog.isTransportVerboseEnabled()) {
                 mLog.transportVerbose("APDU response: " + Util.toHex(ret));
             }
-            service.sendResponseApdu(ret);
+            if (mNfcResponder == null) {
+                reportError(new Error("Trying to send APDU response but no NfcResponder is set"));
+                return;
+            }
+            mNfcResponder.sendResponseApdu(ret);
         }
     }
 
@@ -766,7 +773,12 @@ public class PresentationHelper {
                             new DataTransportNfc.ResponseInterface() {
                                 @Override
                                 public void sendResponseApdu(@NonNull byte[] responseApdu) {
-                                    mApduService.sendResponseApdu(responseApdu);
+                                    if (mNfcResponder == null) {
+                                        reportError(new Error("Trying to send APDU "
+                                                + "response but no NfcResponder is set"));
+                                        return;
+                                    }
+                                    mNfcResponder.sendResponseApdu(responseApdu);
                                 }
                             });
 
@@ -999,6 +1011,15 @@ public class PresentationHelper {
     }
 
     /**
+     * Sets the object used to send back APDUs to the remote NFC device.
+     *
+     * @param nfcResponder a {@link PresentationHelper.NfcResponder} instance.
+     */
+    public void setNfcResponder(@NonNull NfcResponder nfcResponder) {
+        mNfcResponder = nfcResponder;
+    }
+
+    /**
      * Stops the presentation, shuts down all transports used, and stops listening on
      * transports previously brought into a listening state using
      * {@link #startListening(DataRetrievalListenerConfiguration)}.
@@ -1205,5 +1226,18 @@ public class PresentationHelper {
          * @param error the error.
          */
         void onError(@NonNull Throwable error);
+    }
+
+    /**
+     * Interface used by {@link PresentationHelper} to send back APDUs for
+     * engagement and data transfer.
+     */
+    public interface NfcResponder {
+        /**
+         * Sends a response APDU back to the remote device.
+         *
+         * @param responseApdu A byte-array containing the reponse APDU.
+         */
+        void sendResponseApdu(byte[] responseApdu);
     }
 }
