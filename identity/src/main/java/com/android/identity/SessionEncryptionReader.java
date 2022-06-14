@@ -126,7 +126,7 @@ final class SessionEncryptionReader {
         if (!(cipherSuiteDataItem instanceof Number)) {
             throw new IllegalArgumentException("Cipher suite not a Number");
         }
-        long cipherSuite = ((Number) cipherSuiteDataItem).getValue().longValue();
+        final long cipherSuite = Util.checkedLongValue(cipherSuiteDataItem);
         if (cipherSuite != 1) {
             throw new IllegalArgumentException("Expected cipher suite 1, got " + cipherSuite);
         }

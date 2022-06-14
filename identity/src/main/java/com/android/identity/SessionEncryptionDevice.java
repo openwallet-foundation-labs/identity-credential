@@ -49,7 +49,6 @@ import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
-import co.nstant.in.cbor.model.Number;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
@@ -209,10 +208,7 @@ final class SessionEncryptionDevice {
         OptionalLong status = OptionalLong.empty();
         DataItem dataItemStatus = map.get(new UnicodeString("status"));
         if (dataItemStatus != null) {
-            if (!(dataItemStatus instanceof Number)) {
-                throw new IllegalArgumentException("status is not a number");
-            }
-            status = OptionalLong.of(((Number) dataItemStatus).getValue().longValue());
+            status = OptionalLong.of(Util.checkedLongValue(dataItemStatus));
         }
 
         byte[] plainText = null;

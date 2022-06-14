@@ -38,6 +38,8 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
 public class TestUtilities {
 
+    private TestUtilities() {}
+
     static @NonNull X509Certificate generateSelfSignedCert(KeyPair keyPair) {
         try {
             final Date notBefore = Date.from(Instant.now());

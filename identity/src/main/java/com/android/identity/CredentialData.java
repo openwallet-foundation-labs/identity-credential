@@ -1081,7 +1081,7 @@ class CredentialData {
                 if (!(expirationDateMillisItem instanceof Number)) {
                     throw new RuntimeException("expirationDateMillis not a number");
                 }
-                expirationDateMillis = ((Number) expirationDateMillisItem).getValue().longValue();
+                expirationDateMillis = Util.checkedLongValue(expirationDateMillisItem);
             }
             Calendar expirationDate = Calendar.getInstance();
             expirationDate.setTimeInMillis(expirationDateMillis);
