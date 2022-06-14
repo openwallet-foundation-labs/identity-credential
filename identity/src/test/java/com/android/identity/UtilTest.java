@@ -33,10 +33,10 @@ import java.security.spec.ECGenParameterSpec;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
 import java.security.KeyPair;
@@ -70,9 +70,15 @@ import co.nstant.in.cbor.model.UnsignedInteger;
 @MediumTest
 @SuppressWarnings("deprecation")
 public class UtilTest {
+
     @Before
     public void setUp() {
         Security.addProvider(new BouncyCastleProvider());
+    }
+
+    @After
+    public void tearDown() {
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
     }
 
     @Test
@@ -711,6 +717,59 @@ public class UtilTest {
 
         assertThrows(IllegalArgumentException.class, () -> Util.fromHex("0"));
         assertThrows(IllegalArgumentException.class, () -> Util.fromHex("XX"));
+    }
+
+    @Test
+    public void checkedStringValue() {
+        final DataItem dataItem = new co.nstant.in.cbor.model.UnicodeString("hello");
+        assertEquals("hello", Util.checkedStringValue(dataItem));
+    }
+
+    @Test
+    public void checkedStringValueThrows() {
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedStringValue(co.nstant.in.cbor.model.SimpleValue.TRUE));
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedStringValue(new co.nstant.in.cbor.model.UnsignedInteger(42)));
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedStringValue(
+                new co.nstant.in.cbor.model.ByteString(new byte[]{1, 2, 3})));
+    }
+
+    @Test
+    public void checkedLongValue() {
+        final DataItem dataItem = new co.nstant.in.cbor.model.UnsignedInteger(8675309);
+        assertEquals(8675309, Util.checkedLongValue(dataItem));
+    }
+
+    @Test
+    public void checkedLongValueThrowsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedLongValue(co.nstant.in.cbor.model.SimpleValue.TRUE));
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedLongValue(new co.nstant.in.cbor.model.UnicodeString("not a number")));
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedLongValue(
+                new co.nstant.in.cbor.model.ByteString(new byte[]{1, 2, 3})));
+    }
+
+    @Test
+    public void checkedLongValueEdgeCases() {
+        final BigInteger upperLimit = BigInteger.valueOf(Long.MAX_VALUE);
+        assertEquals(Long.MAX_VALUE,
+            Util.checkedLongValue(new co.nstant.in.cbor.model.UnsignedInteger(upperLimit)));
+
+        final BigInteger lowerLimit = BigInteger.valueOf(Long.MIN_VALUE);
+        assertEquals(Long.MIN_VALUE,
+            Util.checkedLongValue(new co.nstant.in.cbor.model.NegativeInteger(lowerLimit)));
+
+        final BigInteger tooBig = upperLimit.add(BigInteger.ONE);
+        assertThrows(ArithmeticException.class,
+            () -> Util.checkedLongValue(new co.nstant.in.cbor.model.UnsignedInteger(tooBig)));
+
+        final BigInteger tooSmall = lowerLimit.subtract(BigInteger.ONE);
+        assertThrows(ArithmeticException.class,
+            () -> Util.checkedLongValue(new co.nstant.in.cbor.model.NegativeInteger(tooSmall)));
     }
 
     // TODO: Replace with Assert.assertThrows() once we use a recent enough version of JUnit.

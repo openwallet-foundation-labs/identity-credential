@@ -271,15 +271,37 @@ class Util {
         return simple.getSimpleValueType() == SimpleValueType.TRUE;
     }
 
+    /**
+     * Accepts a {@code DataItem}, attempts to cast it to a {@code Number}, then returns the value
+     * Throws {@code IllegalArgumentException} if the {@code DataItem} is not a {@code Number}. This
+     * method also checks bounds, and if the given data item is too large to fit in a long, it
+     * throws {@code ArithmeticException}.
+     */
+    static long checkedLongValue(DataItem item) {
+        final BigInteger bigNum = castTo(Number.class, item).getValue();
+        final long result = bigNum.longValue();
+        if (!bigNum.equals(BigInteger.valueOf(result))) {
+            throw new ArithmeticException("Expected long value, got '" + bigNum + "'");
+        }
+        return result;
+    }
+
     static @NonNull
     String cborDecodeString(@NonNull byte[] data) {
-        DataItem dataItem = cborDecode(data);
-        return castTo(UnicodeString.class, dataItem).getString();
+        return checkedStringValue(cborDecode(data));
+    }
+
+    /**
+     * Accepts a {@code DataItem}, attempts to cast it to a {@code UnicodeString}, then returns the
+     * value. Throws {@code IllegalArgumentException} if the {@code DataItem} is not a
+     * {@code UnicodeString}.
+     */
+    static String checkedStringValue(DataItem item) {
+        return castTo(UnicodeString.class, item).getString();
     }
 
     static long cborDecodeLong(@NonNull byte[] data) {
-        DataItem dataItem = cborDecode(data);
-        return castTo(Number.class, dataItem).getValue().longValue();
+        return checkedLongValue(cborDecode(data));
     }
 
     static @NonNull
@@ -301,7 +323,7 @@ class Util {
         if (!di.hasTag() || di.getTag().getValue() != 0) {
             throw new IllegalArgumentException("Passed in data is not tagged with tag 0");
         }
-        String dateString = ((co.nstant.in.cbor.model.UnicodeString) di).getString();
+        String dateString = checkedStringValue(di);
 
         // Manually parse the timezone
         TimeZone parsedTz = TimeZone.getTimeZone("UTC");
@@ -974,26 +996,26 @@ class Util {
     static long cborMapExtractNumber(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
-        return castTo(Number.class, item).getValue().longValue();
+        return checkedLongValue(item);
     }
 
     static long cborMapExtractNumber(@NonNull DataItem map, @NonNull String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
-        return castTo(Number.class, item).getValue().longValue();
+        return checkedLongValue(item);
     }
 
     static @NonNull
     String cborMapExtractString(@NonNull DataItem map,
             @NonNull String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
-        return castTo(UnicodeString.class, item).getString();
+        return checkedStringValue(item);
     }
 
     static @NonNull
     String cborMapExtractString(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
-        return castTo(UnicodeString.class, item).getString();
+        return checkedStringValue(item);
     }
 
     static @NonNull
@@ -1021,7 +1043,7 @@ class Util {
     Collection<String> cborMapExtractMapStringKeys(@NonNull DataItem map) {
         List<String> ret = new ArrayList<>();
         for (DataItem item : castTo(Map.class, map).getKeys()) {
-            ret.add(castTo(UnicodeString.class, item).getString());
+            ret.add(checkedStringValue(item));
         }
         return ret;
     }
@@ -1030,7 +1052,7 @@ class Util {
     Collection<Long> cborMapExtractMapNumberKeys(@NonNull DataItem map) {
         List<Long> ret = new ArrayList<>();
         for (DataItem item : castTo(Map.class, map).getKeys()) {
-            ret.add(castTo(Number.class, item).getValue().longValue());
+            ret.add(checkedLongValue(item));
         }
         return ret;
     }
@@ -1227,7 +1249,7 @@ class Util {
             break;
             case UNICODE_STRING: {
                 // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
-                String value = ((UnicodeString) dataItem).getString();
+                String value = checkedStringValue(dataItem);
                 // TODO: escape ' in |value|
                 sb.append("'" + value + "'");
             }
@@ -1447,7 +1469,7 @@ class Util {
                 throw new IllegalArgumentException(
                         "Expected at least 2 array items, found " + items.size());
             }
-            String id = castTo(UnicodeString.class, items.get(0)).getString();
+            String id = checkedStringValue(items.get(0));
             if (!id.equals("ProofOfBinding")) {
                 throw new IllegalArgumentException("Expected ProofOfBinding, got " + id);
             }
@@ -1574,7 +1596,7 @@ class Util {
 
     static long getDeviceRetrievalMethodType(@NonNull byte[] encodeDeviceRetrievalMethod) {
         List<DataItem> di = ((Array) Util.cborDecode(encodeDeviceRetrievalMethod)).getDataItems();
-        return ((co.nstant.in.cbor.model.Number) di.get(0)).getValue().longValue();
+        return checkedLongValue(di.get(0));
     }
 
     static @NonNull KeyPair createEphemeralKeyPair() {
