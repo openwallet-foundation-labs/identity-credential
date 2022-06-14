@@ -22,15 +22,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.MediumTest;
 
+import java.math.BigInteger;
+import java.security.Security;
+import java.security.spec.ECGenParameterSpec;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -65,9 +68,13 @@ import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
 
 @MediumTest
-@RunWith(AndroidJUnit4.class)
 @SuppressWarnings("deprecation")
 public class UtilTest {
+    @Before
+    public void setUp() {
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
     @Test
     public void prettyPrintMultipleCompleteTypes() throws CborException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -374,14 +381,9 @@ public class UtilTest {
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
     }
 
-    private KeyPair coseGenerateKeyPair() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore");
-        KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(
-                "coseTestKeyPair",
-                KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
-                .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512);
-        kpg.initialize(builder.build());
+    private KeyPair generateKeyPair() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
+        kpg.initialize(new ECGenParameterSpec("secp256k1"));
         return kpg.generateKeyPair();
     }
 
@@ -514,7 +516,7 @@ public class UtilTest {
 
     @Test
     public void coseSignAndVerifyDetachedContent() throws Exception {
-        KeyPair keyPair = coseGenerateKeyPair();
+        KeyPair keyPair = generateKeyPair();
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
@@ -526,11 +528,11 @@ public class UtilTest {
 
     @Test
     public void coseSignAndVerifySingleCertificate() throws Exception {
-        KeyPair keyPair = coseGenerateKeyPair();
+        KeyPair keyPair = generateKeyPair();
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         LinkedList<X509Certificate> certs = new LinkedList<X509Certificate>();
-        certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
+        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
         DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
                 detachedContent, certs);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
@@ -540,13 +542,13 @@ public class UtilTest {
 
     @Test
     public void coseSignAndVerifyMultipleCertificates() throws Exception {
-        KeyPair keyPair = coseGenerateKeyPair();
+        KeyPair keyPair = generateKeyPair();
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         LinkedList<X509Certificate> certs = new LinkedList<X509Certificate>();
-        certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
-        certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
-        certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
+        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
+        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
+        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
         DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
                 detachedContent, certs);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
