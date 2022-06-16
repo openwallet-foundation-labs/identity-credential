@@ -256,8 +256,9 @@ public class PersonalizationData {
         public @NonNull Builder putEntryCalendar(@NonNull String namespace, @NonNull String name,
                 @NonNull Collection<AccessControlProfileId> accessControlProfileIds,
                 @NonNull Calendar value) {
+            Timestamp time = Timestamp.ofEpochMilli(value.getTimeInMillis());
             return putEntry(namespace, name, accessControlProfileIds,
-                    Util.cborEncode(Util.cborBuildDateTime(value)));
+                    Util.cborEncode(Util.cborBuildDateTime(time)));
         }
 
         /**

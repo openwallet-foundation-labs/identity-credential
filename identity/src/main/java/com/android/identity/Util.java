@@ -17,11 +17,6 @@
 package com.android.identity;
 
 import android.content.Context;
-import android.icu.text.DateFormat;
-import android.icu.text.SimpleDateFormat;
-import android.icu.util.Calendar;
-import android.icu.util.GregorianCalendar;
-import android.icu.util.TimeZone;
 import android.security.keystore.KeyProperties;
 import android.util.Log;
 
@@ -74,12 +69,14 @@ import java.security.spec.InvalidParameterSpecException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
@@ -234,45 +231,38 @@ class Util {
     }
 
     static @NonNull
-    byte[] cborEncodeDateTime(@NonNull Calendar calendar) {
-        return cborEncode(cborBuildDateTime(calendar));
+    byte[] cborEncodeDateTime(@NonNull Timestamp timestamp) {
+        return cborEncode(cborBuildDateTime(timestamp));
     }
 
     static @NonNull
-    byte[] cborEncodeDateTimeFor18013_5(@NonNull Calendar calendar) {
-        return cborEncode(cborBuildDateTimeFor18013_5(calendar));
+    byte[] cborEncodeDateTimeFor18013_5(@NonNull Timestamp timestamp) {
+        return cborEncode(cborBuildDateTimeFor18013_5(timestamp));
     }
 
     /**
      * Returns #6.0(tstr) where tstr is the ISO 8601 encoding of the given point in time.
+     * Only supports UTC times.
      */
     static @NonNull
-    DataItem cborBuildDateTime(@NonNull Calendar calendar) {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
-        if (calendar.isSet(Calendar.MILLISECOND) && calendar.get(Calendar.MILLISECOND) != 0) {
+    DataItem cborBuildDateTime(@NonNull Timestamp timestamp) {
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
+        if (timestamp.toEpochMilli() % 1000 != 0) {
             df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US);
         }
-        df.setTimeZone(calendar.getTimeZone());
-        Date val = calendar.getTime();
+        df.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Date val = new Date(timestamp.toEpochMilli());
         String dateString = df.format(val);
         DataItem dataItem = new UnicodeString(dateString);
         dataItem.setTag(0);
         return dataItem;
     }
 
-    /**
-     * Like cborBuildDateTime() but with the additional restrictions for tdate
-     * as specified in ISO/IEC 18013-5:
-     *
-     * - fraction of seconds shall not be used;
-     * - no local offset from UTC shall be used, as indicated by setting
-     * the time-offset defined in RFC 3339 to “Z”.
-     */
     static @NonNull
-    DataItem cborBuildDateTimeFor18013_5(@NonNull Calendar calendar) {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
-        df.setTimeZone(TimeZone.GMT_ZONE);
-        Date val = calendar.getTime();
+    DataItem cborBuildDateTimeFor18013_5(@NonNull Timestamp timestamp) {
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
+        df.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Date val = new Date(timestamp.toEpochMilli());
         String dateString = df.format(val);
         DataItem dataItem = new UnicodeString(dateString);
         dataItem.setTag(0);
@@ -318,12 +308,12 @@ class Util {
     }
 
     static @NonNull
-    Calendar cborDecodeDateTime(@NonNull byte[] data) {
+    Timestamp cborDecodeDateTime(@NonNull byte[] data) {
         return cborDecodeDateTime(cborDecode(data));
     }
 
     static @NonNull
-    Calendar cborDecodeDateTime(DataItem di) {
+    Timestamp cborDecodeDateTime(DataItem di) {
         if (!(di instanceof co.nstant.in.cbor.model.UnicodeString)) {
             throw new IllegalArgumentException("Passed in data is not a Unicode-string");
         }
@@ -334,23 +324,20 @@ class Util {
 
         // Manually parse the timezone
         TimeZone parsedTz = TimeZone.getTimeZone("UTC");
-        java.util.TimeZone parsedTz2 = java.util.TimeZone.getTimeZone("UTC");
         if (!dateString.endsWith("Z")) {
             String timeZoneSubstr = dateString.substring(dateString.length() - 6);
             parsedTz = TimeZone.getTimeZone("GMT" + timeZoneSubstr);
-            parsedTz2 = java.util.TimeZone.getTimeZone("GMT" + timeZoneSubstr);
         }
 
-        java.text.DateFormat df = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS",
-                Locale.US);
-        df.setTimeZone(parsedTz2);
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
+        df.setTimeZone(parsedTz);
         Date date = null;
         try {
             date = df.parse(dateString);
         } catch (ParseException e) {
             // Try again, this time without the milliseconds
-            df = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
-            df.setTimeZone(parsedTz2);
+            df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
+            df.setTimeZone(parsedTz);
             try {
                 date = df.parse(dateString);
             } catch (ParseException e2) {
@@ -358,11 +345,7 @@ class Util {
             }
         }
 
-        Calendar c = new GregorianCalendar();
-        c.clear();
-        c.setTimeZone(parsedTz);
-        c.setTime(date);
-        return c;
+        return Timestamp.ofEpochMilli(date.getTime());
     }
 
     /**
@@ -1104,7 +1087,7 @@ class Util {
         return castTo(SimpleValue.class, item).getSimpleValueType() == SimpleValueType.TRUE;
     }
 
-    static Calendar cborMapExtractDateTime(@NonNull DataItem map, String key) {
+    static Timestamp cborMapExtractDateTime(@NonNull DataItem map, String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
         UnicodeString unicodeString = castTo(UnicodeString.class, item);
         return cborDecodeDateTime(unicodeString);
