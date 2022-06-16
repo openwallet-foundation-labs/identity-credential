@@ -16,7 +16,6 @@
 
 package com.android.identity;
 
-import android.icu.util.Calendar;
 import android.util.Log;
 import android.util.Pair;
 
@@ -464,10 +463,10 @@ public final class DeviceResponseParser {
         int mNumIssuerEntryDigestMatchFailures;
         boolean mDeviceSignedAuthenticated;
         boolean mIssuerSignedAuthenticated;
-        Calendar mValidityInfoSigned;
-        Calendar mValidityInfoValidFrom;
-        Calendar mValidityInfoValidUntil;
-        Calendar mValidityInfoExpectedUpdate;
+        Timestamp mValidityInfoSigned;
+        Timestamp mValidityInfoValidFrom;
+        Timestamp mValidityInfoValidUntil;
+        Timestamp mValidityInfoExpectedUpdate;
         PublicKey mDeviceKey;
         boolean mDeviceSignedAuthenticatedViaSignature;
 
@@ -483,41 +482,41 @@ public final class DeviceResponseParser {
         /**
          * Returns the <code>signed</code> date from the MSO.
          *
-         * @return a {@code Calendar} for when the MSO was signed.
+         * @return a {@code Timestamp} for when the MSO was signed.
          */
         public @NonNull
-        Calendar getValidityInfoSigned() {
+        Timestamp getValidityInfoSigned() {
             return mValidityInfoSigned;
         }
 
         /**
          * Returns the <code>validFrom</code> date from the MSO.
          *
-         * @return a {@code Calendar} for when the MSO is valid from.
+         * @return a {@code Timestamp} for when the MSO is valid from.
          */
         public @NonNull
-        Calendar getValidityInfoValidFrom() {
+        Timestamp getValidityInfoValidFrom() {
             return mValidityInfoValidFrom;
         }
 
         /**
          * Returns the <code>validUntil</code> date from the MSO.
          *
-         * @return a {@code Calendar} for when the MSO is valid until.
+         * @return a {@code Timestamp} for when the MSO is valid until.
          */
         public @NonNull
-        Calendar getValidityInfoValidUntil() {
+        Timestamp getValidityInfoValidUntil() {
             return mValidityInfoValidUntil;
         }
 
         /**
          * Returns the <code>expectedUpdate</code> date from the MSO.
          *
-         * @return a {@code Calendar} for when the MSO is valid until or {@code null} if
+         * @return a {@code Timestamp} for when the MSO is valid until or {@code null} if
          *   this isn't set.
          */
         public @Nullable
-        Calendar getValidityInfoExpectedUpdate() {
+        Timestamp getValidityInfoExpectedUpdate() {
             return mValidityInfoExpectedUpdate;
         }
 
@@ -693,14 +692,14 @@ public final class DeviceResponseParser {
 
         /**
          * Like {@link #getIssuerEntryData(String, String)} but returns the CBOR decoded
-         * as a {@link Calendar}.
+         * as a {@link Timestamp}.
          *
          * @param namespaceName the name of the namespace to get a data element value from.
          * @param name the name of the data element in the given namespace.
          * @return the decoded data.
          * @exception IllegalArgumentException if the CBOR data isn't in data or not the right type.
          */
-        public @NonNull Calendar getIssuerEntryDateTime(@NonNull String namespaceName,
+        public @NonNull Timestamp getIssuerEntryDateTime(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getIssuerEntryData(namespaceName, name);
             return Util.cborDecodeDateTime(value);
@@ -840,14 +839,14 @@ public final class DeviceResponseParser {
 
         /**
          * Like {@link #getDeviceEntryData(String, String)} but returns the CBOR decoded
-         * as a {@link Calendar}.
+         * as a {@link Timestamp}.
          *
          * @param namespaceName the name of the namespace to get a data element value from.
          * @param name the name of the data element in the given namespace.
          * @return the decoded data.
          * @exception IllegalArgumentException if the CBOR data isn't in data or not the right type.
          */
-        public @NonNull Calendar getDeviceEntryDateTime(@NonNull String namespaceName,
+        public @NonNull Timestamp getDeviceEntryDateTime(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getDeviceEntryData(namespaceName, name);
             return Util.cborDecodeDateTime(value);
@@ -899,22 +898,22 @@ public final class DeviceResponseParser {
                 return this;
             }
 
-            Builder setValidityInfoSigned(@NonNull Calendar value) {
+            Builder setValidityInfoSigned(@NonNull Timestamp value) {
                 mResult.mValidityInfoSigned = value;
                 return this;
             }
 
-            Builder setValidityInfoValidFrom(@NonNull Calendar value) {
+            Builder setValidityInfoValidFrom(@NonNull Timestamp value) {
                 mResult.mValidityInfoValidFrom = value;
                 return this;
             }
 
-            Builder setValidityInfoValidUntil(@NonNull Calendar value) {
+            Builder setValidityInfoValidUntil(@NonNull Timestamp value) {
                 mResult.mValidityInfoValidUntil = value;
                 return this;
             }
 
-            Builder setValidityInfoExpectedUpdate(@NonNull Calendar value) {
+            Builder setValidityInfoExpectedUpdate(@NonNull Timestamp value) {
                 mResult.mValidityInfoExpectedUpdate = value;
                 return this;
             }

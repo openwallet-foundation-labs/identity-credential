@@ -22,9 +22,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import android.icu.util.Calendar;
-import android.icu.util.GregorianCalendar;
-import android.icu.util.TimeZone;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 
@@ -43,8 +40,11 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.TimeZone;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -280,38 +280,38 @@ public class UtilTest {
         c = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTime(c);
+        data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT-04:00"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTime(c);
-        assertEquals("tag 0 '2019-07-08T11:51:42-04:00'", Util.cborPrettyPrint(data));
-        assertEquals("tag 0 '2019-07-08T11:51:42-04:00'",
+        data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
+        assertEquals("tag 0 '2019-07-08T15:51:42Z'", Util.cborPrettyPrint(data));
+        assertEquals("tag 0 '2019-07-08T15:51:42Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT-08:00"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTime(c);
-        assertEquals("tag 0 '2019-07-08T11:51:42-08:00'", Util.cborPrettyPrint(data));
-        assertEquals("tag 0 '2019-07-08T11:51:42-08:00'",
+        data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
+        assertEquals("tag 0 '2019-07-08T19:51:42Z'", Util.cborPrettyPrint(data));
+        assertEquals("tag 0 '2019-07-08T19:51:42Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT+04:30"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTime(c);
-        assertEquals("tag 0 '2019-07-08T11:51:42+04:30'", Util.cborPrettyPrint(data));
-        assertEquals("tag 0 '2019-07-08T11:51:42+04:30'",
+        data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
+        assertEquals("tag 0 '2019-07-08T07:21:42Z'", Util.cborPrettyPrint(data));
+        assertEquals("tag 0 '2019-07-08T07:21:42Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
     }
 
     @Test
@@ -322,42 +322,42 @@ public class UtilTest {
         c = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTimeFor18013_5(c);
+        data = Util.cborEncodeDateTimeFor18013_5(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'",
                 Util.cborPrettyPrint(
                         Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT-04:00"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTimeFor18013_5(c);
+        data = Util.cborEncodeDateTimeFor18013_5(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T15:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T15:51:42Z'",
                 Util.cborPrettyPrint(
                         Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT-08:00"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTimeFor18013_5(c);
+        data = Util.cborEncodeDateTimeFor18013_5(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T19:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T19:51:42Z'",
                 Util.cborPrettyPrint(
                         Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT+04:30"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTimeFor18013_5(c);
+        data = Util.cborEncodeDateTimeFor18013_5(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T07:21:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T07:21:42Z'",
                 Util.cborPrettyPrint(
                         Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
     }
 
     @Test
@@ -366,11 +366,11 @@ public class UtilTest {
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
         c.set(Calendar.MILLISECOND, 123);
-        byte[] data = Util.cborEncodeDateTime(c);
+        byte[] data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T11:51:42.123Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T11:51:42.123Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
     }
 
     @Test
@@ -380,13 +380,15 @@ public class UtilTest {
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
         Calendar cWithoutMilliseconds = (Calendar) c.clone();
         c.set(Calendar.MILLISECOND, 123);
-        byte[] data = Util.cborEncodeDateTimeFor18013_5(c);
+        byte[] data = Util.cborEncodeDateTimeFor18013_5(
+                Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'",
                 Util.cborPrettyPrint(
                         Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(1, c.compareTo(Util.cborDecodeDateTime(data)));
-        assertEquals(0, cWithoutMilliseconds.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(123, c.getTimeInMillis() - Util.cborDecodeDateTime(data).toEpochMilli());
+        assertEquals(cWithoutMilliseconds.getTimeInMillis(),
+                Util.cborDecodeDateTime(data).toEpochMilli());
     }
 
     @Test
@@ -431,7 +433,7 @@ public class UtilTest {
                 .add("2019-07-08T11:51:42.26-11:30")
                 .build());
         data = baos.toByteArray();
-        assertEquals("tag 0 '2019-07-08T11:51:42.260-11:30'",
+        assertEquals("tag 0 '2019-07-08T23:21:42.260Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
     }
 

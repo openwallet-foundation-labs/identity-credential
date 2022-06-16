@@ -269,10 +269,11 @@ public class Utility {
         c.setAvailableAuthenticationKeys(numAuthKeys, maxUsesPerKey);
         Collection<X509Certificate> authKeysNeedCert = c.getAuthKeysNeedingCertification();
 
-        Calendar signedDate = Calendar.getInstance();
-        Calendar validFromDate = Calendar.getInstance();
-        Calendar validToDate = Calendar.getInstance();
-        validToDate.add(Calendar.MONTH, 12);
+        final Timestamp signedDate = Timestamp.now();
+        final Timestamp validFromDate = Timestamp.now();
+        Calendar validToCalendar = Calendar.getInstance();
+        validToCalendar.add(Calendar.MONTH, 12);
+        final Timestamp validToDate = Timestamp.ofEpochMilli(validToCalendar.getTimeInMillis());
 
         for (X509Certificate authKeyCert : authKeysNeedCert) {
             PublicKey authKey = authKeyCert.getPublicKey();
@@ -377,7 +378,7 @@ public class Utility {
             byte[] staticAuthData = encodeStaticAuthData(
                     issuerSignedMapping, encodedIssuerAuth);
             c.storeStaticAuthenticationData(authKeyCert,
-                    validToDate,
+                    validToCalendar,
                     staticAuthData);
 
         } // for each authkey
