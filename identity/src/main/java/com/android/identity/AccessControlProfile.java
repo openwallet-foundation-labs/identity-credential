@@ -28,7 +28,7 @@ public class AccessControlProfile {
     @NonNull AccessControlProfileId mAccessControlProfileId = new AccessControlProfileId(0);
     @Nullable X509Certificate mReaderCertificate = null;
     boolean mUserAuthenticationRequired = true;
-    long mUserAuthenticationTimeout = 0;
+    long mUserAuthenticationTimeoutMillis = 0;
 
     AccessControlProfile() {
     }
@@ -38,8 +38,11 @@ public class AccessControlProfile {
         return mAccessControlProfileId;
     }
 
+    /**
+     * Returns the authentication timeout, in milliseconds.
+     */
     long getUserAuthenticationTimeout() {
-        return mUserAuthenticationTimeout;
+        return mUserAuthenticationTimeoutMillis;
     }
 
     boolean isUserAuthenticationRequired() {
@@ -109,7 +112,7 @@ public class AccessControlProfile {
          * @return The builder.
          */
         public @NonNull Builder setUserAuthenticationTimeout(long userAuthenticationTimeoutMillis) {
-            mProfile.mUserAuthenticationTimeout = userAuthenticationTimeoutMillis;
+            mProfile.mUserAuthenticationTimeoutMillis = userAuthenticationTimeoutMillis;
             return this;
         }
 

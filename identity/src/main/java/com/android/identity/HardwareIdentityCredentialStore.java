@@ -93,12 +93,7 @@ class HardwareIdentityCredentialStore extends IdentityCredentialStore {
     @Override
     public @NonNull String[] getSupportedDocTypes() {
         Set<String> docTypeSet = getCapabilities().getSupportedDocTypes();
-        String[] docTypes = new String[docTypeSet.size()];
-        int n = 0;
-        for (String docType : docTypeSet) {
-            docTypes[n++] = docType;
-        }
-        return docTypes;
+        return docTypeSet.toArray(new String[0]);
     }
 
     @Override

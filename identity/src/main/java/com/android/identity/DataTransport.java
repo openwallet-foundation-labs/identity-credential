@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.content.Context;
 import android.nfc.NdefRecord;
 import android.os.Build;
@@ -24,7 +26,6 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -126,8 +127,8 @@ abstract class DataTransport {
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
-                "application/vnd.bluetooth.le.oob".getBytes(StandardCharsets.UTF_8))
-                && Arrays.equals(record.getId(), "0".getBytes(StandardCharsets.UTF_8))) {
+                "application/vnd.bluetooth.le.oob".getBytes(UTF_8))
+                && Arrays.equals(record.getId(), "0".getBytes(UTF_8))) {
             return DataTransportBle.parseNdefRecord(record);
         }
 
@@ -135,8 +136,8 @@ abstract class DataTransport {
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
-                "application/vnd.wfa.nan".getBytes(StandardCharsets.UTF_8))
-                && Arrays.equals(record.getId(), "W".getBytes(StandardCharsets.UTF_8))) {
+                "application/vnd.wfa.nan".getBytes(UTF_8))
+                && Arrays.equals(record.getId(), "W".getBytes(UTF_8))) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 return DataTransportWifiAware.parseNdefRecord(record);
             } else {
@@ -150,8 +151,8 @@ abstract class DataTransport {
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
-                "iso.org:18013:nfc".getBytes(StandardCharsets.UTF_8))
-                && Arrays.equals(record.getId(), "nfc".getBytes(StandardCharsets.UTF_8))) {
+                "iso.org:18013:nfc".getBytes(UTF_8))
+                && Arrays.equals(record.getId(), "nfc".getBytes(UTF_8))) {
             return DataTransportNfc.parseNdefRecord(record);
         }
 
@@ -159,7 +160,7 @@ abstract class DataTransport {
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
-                "application/vnd.android.ic.dmr".getBytes(StandardCharsets.UTF_8))) {
+                "application/vnd.android.ic.dmr".getBytes(UTF_8))) {
             byte[] deviceRetrievalMethod = record.getPayload();
             return parseDeviceRetrievalMethod(deviceRetrievalMethod);
         }
@@ -268,7 +269,7 @@ abstract class DataTransport {
      * @param listener the listener or <code>null</code> to stop listening.
      * @param executor a {@link Executor} to do the call in or <code>null</code> if
      *                 <code>listener</code> is <code>null</code>.
-     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@link null}
+     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
      * listener.
      */
     void setListener(@Nullable Listener listener, @Nullable Executor executor) {
@@ -300,7 +301,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onListeningPeerConnecting());
+            executor.execute(listener::onListeningPeerConnecting);
         }
     }
 
@@ -308,7 +309,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onListeningPeerConnected());
+            executor.execute(listener::onListeningPeerConnected);
         }
     }
 
@@ -316,7 +317,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onListeningPeerDisconnected());
+            executor.execute(listener::onListeningPeerDisconnected);
         }
     }
 
@@ -332,7 +333,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onConnectionDisconnected());
+            executor.execute(listener::onConnectionDisconnected);
         }
     }
 
@@ -348,7 +349,7 @@ abstract class DataTransport {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onTransportSpecificSessionTermination());
+            executor.execute(listener::onTransportSpecificSessionTermination);
         }
     }
 
@@ -368,8 +369,6 @@ abstract class DataTransport {
         /**
          * Called on a listening transport when listening setup has completed and
          * an address for how to connect is ready.
-         *
-         * @return a {@link DataRetrievalAddress} or {@code null} if listening failed.
          */
         void onListeningSetupCompleted(@Nullable DataRetrievalAddress address);
 

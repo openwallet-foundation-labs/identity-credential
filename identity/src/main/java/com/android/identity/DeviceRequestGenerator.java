@@ -74,7 +74,7 @@ public final class DeviceRequestGenerator {
      * @param requestInfo               <code>null</code> or additional information provided.
      *                                  This is
      *                                  a map from keys and the values must be valid
-     *                                  <a href="href="http://cbor.io/">CBOR</a>.
+     *                                  <a href="http://cbor.io/">CBOR</a>.
      * @param readerKeySignature        <code>null</code> if not signing the request, otherwise a
      *                                  {@link Signature} to be used for signing the request.
      * @param readerKeyCertificateChain <code>null</code> if <code>readerKeySignature</code> is

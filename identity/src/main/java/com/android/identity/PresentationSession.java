@@ -18,7 +18,6 @@ package com.android.identity;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 import androidx.biometric.BiometricPrompt;
 
 import java.security.InvalidKeyException;
@@ -37,9 +36,8 @@ import java.util.Map;
  */
 public abstract class PresentationSession {
     /**
-     * @hide
+     * @hidden
      */
-    @RestrictTo(RestrictTo.Scope.SUBCLASSES)
     protected PresentationSession() {}
 
     /**
@@ -172,7 +170,7 @@ public abstract class PresentationSession {
      *
      * <p>If {@link IdentityCredential} is hardware-backed, the returned
      * {@link BiometricPrompt.CryptoObject} is associated
-     * {@link android.security.identity.PresentationSession} object from the Android Framework.
+     * android.security.identity.PresentationSession object from the Android Framework.
      * If it's not hardware-backed it's not defined which kind of object it's associated with.
      * Because of this, this method is the preferred way
      * to obtain a {@link BiometricPrompt.CryptoObject} rather than to construct it

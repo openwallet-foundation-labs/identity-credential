@@ -16,6 +16,7 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
@@ -100,7 +101,7 @@ public class DeviceResponseGeneratorTest {
         store.deleteCredentialByName("test");
         WritableIdentityCredential wc = store.createCredential("test", MDL_DOCTYPE);
         Collection<X509Certificate> certificateChain =
-                wc.getCredentialKeyCertificateChain("myChallenge".getBytes(StandardCharsets.UTF_8));
+                wc.getCredentialKeyCertificateChain("myChallenge".getBytes(UTF_8));
 
         // Profile 0 (no authentication)
         AccessControlProfile noAuthProfile =

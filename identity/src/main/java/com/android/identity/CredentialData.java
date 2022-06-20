@@ -16,6 +16,9 @@
 
 package com.android.identity;
 
+import static java.util.concurrent.TimeUnit.DAYS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import android.content.Context;
 import android.icu.util.Calendar;
 import android.security.keystore.KeyGenParameterSpec;
@@ -26,9 +29,9 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
+import java.util.Locale;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.CertIOException;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
@@ -167,7 +170,7 @@ class CredentialData {
 
             String name = ((UnicodeString) map.get(new UnicodeString("name"))).getString();
 
-            Collection<AccessControlProfileId> accessControlProfileIds = new ArrayList<>();
+            List<AccessControlProfileId> accessControlProfileIds = new ArrayList<>();
             Array accessControlProfileArray =
                     (Array) map.get(
                             new UnicodeString("accessControlProfiles"));
@@ -261,9 +264,8 @@ class CredentialData {
             X500Name subject = new X500Name("CN=Android Identity Credential Authentication Key");
 
             Date now = new Date();
-            final long kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000;
-            Date expirationDate = new Date(now.getTime() + kMilliSecsInOneYear);
-            BigInteger serial = new BigInteger("1");
+            Date expirationDate = new Date(now.getTime() + MILLISECONDS.convert(365, DAYS));
+            BigInteger serial = BigInteger.ONE;
             JcaX509v3CertificateBuilder builder =
                     new JcaX509v3CertificateBuilder(issuer,
                             serial,
@@ -354,7 +356,7 @@ class CredentialData {
      * @param certificateChain    the certificate chain for the credential key.
      * @param personalizationData the data for the credential.
      * @param isReplacement       set to true if this replaces an existing credential
-     * @return a new @{link CredentialData} object
+     * @return a new {@link CredentialData} object
      */
     static CredentialData createCredentialData(Context context,
             String docType,
@@ -387,14 +389,14 @@ class CredentialData {
         data.mAcpTimeoutKeyAliases = new HashMap<>();
         for (AccessControlProfile profile : personalizationData.getAccessControlProfiles()) {
             boolean isAuthRequired = profile.isUserAuthenticationRequired();
-            long timeoutSeconds = profile.getUserAuthenticationTimeout();
+            long timeoutMillis = profile.getUserAuthenticationTimeout();
             if (isAuthRequired) {
                 // Always make sure the per-reader-session key exists since this is what we're
                 // going to be handing out a Cipher for when returning a CryptoObject at
                 // presentation time.
                 ensurePerReaderSessionKey(credentialName, data);
 
-                ensureAcpTimoutKeyForProfile(credentialName, data, profile, timeoutSeconds);
+                ensureAcpTimoutKeyForProfile(credentialName, data, profile, timeoutMillis);
             }
         }
 
@@ -1159,7 +1161,8 @@ class CredentialData {
                 try {
                     // Calculate name to use and be careful to avoid collisions when
                     // re-certifying an already populated slot.
-                    String aliasForAuthKey = mCredentialKeyAlias + String.format("_auth_%d", n);
+                    String aliasForAuthKey = mCredentialKeyAlias + String.format(Locale.US,
+                            "_auth_%d", n);
                     if (aliasForAuthKey.equals(data.mAlias)) {
                         aliasForAuthKey = aliasForAuthKey + "_";
                     }

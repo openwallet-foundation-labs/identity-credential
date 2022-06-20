@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,8 +41,8 @@ class SimpleResultData extends ResultData {
 
     private static class EntryData {
         @Status
-        int mStatus;
-        byte[] mValue;
+        final int mStatus;
+        final byte[] mValue;
 
         EntryData(byte[] value, @Status int status) {
             this.mValue = value;
@@ -91,7 +92,7 @@ class SimpleResultData extends ResultData {
         if (innerMap == null) {
             return null;
         }
-        ArrayList<String> result = new ArrayList<String>();
+        List<String> result = new ArrayList<>();
         for (Map.Entry<String, EntryData> entry : innerMap.entrySet()) {
             if (entry.getValue().mStatus == STATUS_OK) {
                 result.add(entry.getKey());

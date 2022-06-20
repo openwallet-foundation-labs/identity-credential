@@ -1,6 +1,7 @@
 package com.android.mdl.appreader.fragment
 
 import android.graphics.BitmapFactory
+import android.icu.text.SimpleDateFormat
 import android.os.Bundle
 import android.text.Html
 import android.util.Log
@@ -20,6 +21,8 @@ import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import org.jetbrains.anko.attr
+import java.security.MessageDigest
+import java.security.interfaces.ECPublicKey
 
 
 /**
@@ -172,7 +175,31 @@ class ShowDocumentFragment : Fragment() {
             }
             sb.append("${getFormattedCheck(isDSTrusted)}Issuer’s DS Key Recognized: $commonName<br>")
             sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
-            sb.append("${getFormattedCheck(doc.deviceSignedAuthenticated)}Device Signed Authenticated<br>")
+            var macOrSignatureString = "MAC"
+            if (doc.deviceSignedAuthenticatedViaSignature)
+                macOrSignatureString = "ECDSA"
+            sb.append("${getFormattedCheck(doc.deviceSignedAuthenticated)}Device Signed Authenticated (${macOrSignatureString})<br>")
+
+            sb.append("<h6>MSO</h6>")
+
+            val df = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
+            sb.append("${getFormattedCheck(true)}Signed: ${df.format(doc.validityInfoSigned)}<br>")
+            sb.append("${getFormattedCheck(true)}Valid From: ${df.format(doc.validityInfoValidFrom)}<br>")
+            sb.append("${getFormattedCheck(true)}Valid Until: ${df.format(doc.validityInfoValidUntil)}<br>")
+            if (doc.validityInfoExpectedUpdate != null) {
+                sb.append("${getFormattedCheck(true)}Expected Update: ${df.format(doc.validityInfoExpectedUpdate)}<br>")
+            }
+            // TODO: show warning if MSO is valid for more than 30 days
+
+            // Just show the SHA-1 of DeviceKey since all we're interested in here is whether
+            // we saw the same key earlier.
+            sb.append("<h6>DeviceKey</h6>")
+            val deviceKeySha1 = FormatUtil.encodeToString(
+                MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.encoded))
+            sb.append("${getFormattedCheck(true)}SHA-1: ${deviceKeySha1}<br>")
+            // TODO: log DeviceKey's that we've seen and show warning if a DeviceKey is seen
+            //  a second time. Also would want button in Settings page to clear the log.
+
             for (ns in doc.issuerNamespaces) {
                 sb.append("<br>")
                 sb.append("<h5>Namespace: $ns</h5>")

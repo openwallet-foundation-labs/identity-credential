@@ -16,6 +16,9 @@
 
 package com.android.identity;
 
+import android.icu.text.DateFormat;
+import android.icu.text.SimpleDateFormat;
+
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
@@ -25,6 +28,7 @@ import org.junit.runner.RunWith;
 
 import java.math.BigInteger;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
@@ -67,10 +71,28 @@ public class DeviceResponseParserTest {
         List<DeviceResponseParser.Document> documents = dr.getDocuments();
         Assert.assertEquals(1, documents.size());
 
+        DeviceResponseParser.Document d = documents.get(0);
+
+        // Check ValidityInfo is correctly parsed, these values are all from
+        // ISO/IEC 18013-5 Annex D.4.1.2 mdoc response.
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
+        Assert.assertEquals("2020-10-01T13:30:02Z", df.format(d.getValidityInfoSigned()));
+        Assert.assertEquals("2020-10-01T13:30:02Z", df.format(d.getValidityInfoValidFrom()));
+        Assert.assertEquals("2021-10-01T13:30:02Z", df.format(d.getValidityInfoValidUntil()));
+        Assert.assertNull(d.getValidityInfoExpectedUpdate());
+
+        // Check DeviceKey is correctly parsed
+        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
+                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
+                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        Assert.assertEquals(deviceKeyFromVector, d.getDeviceKey());
+
+        // Test example is using a MAC.
+        Assert.assertFalse(d.getDeviceSignedAuthenticatedViaSignature());
+
         // Check the returned issuer data, these values are all from
         // ISO/IEC 18013-5 Annex D.4.1.2 mdoc response.
         //
-        DeviceResponseParser.Document d = documents.get(0);
         Assert.assertTrue(d.getIssuerSignedAuthenticated());
         Assert.assertTrue(d.getDeviceSignedAuthenticated());
         Assert.assertEquals(MDL_DOCTYPE, d.getDocType());

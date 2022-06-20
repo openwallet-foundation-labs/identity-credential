@@ -20,6 +20,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import android.icu.util.Calendar;
 import android.icu.util.GregorianCalendar;
@@ -43,6 +44,7 @@ import java.security.KeyPairGenerator;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.util.LinkedList;
+import java.util.Random;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -65,7 +67,7 @@ import co.nstant.in.cbor.model.UnsignedInteger;
 @MediumTest
 @RunWith(AndroidJUnit4.class)
 @SuppressWarnings("deprecation")
-public class UtilTests {
+public class UtilTest {
     @Test
     public void prettyPrintMultipleCompleteTypes() throws CborException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -668,5 +670,153 @@ public class UtilTests {
                 Util.replaceLine("one\ntwo\nthree\nfour", -1, "foo"));
         assertEquals("one\ntwo\nfoo\nfour",
                 Util.replaceLine("one\ntwo\nthree\nfour", -2, "foo"));
+    }
+
+    // This test makes sure that Util.issuerSignedItemBytesSetValue() preserves the map order.
+    //
+    @Test
+    public void testIssuerSignedItemBytesSetValue() {
+        DataItem di;
+        byte[] encoded;
+        byte[] encodedWithValueTagged;
+        byte[] encodedWithValue;
+        byte[] encodedDataElement = Util.cborEncodeString("A String");
+
+        // Just try two different orders, canonical and non-canonical.
+
+        // Canonical:
+        di = new CborBuilder()
+                .addMap()
+                .put("random", new byte[]{1, 2, 3})
+                .put("digestID", 42)
+                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
+                .put("elementIdentifier", "foo")
+                .end()
+                .build().get(0);
+        encoded = Util.cborEncodeWithoutCanonicalizing(di);
+        assertEquals("{\n" +
+                "  'random' : [0x01, 0x02, 0x03],\n" +
+                "  'digestID' : 42,\n" +
+                "  'elementValue' : null,\n" +
+                "  'elementIdentifier' : 'foo'\n" +
+                "}", Util.cborPrettyPrint(encoded));
+        encodedWithValueTagged = Util.issuerSignedItemBytesSetValue(
+                Util.cborEncode(Util.cborBuildTaggedByteString(encoded)), encodedDataElement);
+        encodedWithValue = Util.cborExtractTaggedCbor(encodedWithValueTagged);
+        assertEquals("{\n" +
+                "  'random' : [0x01, 0x02, 0x03],\n" +
+                "  'digestID' : 42,\n" +
+                "  'elementValue' : 'A String',\n" +
+                "  'elementIdentifier' : 'foo'\n" +
+                "}", Util.cborPrettyPrint(encodedWithValue));
+
+        // Non-canonical:
+        di = new CborBuilder()
+                .addMap()
+                .put("digestID", 42)
+                .put("random", new byte[]{1, 2, 3})
+                .put("elementIdentifier", "foo")
+                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
+                .end()
+                .build().get(0);
+        encoded = Util.cborEncodeWithoutCanonicalizing(di);
+        assertEquals("{\n" +
+                "  'digestID' : 42,\n" +
+                "  'random' : [0x01, 0x02, 0x03],\n" +
+                "  'elementIdentifier' : 'foo',\n" +
+                "  'elementValue' : null\n" +
+                "}", Util.cborPrettyPrint(encoded));
+        encodedWithValueTagged = Util.issuerSignedItemBytesSetValue(
+                Util.cborEncode(Util.cborBuildTaggedByteString(encoded)), encodedDataElement);
+        encodedWithValue = Util.cborExtractTaggedCbor(encodedWithValueTagged);
+        assertEquals("{\n" +
+                "  'digestID' : 42,\n" +
+                "  'random' : [0x01, 0x02, 0x03],\n" +
+                "  'elementIdentifier' : 'foo',\n" +
+                "  'elementValue' : 'A String'\n" +
+                "}", Util.cborPrettyPrint(encodedWithValue));
+
+
+    }
+
+    @Test
+    public void toHexThrows() {
+        assertThrows(NullPointerException.class, () -> Util.toHex((byte[]) null));
+        assertThrows(NullPointerException.class, () -> Util.toHex((byte[]) null, 0, 0));
+        // Either NullPointerException or IllegalArgumentException would be reasonable, this
+        // test ensures our exception behaviour doesn't accidentally change.
+        assertThrows(NullPointerException.class, () -> Util.toHex((byte[]) null, 1, 0));
+
+        byte[] twoBytes = {0x17, 0x18};
+        assertThrows(IllegalArgumentException.class, () -> Util.toHex(twoBytes, -1, 2));
+        assertThrows(IllegalArgumentException.class, () -> Util.toHex(twoBytes, 0, 3));
+        assertThrows(IllegalArgumentException.class, () -> Util.toHex(twoBytes, 2, 1));
+    }
+
+    @Test
+    public void toHex() {
+        assertEquals("", Util.toHex(new byte[0]));
+        assertEquals("00ff13ab0b",
+                Util.toHex(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B}));
+    }
+
+    @Test
+    public void toHexRange() {
+        // arbitrary values in arbitrary large array
+        byte[] manyBytes = new byte[50000];
+        new Random().nextBytes(manyBytes);
+        manyBytes[31337] = 0x13;
+        manyBytes[31338] = (byte) 0xAB;
+        assertEquals("13ab", Util.toHex(manyBytes, 31337, 31339));
+        assertEquals("1718", Util.toHex(new byte[]{0x17, 0x18}, 0, 2));
+    }
+
+    @Test
+    public void fromHexThrows() {
+        assertThrows(NullPointerException.class, () -> Util.fromHex((String) null));
+
+        assertThrows(IllegalArgumentException.class, () -> Util.fromHex("0"));
+        assertThrows(IllegalArgumentException.class, () -> Util.fromHex("XX"));
+    }
+
+    // TODO: Replace with Assert.assertThrows() once we use a recent enough version of JUnit.
+    /** Asserts that the given {@code runnable} throws the given exception class, or a subclass. */
+    private static void assertThrows(
+            Class<? extends RuntimeException> expected, Runnable runnable) {
+        try {
+            runnable.run();
+            fail("Expected " + expected + " was not thrown");
+        } catch (RuntimeException e) {
+            Class actual = e.getClass();
+            assertTrue("Unexpected Exception class: " + actual,
+                    expected.isAssignableFrom(actual));
+        }
+    }
+
+    @Test
+    public void fromHex() {
+        assertArrayEquals(new byte[0], Util.fromHex(""));
+        assertArrayEquals(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B},
+                Util.fromHex("00ff13ab0b"));
+        assertArrayEquals(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B},
+                Util.fromHex("00FF13AB0B"));
+    }
+
+    @Test
+    public void toHexFromHexRoundTrip() {
+        Random random = new Random(31337); // deterministic but arbitrary
+        for (int numBytes : new int[]{0, 1, 2, 10, 50000}) {
+            byte[] bytes = new byte[numBytes];
+            random.nextBytes(bytes);
+            assertArrayEquals(bytes, Util.fromHex(Util.toHex(bytes)));
+        }
+    }
+
+    @Test
+    public void base16() {
+        assertThrows(NullPointerException.class, () -> Util.base16(null));
+        assertEquals("", Util.base16(new byte[0]));
+        assertEquals("00FF13AB0B",
+                Util.base16(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B}));
     }
 }

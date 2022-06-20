@@ -20,7 +20,6 @@ import android.icu.util.Calendar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 import androidx.biometric.BiometricPrompt;
 
 import java.security.InvalidKeyException;
@@ -38,9 +37,8 @@ import java.util.Map;
  */
 public abstract class IdentityCredential {
     /**
-     * @hide
+     * @hidden
      */
-    @RestrictTo(RestrictTo.Scope.SUBCLASSES)
     protected IdentityCredential() {}
 
     /**
@@ -164,8 +162,6 @@ public abstract class IdentityCredential {
     }
 
     /**
-     * @hide
-     *
      * Sets whether the usage count of an authentication key should be increased. This must be
      * called prior to calling
      * {@link #getEntries(byte[], Map, byte[])} or using a {@link BiometricPrompt.CryptoObject}
@@ -243,19 +239,19 @@ public abstract class IdentityCredential {
      *   ItemsRequest = {
      *     ? "docType" : DocType,
      *     "nameSpaces" : NameSpaces,
-     *     ? "RequestInfo" : {* tstr => any} ; Additional info the reader wants to provide
+     *     ? "RequestInfo" : {* tstr =&gt; any} ; Additional info the reader wants to provide
      *   }
      *
      *   DocType = tstr
      *
      *   NameSpaces = {
-     *     + NameSpace => DataElements    ; Requested data elements for each NameSpace
+     *     + NameSpace =&gt; DataElements    ; Requested data elements for each NameSpace
      *   }
      *
      *   NameSpace = tstr
      *
      *   DataElements = {
-     *     + DataElement => IntentToRetain
+     *     + DataElement =&gt; IntentToRetain
      *   }
      *
      *   DataElement = tstr

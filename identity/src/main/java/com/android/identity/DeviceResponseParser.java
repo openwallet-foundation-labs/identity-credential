@@ -21,6 +21,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -113,7 +114,7 @@ public final class DeviceResponseParser {
      * {@link Document#getIssuerSignedAuthenticated()}
      * can be used to get additional information about this.
      *
-     * @return a {@link DeviceResponseParser.DeviceResponse]} with the parsed data.
+     * @return a {@link DeviceResponseParser.DeviceResponse} with the parsed data.
      * @exception IllegalArgumentException if the given data isn't valid CBOR or not conforming
      * to the CDDL for its type.
      * @exception IllegalStateException if required data hasn't been set using the setter
@@ -146,7 +147,7 @@ public final class DeviceResponseParser {
 
         // Returns deviceKey and digestIdMapping. The byte[] is the digest.
         //
-        private @NonNull Pair<PublicKey, Map<String, Map<Integer, byte[]>>> parseMso(DataItem mso,
+        private @NonNull Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(DataItem mso,
                 String expectedDoctype) {
             /* don't care about version for now */
             String digestAlgorithm = Util.cborMapExtractString(mso, "digestAlgorithm");
@@ -161,13 +162,12 @@ public final class DeviceResponseParser {
             }
             DataItem valueDigests = Util.cborMapExtract(mso, "valueDigests");
             Collection<String> nameSpaceNames = Util.cborMapExtractMapStringKeys(valueDigests);
-            Map<String, Map<Integer, byte[]>> ret = new HashMap<>();
+            Map<String, Map<Long, byte[]>> ret = new HashMap<>();
             for (String nameSpaceName : nameSpaceNames) {
                 DataItem elementMap = Util.cborMapExtract(valueDigests, nameSpaceName);
-                Collection<Integer> elementDigestIDs = Util.cborMapExtractMapNumberKeys(
-                        elementMap);
-                Map<Integer, byte[]> innerRet = new HashMap<>();
-                for (int elementDigestID : elementDigestIDs) {
+                Collection<Long> elementDigestIDs = Util.cborMapExtractMapNumberKeys(elementMap);
+                Map<Long, byte[]> innerRet = new HashMap<>();
+                for (Long elementDigestID : elementDigestIDs) {
                     byte[] digest = Util.cborMapExtractByteString(elementMap, elementDigestID);
                     innerRet.put(elementDigestID, digest);
                 }
@@ -181,6 +181,16 @@ public final class DeviceResponseParser {
             return Pair.create(deviceKey, ret);
         }
 
+        private void parseValidityInfo(DataItem mso, Document.Builder builder) {
+            DataItem map = Util.cborMapExtractMap(mso, "validityInfo");
+            builder.setValidityInfoSigned(Util.cborMapExtractDateTime(map, "signed"));
+            builder.setValidityInfoValidFrom(Util.cborMapExtractDateTime(map, "validFrom"));
+            builder.setValidityInfoValidUntil(Util.cborMapExtractDateTime(map, "validUntil"));
+            if (Util.cborMapHasKey(map, "expectedUpdate")) {
+                builder.setValidityInfoExpectedUpdate(Util.cborMapExtractDateTime(map, "expectedUpdate"));
+            }
+        }
+
         // Returns the DeviceKey from the MSO
         //
         private @NonNull
@@ -188,7 +198,6 @@ public final class DeviceResponseParser {
                 String expectedDocType,
                 DataItem issuerSigned,
                 Document.Builder builder) {
-            PublicKey deviceKey;
 
             MessageDigest digester;
             try {
@@ -218,15 +227,17 @@ public final class DeviceResponseParser {
             DataItem mobileSecurityObject = Util.cborExtractTaggedAndEncodedCbor(
                     mobileSecurityObjectBytes);
 
-            Pair<PublicKey, Map<String, Map<Integer, byte[]>>> msoResult =
+            Pair<PublicKey, Map<String, Map<Long, byte[]>>> msoResult =
                     parseMso(mobileSecurityObject, expectedDocType);
-            deviceKey = msoResult.first;
-            Map<String, Map<Integer, byte[]>> digestMapping = msoResult.second;
+            final PublicKey deviceKey = msoResult.first;
+            Map<String, Map<Long, byte[]>> digestMapping = msoResult.second;
+
+            parseValidityInfo(mobileSecurityObject, builder);
 
             DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
             Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
             for (String nameSpace : nameSpacesKeys) {
-                Map<Integer, byte[]> innerDigestMapping = digestMapping.get(nameSpace);
+                Map<Long, byte[]> innerDigestMapping = digestMapping.get(nameSpace);
                 if (innerDigestMapping == null) {
                     throw new IllegalArgumentException("No digestID MSO entry for namespace "
                             + nameSpace);
@@ -248,7 +259,7 @@ public final class DeviceResponseParser {
                     String elementName = Util.cborMapExtractString(issuerSignedItem,
                             "elementIdentifier");
                     DataItem elementValue = Util.cborMapExtract(issuerSignedItem, "elementValue");
-                    int digestId = Util.cborMapExtractNumber(issuerSignedItem, "digestID");
+                    long digestId = Util.cborMapExtractNumber(issuerSignedItem, "digestID");
 
                     byte[] digest = innerDigestMapping.get(digestId);
                     if (digest == null) {
@@ -300,6 +311,7 @@ public final class DeviceResponseParser {
                                 Util.cborBuildTaggedByteString(encodedDeviceAuthentication));
                 deviceSignedAuthenticated = Util.coseSign1CheckSignature(
                         deviceSignature, deviceAuthenticationBytes, deviceKey);
+                builder.setDeviceSignedAuthenticatedViaSignature(true);
             } else {
                 DataItem deviceMac = ((co.nstant.in.cbor.model.Map) deviceAuth).get(
                         new UnicodeString("deviceMac"));
@@ -366,6 +378,7 @@ public final class DeviceResponseParser {
                     DataItem issuerSigned = Util.cborMapExtractMap(documentDataItem,
                             "issuerSigned");
                     PublicKey deviceKey = parseIssuerSigned(docType, issuerSigned, builder);
+                    builder.setDeviceKey(deviceKey);
 
                     DataItem deviceSigned = Util.cborMapExtractMap(documentDataItem,
                             "deviceSigned");
@@ -406,7 +419,7 @@ public final class DeviceResponseParser {
         }
 
         private @Constants.DeviceResponseStatus
-        int mResultStatus = Constants.DEVICE_RESPONSE_STATUS_OK;
+        long mResultStatus = Constants.DEVICE_RESPONSE_STATUS_OK;
 
         /**
          * Gets the top-level status in the <code>DeviceResponse</code> CBOR.
@@ -421,7 +434,7 @@ public final class DeviceResponseParser {
          * {@link Constants#DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR}.
          */
         @Constants.DeviceResponseStatus public
-        int getStatus() {
+        long getStatus() {
             return mResultStatus;
         }
     }
@@ -444,13 +457,19 @@ public final class DeviceResponseParser {
             }
         }
 
-        String mDocType = null;
+        String mDocType;
         Map<String, Map<String, EntryData>> mDeviceData = new LinkedHashMap<>();
         Map<String, Map<String, EntryData>> mIssuerData = new LinkedHashMap<>();
-        List<X509Certificate> mIssuerCertificateChain = null;
-        int mNumIssuerEntryDigestMatchFailures = 0;
-        boolean mDeviceSignedAuthenticated = false;
-        boolean mIssuerSignedAuthenticated = false;
+        List<X509Certificate> mIssuerCertificateChain;
+        int mNumIssuerEntryDigestMatchFailures;
+        boolean mDeviceSignedAuthenticated;
+        boolean mIssuerSignedAuthenticated;
+        Calendar mValidityInfoSigned;
+        Calendar mValidityInfoValidFrom;
+        Calendar mValidityInfoValidUntil;
+        Calendar mValidityInfoExpectedUpdate;
+        PublicKey mDeviceKey;
+        boolean mDeviceSignedAuthenticatedViaSignature;
 
         /**
          * Returns the type of document (commonly referred to as <code>docType</code>).
@@ -459,6 +478,57 @@ public final class DeviceResponseParser {
          */
         public @NonNull String getDocType() {
             return mDocType;
+        }
+
+        /**
+         * Returns the <code>signed</code> date from the MSO.
+         *
+         * @return a {@code Calendar} for when the MSO was signed.
+         */
+        public @NonNull
+        Calendar getValidityInfoSigned() {
+            return mValidityInfoSigned;
+        }
+
+        /**
+         * Returns the <code>validFrom</code> date from the MSO.
+         *
+         * @return a {@code Calendar} for when the MSO is valid from.
+         */
+        public @NonNull
+        Calendar getValidityInfoValidFrom() {
+            return mValidityInfoValidFrom;
+        }
+
+        /**
+         * Returns the <code>validUntil</code> date from the MSO.
+         *
+         * @return a {@code Calendar} for when the MSO is valid until.
+         */
+        public @NonNull
+        Calendar getValidityInfoValidUntil() {
+            return mValidityInfoValidUntil;
+        }
+
+        /**
+         * Returns the <code>expectedUpdate</code> date from the MSO.
+         *
+         * @return a {@code Calendar} for when the MSO is valid until or {@code null} if
+         *   this isn't set.
+         */
+        public @Nullable
+        Calendar getValidityInfoExpectedUpdate() {
+            return mValidityInfoExpectedUpdate;
+        }
+
+        /**
+         * Returns the <code>DeviceKey</code> from the MSO.
+         *
+         * @return a {@code PublicKey} representing the <code>DeviceKey</code>.
+         */
+        public @NonNull
+        PublicKey getDeviceKey() {
+            return mDeviceKey;
         }
 
         /**
@@ -651,6 +721,16 @@ public final class DeviceResponseParser {
         }
 
         /**
+         * Returns whether {@code DeviceSigned} was authenticated using ECDSA signature or
+         * using a MAC.
+         *
+         * @return {@code true} if ECDSA signature was used, {@code false} otherwise.
+         */
+        public boolean getDeviceSignedAuthenticatedViaSignature() {
+            return mDeviceSignedAuthenticatedViaSignature;
+        }
+
+        /**
          * Gets the names of namespaces with retrieved entries of the device-signed data.
          *
          * <p>If the document doesn't contain any device-signed data, this returns the empty
@@ -809,12 +889,44 @@ public final class DeviceResponseParser {
                 return this;
             }
 
-            public void setDeviceSignedAuthenticated(boolean deviceSignedAuthenticated) {
+            Builder setDeviceSignedAuthenticated(boolean deviceSignedAuthenticated) {
                 mResult.mDeviceSignedAuthenticated = deviceSignedAuthenticated;
+                return this;
             }
 
-            public void setIssuerSignedAuthenticated(boolean issuerSignedAuthenticated) {
+            Builder setIssuerSignedAuthenticated(boolean issuerSignedAuthenticated) {
                 mResult.mIssuerSignedAuthenticated = issuerSignedAuthenticated;
+                return this;
+            }
+
+            Builder setValidityInfoSigned(@NonNull Calendar value) {
+                mResult.mValidityInfoSigned = value;
+                return this;
+            }
+
+            Builder setValidityInfoValidFrom(@NonNull Calendar value) {
+                mResult.mValidityInfoValidFrom = value;
+                return this;
+            }
+
+            Builder setValidityInfoValidUntil(@NonNull Calendar value) {
+                mResult.mValidityInfoValidUntil = value;
+                return this;
+            }
+
+            Builder setValidityInfoExpectedUpdate(@NonNull Calendar value) {
+                mResult.mValidityInfoExpectedUpdate = value;
+                return this;
+            }
+
+            Builder setDeviceKey(@NonNull PublicKey deviceKey) {
+                mResult.mDeviceKey = deviceKey;
+                return this;
+            }
+
+            Builder setDeviceSignedAuthenticatedViaSignature(boolean value) {
+                mResult.mDeviceSignedAuthenticatedViaSignature = value;
+                return this;
             }
 
             Document build() {

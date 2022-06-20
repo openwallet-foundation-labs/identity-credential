@@ -1,0 +1,51 @@
+name: Run Unit Tests
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@248ae51c2e8cc9622ecf50685c8bf7150c6e8813  # v1.4.3
+      with:
+        # We are in audit mode on egress until the following issue is fixed:
+        # https://github.com/step-security/harden-runner/issues/83
+        # Things hosted on the Microsoft CDN end up on different hostnames,
+        # and we should allow-list *.blob.core.windows.net. However, we cannot
+        # really do that so are stuck with audit mode for now.
+        egress-policy: audit
+        disable-telemetry: true
+        allowed-endpoints: >
+          artifactcache.actions.githubusercontent.com:443
+          dl.google.com:443
+          github.com:443
+          maven.google.com:443
+          services.gradle.org:443
+          downloads.gradle-dn.com:443
+          jcenter.bintray.com:443
+
+    - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3
+    - name: set up JDK 11
+      uses: actions/setup-java@860f60056505705214d223b91ed7a30f173f6142  # v3
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build with Gradle
+      run: ./gradlew build
+    - name: Run unit tests
+      run: ./gradlew test
+

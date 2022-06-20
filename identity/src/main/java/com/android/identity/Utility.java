@@ -16,13 +16,14 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.icu.util.Calendar;
 import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -74,7 +75,7 @@ public class Utility {
      *     }
      *
      *     DigestIdMapping = {
-     *         NameSpace => [ + IssuerSignedItemBytes ]
+     *         NameSpace =&gt; [ + IssuerSignedItemBytes ]
      *     }
      *
      *     ; Defined in ISO 18013-5
@@ -90,7 +91,7 @@ public class Utility {
      *       "digestID" : uint,                           ; Digest ID for issuer data auth
      *       "random" : bstr,                             ; Random value for issuer data auth
      *       "elementIdentifier" : DataElementIdentifier, ; Data element identifier
-     *       "elementValue" : DataElementValue            ; Data element value
+     *       "elementValue" : NULL                        ; Placeholder for Data element value
      *     }
      * </pre>
      *
@@ -253,7 +254,7 @@ public class Utility {
             int numAuthKeys,
             int maxUsesPerKey) throws IdentityCredentialException {
 
-        final byte[] provisioningChallenge = "dummyChallenge".getBytes(StandardCharsets.UTF_8);
+        final byte[] provisioningChallenge = "dummyChallenge".getBytes(UTF_8);
 
         store.deleteCredentialByName(credentialName);
         WritableIdentityCredential wc = store.createCredential(credentialName, docType);

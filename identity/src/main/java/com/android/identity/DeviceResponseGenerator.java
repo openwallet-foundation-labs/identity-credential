@@ -35,7 +35,7 @@ import co.nstant.in.cbor.model.UnicodeString;
 public final class DeviceResponseGenerator {
 
     private final ArrayBuilder<CborBuilder> mDocumentsBuilder;
-    @Constants.DeviceResponseStatus private final int mStatusCode;
+    @Constants.DeviceResponseStatus private final long mStatusCode;
 
     /**
      * Creates a new {@link DeviceResponseGenerator}.
@@ -46,7 +46,7 @@ public final class DeviceResponseGenerator {
      * {@link Constants#DEVICE_RESPONSE_STATUS_CBOR_DECODING_ERROR}, or
      * {@link Constants#DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR}.
      */
-    public DeviceResponseGenerator(@Constants.DeviceResponseStatus int statusCode) {
+    public DeviceResponseGenerator(@Constants.DeviceResponseStatus long statusCode) {
         mStatusCode = statusCode;
         mDocumentsBuilder = new CborBuilder().addArray();
     }

@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -23,7 +25,6 @@ import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -31,7 +32,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.OptionalLong;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -52,8 +53,6 @@ import co.nstant.in.cbor.model.Number;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
- * @hide
- *
  * A helper class for encrypting and decrypting messages exchanged with a remote
  * mDL reader, conforming to ISO 18013-5 9.1.1 Session encryption.
  */
@@ -112,7 +111,7 @@ final class SessionEncryptionDevice {
      *                                  message from the reader has been received.
      */
     public @NonNull byte[] encryptMessageToReader(@Nullable byte[] messagePlaintext,
-            @NonNull OptionalInt statusCode) {
+            @NonNull OptionalLong statusCode) {
         if (!mEReaderKeyReceived) {
             throw new IllegalStateException("Cannot send messages to reader until a message "
                     + "from the reader has been received");
@@ -147,7 +146,7 @@ final class SessionEncryptionDevice {
             mapBuilder.put("data", messageCiphertextAndAuthTag);
         }
         if (statusCode.isPresent()) {
-            mapBuilder.put("status", statusCode.getAsInt());
+            mapBuilder.put("status", statusCode.getAsLong());
         }
         mapBuilder.end();
         return Util.cborEncode(builder.build().get(0));
@@ -167,7 +166,7 @@ final class SessionEncryptionDevice {
      *         status, as described above.
      * @exception IllegalArgumentException if the passed in data does not conform to the CDDL.
      */
-    public @Nullable Pair<byte[], OptionalInt> decryptMessageFromReader(
+    public @Nullable Pair<byte[], OptionalLong> decryptMessageFromReader(
             @NonNull byte[] messageData) {
         ByteArrayInputStream bais = new ByteArrayInputStream(messageData);
         List<DataItem> dataItems = null;
@@ -187,7 +186,7 @@ final class SessionEncryptionDevice {
         if (!mEReaderKeyReceived) {
             // If it's the first message, retrieve reader key and setup crypto
             DataItem dataItemEReaderKey = map.get(new UnicodeString("eReaderKey"));
-            if (dataItemEReaderKey == null || !(dataItemEReaderKey instanceof ByteString)) {
+            if (!(dataItemEReaderKey instanceof ByteString)) {
                 throw new IllegalArgumentException("No 'eReaderKey' item found or not bstr");
             }
             byte[] eReaderKeyBytes = ((ByteString) dataItemEReaderKey).getBytes();
@@ -207,13 +206,13 @@ final class SessionEncryptionDevice {
             messageCiphertext = ((ByteString) dataItemData).getBytes();
         }
 
-        OptionalInt status = OptionalInt.empty();
+        OptionalLong status = OptionalLong.empty();
         DataItem dataItemStatus = map.get(new UnicodeString("status"));
         if (dataItemStatus != null) {
             if (!(dataItemStatus instanceof Number)) {
                 throw new IllegalArgumentException("status is not a number");
             }
-            status = OptionalInt.of(((Number) dataItemStatus).getValue().intValue());
+            status = OptionalLong.of(((Number) dataItemStatus).getValue().longValue());
         }
 
         byte[] plainText = null;
@@ -265,12 +264,12 @@ final class SessionEncryptionDevice {
                     Util.cborBuildTaggedByteString(mEncodedSessionTranscript));
             byte[] salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes);
 
-            byte[] info = "SKDevice".getBytes(StandardCharsets.UTF_8);
+            byte[] info = "SKDevice".getBytes(UTF_8);
             byte[] derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
 
             mSKDevice = new SecretKeySpec(derivedKey, "AES");
 
-            info = "SKReader".getBytes(StandardCharsets.UTF_8);
+            info = "SKReader".getBytes(UTF_8);
             derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
             mSKReader = new SecretKeySpec(derivedKey, "AES");
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
@@ -280,7 +279,7 @@ final class SessionEncryptionDevice {
 
     /**
      * Gets the number of messages encrypted with
-     * {@link #encryptMessageToReader(byte[], OptionalInt)} .
+     * {@link #encryptMessageToReader(byte[], OptionalLong)} .
      *
      * @return Number of messages encrypted.
      */

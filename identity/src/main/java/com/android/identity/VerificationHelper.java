@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
@@ -34,7 +36,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.android.identity.Constants.LoggingFlag;
 
-import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.util.ArrayList;
@@ -287,7 +288,7 @@ public class VerificationHelper {
             // version 1.5 (encoded as 0x15 below).
             //
             if (r.getTnf() == NdefRecord.TNF_WELL_KNOWN
-                    && Arrays.equals(r.getType(), "Hs".getBytes(StandardCharsets.UTF_8))) {
+                    && Arrays.equals(r.getType(), "Hs".getBytes(UTF_8))) {
                 byte[] payload = r.getPayload();
                 if (payload.length >= 1 && payload[0] == 0x15) {
                     // The NDEF payload of the Handover Select Record SHALL consist of a single
@@ -311,8 +312,8 @@ public class VerificationHelper {
             //
             if (r.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE
                     && Arrays.equals(r.getType(),
-                    "iso.org:18013:deviceengagement".getBytes(StandardCharsets.UTF_8))
-                    && Arrays.equals(r.getId(), "mdoc".getBytes(StandardCharsets.UTF_8))) {
+                    "iso.org:18013:deviceengagement".getBytes(UTF_8))
+                    && Arrays.equals(r.getId(), "mdoc".getBytes(UTF_8))) {
                 encodedDeviceEngagement = r.getPayload();
                 if (mLog.isEngagementEnabled()) {
                     mLog.engagement(
@@ -685,7 +686,7 @@ public class VerificationHelper {
      * @param listener the listener or <code>null</code> to stop listening.
      * @param executor an {@link Executor} to do the call in or <code>null</code> if
      *                 <code>listener</code> is <code>null</code>.
-     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@link null}
+     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
      * listener.
      */
     public void setListener(@Nullable Listener listener,

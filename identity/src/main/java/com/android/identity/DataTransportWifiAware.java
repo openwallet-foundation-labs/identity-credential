@@ -16,8 +16,10 @@
 
 package com.android.identity;
 
-import android.Manifest;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.Network;
@@ -61,11 +63,11 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.Locale;
+import java.util.OptionalLong;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
@@ -78,10 +80,10 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 
 /**
- * @hide
+ * Wifi Aware data transport.
  */
 @RequiresApi(Build.VERSION_CODES.Q)
-public class DataTransportWifiAware extends DataTransport {
+class DataTransportWifiAware extends DataTransport {
     public static final int DEVICE_RETRIEVAL_METHOD_TYPE = 3;
     public static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;
     public static final int RETRIEVAL_OPTION_KEY_PASSPHRASE_INFO_PASSPHRASE = 0;
@@ -114,8 +116,8 @@ public class DataTransportWifiAware extends DataTransport {
     List<DataRetrievalAddress> parseNdefRecord(@NonNull NdefRecord record) {
         String passphraseInfoPassphrase = null;
         byte[] bandInfoSupportedBands = null;
-        OptionalInt channelInfoChannelNumber = OptionalInt.empty();
-        OptionalInt channelInfoOperatingClass = OptionalInt.empty();
+        OptionalLong channelInfoChannelNumber = OptionalLong.empty();
+        OptionalLong channelInfoOperatingClass = OptionalLong.empty();
 
         // See above for OOB data and where it's defined.
         //
@@ -131,7 +133,7 @@ public class DataTransportWifiAware extends DataTransport {
                 // passphrase
                 byte[] encodedPassphrase = new byte[len - 1];
                 payload.get(encodedPassphrase, 0, len - 1);
-                passphraseInfoPassphrase = new String(encodedPassphrase, StandardCharsets.UTF_8);
+                passphraseInfoPassphrase = new String(encodedPassphrase, UTF_8);
             } else if (type == 0x04 && len > 1) {
                 bandInfoSupportedBands = new byte[len - 1];
                 payload.get(bandInfoSupportedBands, 0, len - 1);
@@ -163,13 +165,13 @@ public class DataTransportWifiAware extends DataTransport {
         if (Util.cborMapHasKey(options, 0)) {
             passphraseInfoPassphrase = Util.cborMapExtractString(options, 0);
         }
-        OptionalInt channelInfoChannelNumber = OptionalInt.empty();
+        OptionalLong channelInfoChannelNumber = OptionalLong.empty();
         if (Util.cborMapHasKey(options, 1)) {
-            channelInfoChannelNumber = OptionalInt.of(Util.cborMapExtractNumber(options, 1));
+            channelInfoChannelNumber = OptionalLong.of(Util.cborMapExtractNumber(options, 1));
         }
-        OptionalInt channelInfoOperatingClass = OptionalInt.empty();
+        OptionalLong channelInfoOperatingClass = OptionalLong.empty();
         if (Util.cborMapHasKey(options, 2)) {
-            channelInfoOperatingClass = OptionalInt.of(Util.cborMapExtractNumber(options, 2));
+            channelInfoOperatingClass = OptionalLong.of(Util.cborMapExtractNumber(options, 2));
         }
         byte[] bandInfoSupportedBands = null;
         if (Util.cborMapHasKey(options, 3)) {
@@ -187,13 +189,13 @@ public class DataTransportWifiAware extends DataTransport {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
 
         byte[] ikm = mEncodedEDeviceKeyBytes;
-        byte[] info = "NANService".getBytes(StandardCharsets.UTF_8);
+        byte[] info = "NANService".getBytes(UTF_8);
         byte[] salt = new byte[]{};
         mServiceName = Util.base16(Util.computeHkdf("HmacSha256", ikm, salt, info, 16));
         Log.d(TAG, String.format("Using service name '%s'", mServiceName));
 
         ikm = mEncodedEDeviceKeyBytes;
-        info = "NANPassphrase".getBytes(StandardCharsets.UTF_8);
+        info = "NANPassphrase".getBytes(UTF_8);
         salt = new byte[]{};
         mDerivedPassphrase = Base64.encodeToString(
                 Util.computeHkdf("HmacSha256", ikm, salt, info, 32),
@@ -266,7 +268,7 @@ public class DataTransportWifiAware extends DataTransport {
         byte[] bandInfoSupportedBands = new byte[]{(byte) (supportedBandsBitmap & 0xff)};
 
         mListeningAddress = new DataRetrievalAddressWifiAware(passphraseInfoPassphrase,
-                OptionalInt.empty(), OptionalInt.empty(),
+                OptionalLong.empty(), OptionalLong.empty(),
                 bandInfoSupportedBands);
 
         reportListeningSetupCompleted(mListeningAddress);
@@ -334,12 +336,12 @@ public class DataTransportWifiAware extends DataTransport {
 
         session.sendMessage(peerHandle,
                 0,
-                "helloSub".getBytes(StandardCharsets.UTF_8));
+                "helloSub".getBytes(UTF_8));
 
     }
 
     private void listenOnServerSocket() {
-        Thread socketServerThread = new Thread(new Runnable() {
+        Thread socketServerThread = new Thread() {
             @Override
             public void run() {
                 try {
@@ -347,12 +349,12 @@ public class DataTransportWifiAware extends DataTransport {
                     //
                     mListenerSocket = mListenerServerSocket.accept();
 
-                    Thread writingThread = new Thread(new Runnable() {
+                    Thread writingThread = new Thread() {
                         @Override
                         public void run() {
                             writeToSocket(true, mListenerSocket);
                         }
-                    });
+                    };
                     writingThread.start();
 
                     reportListeningPeerConnected();
@@ -363,7 +365,7 @@ public class DataTransportWifiAware extends DataTransport {
                     reportError(e);
                 }
             }
-        });
+        };
         socketServerThread.start();
     }
 
@@ -419,7 +421,7 @@ public class DataTransportWifiAware extends DataTransport {
 
                                 mSubscribeDiscoverySession.sendMessage(peerHandle,
                                         0,
-                                        "helloPub".getBytes(StandardCharsets.UTF_8));
+                                        "helloPub".getBytes(UTF_8));
                             }
 
                             @Override
@@ -496,7 +498,7 @@ public class DataTransportWifiAware extends DataTransport {
 
         //session.sendMessage(peerHandle,
         //        0,
-        //        "helloSub".getBytes(StandardCharsets.UTF_8));
+        //        "helloSub".getBytes(UTF_8));
 
     }
 
@@ -518,27 +520,27 @@ public class DataTransportWifiAware extends DataTransport {
 
         // TODO: it's not clear whether port should be included here, we include it for now...
         //
-        mInitiatorIPv6HostString = String.format("[%s]:%d", strippedAddress.getHostAddress(),
-                peerPort);
+        mInitiatorIPv6HostString = String.format(Locale.US,
+                "[%s]:%d", strippedAddress.getHostAddress(), peerPort);
         Log.d(TAG, "Connecting to " + mInitiatorIPv6HostString);
 
         try {
             mInitiatorSocket = network.getSocketFactory().createSocket(peerIpv6, peerPort);
 
-            Thread writingThread = new Thread(new Runnable() {
+            Thread writingThread = new Thread() {
                 @Override
                 public void run() {
                     writeToSocket(false, mInitiatorSocket);
                 }
-            });
+            };
             writingThread.start();
 
-            Thread listenerThread = new Thread(new Runnable() {
+            Thread listenerThread = new Thread() {
                 @Override
                 public void run() {
                     readFromSocket(false, mInitiatorSocket);
                 }
-            });
+            };
             listenerThread.start();
             reportConnectionResult(null);
         } catch (IOException e) {
@@ -622,13 +624,13 @@ public class DataTransportWifiAware extends DataTransport {
                     os.write(("HTTP/1.1 200 OK\r\n"
                             + "Content-Length: " + messageToSend.length + "\r\n"
                             + "Content-Type: application/CBOR\r\n"
-                            + "\r\n").getBytes(StandardCharsets.UTF_8));
+                            + "\r\n").getBytes(UTF_8));
                 } else {
                     os.write(("POST /mdoc HTTP/1.1\r\n"
                             + "Host: " + mInitiatorIPv6HostString + "\r\n"
                             + "Content-Length: " + messageToSend.length + "\r\n"
                             + "Content-Type: application/CBOR\r\n"
-                            + "\r\n").getBytes(StandardCharsets.UTF_8));
+                            + "\r\n").getBytes(UTF_8));
                 }
                 os.write(messageToSend);
                 os.flush();
@@ -671,7 +673,7 @@ public class DataTransportWifiAware extends DataTransport {
                     return;
                 }
                 Log.d(TAG, "read line '" + line + "'");
-                if (line.toLowerCase().startsWith("content-length:")) {
+                if (line.toLowerCase(Locale.US).startsWith("content-length:")) {
                     try {
                         contentLength = Integer.parseInt(line.substring(15).trim());
                     } catch (NumberFormatException e) {
@@ -718,14 +720,14 @@ public class DataTransportWifiAware extends DataTransport {
     static class DataRetrievalAddressWifiAware extends DataRetrievalAddress {
         @Nullable
         String passphraseInfoPassphrase;
-        OptionalInt channelInfoChannelNumber;
-        OptionalInt channelInfOperatingClass;
+        OptionalLong channelInfoChannelNumber;
+        OptionalLong channelInfOperatingClass;
         @Nullable
         byte[] bandInfoSupportedBands;
         // TODO: support MAC address
         DataRetrievalAddressWifiAware(@Nullable String passphraseInfoPassphrase,
-                OptionalInt channelInfoChannelNumber,
-                OptionalInt channelInfOperatingClass,
+                OptionalLong channelInfoChannelNumber,
+                OptionalLong channelInfOperatingClass,
                 @Nullable byte[] bandInfoSupportedBands) {
             this.passphraseInfoPassphrase = passphraseInfoPassphrase;
             this.channelInfoChannelNumber = channelInfoChannelNumber;
@@ -784,7 +786,7 @@ public class DataTransportWifiAware extends DataTransport {
                 // So we have to make up a passphrase.
                 //
                 byte[] encodedPassphrase = passphraseInfoPassphrase.getBytes(
-                        StandardCharsets.UTF_8);
+                        UTF_8);
                 baos.write(1 + encodedPassphrase.length);
                 baos.write(0x03); // Data Type 0x03 - Pass-phrase Info
                 baos.write(encodedPassphrase);
@@ -810,8 +812,8 @@ public class DataTransportWifiAware extends DataTransport {
             byte[] oobData = baos.toByteArray();
 
             NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
-                    "application/vnd.wfa.nan".getBytes(StandardCharsets.UTF_8),
-                    "W".getBytes(StandardCharsets.UTF_8),
+                    "application/vnd.wfa.nan".getBytes(UTF_8),
+                    "W".getBytes(UTF_8),
                     oobData);
 
             // From 7.1 Alternative Carrier Record
@@ -821,7 +823,7 @@ public class DataTransportWifiAware extends DataTransport {
             baos.write(0x01); // Length of carrier data reference ("0")
             baos.write('W');  // Carrier data reference
             baos.write(0x01); // Number of auxiliary references
-            byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+            byte[] auxReference = "mdoc".getBytes(UTF_8);
             baos.write(auxReference.length);
             baos.write(auxReference, 0, auxReference.length);
             byte[] acRecordPayload = baos.toByteArray();
@@ -845,11 +847,11 @@ public class DataTransportWifiAware extends DataTransport {
                     passphraseInfoPassphrase);
             if (channelInfoChannelNumber.isPresent()) {
                 mapBuilder.put(RETRIEVAL_OPTION_KEY_CHANNEL_INFO_CHANNEL_NUMBER,
-                        channelInfoChannelNumber.getAsInt());
+                        channelInfoChannelNumber.getAsLong());
             }
             if (channelInfOperatingClass.isPresent()) {
                 mapBuilder.put(RETRIEVAL_OPTION_KEY_CHANNEL_INFO_OPERATING_CLASS,
-                        channelInfOperatingClass.getAsInt());
+                        channelInfOperatingClass.getAsLong());
             }
             mapBuilder.put(RETRIEVAL_OPTION_KEY_BAND_INFO_SUPPORTED_BANDS, bandInfoSupportedBands);
             mapBuilder.end();
@@ -866,11 +868,11 @@ public class DataTransportWifiAware extends DataTransport {
             }
             if (channelInfoChannelNumber.isPresent()) {
                 builder.append(":channel_info_channel_number=");
-                builder.append(channelInfoChannelNumber.getAsInt());
+                builder.append(channelInfoChannelNumber.getAsLong());
             }
             if (channelInfOperatingClass.isPresent()) {
                 builder.append(":channel_info_operating_class=");
-                builder.append(channelInfOperatingClass.getAsInt());
+                builder.append(channelInfOperatingClass.getAsLong());
             }
             if (bandInfoSupportedBands != null) {
                 builder.append(":base_info_supported_bands=");
@@ -880,6 +882,7 @@ public class DataTransportWifiAware extends DataTransport {
         }
     }
 
+    @TargetApi(30)
     @RequiresApi(30)
     static class Api30Impl {
         private Api30Impl() {

@@ -19,7 +19,7 @@ package com.android.identity;
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
 import androidx.annotation.IntDef;
-import androidx.annotation.RestrictTo;
+import androidx.annotation.LongDef;
 
 import java.lang.annotation.Retention;
 
@@ -34,14 +34,14 @@ public class Constants {
      *
      * <p>This value is defined in ISO/IEC 18013-5 Table 8.
      */
-    public static final int DEVICE_RESPONSE_STATUS_OK = 0;
+    public static final long DEVICE_RESPONSE_STATUS_OK = 0;
     /**
      * The mdoc returns an error without any given
      * reason. No data is returned.
      *
      * <p>This value is defined in ISO/IEC 18013-5 Table 8.
      */
-    public static final int DEVICE_RESPONSE_STATUS_GENERAL_ERROR = 10;
+    public static final long DEVICE_RESPONSE_STATUS_GENERAL_ERROR = 10;
     /**
      * The mdoc indicates an error during CBOR decoding
      * that the data received is not valid CBOR. Returning
@@ -49,7 +49,7 @@ public class Constants {
      *
      * <p>This value is defined in ISO/IEC 18013-5 Table 8.
      */
-    public static final int DEVICE_RESPONSE_STATUS_CBOR_DECODING_ERROR = 11;
+    public static final long DEVICE_RESPONSE_STATUS_CBOR_DECODING_ERROR = 11;
     /**
      * The mdoc indicates an error during CBOR
      * validation, e.g. wrong CBOR structures. Returning
@@ -57,7 +57,7 @@ public class Constants {
      *
      * <p>This value is defined in ISO/IEC 18013-5 Table 8.
      */
-    public static final int DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR = 12;
+    public static final long DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR = 12;
     /**
      * If this flag is set, {@link PresentationHelper} and {@link VerificationHelper}
      * will log informational messages.
@@ -92,8 +92,6 @@ public class Constants {
     public static final int LOGGING_FLAG_TRANSPORT_VERBOSE = (1 << 4);
 
     /**
-     * @hide
-     *
      * Constant to request maximum amount of logging when using {@link PresentationHelper} and
      * {@link VerificationHelper}.
      *
@@ -121,11 +119,10 @@ public class Constants {
      *
      * These values are defined in ISO/IEC 18013-5 Table 8.
      *
-     * @hide
+     * @hidden
      */
     @Retention(SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    @IntDef({DEVICE_RESPONSE_STATUS_OK,
+    @LongDef({DEVICE_RESPONSE_STATUS_OK,
             DEVICE_RESPONSE_STATUS_GENERAL_ERROR,
             DEVICE_RESPONSE_STATUS_CBOR_DECODING_ERROR,
             DEVICE_RESPONSE_STATUS_CBOR_VALIDATION_ERROR})
@@ -135,10 +132,9 @@ public class Constants {
     /**
      * Logging flags.
      *
-     * @hide
+     * @hidden
      */
     @Retention(SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef(
             flag = true,
             value = {
@@ -154,10 +150,9 @@ public class Constants {
     /**
      * BLE data retrieval flags.
      *
-     * @hide
+     * @hidden
      */
     @Retention(SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef(
             flag = true,
             value = {

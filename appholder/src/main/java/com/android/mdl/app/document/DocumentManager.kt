@@ -76,7 +76,7 @@ class DocumentManager private constructor(private val context: Context) {
             IdentityCredentialStore.getSoftwareInstance(context)
         }
     } else {
-        val mStore = IdentityCredentialStore.getInstance(context)
+        val mStore = IdentityCredentialStore.getDefaultInstance(context)
         // This app needs feature version 202201, if hardware implementation doesn't support
         // get software implementation
         if (mStore.capabilities.featureVersion != FEATURE_VERSION_202201) {

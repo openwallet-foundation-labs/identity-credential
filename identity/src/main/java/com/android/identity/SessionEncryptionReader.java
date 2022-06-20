@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -23,7 +25,6 @@ import androidx.annotation.Nullable;
 
 import java.io.ByteArrayInputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -55,8 +56,6 @@ import co.nstant.in.cbor.model.UnsignedInteger;
 
 
 /**
- * @hide
- *
  * A helper class for encrypting and decrypting messages exchanged with a remote
  * mDL prover, conforming to ISO 18013-5 9.1.1 Session encryption.
  */
@@ -127,7 +126,7 @@ final class SessionEncryptionReader {
         if (!(cipherSuiteDataItem instanceof Number)) {
             throw new IllegalArgumentException("Cipher suite not a Number");
         }
-        int cipherSuite = ((Number) cipherSuiteDataItem).getValue().intValue();
+        long cipherSuite = ((Number) cipherSuiteDataItem).getValue().longValue();
         if (cipherSuite != 1) {
             throw new IllegalArgumentException("Expected cipher suite 1, got " + cipherSuite);
         }
@@ -174,12 +173,12 @@ final class SessionEncryptionReader {
                     Util.cborBuildTaggedByteString(mEncodedSessionTranscript));
             byte[] salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes);
 
-            byte[] info = "SKDevice".getBytes(StandardCharsets.UTF_8);
+            byte[] info = "SKDevice".getBytes(UTF_8);
             byte[] derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
 
             mSKDevice = new SecretKeySpec(derivedKey, "AES");
 
-            info = "SKReader".getBytes(StandardCharsets.UTF_8);
+            info = "SKReader".getBytes(UTF_8);
             derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
             mSKReader = new SecretKeySpec(derivedKey, "AES");
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {

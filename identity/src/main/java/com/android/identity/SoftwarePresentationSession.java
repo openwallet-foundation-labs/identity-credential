@@ -51,7 +51,7 @@ import javax.crypto.SecretKey;
 
 class SoftwarePresentationSession extends PresentationSession {
 
-    private static final String TAG = "SoftwarePresentationSession";
+    private static final String TAG = "SoftwarePresentSession"; // limit to <= 23 chars
     private @IdentityCredentialStore.Ciphersuite
     final int mCipherSuite;
     private final Context mContext;

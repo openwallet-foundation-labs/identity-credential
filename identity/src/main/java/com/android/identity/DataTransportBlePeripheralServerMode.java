@@ -39,11 +39,11 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * @hide BLE data transport implementation conforming to ISO 18013-5 mdoc
+ * BLE data transport implementation conforming to ISO 18013-5 mdoc
  * peripheral server mode.
  */
-public class DataTransportBlePeripheralServerMode extends DataTransportBle {
-    private static final String TAG = "DataTransportBlePeripheralServerMode";
+class DataTransportBlePeripheralServerMode extends DataTransportBle {
+    private static final String TAG = "DataTransportBlePSM"; // limit to <= 23 chars
     final Util.Logger mLog;
 
     UUID mCharacteristicStateUuid = UUID.fromString("00000001-a123-48ce-896b-4c76973373e6");

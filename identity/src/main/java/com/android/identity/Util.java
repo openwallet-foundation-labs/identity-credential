@@ -27,8 +27,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 
+import androidx.annotation.VisibleForTesting;
 import org.bouncycastle.asn1.ASN1Encodable;
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1Integer;
@@ -108,25 +108,24 @@ import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
 
 /**
- * @hide
+ * Utility functions.
  */
-@RestrictTo(RestrictTo.Scope.LIBRARY)
-public class Util {
+class Util {
     private static final String TAG = "Util";
-    private static final int COSE_LABEL_ALG = 1;
-    private static final int COSE_LABEL_X5CHAIN = 33;  // temporary identifier
+    private static final long COSE_LABEL_ALG = 1;
+    private static final long COSE_LABEL_X5CHAIN = 33;  // temporary identifier
     // From RFC 8152: Table 5: ECDSA Algorithm Values
-    private static final int COSE_ALG_ECDSA_256 = -7;
-    private static final int COSE_ALG_ECDSA_384 = -35;
-    private static final int COSE_ALG_ECDSA_512 = -36;
-    private static final int COSE_ALG_HMAC_256_256 = 5;
-    private static final int CBOR_SEMANTIC_TAG_ENCODED_CBOR = 24;
-    private static final int COSE_KEY_KTY = 1;
-    private static final int COSE_KEY_TYPE_EC2 = 2;
-    private static final int COSE_KEY_EC2_CRV = -1;
-    private static final int COSE_KEY_EC2_X = -2;
-    private static final int COSE_KEY_EC2_Y = -3;
-    private static final int COSE_KEY_EC2_CRV_P256 = 1;
+    private static final long COSE_ALG_ECDSA_256 = -7;
+    private static final long COSE_ALG_ECDSA_384 = -35;
+    private static final long COSE_ALG_ECDSA_512 = -36;
+    private static final long COSE_ALG_HMAC_256_256 = 5;
+    private static final long CBOR_SEMANTIC_TAG_ENCODED_CBOR = 24;
+    private static final long COSE_KEY_KTY = 1;
+    private static final long COSE_KEY_TYPE_EC2 = 2;
+    private static final long COSE_KEY_EC2_CRV = -1;
+    private static final long COSE_KEY_EC2_X = -2;
+    private static final long COSE_KEY_EC2_Y = -3;
+    private static final long COSE_KEY_EC2_CRV_P256 = 1;
 
     // Not called.
     private Util() {
@@ -138,67 +137,57 @@ public class Util {
      *
      * and where tag 1004 is specified in RFC 8943.
      */
-
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] fromHex(@NonNull String stringWithHex) {
         int stringLength = stringWithHex.length();
-        if ((stringLength & 1) != 0) {
-            throw new IllegalArgumentException("Invalid length of hex string");
+        if ((stringLength % 2) != 0) {
+            throw new IllegalArgumentException("Invalid length of hex string: " + stringLength);
         }
         int numBytes = stringLength / 2;
         byte[] data = new byte[numBytes];
         for (int n = 0; n < numBytes; n++) {
-            data[n] = (byte) ((Character.digit(stringWithHex.charAt(n * 2), 16) << 4)
-                    + Character.digit(stringWithHex.charAt(n * 2 + 1), 16));
+            String byteStr = stringWithHex.substring(2 * n, 2 * n + 2);
+            data[n] = (byte) Integer.parseInt(byteStr, 16);
         }
         return data;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     String toHex(@NonNull byte[] bytes) {
+        return toHex(bytes, 0, bytes.length);
+    }
+
+    @VisibleForTesting
+    static @NonNull String toHex(@NonNull byte[] bytes, int from, int to) {
+        if (from < 0 || to > bytes.length || from > to) {
+            String msg = String.format(Locale.US, "Expected 0 <= from <= to <= %d, got %d, %d.",
+                    bytes.length, from, to);
+            throw new IllegalArgumentException(msg);
+        }
         StringBuilder sb = new StringBuilder();
-        for (int n = 0; n < bytes.length; n++) {
+        for (int n = from; n < to; n++) {
             byte b = bytes[n];
             sb.append(String.format("%02x", b));
         }
         return sb.toString();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static void dumpHex(@NonNull String tag, @NonNull String message,
+    static void dumpHex(@NonNull String tag, @NonNull String message,
             @NonNull byte[] bytes) {
         Log.i(tag, message + " (" + bytes.length + " bytes)");
-        int offset = 0;
-        do {
-            StringBuilder sb = new StringBuilder();
-            for (int n = 0; n < 1024 && offset < bytes.length; n++) {
-                byte b = bytes[offset++];
-                sb.append(String.format("%02x", b));
-            }
-            Log.i(tag, "data: " + sb.toString());
-        } while (offset < bytes.length);
-    }
-
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
-    String base16(@NonNull byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (int n = 0; n < bytes.length; n++) {
-            byte b = bytes[n];
-            sb.append(String.format("%02X", b));
+        final int chunkSize = 1024;
+        for (int offset = 0; offset < bytes.length; offset += chunkSize) {
+            String s = toHex(bytes, offset, Math.min(bytes.length, offset + chunkSize));
+            Log.i(tag, "data: " + s);
         }
-        return sb.toString();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
+    String base16(@NonNull byte[] bytes) {
+        return toHex(bytes).toUpperCase(Locale.ROOT);
+    }
+
+    static @NonNull
     byte[] cborEncode(@NonNull DataItem dataItem) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
@@ -211,57 +200,57 @@ public class Util {
         return baos.toByteArray();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
+    byte[] cborEncodeWithoutCanonicalizing(@NonNull DataItem dataItem) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            new CborEncoder(baos).nonCanonical().encode(dataItem);
+        } catch (CborException e) {
+            // This should never happen and we don't want cborEncode() to throw since that
+            // would complicate all callers. Log it instead.
+            throw new IllegalStateException("Unexpected failure encoding data", e);
+        }
+        return baos.toByteArray();
+    }
+
+    static @NonNull
     byte[] cborEncodeBoolean(boolean value) {
         return cborEncode(new CborBuilder().add(value).build().get(0));
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] cborEncodeString(@NonNull String value) {
         return cborEncode(new CborBuilder().add(value).build().get(0));
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] cborEncodeNumber(long value) {
         return cborEncode(new CborBuilder().add(value).build().get(0));
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] cborEncodeBytestring(@NonNull byte[] value) {
         return cborEncode(new CborBuilder().add(value).build().get(0));
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] cborEncodeDateTime(@NonNull Calendar calendar) {
         return cborEncode(cborBuildDateTime(calendar));
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] cborEncodeDateTimeFor18013_5(@NonNull Calendar calendar) {
         return cborEncode(cborBuildDateTimeFor18013_5(calendar));
     }
 
     /**
-     * @hide Returns #6.0(tstr) where tstr is the ISO 8601 encoding of the given point in time.
+     * Returns #6.0(tstr) where tstr is the ISO 8601 encoding of the given point in time.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem cborBuildDateTime(@NonNull Calendar calendar) {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
         if (calendar.isSet(Calendar.MILLISECOND) && calendar.get(Calendar.MILLISECOND) != 0) {
-            df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+            df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US);
         }
         df.setTimeZone(calendar.getTimeZone());
         Date val = calendar.getTime();
@@ -272,17 +261,16 @@ public class Util {
     }
 
     /**
-     * @hide Like cborBuildDateTime() but with the additional restrictions for tdate
+     * Like cborBuildDateTime() but with the additional restrictions for tdate
      * as specified in ISO/IEC 18013-5:
      *
      * - fraction of seconds shall not be used;
      * - no local offset from UTC shall be used, as indicated by setting
      * the time-offset defined in RFC 3339 to “Z”.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem cborBuildDateTimeFor18013_5(@NonNull Calendar calendar) {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
         df.setTimeZone(TimeZone.GMT_ZONE);
         Date val = calendar.getTime();
         String dateString = df.format(val);
@@ -291,9 +279,7 @@ public class Util {
         return dataItem;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem cborDecode(@NonNull byte[] encodedBytes) {
         ByteArrayInputStream bais = new ByteArrayInputStream(encodedBytes);
         List<DataItem> dataItems = null;
@@ -309,50 +295,35 @@ public class Util {
         return dataItems.get(0);
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean cborDecodeBoolean(@NonNull byte[] data) {
+    static boolean cborDecodeBoolean(@NonNull byte[] data) {
         SimpleValue simple = (SimpleValue) cborDecode(data);
         return simple.getSimpleValueType() == SimpleValueType.TRUE;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     String cborDecodeString(@NonNull byte[] data) {
         DataItem dataItem = cborDecode(data);
-        if (!(dataItem instanceof UnicodeString)) {
-            throw new IllegalArgumentException("Given CBOR is not a tstr");
-        }
-        return ((UnicodeString) dataItem).getString();
+        return castTo(UnicodeString.class, dataItem).getString();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static long cborDecodeLong(@NonNull byte[] data) {
+    static long cborDecodeLong(@NonNull byte[] data) {
         DataItem dataItem = cborDecode(data);
-        if (!(dataItem instanceof Number)) {
-            throw new IllegalArgumentException("Given CBOR is not a Number");
-        }
-        return ((co.nstant.in.cbor.model.Number) dataItem).getValue().longValue();
+        return castTo(Number.class, dataItem).getValue().longValue();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] cborDecodeByteString(@NonNull byte[] data) {
         DataItem dataItem = cborDecode(data);
-        if (!(dataItem instanceof ByteString)) {
-            throw new IllegalArgumentException("Given CBOR is not a bstr");
-        }
-        return ((co.nstant.in.cbor.model.ByteString) dataItem).getBytes();
+        return castTo(ByteString.class, dataItem).getBytes();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     Calendar cborDecodeDateTime(@NonNull byte[] data) {
-        DataItem di = cborDecode(data);
+        return cborDecodeDateTime(cborDecode(data));
+    }
+
+    static @NonNull
+    Calendar cborDecodeDateTime(DataItem di) {
         if (!(di instanceof co.nstant.in.cbor.model.UnicodeString)) {
             throw new IllegalArgumentException("Passed in data is not a Unicode-string");
         }
@@ -395,15 +366,32 @@ public class Util {
     }
 
     /**
-     * @param certificateChain the chain to validate.
-     * @return <code>true</code> if valid, <code>false</code> otherwise.
-     * @hide Helper function to check if a given certificate chain is valid.
+     * Similar to a typecast of {@code value} to the given type {@code clazz}, except:
+     * <ul>
+     *   <li>Throws {@code IllegalArgumentException} instead of {@code ClassCastException} if
+     *       {@code !clazz.isAssignableFrom(value.getClass())}.</li>
+     *   <li>Also throws {@code IllegalArgumentException} if {@code value == null}.</li>
+     * </ul>
+     */
+    static @NonNull<T extends V, V> T castTo(Class<T> clazz, V value) {
+        if (value == null || !clazz.isAssignableFrom(value.getClass())) {
+            String valueStr = (value == null) ? "null" : value.getClass().toString();
+            throw new IllegalArgumentException("Expected type " + clazz + ", got type " + valueStr);
+        } else {
+            return (T) value;
+        }
+    }
+
+    /**
+     * Helper function to check if a given certificate chain is valid.
      *
      * NOTE NOTE NOTE: We only check that the certificates in the chain sign each other. We
      * <em>specifically</em> don't check that each certificate is also a CA certificate.
+     * 
+     * @param certificateChain the chain to validate.
+     * @return <code>true</code> if valid, <code>false</code> otherwise.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean validateCertificateChain(
+    static boolean validateCertificateChain(
             @NonNull Collection<X509Certificate> certificateChain) {
         // First check that each certificate signs the previous one...
         X509Certificate prevCertificate = null;
@@ -431,6 +419,12 @@ public class Util {
     }
 
     /**
+     * Computes an HKDF.
+     *
+     * This is based on https://github.com/google/tink/blob/master/java/src/main/java/com/google
+     * /crypto/tink/subtle/Hkdf.java
+     * which is also Copyright (c) Google and also licensed under the Apache 2 license.
+     * 
      * @param macAlgorithm the MAC algorithm used for computing the Hkdf. I.e., "HMACSHA1" or
      *                     "HMACSHA256".
      * @param ikm          the input keying material.
@@ -443,14 +437,8 @@ public class Util {
      *                     size is
      *                     255.DigestSize, where DigestSize is the size of the underlying HMAC.
      * @return size pseudorandom bytes.
-     * @hide Computes an HKDF.
-     *
-     * This is based on https://github.com/google/tink/blob/master/java/src/main/java/com/google
-     * /crypto/tink/subtle/Hkdf.java
-     * which is also Copyright (c) Google and also licensed under the Apache 2 license.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] computeHkdf(
             @NonNull String macAlgorithm, @NonNull final byte[] ikm, @NonNull final byte[] salt,
             @NonNull final byte[] info, int size) {
@@ -544,21 +532,12 @@ public class Util {
         } catch (IOException e) {
             throw new IllegalArgumentException("Error decoding DER signature", e);
         }
-        if (!(asn1 instanceof ASN1Sequence)) {
-            throw new IllegalArgumentException("Not a ASN1 sequence");
-        }
-        ASN1Encodable[] asn1Encodables = ((ASN1Sequence) asn1).toArray();
+        ASN1Encodable[] asn1Encodables = castTo(ASN1Sequence.class, asn1).toArray();
         if (asn1Encodables.length != 2) {
             throw new IllegalArgumentException("Expected two items in sequence");
         }
-        if (!(asn1Encodables[0].toASN1Primitive() instanceof ASN1Integer)) {
-            throw new IllegalArgumentException("First item is not an integer");
-        }
-        BigInteger r = ((ASN1Integer) asn1Encodables[0].toASN1Primitive()).getValue();
-        if (!(asn1Encodables[1].toASN1Primitive() instanceof ASN1Integer)) {
-            throw new IllegalArgumentException("Second item is not an integer");
-        }
-        BigInteger s = ((ASN1Integer) asn1Encodables[1].toASN1Primitive()).getValue();
+        BigInteger r = castTo(ASN1Integer.class, asn1Encodables[0].toASN1Primitive()).getValue();
+        BigInteger s = castTo(ASN1Integer.class, asn1Encodables[1].toASN1Primitive()).getValue();
 
         byte[] rBytes = stripLeadingZeroes(r.toByteArray());
         byte[] sBytes = stripLeadingZeroes(s.toByteArray());
@@ -599,9 +578,7 @@ public class Util {
         return baos.toByteArray();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem coseSign1Sign(@NonNull Signature s,
             @Nullable byte[] data,
             @Nullable byte[] detachedContent,
@@ -614,7 +591,7 @@ public class Util {
         }
 
         int keySize;
-        int alg;
+        long alg;
         if (s.getAlgorithm().equals("SHA256withECDSA")) {
             keySize = 32;
             alg = COSE_ALG_ECDSA_256;
@@ -683,11 +660,8 @@ public class Util {
      * Currently only ECDSA signatures are supported.
      *
      * TODO: add support and tests for Ed25519 and Ed448.
-     *
-     * @hide
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem coseSign1Sign(@NonNull PrivateKey key,
             @NonNull String algorithm, @Nullable byte[] data,
             @Nullable byte[] additionalData,
@@ -705,11 +679,8 @@ public class Util {
      * Currently only ECDSA signatures are supported.
      *
      * TODO: add support and tests for Ed25519 and Ed448.
-     *
-     * @hide
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean coseSign1CheckSignature(@NonNull DataItem coseSign1,
+    static boolean coseSign1CheckSignature(@NonNull DataItem coseSign1,
             @NonNull byte[] detachedContent, @NonNull PublicKey publicKey) {
         if (coseSign1.getMajorType() != MajorType.ARRAY) {
             throw new IllegalArgumentException("Data item is not an array");
@@ -754,20 +725,16 @@ public class Util {
         }
 
         DataItem protectedHeaders = cborDecode(encodedProtectedHeaders);
-        int alg = cborMapExtractNumber((Map) protectedHeaders, COSE_LABEL_ALG);
+        long alg = cborMapExtractNumber((Map) protectedHeaders, COSE_LABEL_ALG);
         String signature;
-        switch (alg) {
-            case COSE_ALG_ECDSA_256:
-                signature = "SHA256withECDSA";
-                break;
-            case COSE_ALG_ECDSA_384:
-                signature = "SHA384withECDSA";
-                break;
-            case COSE_ALG_ECDSA_512:
-                signature = "SHA512withECDSA";
-                break;
-            default:
-                throw new IllegalArgumentException("Unsupported COSE alg " + alg);
+        if (alg == COSE_ALG_ECDSA_256) {
+            signature = "SHA256withECDSA";
+        } else if (alg == COSE_ALG_ECDSA_384) {
+            signature = "SHA384withECDSA";
+        } else if (alg == COSE_ALG_ECDSA_512) {
+            signature = "SHA512withECDSA";
+        } else {
+            throw new IllegalArgumentException("Unsupported COSE alg " + alg);
         }
 
         byte[] toBeSigned = Util.coseBuildToBeSigned(encodedProtectedHeaders, payload,
@@ -814,9 +781,7 @@ public class Util {
         return cborEncode(macStructure.build().get(0));
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem coseMac0(@NonNull SecretKey key,
             @Nullable byte[] data,
             @Nullable byte[] detachedContent) {
@@ -859,30 +824,20 @@ public class Util {
         return builder.build().get(0);
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] coseMac0GetTag(@NonNull DataItem coseMac0) {
-        if (!(coseMac0 instanceof Array)) {
-            throw new IllegalArgumentException("coseMac0 is not an array");
-        }
-        List<DataItem> items = ((Array) coseMac0).getDataItems();
+        List<DataItem> items = castTo(Array.class, coseMac0).getDataItems();
         if (items.size() < 4) {
             throw new IllegalArgumentException("coseMac0 have less than 4 elements");
         }
         DataItem tagItem = items.get(3);
-        if (!(tagItem instanceof ByteString)) {
-            throw new IllegalArgumentException("tag in coseMac0 is not a ByteString");
-        }
-        return ((ByteString) tagItem).getBytes();
+        return castTo(ByteString.class, tagItem).getBytes();
     }
 
     /**
-     * @hide Brute-force but good enough since users will only pass relatively small amounts of
-     * data.
+     * Brute-force but good enough since users will only pass relatively small amounts of data.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean hasSubByteArray(@NonNull byte[] haystack, @NonNull byte[] needle) {
+    static boolean hasSubByteArray(@NonNull byte[] haystack, @NonNull byte[] needle) {
         int n = 0;
         while (needle.length + n <= haystack.length) {
             boolean found = true;
@@ -900,9 +855,7 @@ public class Util {
         return false;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] stripLeadingZeroes(@NonNull byte[] value) {
         int n = 0;
         while (n < value.length && value[n] == 0) {
@@ -918,10 +871,9 @@ public class Util {
     }
 
     /**
-     * @hide Returns #6.24(bstr) of the given already encoded CBOR
+     * Returns #6.24(bstr) of the given already encoded CBOR
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem cborBuildTaggedByteString(@NonNull byte[] encodedCbor) {
         DataItem item = new ByteString(encodedCbor);
         item.setTag(CBOR_SEMANTIC_TAG_ENCODED_CBOR);
@@ -929,33 +881,42 @@ public class Util {
     }
 
     /**
-     * @hide For a #6.24(bstr), extracts the bytes and decodes it and returns
-     * the decoded CBOR as a DataItem.
+     * For a #6.24(bstr), extracts the bytes.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
-    DataItem cborExtractTaggedAndEncodedCbor(@NonNull DataItem item) {
-        if (!(item instanceof ByteString)) {
-            throw new IllegalArgumentException("Item is not a ByteString");
-        }
+    static @NonNull
+    byte[] cborExtractTaggedCbor(@NonNull byte[] encodedTaggedBytestring) {
+        DataItem item = cborDecode(encodedTaggedBytestring);
+        ByteString itemByteString = castTo(ByteString.class, item);
         if (!item.hasTag() || item.getTag().getValue() != CBOR_SEMANTIC_TAG_ENCODED_CBOR) {
             throw new IllegalArgumentException("ByteString is not tagged with tag 24");
         }
-        byte[] encodedCbor = ((ByteString) item).getBytes();
+        return itemByteString.getBytes();
+    }
+
+    /**
+     * For a #6.24(bstr), extracts the bytes and decodes it and returns
+     * the decoded CBOR as a DataItem.
+     */
+    static @NonNull
+    DataItem cborExtractTaggedAndEncodedCbor(@NonNull DataItem item) {
+        ByteString itemByteString = castTo(ByteString.class, item);
+        if (!item.hasTag() || item.getTag().getValue() != CBOR_SEMANTIC_TAG_ENCODED_CBOR) {
+            throw new IllegalArgumentException("ByteString is not tagged with tag 24");
+        }
+        byte[] encodedCbor = itemByteString.getBytes();
         DataItem embeddedItem = cborDecode(encodedCbor);
         return embeddedItem;
     }
 
     /**
-     * @hide Returns the empty byte-array if no data is included in the structure.
+     * Returns the empty byte-array if no data is included in the structure.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] coseSign1GetData(@NonNull DataItem coseSign1) {
         if (coseSign1.getMajorType() != MajorType.ARRAY) {
             throw new IllegalArgumentException("Data item is not an array");
         }
-        List<DataItem> items = ((co.nstant.in.cbor.model.Array) coseSign1).getDataItems();
+        List<DataItem> items = castTo(co.nstant.in.cbor.model.Array.class, coseSign1).getDataItems();
         if (items.size() < 4) {
             throw new IllegalArgumentException("Expected at least four items in COSE_Sign1 array");
         }
@@ -966,13 +927,13 @@ public class Util {
                 throw new IllegalArgumentException(
                         "Item 2 (payload) is a special but not a simple value");
             }
-            SimpleValue simple = (co.nstant.in.cbor.model.SimpleValue) items.get(2);
+            SimpleValue simple = castTo(co.nstant.in.cbor.model.SimpleValue.class, items.get(2));
             if (simple.getSimpleValueType() != SimpleValueType.NULL) {
                 throw new IllegalArgumentException(
                         "Item 2 (payload) is a simple but not the value null");
             }
         } else if (items.get(2).getMajorType() == MajorType.BYTE_STRING) {
-            payload = ((co.nstant.in.cbor.model.ByteString) items.get(2)).getBytes();
+            payload = castTo(co.nstant.in.cbor.model.ByteString.class, items.get(2)).getBytes();
         } else {
             throw new IllegalArgumentException("Item 2 (payload) is not nil or byte-string");
         }
@@ -980,19 +941,18 @@ public class Util {
     }
 
     /**
-     * @hide Returns the empty collection if no x5chain is included in the structure.
+     * Returns the empty collection if no x5chain is included in the structure.
      *
      * Throws exception if the given bytes aren't valid COSE_Sign1.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     List<X509Certificate> coseSign1GetX5Chain(
             @NonNull DataItem coseSign1) {
         ArrayList<X509Certificate> ret = new ArrayList<>();
         if (coseSign1.getMajorType() != MajorType.ARRAY) {
             throw new IllegalArgumentException("Data item is not an array");
         }
-        List<DataItem> items = ((co.nstant.in.cbor.model.Array) coseSign1).getDataItems();
+        List<DataItem> items = castTo(co.nstant.in.cbor.model.Array.class, coseSign1).getDataItems();
         if (items.size() < 4) {
             throw new IllegalArgumentException("Expected at least four items in COSE_Sign1 array");
         }
@@ -1006,16 +966,12 @@ public class Util {
                 CertificateFactory factory = CertificateFactory.getInstance("X.509");
                 if (x5chainItem instanceof ByteString) {
                     ByteArrayInputStream certBais = new ByteArrayInputStream(
-                            ((ByteString) x5chainItem).getBytes());
+                            castTo(ByteString.class, x5chainItem).getBytes());
                     ret.add((X509Certificate) factory.generateCertificate(certBais));
                 } else if (x5chainItem instanceof Array) {
-                    for (DataItem certItem : ((Array) x5chainItem).getDataItems()) {
-                        if (!(certItem instanceof ByteString)) {
-                            throw new IllegalArgumentException(
-                                    "Unexpected type for array item in x5chain value");
-                        }
+                    for (DataItem certItem : castTo(Array.class, x5chainItem).getDataItems()) {
                         ByteArrayInputStream certBais = new ByteArrayInputStream(
-                                ((ByteString) certItem).getBytes());
+                                castTo(ByteString.class, certItem).getBytes());
                         ret.add((X509Certificate) factory.generateCertificate(certBais));
                     }
                 } else {
@@ -1028,9 +984,7 @@ public class Util {
         return ret;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem cborBuildCoseKey(@NonNull PublicKey key) {
         ECPublicKey ecKey = (ECPublicKey) key;
         ECPoint w = ecKey.getW();
@@ -1049,245 +1003,129 @@ public class Util {
         return item;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean cborMapHasKey(@NonNull DataItem map, @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
+    static boolean cborMapHasKey(@NonNull DataItem map, @NonNull String key) {
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
         return item != null;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean cborMapHasKey(@NonNull DataItem map, int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
+    static boolean cborMapHasKey(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
         return item != null;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static int cborMapExtractNumber(@NonNull DataItem map, int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
+    static long cborMapExtractNumber(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (item == null || !(item instanceof Number)) {
-            throw new IllegalArgumentException("Expected Number");
-        }
-        return ((Number) item).getValue().intValue();
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(Number.class, item).getValue().longValue();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static int cborMapExtractNumber(@NonNull DataItem map, @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof Number)) {
-            throw new IllegalArgumentException("Expected Number");
-        }
-        return ((Number) item).getValue().intValue();
+    static long cborMapExtractNumber(@NonNull DataItem map, @NonNull String key) {
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(Number.class, item).getValue().longValue();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     String cborMapExtractString(@NonNull DataItem map,
             @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (!(item instanceof UnicodeString)) {
-            throw new IllegalArgumentException("Expected UnicodeString");
-        }
-        return ((UnicodeString) item).getString();
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(UnicodeString.class, item).getString();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
-    String cborMapExtractString(@NonNull DataItem map,
-            int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
+    static @NonNull
+    String cborMapExtractString(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (!(item instanceof UnicodeString)) {
-            throw new IllegalArgumentException("Expected UnicodeString");
-        }
-        return ((UnicodeString) item).getString();
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(UnicodeString.class, item).getString();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     List<DataItem> cborMapExtractArray(@NonNull DataItem map,
             @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof Array)) {
-            throw new IllegalArgumentException("Expected Array");
-        }
-        return ((Array) item).getDataItems();
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(Array.class, item).getDataItems();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
-    List<DataItem> cborMapExtractArray(@NonNull DataItem map, int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
+    static @NonNull
+    List<DataItem> cborMapExtractArray(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (item == null || !(item instanceof Array)) {
-            throw new IllegalArgumentException("Expected Array");
-        }
-        return ((Array) item).getDataItems();
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(Array.class, item).getDataItems();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     DataItem cborMapExtractMap(@NonNull DataItem map,
             @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof Map)) {
-            throw new IllegalArgumentException("Expected Map");
-        }
-        return item;
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(Map.class, item);
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     Collection<String> cborMapExtractMapStringKeys(@NonNull DataItem map) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        ArrayList<String> ret = new ArrayList<>();
-        for (DataItem item : ((Map) map).getKeys()) {
-            if (!(item instanceof UnicodeString)) {
-                throw new IllegalArgumentException("Expected UnicodeString");
-            }
-            ret.add(((UnicodeString) item).getString());
+        List<String> ret = new ArrayList<>();
+        for (DataItem item : castTo(Map.class, map).getKeys()) {
+            ret.add(castTo(UnicodeString.class, item).getString());
         }
         return ret;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
-    Collection<Integer> cborMapExtractMapNumberKeys(@NonNull DataItem map) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        ArrayList<Integer> ret = new ArrayList<>();
-        for (DataItem item : ((Map) map).getKeys()) {
-            if (!(item instanceof Number)) {
-                throw new IllegalArgumentException("Expected Number");
-            }
-            ret.add(((Number) item).getValue().intValue());
+    static @NonNull
+    Collection<Long> cborMapExtractMapNumberKeys(@NonNull DataItem map) {
+        List<Long> ret = new ArrayList<>();
+        for (DataItem item : castTo(Map.class, map).getKeys()) {
+            ret.add(castTo(Number.class, item).getValue().longValue());
         }
         return ret;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] cborMapExtractByteString(@NonNull DataItem map,
-            int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
+            long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (item == null || !(item instanceof ByteString)) {
-            throw new IllegalArgumentException("Expected ByteString");
-        }
-        return ((ByteString) item).getBytes();
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(ByteString.class, item).getBytes();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] cborMapExtractByteString(@NonNull DataItem map,
             @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof ByteString)) {
-            throw new IllegalArgumentException("Expected ByteString");
-        }
-        return ((ByteString) item).getBytes();
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(ByteString.class, item).getBytes();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean cborMapExtractBoolean(@NonNull DataItem map, @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
-        if (item == null || !(item instanceof SimpleValue)) {
-            throw new IllegalArgumentException("Expected SimpleValue");
-        }
-        return ((SimpleValue) item).getSimpleValueType() == SimpleValueType.TRUE;
+    static boolean cborMapExtractBoolean(@NonNull DataItem map, @NonNull String key) {
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        return castTo(SimpleValue.class, item).getSimpleValueType() == SimpleValueType.TRUE;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static boolean cborMapExtractBoolean(@NonNull DataItem map, int key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
+    static boolean cborMapExtractBoolean(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
-        DataItem item = ((Map) map).get(keyDataItem);
-        if (item == null || !(item instanceof SimpleValue)) {
-            throw new IllegalArgumentException("Expected SimpleValue");
-        }
-        return ((SimpleValue) item).getSimpleValueType() == SimpleValueType.TRUE;
+        DataItem item = castTo(Map.class, map).get(keyDataItem);
+        return castTo(SimpleValue.class, item).getSimpleValueType() == SimpleValueType.TRUE;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static Calendar cborMapExtractDateTime(@NonNull DataItem map, String key) {
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
+        UnicodeString unicodeString = castTo(UnicodeString.class, item);
+        return cborDecodeDateTime(unicodeString);
+    }
+
+    static @NonNull
     DataItem cborMapExtract(@NonNull DataItem map, @NonNull String key) {
-        if (!(map instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        DataItem item = ((Map) map).get(new UnicodeString(key));
+        DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
         if (item == null) {
             throw new IllegalArgumentException("Expected item");
         }
         return item;
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     PublicKey coseKeyDecode(@NonNull DataItem coseKey) {
-        int kty = cborMapExtractNumber(coseKey, COSE_KEY_KTY);
+        long kty = cborMapExtractNumber(coseKey, COSE_KEY_KTY);
         if (kty != COSE_KEY_TYPE_EC2) {
             throw new IllegalArgumentException("Expected COSE_KEY_TYPE_EC2, got " + kty);
         }
-        int crv = cborMapExtractNumber(coseKey, COSE_KEY_EC2_CRV);
+        long crv = cborMapExtractNumber(coseKey, COSE_KEY_EC2_CRV);
         if (crv != COSE_KEY_EC2_CRV_P256) {
             throw new IllegalArgumentException("Expected COSE_KEY_EC2_CRV_P256, got " + crv);
         }
@@ -1315,9 +1153,7 @@ public class Util {
         }
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     SecretKey calcEMacKeyForReader(
             @NonNull PublicKey authenticationPublicKey,
             @NonNull PrivateKey ephemeralReaderPrivateKey,
@@ -1343,18 +1179,14 @@ public class Util {
         }
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     String cborPrettyPrint(@NonNull DataItem dataItem) {
         StringBuilder sb = new StringBuilder();
         cborPrettyPrintDataItem(sb, 0, dataItem);
         return sb.toString();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     String cborPrettyPrint(@NonNull byte[] encodedBytes) {
         StringBuilder sb = new StringBuilder();
 
@@ -1401,7 +1233,7 @@ public class Util {
         String indentString = indentBuilder.toString();
 
         if (dataItem.hasTag()) {
-            sb.append(String.format("tag %d ", dataItem.getTag().getValue()));
+            sb.append(String.format(Locale.US, "tag %d ", dataItem.getTag().getValue()));
         }
 
         switch (dataItem.getMajorType()) {
@@ -1545,16 +1377,12 @@ public class Util {
         }
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] canonicalizeCbor(@NonNull byte[] encodedCbor) {
         return cborEncode(cborDecode(encodedCbor));
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     String replaceLine(@NonNull String text, int lineNumber,
             @NonNull String replacementLine) {
         @SuppressWarnings("StringSplitter")
@@ -1583,8 +1411,6 @@ public class Util {
     }
 
     /**
-     * @hide
-     *
      * Helper function to create a CBOR data for requesting data items. The IntentToRetain
      * value will be set to false for all elements.
      *
@@ -1621,8 +1447,7 @@ public class Util {
      *
      * TODO: docType is no longer optional so change docType to be NonNull and update all callers.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] createItemsRequest(
             @NonNull java.util.Map<String, Collection<String>> entriesToRequest,
             @Nullable String docType) {
@@ -1644,9 +1469,7 @@ public class Util {
         return cborEncode(builder.build().get(0));
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @Nullable
+    static @Nullable
     byte[] getPopSha256FromAuthKeyCert(@NonNull X509Certificate cert) {
         byte[] octetString = cert.getExtensionValue("1.3.6.1.4.1.11129.2.1.26");
         if (octetString == null) {
@@ -1661,26 +1484,17 @@ public class Util {
             if (dataItems.size() != 1) {
                 throw new IllegalArgumentException("Expected 1 item, found " + dataItems.size());
             }
-            if (!(dataItems.get(0) instanceof Array)) {
-                throw new IllegalArgumentException("Item is not a map");
-            }
-            Array array = (Array) dataItems.get(0);
+            Array array = castTo(Array.class, dataItems.get(0));
             List<DataItem> items = array.getDataItems();
             if (items.size() < 2) {
                 throw new IllegalArgumentException(
                         "Expected at least 2 array items, found " + items.size());
             }
-            if (!(items.get(0) instanceof UnicodeString)) {
-                throw new IllegalArgumentException("First array item is not a string");
-            }
-            String id = ((UnicodeString) items.get(0)).getString();
+            String id = castTo(UnicodeString.class, items.get(0)).getString();
             if (!id.equals("ProofOfBinding")) {
                 throw new IllegalArgumentException("Expected ProofOfBinding, got " + id);
             }
-            if (!(items.get(1) instanceof ByteString)) {
-                throw new IllegalArgumentException("Second array item is not a bytestring");
-            }
-            byte[] popSha256 = ((ByteString) items.get(1)).getBytes();
+            byte[] popSha256 = castTo(ByteString.class, items.get(1)).getBytes();
             if (popSha256.length != 32) {
                 throw new IllegalArgumentException(
                         "Expected bstr to be 32 bytes, it is " + popSha256.length);
@@ -1693,10 +1507,8 @@ public class Util {
         }
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
-    DataItem calcIssuerSignedItemBytes(int digestID,
+    static @NonNull
+    DataItem calcIssuerSignedItemBytes(long digestID,
             @NonNull byte[] random,
             @NonNull String elementIdentifier,
             @NonNull DataItem elementValue) {
@@ -1716,13 +1528,12 @@ public class Util {
     /**
      * @param encodedIssuerSignedItemBytes encoded CBOR conforming to IssuerSignedItemBytes.
      * @return Same as given CBOR but with elementValue set to NULL.
-     * @hide Clears elementValue in IssuerSignedItemBytes CBOR.
+     * 
+     * Clears elementValue in IssuerSignedItemBytes CBOR.
      *
      * Throws if the given encodedIssuerSignedItemBytes isn't IssuersignedItemBytes.
      */
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] issuerSignedItemBytesClearValue(
             @NonNull byte[] encodedIssuerSignedItemBytes) {
         byte[] encodedNullValue = Util.cborEncode(SimpleValue.NULL);
@@ -1733,37 +1544,30 @@ public class Util {
      * @param encodedIssuerSignedItemBytes encoded CBOR conforming to IssuerSignedItemBytes.
      * @param encodedElementValue          the value to set elementValue to.
      * @return Same as given CBOR but with elementValue set to given value.
-     * @hide Sets elementValue in IssuerSignedItemBytes CBOR.
+     * 
+     * Sets elementValue in IssuerSignedItemBytes CBOR.
      *
      * Throws if the given encodedIssuerSignedItemBytes isn't IssuersignedItemBytes.
      */
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     byte[] issuerSignedItemBytesSetValue(
             @NonNull byte[] encodedIssuerSignedItemBytes,
             @NonNull byte[] encodedElementValue) {
-        // TODO: do this in a way where the map order is preserved.
-        //
         DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
         DataItem issuerSignedItemElem =
                 Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
-        if (!(issuerSignedItemElem instanceof Map)) {
-            throw new IllegalArgumentException("Expected map");
-        }
-        Map issuerSignedItem = (Map) issuerSignedItemElem;
+        Map issuerSignedItem = castTo(Map.class, issuerSignedItemElem);
         DataItem elementValue = Util.cborDecode(encodedElementValue);
         issuerSignedItem.put(new UnicodeString("elementValue"), elementValue);
 
+        // By using the non-canonical encoder the order is preserved.
         DataItem newIssuerSignedItemBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncode(issuerSignedItem));
+                Util.cborEncodeWithoutCanonicalizing(issuerSignedItem));
 
         return Util.cborEncode(newIssuerSignedItemBytes);
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     PrivateKey getPrivateKeyFromInteger(@NonNull BigInteger s) {
         try {
             AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
@@ -1781,9 +1585,7 @@ public class Util {
         }
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     PublicKey getPublicKeyFromIntegers(@NonNull BigInteger x,
             @NonNull BigInteger y) {
         try {
@@ -1805,7 +1607,7 @@ public class Util {
 
     // Returns null on End Of Stream.
     //
-    static public @Nullable
+    static @Nullable
     ByteBuffer readBytes(@NonNull InputStream inputStream, int numBytes)
             throws IOException {
         ByteBuffer data = ByteBuffer.allocate(numBytes);
@@ -1827,7 +1629,7 @@ public class Util {
 
     // TODO: Maybe return List<DataItem> instead of reencoding.
     //
-    public static @NonNull
+    static @NonNull
     List<byte[]> extractDeviceRetrievalMethods(
             @NonNull byte[] encodedDeviceEngagement) {
         List<byte[]> ret = new ArrayList<>();
@@ -1839,12 +1641,12 @@ public class Util {
         return ret;
     }
 
-    public static int getDeviceRetrievalMethodType(@NonNull byte[] encodeDeviceRetrievalMethod) {
+    static long getDeviceRetrievalMethodType(@NonNull byte[] encodeDeviceRetrievalMethod) {
         List<DataItem> di = ((Array) Util.cborDecode(encodeDeviceRetrievalMethod)).getDataItems();
-        return ((co.nstant.in.cbor.model.Number) di.get(0)).getValue().intValue();
+        return ((co.nstant.in.cbor.model.Number) di.get(0)).getValue().longValue();
     }
 
-    public static @NonNull KeyPair createEphemeralKeyPair() {
+    static @NonNull KeyPair createEphemeralKeyPair() {
         try {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
             ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime256v1");
@@ -1857,9 +1659,7 @@ public class Util {
         }
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public static @NonNull
+    static @NonNull
     X509Certificate signPublicKeyWithPrivateKey(@NonNull String keyToSignAlias,
             @NonNull String keyToSignWithAlias) {
         KeyStore ks = null;
@@ -1957,18 +1757,18 @@ public class Util {
                 | SignatureException
                 | UnrecoverableEntryException
                 | CertificateException e) {
-            throw new IllegalStateException("Error signing public key with private key", e);
+            throw new IllegalStateException("Error signing key with private key", e);
         }
     }
 
     // This returns a SessionTranscript which satisfy the requirement
-    // that the uncompressed X and Y coordinates of the public key for the
+    // that the uncompressed X and Y coordinates of the key for the
     // mDL's ephemeral key-pair appear somewhere in the encoded
     // DeviceEngagement.
     //
     // TODO: rename to buildFakeSessionTranscript().
     //
-    public static @NonNull byte[] buildSessionTranscript(@NonNull KeyPair ephemeralKeyPair) {
+    static @NonNull byte[] buildSessionTranscript(@NonNull KeyPair ephemeralKeyPair) {
         // Make the coordinates appear in an already encoded bstr - this
         // mimics how the mDL COSE_Key appear as encoded data inside the
         // encoded DeviceEngagement
@@ -2021,8 +1821,6 @@ public class Util {
         return baos.toByteArray();
     }
 
-    /** @hide */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     static IdentityCredentialStore getIdentityCredentialStore(@NonNull Context context) {
         // We generally want to run all tests against the software implementation since
         // hardware-based implementations are already tested against CTS and VTS and the bulk
@@ -2040,10 +1838,9 @@ public class Util {
         return IdentityCredentialStore.getSoftwareInstance(context);
     }
 
-    /** @hide
+    /**
      * Helper class for logging.
      */
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     static class Logger {
         private final String mTag;
         private @Constants.LoggingFlag int mLoggingFlags;

@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.content.Context;
 import android.net.Uri;
 import android.nfc.NdefMessage;
@@ -29,21 +31,18 @@ import android.util.Pair;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
 import com.android.identity.Constants.BleDataRetrievalOption;
 import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 
@@ -197,7 +196,7 @@ public class PresentationHelper {
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceEngagementReady());
+            executor.execute(listener::onDeviceEngagementReady);
         }
     }
 
@@ -206,7 +205,7 @@ public class PresentationHelper {
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onEngagementDetected());
+            executor.execute(listener::onEngagementDetected);
         }
     }
 
@@ -215,7 +214,7 @@ public class PresentationHelper {
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceConnecting());
+            executor.execute(listener::onDeviceConnecting);
         }
     }
 
@@ -224,7 +223,7 @@ public class PresentationHelper {
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceConnected());
+            executor.execute(listener::onDeviceConnected);
         }
     }
 
@@ -261,11 +260,9 @@ public class PresentationHelper {
     }
 
     /**
-     * Used by PresentationHelperTest.java and testapp.
-     *
-     * @hide
+     * Used by PresentationHelperTest.java.
      */
-    public void addDataTransport(@NonNull DataTransport transport) {
+    void addDataTransport(@NonNull DataTransport transport) {
         mTransports.add(transport);
     }
 
@@ -406,11 +403,11 @@ public class PresentationHelper {
 
                 @Override
                 public void onMessageReceived(@NonNull byte[] data) {
-                    Pair<byte[], OptionalInt> decryptedMessage = null;
+                    Pair<byte[], OptionalLong> decryptedMessage = null;
                     try {
                         decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
                         mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_QR_CODE;
-                    } catch (Exception e) {
+                    } catch (RuntimeException e) {
                         transport.close();
                         reportError(new Error("Error decrypting message from reader", e));
                         return;
@@ -423,7 +420,7 @@ public class PresentationHelper {
                             try {
                                 decryptedMessage =
                                     mSessionEncryptionForNfc.decryptMessageFromReader(data);
-                            } catch (Exception e) {
+                            } catch (RuntimeException e) {
                                 transport.close();
                                 reportError(new Error("Error decrypting message from reader", e));
                                 return;
@@ -474,7 +471,7 @@ public class PresentationHelper {
                             transport.close();
                             reportError(new Error("No data and no status in SessionData"));
                         } else {
-                            int statusCode = decryptedMessage.second.getAsInt();
+                            long statusCode = decryptedMessage.second.getAsLong();
 
                             mLog.session("Message received from reader with status: " + statusCode);
 
@@ -568,9 +565,9 @@ public class PresentationHelper {
     }
 
     /**
-     * @hide For use in PresentationHelperTest.java only.
+     * For use in PresentationHelperTest.java only.
      */
-    public @NonNull
+    @NonNull
     byte[] getDeviceEngagementForQrCodeRaw() {
         return mEncodedDeviceEngagement;
     }
@@ -810,7 +807,7 @@ public class PresentationHelper {
         for (int n = 0; n < alternativeCarrierRecords.size(); n++) {
             byte[] acRecordPayload = alternativeCarrierRecords.get(n);
             acRecords[n] = new NdefRecord((short) 0x01,
-                    "ac".getBytes(StandardCharsets.UTF_8),
+                    "ac".getBytes(UTF_8),
                     null,
                     acRecordPayload);
         }
@@ -825,7 +822,7 @@ public class PresentationHelper {
     //
     private @NonNull
     byte[] nfcCalculateHandover() {
-        Collection<NdefRecord> carrierConfigurationRecords = new ArrayList<>();
+        List<NdefRecord> carrierConfigurationRecords = new ArrayList<>();
         List<byte[]> alternativeCarrierRecords = new ArrayList<>();
 
         List<DataRetrievalAddress> listeningAddresses = new ArrayList<>();
@@ -853,13 +850,13 @@ public class PresentationHelper {
 
         byte[] hsPayload = nfcCalculateStaticHandoverSelectPayload(alternativeCarrierRecords);
         arrayOfRecords[0] = new NdefRecord((short) 0x01,
-                "Hs".getBytes(StandardCharsets.UTF_8),
+                "Hs".getBytes(UTF_8),
                 null,
                 hsPayload);
 
         arrayOfRecords[1] = new NdefRecord((short) 0x04,
-                "iso.org:18013:deviceengagement".getBytes(StandardCharsets.UTF_8),
-                "mdoc".getBytes(StandardCharsets.UTF_8),
+                "iso.org:18013:deviceengagement".getBytes(UTF_8),
+                "mdoc".getBytes(UTF_8),
                 mEncodedDeviceEngagementForNfc);
 
         int n = 2;
@@ -982,7 +979,7 @@ public class PresentationHelper {
             Util.dumpHex(TAG, "Sending DeviceResponse", deviceResponseBytes);
         }
         byte[] encryptedData =
-                mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalInt.empty());
+                mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalLong.empty());
         mActiveTransport.sendMessage(encryptedData);
     }
 
@@ -994,7 +991,7 @@ public class PresentationHelper {
      * @param listener the listener or <code>null</code> to stop listening.
      * @param executor a {@link Executor} to do the call in or <code>null</code> if
      *                 <code>listener</code> is <code>null</code>.
-     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@link null}
+     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
      * listener.
      */
     public void setListener(@Nullable Listener listener, @Nullable Executor executor) {
@@ -1012,7 +1009,7 @@ public class PresentationHelper {
      *
      * <p>If connected to a mdoc verifier also sends a session termination message prior to
      * disconnecting if applicable. See {@link #setSendSessionTerminationMessage(boolean)} and
-     * {@link #setUseTransportSpecificSessionTermination(boolean) for how to configure this.
+     * {@link #setUseTransportSpecificSessionTermination(boolean)} for how to configure this.
      *
      * <p>No callbacks will be done on a listener registered with
      * {@link #setListener(Listener, Executor)} after calling this.
@@ -1032,7 +1029,7 @@ public class PresentationHelper {
                 } else {
                     mLog.info("Sending generic session termination message");
                     byte[] sessionTermination = mSessionEncryption.encryptMessageToReader(
-                            null, OptionalInt.of(20));
+                            null, OptionalLong.of(20));
                     mActiveTransport.sendMessage(sessionTermination);
                 }
             } else {
@@ -1107,9 +1104,8 @@ public class PresentationHelper {
         mSendSessionTerminationMessage = sendSessionTerminationMessage;
     }
 
-    /** @hide */
+    /** @hidden */
     @Retention(RetentionPolicy.SOURCE)
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
     @IntDef(value = {DEVICE_ENGAGEMENT_METHOD_UNKNOWN,
             DEVICE_ENGAGEMENT_METHOD_QR_CODE,
             DEVICE_ENGAGEMENT_METHOD_NFC})

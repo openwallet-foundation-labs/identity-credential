@@ -16,6 +16,8 @@
 
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.nfc.NdefRecord;
@@ -36,9 +38,9 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
@@ -49,11 +51,11 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 
 /**
- * @hide
+ * TCP data transport.
  *
- * This is public only because it's used in the Identity Credential test app
+ * <p>This is a private non-standardized data transport. It is only here for testing purposes.
  */
-public class DataTransportTcp extends DataTransport {
+class DataTransportTcp extends DataTransport {
     private static final String TAG = "DataTransportTcp";
     static final int DEVICE_RETRIEVAL_METHOD_TYPE = -18224;  // Google specific method 0
     static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;
@@ -92,10 +94,15 @@ public class DataTransportTcp extends DataTransport {
         Map options = ((Map) items[2]);
 
         String host = Util.cborMapExtractString(options, RETRIEVAL_OPTION_KEY_ADDRESS);
-        int port = Util.cborMapExtractNumber(options, RETRIEVAL_OPTION_KEY_PORT);
+        long port = Util.cborMapExtractNumber(options, RETRIEVAL_OPTION_KEY_PORT);
+
+        if (!isValidServerPort(port)) {
+            Log.w(TAG, "Port is invalid: " + port);
+            return null;
+        }
 
         List<DataRetrievalAddress> addresses = new ArrayList<>();
-        addresses.add(new DataRetrievalAddressTcp(host, port));
+        addresses.add(new DataRetrievalAddressTcp(host, (int)port));
         return addresses;
     }
 
@@ -134,7 +141,7 @@ public class DataTransportTcp extends DataTransport {
             return;
         }
         int port = mServerSocket.getLocalPort();
-        Thread socketServerThread = new Thread(new Runnable() {
+        Thread socketServerThread = new Thread() {
             @Override
             public void run() {
                 try {
@@ -159,7 +166,7 @@ public class DataTransportTcp extends DataTransport {
                     reportError(e);
                 }
             }
-        });
+        };
         socketServerThread.start();
 
         mListeningAddress = new DataRetrievalAddressTcp(address, port);
@@ -225,7 +232,7 @@ public class DataTransportTcp extends DataTransport {
         int port = address.port;
 
         mSocket = new Socket();
-        Thread socketReaderThread = new Thread(new Runnable() {
+        Thread socketReaderThread = new Thread() {
             @Override
             public void run() {
                 SocketAddress endpoint = new InetSocketAddress(ipAddress, port);
@@ -247,12 +254,12 @@ public class DataTransportTcp extends DataTransport {
                     reportConnectionDisconnected();
                 }
             }
-        });
+        };
         socketReaderThread.start();
     }
 
     void setupWritingThread() {
-        mSocketWriterThread = new Thread(new Runnable() {
+        mSocketWriterThread = new Thread() {
             @Override
             public void run() {
                 while (mSocket.isConnected()) {
@@ -280,7 +287,7 @@ public class DataTransportTcp extends DataTransport {
                     }
                 }
             }
-        });
+        };
         mSocketWriterThread.start();
     }
 
@@ -314,7 +321,7 @@ public class DataTransportTcp extends DataTransport {
     @Override
     void sendMessage(@NonNull byte[] data) {
         ByteBuffer bb = ByteBuffer.allocate(8 + data.length);
-        bb.put("GmDL".getBytes(StandardCharsets.UTF_8));
+        bb.put("GmDL".getBytes(UTF_8));
         bb.putInt(data.length);
         bb.put(data);
         mWriterQueue.add(bb.array());
@@ -328,6 +335,12 @@ public class DataTransportTcp extends DataTransport {
     @Override
     boolean supportsTransportSpecificTerminationMessage() {
         return false;
+    }
+
+    private static boolean isValidServerPort(long port) {
+        // 0 is not valid, as that is the wildcard port, telling the OS to pick a free port for
+        // us. A server could never be listening on port 0.
+        return port > 0 && port <= 65535;
     }
 
     static class DataRetrievalAddressTcp extends DataRetrievalAddress {
@@ -347,10 +360,10 @@ public class DataTransportTcp extends DataTransport {
 
         @Override
         Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
-            byte[] reference = String.format("%d", DEVICE_RETRIEVAL_METHOD_TYPE)
-                    .getBytes(StandardCharsets.UTF_8);
+            byte[] reference = String.format(Locale.US, "%d", DEVICE_RETRIEVAL_METHOD_TYPE)
+                    .getBytes(UTF_8);
             NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
-                    "application/vnd.android.ic.dmr".getBytes(StandardCharsets.UTF_8),
+                    "application/vnd.android.ic.dmr".getBytes(UTF_8),
                     reference,
                     buildDeviceRetrievalMethod(host, port));
 
@@ -365,7 +378,7 @@ public class DataTransportTcp extends DataTransport {
                 throw new IllegalStateException(e);
             }
             baos.write(0x01); // Number of auxiliary references
-            byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+            byte[] auxReference = "mdoc".getBytes(UTF_8);
             baos.write(auxReference.length);
             baos.write(auxReference, 0, auxReference.length);
             byte[] acRecordPayload = baos.toByteArray();

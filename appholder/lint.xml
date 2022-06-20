@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <issue id="PackagedPrivateKey">
+        <ignore path="src/main/res/raw/*.pem"/>
+    </issue>
+    <!-- We need "fine" location for WiFi Aware (prior to API 33), but the linter says
+         that we're supposed to offer coarse as an option. We cannot do this without
+         breaking WiFi Aware, so ignore the warning. -->
+    <issue id="CoarseFineLocation" severity="ignore"/>
+</lint>

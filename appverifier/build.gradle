@@ -36,14 +36,15 @@ android {
         dataBinding true
         viewBinding true
     }
-    buildToolsVersion '29.0.2'
+    lintOptions {
+        lintConfig file("lint.xml")
+    }
+    namespace 'com.android.mdl.appreader'
 }
 
 dependencies {
     // Uses module as identity credential api
     implementation project(path: ':identity')
-    // Uses compiled lib as identity credential api
-    //implementation fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
 
     // Kotlin sdtlib jdk8
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
@@ -51,7 +52,7 @@ dependencies {
 
     implementation "androidx.core:core-ktx:$core_ktx_version"
     implementation "androidx.appcompat:appcompat:$appcompat_version"
-    implementation "com.google.android.material:material:1.1.0"
+    implementation 'com.google.android.material:material:1.6.0'
     implementation "androidx.constraintlayout:constraintlayout:$constraint_layout_version"
 
     implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
@@ -62,16 +63,10 @@ dependencies {
     implementation "androidx.navigation:navigation-fragment-ktx:$navigation_version"
     implementation "androidx.navigation:navigation-ui-ktx:$navigation_version"
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation "androidx.preference:preference-ktx:$androidx_preference"
 
     // Camera code scanner
-    implementation 'com.budiyev.android:code-scanner:2.1.0'
-
-    // Imported to use IC API
-    implementation "org.java-websocket:Java-WebSocket:1.5.1"
-    implementation "com.google.zxing:core:3.3.3"
-    implementation "org.slf4j:slf4j-api:1.7.25"
-    implementation "org.slf4j:slf4j-log4j12:1.7.25"
-    implementation 'androidx.preference:preference-ktx:1.1.1'
+    implementation "com.budiyev.android:code-scanner:$code_scanner_version"
 
     // JUnit 4 framework
     testImplementation "junit:junit:$junit_version"

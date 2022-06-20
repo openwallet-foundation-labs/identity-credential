@@ -124,7 +124,7 @@ final public class CredentialDataRequest {
      * A builder for {@link CredentialDataRequest}.
      */
     public static final class Builder {
-        private CredentialDataRequest mData;
+        private final CredentialDataRequest mData;
 
         /**
          * Creates a new builder.

@@ -244,7 +244,7 @@ public class PersonalizationData {
          * 7049</a>. This means that the tagged string follows the standard format described in
          * <a href="https://tools.ietf.org/html/rfc3339">RFC 3339</a>,
          * as refined by Section 3.3 of
-         * <a href="https://tools.ietf.org/html/rfc4287">RFC 4287></a>.</p>
+         * <a href="https://tools.ietf.org/html/rfc4287">RFC 4287</a>.
          *
          * @param namespace               The namespace to use, e.g. {@code org.iso.18013-5.2019}.
          * @param name                    The name of the entry, e.g. {@code height}.

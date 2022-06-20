@@ -1,28 +1,27 @@
 plugins {
-    id 'com.android.library'
+    id("com.android.library")
 }
 
 android {
-    compileSdk 31
+    compileSdkVersion 31
 
     defaultConfig {
         minSdkVersion 24
-        targetSdkVersion 30
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
     }
 
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    lintOptions {
+        lintConfig file("lint.xml")
+    }
+
+    namespace "com.android.identity"
 }
 
 dependencies {
@@ -36,4 +35,24 @@ dependencies {
     testImplementation "junit:junit:$junit_version"
     androidTestImplementation "androidx.test.ext:junit:$junit_test"
     androidTestImplementation "androidx.test.espresso:espresso-core:$espresso_core_version"
+}
+
+task generateApiDoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+
+    ext.androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    classpath += files(ext.androidJar)
+
+    options.links("http://docs.oracle.com/javase/7/docs/api/");
+    options.links("http://d.android.com/reference/");
+
+    destinationDir = file("../docs/javadoc/")
+    failOnError false
+}
+
+afterEvaluate {
+    generateApiDoc.classpath += files(android.libraryVariants.collect { variant ->
+        variant.javaCompileProvider.get().classpath.files
+    })
 }
