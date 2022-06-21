@@ -127,9 +127,12 @@ class L2CAPClient {
                 }
                 // Report message received.
                 mIncomingMessage.write(mmBuffer, 0, numBytes);
-                if (numBytes < mmBuffer.length) {
-                    // Last chunk received.
-                    byte[] entireMessage = mIncomingMessage.toByteArray();
+                byte[] entireMessage = mIncomingMessage.toByteArray();
+                long size = Util.getMessageSize(entireMessage);
+                // Check last chunk received
+                // - if bytes received is less than buffer
+                // - or message length is equal as expected size of the message
+                if (numBytes < mmBuffer.length || (size != -1 && entireMessage.length == size)) {
                     if (mLog.isTransportEnabled()) {
                         mLog.transport("Entire message received by socket: (" + entireMessage.length + ") " + Util.toHex(entireMessage));
                     }
