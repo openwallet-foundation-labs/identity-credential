@@ -614,10 +614,9 @@ public class UtilTest {
     // This test makes sure that Util.issuerSignedItemBytesSetValue() preserves the map order.
     //
     @Test
-    public void testIssuerSignedItemBytesSetValue() {
+    public void testIssuerSignedItemSetValue() {
         DataItem di;
         byte[] encoded;
-        byte[] encodedWithValueTagged;
         byte[] encodedWithValue;
         byte[] encodedDataElement = Util.cborEncodeString("A String");
 
@@ -639,9 +638,7 @@ public class UtilTest {
                 "  'elementValue' : null,\n" +
                 "  'elementIdentifier' : 'foo'\n" +
                 "}", Util.cborPrettyPrint(encoded));
-        encodedWithValueTagged = Util.issuerSignedItemBytesSetValue(
-                Util.cborEncode(Util.cborBuildTaggedByteString(encoded)), encodedDataElement);
-        encodedWithValue = Util.cborExtractTaggedCbor(encodedWithValueTagged);
+        encodedWithValue = Util.issuerSignedItemSetValue(encoded, encodedDataElement);
         assertEquals("{\n" +
                 "  'random' : [0x01, 0x02, 0x03],\n" +
                 "  'digestID' : 42,\n" +
@@ -665,17 +662,13 @@ public class UtilTest {
                 "  'elementIdentifier' : 'foo',\n" +
                 "  'elementValue' : null\n" +
                 "}", Util.cborPrettyPrint(encoded));
-        encodedWithValueTagged = Util.issuerSignedItemBytesSetValue(
-                Util.cborEncode(Util.cborBuildTaggedByteString(encoded)), encodedDataElement);
-        encodedWithValue = Util.cborExtractTaggedCbor(encodedWithValueTagged);
+        encodedWithValue = Util.issuerSignedItemSetValue(encoded, encodedDataElement);
         assertEquals("{\n" +
                 "  'digestID' : 42,\n" +
                 "  'random' : [0x01, 0x02, 0x03],\n" +
                 "  'elementIdentifier' : 'foo',\n" +
                 "  'elementValue' : 'A String'\n" +
                 "}", Util.cborPrettyPrint(encodedWithValue));
-
-
     }
 
     @Test
