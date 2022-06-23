@@ -55,11 +55,11 @@ public final class DeviceResponseGenerator {
      * Adds a new document to the device response.
      *
      * <p>Issuer-signed data is provided in <code>issuerSignedData</code> which
-     * maps from namespaces into a list of bytes of IssuerSignedItemBytes CBOR where
-     * each encoded CBOR blob contains the digest-id, element name, issuer-generated
-     * random value and finally the element value. These IssuerSignedItemBytes must
-     * be encoded so their digest match with the digests in the
-     * <code>MobileSecurityObject</code> in the <code>issuerAuth</code> parameter.
+     * maps from namespaces into a list of bytes of IssuerSignedItem CBOR as
+     * defined in 18013-5 where each contains the digest-id, element name,
+     * issuer-generated random value and finally the element value. Each IssuerSignedItem
+     * must be encoded so the digest of them in a #6.24 bstr matches with the digests in
+     * the <code>MobileSecurityObject</code> in the <code>issuerAuth</code> parameter.
      *
      * <p>The <code>encodedIssuerAuth</code> parameter contains the bytes of the
      * <code>IssuerAuth</code> CBOR as defined in <em>ISO/IEC 18013-5</em>
@@ -100,9 +100,9 @@ public final class DeviceResponseGenerator {
         MapBuilder<CborBuilder> insOuter = issuerNameSpacesBuilder.addMap();
         for (String ns : issuerSignedData.keySet()) {
             ArrayBuilder<MapBuilder<CborBuilder>> insInner = insOuter.putArray(ns);
-            for (byte[] encodedIssuerSignedItemBytes : issuerSignedData.get(ns)) {
-                DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
-                insInner.add(issuerSignedItemBytes);
+            for (byte[] encodedIssuerSignedItem : issuerSignedData.get(ns)) {
+                // We'll do the #6.24 wrapping here.
+                insInner.add(Util.cborBuildTaggedByteString(encodedIssuerSignedItem));
             }
             insInner.end();
         }
@@ -151,11 +151,15 @@ public final class DeviceResponseGenerator {
 
     /**
      * Like {@link #addDocument(String, byte[], byte[], byte[], Map, byte[])} but takes a
-     * {@link CredentialDataResult} instead.
+     * {@link CredentialDataResult} instead and merges the results into the "elementValue"
+     * entry of each IssuerSignedItem value.
+     *
+     * <p>Note: The <code>issuerSignedData</code> and <code>encodedIssuerAuth</code> are
+     * parameters usually obtained via {@link Utility#decodeStaticAuthData(byte[])}.
      *
      * @param docType              The type of the document to send.
      * @param credentialDataResult The device- and issuer-signed data elements to include.
-     * @param issuerSignedMapping A mapping from namespaces to an array of IssuerSignedItemBytes
+     * @param issuerSignedMapping A mapping from namespaces to an array of IssuerSignedItem
      *                            CBOR for the namespace. The "elementValue" value in each
      *                            IssuerSignedItem CBOR must be set to the NULL value.
      * @param encodedIssuerAuth   the bytes of <code>COSE_Sign1</code> signed by the issuing

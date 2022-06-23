@@ -1490,64 +1490,38 @@ class Util {
         }
     }
 
-    static @NonNull
-    DataItem calcIssuerSignedItemBytes(long digestID,
-            @NonNull byte[] random,
-            @NonNull String elementIdentifier,
-            @NonNull DataItem elementValue) {
-        DataItem issuerSignedItem = new CborBuilder()
-                .addMap()
-                .put("digestID", digestID)
-                .put("random", random)
-                .put("elementIdentifier", elementIdentifier)
-                .put(new UnicodeString("elementValue"), elementValue)
-                .end()
-                .build().get(0);
-        DataItem issuerSignedItemBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncode(issuerSignedItem));
-        return issuerSignedItemBytes;
-    }
-
     /**
-     * @param encodedIssuerSignedItemBytes encoded CBOR conforming to IssuerSignedItemBytes.
-     * @return Same as given CBOR but with elementValue set to NULL.
-     * 
      * Clears elementValue in IssuerSignedItemBytes CBOR.
      *
-     * Throws if the given encodedIssuerSignedItemBytes isn't IssuersignedItemBytes.
+     * @param encodedIssuerSignedItem encoded CBOR conforming to IssuerSignedItem.
+     * @return Same as given CBOR but with elementValue set to NULL.
      */
     static @NonNull
-    byte[] issuerSignedItemBytesClearValue(
-            @NonNull byte[] encodedIssuerSignedItemBytes) {
+    byte[] issuerSignedItemClearValue(@NonNull byte[] encodedIssuerSignedItem) {
         byte[] encodedNullValue = Util.cborEncode(SimpleValue.NULL);
-        return issuerSignedItemBytesSetValue(encodedIssuerSignedItemBytes, encodedNullValue);
+        return issuerSignedItemSetValue(encodedIssuerSignedItem, encodedNullValue);
     }
 
     /**
-     * @param encodedIssuerSignedItemBytes encoded CBOR conforming to IssuerSignedItemBytes.
-     * @param encodedElementValue          the value to set elementValue to.
-     * @return Same as given CBOR but with elementValue set to given value.
-     * 
-     * Sets elementValue in IssuerSignedItemBytes CBOR.
+     * Sets elementValue in IssuerSignedItem CBOR.
      *
      * Throws if the given encodedIssuerSignedItemBytes isn't IssuersignedItemBytes.
+     *
+     * @param encodedIssuerSignedItem      encoded CBOR conforming to IssuerSignedItem.
+     * @param encodedElementValue          the value to set elementValue to.
+     * @return Same as given CBOR but with elementValue set to given value.
      */
     static @NonNull
-    byte[] issuerSignedItemBytesSetValue(
-            @NonNull byte[] encodedIssuerSignedItemBytes,
+    byte[] issuerSignedItemSetValue(
+            @NonNull byte[] encodedIssuerSignedItem,
             @NonNull byte[] encodedElementValue) {
-        DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
-        DataItem issuerSignedItemElem =
-                Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
+        DataItem issuerSignedItemElem = Util.cborDecode(encodedIssuerSignedItem);
         Map issuerSignedItem = castTo(Map.class, issuerSignedItemElem);
         DataItem elementValue = Util.cborDecode(encodedElementValue);
         issuerSignedItem.put(new UnicodeString("elementValue"), elementValue);
 
         // By using the non-canonical encoder the order is preserved.
-        DataItem newIssuerSignedItemBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncodeWithoutCanonicalizing(issuerSignedItem));
-
-        return Util.cborEncode(newIssuerSignedItemBytes);
+        return Util.cborEncodeWithoutCanonicalizing(issuerSignedItem);
     }
 
     static @NonNull

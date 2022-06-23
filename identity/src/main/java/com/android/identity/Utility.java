@@ -46,6 +46,7 @@ import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
 import co.nstant.in.cbor.model.SimpleValueType;
+import co.nstant.in.cbor.model.Tag;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
@@ -95,11 +96,14 @@ public class Utility {
      *     }
      * </pre>
      *
-     * @param issuerSignedMapping A mapping from data-elements to digest-id and randoms.
-     *                            The elementValue entry must be present but set to the NULL
-     *                            value.
-     * @param encodedIssuerAuth   the bytes of <code>COSE_Sign1</code> signed by the issuing
-     *                            authority and where the payload is set to
+     * <p>Note that the the byte[] arrays returned in the list of map values are
+     * the bytes of IssuerSignedItem, not IssuerSignedItemBytes.
+     *
+     * @param issuerSignedMapping A mapping from namespaces into a list of the bytes of
+     *                            IssuerSignedItem (not tagged). The elementValue key
+     *                            must be present and set to the NULL value.
+     * @param encodedIssuerAuth   The bytes of <code>COSE_Sign1</code> signed by the issuing
+     *                            authority and where the payload is set to bytes of
      *                            <code>MobileSecurityObjectBytes</code>.
      * @return the bytes of the CBOR described above.
      */
@@ -113,15 +117,15 @@ public class Utility {
         for (Map.Entry<String, List<byte[]>> oe : issuerSignedMapping.entrySet()) {
             String ns = oe.getKey();
             ArrayBuilder<MapBuilder<CborBuilder>> innerBuilder = outerBuilder.putArray(ns);
-            for (byte[] encodedIssuerSignedItemBytes : oe.getValue()) {
+            for (byte[] encodedIssuerSignedItem : oe.getValue()) {
+                // This API specifies that these are just the bytes of IssuerSignedItem, not
+                // the bytes of a tagged bytestring.
+                DataItem issuerSignedItem = Util.cborDecode(encodedIssuerSignedItem);
+
                 // Ensure that elementValue is NULL to avoid applications or issuers that send
                 // the raw DataElementValue in the IssuerSignedItem. If we allowed non-NULL
                 // values, then PII would be exposed that would otherwise be guarded by
                 // access control checks.
-                //
-                DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
-                DataItem issuerSignedItem =
-                        Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
                 DataItem value = Util.cborMapExtract(issuerSignedItem, "elementValue");
                 if (!(value instanceof SimpleValue)
                         || ((SimpleValue) value).getSimpleValueType() != SimpleValueType.NULL) {
@@ -130,7 +134,8 @@ public class Utility {
                             + " elementName " + name + " is not NULL");
                 }
 
-                innerBuilder.add(encodedIssuerSignedItemBytes);
+                // We'll do the tagging.
+                innerBuilder.add(Util.cborBuildTaggedByteString(encodedIssuerSignedItem));
             }
         }
         DataItem digestIdMappingItem = builder.build().get(0);
@@ -147,6 +152,9 @@ public class Utility {
     /**
      * Helper to decode <code>staticAuthData</code> in the format specified by the
      * {@link #encodeStaticAuthData(Map, byte[])} method.
+     *
+     * <p>Note that the the byte[] arrays returned in the list of map values are
+     * the bytes of IssuerSignedItem, not IssuerSignedItemBytes.
      *
      * @param staticAuthData the bytes of CBOR as described above.
      * @return <code>issuerSignedMapping</code> and <code>encodedIssuerAuth</code>.
@@ -193,6 +201,9 @@ public class Utility {
                 if (!(innerKey instanceof ByteString)) {
                     throw new IllegalArgumentException("Inner key is not a bstr");
                 }
+                if (innerKey.getTag().getValue() != 24) {
+                    throw new IllegalArgumentException("Inner key does not have tag 24");
+                }
                 byte[] encodedIssuerSignedItemBytes = ((ByteString) innerKey).getBytes();
 
                 // Strictly not necessary but check that elementValue is NULL. This is to
@@ -200,9 +211,7 @@ public class Utility {
                 // which is part of staticAuthData. This would be bad because then the
                 // data element value would be available without any access control checks.
                 //
-                DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
-                DataItem issuerSignedItem =
-                        Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
+                DataItem issuerSignedItem = Util.cborExtractTaggedAndEncodedCbor(innerKey);
                 DataItem value = Util.cborMapExtract(issuerSignedItem, "elementValue");
                 if (!(value instanceof SimpleValue)
                         || ((SimpleValue) value).getSimpleValueType() != SimpleValueType.NULL) {
@@ -311,24 +320,33 @@ public class Utility {
                     r.nextBytes(random);
                     DataItem value = Util.cborDecode(encodedValue);
 
-                    byte[] encodedIssuerSignedItemBytes =
-                            Util.cborEncode(Util.calcIssuerSignedItemBytes(digestId,
-                                    random,
-                                    entry,
-                                    value));
+                    DataItem issuerSignedItem = new CborBuilder()
+                            .addMap()
+                            .put("digestID", digestId)
+                            .put("random", random)
+                            .put("elementIdentifier", entry)
+                            .put(new UnicodeString("elementValue"), value)
+                            .end()
+                            .build().get(0);
+                    byte[] encodedIssuerSignedItem = Util.cborEncode(issuerSignedItem);
+
                     byte[] digest = null;
                     try {
+                        // For the digest, it's of the _tagged_ bstr so wrap it
+                        byte[] encodedIssuerSignedItemBytes =
+                                Util.cborEncode(Util.cborBuildTaggedByteString(
+                                        encodedIssuerSignedItem));
                         digest = MessageDigest.getInstance("SHA-256").digest(
                                 encodedIssuerSignedItemBytes);
                     } catch (NoSuchAlgorithmException e) {
                         throw new IllegalArgumentException("Failed creating digester", e);
                     }
 
-                    // Replace elementValue in encodedIssuerSignedItemBytes with NULL value.
+                    // Replace elementValue in encodedIssuerSignedItem with NULL value.
                     //
-                    byte[] encodedIssuerSignedItemBytesCleared =
-                            Util.issuerSignedItemBytesClearValue(encodedIssuerSignedItemBytes);
-                    innerArray.add(encodedIssuerSignedItemBytesCleared);
+                    byte[] encodedIssuerSignedItemCleared =
+                            Util.issuerSignedItemClearValue(encodedIssuerSignedItem);
+                    innerArray.add(encodedIssuerSignedItemCleared);
 
                     vdInner.put(digestId, digest);
                 }
@@ -402,20 +420,18 @@ public class Utility {
         Map<String, List<byte[]>> newIssuerSignedMapping = new HashMap<>();
 
         for (String namespaceName : issuerSigned.getNamespaces()) {
-            List<byte[]> newEncodedIssuerSignedItemBytesForNs = new ArrayList<>();
+            List<byte[]> newEncodedIssuerSignedItemForNs = new ArrayList<>();
 
-            List<byte[]> encodedIssuerSignedItemBytesForNs = issuerSignedMapping.get(namespaceName);
-            if (encodedIssuerSignedItemBytesForNs == null) {
+            List<byte[]> encodedIssuerSignedItemForNs = issuerSignedMapping.get(namespaceName);
+            if (encodedIssuerSignedItemForNs == null) {
                 // Fine if this is null, the verifier might have requested elements in a namespace
                 // we have no issuer-signed values for.
                 Log.w(TAG, "Skipping namespace " + namespaceName + " which is not in "
                         + "issuerSignedMapping");
             } else {
                 Collection<String> entryNames = issuerSigned.getEntryNames(namespaceName);
-                for (byte[] encodedIssuerSignedItemBytes : encodedIssuerSignedItemBytesForNs) {
-                    DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
-                    DataItem issuerSignedItem =
-                            Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
+                for (byte[] encodedIssuerSignedItem : encodedIssuerSignedItemForNs) {
+                    DataItem issuerSignedItem = Util.cborDecode(encodedIssuerSignedItem);
                     String elemName = Util
                             .cborMapExtractString(issuerSignedItem, "elementIdentifier");
 
@@ -424,17 +440,16 @@ public class Utility {
                     }
                     byte[] elemValue = issuerSigned.getEntry(namespaceName, elemName);
                     if (elemValue != null) {
-                        byte[] encodedIssuerSignedItemBytesWithValue =
-                                Util.issuerSignedItemBytesSetValue(encodedIssuerSignedItemBytes,
-                                        elemValue);
-                        newEncodedIssuerSignedItemBytesForNs
-                                .add(encodedIssuerSignedItemBytesWithValue);
+                        byte[] encodedIssuerSignedItemWithValue =
+                                Util.issuerSignedItemSetValue(encodedIssuerSignedItem, elemValue);
+
+                        newEncodedIssuerSignedItemForNs.add(encodedIssuerSignedItemWithValue);
                     }
                 }
             }
 
-            if (newEncodedIssuerSignedItemBytesForNs.size() > 0) {
-                newIssuerSignedMapping.put(namespaceName, newEncodedIssuerSignedItemBytesForNs);
+            if (newEncodedIssuerSignedItemForNs.size() > 0) {
+                newIssuerSignedMapping.put(namespaceName, newEncodedIssuerSignedItemForNs);
             }
         }
         return newIssuerSignedMapping;
