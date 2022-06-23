@@ -2,6 +2,8 @@ package com.android.mdl.appreader.fragment
 
 import android.graphics.BitmapFactory
 import android.icu.text.SimpleDateFormat
+import android.icu.util.GregorianCalendar
+import android.icu.util.TimeZone
 import android.os.Bundle
 import android.text.Html
 import android.util.Log
@@ -22,7 +24,6 @@ import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import org.jetbrains.anko.attr
 import java.security.MessageDigest
-import java.security.interfaces.ECPublicKey
 
 
 /**
@@ -190,11 +191,19 @@ class ShowDocumentFragment : Fragment() {
             sb.append("<h6>MSO</h6>")
 
             val df = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
-            sb.append("${getFormattedCheck(true)}Signed: ${df.format(doc.validityInfoSigned)}<br>")
-            sb.append("${getFormattedCheck(true)}Valid From: ${df.format(doc.validityInfoValidFrom)}<br>")
-            sb.append("${getFormattedCheck(true)}Valid Until: ${df.format(doc.validityInfoValidUntil)}<br>")
+            val calSigned = GregorianCalendar(TimeZone.getTimeZone("UTC"))
+            val calValidFrom = GregorianCalendar(TimeZone.getTimeZone("UTC"))
+            val calValidUntil = GregorianCalendar(TimeZone.getTimeZone("UTC"))
+            calSigned.timeInMillis = doc.validityInfoSigned.toEpochMilli()
+            calValidFrom.timeInMillis = doc.validityInfoValidFrom.toEpochMilli()
+            calValidUntil.timeInMillis = doc.validityInfoValidUntil.toEpochMilli()
+            sb.append("${getFormattedCheck(true)}Signed: ${df.format(calSigned)}<br>")
+            sb.append("${getFormattedCheck(true)}Valid From: ${df.format(calValidFrom)}<br>")
+            sb.append("${getFormattedCheck(true)}Valid Until: ${df.format(calValidUntil)}<br>")
             if (doc.validityInfoExpectedUpdate != null) {
-                sb.append("${getFormattedCheck(true)}Expected Update: ${df.format(doc.validityInfoExpectedUpdate)}<br>")
+                val calExpectedUpdate = GregorianCalendar(TimeZone.getTimeZone("UTC"))
+                calExpectedUpdate.timeInMillis = doc.validityInfoExpectedUpdate!!.toEpochMilli()
+                sb.append("${getFormattedCheck(true)}Expected Update: ${df.format(calExpectedUpdate)}<br>")
             }
             // TODO: show warning if MSO is valid for more than 30 days
 
