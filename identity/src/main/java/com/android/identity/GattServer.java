@@ -30,6 +30,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
 import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
@@ -170,20 +171,13 @@ class GattServer extends BluetoothGattServerCallback {
                 Log.e(TAG, "Caught SecurityException while shutting down: " + e);
             }
         }
+        mCurrentConnection = null;
     }
 
     @Override
     public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
         mLog.transport("onConnectionStateChange: " + status + " " + newState);
-        if (newState == BluetoothProfile.STATE_CONNECTED) {
-            if (mCurrentConnection != null) {
-                Log.w(TAG, "Got a connection but we already have one");
-                // TODO: possible to disconnect that 2nd device?
-                return;
-            }
-            mCurrentConnection = device;
-
-        } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+        if (newState == BluetoothProfile.STATE_DISCONNECTED) {
             if (!device.getAddress().equals(mCurrentConnection.getAddress())) {
                 Log.w(TAG, "Got a disconnection from a device we haven't seen before");
                 return;
@@ -201,6 +195,13 @@ class GattServer extends BluetoothGattServerCallback {
         if (mCharacteristicIdentUuid != null
                 && characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             try {
+                // Here we know the connected device is a mDoc/mDoc reader
+                if (mCurrentConnection != null
+                        && !mCurrentConnection.getAddress().equals(device.getAddress())) {
+                    Log.w(TAG, "Got a characteristic read request from a different device");
+                    return;
+                }
+                mCurrentConnection = device;
                 mGattServer.sendResponse(device,
                         requestId,
                         BluetoothGatt.GATT_SUCCESS,
