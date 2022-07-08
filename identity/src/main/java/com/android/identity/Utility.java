@@ -346,11 +346,9 @@ public class Utility {
                     .put(new UnicodeString("valueDigests"), vdBuilder.build().get(0))
                     .put("docType", docType)
                     .putMap("validityInfo")
-                    .put(new UnicodeString("signed"), Util.cborBuildDateTimeFor18013_5(signedDate))
-                    .put(new UnicodeString("validFrom"),
-                            Util.cborBuildDateTimeFor18013_5(validFromDate))
-                    .put(new UnicodeString("validUntil"),
-                            Util.cborBuildDateTimeFor18013_5(validToDate))
+                    .put(new UnicodeString("signed"), Util.cborBuildDateTime(signedDate))
+                    .put(new UnicodeString("validFrom"), Util.cborBuildDateTime(validFromDate))
+                    .put(new UnicodeString("validUntil"), Util.cborBuildDateTime(validToDate))
                     .end()
                     .putMap("deviceKeyInfo")
                     .put(new UnicodeString("deviceKey"), Util.cborBuildCoseKey(authKey))

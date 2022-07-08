@@ -235,31 +235,12 @@ class Util {
         return cborEncode(cborBuildDateTime(timestamp));
     }
 
-    static @NonNull
-    byte[] cborEncodeDateTimeFor18013_5(@NonNull Timestamp timestamp) {
-        return cborEncode(cborBuildDateTimeFor18013_5(timestamp));
-    }
-
     /**
      * Returns #6.0(tstr) where tstr is the ISO 8601 encoding of the given point in time.
      * Only supports UTC times.
      */
     static @NonNull
     DataItem cborBuildDateTime(@NonNull Timestamp timestamp) {
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
-        if (timestamp.toEpochMilli() % 1000 != 0) {
-            df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US);
-        }
-        df.setTimeZone(TimeZone.getTimeZone("UTC"));
-        Date val = new Date(timestamp.toEpochMilli());
-        String dateString = df.format(val);
-        DataItem dataItem = new UnicodeString(dateString);
-        dataItem.setTag(0);
-        return dataItem;
-    }
-
-    static @NonNull
-    DataItem cborBuildDateTimeFor18013_5(@NonNull Timestamp timestamp) {
         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
         df.setTimeZone(TimeZone.getTimeZone("UTC"));
         Date val = new Date(timestamp.toEpochMilli());
@@ -329,20 +310,13 @@ class Util {
             parsedTz = TimeZone.getTimeZone("GMT" + timeZoneSubstr);
         }
 
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US);
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
         df.setTimeZone(parsedTz);
         Date date = null;
         try {
             date = df.parse(dateString);
         } catch (ParseException e) {
-            // Try again, this time without the milliseconds
-            df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
-            df.setTimeZone(parsedTz);
-            try {
-                date = df.parse(dateString);
-            } catch (ParseException e2) {
-                throw new RuntimeException("Error parsing string", e2);
-            }
+            throw new RuntimeException("Error parsing string", e);
         }
 
         return Timestamp.ofEpochMilli(date.getTime());
