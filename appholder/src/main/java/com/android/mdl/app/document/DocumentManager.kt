@@ -62,9 +62,31 @@ class DocumentManager private constructor(private val context: Context) {
             }
     }
 
+    // Ideally we'd set the timeout to 0 which means "auth on every use" but this only works
+    // if the user has a biometric enrolled and also won't allow using the LSKF to unlock the
+    // key. The latter is of course is something we want b/c biometrics are prone to stop working
+    // without any warning - for example, the user could have done manual labor so their
+    // fingerprints no longer work or they could have gotten a new haircut so face authentication
+    // no longer works etc. etc.
+    //
+    // Instead we'd just set the timeout to some low duration, just low enough that the key
+    // is unlocked until we use it. Something like a second or so... except that won't work
+    // because of a peculiarity when using face authentication.
+    //
+    // In this case, the countdown to when the key is no longer considered unlocked starts
+    // at the moment the face is authenticated, NOT when the user hits the "Confirm" button.
+    // As such, if the user is a bit slow (for example if they don't realize they need to press
+    // the "Confirm" button) we'll end up timing out.
+    //
+    // So, 30 seconds it is.
+    //
+    // Note that we do handle this case in TransferDocumentFragment and we show a Toast
+    // saying "Auth took too long, try again" when this happens.
+    //
     private val id = AccessControlProfileId(0)
     private val profile = AccessControlProfile.Builder(id)
-        .setUserAuthenticationRequired(false)  // TODO: set to true at some point
+        .setUserAuthenticationRequired(true)
+        .setUserAuthenticationTimeout(30*1000)
         .build()
 
     private var ids: Collection<AccessControlProfileId> = listOf(id)

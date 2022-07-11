@@ -21,7 +21,7 @@
     <string name="bio_auth_verifier_anonymous">Anonymous verifier is requesting the following information</string>
     <string name="bio_auth_verifier_trusted_with_name">Trusted verifier \"%1$s\" is requesting the following information</string>
     <string name="bio_auth_verifier_untrusted_with_name">Untrusted verifier \"%1$s\" is requesting the following information</string>
-    <string name="bio_auth_cancel">Cancel</string>
+    <string name="bio_auth_use_pin">Use PIN</string>
     <string name="bio_auth_failed">User authentication has failed</string>
     <string name="fingerprint_removed_error">Biometric Authentication Error</string>
     <string name="fingerprint_removed_error_desc">Fingerprint was removed from the device so the credential cannot be shared anymore.</string>

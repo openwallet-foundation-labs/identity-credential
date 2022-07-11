@@ -23,6 +23,7 @@ import android.content.Context;
 import android.icu.util.Calendar;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
+import android.security.keystore.UserNotAuthenticatedException;
 import android.util.AtomicFile;
 import android.util.Log;
 import android.util.Pair;
@@ -393,10 +394,13 @@ class CredentialData {
             boolean isAuthRequired = profile.isUserAuthenticationRequired();
             long timeoutMillis = profile.getUserAuthenticationTimeout();
             if (isAuthRequired) {
-                // Always make sure the per-reader-session key exists since this is what we're
-                // going to be handing out a Cipher for when returning a CryptoObject at
-                // presentation time.
-                ensurePerReaderSessionKey(credentialName, data);
+                if (timeoutMillis == 0) {
+                    // Only create a require-auth-for-every-use keys if one of the ACPs actually
+                    // require it. We do this to allow for creating credentials on devices
+                    // where biometrics isn't configured or doesn't exist.
+                    //
+                    ensurePerReaderSessionKey(credentialName, data);
+                }
 
                 ensureAcpTimoutKeyForProfile(credentialName, data, profile, timeoutMillis);
             }
@@ -1509,6 +1513,8 @@ class CredentialData {
             byte[] clearText = {0x01, 0x02};
             cipher.doFinal(clearText);
             // We don't care about the cipherText, only whether the key is unlocked.
+        } catch (UserNotAuthenticatedException e) {
+            return false;
         } catch (NoSuchPaddingException
                 | BadPaddingException
                 | NoSuchAlgorithmException
@@ -1518,8 +1524,9 @@ class CredentialData {
                 | IllegalBlockSizeException
                 | UnrecoverableEntryException
                 | KeyStoreException e) {
-            // If this fails, it probably means authentication is needed... (there's no
-            // specific exception for that in API level 23, unfortunately.)
+            // If this fails, it probably means authentication is needed...
+            Log.w(TAG, "Unexpected exception `" + e.getMessage()
+                    + "`, assuming user not authenticated");
             return false;
         }
         return true;
