@@ -149,7 +149,6 @@ class SoftwarePresentationSession extends PresentationSession {
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
             ks.load(null);
-            ks.deleteEntry(alias);
             KeyStore.Entry entry = ks.getEntry(alias, null);
             if (entry != null) {
                 return ((KeyStore.SecretKeyEntry) entry).getSecretKey();
@@ -174,13 +173,16 @@ class SoftwarePresentationSession extends PresentationSession {
                 return ((KeyStore.SecretKeyEntry) entry).getSecretKey();
             }
             throw new IllegalStateException("Error getting secretKey after creating it");
+        } catch (InvalidAlgorithmParameterException e) {
+            // This exception is thrown only if no biometrics are enrolled or if the device
+            // doesn't support biometrics.
+            return null;
         } catch (CertificateException
                 | IOException
                 | NoSuchAlgorithmException
                 | KeyStoreException
                 | UnrecoverableEntryException
-                | NoSuchProviderException
-                | InvalidAlgorithmParameterException e) {
+                | NoSuchProviderException e) {
             throw new IllegalStateException("Error ensuring authPerPresentationKey", e);
         }
     }
@@ -198,15 +200,18 @@ class SoftwarePresentationSession extends PresentationSession {
     // This returns a new CryptoObject every time.
     //
     @Override
-    public @NonNull BiometricPrompt.CryptoObject getCryptoObject() {
+    public @Nullable BiometricPrompt.CryptoObject getCryptoObject() {
         try {
             SecretKey authPerPresentationKey =
                     getAuthPerPresentationKey(KEY_FOR_AUTH_PER_PRESENTATION_ALIAS);
-            Cipher authPerPresentationCipher = Cipher.getInstance("AES/GCM/NoPadding");
-            authPerPresentationCipher.init(Cipher.ENCRYPT_MODE, authPerPresentationKey);
-            mLastCryptoObjectCreated = new BiometricPrompt.CryptoObject(authPerPresentationCipher);
+            if (authPerPresentationKey == null) {
+                mLastCryptoObjectCreated = null;
+            } else {
+                Cipher authPerPresentationCipher = Cipher.getInstance("AES/GCM/NoPadding");
+                authPerPresentationCipher.init(Cipher.ENCRYPT_MODE, authPerPresentationKey);
+                mLastCryptoObjectCreated = new BiometricPrompt.CryptoObject(authPerPresentationCipher);
+            }
             mPerReaderSessionAuthSatisfiedCalculated = false;
-            Log.i(TAG, "Created CryptoObject " + mLastCryptoObjectCreated);
             return mLastCryptoObjectCreated;
         } catch (NoSuchPaddingException
                 | InvalidKeyException

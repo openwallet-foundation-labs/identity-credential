@@ -318,7 +318,7 @@ class SoftwareIdentityCredential extends IdentityCredential {
     private void ensureCryptoObject() {
         String aliasForCryptoObject = mData.getPerReaderSessionKeyAlias();
         if (aliasForCryptoObject.isEmpty()) {
-            // This happens if there are no ACPs with user-auth.
+            // This can happen if there are no ACPs with user-auth w/ timeout zero
             return;
         }
         try {
