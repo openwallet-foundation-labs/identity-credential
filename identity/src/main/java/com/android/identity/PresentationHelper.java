@@ -124,11 +124,11 @@ public class PresentationHelper {
     private static final byte[] CAPABILITY_FILE_CONTENTS = new byte[]{
             (byte) 0x00, (byte) 0x0f,  // size of capability container '00 0F' = 15 bytes
             (byte) 0x20,               // mapping version v2.0
-            (byte) 0x7f, (byte) 0xFf,  // maximum response data length '7F FF'
-            (byte) 0x7f, (byte) 0xFf,  // maximum command data length '7F FF'
+            (byte) 0x7f, (byte) 0xff,  // maximum response data length '7F FF'
+            (byte) 0x7f, (byte) 0xff,  // maximum command data length '7F FF'
             (byte) 0x04, (byte) 0x06,  // NDEF File Control TLV
             (byte) 0xe1, (byte) 0x04,  // NDEF file identifier 'E1 04'
-            (byte) 0xff, (byte) 0xfe,  // maximum NDEF file size 'FF FE'
+            (byte) 0x7f, (byte) 0xff,  // maximum NDEF file size '7F FF'
             (byte) 0x00,               // file read access condition (allow read)
             (byte) 0xff                // file write access condition (do not write)
     };
@@ -1100,9 +1100,13 @@ public class PresentationHelper {
      * See {@link #setUseTransportSpecificSessionTermination(boolean)} for more information about
      * what transport specific session termination is.
      *
-     * @return <code>true</code> if transport specific termination is available.
+     * @return <code>true</code> if transport specific termination is available, <code>false</code>
+     *   if not or if not connected.
      */
     public boolean isTransportSpecificTerminationSupported() {
+        if (mActiveTransport == null) {
+            return false;
+        }
         return mActiveTransport.supportsTransportSpecificTerminationMessage();
     }
 
