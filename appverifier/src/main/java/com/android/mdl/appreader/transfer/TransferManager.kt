@@ -72,11 +72,7 @@ class TransferManager private constructor(private val context: Context) {
     fun setNdefDeviceEngagement(adapter: NfcAdapter, activity: Activity) {
         adapter.enableReaderMode(
             activity, readerModeListener,
-            NfcAdapter.FLAG_READER_NFC_A
-                    + NfcAdapter.FLAG_READER_NFC_B
-                    + NfcAdapter.FLAG_READER_NFC_F
-                    + NfcAdapter.FLAG_READER_NFC_V
-                    + NfcAdapter.FLAG_READER_NFC_BARCODE,
+            NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B,
             null)
         verification?.startListening()
     }

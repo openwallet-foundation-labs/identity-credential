@@ -100,7 +100,7 @@ class DeviceEngagementFragment : Fragment() {
                         requireContext(), "Error invalid callback connected",
                         Toast.LENGTH_SHORT
                     ).show()
-                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                    findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
                 TransferStatus.RESPONSE -> {
                     Log.d(LOG_TAG, "Device response received")
@@ -108,7 +108,7 @@ class DeviceEngagementFragment : Fragment() {
                         requireContext(), "Error invalid callback response",
                         Toast.LENGTH_SHORT
                     ).show()
-                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                    findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
                 TransferStatus.DISCONNECTED -> {
                     Log.d(LOG_TAG, "Device disconnected")
@@ -116,7 +116,7 @@ class DeviceEngagementFragment : Fragment() {
                         requireContext(), "Device disconnected",
                         Toast.LENGTH_SHORT
                     ).show()
-                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                    findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
                 TransferStatus.ERROR -> {
                     Log.d(LOG_TAG, "Error received")
@@ -124,7 +124,7 @@ class DeviceEngagementFragment : Fragment() {
                         requireContext(), "Error connecting to holder",
                         Toast.LENGTH_SHORT
                     ).show()
-                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                    findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
             }
         })
