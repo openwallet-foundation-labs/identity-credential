@@ -92,7 +92,7 @@ class GattClient extends BluetoothGattCallback {
         byte[] salt = new byte[]{};
         mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
         try {
-            mGatt = device.connectGatt(mContext, false, this);
+            mGatt = device.connectGatt(mContext, false, this, BluetoothDevice.TRANSPORT_LE);
         } catch (SecurityException e) {
             reportError(e);
         }
