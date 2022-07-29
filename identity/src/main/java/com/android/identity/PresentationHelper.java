@@ -42,6 +42,7 @@ import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -917,13 +918,21 @@ public class PresentationHelper {
 
     private @NonNull
     byte[] nfcEngagementHandleReadBinary(@NonNull byte[] apdu) {
-        mLog.session("in nfcEngagementHandleReadBinary");
         if (apdu.length < 5) {
             return STATUS_WORD_FILE_NOT_FOUND;
         }
         byte[] contents = mSelectedNfcFile;
         int offset = (apdu[2] & 0xff) * 256 + (apdu[3] & 0xff);
         int size = apdu[4] & 0xff;
+        if (size == 0) {
+            // Handle Extended Length encoding
+            if (apdu.length < 7) {
+                return STATUS_WORD_FILE_NOT_FOUND;
+            }
+            size = (apdu[5] & 0xff) * 256;
+            size += apdu[6] & 0xff;
+        }
+        mLog.info(String.format(Locale.US, "nfcEngagementHandleReadBinary: offset=%d size=%d", offset, size));
 
         if (offset >= contents.length) {
             return STATUS_WORD_WRONG_PARAMETERS;
