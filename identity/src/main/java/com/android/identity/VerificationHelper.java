@@ -85,7 +85,7 @@ public class VerificationHelper {
     private boolean mSendSessionTerminationMessage = true;
     Util.Logger mLog;
     private boolean mIsListening;
-    private boolean mSupportL2CAP;
+    private boolean mUseL2CAP;
 
     /**
      * Creates a new VerificationHelper object.
@@ -97,7 +97,7 @@ public class VerificationHelper {
         mEphemeralKeyPair = Util.createEphemeralKeyPair();
         mSessionEncryptionReader = null;
         mLog = new Util.Logger(TAG, 0);
-        mSupportL2CAP = true;
+        mUseL2CAP = false;
     }
 
     /**
@@ -115,16 +115,12 @@ public class VerificationHelper {
     /**
      * Sets the preference for use BLE L2CAP transmission profile.
      *
-     * <p>By default it is set as <em>true</em> so reader will support BLE L2CAP transmission profile and
-     * if supported by the device it will:
+     * <p>Use L2CAP if supported by the OS and remote mdoc. It is by default set as <em>false</em>
      *
-     * <p> - Make the L2CAP characteristic available in the GATT server if supported by the device.
-     * <br> - Read L2CAP service by GATT client if L2CAP is supported by the device
-     *
-     * @param supportL2CAP One or more logging flags e.g. {@link Constants#LOGGING_FLAG_INFO}.
+     * @param useL2CAP indicates if it should use L2CAP socket if available.
      */
-    public void setSupportL2CAP(boolean supportL2CAP) {
-        mSupportL2CAP = supportL2CAP;
+    public void setUseL2CAP(boolean useL2CAP) {
+        mUseL2CAP = useL2CAP;
     }
 
     /**
@@ -399,7 +395,7 @@ public class VerificationHelper {
             ((DataTransportNfc) mDataTransport).setIsoDep(mNfcIsoDep);
         } else if (mDataTransport instanceof DataTransportBle) {
             // Set the preference for using L2CAP
-            ((DataTransportBle) mDataTransport).setUseL2CAPIfAvailable(mSupportL2CAP);
+            ((DataTransportBle) mDataTransport).setUseL2CAPIfAvailable(mUseL2CAP);
         }
 
         mDataTransport.setListener(new DataTransport.Listener() {

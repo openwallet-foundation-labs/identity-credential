@@ -149,9 +149,7 @@ class GattClient extends BluetoothGattCallback {
                 if (mCharacteristicL2CAPUuid != null) {
                     mCharacteristicL2CAP = s.getCharacteristic(mCharacteristicL2CAPUuid);
                     if (mCharacteristicL2CAP != null) {
-                        if (mLog.isTransportEnabled()) {
-                            mLog.transport("L2CAP characteristic found " + mCharacteristicL2CAPUuid);
-                        }
+                        mLog.transport("L2CAP characteristic found " + mCharacteristicL2CAPUuid);
                     }
                 }
                 mCharacteristicState = s.getCharacteristic(mCharacteristicStateUuid);
@@ -180,20 +178,6 @@ class GattClient extends BluetoothGattCallback {
                         reportError(new Error("Ident characteristic not found"));
                         return;
                     }
-                }
-            }
-
-            // Use L2CAP if supported by GattServer and by this OS version
-            mUsingL2CAP = mCharacteristicL2CAP != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
-            if (mLog.isTransportEnabled()) {
-                mLog.transport("Using L2CAP: " + mUsingL2CAP);
-            }
-            if (mUsingL2CAP) {
-                if (!gatt.readCharacteristic(mCharacteristicL2CAP)) {
-                    // As it is not able to read from L2CAP characteristic set mUsingL2CAP to false
-                    // and proceed using characteristics to transfer instead of socket
-                    Log.w(TAG, "Not possible to read PSM from L2CAP characteristic " + mCharacteristicL2CAP);
-                    mUsingL2CAP = false;
                 }
             }
 
@@ -308,6 +292,23 @@ class GattClient extends BluetoothGattCallback {
 
     private void afterIdentObtained(@NonNull BluetoothGatt gatt) {
         try {
+            // Use L2CAP if supported by GattServer and by this OS version
+            mUsingL2CAP = mCharacteristicL2CAP != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+            if (mLog.isTransportEnabled()) {
+                mLog.transport("Using L2CAP: " + mUsingL2CAP);
+            }
+            if (mUsingL2CAP) {
+                if (gatt.readCharacteristic(mCharacteristicL2CAP)) {
+                    // continue with L2CAP
+                    return;
+                } else {
+                    // As it is not able to read from L2CAP characteristic set mUsingL2CAP to false
+                    // and proceed using characteristics to transfer instead of socket
+                    Log.w(TAG, "Not possible to read PSM from L2CAP characteristic " + mCharacteristicL2CAP);
+                    mUsingL2CAP = false;
+                }
+            }
+
             if (!gatt.setCharacteristicNotification(mCharacteristicServer2Client, true)) {
                 reportError(new Error("Error setting notification on Server2Client"));
                 return;
@@ -461,8 +462,7 @@ class GattClient extends BluetoothGattCallback {
         }
 
         if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("writing chunk " + mCharacteristicClient2Server.getUuid()
-                    + " " + Util.toHex(chunk));
+            Util.dumpHex(TAG, "writing chunk to " + mCharacteristicClient2Server.getUuid(), chunk);
         }
 
         mCharacteristicClient2Server.setValue(chunk);
@@ -481,7 +481,7 @@ class GattClient extends BluetoothGattCallback {
 
     void sendMessage(@NonNull byte[] data) {
         if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("sendMessage " + Util.toHex(data));
+            Util.dumpHex(TAG, "sendMessage", data);
         }
 
         // Use socket for L2CAP if it is connected

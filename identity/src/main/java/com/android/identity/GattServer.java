@@ -400,8 +400,7 @@ class GattServer extends BluetoothGattServerCallback {
         }
 
         if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("writing chunk to " + mCharacteristicServer2Client.getUuid() +
-                    " " + Util.toHex(chunk));
+            Util.dumpHex(TAG, "writing chunk to " + mCharacteristicServer2Client.getUuid(), chunk);
         }
 
         mCharacteristicServer2Client.setValue(chunk);
@@ -432,7 +431,7 @@ class GattServer extends BluetoothGattServerCallback {
 
     void sendMessage(@NonNull byte[] data) {
         if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("sendMessage " + Util.toHex(data));
+            Util.dumpHex(TAG, "sendMessage", data);
         }
 
         // Uses socket L2CAP when it is available

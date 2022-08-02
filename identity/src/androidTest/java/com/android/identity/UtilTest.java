@@ -39,6 +39,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Signature;
@@ -818,5 +819,64 @@ public class UtilTest {
         assertEquals("", Util.base16(new byte[0]));
         assertEquals("00FF13AB0B",
                 Util.base16(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B}));
+    }
+
+    @Test
+    public void testCborGetLengthBasic() {
+        byte[] data = Util.cborEncode(new CborBuilder().add("text").build().get(0));
+        assertEquals(data.length, Util.cborGetLength(data));
+    }
+
+    @Test
+    public void testCborGetLengthNonCbor() {
+        byte[] data = new byte[] {0x70, 0x71};
+        assertEquals(-1, Util.cborGetLength(data));
+    }
+
+    @Test
+    public void testCborGetLengthIncompleteCbor() {
+        byte[] data = Util.cborEncode(new CborBuilder().add("text").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data, 0, data.length - 1);
+        byte[] incompleteData = baos.toByteArray();
+        assertEquals(-1, Util.cborGetLength(incompleteData));
+    }
+
+    @Test
+    public void testCborGetLengthComplicated() {
+        byte[] data = Util.cborEncode(
+                new CborBuilder()
+                        .addArray()
+                        .add("text")
+                        .add(42)
+                        .addMap()
+                        .put("foo", "bar")
+                        .put("fizz", "buzz")
+                        .end()
+                        .end()
+                        .build().get(0));
+        assertEquals(data.length, Util.cborGetLength(data));
+    }
+
+    @Test
+    public void testCborGetLengthMultipleDataItems() throws IOException {
+        byte[] data1 = Util.cborEncode(new CborBuilder().add("text1").build().get(0));
+        byte[] data2 = Util.cborEncode(new CborBuilder().add("text2").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data1);
+        baos.write(data2);
+        byte[] multipleDataItems = baos.toByteArray();
+        assertEquals(data1.length, Util.cborGetLength(multipleDataItems));
+    }
+
+    @Test
+    public void testCborGetLengthBasicWithTrailingInvalidData() throws IOException {
+        byte[] data = Util.cborEncode(new CborBuilder().add("text").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data);
+        baos.write(0x70);
+        baos.write(0x71);
+        byte[] withTrailer = baos.toByteArray();
+        assertEquals(data.length, Util.cborGetLength(withTrailer));
     }
 }

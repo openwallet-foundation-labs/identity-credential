@@ -5,8 +5,8 @@
     <SwitchPreference
         android:defaultValue="false"
         app:key="ble_l2cap"
-        app:summaryOff="Preferred not use L2CAP"
-        app:summaryOn="Preferred use L2CAP"
+        app:summaryOff="Don't use L2CAP"
+        app:summaryOn="Use L2CAP"
         app:title="Use L2CAP if available" />
     </PreferenceCategory>
     <PreferenceCategory app:title="Debug Logging options">

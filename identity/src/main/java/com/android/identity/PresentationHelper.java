@@ -31,6 +31,7 @@ import android.util.Pair;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
 import com.android.identity.Constants.BleDataRetrievalOption;
 import com.android.identity.Constants.LoggingFlag;
 
@@ -303,7 +304,7 @@ public class PresentationHelper {
             // Why? Because it's required by ISO 18013-5 when using NFC static handover.
             UUID serviceUuid = UUID.randomUUID();
             // Option to indicate if L2CAP should be used if supported
-            boolean supportL2CAP = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) !=0;
+            boolean supportL2CAP = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) != 0;
 
             if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
                 DataTransportBleCentralClientMode bleTransport =

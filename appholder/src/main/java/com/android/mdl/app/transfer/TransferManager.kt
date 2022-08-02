@@ -257,9 +257,9 @@ class TransferManager private constructor(private val context: Context) {
     ) {
         presentation?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
         try {
-            presentation?.setUseTransportSpecificSessionTermination(
-                useTransportSpecificSessionTermination
-            )
+            if (presentation?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
+                presentation?.setUseTransportSpecificSessionTermination(true)
+            }
         } catch (e: IllegalStateException) {
             Log.e(LOG_TAG, "Error ignored.", e)
         }

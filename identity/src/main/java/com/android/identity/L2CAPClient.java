@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 class L2CAPClient {
     private static final String TAG = "L2CAPClient";
@@ -84,10 +85,8 @@ class L2CAPClient {
             try {
                 mSocket = bluetoothDevice.createInsecureL2capChannel(psm);
                 mSocket.connect();
-                if (mSocket.isConnected()) {
-                    if (mLog.isTransportEnabled()) {
-                        mLog.transport("Connected using L2CAP on PSM: " + psm);
-                    }
+                if (isConnected()) {
+                    mLog.transport("Connected using L2CAP on PSM: " + psm);
                     reportPeerConnected();
                     readFromSocket();
                 } else {
@@ -106,11 +105,11 @@ class L2CAPClient {
         if (mLog.isTransportEnabled()) {
             mLog.transport("Start reading socket input");
         }
-        // We can check better/right buffer size to use with L2CAP
-        byte[] mmBuffer = new byte[1024 * 16];
+        // Use the max size as buffer for L2CAP socket
+        byte[] mmBuffer = new byte[mSocket.getMaxReceivePacketSize()];
         int numBytes; // bytes returned from read()
         // Keep listening to the InputStream until an exception occurs.
-        while (mSocket.isConnected()) {
+        while (isConnected()) {
             try {
                 // Read from the InputStream.
                 numBytes = mSocket.getInputStream().read(mmBuffer);
@@ -122,19 +121,19 @@ class L2CAPClient {
                     reportPeerDisconnected();
                     break;
                 }
-                if (mLog.isTransportEnabled()) {
-                    mLog.transport("Chunk received by socket: (" + numBytes + ") " + Util.toHex(mmBuffer));
+                if (mLog.isTransportVerboseEnabled()) {
+                    Util.dumpHex(TAG, "Chunk received by socket: (" + numBytes + ")", Arrays.copyOf(mmBuffer, numBytes));
                 }
                 // Report message received.
                 mIncomingMessage.write(mmBuffer, 0, numBytes);
                 byte[] entireMessage = mIncomingMessage.toByteArray();
-                long size = Util.getMessageSize(entireMessage);
+                int size = Util.cborGetLength(entireMessage);
                 // Check last chunk received
-                // - if bytes received is less than buffer
+                // - if bytes received are less than buffer
                 // - or message length is equal as expected size of the message
                 if (numBytes < mmBuffer.length || (size != -1 && entireMessage.length == size)) {
                     if (mLog.isTransportEnabled()) {
-                        mLog.transport("Entire message received by socket: (" + entireMessage.length + ") " + Util.toHex(entireMessage));
+                        mLog.transport("Data size from message: (" + size + ") message size: (" + entireMessage.length + ")");
                     }
                     mIncomingMessage.reset();
                     reportMessageReceived(entireMessage);
@@ -147,20 +146,25 @@ class L2CAPClient {
     }
 
     void sendMessage(@NonNull byte[] data) {
-        if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("sendMessage " + Util.toHex(data));
+        if (mLog.isTransportEnabled()) {
+            mLog.transport("sendMessage using L2CAP socket");
         }
-
-        // Use socket for L2CAP if it is connected
-        if (mSocket != null && mSocket.isConnected()) {
+        if (isConnected()) {
             try {
                 final OutputStream os = mSocket.getOutputStream();
                 os.write(data);
                 os.flush();
+
+                if (mLog.isTransportEnabled()) {
+                    mLog.transport("Message with (" + data.length + "bytes) was sent");
+                }
             } catch (IOException e) {
                 Log.e(TAG, "Error sending message by L2CAP socket " + e.getMessage(), e);
                 reportError(new Error("Error sending message by L2CAP socket", e));
             }
+        } else {
+            Log.e(TAG, "No socket connection while trying to send a message by L2CAP");
+            reportError(new Error("No socket connection while trying to send a message by L2CAP"));
         }
     }
 

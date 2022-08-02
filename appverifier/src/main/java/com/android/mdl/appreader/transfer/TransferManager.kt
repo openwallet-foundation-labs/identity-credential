@@ -62,7 +62,7 @@ class TransferManager private constructor(private val context: Context) {
         verification = VerificationHelper(context)
         verification?.setListener(responseListener, context.mainExecutor())
         verification?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
-        verification?.setSupportL2CAP(PreferencesHelper.isBleL2capEnabled(context))
+        verification?.setUseL2CAP(PreferencesHelper.isBleL2capEnabled(context))
     }
 
     fun setQrDeviceEngagement(qrDeviceEngagement: String) {
@@ -119,9 +119,9 @@ class TransferManager private constructor(private val context: Context) {
     ) {
         verification?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
         try {
-            verification?.setUseTransportSpecificSessionTermination(
-                useTransportSpecificSessionTermination
-            )
+            if (verification?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
+                verification?.setUseTransportSpecificSessionTermination(true)
+            }
         } catch (e: IllegalStateException) {
             Log.e(LOG_TAG, "Error ignored.", e)
         }
