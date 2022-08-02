@@ -32,6 +32,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.TimeUnit;
 
 class L2CAPClient {
     private static final String TAG = "L2CAPClient";
@@ -40,6 +43,7 @@ class L2CAPClient {
     final Util.Logger mLog;
 
     private BluetoothSocket mSocket;
+    private BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
 
     // This is what the 16-bit UUID 0x29 0x02 is encoded like.
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
@@ -81,24 +85,65 @@ class L2CAPClient {
             mLog.transport("Received psmValue: " + Util.toHex(psmValue) + " psm: " + psm);
         }
 
-        Thread socketClientThread = new Thread(() -> {
-            try {
-                mSocket = bluetoothDevice.createInsecureL2capChannel(psm);
-                mSocket.connect();
-                if (isConnected()) {
-                    mLog.transport("Connected using L2CAP on PSM: " + psm);
-                    reportPeerConnected();
-                    readFromSocket();
-                } else {
-                    reportError(new Error("Unable to connect L2CAP socket"));
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "Error connecting to socket L2CAP " + e.getMessage(), e);
-                reportError(new Error("Error connecting to socket L2CAP", e));
-            }
-        });
-        socketClientThread.start();
+        try {
+            mSocket = bluetoothDevice.createInsecureL2capChannel(psm);
+            mSocket.connect();
+            if (isConnected()) {
+                mLog.transport("Connected using L2CAP on PSM: " + psm);
+                Thread writingThread = new Thread(this::writeToSocket);
+                writingThread.start();
 
+                Thread readingThread = new Thread(this::readFromSocket);
+                readingThread.start();
+
+                reportPeerConnected();
+            } else {
+                reportError(new Error("Unable to connect L2CAP socket"));
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Error connecting to socket L2CAP " + e.getMessage(), e);
+            reportError(new Error("Error connecting to socket L2CAP", e));
+        }
+
+    }
+
+    private void writeToSocket() {
+        OutputStream os;
+
+        try {
+            os = mSocket.getOutputStream();
+        } catch (IOException e) {
+            Log.e(TAG, "Error writing message on L2CAP socket", e);
+            reportError(new Error("Error writing message on L2CAP socket", e));
+            return;
+        }
+
+        if (mLog.isTransportEnabled()) {
+            mLog.transport("Writing L2CAP socket");
+        }
+        while (isConnected()) {
+            byte[] messageToSend;
+            try {
+                messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
+                if (messageToSend == null) {
+                    continue;
+                }
+            } catch (InterruptedException e) {
+                continue;
+            }
+
+            Log.d(TAG, "Writing (" + messageToSend.length + " bytes) on L2CAP socket");
+
+            try {
+                os.write(messageToSend);
+                os.flush();
+
+            } catch (IOException e) {
+                Log.e(TAG, "Error writing message on L2CAP socket", e);
+                reportError(new Error("Error writing message on L2CAP socket", e));
+                return;
+            }
+        }
     }
 
     private void readFromSocket() {
@@ -146,26 +191,7 @@ class L2CAPClient {
     }
 
     void sendMessage(@NonNull byte[] data) {
-        if (mLog.isTransportEnabled()) {
-            mLog.transport("sendMessage using L2CAP socket");
-        }
-        if (isConnected()) {
-            try {
-                final OutputStream os = mSocket.getOutputStream();
-                os.write(data);
-                os.flush();
-
-                if (mLog.isTransportEnabled()) {
-                    mLog.transport("Message with (" + data.length + "bytes) was sent");
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "Error sending message by L2CAP socket " + e.getMessage(), e);
-                reportError(new Error("Error sending message by L2CAP socket", e));
-            }
-        } else {
-            Log.e(TAG, "No socket connection while trying to send a message by L2CAP");
-            reportError(new Error("No socket connection while trying to send a message by L2CAP"));
-        }
+        mWriterQueue.add(data);
     }
 
     void reportPeerConnected() {

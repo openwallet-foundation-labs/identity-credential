@@ -33,6 +33,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.TimeUnit;
 
 class L2CAPServer {
     private static final String TAG = "L2CAPServer";
@@ -43,6 +46,7 @@ class L2CAPServer {
     private BluetoothServerSocket mServerSocket;
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     private BluetoothSocket mSocket;
+    private BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
 
     L2CAPServer(@Nullable L2CAPServer.Listener listener, @LoggingFlag int loggingFlags) {
         mListener = listener;
@@ -82,22 +86,64 @@ class L2CAPServer {
     }
 
     public void acceptConnection() {
-        Thread socketServerThread = new Thread(() -> {
             try {
                 mSocket = mServerSocket.accept();
                 if (isConnected()) {
                     // Stop accepting new connections
                     mServerSocket.close();
                     mServerSocket = null;
+
+                    Thread writingThread = new Thread(this::writeToSocket);
+                    writingThread.start();
+
+                    Thread readingThread = new Thread(this::readFromSocket);
+                    readingThread.start();
+
                     reportPeerConnected();
-                    readFromSocket();
                 }
             } catch (IOException e) {
                 Log.e(TAG, "Error getting connection from socket server for L2CAP " + e.getMessage(), e);
                 reportError(new Error("Error getting connection from socket server for L2CAP", e));
             }
-        });
-        socketServerThread.start();
+    }
+
+    private void writeToSocket() {
+        OutputStream os;
+
+        try {
+            os = mSocket.getOutputStream();
+        } catch (IOException e) {
+            Log.e(TAG, "Error writing message on L2CAP socket", e);
+            reportError(new Error("Error writing message on L2CAP socket", e));
+            return;
+        }
+
+        if (mLog.isTransportEnabled()) {
+            mLog.transport("Writing L2CAP socket");
+        }
+        while (isConnected()) {
+            byte[] messageToSend;
+            try {
+                messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
+                if (messageToSend == null) {
+                    continue;
+                }
+            } catch (InterruptedException e) {
+                continue;
+            }
+
+            Log.d(TAG, "Writing (" + messageToSend.length + " bytes) on L2CAP socket");
+
+            try {
+                os.write(messageToSend);
+                os.flush();
+
+            } catch (IOException e) {
+                Log.e(TAG, "Error writing message on L2CAP socket", e);
+                reportError(new Error("Error writing message on L2CAP socket", e));
+                return;
+            }
+        }
     }
 
     private void readFromSocket() {
@@ -167,26 +213,7 @@ class L2CAPServer {
 
 
     void sendMessage(@NonNull byte[] data) {
-        if (mLog.isTransportEnabled()) {
-            mLog.transport("sendMessage using L2CAP socket");
-        }
-        if (isConnected()) {
-            try {
-                final OutputStream os = mSocket.getOutputStream();
-                os.write(data);
-                os.flush();
-
-                if (mLog.isTransportEnabled()) {
-                    mLog.transport("Message with (" + data.length + "bytes) was sent");
-                }
-            } catch (IOException e) {
-                Log.e(TAG, "Error sending message by L2CAP socket " + e.getMessage(), e);
-                reportError(new Error("Error sending message by L2CAP socket"));
-            }
-        } else {
-            Log.e(TAG, "No socket connection while trying to send a message by L2CAP");
-            reportError(new Error("No socket connection while trying to send a message by L2CAP"));
-        }
+        mWriterQueue.add(data);
     }
 
     void reportPeerConnected() {
