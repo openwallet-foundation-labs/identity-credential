@@ -19,6 +19,8 @@ package com.android.identity;
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
 import android.icu.util.Calendar;
+import android.icu.util.GregorianCalendar;
+import android.icu.util.TimeZone;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
@@ -318,7 +320,9 @@ public abstract class ResultData {
         if (value == null) {
             return null;
         }
-        return Util.cborDecodeDateTime(value);
+        Calendar calendar = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+        calendar.setTimeInMillis(Util.cborDecodeDateTime(value).toEpochMilli());
+        return calendar;
     }
 
     /**

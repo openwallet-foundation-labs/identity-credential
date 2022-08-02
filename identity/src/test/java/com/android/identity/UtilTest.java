@@ -22,21 +22,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import android.icu.util.Calendar;
-import android.icu.util.GregorianCalendar;
-import android.icu.util.TimeZone;
-import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.MediumTest;
 
+import java.math.BigInteger;
+import java.security.Security;
+import java.security.spec.ECGenParameterSpec;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -44,8 +44,11 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.TimeZone;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -66,9 +69,19 @@ import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
 
 @MediumTest
-@RunWith(AndroidJUnit4.class)
 @SuppressWarnings("deprecation")
 public class UtilTest {
+
+    @Before
+    public void setUp() {
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
+    @After
+    public void tearDown() {
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
+    }
+
     @Test
     public void prettyPrintMultipleCompleteTypes() throws CborException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -281,84 +294,38 @@ public class UtilTest {
         c = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTime(c);
+        data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT-04:00"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTime(c);
-        assertEquals("tag 0 '2019-07-08T11:51:42-04:00'", Util.cborPrettyPrint(data));
-        assertEquals("tag 0 '2019-07-08T11:51:42-04:00'",
-                Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
-
-        c = new GregorianCalendar(TimeZone.getTimeZone("GMT-08:00"));
-        c.clear();
-        c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTime(c);
-        assertEquals("tag 0 '2019-07-08T11:51:42-08:00'", Util.cborPrettyPrint(data));
-        assertEquals("tag 0 '2019-07-08T11:51:42-08:00'",
-                Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
-
-        c = new GregorianCalendar(TimeZone.getTimeZone("GMT+04:30"));
-        c.clear();
-        c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTime(c);
-        assertEquals("tag 0 '2019-07-08T11:51:42+04:30'", Util.cborPrettyPrint(data));
-        assertEquals("tag 0 '2019-07-08T11:51:42+04:30'",
-                Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
-    }
-
-    @Test
-    public void cborCalendarFor18013_5() {
-        GregorianCalendar c;
-        byte[] data;
-
-        c = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
-        c.clear();
-        c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTimeFor18013_5(c);
-        assertEquals("tag 0 '2019-07-08T11:51:42Z'", Util.cborPrettyPrint(data));
-        assertEquals("tag 0 '2019-07-08T11:51:42Z'",
-                Util.cborPrettyPrint(
-                        Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
-
-        c = new GregorianCalendar(TimeZone.getTimeZone("GMT-04:00"));
-        c.clear();
-        c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTimeFor18013_5(c);
+        data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T15:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T15:51:42Z'",
-                Util.cborPrettyPrint(
-                        Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+                Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT-08:00"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTimeFor18013_5(c);
+        data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T19:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T19:51:42Z'",
-                Util.cborPrettyPrint(
-                        Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+                Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
 
         c = new GregorianCalendar(TimeZone.getTimeZone("GMT+04:30"));
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        data = Util.cborEncodeDateTimeFor18013_5(c);
+        data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T07:21:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T07:21:42Z'",
-                Util.cborPrettyPrint(
-                        Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
+                Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
+        assertEquals(c.getTimeInMillis(), Util.cborDecodeDateTime(data).toEpochMilli());
     }
 
     @Test
@@ -367,27 +334,12 @@ public class UtilTest {
         c.clear();
         c.set(2019, Calendar.JULY, 8, 11, 51, 42);
         c.set(Calendar.MILLISECOND, 123);
-        byte[] data = Util.cborEncodeDateTime(c);
-        assertEquals("tag 0 '2019-07-08T11:51:42.123Z'", Util.cborPrettyPrint(data));
-        assertEquals("tag 0 '2019-07-08T11:51:42.123Z'",
-                Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
-        assertEquals(0, c.compareTo(Util.cborDecodeDateTime(data)));
-    }
-
-    @Test
-    public void cborCalendarMillisecondsFor18013_5() throws CborException {
-        Calendar c = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
-        c.clear();
-        c.set(2019, Calendar.JULY, 8, 11, 51, 42);
-        Calendar cWithoutMilliseconds = (Calendar) c.clone();
-        c.set(Calendar.MILLISECOND, 123);
-        byte[] data = Util.cborEncodeDateTimeFor18013_5(c);
+        // Even if we see a time with fractional seconds, we ignore them
+        byte[] data = Util.cborEncodeDateTime(Timestamp.ofEpochMilli(c.getTimeInMillis()));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'", Util.cborPrettyPrint(data));
         assertEquals("tag 0 '2019-07-08T11:51:42Z'",
-                Util.cborPrettyPrint(
-                        Util.cborEncodeDateTimeFor18013_5(Util.cborDecodeDateTime(data))));
-        assertEquals(1, c.compareTo(Util.cborDecodeDateTime(data)));
-        assertEquals(0, cWithoutMilliseconds.compareTo(Util.cborDecodeDateTime(data)));
+                Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
+        assertEquals(c.getTimeInMillis() - 123, Util.cborDecodeDateTime(data).toEpochMilli());
     }
 
     @Test
@@ -402,7 +354,7 @@ public class UtilTest {
                 .add("2019-07-08T11:51:42.25Z")
                 .build());
         data = baos.toByteArray();
-        assertEquals("tag 0 '2019-07-08T11:51:42.250Z'",
+        assertEquals("tag 0 '2019-07-08T11:51:42Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
 
         // milliseconds set to 0
@@ -422,7 +374,7 @@ public class UtilTest {
                 .add("2019-07-08T11:51:42.9876Z")
                 .build());
         data = baos.toByteArray();
-        assertEquals("tag 0 '2019-07-08T11:51:42.987Z'",
+        assertEquals("tag 0 '2019-07-08T11:51:42Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
 
         // milliseconds and timezone
@@ -432,18 +384,13 @@ public class UtilTest {
                 .add("2019-07-08T11:51:42.26-11:30")
                 .build());
         data = baos.toByteArray();
-        assertEquals("tag 0 '2019-07-08T11:51:42.260-11:30'",
+        assertEquals("tag 0 '2019-07-08T23:21:42Z'",
                 Util.cborPrettyPrint(Util.cborEncodeDateTime(Util.cborDecodeDateTime(data))));
     }
 
-    private KeyPair coseGenerateKeyPair() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(
-                KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore");
-        KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(
-                "coseTestKeyPair",
-                KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
-                .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512);
-        kpg.initialize(builder.build());
+    private KeyPair generateKeyPair() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
+        kpg.initialize(new ECGenParameterSpec("secp256k1"));
         return kpg.generateKeyPair();
     }
 
@@ -576,7 +523,7 @@ public class UtilTest {
 
     @Test
     public void coseSignAndVerifyDetachedContent() throws Exception {
-        KeyPair keyPair = coseGenerateKeyPair();
+        KeyPair keyPair = generateKeyPair();
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
@@ -588,11 +535,11 @@ public class UtilTest {
 
     @Test
     public void coseSignAndVerifySingleCertificate() throws Exception {
-        KeyPair keyPair = coseGenerateKeyPair();
+        KeyPair keyPair = generateKeyPair();
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         LinkedList<X509Certificate> certs = new LinkedList<X509Certificate>();
-        certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
+        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
         DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
                 detachedContent, certs);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
@@ -602,13 +549,13 @@ public class UtilTest {
 
     @Test
     public void coseSignAndVerifyMultipleCertificates() throws Exception {
-        KeyPair keyPair = coseGenerateKeyPair();
+        KeyPair keyPair = generateKeyPair();
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         LinkedList<X509Certificate> certs = new LinkedList<X509Certificate>();
-        certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
-        certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
-        certs.add(Util.signPublicKeyWithPrivateKey("coseTestKeyPair", "coseTestKeyPair"));
+        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
+        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
+        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
         DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
                 detachedContent, certs);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
@@ -676,10 +623,9 @@ public class UtilTest {
     // This test makes sure that Util.issuerSignedItemBytesSetValue() preserves the map order.
     //
     @Test
-    public void testIssuerSignedItemBytesSetValue() {
+    public void testIssuerSignedItemSetValue() {
         DataItem di;
         byte[] encoded;
-        byte[] encodedWithValueTagged;
         byte[] encodedWithValue;
         byte[] encodedDataElement = Util.cborEncodeString("A String");
 
@@ -701,9 +647,7 @@ public class UtilTest {
                 "  'elementValue' : null,\n" +
                 "  'elementIdentifier' : 'foo'\n" +
                 "}", Util.cborPrettyPrint(encoded));
-        encodedWithValueTagged = Util.issuerSignedItemBytesSetValue(
-                Util.cborEncode(Util.cborBuildTaggedByteString(encoded)), encodedDataElement);
-        encodedWithValue = Util.cborExtractTaggedCbor(encodedWithValueTagged);
+        encodedWithValue = Util.issuerSignedItemSetValue(encoded, encodedDataElement);
         assertEquals("{\n" +
                 "  'random' : [0x01, 0x02, 0x03],\n" +
                 "  'digestID' : 42,\n" +
@@ -727,17 +671,13 @@ public class UtilTest {
                 "  'elementIdentifier' : 'foo',\n" +
                 "  'elementValue' : null\n" +
                 "}", Util.cborPrettyPrint(encoded));
-        encodedWithValueTagged = Util.issuerSignedItemBytesSetValue(
-                Util.cborEncode(Util.cborBuildTaggedByteString(encoded)), encodedDataElement);
-        encodedWithValue = Util.cborExtractTaggedCbor(encodedWithValueTagged);
+        encodedWithValue = Util.issuerSignedItemSetValue(encoded, encodedDataElement);
         assertEquals("{\n" +
                 "  'digestID' : 42,\n" +
                 "  'random' : [0x01, 0x02, 0x03],\n" +
                 "  'elementIdentifier' : 'foo',\n" +
                 "  'elementValue' : 'A String'\n" +
                 "}", Util.cborPrettyPrint(encodedWithValue));
-
-
     }
 
     @Test
@@ -778,6 +718,59 @@ public class UtilTest {
 
         assertThrows(IllegalArgumentException.class, () -> Util.fromHex("0"));
         assertThrows(IllegalArgumentException.class, () -> Util.fromHex("XX"));
+    }
+
+    @Test
+    public void checkedStringValue() {
+        final DataItem dataItem = new co.nstant.in.cbor.model.UnicodeString("hello");
+        assertEquals("hello", Util.checkedStringValue(dataItem));
+    }
+
+    @Test
+    public void checkedStringValueThrows() {
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedStringValue(co.nstant.in.cbor.model.SimpleValue.TRUE));
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedStringValue(new co.nstant.in.cbor.model.UnsignedInteger(42)));
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedStringValue(
+                new co.nstant.in.cbor.model.ByteString(new byte[]{1, 2, 3})));
+    }
+
+    @Test
+    public void checkedLongValue() {
+        final DataItem dataItem = new co.nstant.in.cbor.model.UnsignedInteger(8675309);
+        assertEquals(8675309, Util.checkedLongValue(dataItem));
+    }
+
+    @Test
+    public void checkedLongValueThrowsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedLongValue(co.nstant.in.cbor.model.SimpleValue.TRUE));
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedLongValue(new co.nstant.in.cbor.model.UnicodeString("not a number")));
+        assertThrows(IllegalArgumentException.class,
+            () -> Util.checkedLongValue(
+                new co.nstant.in.cbor.model.ByteString(new byte[]{1, 2, 3})));
+    }
+
+    @Test
+    public void checkedLongValueEdgeCases() {
+        final BigInteger upperLimit = BigInteger.valueOf(Long.MAX_VALUE);
+        assertEquals(Long.MAX_VALUE,
+            Util.checkedLongValue(new co.nstant.in.cbor.model.UnsignedInteger(upperLimit)));
+
+        final BigInteger lowerLimit = BigInteger.valueOf(Long.MIN_VALUE);
+        assertEquals(Long.MIN_VALUE,
+            Util.checkedLongValue(new co.nstant.in.cbor.model.NegativeInteger(lowerLimit)));
+
+        final BigInteger tooBig = upperLimit.add(BigInteger.ONE);
+        assertThrows(ArithmeticException.class,
+            () -> Util.checkedLongValue(new co.nstant.in.cbor.model.UnsignedInteger(tooBig)));
+
+        final BigInteger tooSmall = lowerLimit.subtract(BigInteger.ONE);
+        assertThrows(ArithmeticException.class,
+            () -> Util.checkedLongValue(new co.nstant.in.cbor.model.NegativeInteger(tooSmall)));
     }
 
     // TODO: Replace with Assert.assertThrows() once we use a recent enough version of JUnit.

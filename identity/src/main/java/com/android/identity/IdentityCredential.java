@@ -191,10 +191,12 @@ public abstract class IdentityCredential {
      * If it's not hardware-backed it's not defined which kind of object it's associated with.
      * Because of this, this method is the preferred way
      * to obtain a {@link BiometricPrompt.CryptoObject} rather than to construct it
-     * manually.</p>
+     * manually.
      *
-     * <p>If the credential has no access control profiles with user-authentication, the value
-     * {@code null} may be returned.</p>
+     * <p>If the credential has no access control profiles with user-authentication and timeout 0,
+     * the value {@code null} may be returned. This just means the application won't have a
+     * {@link BiometricPrompt.CryptoObject} to pass to {@link BiometricPrompt} and will have to
+     * pass {@code null} instead.
      *
      * @return A {@link BiometricPrompt.CryptoObject} which can be used with
      * {@link BiometricPrompt} or {@code null}.

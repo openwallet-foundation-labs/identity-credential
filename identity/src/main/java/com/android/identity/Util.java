@@ -17,11 +17,6 @@
 package com.android.identity;
 
 import android.content.Context;
-import android.icu.text.DateFormat;
-import android.icu.text.SimpleDateFormat;
-import android.icu.util.Calendar;
-import android.icu.util.GregorianCalendar;
-import android.icu.util.TimeZone;
 import android.security.keystore.KeyProperties;
 import android.util.Log;
 
@@ -74,12 +69,14 @@ import java.security.spec.InvalidParameterSpecException;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
@@ -234,45 +231,19 @@ class Util {
     }
 
     static @NonNull
-    byte[] cborEncodeDateTime(@NonNull Calendar calendar) {
-        return cborEncode(cborBuildDateTime(calendar));
-    }
-
-    static @NonNull
-    byte[] cborEncodeDateTimeFor18013_5(@NonNull Calendar calendar) {
-        return cborEncode(cborBuildDateTimeFor18013_5(calendar));
+    byte[] cborEncodeDateTime(@NonNull Timestamp timestamp) {
+        return cborEncode(cborBuildDateTime(timestamp));
     }
 
     /**
      * Returns #6.0(tstr) where tstr is the ISO 8601 encoding of the given point in time.
+     * Only supports UTC times.
      */
     static @NonNull
-    DataItem cborBuildDateTime(@NonNull Calendar calendar) {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
-        if (calendar.isSet(Calendar.MILLISECOND) && calendar.get(Calendar.MILLISECOND) != 0) {
-            df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.US);
-        }
-        df.setTimeZone(calendar.getTimeZone());
-        Date val = calendar.getTime();
-        String dateString = df.format(val);
-        DataItem dataItem = new UnicodeString(dateString);
-        dataItem.setTag(0);
-        return dataItem;
-    }
-
-    /**
-     * Like cborBuildDateTime() but with the additional restrictions for tdate
-     * as specified in ISO/IEC 18013-5:
-     *
-     * - fraction of seconds shall not be used;
-     * - no local offset from UTC shall be used, as indicated by setting
-     * the time-offset defined in RFC 3339 to “Z”.
-     */
-    static @NonNull
-    DataItem cborBuildDateTimeFor18013_5(@NonNull Calendar calendar) {
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
-        df.setTimeZone(TimeZone.GMT_ZONE);
-        Date val = calendar.getTime();
+    DataItem cborBuildDateTime(@NonNull Timestamp timestamp) {
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US);
+        df.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Date val = new Date(timestamp.toEpochMilli());
         String dateString = df.format(val);
         DataItem dataItem = new UnicodeString(dateString);
         dataItem.setTag(0);
@@ -300,15 +271,37 @@ class Util {
         return simple.getSimpleValueType() == SimpleValueType.TRUE;
     }
 
+    /**
+     * Accepts a {@code DataItem}, attempts to cast it to a {@code Number}, then returns the value
+     * Throws {@code IllegalArgumentException} if the {@code DataItem} is not a {@code Number}. This
+     * method also checks bounds, and if the given data item is too large to fit in a long, it
+     * throws {@code ArithmeticException}.
+     */
+    static long checkedLongValue(DataItem item) {
+        final BigInteger bigNum = castTo(Number.class, item).getValue();
+        final long result = bigNum.longValue();
+        if (!bigNum.equals(BigInteger.valueOf(result))) {
+            throw new ArithmeticException("Expected long value, got '" + bigNum + "'");
+        }
+        return result;
+    }
+
     static @NonNull
     String cborDecodeString(@NonNull byte[] data) {
-        DataItem dataItem = cborDecode(data);
-        return castTo(UnicodeString.class, dataItem).getString();
+        return checkedStringValue(cborDecode(data));
+    }
+
+    /**
+     * Accepts a {@code DataItem}, attempts to cast it to a {@code UnicodeString}, then returns the
+     * value. Throws {@code IllegalArgumentException} if the {@code DataItem} is not a
+     * {@code UnicodeString}.
+     */
+    static String checkedStringValue(DataItem item) {
+        return castTo(UnicodeString.class, item).getString();
     }
 
     static long cborDecodeLong(@NonNull byte[] data) {
-        DataItem dataItem = cborDecode(data);
-        return castTo(Number.class, dataItem).getValue().longValue();
+        return checkedLongValue(cborDecode(data));
     }
 
     static @NonNull
@@ -318,51 +311,37 @@ class Util {
     }
 
     static @NonNull
-    Calendar cborDecodeDateTime(@NonNull byte[] data) {
+    Timestamp cborDecodeDateTime(@NonNull byte[] data) {
         return cborDecodeDateTime(cborDecode(data));
     }
 
     static @NonNull
-    Calendar cborDecodeDateTime(DataItem di) {
+    Timestamp cborDecodeDateTime(DataItem di) {
         if (!(di instanceof co.nstant.in.cbor.model.UnicodeString)) {
             throw new IllegalArgumentException("Passed in data is not a Unicode-string");
         }
         if (!di.hasTag() || di.getTag().getValue() != 0) {
             throw new IllegalArgumentException("Passed in data is not tagged with tag 0");
         }
-        String dateString = ((co.nstant.in.cbor.model.UnicodeString) di).getString();
+        String dateString = checkedStringValue(di);
 
         // Manually parse the timezone
         TimeZone parsedTz = TimeZone.getTimeZone("UTC");
-        java.util.TimeZone parsedTz2 = java.util.TimeZone.getTimeZone("UTC");
         if (!dateString.endsWith("Z")) {
             String timeZoneSubstr = dateString.substring(dateString.length() - 6);
             parsedTz = TimeZone.getTimeZone("GMT" + timeZoneSubstr);
-            parsedTz2 = java.util.TimeZone.getTimeZone("GMT" + timeZoneSubstr);
         }
 
-        java.text.DateFormat df = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS",
-                Locale.US);
-        df.setTimeZone(parsedTz2);
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
+        df.setTimeZone(parsedTz);
         Date date = null;
         try {
             date = df.parse(dateString);
         } catch (ParseException e) {
-            // Try again, this time without the milliseconds
-            df = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US);
-            df.setTimeZone(parsedTz2);
-            try {
-                date = df.parse(dateString);
-            } catch (ParseException e2) {
-                throw new RuntimeException("Error parsing string", e2);
-            }
+            throw new RuntimeException("Error parsing string", e);
         }
 
-        Calendar c = new GregorianCalendar();
-        c.clear();
-        c.setTimeZone(parsedTz);
-        c.setTime(date);
-        return c;
+        return Timestamp.ofEpochMilli(date.getTime());
     }
 
     /**
@@ -1017,26 +996,26 @@ class Util {
     static long cborMapExtractNumber(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
-        return castTo(Number.class, item).getValue().longValue();
+        return checkedLongValue(item);
     }
 
     static long cborMapExtractNumber(@NonNull DataItem map, @NonNull String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
-        return castTo(Number.class, item).getValue().longValue();
+        return checkedLongValue(item);
     }
 
     static @NonNull
     String cborMapExtractString(@NonNull DataItem map,
             @NonNull String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
-        return castTo(UnicodeString.class, item).getString();
+        return checkedStringValue(item);
     }
 
     static @NonNull
     String cborMapExtractString(@NonNull DataItem map, long key) {
         DataItem keyDataItem = key >= 0 ? new UnsignedInteger(key) : new NegativeInteger(key);
         DataItem item = castTo(Map.class, map).get(keyDataItem);
-        return castTo(UnicodeString.class, item).getString();
+        return checkedStringValue(item);
     }
 
     static @NonNull
@@ -1064,7 +1043,7 @@ class Util {
     Collection<String> cborMapExtractMapStringKeys(@NonNull DataItem map) {
         List<String> ret = new ArrayList<>();
         for (DataItem item : castTo(Map.class, map).getKeys()) {
-            ret.add(castTo(UnicodeString.class, item).getString());
+            ret.add(checkedStringValue(item));
         }
         return ret;
     }
@@ -1073,7 +1052,7 @@ class Util {
     Collection<Long> cborMapExtractMapNumberKeys(@NonNull DataItem map) {
         List<Long> ret = new ArrayList<>();
         for (DataItem item : castTo(Map.class, map).getKeys()) {
-            ret.add(castTo(Number.class, item).getValue().longValue());
+            ret.add(checkedLongValue(item));
         }
         return ret;
     }
@@ -1104,7 +1083,7 @@ class Util {
         return castTo(SimpleValue.class, item).getSimpleValueType() == SimpleValueType.TRUE;
     }
 
-    static Calendar cborMapExtractDateTime(@NonNull DataItem map, String key) {
+    static Timestamp cborMapExtractDateTime(@NonNull DataItem map, String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
         UnicodeString unicodeString = castTo(UnicodeString.class, item);
         return cborDecodeDateTime(unicodeString);
@@ -1270,7 +1249,7 @@ class Util {
             break;
             case UNICODE_STRING: {
                 // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
-                String value = ((UnicodeString) dataItem).getString();
+                String value = checkedStringValue(dataItem);
                 // TODO: escape ' in |value|
                 sb.append("'" + value + "'");
             }
@@ -1490,7 +1469,7 @@ class Util {
                 throw new IllegalArgumentException(
                         "Expected at least 2 array items, found " + items.size());
             }
-            String id = castTo(UnicodeString.class, items.get(0)).getString();
+            String id = checkedStringValue(items.get(0));
             if (!id.equals("ProofOfBinding")) {
                 throw new IllegalArgumentException("Expected ProofOfBinding, got " + id);
             }
@@ -1507,64 +1486,38 @@ class Util {
         }
     }
 
-    static @NonNull
-    DataItem calcIssuerSignedItemBytes(long digestID,
-            @NonNull byte[] random,
-            @NonNull String elementIdentifier,
-            @NonNull DataItem elementValue) {
-        DataItem issuerSignedItem = new CborBuilder()
-                .addMap()
-                .put("digestID", digestID)
-                .put("random", random)
-                .put("elementIdentifier", elementIdentifier)
-                .put(new UnicodeString("elementValue"), elementValue)
-                .end()
-                .build().get(0);
-        DataItem issuerSignedItemBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncode(issuerSignedItem));
-        return issuerSignedItemBytes;
-    }
-
     /**
-     * @param encodedIssuerSignedItemBytes encoded CBOR conforming to IssuerSignedItemBytes.
-     * @return Same as given CBOR but with elementValue set to NULL.
-     * 
      * Clears elementValue in IssuerSignedItemBytes CBOR.
      *
-     * Throws if the given encodedIssuerSignedItemBytes isn't IssuersignedItemBytes.
+     * @param encodedIssuerSignedItem encoded CBOR conforming to IssuerSignedItem.
+     * @return Same as given CBOR but with elementValue set to NULL.
      */
     static @NonNull
-    byte[] issuerSignedItemBytesClearValue(
-            @NonNull byte[] encodedIssuerSignedItemBytes) {
+    byte[] issuerSignedItemClearValue(@NonNull byte[] encodedIssuerSignedItem) {
         byte[] encodedNullValue = Util.cborEncode(SimpleValue.NULL);
-        return issuerSignedItemBytesSetValue(encodedIssuerSignedItemBytes, encodedNullValue);
+        return issuerSignedItemSetValue(encodedIssuerSignedItem, encodedNullValue);
     }
 
     /**
-     * @param encodedIssuerSignedItemBytes encoded CBOR conforming to IssuerSignedItemBytes.
-     * @param encodedElementValue          the value to set elementValue to.
-     * @return Same as given CBOR but with elementValue set to given value.
-     * 
-     * Sets elementValue in IssuerSignedItemBytes CBOR.
+     * Sets elementValue in IssuerSignedItem CBOR.
      *
      * Throws if the given encodedIssuerSignedItemBytes isn't IssuersignedItemBytes.
+     *
+     * @param encodedIssuerSignedItem      encoded CBOR conforming to IssuerSignedItem.
+     * @param encodedElementValue          the value to set elementValue to.
+     * @return Same as given CBOR but with elementValue set to given value.
      */
     static @NonNull
-    byte[] issuerSignedItemBytesSetValue(
-            @NonNull byte[] encodedIssuerSignedItemBytes,
+    byte[] issuerSignedItemSetValue(
+            @NonNull byte[] encodedIssuerSignedItem,
             @NonNull byte[] encodedElementValue) {
-        DataItem issuerSignedItemBytes = Util.cborDecode(encodedIssuerSignedItemBytes);
-        DataItem issuerSignedItemElem =
-                Util.cborExtractTaggedAndEncodedCbor(issuerSignedItemBytes);
+        DataItem issuerSignedItemElem = Util.cborDecode(encodedIssuerSignedItem);
         Map issuerSignedItem = castTo(Map.class, issuerSignedItemElem);
         DataItem elementValue = Util.cborDecode(encodedElementValue);
         issuerSignedItem.put(new UnicodeString("elementValue"), elementValue);
 
         // By using the non-canonical encoder the order is preserved.
-        DataItem newIssuerSignedItemBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncodeWithoutCanonicalizing(issuerSignedItem));
-
-        return Util.cborEncode(newIssuerSignedItemBytes);
+        return Util.cborEncodeWithoutCanonicalizing(issuerSignedItem);
     }
 
     static @NonNull
@@ -1643,7 +1596,7 @@ class Util {
 
     static long getDeviceRetrievalMethodType(@NonNull byte[] encodeDeviceRetrievalMethod) {
         List<DataItem> di = ((Array) Util.cborDecode(encodeDeviceRetrievalMethod)).getDataItems();
-        return ((co.nstant.in.cbor.model.Number) di.get(0)).getValue().longValue();
+        return checkedLongValue(di.get(0));
     }
 
     static @NonNull KeyPair createEphemeralKeyPair() {

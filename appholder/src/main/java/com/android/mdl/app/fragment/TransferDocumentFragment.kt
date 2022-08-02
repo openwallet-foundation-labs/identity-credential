@@ -1,7 +1,7 @@
 package com.android.mdl.app.fragment
 
-import android.app.AlertDialog
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
@@ -119,7 +119,7 @@ class TransferDocumentFragment : Fragment() {
                         }
 
                         // Ask for user consent and send response
-                        sendResponseWithConsent()
+                        sendResponseWithConsent(false)
                     } catch (e: Exception) {
                         val message = "On request received error: ${e.message}"
                         Log.e(LOG_TAG, message, e)
@@ -164,41 +164,37 @@ class TransferDocumentFragment : Fragment() {
         it.run()
     }
 
-    private fun sendResponseWithConsent() {
-        // Ask for biometric authentication when the device has biometric enrolled,
-        // otherwise just ask for consent in a dialog
-        if (BiometricManager.from(requireContext())
-                .canAuthenticate(BIOMETRIC_STRONG) == BIOMETRIC_SUCCESS
-        ) {
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle(getString(R.string.bio_auth_title))
-                .setSubtitle(getSubtitle())
-                .setDescription(formatEntryNames(vm.getEntryNames()))
-                .setNegativeButtonText(getString(R.string.bio_auth_cancel))
-                .build()
+    private fun sendResponseWithConsent(forceLskf : Boolean) {
+        val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(getString(R.string.bio_auth_title))
+            .setSubtitle(getSubtitle())
+            .setDescription(formatEntryNames(vm.getEntryNames()))
 
-            val biometricPrompt = BiometricPrompt(this, executor, biometricAuthCallback)
-
-            val cryptoObject = vm.getCryptoObject()
-            // Displays the "log in" prompt.
-            if (cryptoObject != null) {
-                biometricPrompt.authenticate(promptInfo, cryptoObject)
-            } else {
-                biometricPrompt.authenticate(promptInfo)
-            }
+        if (forceLskf) {
+            // TODO: this works only on Android 11 or later but for now this is fine
+            //   as this is just a reference/test app and this path is only hit if
+            //   the user actually presses the "Use PIN" button.  Longer term, we should
+            //   fall back to using KeyGuard which will work on all Android versions.
+            promptInfoBuilder.setAllowedAuthenticators(
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL);
         } else {
-            // Use the Builder class for convenient dialog construction
-            val builder = AlertDialog.Builder(requireActivity())
-            builder.setTitle(getString(R.string.bio_auth_title))
-            builder.setMessage("${getSubtitle()} \n${formatEntryNames(vm.getEntryNames())}")
-            builder.setPositiveButton(R.string.bt_ok) { _, _ ->
-                authenticationSucceeded()
+            if (BiometricManager.from(requireContext()).canAuthenticate(BIOMETRIC_STRONG)
+                == BIOMETRIC_SUCCESS
+            ) {
+                promptInfoBuilder.setNegativeButtonText(getString(R.string.bio_auth_use_pin))
+            } else {
+                // No biometrics enrolled, force use of LSKF
+                promptInfoBuilder.setDeviceCredentialAllowed(true)
             }
-            builder.setNegativeButton(R.string.bt_cancel) { _, _ ->
-                authenticationFailed()
-            }
-            builder.create()
-            builder.show()
+        }
+
+        val biometricPrompt = BiometricPrompt(this, executor, biometricAuthCallback)
+        val cryptoObject = vm.getCryptoObject()
+        val promptInfo = promptInfoBuilder.build()
+        if (cryptoObject != null) {
+            biometricPrompt.authenticate(promptInfo, cryptoObject)
+        } else {
+            biometricPrompt.authenticate(promptInfo)
         }
     }
 
@@ -252,7 +248,26 @@ class TransferDocumentFragment : Fragment() {
     private fun authenticationSucceeded() {
         // Send response again after user biometric authentication
         try {
-            vm.sendResponse()
+            if (vm.sendResponse() != null) {
+                // If this returns non-null it means that user-auth is still required.
+                //
+                // Wait, what? We just authenticated, so how can this happen?
+                //
+                // The answer is that it can happen when using face authentication b/c the
+                // countdown to when the key is no longer considered unlocked starts when the
+                // face is authenticated, NOT when the user presses the "Confirm" button. So
+                // if an ACP is configured with say a five second timeout this can happen if
+                // it takes more than five seconds for the user to press "Confirm"
+                //
+                Toast.makeText(
+                    requireContext(), "Auth took too long, try again",
+                    Toast.LENGTH_SHORT
+                ).show()
+                // Without this delay, the prompt won't reshow (bug in BiometricPrompt).
+                Handler().postDelayed({
+                    sendResponseWithConsent(false)
+                }, 100)
+            }
         } catch (e: Exception) {
             val message = "Send response error: ${e.message}"
             Log.e(LOG_TAG, message, e)
@@ -270,9 +285,18 @@ class TransferDocumentFragment : Fragment() {
             super.onAuthenticationError(errorCode, errString)
             // reached max attempts to authenticate the user, or authentication dialog was cancelled
 
-            Log.d(LOG_TAG, "Attempt to authenticate the user has failed $errorCode - $errString")
-
-            authenticationFailed()
+            if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                // Without this delay, the prompt won't reshow
+                Handler().postDelayed({
+                    sendResponseWithConsent(true)
+                }, 100)
+            } else {
+                Log.d(
+                    LOG_TAG,
+                    "Attempt to authenticate the user has failed $errorCode - $errString"
+                )
+                authenticationFailed()
+            }
         }
 
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {

@@ -49,7 +49,7 @@ object PreferencesHelper {
 
     fun isBleDataRetrievalPeripheralModeEnabled(context: Context): Boolean {
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, true
+            BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, false
         )
     }
 

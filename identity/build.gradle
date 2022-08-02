@@ -31,8 +31,11 @@ dependencies {
     implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_bcprov_version"
     implementation("org.bouncycastle:bcpkix-jdk15on:$bouncy_castle_bcpkix_version")
 
-    // JUnit 4 framework
+    testImplementation "androidx.test.espresso:espresso-core:$espresso_core_version"
+    testImplementation "androidx.test.ext:junit:$junit_test"
     testImplementation "junit:junit:$junit_version"
+    testImplementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_bcprov_version"
+
     androidTestImplementation "androidx.test.ext:junit:$junit_test"
     androidTestImplementation "androidx.test.espresso:espresso-core:$espresso_core_version"
 }
@@ -49,6 +52,12 @@ task generateApiDoc(type: Javadoc) {
 
     destinationDir = file("../docs/javadoc/")
     failOnError false
+}
+
+tasks.withType(Test) {
+    testLogging {
+        events "standardOut", "passed", "skipped", "failed"
+    }
 }
 
 afterEvaluate {

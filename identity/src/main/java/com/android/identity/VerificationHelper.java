@@ -398,6 +398,14 @@ public class VerificationHelper {
             ((DataTransportBle) mDataTransport).setUseL2CAPIfAvailable(mUseL2CAP);
         }
 
+        // Careful, we're using the user-provided Executor below so these callbacks might happen
+        // in another thread than we're in right now. For example this happens if using
+        // ThreadPoolExecutor.
+        //
+        // If it turns out that we're going to access shared state we might need locking /
+        // synchronization.
+        //
+
         mDataTransport.setListener(new DataTransport.Listener() {
             @Override
             public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
@@ -704,17 +712,14 @@ public class VerificationHelper {
      * {@link #isTransportSpecificTerminationSupported()} method can be used to determine whether
      * it's available for the current transport.
      *
+     * <p>If {@link #isTransportSpecificTerminationSupported()} indicates that this is not
+     * available for the current transport this is a noop.
+     *
      * @param useTransportSpecificSessionTermination Whether to use transport-specific session
      *                                               termination.
-     * @throws IllegalStateException if {@link #isTransportSpecificTerminationSupported()}
-     *   indicates that this is not available for the current transport.
      */
     public void setUseTransportSpecificSessionTermination(
             boolean useTransportSpecificSessionTermination) {
-        if (!isTransportSpecificTerminationSupported()) {
-            throw new IllegalStateException("Transport-specific session termination is not "
-                    + "supported");
-        }
         mUseTransportSpecificSessionTermination = useTransportSpecificSessionTermination;
     }
 
@@ -724,13 +729,12 @@ public class VerificationHelper {
      * See {@link #setUseTransportSpecificSessionTermination(boolean)} for more information about
      * what transport specific session termination is.
      *
-     * @return <code>true</code> if transport specific termination is available.
-     *
-     * @throws IllegalStateException if called when there is no current connection available.
+     * @return <code>true</code> if transport specific termination is available, <code>false</code>
+     *   if not or if not connected.
      */
     public boolean isTransportSpecificTerminationSupported() {
         if (mDataTransport == null) {
-            throw new IllegalStateException("There is no connection is not available");
+            return false;
         }
         return mDataTransport.supportsTransportSpecificTerminationMessage();
     }

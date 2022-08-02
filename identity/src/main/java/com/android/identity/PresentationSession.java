@@ -176,9 +176,14 @@ public abstract class PresentationSession {
      * to obtain a {@link BiometricPrompt.CryptoObject} rather than to construct it
      * manually.
      *
+     * <p>If no biometrics are enrolled on the device or if the device doesn't support biometrics
+     * the value {@code null} may be returned. This just means the application won't have a
+     * {@link BiometricPrompt.CryptoObject} to pass to {@link BiometricPrompt} and will have to
+     * pass {@code null} instead.
+     *
      * @return A {@link BiometricPrompt.CryptoObject} which can be used with
      * {@link BiometricPrompt}.
      */
-    @NonNull
+    @Nullable
     public abstract BiometricPrompt.CryptoObject getCryptoObject();
 }

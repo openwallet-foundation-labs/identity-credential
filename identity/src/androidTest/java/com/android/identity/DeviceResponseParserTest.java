@@ -16,9 +16,6 @@
 
 package com.android.identity;
 
-import android.icu.text.DateFormat;
-import android.icu.text.SimpleDateFormat;
-
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
@@ -31,7 +28,6 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
-import java.util.Collection;
 import java.util.List;
 
 @SuppressWarnings("deprecation")
@@ -75,10 +71,11 @@ public class DeviceResponseParserTest {
 
         // Check ValidityInfo is correctly parsed, these values are all from
         // ISO/IEC 18013-5 Annex D.4.1.2 mdoc response.
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX");
-        Assert.assertEquals("2020-10-01T13:30:02Z", df.format(d.getValidityInfoSigned()));
-        Assert.assertEquals("2020-10-01T13:30:02Z", df.format(d.getValidityInfoValidFrom()));
-        Assert.assertEquals("2021-10-01T13:30:02Z", df.format(d.getValidityInfoValidUntil()));
+        // 2020-10-01T13:30:02Z == 1601559002000
+        Assert.assertEquals(1601559002000L, d.getValidityInfoSigned().toEpochMilli());
+        Assert.assertEquals(1601559002000L, d.getValidityInfoValidFrom().toEpochMilli());
+        // 2021-10-01T13:30:02Z == 1601559002000
+        Assert.assertEquals(1633095002000L, d.getValidityInfoValidUntil().toEpochMilli());
         Assert.assertNull(d.getValidityInfoExpectedUpdate());
 
         // Check DeviceKey is correctly parsed

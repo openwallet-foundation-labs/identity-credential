@@ -43,6 +43,7 @@ import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -80,9 +81,11 @@ import co.nstant.in.cbor.model.UnsignedInteger;
  * transfer it should also be registered for AID <code>A0 00 00 02 48 04 00</code> (as per
  * ISO/IEC 18013-5 section 8.3.3.1.2). In both cases
  * {@link HostApduService#processCommandApdu(byte[], Bundle)} calls should be forwarded to
- * {@link #nfcProcessCommandApdu(HostApduService, byte[])} and
+ * {@link #nfcProcessCommandApdu(byte[])} and
  * {@link HostApduService#onDeactivated(int)} calls should be forwarded to
- * {@link #nfcOnDeactivated(HostApduService, int)}.
+ * {@link #nfcOnDeactivated(HostApduService, int)}. The application should also use
+ * {@link #setNfcResponder(NfcResponder)} to set up a {@link NfcResponder} to send
+ * response APDUs back to the reader.
  *
  * <p>Unlike {@link IdentityCredentialStore}, {@link IdentityCredential},
  * {@link WritableIdentityCredential}, and {@link PresentationSession} this class is never backed
@@ -123,11 +126,11 @@ public class PresentationHelper {
     private static final byte[] CAPABILITY_FILE_CONTENTS = new byte[]{
             (byte) 0x00, (byte) 0x0f,  // size of capability container '00 0F' = 15 bytes
             (byte) 0x20,               // mapping version v2.0
-            (byte) 0x7f, (byte) 0xFf,  // maximum response data length '7F FF'
-            (byte) 0x7f, (byte) 0xFf,  // maximum command data length '7F FF'
+            (byte) 0x7f, (byte) 0xff,  // maximum response data length '7F FF'
+            (byte) 0x7f, (byte) 0xff,  // maximum command data length '7F FF'
             (byte) 0x04, (byte) 0x06,  // NDEF File Control TLV
             (byte) 0xe1, (byte) 0x04,  // NDEF file identifier 'E1 04'
-            (byte) 0xff, (byte) 0xfe,  // maximum NDEF file size 'FF FE'
+            (byte) 0x7f, (byte) 0xff,  // maximum NDEF file size '7F FF'
             (byte) 0x00,               // file read access condition (allow read)
             (byte) 0xff                // file write access condition (do not write)
     };
@@ -151,7 +154,6 @@ public class PresentationHelper {
     int mNumTransportsStillSettingUp;
     boolean mReceivedSessionTerminated;
     int mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_UNKNOWN;
-    HostApduService mApduService;
     @LoggingFlag
     int mLoggingFlags = 0;
     private ArrayList<DataTransport> mTransports = new ArrayList<>();
@@ -162,6 +164,7 @@ public class PresentationHelper {
     private boolean mUseTransportSpecificSessionTermination;
     private boolean mSendSessionTerminationMessage;
     Util.Logger mLog;
+    private NfcResponder mNfcResponder;
 
     /**
      * Creates a new {@link PresentationHelper}.
@@ -283,7 +286,8 @@ public class PresentationHelper {
      * the data to put in a QR code which can be displayed in the application.
      *
      * <p>For NFC engagement, the application should pass <code>APDUs</code> to
-     * {@link #nfcProcessCommandApdu(HostApduService, byte[])}.
+     * {@link #nfcProcessCommandApdu(byte[])} and set up a way for to send APDU responses
+     * back using {@link #setNfcResponder(NfcResponder)}.
      *
      * <p>When a remote verifier device connects and makes a request for documents, the
      * {@link Listener#onDeviceRequest(int, byte[])}  callback will be invoked.
@@ -343,165 +347,178 @@ public class PresentationHelper {
             t.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
         }
 
+        // Careful, we're using the user-provided Executor below so these callbacks might happen
+        // in another thread than we're in right now. For example this happens if using
+        // ThreadPoolExecutor.
+        //
+        // In particular, it means we need locking around `mNumTransportsStillSettingUp`. We'll
+        // use the monitor for the PresentationHelper object for to achieve that.
+        //
+        final PresentationHelper helper = this;
         mNumTransportsStillSettingUp = 0;
-        for (DataTransport transport : mTransports) {
-            transport.setListener(new DataTransport.Listener() {
-                @Override
-                public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
-                    mLog.info("onListeningSetupCompleted for " + transport);
-                    mNumTransportsStillSettingUp -= 1;
-                    if (mNumTransportsStillSettingUp == 0) {
-                        allTransportsAreSetup();
+
+        synchronized (helper) {
+            for (DataTransport transport : mTransports) {
+                transport.setListener(new DataTransport.Listener() {
+                    @Override
+                    public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+                        mLog.info("onListeningSetupCompleted for " + transport);
+                        synchronized (helper) {
+                            mNumTransportsStillSettingUp -= 1;
+                            if (mNumTransportsStillSettingUp == 0) {
+                                allTransportsAreSetup();
+                            }
+                        }
                     }
-                }
 
-                @Override
-                public void onListeningPeerConnecting() {
-                    peerIsConnecting(transport);
-                }
-
-                @Override
-                public void onListeningPeerConnected() {
-                    mLog.info("onListeningPeerConnected for " + transport);
-                    peerHasConnected(transport);
-                }
-
-                @Override
-                public void onListeningPeerDisconnected() {
-                    mLog.info("onListeningPeerDisconnected for " + transport);
-                    transport.close();
-                    if (!mReceivedSessionTerminated) {
-                        reportError(
-                                new Error("Peer disconnected without proper session termination"));
-                    } else {
-                        reportDeviceDisconnected(false);
+                    @Override
+                    public void onListeningPeerConnecting() {
+                        peerIsConnecting(transport);
                     }
-                }
 
-                @Override
-                public void onConnectionResult(@Nullable Throwable error) {
-                    mLog.info("onConnectionResult for " + transport);
-                    if (error != null) {
-                        throw new IllegalStateException("Unexpected onConnectionResult "
-                                + "callback from transport " + transport, error);
+                    @Override
+                    public void onListeningPeerConnected() {
+                        mLog.info("onListeningPeerConnected for " + transport);
+                        peerHasConnected(transport);
                     }
-                    throw new IllegalStateException("Unexpected onConnectionResult "
-                            + "callback from transport " + transport);
-                }
 
-                @Override
-                public void onConnectionDisconnected() {
-                    mLog.info("onConnectionDisconnected for " + transport);
-                    throw new IllegalStateException("Unexpected onConnectionDisconnected "
-                            + "callback from transport " + transport);
-                }
-
-                @Override
-                public void onError(@NonNull Throwable error) {
-                    transport.close();
-                    reportError(error);
-                }
-
-                @Override
-                public void onMessageReceived(@NonNull byte[] data) {
-                    Pair<byte[], OptionalLong> decryptedMessage = null;
-                    try {
-                        decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
-                        mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_QR_CODE;
-                    } catch (RuntimeException e) {
+                    @Override
+                    public void onListeningPeerDisconnected() {
+                        mLog.info("onListeningPeerDisconnected for " + transport);
                         transport.close();
-                        reportError(new Error("Error decrypting message from reader", e));
-                        return;
-                    }
-                    // If decryption failed it could be just because the reader engaged
-                    // using NFC and not QR code... so try using the session encryption
-                    // for NFC and see if that works...
-                    if (decryptedMessage == null) {
-                        if (mSessionEncryptionForNfc != null) {
-                            try {
-                                decryptedMessage =
-                                    mSessionEncryptionForNfc.decryptMessageFromReader(data);
-                            } catch (RuntimeException e) {
-                                transport.close();
-                                reportError(new Error("Error decrypting message from reader", e));
-                                return;
-                            }
-                            if (decryptedMessage != null) {
-                                // This worked, switch to NFC for future messages..
-                                //
-                                mSessionEncryption = mSessionEncryptionForNfc;
-                                mSessionEncryptionForNfc = null;
-                                mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_NFC;
-                            }
-                        }
-                    }
-                    if (decryptedMessage == null) {
-                        mLog.info("Decryption failed!");
-                        transport.close();
-                        reportError(new Error("Error decrypting message from reader"));
-                        return;
-                    }
-
-                    // If there's data in the message, assume it's DeviceRequest (ISO 18013-5
-                    // currently does not define other kinds of messages).
-                    //
-                    if (decryptedMessage.first != null) {
-                        // Only initialize the PresentationSession a single time.
-                        //
-                        if (mSessionEncryption.getNumMessagesEncrypted() == 0) {
-                            mPresentationSession.setSessionTranscript(
-                                    mSessionEncryption.getSessionTranscript());
-                            try {
-                                mPresentationSession.setReaderEphemeralPublicKey(
-                                        mSessionEncryption.getEphemeralReaderPublicKey());
-                            } catch (InvalidKeyException e) {
-                                transport.close();
-                                reportError(new Error("Reader ephemeral public key is invalid", e));
-                                return;
-                            }
-                        }
-
-                        if (mLog.isSessionEnabled()) {
-                            Util.dumpHex(TAG, "Received DeviceRequest", decryptedMessage.first);
-                        }
-
-                        reportDeviceRequest(mDeviceEngagementMethod, decryptedMessage.first);
-                    } else {
-                        // No data, so status must be set.
-                        if (!decryptedMessage.second.isPresent()) {
-                            transport.close();
-                            reportError(new Error("No data and no status in SessionData"));
+                        if (!mReceivedSessionTerminated) {
+                            reportError(
+                                    new Error("Peer disconnected without proper session termination"));
                         } else {
-                            long statusCode = decryptedMessage.second.getAsLong();
-
-                            mLog.session("Message received from reader with status: " + statusCode);
-
-                            if (statusCode == 20) {
-                                mReceivedSessionTerminated = true;
-                                transport.close();
-                                reportDeviceDisconnected(false);
-                            } else {
-                                transport.close();
-                                reportError(new Error("Expected status code 20, got "
-                                        + statusCode + " instead"));
-                            }
+                            reportDeviceDisconnected(false);
                         }
                     }
 
-                }
+                    @Override
+                    public void onConnectionResult(@Nullable Throwable error) {
+                        mLog.info("onConnectionResult for " + transport);
+                        if (error != null) {
+                            throw new IllegalStateException("Unexpected onConnectionResult "
+                                    + "callback from transport " + transport, error);
+                        }
+                        throw new IllegalStateException("Unexpected onConnectionResult "
+                                + "callback from transport " + transport);
+                    }
 
-                @Override
-                public void onTransportSpecificSessionTermination() {
-                    mLog.info("Received transport-specific session termination");
-                    mReceivedSessionTerminated = true;
-                    transport.close();
-                    reportDeviceDisconnected(true);
-                }
+                    @Override
+                    public void onConnectionDisconnected() {
+                        mLog.info("onConnectionDisconnected for " + transport);
+                        throw new IllegalStateException("Unexpected onConnectionDisconnected "
+                                + "callback from transport " + transport);
+                    }
 
-            }, mDeviceRequestListenerExecutor);
-            mLog.info("Listening on transport " + transport);
-            transport.listen();
-            mNumTransportsStillSettingUp += 1;
+                    @Override
+                    public void onError(@NonNull Throwable error) {
+                        transport.close();
+                        reportError(error);
+                    }
+
+                    @Override
+                    public void onMessageReceived(@NonNull byte[] data) {
+                        Pair<byte[], OptionalLong> decryptedMessage = null;
+                        try {
+                            decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
+                            mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_QR_CODE;
+                        } catch (RuntimeException e) {
+                            transport.close();
+                            reportError(new Error("Error decrypting message from reader", e));
+                            return;
+                        }
+                        // If decryption failed it could be just because the reader engaged
+                        // using NFC and not QR code... so try using the session encryption
+                        // for NFC and see if that works...
+                        if (decryptedMessage == null) {
+                            if (mSessionEncryptionForNfc != null) {
+                                try {
+                                    decryptedMessage =
+                                            mSessionEncryptionForNfc.decryptMessageFromReader(data);
+                                } catch (RuntimeException e) {
+                                    transport.close();
+                                    reportError(new Error("Error decrypting message from reader", e));
+                                    return;
+                                }
+                                if (decryptedMessage != null) {
+                                    // This worked, switch to NFC for future messages..
+                                    //
+                                    mSessionEncryption = mSessionEncryptionForNfc;
+                                    mSessionEncryptionForNfc = null;
+                                    mDeviceEngagementMethod = DEVICE_ENGAGEMENT_METHOD_NFC;
+                                }
+                            }
+                        }
+                        if (decryptedMessage == null) {
+                            mLog.info("Decryption failed!");
+                            transport.close();
+                            reportError(new Error("Error decrypting message from reader"));
+                            return;
+                        }
+
+                        // If there's data in the message, assume it's DeviceRequest (ISO 18013-5
+                        // currently does not define other kinds of messages).
+                        //
+                        if (decryptedMessage.first != null) {
+                            // Only initialize the PresentationSession a single time.
+                            //
+                            if (mSessionEncryption.getNumMessagesEncrypted() == 0) {
+                                mPresentationSession.setSessionTranscript(
+                                        mSessionEncryption.getSessionTranscript());
+                                try {
+                                    mPresentationSession.setReaderEphemeralPublicKey(
+                                            mSessionEncryption.getEphemeralReaderPublicKey());
+                                } catch (InvalidKeyException e) {
+                                    transport.close();
+                                    reportError(new Error("Reader ephemeral public key is invalid", e));
+                                    return;
+                                }
+                            }
+
+                            if (mLog.isSessionEnabled()) {
+                                Util.dumpHex(TAG, "Received DeviceRequest", decryptedMessage.first);
+                            }
+
+                            reportDeviceRequest(mDeviceEngagementMethod, decryptedMessage.first);
+                        } else {
+                            // No data, so status must be set.
+                            if (!decryptedMessage.second.isPresent()) {
+                                transport.close();
+                                reportError(new Error("No data and no status in SessionData"));
+                            } else {
+                                long statusCode = decryptedMessage.second.getAsLong();
+
+                                mLog.session("Message received from reader with status: " + statusCode);
+
+                                if (statusCode == 20) {
+                                    mReceivedSessionTerminated = true;
+                                    transport.close();
+                                    reportDeviceDisconnected(false);
+                                } else {
+                                    transport.close();
+                                    reportError(new Error("Expected status code 20, got "
+                                            + statusCode + " instead"));
+                                }
+                            }
+                        }
+
+                    }
+
+                    @Override
+                    public void onTransportSpecificSessionTermination() {
+                        mLog.info("Received transport-specific session termination");
+                        mReceivedSessionTerminated = true;
+                        transport.close();
+                        reportDeviceDisconnected(true);
+                    }
+
+                }, mDeviceRequestListenerExecutor);
+                mLog.info("Listening on transport " + transport);
+                transport.listen();
+                mNumTransportsStillSettingUp += 1;
+            }
         }
 
     }
@@ -699,16 +716,16 @@ public class PresentationHelper {
      * verifier using the passed-in {@link HostApduService}.
      *
      * <p>Applications should call this method in their
-     * {@link HostApduService#processCommandApdu(byte[], Bundle)} callback.
+     * {@link HostApduService#processCommandApdu(byte[], Bundle)} callback if they are
+     * using NFC engagement or NFC data transfer.
      *
-     * @param service the {@link HostApduService} owned by the application.
+     * <p>If this is used, the application must have set a {@link PresentationHelper.NfcResponder}
+     * using {@link #setNfcResponder(NfcResponder)}.
+     *
      * @param apdu    the APDU.
      */
-    public void nfcProcessCommandApdu(@NonNull HostApduService service,
-            @NonNull byte[] apdu) {
+    public void nfcProcessCommandApdu(@NonNull byte[] apdu) {
         byte[] ret = null;
-
-        mApduService = service;
 
         peerIsEngaging();
 
@@ -747,7 +764,11 @@ public class PresentationHelper {
             if (mLog.isTransportVerboseEnabled()) {
                 mLog.transportVerbose("APDU response: " + Util.toHex(ret));
             }
-            service.sendResponseApdu(ret);
+            if (mNfcResponder == null) {
+                reportError(new Error("Trying to send APDU response but no NfcResponder is set"));
+                return;
+            }
+            mNfcResponder.sendResponseApdu(ret);
         }
     }
 
@@ -771,7 +792,12 @@ public class PresentationHelper {
                             new DataTransportNfc.ResponseInterface() {
                                 @Override
                                 public void sendResponseApdu(@NonNull byte[] responseApdu) {
-                                    mApduService.sendResponseApdu(responseApdu);
+                                    if (mNfcResponder == null) {
+                                        reportError(new Error("Trying to send APDU "
+                                                + "response but no NfcResponder is set"));
+                                        return;
+                                    }
+                                    mNfcResponder.sendResponseApdu(responseApdu);
                                 }
                             });
 
@@ -897,13 +923,21 @@ public class PresentationHelper {
 
     private @NonNull
     byte[] nfcEngagementHandleReadBinary(@NonNull byte[] apdu) {
-        mLog.session("in nfcEngagementHandleReadBinary");
         if (apdu.length < 5) {
             return STATUS_WORD_FILE_NOT_FOUND;
         }
         byte[] contents = mSelectedNfcFile;
         int offset = (apdu[2] & 0xff) * 256 + (apdu[3] & 0xff);
         int size = apdu[4] & 0xff;
+        if (size == 0) {
+            // Handle Extended Length encoding
+            if (apdu.length < 7) {
+                return STATUS_WORD_FILE_NOT_FOUND;
+            }
+            size = (apdu[5] & 0xff) * 256;
+            size += apdu[6] & 0xff;
+        }
+        mLog.info(String.format(Locale.US, "nfcEngagementHandleReadBinary: offset=%d size=%d", offset, size));
 
         if (offset >= contents.length) {
             return STATUS_WORD_WRONG_PARAMETERS;
@@ -1004,6 +1038,15 @@ public class PresentationHelper {
     }
 
     /**
+     * Sets the object used to send back APDUs to the remote NFC device.
+     *
+     * @param nfcResponder a {@link PresentationHelper.NfcResponder} instance.
+     */
+    public void setNfcResponder(@NonNull NfcResponder nfcResponder) {
+        mNfcResponder = nfcResponder;
+    }
+
+    /**
      * Stops the presentation, shuts down all transports used, and stops listening on
      * transports previously brought into a listening state using
      * {@link #startListening(DataRetrievalListenerConfiguration)}.
@@ -1055,19 +1098,13 @@ public class PresentationHelper {
      * <p>As per <a href="https://www.iso.org/standard/69084.html">ISO/IEC 18013-5</a>
      * transport-specific session-termination is currently only supported for BLE. The
      * {@link #isTransportSpecificTerminationSupported()} method can be used to determine whether
-     * it's available for the current transport.
+     * it's available for the current transport. If the current transport does not support
+     * the feature, then this method is a noop.
      *
      * @param useTransportSpecificSessionTermination Whether to use transport-specific session
-     *                                               termination.
-     * @throws IllegalStateException if {@link #isTransportSpecificTerminationSupported()}
-     *   indicates that this is not available for the current transport.
      */
     public void setUseTransportSpecificSessionTermination(
             boolean useTransportSpecificSessionTermination) {
-        if (!isTransportSpecificTerminationSupported()) {
-            throw new IllegalStateException("Transport-specific session termination is not "
-                    + "supported");
-        }
         mUseTransportSpecificSessionTermination = useTransportSpecificSessionTermination;
     }
 
@@ -1077,13 +1114,12 @@ public class PresentationHelper {
      * See {@link #setUseTransportSpecificSessionTermination(boolean)} for more information about
      * what transport specific session termination is.
      *
-     * @return <code>true</code> if transport specific termination is available.
-     *
-     * @throws IllegalStateException if called when there is no current connection available.
+     * @return <code>true</code> if transport specific termination is available, <code>false</code>
+     *   if not or if not connected.
      */
     public boolean isTransportSpecificTerminationSupported() {
         if (mActiveTransport == null) {
-            throw new IllegalStateException("There is no connection is not available");
+            return false;
         }
         return mActiveTransport.supportsTransportSpecificTerminationMessage();
     }
@@ -1215,5 +1251,18 @@ public class PresentationHelper {
          * @param error the error.
          */
         void onError(@NonNull Throwable error);
+    }
+
+    /**
+     * Interface used by {@link PresentationHelper} to send back APDUs for
+     * engagement and data transfer.
+     */
+    public interface NfcResponder {
+        /**
+         * Sends a response APDU back to the remote device.
+         *
+         * @param responseApdu A byte-array containing the reponse APDU.
+         */
+        void sendResponseApdu(byte[] responseApdu);
     }
 }
