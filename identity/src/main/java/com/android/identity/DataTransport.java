@@ -60,6 +60,10 @@ abstract class DataTransport {
     Listener mListener;
     private @Nullable
     Executor mListenerExecutor;
+    private @Nullable
+    TransmissionProgressListener mProgressListener;
+    private @Nullable
+    Executor mProgressListenerExecutor;
 
     DataTransport(Context context) {
         mContext = context;
@@ -245,6 +249,25 @@ abstract class DataTransport {
     abstract void sendMessage(@NonNull byte[] data);
 
     /**
+     * Send data to the remote peer and listen for progress updates.
+     *
+     * @param data the data to send
+     * @param progressListener progress listener that will receive updates as data is sent to the
+     *                         remote peer.
+     * @param progressListenerExecutor a {@link Executor} to do the progress listener updates in or
+     *                                 <code>null</code> if <code>listener</code> is
+     *                                 <code>null</code>.
+     */
+    void sendMessage(@NonNull byte[] data, @Nullable TransmissionProgressListener progressListener, @Nullable Executor progressListenerExecutor) {
+        if (progressListener != null && progressListenerExecutor == null) {
+            throw new IllegalStateException("Passing null Executor for non-null Listener");
+        }
+        this.mProgressListener = progressListener;
+        this.mProgressListenerExecutor = progressListenerExecutor;
+        sendMessage(data);
+    }
+
+    /**
      * Sends a transport-specific termination message.
      *
      * This may not be supported by the transport, use
@@ -342,6 +365,14 @@ abstract class DataTransport {
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
             executor.execute(() -> listener.onMessageReceived(data));
+        }
+    }
+
+    protected void reportMessageProgress(long progress, long max) {
+        final TransmissionProgressListener listener = mProgressListener;
+        final Executor executor = mProgressListenerExecutor;
+        if (!mInhibitCallbacks && listener != null && executor != null) {
+            executor.execute(() -> listener.onProgressUpdate(progress, max));
         }
     }
 

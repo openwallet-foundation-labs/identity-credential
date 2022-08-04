@@ -74,7 +74,7 @@ class TransferFragment : Fragment() {
             ).show()
         }
 
-        vm.getTransferStatus().observe(viewLifecycleOwner, {
+        vm.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.ENGAGED -> {
                     binding.tvStatus.text = "Device engagement received..."
@@ -105,7 +105,7 @@ class TransferFragment : Fragment() {
                     findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
                 }
             }
-        })
+        }
 
         binding.btCancel.setOnClickListener {
             findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
