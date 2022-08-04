@@ -281,6 +281,7 @@ class DataTransportTcp extends DataTransport {
 
                     try {
                         mSocket.getOutputStream().write(messageToSend);
+                        reportMessageProgress(messageToSend.length, messageToSend.length);
                     } catch (IOException e) {
                         reportError(e);
                         break;

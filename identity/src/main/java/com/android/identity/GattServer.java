@@ -16,6 +16,7 @@
 
 package com.android.identity;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -38,6 +39,7 @@ import java.util.Queue;
 import java.util.UUID;
 
 @SuppressWarnings("deprecation")
+@SuppressLint("MissingPermission")
 class GattServer extends BluetoothGattServerCallback {
     private static final String TAG = "GattServer";
     private final byte[] mEncodedEDeviceKeyBytes;
@@ -59,6 +61,7 @@ class GattServer extends BluetoothGattServerCallback {
     BluetoothGattCharacteristic mCharacteristicIdent;
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     Queue<byte[]> mWritingQueue = new ArrayDeque<>();
+    int writingQueueTotalChunks;
     boolean writeIsOutstanding = false;
     private BluetoothGattServer mGattServer;
     private BluetoothDevice mCurrentConnection;
@@ -339,6 +342,17 @@ class GattServer extends BluetoothGattServerCallback {
             reportError(new Error("Error in onNotificationSent status=" + status));
             return;
         }
+
+        if (writingQueueTotalChunks > 0) {
+            if (mWritingQueue.size() == 0) {
+                reportMessageSendProgress(writingQueueTotalChunks, writingQueueTotalChunks);
+                writingQueueTotalChunks = 0;
+            } else {
+                reportMessageSendProgress(writingQueueTotalChunks - mWritingQueue.size(), writingQueueTotalChunks);
+            }
+        }
+
+
         writeIsOutstanding = false;
         drainWritingQueue();
     }
@@ -373,6 +387,7 @@ class GattServer extends BluetoothGattServerCallback {
 
             offset += size;
         } while (offset < data.length);
+        writingQueueTotalChunks = mWritingQueue.size();
         drainWritingQueue();
     }
 
@@ -391,6 +406,12 @@ class GattServer extends BluetoothGattServerCallback {
     void reportMessageReceived(@NonNull byte[] data) {
         if (mListener != null && !mInhibitCallbacks) {
             mListener.onMessageReceived(data);
+        }
+    }
+
+    void reportMessageSendProgress(long progress, long max) {
+        if (mListener != null && !mInhibitCallbacks) {
+            mListener.onMessageSendProgress(progress, max);
         }
     }
 
@@ -429,6 +450,9 @@ class GattServer extends BluetoothGattServerCallback {
         void onTransportSpecificSessionTermination();
 
         void onError(@NonNull Throwable error);
+
+        void onMessageSendProgress(long progress, long max);
+
     }
 }
 

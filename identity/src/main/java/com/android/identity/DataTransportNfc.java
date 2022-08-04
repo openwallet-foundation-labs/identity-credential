@@ -58,6 +58,7 @@ class DataTransportNfc extends DataTransport {
     private static final byte[] STATUS_WORD_FILE_NOT_FOUND = {(byte) 0x6a, (byte) 0x82};
     IsoDep mIsoDep;
     ArrayList<byte[]> mListenerRemainingChunks;
+    int mListenerTotalChunks;
     int mListenerRemainingBytesAvailable;
     boolean mEndTransceiverThread;
     ResponseInterface mResponseInterface;
@@ -251,10 +252,12 @@ class DataTransportNfc extends DataTransport {
 
                     mListenerRemainingChunks = chunks;
                     mListenerRemainingBytesAvailable = data.length;
+                    mListenerTotalChunks = chunks.size();
                     sendNextChunk(false);
                 }
             }
         };
+        reportMessageProgress(0, mListenerTotalChunks);
         transceiverThread.start();
     }
 
@@ -354,6 +357,9 @@ class DataTransportNfc extends DataTransport {
                 mResponseInterface.sendResponseApdu(buildApduResponse(chunk, 0x61, 0x00));
             }
         }
+
+        reportMessageProgress(mListenerRemainingChunks.size(), mListenerTotalChunks);
+
     }
 
     /**
