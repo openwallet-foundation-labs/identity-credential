@@ -20,7 +20,9 @@ import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.icu.util.Calendar;
+import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.security.keystore.UserNotAuthenticatedException;
@@ -1299,8 +1301,17 @@ class CredentialData {
                             aliasForAuthKey,
                             KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
                             .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512);
+
+                    boolean isStrongBoxBacked = false;
+                    PackageManager pm = mContext.getPackageManager();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+                            pm.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)) {
+                        isStrongBoxBacked = true;
+                        builder.setIsStrongBoxBacked(true);
+                    }
                     kpg.initialize(builder.build());
                     kpg.generateKeyPair();
+                    Log.i(TAG, "AuthKey created, strongBoxBacked=" + isStrongBoxBacked);
 
                     X509Certificate certificate = generateAuthenticationKeyCert(
                             aliasForAuthKey, mCredentialKeyAlias, mProofOfProvisioningSha256);

@@ -17,8 +17,11 @@
 package com.android.identity;
 
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -107,14 +110,23 @@ class SoftwareWritableIdentityCredential extends WritableIdentityCredential {
                     aliasForCredential,
                     KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
                     .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512);
-
             // Attestation is only available in Nougat and onwards.
             if (challenge == null) {
                 challenge = new byte[0];
             }
             builder.setAttestationChallenge(challenge);
+
+            mKeyPair = null;
+            boolean isStrongBoxBacked = false;
+            PackageManager pm = mContext.getPackageManager();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+                    pm.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)) {
+                isStrongBoxBacked = true;
+                builder.setIsStrongBoxBacked(true);
+            }
             kpg.initialize(builder.build());
             mKeyPair = kpg.generateKeyPair();
+            Log.i(TAG, "CredentialKey created, strongBoxBacked=" + isStrongBoxBacked);
 
             Certificate[] certificates = ks.getCertificateChain(aliasForCredential);
             mCertificates = new ArrayList<>();

@@ -29,6 +29,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
@@ -268,8 +270,18 @@ public class Utility {
         store.deleteCredentialByName(credentialName);
         WritableIdentityCredential wc = store.createCredential(credentialName, docType);
 
-        // We don't care about the returned proof of provisioning nor the certificate chain.
-        wc.getCredentialKeyCertificateChain(provisioningChallenge);
+        Collection<X509Certificate> certChain = wc.getCredentialKeyCertificateChain(provisioningChallenge);
+        Log.i(TAG, String.format(Locale.US, "Cert chain for self-signed credential '%s' has %d elements",
+                credentialName, certChain.size()));
+        int certNum = 0;
+        for (X509Certificate certificate : certChain) {
+            try {
+                Log.i(TAG, String.format(Locale.US, "Certificate %d: %s",
+                        certNum++, Util.toHex(certificate.getEncoded())));
+            } catch (CertificateEncodingException e) {
+                e.printStackTrace();
+            }
+        }
         wc.personalize(personalizationData);
 
         IdentityCredential c = store.getCredentialByName(credentialName,
