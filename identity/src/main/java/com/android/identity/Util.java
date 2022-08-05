@@ -76,6 +76,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Queue;
 import java.util.TimeZone;
 
 import javax.crypto.KeyAgreement;
@@ -1813,6 +1814,27 @@ class Util {
             return -1;
         }
         return cborEncodeWithoutCanonicalizing(dataItem).length;
+    }
+
+    /**
+     * Helper to split cbor items from a byte array into the queue
+     *
+     * <p>This is used for handling 18013-5:2021 L2CAP data where messages are not separated
+     * by any framing.
+     *
+     * @param data data with a single encoded CBOR data item and possibly more
+     * @param queue queue where the cbor items will be added
+     * @return remaining data bytes that are not a complete cbor item.
+     */
+    static byte[] splitCborItemsIntoQueue(byte[] data, Queue<byte[]> queue) {
+        int size = Util.cborGetLength(data);
+        while (size != -1 && data.length >= size) {
+            byte[] cborItem = Arrays.copyOfRange(data, 0, size);
+            queue.add(cborItem);
+            data = Arrays.copyOfRange(data, size, data.length);
+            size = Util.cborGetLength(data);
+        }
+        return data;
     }
 
     /**

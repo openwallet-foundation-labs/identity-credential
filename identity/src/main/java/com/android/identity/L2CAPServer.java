@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
@@ -44,9 +45,11 @@ class L2CAPServer {
     Listener mListener;
     boolean mInhibitCallbacks = false;
     private BluetoothServerSocket mServerSocket;
-    ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     private BluetoothSocket mSocket;
     private BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
+    private BlockingQueue<byte[]> mMessageReceivedQueue = new LinkedTransferQueue<>();
+    Thread mWritingThread;
+    Thread mReportReceivedMessageThread;
 
     L2CAPServer(@Nullable L2CAPServer.Listener listener, @LoggingFlag int loggingFlags) {
         mListener = listener;
@@ -79,9 +82,8 @@ class L2CAPServer {
         }
         int psm = mServerSocket.getPsm();
         byte[] psmValue = ByteBuffer.allocate(4).putInt(psm).array();
-        if (mLog.isTransportEnabled()) {
-            mLog.transport("PSM Value generated: " + psm + " byte: " + Util.toHex(psmValue));
-        }
+        mLog.transport("PSM Value generated: " + psm + " byte: " + Util.toHex(psmValue));
+
         return psmValue;
     }
 
@@ -93,11 +95,13 @@ class L2CAPServer {
                     mServerSocket.close();
                     mServerSocket = null;
 
-                    Thread writingThread = new Thread(this::writeToSocket);
-                    writingThread.start();
+                    mWritingThread = new Thread(this::writeToSocket);
+                    mWritingThread.start();
 
                     Thread readingThread = new Thread(this::readFromSocket);
                     readingThread.start();
+
+                    mReportReceivedMessageThread = new Thread(this::reportMessageReceived);
 
                     reportPeerConnected();
                 }
@@ -118,15 +122,16 @@ class L2CAPServer {
             return;
         }
 
-        if (mLog.isTransportEnabled()) {
-            mLog.transport("Writing L2CAP socket");
-        }
         while (isConnected()) {
             byte[] messageToSend;
             try {
                 messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
                 if (messageToSend == null) {
                     continue;
+                }
+                if (messageToSend.length == 0) {
+                    mLog.transportVerbose("Empty message, shutting down writing message");
+                    break;
                 }
             } catch (InterruptedException e) {
                 continue;
@@ -147,22 +152,17 @@ class L2CAPServer {
     }
 
     private void readFromSocket() {
-        if (mLog.isTransportEnabled()) {
-            mLog.transport("Start reading socket input");
-        }
+        mLog.transport("Start reading socket input");
         // Use the max size as buffer for L2CAP socket
         byte[] mmBuffer = new byte[mSocket.getMaxReceivePacketSize()];
-        int numBytes; // bytes returned from read()
+        ByteArrayOutputStream incomingMessage = new ByteArrayOutputStream();
         // Keep listening to the InputStream until an exception occurs.
         while (isConnected()) {
             try {
-                // Read from the InputStream.
-                numBytes = mSocket.getInputStream().read(mmBuffer, 0, mmBuffer.length);
-                // Returns -1 if there is no more data because the end of the stream has been reached.
+                int numBytes = mSocket.getInputStream().read(mmBuffer, 0, mmBuffer.length);
+                // Returns -1 once end of the stream has been reached.
                 if (numBytes == -1) {
-                    if (mLog.isTransportEnabled()) {
-                        mLog.transport("End of stream reading from socket");
-                    }
+                    mLog.transport("End of stream reading from socket");
                     reportPeerDisconnected();
                     break;
                 }
@@ -170,19 +170,12 @@ class L2CAPServer {
                     Util.dumpHex(TAG, "Chunk received by socket: (" + numBytes + ")", Arrays.copyOf(mmBuffer, numBytes));
                 }
                 // Report message received.
-                mIncomingMessage.write(mmBuffer, 0, numBytes);
-                byte[] entireMessage = mIncomingMessage.toByteArray();
-                int size = Util.cborGetLength(entireMessage);
-                // Check last chunk received
-                // - if bytes received are less than buffer
-                // - or message length is equal as expected size of the message
-                if (numBytes < mmBuffer.length || (size != -1 && entireMessage.length == size)) {
-                    if (mLog.isTransportEnabled()) {
-                        mLog.transport("Data size from message: (" + size + ") message size: (" + entireMessage.length + ")");
-                    }
-                    mIncomingMessage.reset();
-                    reportMessageReceived(entireMessage);
-                }
+                incomingMessage.write(mmBuffer, 0, numBytes);
+                // Add cbor item to the queue that will be reported as message received
+                byte[] data = Util.splitCborItemsIntoQueue(incomingMessage.toByteArray(), mMessageReceivedQueue);
+                // keep any remaining data to combine with the next chunk
+                incomingMessage.reset();
+                incomingMessage.write(data);
             } catch (IOException e) {
                 reportError(new Error("Error on listening input stream from socket L2CAP"));
                 break;
@@ -191,6 +184,22 @@ class L2CAPServer {
     }
 
     private void closeServerSocket() {
+        if (mWritingThread != null) {
+            mWriterQueue.add(new byte[0]);
+            try {
+                mWritingThread.join();
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Caught exception while joining writing thread: " + e);
+            }
+        }
+        if (mReportReceivedMessageThread != null) {
+            mMessageReceivedQueue.add(new byte[0]);
+            try {
+                mReportReceivedMessageThread.join();
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Caught exception while joining report message received thread: " + e);
+            }
+        }
         try {
             if (mServerSocket != null) {
                 mServerSocket.close();
@@ -228,9 +237,23 @@ class L2CAPServer {
         }
     }
 
-    void reportMessageReceived(@NonNull byte[] data) {
-        if (mListener != null && !mInhibitCallbacks) {
-            mListener.onMessageReceived(data);
+    void reportMessageReceived() {
+        while (mListener != null && !mInhibitCallbacks) {
+            byte[] messageReceived;
+            try {
+                messageReceived = mMessageReceivedQueue.poll(1000, TimeUnit.MILLISECONDS);
+                if (messageReceived == null) {
+                    continue;
+                }
+                if (messageReceived.length == 0) {
+                    mLog.transportVerbose("Empty message, shutting down message received");
+                    break;
+                }
+            } catch (InterruptedException e) {
+                continue;
+            }
+            mLog.transport("Data size from message received: (" + messageReceived.length + " bytes)");
+            mListener.onMessageReceived(messageReceived);
         }
     }
 

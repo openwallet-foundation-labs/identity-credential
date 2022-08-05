@@ -298,15 +298,11 @@ class GattClient extends BluetoothGattCallback {
                 mLog.transport("Using L2CAP: " + mUsingL2CAP);
             }
             if (mUsingL2CAP) {
-                if (gatt.readCharacteristic(mCharacteristicL2CAP)) {
-                    // continue with L2CAP
-                    return;
-                } else {
-                    // As it is not able to read from L2CAP characteristic set mUsingL2CAP to false
-                    // and proceed using characteristics to transfer instead of socket
-                    Log.w(TAG, "Not possible to read PSM from L2CAP characteristic " + mCharacteristicL2CAP);
-                    mUsingL2CAP = false;
+                // value is returned async above in onCharacteristicRead()
+                if (!gatt.readCharacteristic(mCharacteristicL2CAP)) {
+                    reportError(new Error("Error reading L2CAP characteristic"));
                 }
+                return;
             }
 
             if (!gatt.setCharacteristicNotification(mCharacteristicServer2Client, true)) {
