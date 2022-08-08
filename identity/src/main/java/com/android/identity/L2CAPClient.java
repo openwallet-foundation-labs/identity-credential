@@ -101,6 +101,8 @@ class L2CAPClient {
         mLog.transport("Received psmValue: " + Util.toHex(psmValue) + " psm: " + psm);
 
         try {
+            // Using insecure L2CAP allows the app to use L2CAP friction less, otherwise
+            // Android will require bluetooth pairing with other device showing the pairing code
             mSocket = bluetoothDevice.createInsecureL2capChannel(psm);
             mSocket.connect();
             if (isConnected()) {
@@ -112,6 +114,7 @@ class L2CAPClient {
                 readingThread.start();
 
                 mReportReceivedMessageThread = new Thread(this::reportMessageReceived);
+                mReportReceivedMessageThread.start();
 
                 reportPeerConnected();
             } else {
@@ -141,6 +144,10 @@ class L2CAPClient {
                 messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
                 if (messageToSend == null) {
                     continue;
+                }
+                if (messageToSend.length == 0) {
+                    mLog.transportVerbose("Empty message, shutting down writing message");
+                    break;
                 }
             } catch (InterruptedException e) {
                 continue;

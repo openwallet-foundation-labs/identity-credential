@@ -59,6 +59,8 @@ class L2CAPServer {
     @RequiresApi(api = Build.VERSION_CODES.Q)
     boolean start(@NonNull BluetoothAdapter bluetoothAdapter) {
         try {
+            // Using insecure L2CAP allows the app to use L2CAP friction less, otherwise
+            // Android will require bluetooth pairing with other device showing the pairing code
             mServerSocket = bluetoothAdapter.listenUsingInsecureL2capChannel();
         } catch (IOException e) {
             // It is unable to listen L2CAP channel
@@ -102,6 +104,7 @@ class L2CAPServer {
                     readingThread.start();
 
                     mReportReceivedMessageThread = new Thread(this::reportMessageReceived);
+                    mReportReceivedMessageThread.start();
 
                     reportPeerConnected();
                 }
