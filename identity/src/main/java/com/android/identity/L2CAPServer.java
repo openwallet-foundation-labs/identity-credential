@@ -115,16 +115,6 @@ class L2CAPServer {
     }
 
     private void writeToSocket() {
-        OutputStream os;
-
-        try {
-            os = mSocket.getOutputStream();
-        } catch (IOException e) {
-            Log.e(TAG, "Error writing message on L2CAP socket", e);
-            reportError(new Error("Error writing message on L2CAP socket", e));
-            return;
-        }
-
         while (isConnected()) {
             byte[] messageToSend;
             try {
@@ -140,9 +130,8 @@ class L2CAPServer {
                 continue;
             }
 
-            Log.d(TAG, "Writing (" + messageToSend.length + " bytes) on L2CAP socket");
-
             try {
+                OutputStream os = mSocket.getOutputStream();
                 os.write(messageToSend);
                 os.flush();
 
