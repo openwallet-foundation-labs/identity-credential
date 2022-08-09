@@ -51,6 +51,14 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000002-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000003-a123-48ce-896b-4c76973373e6");
     // Note: Ident UUID not used in peripheral server mode
+    /**
+     * In _mdoc peripheral server mode_ the _mdoc_ acts as the GATT server and the _mdoc reader_ acts as the
+     * GATT client. According to ISO 18013-5 Table A.1 this means that in _mdoc peripheral server mode_
+     * the GATT server (for the _mdoc_) should advertise
+     * UUID 0000000A-A123-48CE896B-4C76973373E6 and the GATT client (for the _mdoc reader_) should
+     * connect to that UUID.
+     */
+    UUID mCharacteristicL2CAPUuidMdoc = UUID.fromString("0000000a-a123-48ce-896b-4c76973373e6");
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
@@ -75,10 +83,15 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
+            UUID characteristicL2CAPUuid = null;
+            if (mUseL2CAPIfAvailable) {
+                characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
+            }
             mGattClient = new GattClient(mContext, mLoggingFlags,
                     mServiceUuid, mEncodedEDeviceKeyBytes,
                     mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                    mCharacteristicServer2ClientUuid, null);
+                    mCharacteristicServer2ClientUuid, null,
+                    characteristicL2CAPUuid);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -196,10 +209,15 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
         // TODO: Check if BLE is enabled and error out if not so...
 
+        UUID characteristicL2CAPUuid = null;
+        if (mUseL2CAPIfAvailable) {
+            characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
+        }
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
                 mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                mCharacteristicServer2ClientUuid, null);
+                mCharacteristicServer2ClientUuid, null,
+                characteristicL2CAPUuid);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
@@ -331,6 +349,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         if (mGattServer != null) {
             mGattServer.setListener(null);
             mGattServer.stop();
+            mGattServer = null;
         }
         if (mScanner != null) {
             try {
@@ -371,6 +390,11 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
-        return true;
+        if (mGattServer != null) {
+            return mGattServer.supportsTransportSpecificTerminationMessage();
+        } else if (mGattClient != null) {
+            return mGattClient.supportsTransportSpecificTerminationMessage();
+        }
+        return false;
     }
 }

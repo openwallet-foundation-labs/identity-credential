@@ -109,6 +109,10 @@ public class Constants {
      * for BLE data retrieval.
      */
     public static final int BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE = (1 << 1);
+    /**
+     * Flag indicating that L2CAP should be used for data retrieval if available and supported.
+     */
+    public static final int BLE_DATA_RETRIEVAL_OPTION_L2CAP = (1 << 2);
 
     /**
      * The status code of the document response.
@@ -153,7 +157,8 @@ public class Constants {
             flag = true,
             value = {
                     BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE,
-                    BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE
+                    BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE,
+                    BLE_DATA_RETRIEVAL_OPTION_L2CAP
             })
     public @interface BleDataRetrievalOption {
     }

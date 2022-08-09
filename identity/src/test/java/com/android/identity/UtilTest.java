@@ -24,12 +24,8 @@ import static org.junit.Assert.fail;
 
 import android.security.keystore.KeyProperties;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.MediumTest;
 
-import java.math.BigInteger;
-import java.security.Security;
-import java.security.spec.ECGenParameterSpec;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
@@ -39,13 +35,20 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.Security;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
+import java.security.spec.ECGenParameterSpec;
+import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
 import java.util.TimeZone;
 
@@ -811,5 +814,147 @@ public class UtilTest {
         assertEquals("", Util.base16(new byte[0]));
         assertEquals("00FF13AB0B",
                 Util.base16(new byte[]{0x00, (byte) 0xFF, 0x13, (byte) 0xAB, 0x0B}));
+    }
+
+    @Test
+    public void testCborGetLengthBasic() {
+        byte[] data = Util.cborEncode(new CborBuilder().add("text").build().get(0));
+        assertEquals(data.length, Util.cborGetLength(data));
+    }
+
+    @Test
+    public void testCborGetLengthNonCbor() {
+        byte[] data = new byte[] {0x70, 0x71};
+        assertEquals(-1, Util.cborGetLength(data));
+    }
+
+    @Test
+    public void testCborGetLengthIncompleteCbor() {
+        byte[] data = Util.cborEncode(new CborBuilder().add("text").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data, 0, data.length - 1);
+        byte[] incompleteData = baos.toByteArray();
+        assertEquals(-1, Util.cborGetLength(incompleteData));
+    }
+
+    @Test
+    public void testCborGetLengthComplicated() {
+        byte[] data = Util.cborEncode(
+                new CborBuilder()
+                        .addArray()
+                        .add("text")
+                        .add(42)
+                        .addMap()
+                        .put("foo", "bar")
+                        .put("fizz", "buzz")
+                        .end()
+                        .end()
+                        .build().get(0));
+        assertEquals(data.length, Util.cborGetLength(data));
+    }
+
+    @Test
+    public void testCborGetLengthMultipleDataItems() throws IOException {
+        byte[] data1 = Util.cborEncode(new CborBuilder().add("text1").build().get(0));
+        byte[] data2 = Util.cborEncode(new CborBuilder().add("text2").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data1);
+        baos.write(data2);
+        byte[] multipleDataItems = baos.toByteArray();
+        assertEquals(data1.length, Util.cborGetLength(multipleDataItems));
+    }
+
+    @Test
+    public void testCborGetLengthBasicWithTrailingInvalidData() throws IOException {
+        byte[] data = Util.cborEncode(new CborBuilder().add("text").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data);
+        baos.write(0x70);
+        baos.write(0x71);
+        byte[] withTrailer = baos.toByteArray();
+        assertEquals(data.length, Util.cborGetLength(withTrailer));
+    }
+
+    @Test
+    public void testCborSplitSingleItemIntoQueue() throws IOException {
+        byte[] data1 = Util.cborEncode(new CborBuilder().add("text1").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data1);
+
+        Queue<byte[]> queue = new ArrayDeque<>();
+        byte[] multipleDataItems = baos.toByteArray();
+        multipleDataItems = Util.splitCborItemsIntoQueue(multipleDataItems, queue);
+
+        assertArrayEquals(data1, queue.poll());
+        assertEquals(0, multipleDataItems.length);
+    }
+
+    @Test
+    public void testCborSplitSingleItemIntoQueueIncompleteCbor() {
+        byte[] data = Util.cborEncode(new CborBuilder().add("text").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data, 0, data.length - 1);
+        byte[] incompleteData = baos.toByteArray();
+
+        Queue<byte[]> queue = new ArrayDeque<>();
+        incompleteData = Util.splitCborItemsIntoQueue(incompleteData, queue);
+
+        assertArrayEquals(incompleteData, baos.toByteArray());
+        assertTrue(queue.isEmpty());
+    }
+
+    @Test
+    public void testCborSplitMultipleItemsIntoQueue() throws IOException {
+        byte[] data1 = Util.cborEncode(new CborBuilder().add("text1").build().get(0));
+        byte[] data2 = Util.cborEncode(new CborBuilder().add("text2").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data1);
+        baos.write(data2);
+
+        Queue<byte[]> queue = new ArrayDeque<>();
+        byte[] multipleDataItems = baos.toByteArray();
+        multipleDataItems = Util.splitCborItemsIntoQueue(multipleDataItems, queue);
+
+        assertArrayEquals(data1, queue.poll());
+        assertArrayEquals(data2, queue.poll());
+        assertEquals(0, multipleDataItems.length);
+    }
+
+    @Test
+    public void testCborSplitMultipleItemsIntoQueueAndTrailing() throws IOException {
+        byte[] data1 = Util.cborEncode(new CborBuilder().add("text1").build().get(0));
+        byte[] data2 = Util.cborEncode(new CborBuilder().add("text2").build().get(0));
+        byte[] dataNonCbor = new byte[]{0x70, 0x71};
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data1);
+        baos.write(data2);
+        baos.write(dataNonCbor);
+
+        Queue<byte[]> queue = new ArrayDeque<>();
+        byte[] multipleDataItems = baos.toByteArray();
+        multipleDataItems = Util.splitCborItemsIntoQueue(multipleDataItems, queue);
+
+        assertArrayEquals(data1, queue.poll());
+        assertArrayEquals(data2, queue.poll());
+        assertArrayEquals(dataNonCbor, multipleDataItems);
+    }
+
+    @Test
+    public void testCborSplitMultipleItemsIntoQueueIncompleteCbor() throws IOException {
+        byte[] data1 = Util.cborEncode(new CborBuilder().add("text1").build().get(0));
+        byte[] data2 = Util.cborEncode(new CborBuilder().add("text2").build().get(0));
+        byte[] data3 = Util.cborEncode(new CborBuilder().add("text3").build().get(0));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(data1);
+        baos.write(data2);
+        baos.write(Arrays.copyOfRange(data3, 0, data3.length - 3));
+
+        Queue<byte[]> queue = new ArrayDeque<>();
+        byte[] multipleDataItems = baos.toByteArray();
+        multipleDataItems = Util.splitCborItemsIntoQueue(multipleDataItems, queue);
+
+        assertArrayEquals(data1, queue.poll());
+        assertArrayEquals(data2, queue.poll());
+        assertArrayEquals(Arrays.copyOfRange(data3, 0, data3.length - 3), multipleDataItems);
     }
 }

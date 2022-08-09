@@ -34,6 +34,7 @@ import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
 import co.nstant.in.cbor.model.UnsignedInteger;
+
 import com.android.identity.Constants.BleDataRetrievalOption;
 import com.android.identity.Constants.LoggingFlag;
 import java.io.ByteArrayOutputStream;

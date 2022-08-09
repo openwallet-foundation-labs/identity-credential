@@ -27,10 +27,12 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
+import android.os.Build;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
 import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
@@ -51,6 +53,8 @@ class GattServer extends BluetoothGattServerCallback {
     UUID mCharacteristicClient2ServerUuid;
     UUID mCharacteristicServer2ClientUuid;
     UUID mCharacteristicIdentUuid;
+    UUID mCharacteristicL2CAPUuid;
+
     // This is what the 16-bit UUID 0x29 0x02 is encoded like.
     UUID mClientCharacteristicConfigUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     Listener mListener;
@@ -59,6 +63,7 @@ class GattServer extends BluetoothGattServerCallback {
     BluetoothGattCharacteristic mCharacteristicClient2Server;
     BluetoothGattCharacteristic mCharacteristicServer2Client;
     BluetoothGattCharacteristic mCharacteristicIdent;
+    BluetoothGattCharacteristic mCharacteristicL2CAP;
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     Queue<byte[]> mWritingQueue = new ArrayDeque<>();
     int writingQueueTotalChunks;
@@ -66,15 +71,18 @@ class GattServer extends BluetoothGattServerCallback {
     private BluetoothGattServer mGattServer;
     private BluetoothDevice mCurrentConnection;
     private int mNegotiatedMtu = 0;
+    private L2CAPServer mL2CAPServer;
     private byte[] mIdentValue;
+    private boolean mUsingL2CAP = false;
 
     GattServer(@NonNull Context context, @LoggingFlag int loggingFlags,
-            @NonNull BluetoothManager bluetoothManager,
-            @NonNull UUID serviceUuid, @NonNull byte[] encodedEDeviceKeyBytes,
-            @NonNull UUID characteristicStateUuid,
-            @NonNull UUID characteristicClient2ServerUuid,
-            @NonNull UUID characteristicServer2ClientUuid,
-            @Nullable UUID characteristicIdentUuid) {
+               @NonNull BluetoothManager bluetoothManager,
+               @NonNull UUID serviceUuid, @NonNull byte[] encodedEDeviceKeyBytes,
+               @NonNull UUID characteristicStateUuid,
+               @NonNull UUID characteristicClient2ServerUuid,
+               @NonNull UUID characteristicServer2ClientUuid,
+               @Nullable UUID characteristicIdentUuid,
+               @Nullable UUID characteristicL2CAPUuid) {
         mContext = context;
         mLog = new Util.Logger(TAG, loggingFlags);
         mBluetoothManager = bluetoothManager;
@@ -84,12 +92,14 @@ class GattServer extends BluetoothGattServerCallback {
         mCharacteristicClient2ServerUuid = characteristicClient2ServerUuid;
         mCharacteristicServer2ClientUuid = characteristicServer2ClientUuid;
         mCharacteristicIdentUuid = characteristicIdentUuid;
+        mCharacteristicL2CAPUuid = characteristicL2CAPUuid;
     }
 
     void setListener(@Nullable Listener listener) {
         mListener = listener;
     }
 
+    @SuppressLint("NewApi")
     boolean start() {
         byte[] ikm = mEncodedEDeviceKeyBytes;
         byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
@@ -151,6 +161,19 @@ class GattServer extends BluetoothGattServerCallback {
             mCharacteristicIdent = c;
         }
 
+        // Offers support to L2CAP when we have UUID characteristic and the OS version support it
+        mUsingL2CAP = (mCharacteristicL2CAPUuid != null) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q);
+        if (mLog.isTransportEnabled()) {
+            mLog.transport("Is L2CAP supported: " + mUsingL2CAP);
+        }
+        if (mUsingL2CAP) {
+            c = new BluetoothGattCharacteristic(mCharacteristicL2CAPUuid,
+                    BluetoothGattCharacteristic.PROPERTY_READ,
+                    BluetoothGattCharacteristic.PERMISSION_READ);
+            service.addCharacteristic(c);
+            mCharacteristicL2CAP = c;
+        }
+
         try {
             mGattServer.addService(service);
         } catch (SecurityException e) {
@@ -158,11 +181,41 @@ class GattServer extends BluetoothGattServerCallback {
             return false;
         }
 
+        if (mUsingL2CAP) {
+            // Start L2CAP socket server
+            mL2CAPServer = new L2CAPServer(new L2CAPServer.Listener() {
+                @Override
+                public void onPeerConnected() {
+                    reportPeerConnected();
+                }
+
+                @Override
+                public void onPeerDisconnected() {
+                    reportPeerDisconnected();
+                }
+
+                @Override
+                public void onMessageReceived(@NonNull byte[] data) {
+                    reportMessageReceived(data);
+                }
+
+                @Override
+                public void onError(@NonNull Throwable error) {
+                    reportError(error);
+                }
+            }, mLog.getLoggingFlags());
+
+            // Set using L2CAP to false if it was not able to start the socket server
+            mUsingL2CAP = mL2CAPServer.start(mBluetoothManager.getAdapter());
+        }
         return true;
     }
 
     void stop() {
         mInhibitCallbacks = true;
+        if (mL2CAPServer != null) {
+            mL2CAPServer.stop();
+        }
         if (mGattServer != null) {
             try {
                 if (mCurrentConnection != null) {
@@ -196,11 +249,12 @@ class GattServer extends BluetoothGattServerCallback {
         }
     }
 
+    @SuppressLint("NewApi")
     @Override
     public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
-            BluetoothGattCharacteristic characteristic) {
+                                            BluetoothGattCharacteristic characteristic) {
         mLog.transport("onCharacteristicReadRequest: " + requestId + " " + offset + " "
-                    + characteristic.getUuid());
+                + characteristic.getUuid());
         if (mCharacteristicIdentUuid != null
                 && characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             try {
@@ -212,6 +266,27 @@ class GattServer extends BluetoothGattServerCallback {
             } catch (SecurityException e) {
                 reportError(e);
             }
+        } else if (mCharacteristicL2CAP != null
+                && characteristic.getUuid().equals(mCharacteristicL2CAPUuid)) {
+            if (!mUsingL2CAP) {
+                reportError(new Error("Unexpected read request for L2CAP characteristic, not supported"));
+                return;
+            }
+            if (mL2CAPServer == null) {
+                reportError(new Error("L2CAP Server not available"));
+                return;
+            }
+            byte[] psmValue = mL2CAPServer.getPsmValue();
+            if (psmValue != null) {
+                mGattServer.sendResponse(device,
+                        requestId,
+                        BluetoothGatt.GATT_SUCCESS,
+                        0,
+                        psmValue);
+                mL2CAPServer.acceptConnection();
+            } else {
+                mUsingL2CAP = false;
+            }
         } else {
             reportError(new Error("Read on unexpected characteristic with UUID "
                     + characteristic.getUuid()));
@@ -220,17 +295,19 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onCharacteristicWriteRequest(BluetoothDevice device,
-            int requestId,
-            BluetoothGattCharacteristic characteristic,
-            boolean preparedWrite,
-            boolean responseNeeded,
-            int offset,
-            byte[] value) {
+                                             int requestId,
+                                             BluetoothGattCharacteristic characteristic,
+                                             boolean preparedWrite,
+                                             boolean responseNeeded,
+                                             int offset,
+                                             byte[] value) {
         UUID charUuid = characteristic.getUuid();
         mLog.transport("onCharacteristicWriteRequest: "
                 + characteristic.getUuid() + " " + offset + " " + Util.toHex(value));
         if (charUuid.equals(mCharacteristicStateUuid) && value.length == 1) {
             if (value[0] == 0x01) {
+                // Close server socket when the connection was done by state characteristic
+                stopL2CAPServer();
                 reportPeerConnected();
             } else if (value[0] == 0x02) {
                 reportTransportSpecificSessionTermination();
@@ -268,9 +345,18 @@ class GattServer extends BluetoothGattServerCallback {
         }
     }
 
+    private void stopL2CAPServer() {
+        // Close server socket when the connection was done by state characteristic
+        if (mL2CAPServer != null) {
+            mL2CAPServer.stop();
+            mL2CAPServer = null;
+        }
+        mUsingL2CAP = false;
+    }
+
     @Override
     public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset,
-            BluetoothGattDescriptor descriptor) {
+                                        BluetoothGattDescriptor descriptor) {
         mLog.transport("onDescriptorReadRequest: "
                 + descriptor.getCharacteristic().getUuid() + " " + offset);
         /* Do nothing */
@@ -278,9 +364,9 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onDescriptorWriteRequest(BluetoothDevice device, int requestId,
-            BluetoothGattDescriptor descriptor,
-            boolean preparedWrite, boolean responseNeeded,
-            int offset, byte[] value) {
+                                         BluetoothGattDescriptor descriptor,
+                                         boolean preparedWrite, boolean responseNeeded,
+                                         int offset, byte[] value) {
         if (mLog.isTransportVerboseEnabled()) {
             mLog.transportVerbose("onDescriptorWriteRequest: "
                     + descriptor.getCharacteristic().getUuid() + " " + offset + " "
@@ -316,8 +402,7 @@ class GattServer extends BluetoothGattServerCallback {
         }
 
         if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("writing chunk to " + mCharacteristicServer2Client.getUuid() +
-                    " " + Util.toHex(chunk));
+            Util.dumpHex(TAG, "writing chunk to " + mCharacteristicServer2Client.getUuid(), chunk);
         }
 
         mCharacteristicServer2Client.setValue(chunk);
@@ -358,13 +443,19 @@ class GattServer extends BluetoothGattServerCallback {
     }
 
     void sendMessage(@NonNull byte[] data) {
+        if (mLog.isTransportVerboseEnabled()) {
+            Util.dumpHex(TAG, "sendMessage", data);
+        }
+
+        // Uses socket L2CAP when it is available
+        if (mL2CAPServer != null && mL2CAPServer.isConnected()) {
+            mL2CAPServer.sendMessage(data);
+            return;
+        }
+
         if (mNegotiatedMtu == 0) {
             Log.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
             mNegotiatedMtu = 23;
-        }
-
-        if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("sendMessage " + Util.toHex(data));
         }
 
         // Three less the MTU but we also need room for the leading 0x00 or 0x01.
@@ -427,6 +518,11 @@ class GattServer extends BluetoothGattServerCallback {
         }
     }
 
+    // When using L2CAP it doesn't support characteristics notification
+    public boolean supportsTransportSpecificTerminationMessage() {
+        return !mUsingL2CAP;
+    }
+
     public void sendTransportSpecificTermination() {
         byte[] terminationCode = new byte[]{(byte) 0x02};
         mCharacteristicState.setValue(terminationCode);
@@ -455,5 +551,4 @@ class GattServer extends BluetoothGattServerCallback {
 
     }
 }
-
 

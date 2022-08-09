@@ -85,6 +85,7 @@ public class VerificationHelper {
     private boolean mSendSessionTerminationMessage = true;
     Util.Logger mLog;
     private boolean mIsListening;
+    private boolean mUseL2CAP;
 
     /**
      * Creates a new VerificationHelper object.
@@ -96,6 +97,7 @@ public class VerificationHelper {
         mEphemeralKeyPair = Util.createEphemeralKeyPair();
         mSessionEncryptionReader = null;
         mLog = new Util.Logger(TAG, 0);
+        mUseL2CAP = false;
     }
 
     /**
@@ -108,6 +110,17 @@ public class VerificationHelper {
      */
     public void setLoggingFlags(@LoggingFlag int loggingFlags) {
         mLog.setLoggingFlags(loggingFlags);
+    }
+
+    /**
+     * Sets the preference for use BLE L2CAP transmission profile.
+     *
+     * <p>Use L2CAP if supported by the OS and remote mdoc. It is by default set as <em>false</em>
+     *
+     * @param useL2CAP indicates if it should use L2CAP socket if available.
+     */
+    public void setUseL2CAP(boolean useL2CAP) {
+        mUseL2CAP = useL2CAP;
     }
 
     /**
@@ -380,6 +393,9 @@ public class VerificationHelper {
                 return;
             }
             ((DataTransportNfc) mDataTransport).setIsoDep(mNfcIsoDep);
+        } else if (mDataTransport instanceof DataTransportBle) {
+            // Set the preference for using L2CAP
+            ((DataTransportBle) mDataTransport).setUseL2CAPIfAvailable(mUseL2CAP);
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen

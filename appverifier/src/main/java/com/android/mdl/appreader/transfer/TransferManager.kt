@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.nfc.NfcAdapter
-import android.nfc.Tag
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -63,6 +62,7 @@ class TransferManager private constructor(private val context: Context) {
         verification = VerificationHelper(context)
         verification?.setListener(responseListener, context.mainExecutor())
         verification?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
+        verification?.setUseL2CAP(PreferencesHelper.isBleL2capEnabled(context))
     }
 
     fun setQrDeviceEngagement(qrDeviceEngagement: String) {
@@ -114,10 +114,18 @@ class TransferManager private constructor(private val context: Context) {
         useTransportSpecificSessionTermination: Boolean
     ) {
         verification?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
-        verification?.setUseTransportSpecificSessionTermination(
-            useTransportSpecificSessionTermination
-        )
+        try {
+            if (verification?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
+                verification?.setUseTransportSpecificSessionTermination(true)
+            }
+        } catch (e: IllegalStateException) {
+            Log.e(LOG_TAG, "Error ignored.", e)
+        }
         verification?.setListener(null, null)
+        disconnect()
+    }
+
+    fun disconnect(){
         try {
             verification?.disconnect()
         } catch (e: RuntimeException) {

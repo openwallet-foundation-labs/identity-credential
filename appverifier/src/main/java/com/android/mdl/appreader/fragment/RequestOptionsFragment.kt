@@ -44,10 +44,7 @@ class RequestOptionsFragment : Fragment() {
 
         if (!keepConnection) {
             // Always call to cancel any connection that could be on progress
-            TransferManager.getInstance(requireContext()).stopVerification(
-                sendSessionTerminationMessage = true,
-                useTransportSpecificSessionTermination = true
-            )
+            TransferManager.getInstance(requireContext()).disconnect()
         }
 
         binding.cbRequestMdl.setOnClickListener {

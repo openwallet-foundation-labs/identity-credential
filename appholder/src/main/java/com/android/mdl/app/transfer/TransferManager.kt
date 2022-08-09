@@ -88,6 +88,9 @@ class TransferManager private constructor(private val context: Context) {
         if (PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled(context)) {
             bleOptions += Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE
         }
+        if (bleOptions != 0 && PreferencesHelper.isBleL2capEnabled(context)) {
+            bleOptions += Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP
+        }
 
         val dataRetrievalConfiguration = DataRetrievalListenerConfiguration.Builder()
             .setBleEnabled(bleOptions != 0)
@@ -256,9 +259,17 @@ class TransferManager private constructor(private val context: Context) {
         useTransportSpecificSessionTermination: Boolean
     ) {
         presentation?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
-        presentation?.setUseTransportSpecificSessionTermination(
-            useTransportSpecificSessionTermination
-        )
+        try {
+            if (presentation?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
+                presentation?.setUseTransportSpecificSessionTermination(true)
+            }
+        } catch (e: IllegalStateException) {
+            Log.e(LOG_TAG, "Error ignored.", e)
+        }
+        disconnect()
+    }
+
+    fun disconnect() {
         presentation?.setListener(null, null)
         try {
             presentation?.disconnect()

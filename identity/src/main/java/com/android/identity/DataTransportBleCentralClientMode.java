@@ -51,6 +51,14 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicServer2ClientUuid = UUID.fromString("00000007-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicIdentUuid = UUID.fromString("00000008-a123-48ce-896b-4c76973373e6");
+    /**
+     * In _mdoc central client mode_ the _mdoc_ acts as the GATT client and the _mdoc reader_ acts as the
+     * GATT server. According to ISO 18013-5 Table A.1 this means that in _mdoc central client mode_
+     * the GATT server (for the _mdoc reader_) should advertise
+     * UUID 0000000B-A123-48CE896B-4C76973373E6 and the GATT client (for the _mdoc_) should
+     * connect to that UUID.
+     */
+    UUID mCharacteristicL2CAPUuidMdocReader = UUID.fromString("0000000b-a123-48ce-896b-4c76973373e6");
 
     BluetoothManager mBluetoothManager;
     BluetoothLeAdvertiser mBluetoothLeAdvertiser;
@@ -62,10 +70,15 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
+            UUID characteristicL2CAPUuid = null;
+            if (mUseL2CAPIfAvailable) {
+                characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
+            }
             mGattClient = new GattClient(mContext, mLoggingFlags,
                     mServiceUuid, mEncodedEDeviceKeyBytes,
                     mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                    mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid);
+                    mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
+                    characteristicL2CAPUuid);
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
@@ -229,10 +242,15 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         mServiceUuid = address.uuid;
 
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
+        UUID characteristicL2CAPUuid = null;
+        if (mUseL2CAPIfAvailable) {
+            characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
+        }
         mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
                 mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid);
+                mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
+                characteristicL2CAPUuid);
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
@@ -323,6 +341,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         if (mGattServer != null) {
             mGattServer.setListener(null);
             mGattServer.stop();
+            mGattServer = null;
         }
         if (mScanner != null) {
             mLog.transport("Stopped scanning for UUID " + mServiceUuid);
@@ -365,6 +384,11 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
 
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
-        return true;
+        if (mGattServer != null) {
+            return mGattServer.supportsTransportSpecificTerminationMessage();
+        } else if (mGattClient != null) {
+            return mGattClient.supportsTransportSpecificTerminationMessage();
+        }
+        return false;
     }
 }
