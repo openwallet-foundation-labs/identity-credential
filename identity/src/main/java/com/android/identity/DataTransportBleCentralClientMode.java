@@ -42,6 +42,7 @@ import java.util.UUID;
  * BLE data transport implementation conforming to ISO 18013-5 mdoc
  * central client mode.
  */
+@SuppressWarnings("MissingPermission")
 class DataTransportBleCentralClientMode extends DataTransportBle {
     private static final String TAG = "DataTransportBleCCM"; // limit to <= 23 chars
     final Util.Logger mLog;
@@ -100,6 +101,11 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
                 }
 
                 @Override
+                public void onMessageSendProgress(final long progress, final long max) {
+                    reportMessageProgress(progress, max);
+                }
+
+                @Override
                 public void onTransportSpecificSessionTermination() {
                     reportTransportSpecificSessionTermination();
                 }
@@ -108,6 +114,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
                 public void onError(@NonNull Throwable error) {
                     reportError(error);
                 }
+
             });
 
             reportListeningPeerConnecting();
@@ -281,6 +288,13 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
             public void onError(@NonNull Throwable error) {
                 reportError(error);
             }
+
+            @Override
+            public void onMessageSendProgress(final long progress, final long max) {
+                reportMessageProgress(progress, max);
+            }
+
+
         });
         if (!mGattServer.start()) {
             reportError(new Error("Error starting Gatt Server"));

@@ -40,6 +40,7 @@ import java.util.Queue;
 import java.util.UUID;
 
 @SuppressWarnings("deprecation")
+@SuppressLint("MissingPermission")
 class GattClient extends BluetoothGattCallback {
     private static final String TAG = "GattClient";
 
@@ -67,6 +68,7 @@ class GattClient extends BluetoothGattCallback {
     UUID mClientCharacteristicConfigUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     Queue<byte[]> mWritingQueue = new ArrayDeque<>();
+    int writingQueueTotalChunks;
     boolean writeIsOutstanding = false;
     private boolean mInhibitCallbacks = false;
     private int mNegotiatedMtu;
@@ -405,6 +407,17 @@ class GattClient extends BluetoothGattCallback {
                         "Unexpected status for writing to Client2Server, status=" + status));
                 return;
             }
+
+            if (writingQueueTotalChunks > 0) {
+                if (mWritingQueue.size() == 0) {
+                    reportMessageSendProgress(writingQueueTotalChunks, writingQueueTotalChunks);
+                    writingQueueTotalChunks = 0;
+                } else {
+                    reportMessageSendProgress(writingQueueTotalChunks-mWritingQueue.size(), writingQueueTotalChunks);
+                }
+            }
+
+
             writeIsOutstanding = false;
             drainWritingQueue();
         }
@@ -511,6 +524,9 @@ class GattClient extends BluetoothGattCallback {
 
             offset += size;
         } while (offset < data.length);
+
+        writingQueueTotalChunks = mWritingQueue.size();
+
         drainWritingQueue();
     }
 
@@ -549,6 +565,12 @@ class GattClient extends BluetoothGattCallback {
         }
     }
 
+    void reportMessageSendProgress(long progress, long max) {
+        if (mListener != null && !mInhibitCallbacks) {
+            mListener.onMessageSendProgress(progress, max);
+        }
+    }
+
     void reportTransportSpecificSessionTermination() {
         if (mListener != null && !mInhibitCallbacks) {
             mListener.onTransportSpecificSessionTermination();
@@ -571,6 +593,9 @@ class GattClient extends BluetoothGattCallback {
         void onTransportSpecificSessionTermination();
 
         void onError(@NonNull Throwable error);
+
+        void onMessageSendProgress(long progress, long max);
+
     }
 
 

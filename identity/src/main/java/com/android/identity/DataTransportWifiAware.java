@@ -53,6 +53,7 @@ import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -619,21 +620,23 @@ class DataTransportWifiAware extends DataTransport {
 
             Log.d(TAG, "Sending " + messageToSend.length + " bytes");
 
+            reportMessageProgress(0, messageToSend.length);
+            OutputStream pros = new ProgressReportingOutputStream(os, messageToSend.length, this);
             try {
                 if (isListener) {
-                    os.write(("HTTP/1.1 200 OK\r\n"
+                    pros.write(("HTTP/1.1 200 OK\r\n"
                             + "Content-Length: " + messageToSend.length + "\r\n"
                             + "Content-Type: application/CBOR\r\n"
                             + "\r\n").getBytes(UTF_8));
                 } else {
-                    os.write(("POST /mdoc HTTP/1.1\r\n"
+                    pros.write(("POST /mdoc HTTP/1.1\r\n"
                             + "Host: " + mInitiatorIPv6HostString + "\r\n"
                             + "Content-Length: " + messageToSend.length + "\r\n"
                             + "Content-Type: application/CBOR\r\n"
                             + "\r\n").getBytes(UTF_8));
                 }
-                os.write(messageToSend);
-                os.flush();
+                pros.write(messageToSend);
+                pros.flush();
 
             } catch (IOException e) {
                 Log.d(TAG, "Caught exception while writing isListener=" + isListener);
@@ -895,4 +898,39 @@ class DataTransportWifiAware extends DataTransport {
         }
 
     }
+
+    public static class ProgressReportingOutputStream extends FilterOutputStream {
+
+        private final long totalBytes;
+        private long bytesSent;
+        private final DataTransport transport;
+
+        public ProgressReportingOutputStream(
+            final OutputStream out,
+            final long totalBytes,
+            final DataTransport transport) {
+            super(out);
+            this.totalBytes = totalBytes;
+            this.transport = transport;
+            this.bytesSent = 0;
+        }
+
+        public void write(byte[] b, int off, int len) throws IOException {
+            out.write(b, off, len);
+            this.bytesSent += len;
+            reportProgress();
+        }
+
+        public void write(int b) throws IOException {
+            out.write(b);
+            this.bytesSent++;
+            reportProgress();
+        }
+
+        private void reportProgress() {
+            this.transport.reportMessageProgress(bytesSent, totalBytes);
+        }
+
+    }
+
 }

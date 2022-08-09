@@ -16,8 +16,6 @@
 
 package com.android.identity;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import android.content.Context;
 import android.net.Uri;
 import android.nfc.NdefMessage;
@@ -27,14 +25,18 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Base64;
 import android.util.Pair;
-
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.builder.ArrayBuilder;
+import co.nstant.in.cbor.builder.MapBuilder;
+import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.SimpleValue;
+import co.nstant.in.cbor.model.UnsignedInteger;
 
 import com.android.identity.Constants.BleDataRetrievalOption;
 import com.android.identity.Constants.LoggingFlag;
-
 import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -48,12 +50,7 @@ import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.SimpleValue;
-import co.nstant.in.cbor.model.UnsignedInteger;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Helper used for establishing engagement with, interacting with, and presenting credentials to a
@@ -307,14 +304,11 @@ public class PresentationHelper {
             // Use same UUID for both mdoc central client mode and mdoc peripheral server mode.
             // Why? Because it's required by ISO 18013-5 when using NFC static handover.
             UUID serviceUuid = UUID.randomUUID();
-            // Option to indicate if L2CAP should be used if supported
-            boolean supportL2CAP = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) != 0;
 
             if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
                 DataTransportBleCentralClientMode bleTransport =
                         new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setUseL2CAPIfAvailable(supportL2CAP);
                 mLog.info("Adding BLE mdoc central client mode transport");
                 mTransports.add(bleTransport);
             }
@@ -322,7 +316,6 @@ public class PresentationHelper {
                 DataTransportBlePeripheralServerMode bleTransport =
                         new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setUseL2CAPIfAvailable(supportL2CAP);
                 mLog.info("Adding BLE mdoc peripheral server mode transport");
                 mTransports.add(bleTransport);
             }
@@ -1010,12 +1003,35 @@ public class PresentationHelper {
      * @param deviceResponseBytes the response to send.
      */
     public void sendDeviceResponse(@NonNull byte[] deviceResponseBytes) {
+        this.sendDeviceResponse(deviceResponseBytes, null, null);
+    }
+
+    /**
+     * Send a response to the remote mdoc verifier.
+     *
+     * <p>This is typically called in response to the {@link Listener#onDeviceRequest(int, byte[])}
+     * callback.
+     *
+     * <p>The <code>deviceResponseBytes</code> parameter should contain CBOR conforming to
+     * <code>DeviceResponse</code> <a href="http://cbor.io/">CBOR</a>
+     * as specified in <em>ISO/IEC 18013-5</em> section 8.3 <em>Device Retrieval</em>. This
+     * can be generated using {@link DeviceResponseGenerator}.
+     *
+     * @param deviceResponseBytes the response to send.
+     * @param progressListener a progress listener that will subscribe to updates or <code>null</code>
+     * @param progressExecutor a {@link Executor} to do the progress listener updates in, or
+     *                         <code>null</code> (required if <code>progressListener</code> is
+     *                         non-null
+     */
+    public void sendDeviceResponse(@NonNull byte[] deviceResponseBytes,
+        @Nullable TransmissionProgressListener progressListener,
+        @Nullable Executor progressExecutor) {
         if (mLog.isSessionEnabled()) {
             Util.dumpHex(TAG, "Sending DeviceResponse", deviceResponseBytes);
         }
         byte[] encryptedData =
-                mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalLong.empty());
-        mActiveTransport.sendMessage(encryptedData);
+            mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalLong.empty());
+        mActiveTransport.sendMessage(encryptedData, progressListener, progressExecutor);
     }
 
     /**

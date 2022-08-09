@@ -292,7 +292,18 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun sendResponse(deviceResponse: ByteArray) {
-        presentation?.sendDeviceResponse(deviceResponse)
+        presentation?.sendDeviceResponse(deviceResponse,
+                                         { progress, max ->
+                                             Log.d(LOG_TAG, "Progress: $progress of $max")
+
+                                             if (progress == max) {
+                                                 Log.d(LOG_TAG, "Completed...")
+                                                 // We could for example force a disconnect here
+                                                 //presentation?.setSendSessionTerminationMessage(true)
+                                                 //presentation?.disconnect()
+                                             }
+
+                                         }, context.mainExecutor())
     }
 
     fun getDeviceRequest(): DeviceRequest {

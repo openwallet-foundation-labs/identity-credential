@@ -42,6 +42,7 @@ import java.util.UUID;
  * BLE data transport implementation conforming to ISO 18013-5 mdoc
  * peripheral server mode.
  */
+@SuppressWarnings("MissingPermission")
 class DataTransportBlePeripheralServerMode extends DataTransportBle {
     private static final String TAG = "DataTransportBlePSM"; // limit to <= 23 chars
     final Util.Logger mLog;
@@ -110,6 +111,11 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                 @Override
                 public void onMessageReceived(@NonNull byte[] data) {
                     reportMessageReceived(data);
+                }
+
+                @Override
+                public void onMessageSendProgress(final long progress, final long max) {
+                    reportMessageProgress(progress, max);
                 }
 
                 @Override
@@ -251,6 +257,10 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             public void onError(@NonNull Throwable error) {
                 Log.d(TAG, "onError", error);
                 reportError(error);
+            }
+
+            @Override public void onMessageSendProgress(final long progress, final long max) {
+                reportMessageProgress(progress, max);
             }
         });
         if (!mGattServer.start()) {
