@@ -186,7 +186,7 @@ public class MultiDocumentPresentationTest {
     public void multipleDocuments() throws Exception {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(appContext);
-        assumeTrue(store.getCapabilities().isCreatePresentationSessionSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
 
         store.deleteCredentialByName("credential1");
         assertNull(store.deleteCredentialByName("credential1"));

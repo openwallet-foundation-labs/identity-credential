@@ -148,9 +148,8 @@ public abstract class IdentityCredential {
      *
      * <p>By default this is set to false.
      *
-     * <p>This is only implemented if
-     * {@link IdentityCredentialStoreCapabilities#isStaticAuthenticationDataExpirationSupported()}
-     * returns {@code true}. If not the call fails with {@link UnsupportedOperationException}.
+     * <p>This is only implemented on {@link IdentityCredentialStore#FEATURE_VERSION_202201}, fails
+     * with {@link UnsupportedOperationException} if using a store with a lesser version.
      *
      * @param allowUsingExpiredKeys whether to allow using an authentication key which use count
      *                              has been exceeded if no other key is available.
@@ -169,9 +168,8 @@ public abstract class IdentityCredential {
      *
      * <p>By default this is set to true.
      *
-     * <p>This is only implemented if
-     * {@link IdentityCredentialStoreCapabilities#isSetIncrementKeyUsageCountSupported()}
-     * returns {@code true}. If not the call fails with {@link UnsupportedOperationException}.
+     * <p>This is only implemented on {@link IdentityCredentialStore#FEATURE_VERSION_202201}, fails
+     * with {@link UnsupportedOperationException} if using a store with a lesser version.
      *
      * @param incrementKeyUsageCount whether the usage count of the key should be increased.
      * @deprecated Use {@link PresentationSession} instead.
@@ -380,10 +378,10 @@ public abstract class IdentityCredential {
      *  <li>subjectPublicKeyInfo: must contain attested public key.</li>
      * </ul>
      *
-     * <p>If {@link IdentityCredentialStoreCapabilities#isUpdateSupported()} returns
-     * {@code true}, each X.509 certificate contains an X.509 extension at OID 1.3.6.1.4.1.11129
-     * .2.1.26 which contains a DER encoded OCTET STRING with the bytes of the CBOR with the
-     * following CDDL:
+     * <p>If running on a store with {@link IdentityCredentialStore#FEATURE_VERSION_202101} or
+     * later, each X.509 certificate contains an X.509 extension at OID 1.3.6.1.4.1.11129.2.1.26
+     * which contains a DER encoded OCTET STRING with the bytes of the CBOR with the following
+     * CDDL:
      * <pre>
      *   ProofOfBinding = [
      *     "ProofOfBinding",
@@ -425,9 +423,8 @@ public abstract class IdentityCredential {
      * <p>This should only be called for an authenticated key returned by
      * {@link #getAuthKeysNeedingCertification()}.</p>
      *
-     * <p>This is only implemented if
-     * {@link IdentityCredentialStoreCapabilities#isStaticAuthenticationDataExpirationSupported()}
-     * returns {@code true}. If not the call fails with {@link UnsupportedOperationException}.
+     * <p>This is only implemented on {@link IdentityCredentialStore#FEATURE_VERSION_202101}, fails
+     * with {@link UnsupportedOperationException} if using a store with a lesser version.
      *
      * @param authenticationKey The dynamic authentication key for which certification and
      *                          associated static authentication data is being provided.
@@ -468,9 +465,8 @@ public abstract class IdentityCredential {
      *      ]
      * </pre>
      *
-     * <p>This is only implemented if
-     * {@link IdentityCredentialStoreCapabilities#isProveOwnershipSupported()}
-     * returns {@code true}. If not the call fails with {@link UnsupportedOperationException}.
+     * <p>This is only implemented on {@link IdentityCredentialStore#FEATURE_VERSION_202101}, fails
+     * with {@link UnsupportedOperationException} if using a store with a lesser version.
      *
      * @param challenge is a non-empty byte array whose contents should be unique, fresh and
      *                  provided by the issuing authority. The value provided is embedded in the
@@ -497,9 +493,8 @@ public abstract class IdentityCredential {
      *      ]
      * </pre>
      *
-     * <p>This is only implemented if
-     * {@link IdentityCredentialStoreCapabilities#isDeleteSupported()}
-     * returns {@code true}. If not the call fails with {@link UnsupportedOperationException}.
+     * <p>This is only implemented on {@link IdentityCredentialStore#FEATURE_VERSION_202101}, fails
+     * with {@link UnsupportedOperationException} if using a store with a lesser version.
      *
      * @param challenge is a non-empty byte array whose contents should be unique, fresh and
      *                  provided by the issuing authority. The value provided is embedded in the
@@ -524,9 +519,8 @@ public abstract class IdentityCredential {
      * {@link #getAuthKeysNeedingCertification()} to generate replacement keys and return
      * them for issuer certification.
      *
-     * <p>This is only implemented if
-     * {@link IdentityCredentialStoreCapabilities#isUpdateSupported()}
-     * returns {@code true}. If not the call fails with {@link UnsupportedOperationException}.
+     * <p>This is only implemented on {@link IdentityCredentialStore#FEATURE_VERSION_202101}, fails
+     * with {@link UnsupportedOperationException} if using a store with a lesser version.
      *
      * @param personalizationData   The data to update, including access control profiles
      *                              and data elements and their values, grouped into namespaces.

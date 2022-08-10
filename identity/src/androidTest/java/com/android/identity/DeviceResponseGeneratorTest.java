@@ -96,7 +96,7 @@ public class DeviceResponseGeneratorTest {
     public void testDeviceResponseGenerator() throws Exception {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(appContext);
-        assumeTrue(store.getCapabilities().isCreatePresentationSessionSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
 
         store.deleteCredentialByName("test");
         WritableIdentityCredential wc = store.createCredential("test", MDL_DOCTYPE);

@@ -105,7 +105,7 @@ public class PresentationHelperTest {
     public void testPresentation() throws Exception {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(context);
-        assumeTrue(store.getCapabilities().isCreatePresentationSessionSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
 
         // Profile 0 (no authentication)
         AccessControlProfile noAuthProfile =
@@ -367,7 +367,7 @@ public class PresentationHelperTest {
     public void testPresentationVerifierDisconnects() throws Exception {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(context);
-        assumeTrue(store.getCapabilities().isCreatePresentationSessionSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
 
         PresentationSession session = store.createPresentationSession(
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);

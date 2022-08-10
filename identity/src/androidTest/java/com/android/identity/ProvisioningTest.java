@@ -406,7 +406,7 @@ public class ProvisioningTest {
             throws IdentityCredentialException, CborException, CertificateEncodingException {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(appContext);
-        assumeTrue(store.getCapabilities().isDeleteSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202101);
 
         store.deleteCredentialByName("test");
         assertNull(store.deleteCredentialByName("test"));
@@ -444,7 +444,7 @@ public class ProvisioningTest {
             throws IdentityCredentialException, CborException, CertificateEncodingException {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(appContext);
-        assumeTrue(store.getCapabilities().isProveOwnershipSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202101);
 
         store.deleteCredentialByName("test");
         assertNull(store.deleteCredentialByName("test"));
@@ -915,7 +915,7 @@ public class ProvisioningTest {
             NoSuchAlgorithmException {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(appContext);
-        assumeTrue(store.getCapabilities().isUpdateSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202101);
 
         // Create the credential...
         //

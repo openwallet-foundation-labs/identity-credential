@@ -17,12 +17,15 @@
 package com.android.identity;
 
 import android.content.Context;
+import android.icu.util.Calendar;
 import android.os.Build;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringDef;
 
+import java.io.File;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.security.cert.X509Certificate;
@@ -70,36 +73,29 @@ import java.security.cert.X509Certificate;
  * hardware-backed support and may not always be available. In addition to hardware-backed
  * Identity Credential support (which is only available in Android 11 and later and only
  * if the device has support for the <a href="https://android.googlesource.com/platform/hardware/interfaces/+/refs/heads/master/identity/aidl/android/hardware/identity/IIdentityCredentialStore.aidl">Identity Credential HAL</a>),
- * this Jetpack has an Android Keystore backed implementation (also known as the "software"
+ * this Jetpack has an Android Keystore backed implementation (also known as the "keystore"
  * implementation) which works on any Android device with API level 24 or later.
  *
  * <p>The Identity Credential API is designed to be able to evolve and change over time
  * but still provide 100% backwards compatibility. This is complicated by the fact that
  * there may be a version skew between the API used by the application and the version
  * implemented in secure hardware. To solve this problem, the API provides for a way
- * for the application to query for hardware capabilities through
- * {@link IdentityCredentialStoreCapabilities}. The software-based store is designed
- * so it implements all capabilities that don't explicitly require hardware features. Each
- * of the methods in that class will state whether it's implemented in the software-based
- * implementation.
+ * for the application to query for the version of the API implemented in the store
+ * through {@link #getFeatureVersion()}. Known feature versions correspond to Android
+ * releases and currently include {@link #FEATURE_VERSION_202009}, {@link #FEATURE_VERSION_202101},
+ * and {@link #FEATURE_VERSION_202201}.
  *
- * <p>When provisioning a document, applications should use {@link #getDefaultInstance(Context)}
- * to obtain an {@link IdentityCredentialStore} instance. This method returns a hardware-backed
- * store if available and a software-based store if not and the application should use
- * {@link IdentityCredentialStoreCapabilities} to examine if the store supports the
- * capabilities required by the application. In the negative, the application can
- * obtain the software-based store by calling {@link #getSoftwareInstance(Context)}.
+ * <p>The keystore-based store is designed so it implements all capabilities that don't
+ * explicitly require hardware features so will always implement the latest feature version
+ * defined in this library. Each of the methods in that class will state whether it's implemented
+ * in the keystore-based implementation.
  *
- * <p>Since it's possible for an OS upgrade on a device to include an updated version of the
- * drivers used for secure hardware, it's possible that {@link #getDefaultInstance(Context)}
- * returns the software implementation at one point and the hardware implementation at a later
- * point. Therefore, applications should only use {@link #getDefaultInstance(Context)} only when
- * creating a credential, record whether it's hardware- or software-backed (using
- * {@link IdentityCredentialStoreCapabilities#isHardwareBacked()}, and then use this information
- * when retrieving the credential (using either {@link #getSoftwareInstance(Context)} or
- * {@link #getHardwareInstance(Context)}).
+ * <p>When provisioning a document, applications should use either
+ * {@link #getHardwareInstance(Context)} or {@link #getHardwareKeystoreInstance(Context, File)}
+ * to obtain an {@link IdentityCredentialStore} instance and prefer the former if it
+ * meets the app's feature version requirement, if any.
  *
- * <p>Apart from hardware- vs software-backed, two different flavors of credential stores exist -
+ * <p>Apart from hardware- vs keystore-backed, two different flavors of credential stores exist -
  * the <em>default</em> store and the <em>direct access</em> store. Most often credentials will
  * be accessed through the default store but that requires that the Android device be powered up
  * and fully functional. It is desirable to allow identity credential usage when the Android
@@ -113,6 +109,34 @@ import java.security.cert.X509Certificate;
 public abstract class IdentityCredentialStore {
     IdentityCredentialStore() {}
 
+    /**
+     * The feature version corresponding to features included in the Identity Credential API
+     * shipped in Android 11.
+     */
+    public static final int FEATURE_VERSION_202009 = 202009;
+
+    /**
+     * The feature version corresponding to features included in the Identity Credential API
+     * shipped in Android 12.
+     *
+     * <p>This feature version adds support for
+     * {@link IdentityCredential#delete(byte[])},
+     * {@link IdentityCredential#update(PersonalizationData)},
+     * {@link IdentityCredential#proveOwnership(byte[])}, and
+     * {@link IdentityCredential#storeStaticAuthenticationData(X509Certificate, Calendar, byte[])}.
+     */
+    public static final int FEATURE_VERSION_202101 = 202101;
+
+    /**
+     * The feature version corresponding to features included in the Identity Credential API
+     * shipped in Android 13.
+     *
+     * <p>This feature version adds support for
+     * {@link IdentityCredentialStore#createPresentationSession(int)} and
+     * {@link IdentityCredential#setIncrementKeyUsageCount(boolean)}.
+     */
+    public static final int FEATURE_VERSION_202201 = 202201;
+    
     /**
      * Specifies that the cipher suite that will be used to secure communications between the
      * reader and the prover is using the following primitives
@@ -132,36 +156,17 @@ public abstract class IdentityCredentialStore {
      */
     public static final int CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256 = 1;
 
+    /**
+     * Specifies that the implementation type of the store is by using Hardware-Backed
+     * Identity Credential APIs.
+     */
+    public static final String IMPLEMENTATION_TYPE_HARDWARE = "hardware";
 
     /**
-     * @deprecated Use {@link #getDefaultInstance(Context)} instead.
+     * Specifies that the implementation type of the store is by using Hardware-Backed
+     * Android Keystore APIs.
      */
-    @Deprecated // TODO: Delete this method sufficiently long after June 2022, e.g. EOY 2022.
-    public static @NonNull IdentityCredentialStore getInstance(@NonNull Context context) {
-        return getDefaultInstance(context);
-    }
-
-    /**
-     * Gets the default {@link IdentityCredentialStore} instance. This does not guarantee any
-     * particular {@link IdentityCredentialStoreCapabilities}, in particular it may be hardware-
-     * or software backed. The kind of instance returned by this method may change over time even
-     * on the same device, for example a device might gain the capability of a hardware-backed
-     * instance through an Android version upgrade.
-     *
-     * @param context the application context.
-     * @return the {@link IdentityCredentialStore}.
-     */
-    public static @NonNull IdentityCredentialStore getDefaultInstance(@NonNull Context context) {
-        Context appContext = context.getApplicationContext();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            IdentityCredentialStore store =
-                    HardwareIdentityCredentialStore.getInstanceIfSupported(appContext);
-            if (store != null) {
-                return store;
-            }
-        }
-        return SoftwareIdentityCredentialStore.getInstance(appContext);
-    }
+    public static final String IMPLEMENTATION_TYPE_KEYSTORE = "keystore";
 
     /**
      * Gets the {@link IdentityCredentialStore} for direct access.
@@ -204,7 +209,7 @@ public abstract class IdentityCredentialStore {
      * @return {@code true} if direct-access is supported.
      */
     public static boolean isDirectAccessSupported(@NonNull Context context) {
-        // SoftwareIdentityCredentialStore will never support direct-access.
+        // KeystoreIdentityCredentialStore will never support direct-access.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Context appContext = context.getApplicationContext();
             return HardwareIdentityCredentialStore.isDirectAccessSupported(appContext);
@@ -213,15 +218,35 @@ public abstract class IdentityCredentialStore {
     }
 
     /**
+     * Returns the feature version implemented by the {@link IdentityCredentialStore}.
+     *
+     * <p>Note that this may return a feature version which is newer from the version
+     * of the library used.
+     *
+     * @return the feature version.
+     */
+    public abstract int getFeatureVersion();
+
+    /**
+     * Returns the type of implementation of the Identity Credential store.
+     *
+     * Known backing types are {@link #IMPLEMENTATION_TYPE_HARDWARE} (corresponding to what
+     * {@link #getHardwareInstance(Context)} returns) and {@link #IMPLEMENTATION_TYPE_KEYSTORE}
+     * (corresponding to what {@link #getHardwareKeystoreInstance(Context, File)} returns).
+     *
+     * @return the type of implementation of the store, either {@link #IMPLEMENTATION_TYPE_HARDWARE}
+     *   or {@link #IMPLEMENTATION_TYPE_KEYSTORE}.
+     */
+    public abstract @NonNull @ImplementationType String getImplementationType();
+
+    /**
      * Gets a list of supported document types.
      *
      * <p>Only the direct-access store may restrict the kind of document types that can be used for
      * credentials. The default store always supports any document type.
      *
      * @return The supported document types or the empty array if any document type is supported.
-     * @deprecated Use {@link IdentityCredentialStoreCapabilities#getSupportedDocTypes()} instead.
      */
-    @Deprecated
     public abstract @NonNull String[] getSupportedDocTypes();
 
     /**
@@ -281,27 +306,43 @@ public abstract class IdentityCredentialStore {
     public @interface Ciphersuite {
     }
 
-    /**
-     * Returns the capabilities of the store.
-     *
-     * @return the capabilities of the store
-     */
-    @NonNull
-    public IdentityCredentialStoreCapabilities getCapabilities() {
-        throw new UnsupportedOperationException();
+    /** @hidden */
+    @Retention(RetentionPolicy.SOURCE)
+    @StringDef(value = {IMPLEMENTATION_TYPE_HARDWARE, IMPLEMENTATION_TYPE_KEYSTORE})
+    public @interface ImplementationType {
     }
 
+
     /**
-     * Gets a {@link IdentityCredentialStore} implemented via Android Keystore. This
-     * is also known as the software implementation.
+     * Gets a {@link IdentityCredentialStore} implemented via
+     * <a href="https://developer.android.com/training/articles/keystore">Hardware-Backed Android
+     * Keystore</a>. This is also known as the <em>keystore</em> implementation.
      *
+     * This implementation guarantees that <em>CredentialKey</em> and all <em>AuthKeys</em>
+     * are stored in the Secure Hardware used to back Android Keystore. Additionally, if
+     * <a href="https://developer.android.com/training/articles/keystore#HardwareSecurityModule">StrongBox</a>
+     * is available it will be used for these kinds of keys.
+     *
+     * <p>Additionally, with this implementation credential data is stored in the directory
+     * specified by the {@code storageDirectory} parameter. The file names and contents of
+     * these files are private to this library and the data stored on disk is encrypted using a
+     * hardware-backed symmetric key.
+     *
+     * <p>The application should choose a path that is not subject to
+     * <a href="https://developer.android.com/guide/topics/data/autobackup">Backup & Restore</a>,
+     * for example
+     * <code><a href="https://developer.android.com/reference/android/content/Context#getNoBackupFilesDir()">getNoBackupFilesDir()</a></code>.
+     *
+     * @param context The context.
+     * @param storageDirectory The path where to storage credential data, see above.
      * @return an implementation of {@link IdentityCredentialStore} implemented on top
-     * of Android Keystore.
+     * of Hardware-Backed Android Keystore.
      */
     @SuppressWarnings("deprecation")
-    public static @NonNull IdentityCredentialStore getSoftwareInstance(@NonNull
-            Context context) {
-        return SoftwareIdentityCredentialStore.getInstance(context);
+    public static @NonNull IdentityCredentialStore getHardwareKeystoreInstance(
+            @NonNull Context context,
+            @NonNull File storageDirectory) {
+        return KeystoreIdentityCredentialStore.getInstance(context, storageDirectory);
     }
 
     /**
@@ -331,9 +372,8 @@ public abstract class IdentityCredentialStore {
      * <p>This method gets an object to be used for interaction with a remote verifier for
      * presentation of one or more credentials.
      *
-     * <p>This is only implemented if
-     * {@link IdentityCredentialStoreCapabilities#isCreatePresentationSessionSupported()}
-     * returns {@code true}. If not the call fails with {@link UnsupportedOperationException}.
+     * <p>This is only implemented on {@link IdentityCredentialStore#FEATURE_VERSION_202201}, fails
+     * with {@link UnsupportedOperationException} if using a store with a lesser version.
      *
      * @param cipherSuite    the cipher suite to use for communicating with the verifier.
      * @return The presentation session.

@@ -3,6 +3,7 @@ package com.android.mdl.app.util
 import android.content.Context
 import androidx.preference.PreferenceManager
 import com.android.identity.Constants
+import java.io.File
 
 object PreferencesHelper {
     const val HARDWARE_BACKED_PREFERENCE = "com.android.mdl.app.HARDWARE_BACKED"
@@ -38,6 +39,13 @@ object PreferencesHelper {
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
             HARDWARE_BACKED_PREFERENCE, false
         )
+    }
+
+    fun getKeystoreBackedStorageLocation(context: Context): File {
+        // As per the docs, the credential data contains reference to Keystore aliases so ensure
+        // this is stored in a location where it's not automatically backed up and restored by
+        // Android Backup as per https://developer.android.com/guide/topics/data/autobackup
+        return context.noBackupFilesDir
     }
 
     // Default value for BLE data retrieval is true

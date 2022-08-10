@@ -32,6 +32,7 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Locale;
@@ -103,6 +104,7 @@ class CredentialData {
 
     private final Context mContext;
     private final String mCredentialName;
+    private final File mStorageDirectory;
 
     private String mDocType = "";
     private String mCredentialKeyAlias = "";
@@ -128,8 +130,10 @@ class CredentialData {
     // The data for each authentication key, this is always mAuthKeyCount items.
     private AbstractList<AuthKeyData> mAuthKeyDatas = new ArrayList<>();
 
-    private CredentialData(Context context, String credentialName) {
+    private CredentialData(@NonNull Context context, @NonNull File storageDirectory,
+                           @NonNull String credentialName) {
         mContext = context;
+        mStorageDirectory = storageDirectory;
         mCredentialName = credentialName;
     }
 
@@ -344,40 +348,22 @@ class CredentialData {
         }
     }
 
-    /**
-     * Creates a new {@link CredentialData} with the given name and saves it to disk.
-     *
-     * <p>The created data will be configured with zero authentication keys and max one use per
-     * key and can later be loaded via the {@link #loadCredentialData(Context, String)}
-     * method and deleted by calling {@link #delete(Context, String, byte[])}.
-     *
-     * <p>An auth-bound key will be created for each access control profile with
-     * user-authentication.
-     *
-     * @param context             the context.
-     * @param credentialName      the name of the credential.
-     * @param credentialKeyAlias  the alias of the credential key which must have already been
-     *                            created.
-     * @param certificateChain    the certificate chain for the credential key.
-     * @param personalizationData the data for the credential.
-     * @param isReplacement       set to true if this replaces an existing credential
-     * @return a new {@link CredentialData} object
-     */
-    static CredentialData createCredentialData(Context context,
-            String docType,
-            String credentialName,
-            String credentialKeyAlias,
-            Collection<X509Certificate> certificateChain,
-            PersonalizationData personalizationData,
-            byte[] proofOfProvisioningSha256,
-            boolean isReplacement) {
+    static CredentialData createCredentialData(@NonNull Context context,
+                                               @NonNull File storageDirectory,
+                                               @NonNull String docType,
+                                               @NonNull String credentialName,
+                                               @NonNull String credentialKeyAlias,
+                                               @NonNull Collection<X509Certificate> certificateChain,
+                                               @NonNull PersonalizationData personalizationData,
+                                               @NonNull byte[] proofOfProvisioningSha256,
+                                               boolean isReplacement) {
         if (!isReplacement) {
-            if (credentialAlreadyExists(context, credentialName)) {
+            if (credentialAlreadyExists(context, storageDirectory, credentialName)) {
                 throw new RuntimeException("Credential with given name already exists");
             }
         }
 
-        CredentialData data = new CredentialData(context, credentialName);
+        CredentialData data = new CredentialData(context, storageDirectory, credentialName);
         data.mDocType = docType;
         data.mCredentialKeyAlias = credentialKeyAlias;
         data.mCertificateChain = certificateChain;
@@ -414,9 +400,11 @@ class CredentialData {
         return data;
     }
 
-    static boolean credentialAlreadyExists(Context context, String credentialName) {
+    static boolean credentialAlreadyExists(@NonNull Context context,
+                                           @NonNull File storageDirectory,
+                                           @NonNull String credentialName) {
         String filename = getFilenameForCredentialData(credentialName);
-        AtomicFile file = new AtomicFile(context.getFileStreamPath(filename));
+        AtomicFile file = new AtomicFile(new File(storageDirectory, filename));
         try {
             file.openRead();
         } catch (FileNotFoundException e) {
@@ -487,17 +475,10 @@ class CredentialData {
         }
     }
 
-    /**
-     * Loads a {@link CredentialData} object previously created with
-     * {@link #createCredentialData(Context, String, String, String, Collection,
-     * PersonalizationData, byte[], boolean)}.
-     *
-     * @param context        the application context
-     * @param credentialName the name of the credential.
-     * @return a new {@link CredentialData} object or {@code null} if an error occurred.
-     */
-    static CredentialData loadCredentialData(Context context, String credentialName) {
-        CredentialData data = new CredentialData(context, credentialName);
+    static CredentialData loadCredentialData(@NonNull Context context,
+                                             @NonNull File storageDirectory,
+                                             @NonNull String credentialName) {
+        CredentialData data = new CredentialData(context, storageDirectory, credentialName);
         String dataKeyAlias = getDataKeyAliasFromCredentialName(credentialName);
         if (!data.loadFromDisk(dataKeyAlias)) {
             return null;
@@ -506,7 +487,7 @@ class CredentialData {
     }
 
     // Keep naming in sync with KEY_FOR_AUTH_PER_PRESENTATION_ALIAS in
-    // SoftwarePresentationSession.java.
+    // KeystorePresentationSession.java.
     //
     static String escapeCredentialName(String componentName, String credentialName) {
         try {
@@ -610,16 +591,17 @@ class CredentialData {
         return signatureBytes;
     }
 
-    static byte[] delete(Context context, String credentialName, byte[] challenge) {
+    static byte[] delete(@NonNull Context context, @NonNull File storageDirectory,
+                         @NonNull String credentialName, @NonNull byte[] challenge) {
         String filename = getFilenameForCredentialData(credentialName);
-        AtomicFile file = new AtomicFile(context.getFileStreamPath(filename));
+        AtomicFile file = new AtomicFile(new File(storageDirectory, filename));
         try {
             file.openRead();
         } catch (FileNotFoundException e) {
             return null;
         }
 
-        CredentialData data = new CredentialData(context, credentialName);
+        CredentialData data = new CredentialData(context, storageDirectory, credentialName);
         String dataKeyAlias = getDataKeyAliasFromCredentialName(credentialName);
         try {
             data.loadFromDisk(dataKeyAlias);
@@ -710,7 +692,7 @@ class CredentialData {
         byte[] dataToSaveBytes = saveToDiskEncrypt(cleartextDataToSaveBytes);
 
         String filename = getFilenameForCredentialData(mCredentialName);
-        AtomicFile file = new AtomicFile(mContext.getFileStreamPath(filename));
+        AtomicFile file = new AtomicFile(new File(mStorageDirectory, filename));
         FileOutputStream outputStream = null;
         try {
             outputStream = file.startWrite();
@@ -876,7 +858,7 @@ class CredentialData {
         String filename = getFilenameForCredentialData(mCredentialName);
         byte[] encryptedFileData = new byte[0];
         try {
-            AtomicFile file = new AtomicFile(mContext.getFileStreamPath(filename));
+            AtomicFile file = new AtomicFile(new File(mStorageDirectory, filename));
             encryptedFileData = file.readFully();
         } catch (IOException e) {
             return false;
