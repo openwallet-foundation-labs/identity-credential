@@ -143,7 +143,7 @@ public class DynamicAuthTest {
         // The extension must be there if the underlying hardware says it
         // supports updating the credential.
         //
-        if (store.getCapabilities().isUpdateSupported()) {
+        if (store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202101) {
             byte[] icExtension = cert.getExtensionValue("1.3.6.1.4.1.11129.2.1.26");
             assertNotNull(icExtension);
             assertArrayEquals(proofOfProvisioningSha256, Util.getPopSha256FromAuthKeyCert(cert));
@@ -599,7 +599,7 @@ public class DynamicAuthTest {
     public void dynamicAuthWithExpirationTest() throws Exception {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(appContext);
-        assumeTrue(store.getCapabilities().isStaticAuthenticationDataExpirationSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202101);
 
         String credentialName = "test";
 
@@ -785,7 +785,7 @@ public class DynamicAuthTest {
     public void dynamicAuthNoUsageCountIncrement() throws Exception {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(appContext);
-        assumeTrue(store.getCapabilities().isSetIncrementKeyUsageCountSupported());
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
 
         String credentialName = "test";
 

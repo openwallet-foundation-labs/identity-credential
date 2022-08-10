@@ -28,6 +28,7 @@ import androidx.biometric.BiometricPrompt;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
@@ -71,13 +72,14 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.UnicodeString;
 
-class SoftwareIdentityCredential extends IdentityCredential {
+class KeystoreIdentityCredential extends IdentityCredential {
 
-    private static final String TAG = "SWIdentityCredential";
-    private final SoftwarePresentationSession mPresentationSession;
+    private static final String TAG = "KSIdentityCredential"; // limit to <= 23 chars
+    private final KeystorePresentationSession mPresentationSession;
     private final String mCredentialName;
 
     private final Context mContext;
+    private final File mStorageDirectory;
 
     private CredentialData mData;
 
@@ -94,31 +96,36 @@ class SoftwareIdentityCredential extends IdentityCredential {
     private byte[] mSessionTranscript = null;
     private boolean mIncrementKeyUsageCount = true;
 
-    SoftwareIdentityCredential(Context context, String credentialName,
-            @IdentityCredentialStore.Ciphersuite int cipherSuite,
-            SoftwarePresentationSession presentationSession)
+    KeystoreIdentityCredential(@NonNull Context context,
+                               @NonNull File storageDirectory,
+                               @NonNull String credentialName,
+                               @IdentityCredentialStore.Ciphersuite int cipherSuite,
+                               @NonNull KeystorePresentationSession presentationSession)
             throws CipherSuiteNotSupportedException {
         if (cipherSuite
                 != IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256) {
             throw new CipherSuiteNotSupportedException("Unsupported Cipher Suite");
         }
         mContext = context;
+        mStorageDirectory = storageDirectory;
         mCredentialName = credentialName;
         mPresentationSession = presentationSession;
     }
 
     boolean loadData() {
-        mData = CredentialData.loadCredentialData(mContext, mCredentialName);
+        mData = CredentialData.loadCredentialData(mContext, mStorageDirectory, mCredentialName);
         return mData != null;
     }
 
-    static byte[] delete(Context context, String credentialName) {
-        return CredentialData.delete(context, credentialName, null);
+    static byte[] delete(@NonNull Context context,
+                         @NonNull File storageDirectory,
+                         @NonNull String credentialName) {
+        return CredentialData.delete(context, storageDirectory, credentialName, null);
     }
 
     @Override
     public @NonNull byte[] delete(@NonNull byte[] challenge)  {
-        return CredentialData.delete(mContext, mCredentialName, challenge);
+        return CredentialData.delete(mContext, mStorageDirectory, mCredentialName, challenge);
     }
 
     @Override
@@ -762,7 +769,7 @@ class SoftwareIdentityCredential extends IdentityCredential {
             int authMaxUsesPerKey = mData.getAuthMaxUsesPerKey();
 
             DataItem signature =
-                    SoftwareWritableIdentityCredential.buildProofOfProvisioningWithSignature(
+                    KeystoreWritableIdentityCredential.buildProofOfProvisioningWithSignature(
                             docType,
                             personalizationData,
                             credentialKey);
@@ -777,6 +784,7 @@ class SoftwareIdentityCredential extends IdentityCredential {
 
             mData = CredentialData.createCredentialData(
                     mContext,
+                    mStorageDirectory,
                     docType,
                     mCredentialName,
                     CredentialData.getAliasFromCredentialName(mCredentialName),

@@ -22,22 +22,27 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.File;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-class SoftwareIdentityCredentialStore extends IdentityCredentialStore {
+class KeystoreIdentityCredentialStore extends IdentityCredentialStore {
 
-    private static final String TAG = "SoftwareIdentityCredentialStore";
+    private static final String TAG = "KSICStore"; // limit to <= 23 chars
 
-    private Context mContext = null;
+    private Context mContext;
+    private final File mStorageDirectory;
 
-    private SoftwareIdentityCredentialStore(@NonNull Context context) {
+    private KeystoreIdentityCredentialStore(@NonNull Context context,
+                                            @NonNull File storageDirectory) {
         mContext = context;
+        mStorageDirectory = storageDirectory;
     }
 
     @SuppressWarnings("deprecation")
-    public static @NonNull IdentityCredentialStore getInstance(@NonNull Context context) {
-        return new SoftwareIdentityCredentialStore(context);
+    public static @NonNull IdentityCredentialStore getInstance(@NonNull Context context,
+                                                               @NonNull File storageDirectory) {
+        return new KeystoreIdentityCredentialStore(context, storageDirectory);
     }
 
     @SuppressWarnings("deprecation")
@@ -51,31 +56,22 @@ class SoftwareIdentityCredentialStore extends IdentityCredentialStore {
         return false;
     }
 
+    @Override
+    public int getFeatureVersion() {
+        // We implement the latest feature version.
+        return FEATURE_VERSION_202201;
+    }
+
+    @Override
+    public @NonNull @ImplementationType String getImplementationType () {
+        return IMPLEMENTATION_TYPE_KEYSTORE;
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     public @NonNull String[] getSupportedDocTypes() {
-        Set<String> docTypeSet = getCapabilities().getSupportedDocTypes();
-        String[] docTypes = new String[docTypeSet.size()];
-        int n = 0;
-        for (String docType : docTypeSet) {
-            docTypes[n++] = docType;
-        }
-        return docTypes;
-    }
-
-    SimpleIdentityCredentialStoreCapabilities mCapabilities = null;
-
-    @Override
-    public @NonNull
-    IdentityCredentialStoreCapabilities getCapabilities() {
-        if (mCapabilities == null) {
-            LinkedHashSet<String> supportedDocTypesSet = new LinkedHashSet<>();
-            mCapabilities = SimpleIdentityCredentialStoreCapabilities.getFeatureVersion202201(
-                    false,
-                    false,
-                    supportedDocTypesSet);
-        }
-        return mCapabilities;
+        // We'll support any doc type.
+        return new String[] {};
     }
 
     @Override
@@ -83,15 +79,15 @@ class SoftwareIdentityCredentialStore extends IdentityCredentialStore {
             @NonNull String credentialName,
             @NonNull String docType) throws AlreadyPersonalizedException,
             DocTypeNotSupportedException {
-        return new SoftwareWritableIdentityCredential(mContext, credentialName, docType);
+        return new KeystoreWritableIdentityCredential(mContext, mStorageDirectory, credentialName, docType);
     }
 
     @Override
     public @Nullable IdentityCredential getCredentialByName(
             @NonNull String credentialName,
             @Ciphersuite int cipherSuite) throws CipherSuiteNotSupportedException {
-        SoftwareIdentityCredential credential =
-                new SoftwareIdentityCredential(mContext, credentialName, cipherSuite, null);
+        KeystoreIdentityCredential credential =
+                new KeystoreIdentityCredential(mContext, mStorageDirectory, credentialName, cipherSuite, null);
         if (credential.loadData()) {
             return credential;
         }
@@ -101,12 +97,12 @@ class SoftwareIdentityCredentialStore extends IdentityCredentialStore {
     @SuppressWarnings("deprecation")
     @Override
     public @Nullable byte[] deleteCredentialByName(@NonNull String credentialName) {
-        return SoftwareIdentityCredential.delete(mContext, credentialName);
+        return KeystoreIdentityCredential.delete(mContext, mStorageDirectory, credentialName);
     }
 
     @Override
     public @NonNull PresentationSession createPresentationSession(@Ciphersuite int cipherSuite)
             throws CipherSuiteNotSupportedException {
-        return new SoftwarePresentationSession(mContext, cipherSuite);
+        return new KeystorePresentationSession(mContext, mStorageDirectory, cipherSuite);
     }
 }

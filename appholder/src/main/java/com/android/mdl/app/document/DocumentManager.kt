@@ -8,9 +8,10 @@ import android.security.keystore.KeyProperties
 import android.util.Log
 import androidx.preference.PreferenceManager
 import com.android.identity.*
-import com.android.identity.IdentityCredentialStoreCapabilities.FEATURE_VERSION_202201
+import com.android.identity.IdentityCredentialStore.FEATURE_VERSION_202201
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
+import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.mdl.app.R
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.DocumentData
@@ -95,18 +96,21 @@ class DocumentManager private constructor(private val context: Context) {
         if (PreferencesHelper.isHardwareBacked(context)) {
             IdentityCredentialStore.getHardwareInstance(context)!!
         } else {
-            IdentityCredentialStore.getSoftwareInstance(context)
+            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                PreferencesHelper.getKeystoreBackedStorageLocation(context))
         }
     } else {
-        val mStore = IdentityCredentialStore.getDefaultInstance(context)
-        // This app needs feature version 202201, if hardware implementation doesn't support
-        // get software implementation
-        if (mStore.capabilities.featureVersion != FEATURE_VERSION_202201) {
-            PreferencesHelper.setHardwareBacked(context, false)
-            IdentityCredentialStore.getSoftwareInstance(context)
+        // No preference for which store to use ... first try with the HW-backed implementation
+        // and use it only if it reports a sufficiently new version.
+        val hwStore = IdentityCredentialStore.getHardwareInstance(context)
+        if (hwStore != null && hwStore.featureVersion >= FEATURE_VERSION_202201) {
+            PreferencesHelper.setHardwareBacked(context, true)
+            hwStore
         } else {
-            PreferencesHelper.setHardwareBacked(context, mStore.capabilities.isHardwareBacked)
-            mStore
+            // Nope, fall back to Keystore implementation
+            PreferencesHelper.setHardwareBacked(context, false)
+            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                PreferencesHelper.getKeystoreBackedStorageLocation(context))
         }
     }
 
@@ -121,7 +125,7 @@ class DocumentManager private constructor(private val context: Context) {
         if (!sharedPreferences.contains(HARDWARE_BACKED_PREFERENCE)) {
             sharedPreferences.edit().putBoolean(
                 HARDWARE_BACKED_PREFERENCE,
-                store.capabilities.isHardwareBacked
+                true
             ).apply()
         }
         runBlocking {
@@ -150,7 +154,7 @@ class DocumentManager private constructor(private val context: Context) {
                     context.resources,
                     R.drawable.driving_license_bg
                 ),
-                store.capabilities.isHardwareBacked
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE
             )
         } catch (e: IdentityCredentialException) {
             throw IllegalStateException("Error creating dummy credential", e)
@@ -327,7 +331,7 @@ class DocumentManager private constructor(private val context: Context) {
                     context.resources,
                     R.drawable.driving_license_bg
                 ),
-                store.capabilities.isHardwareBacked
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE
             )
         } catch (e: IdentityCredentialException) {
             throw IllegalStateException("Error creating dummy credential", e)
@@ -426,7 +430,7 @@ class DocumentManager private constructor(private val context: Context) {
                     context.resources,
                     R.drawable.driving_license_bg
                 ),
-                store.capabilities.isHardwareBacked
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE
             )
         } catch (e: IdentityCredentialException) {
             throw IllegalStateException("Error creating dummy credential", e)
@@ -594,7 +598,7 @@ class DocumentManager private constructor(private val context: Context) {
             identityCredentialName,
             userVisibleName,
             null,
-            store.capabilities.isHardwareBacked,
+            store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
             serverUrl,
             provisioningCode
         )
@@ -611,9 +615,11 @@ class DocumentManager private constructor(private val context: Context) {
     fun deleteCredential(document: Document, credential: IdentityCredential): ByteArray? {
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getSoftwareInstance(context)
+                ?: IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                    PreferencesHelper.getKeystoreBackedStorageLocation(context))
         else
-            IdentityCredentialStore.getSoftwareInstance(context)
+            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                PreferencesHelper.getKeystoreBackedStorageLocation(context))
 
         // Delete data from local storage
         runBlocking {
@@ -621,11 +627,7 @@ class DocumentManager private constructor(private val context: Context) {
         }
 
         // Delete credential provisioned on IC API
-        return if (mStore.capabilities.isDeleteSupported) {
-            credential.delete(byteArrayOf())
-        } else {
-            mStore.deleteCredentialByName(document.identityCredentialName)
-        }
+        return credential.delete(byteArrayOf())
     }
 
     fun deleteCredentialByName(credentialName: String) {
@@ -635,9 +637,11 @@ class DocumentManager private constructor(private val context: Context) {
 
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getSoftwareInstance(context)
+                ?: IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                    PreferencesHelper.getKeystoreBackedStorageLocation(context))
         else
-            IdentityCredentialStore.getSoftwareInstance(context)
+            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                PreferencesHelper.getKeystoreBackedStorageLocation(context))
 
         val credential = mStore.getCredentialByName(
             document.identityCredentialName,
@@ -650,11 +654,7 @@ class DocumentManager private constructor(private val context: Context) {
         }
 
         // Delete credential provisioned on IC API
-        if (mStore.capabilities.isDeleteSupported) {
-            credential?.delete(byteArrayOf())
-        } else {
-            mStore.deleteCredentialByName(credentialName)
-        }
+        credential?.delete(byteArrayOf())
     }
 
     fun setAvailableAuthKeys(credential: IdentityCredential) {
@@ -664,9 +664,11 @@ class DocumentManager private constructor(private val context: Context) {
     fun getCredential(document: Document): IdentityCredential? {
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getSoftwareInstance(context)
+                ?: IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                    PreferencesHelper.getKeystoreBackedStorageLocation(context))
         else
-            IdentityCredentialStore.getSoftwareInstance(context)
+            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                PreferencesHelper.getKeystoreBackedStorageLocation(context))
 
         return mStore.getCredentialByName(
             document.identityCredentialName,

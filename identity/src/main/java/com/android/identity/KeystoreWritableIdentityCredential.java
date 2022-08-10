@@ -26,6 +26,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
@@ -50,23 +51,26 @@ import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnicodeString;
 
-class SoftwareWritableIdentityCredential extends WritableIdentityCredential {
+class KeystoreWritableIdentityCredential extends WritableIdentityCredential {
 
-    private static final String TAG = "SoftwareWritableIdentityCredential";
+    private static final String TAG = "KSWritableIC"; // limit to <= 23 chars
 
     private KeyPair mKeyPair = null;
     private Collection<X509Certificate> mCertificates = null;
     private final String mDocType;
     private final String mCredentialName;
     private final Context mContext;
+    private final File mStorageDirectory;
 
-    SoftwareWritableIdentityCredential(Context context,
-            @NonNull String credentialName,
-            @NonNull String docType) throws AlreadyPersonalizedException {
+    KeystoreWritableIdentityCredential(@NonNull Context context,
+                                       @NonNull File storageDirectory,
+                                       @NonNull String credentialName,
+                                       @NonNull String docType) throws AlreadyPersonalizedException {
         mContext = context;
+        mStorageDirectory = storageDirectory;
         mDocType = docType;
         mCredentialName = credentialName;
-        if (CredentialData.credentialAlreadyExists(context, credentialName)) {
+        if (CredentialData.credentialAlreadyExists(context, storageDirectory, credentialName)) {
             throw new AlreadyPersonalizedException("Credential with given name already exists");
         }
     }
@@ -217,6 +221,7 @@ class SoftwareWritableIdentityCredential extends WritableIdentityCredential {
 
             CredentialData.createCredentialData(
                     mContext,
+                    mStorageDirectory,
                     mDocType,
                     mCredentialName,
                     CredentialData.getAliasFromCredentialName(mCredentialName),

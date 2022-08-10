@@ -30,7 +30,7 @@ abstract class DocumentDatabase : RoomDatabase() {
 
     companion object {
 
-        private const val DATABASE_NAME = "document-db"
+        private const val DATABASE_NAME = "mdoc-document-database"
 
         // For Singleton instantiation
         @Volatile
@@ -42,6 +42,10 @@ abstract class DocumentDatabase : RoomDatabase() {
             }
         }
 
+        // TODO: According to https://developer.android.com/guide/topics/data/autobackup this
+        //   database ends up being backed up and restored. We should probably opt out of doing
+        //   that since all of these documents will reference HW-backed keys that are not backed
+        //   up and restored.
         private fun buildDatabase(context: Context): DocumentDatabase {
             return Room.databaseBuilder(
                 context, DocumentDatabase::class.java, DATABASE_NAME

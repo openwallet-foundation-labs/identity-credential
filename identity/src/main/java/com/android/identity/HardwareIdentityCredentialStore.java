@@ -26,6 +26,7 @@ import androidx.annotation.RequiresApi;
 
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Set;
 
 @RequiresApi(Build.VERSION_CODES.R)
@@ -92,8 +93,7 @@ class HardwareIdentityCredentialStore extends IdentityCredentialStore {
     @SuppressWarnings("deprecation")
     @Override
     public @NonNull String[] getSupportedDocTypes() {
-        Set<String> docTypeSet = getCapabilities().getSupportedDocTypes();
-        return docTypeSet.toArray(new String[0]);
+        return mStore.getSupportedDocTypes();
     }
 
     @Override
@@ -134,34 +134,26 @@ class HardwareIdentityCredentialStore extends IdentityCredentialStore {
         return mStore.deleteCredentialByName(credentialName);
     }
 
-    SimpleIdentityCredentialStoreCapabilities mCapabilities = null;
+    @Override
+    public int getFeatureVersion() {
+        String featureName = PackageManager.FEATURE_IDENTITY_CREDENTIAL_HARDWARE;
+        if (mIsDirectAccess) {
+            featureName = PackageManager.FEATURE_IDENTITY_CREDENTIAL_HARDWARE_DIRECT_ACCESS;
+        }
+        PackageManager pm = mContext.getPackageManager();
+
+        if (pm.hasSystemFeature(featureName, FEATURE_VERSION_202201)) {
+            return 202101;
+        } else if (pm.hasSystemFeature(featureName, FEATURE_VERSION_202101)) {
+            return 202101;
+        } else if (pm.hasSystemFeature(featureName)) {
+            return 202009;
+        }
+        throw new IllegalStateException(String.format(Locale.US, "Feature %s not found"));
+    }
 
     @Override
-    public @NonNull
-    IdentityCredentialStoreCapabilities getCapabilities() {
-        LinkedHashSet<String> supportedDocTypesSet =
-                new LinkedHashSet<>(Arrays.asList(mStore.getSupportedDocTypes()));
-
-        if (mCapabilities == null) {
-            PackageManager pm = mContext.getPackageManager();
-            String featureName = PackageManager.FEATURE_IDENTITY_CREDENTIAL_HARDWARE;
-            if (mIsDirectAccess) {
-                featureName = PackageManager.FEATURE_IDENTITY_CREDENTIAL_HARDWARE_DIRECT_ACCESS;
-            }
-
-            if (pm.hasSystemFeature(featureName,
-                    IdentityCredentialStoreCapabilities.FEATURE_VERSION_202101)) {
-                mCapabilities = SimpleIdentityCredentialStoreCapabilities.getFeatureVersion202101(
-                        mIsDirectAccess,
-                        true,
-                        supportedDocTypesSet);
-            } else {
-                mCapabilities = SimpleIdentityCredentialStoreCapabilities.getFeatureVersion202009(
-                        mIsDirectAccess,
-                        true,
-                        supportedDocTypesSet);
-            }
-        }
-        return mCapabilities;
+    public @NonNull @ImplementationType String getImplementationType () {
+        return IMPLEMENTATION_TYPE_HARDWARE;
     }
 }

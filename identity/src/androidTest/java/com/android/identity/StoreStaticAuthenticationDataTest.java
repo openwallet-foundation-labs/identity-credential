@@ -20,44 +20,31 @@ import static com.android.identity.IdentityCredentialStore.CIPHERSUITE_ECDHE_HKD
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import android.content.Context;
 import android.icu.util.Calendar;
-import android.os.Build.VERSION;
-import androidx.annotation.Nullable;
+
 import androidx.core.util.Preconditions;
 import androidx.test.filters.LargeTest;
 import androidx.test.filters.MediumTest;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Locale;
 import java.util.Random;
-import java.util.stream.Collectors;
-import junit.framework.AssertionFailedError;
-import org.junit.After;
-import org.junit.Assume;
-import org.junit.Before;
+
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 /**
- * Tests {@link IdentityCredential}.
+ * Tests that the implementation works when the application is using many and large static
+ * authentication data blobs.
  */
-@RunWith(Parameterized.class)
-public class IdentityCredentialTest {
+public class StoreStaticAuthenticationDataTest {
 
   private static final String CREDENTIAL_NAME = "fake credential for test";
   private static final int CIPHER_SUITE = CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256;
 
-  private IdentityCredentialStore store;
+  private IdentityCredentialStore mStore;
 
-  public IdentityCredentialTest(Object store, Object storeName) {
-    this.store = Preconditions.checkNotNull((IdentityCredentialStore) store);
-    Preconditions.checkNotNull((String) storeName); // only used for test name
+  public StoreStaticAuthenticationDataTest() {
+    mStore = Util.getIdentityCredentialStore(androidx.test.InstrumentationRegistry.getTargetContext());
   }
 
   /**
@@ -85,15 +72,15 @@ public class IdentityCredentialTest {
   private void checkStaticAuthData(int numAuthKeys, int staticAuthDataSizeBytes)
           throws IdentityCredentialException {
     final int usesPerKey = 3;
-    ProvisioningTest.createCredential(store, CREDENTIAL_NAME);
+    ProvisioningTest.createCredential(mStore, CREDENTIAL_NAME);
     try {
       IdentityCredential credential = Preconditions.checkNotNull(
-              store.getCredentialByName(CREDENTIAL_NAME, CIPHER_SUITE));
+              mStore.getCredentialByName(CREDENTIAL_NAME, CIPHER_SUITE));
       storeFakeStaticAuthData(credential, usesPerKey, numAuthKeys, staticAuthDataSizeBytes);
 
       // Check that this doesn't throw (it did throw in internal b/234563696).
       try {
-        store.getCredentialByName(CREDENTIAL_NAME, CIPHER_SUITE);
+        mStore.getCredentialByName(CREDENTIAL_NAME, CIPHER_SUITE);
       } catch (RuntimeException e) {
         e.printStackTrace();
         fail(String.format(Locale.US,
@@ -104,7 +91,7 @@ public class IdentityCredentialTest {
       // deleteCredentialByName() is deprecated, but its suggested replacement
       // (credential.delete()) is unreliable because it requires loading the credential
       // first, which can fail (e.g. b/234563696).
-      store.deleteCredentialByName(CREDENTIAL_NAME);
+      mStore.deleteCredentialByName(CREDENTIAL_NAME);
     }
   }
 
@@ -124,32 +111,5 @@ public class IdentityCredentialTest {
       expirationDate.add(Calendar.YEAR, 1);
       credential.storeStaticAuthenticationData(authKey, expirationDate, staticAuthData);
     }
-  }
-
-  // parameters: { store, storeName }
-  @Parameters(name = "{1}")
-  public static Collection<Object[]> parameters() {
-    List<IdentityCredentialStore> resultStores = new ArrayList<>();
-    Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
-    IdentityCredentialStore defaultStore = IdentityCredentialStore.getDefaultInstance(appContext);
-    resultStores.add(IdentityCredentialStore.getSoftwareInstance(appContext));
-    IdentityCredentialStore hwStore = IdentityCredentialStore.getHardwareInstance(appContext);
-    if (hwStore != null) {
-      resultStores.add(hwStore);
-    }
-    if (IdentityCredentialStore.isDirectAccessSupported(appContext)) {
-      resultStores.add(IdentityCredentialStore.getDirectAccessInstance(appContext));
-    }
-    // Usually, the default instance's implementation will be one of the earlier ones; on the
-    // odd chance that it isn't, add it to make sure it is covered.
-    if (resultStores.stream().noneMatch(o -> o.getClass().equals(defaultStore.getClass()))) {
-      resultStores.add(0, defaultStore);
-    }
-
-    List<Object[]> result = resultStores
-            .stream()
-            .map(store -> new Object[]{store, store.getClass().getSimpleName()})
-            .collect(Collectors.toList());
-    return result;
   }
 }

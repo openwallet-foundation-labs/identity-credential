@@ -26,6 +26,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.biometric.BiometricPrompt;
 
+import java.io.File;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -49,21 +50,24 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 
-class SoftwarePresentationSession extends PresentationSession {
+class KeystorePresentationSession extends PresentationSession {
 
-    private static final String TAG = "SoftwarePresentSession"; // limit to <= 23 chars
+    private static final String TAG = "KSPresentationSession"; // limit to <= 23 chars
     private @IdentityCredentialStore.Ciphersuite
     final int mCipherSuite;
     private final Context mContext;
-    private final Map<String, SoftwareIdentityCredential> mCredentialCache = new LinkedHashMap<>();
+    private final Map<String, KeystoreIdentityCredential> mCredentialCache = new LinkedHashMap<>();
+    private final File mStorageDirectory;
 
     private KeyPair mEphemeralDeviceKeyPair;
     private byte[] mSessionTranscript;
     private PublicKey mReaderEphemeralPublicKey;
 
-    SoftwarePresentationSession(Context context,
-            @IdentityCredentialStore.Ciphersuite int cipherSuite) {
+    KeystorePresentationSession(@NonNull Context context,
+                                @NonNull File storageDirectory,
+                                @IdentityCredentialStore.Ciphersuite int cipherSuite) {
         mContext = context;
+        mStorageDirectory = storageDirectory;
         mCipherSuite = cipherSuite;
     }
 
@@ -110,9 +114,10 @@ class SoftwarePresentationSession extends PresentationSession {
             // Cache the IdentityCredential to satisfy the property that AuthKey usage counts are
             // incremented on only the _first_ getCredentialData() call.
             //
-            SoftwareIdentityCredential credential = mCredentialCache.get(credentialName);
+            KeystoreIdentityCredential credential = mCredentialCache.get(credentialName);
             if (credential == null) {
-                credential = new SoftwareIdentityCredential(mContext, credentialName, mCipherSuite,
+                credential = new KeystoreIdentityCredential(
+                        mContext, mStorageDirectory, credentialName, mCipherSuite,
                         this);
                 if (!credential.loadData()) {
                     return null;
@@ -220,7 +225,7 @@ class SoftwarePresentationSession extends PresentationSession {
         }
     }
 
-    // Called by SoftwareIdentityCredential to determine if the user successfully authenticated
+    // Called by KeystoreIdentityCredential to determine if the user successfully authenticated
     // for the CryptoObject returned to the application by getCryptoObject() above.
     //
     boolean isPerReaderSessionAuthSatisfied() {
