@@ -201,14 +201,28 @@ class L2CAPServer {
             // Ignoring this error
             Log.e(TAG, " Error closing server socket connection " + e.getMessage(), e);
         }
-        try {
-            if (isConnected()) {
-                mSocket.close();
-                mSocket = null;
-            }
-        } catch (IOException e) {
-            // Ignoring this error
-            Log.e(TAG, " Error closing server socket connection " + e.getMessage(), e);
+        if (isConnected()) {
+            // Defer closing the socket for 1 second. This is to work around a bug where
+            // data being written and flushed - as we do in writeToSocket() above - ends
+            // up not being sent.
+            final BluetoothSocket socket = mSocket;
+            Thread closingThread = new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, "Error sleeping " + e.getMessage(), e);
+                    }
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error closing socket " + e.getMessage(), e);
+                    }
+                }
+            };
+            closingThread.start();
+            mSocket = null;
         }
     }
 

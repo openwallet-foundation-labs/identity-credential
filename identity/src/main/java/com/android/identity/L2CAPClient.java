@@ -73,14 +73,29 @@ class L2CAPClient {
                 Log.e(TAG, "Caught exception while joining report message received thread: " + e);
             }
         }
-        try {
-            if (mSocket != null) {
-                mSocket.close();
-                mSocket = null;
-            }
-        } catch (IOException e) {
-            // Ignoring this error
-            Log.e(TAG, " Error closing socket connection " + e.getMessage(), e);
+
+        if (mSocket != null) {
+            // Defer closing the socket for 1 second. This is to work around a bug where
+            // data being written and flushed - as we do in writeToSocket() above - ends
+            // up not being sent.
+            final BluetoothSocket socket = mSocket;
+            Thread closingThread = new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, "Error sleeping " + e.getMessage(), e);
+                    }
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error closing socket " + e.getMessage(), e);
+                    }
+                }
+            };
+            closingThread.start();
+            mSocket = null;
         }
     }
 
