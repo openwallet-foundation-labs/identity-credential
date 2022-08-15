@@ -275,7 +275,7 @@ class GattClient extends BluetoothGattCallback {
                         + characteristic.getUuid() + ", L2CAP not supported"));
                 return;
             }
-            mL2CAPClient = new L2CAPClient(new L2CAPClient.Listener() {
+            mL2CAPClient = new L2CAPClient(mContext, new L2CAPClient.Listener() {
                 @Override
                 public void onPeerConnected() {
                     reportPeerConnected();
@@ -294,6 +294,11 @@ class GattClient extends BluetoothGattCallback {
                 @Override
                 public void onError(@NonNull Throwable error) {
                     reportError(error);
+                }
+
+                @Override
+                public void onMessageSendProgress(long progress, long max) {
+                    reportMessageSendProgress(progress, max);
                 }
             }, mLog.getLoggingFlags());
 
@@ -521,8 +526,8 @@ class GattClient extends BluetoothGattCallback {
             Util.dumpHex(TAG, "sendMessage", data);
         }
 
-        // Use socket for L2CAP if it is connected
-        if (mL2CAPClient != null && mL2CAPClient.isConnected()) {
+        // Use socket for L2CAP if applicable
+        if (mL2CAPClient != null) {
             mL2CAPClient.sendMessage(data);
             return;
         }
@@ -623,8 +628,5 @@ class GattClient extends BluetoothGattCallback {
         void onError(@NonNull Throwable error);
 
         void onMessageSendProgress(long progress, long max);
-
     }
-
-
 }

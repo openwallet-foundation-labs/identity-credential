@@ -182,33 +182,6 @@ class GattServer extends BluetoothGattServerCallback {
             return false;
         }
 
-        if (mUsingL2CAP) {
-            // Start L2CAP socket server
-            mL2CAPServer = new L2CAPServer(new L2CAPServer.Listener() {
-                @Override
-                public void onPeerConnected() {
-                    reportPeerConnected();
-                }
-
-                @Override
-                public void onPeerDisconnected() {
-                    reportPeerDisconnected();
-                }
-
-                @Override
-                public void onMessageReceived(@NonNull byte[] data) {
-                    reportMessageReceived(data);
-                }
-
-                @Override
-                public void onError(@NonNull Throwable error) {
-                    reportError(error);
-                }
-            }, mLog.getLoggingFlags());
-
-            // Set using L2CAP to false if it was not able to start the socket server
-            mUsingL2CAP = mL2CAPServer.start(mBluetoothManager.getAdapter());
-        }
         return true;
     }
 
@@ -265,20 +238,44 @@ class GattServer extends BluetoothGattServerCallback {
                 reportError(new Error("Unexpected read request for L2CAP characteristic, not supported"));
                 return;
             }
-            if (mL2CAPServer == null) {
-                reportError(new Error("L2CAP Server not available"));
-                return;
-            }
-            byte[] psmValue = mL2CAPServer.getPsmValue();
-            if (psmValue != null) {
+
+            // Start L2CAP socket server
+            mL2CAPServer = new L2CAPServer(new L2CAPServer.Listener() {
+                @Override
+                public void onPeerConnected() {
+                    reportPeerConnected();
+                }
+
+                @Override
+                public void onPeerDisconnected() {
+                    reportPeerDisconnected();
+                }
+
+                @Override
+                public void onMessageReceived(@NonNull byte[] data) {
+                    reportMessageReceived(data);
+                }
+
+                @Override
+                public void onError(@NonNull Throwable error) {
+                    reportError(error);
+                }
+
+                @Override
+                public void onMessageSendProgress(long progress, long max) {
+                    reportMessageSendProgress(progress, max);
+                }
+            }, mLog.getLoggingFlags());
+
+            byte[] psmValue = mL2CAPServer.start(mBluetoothManager.getAdapter());
+            if (psmValue == null) {
+                mUsingL2CAP = false;
+            } else {
                 mGattServer.sendResponse(device,
                         requestId,
                         BluetoothGatt.GATT_SUCCESS,
                         0,
                         psmValue);
-                mL2CAPServer.acceptConnection();
-            } else {
-                mUsingL2CAP = false;
             }
         } else {
             reportError(new Error("Read on unexpected characteristic with UUID "
@@ -480,7 +477,7 @@ class GattServer extends BluetoothGattServerCallback {
         }
 
         // Uses socket L2CAP when it is available
-        if (mL2CAPServer != null && mL2CAPServer.isConnected()) {
+        if (mL2CAPServer != null) {
             mL2CAPServer.sendMessage(data);
             return;
         }
