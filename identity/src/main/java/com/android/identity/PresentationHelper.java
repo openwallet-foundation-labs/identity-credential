@@ -24,6 +24,7 @@ import android.nfc.cardemulation.HostApduService;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Log;
 import android.util.Pair;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;

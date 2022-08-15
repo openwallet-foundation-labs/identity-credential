@@ -57,6 +57,9 @@ abstract class DataTransportBle extends DataTransport {
     // Indicates to use L2CAP for BLE transfer by default
     protected boolean mUseL2CAPIfAvailable = false;
 
+    // The size of buffer for read() calls when using L2CAP sockets.
+    static final int L2CAP_BUF_SIZE = 4096;
+
     public DataTransportBle(
             @NonNull Context context, @LoggingFlag int loggingFlags) {
         super(context);

@@ -1817,24 +1817,26 @@ class Util {
     }
 
     /**
-     * Helper to split cbor items from a byte array into the queue
+     * Extracts the first CBOR data item from a stream of bytes.
      *
-     * <p>This is used for handling 18013-5:2021 L2CAP data where messages are not separated
-     * by any framing.
+     * <p>If a data item was found, returns the bytes and removes it from the given output stream.
      *
-     * @param data data with a single encoded CBOR data item and possibly more
-     * @param queue queue where the cbor items will be added
-     * @return remaining data bytes that are not a complete cbor item.
+     * @param pendingDataBaos A {@link ByteArrayOutputStream} with incoming bytes which must all
+     *                        be valid CBOR.
+     * @return the bytes of the first CBOR data item or {@code null} if not enough bytes have
+     *   been received.
      */
-    static byte[] splitCborItemsIntoQueue(byte[] data, Queue<byte[]> queue) {
-        int size = Util.cborGetLength(data);
-        while (size != -1 && data.length >= size) {
-            byte[] cborItem = Arrays.copyOfRange(data, 0, size);
-            queue.add(cborItem);
-            data = Arrays.copyOfRange(data, size, data.length);
-            size = Util.cborGetLength(data);
+    static byte[] cborExtractFirstDataItem(@NonNull ByteArrayOutputStream pendingDataBaos) {
+        byte[] pendingData = pendingDataBaos.toByteArray();
+        int dataItemLength = Util.cborGetLength(pendingData);
+        if (dataItemLength == -1) {
+            return null;
         }
-        return data;
+        byte[] dataItemBytes = new byte[dataItemLength];
+        System.arraycopy(pendingDataBaos.toByteArray(),0, dataItemBytes, 0, dataItemLength);
+        pendingDataBaos.reset();
+        pendingDataBaos.write(pendingData, dataItemLength, pendingData.length - dataItemLength);
+        return dataItemBytes;
     }
 
     /**
