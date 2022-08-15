@@ -149,7 +149,10 @@ class HardwareIdentityCredentialStore extends IdentityCredentialStore {
         } else if (pm.hasSystemFeature(featureName)) {
             return 202009;
         }
-        throw new IllegalStateException(String.format(Locale.US, "Feature %s not found"));
+        // Note that FEATURE_IDENTITY_CREDENTIAL_HARDWARE* didn't exist until Android 12 so it's
+        // possible to have the API implemented but no feature flag. In this case, just return
+        // the feature version for Android 11.
+        return 202009;
     }
 
     @Override
