@@ -36,6 +36,7 @@ import com.android.identity.Constants.LoggingFlag;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.Queue;
 import java.util.UUID;
 
@@ -185,18 +186,29 @@ class GattClient extends BluetoothGattCallback {
 
             // Start by bumping MTU, callback in onMtuChanged()...
             //
-            // As per BT specs, maximum MTU is 517 so we request that. We might not get
-            // such a big MTU, the way it works is that the requestMtu() call will trigger a
-            // negotiation between the client (us) and the server (the remote device).
+            // Which MTU should we choose? On Android the maximum MTU size is said to be 517.
+            //
+            // Also 18013-5 section 8.3.3.1.1.6 Data retrieval says to write attributes to
+            // Client2Server and Server2Client characteristics of a size which 3 less the
+            // MTU size. If we chose an MTU of 517 then the attribute we'd write would be
+            // 514 bytes long.
+            //
+            // Also note that Bluetooth Core specification Part F section 3.2.9 Long attribute
+            // values says "The maximum length of an attribute value shall be 512 octets." ... so
+            // with an MTU of 517 we'd blow through that limit. An MTU limited to 515 bytes
+            // will work though.
+            //
+            // ... so we request 515 bytes for the MTU. We might not get such a big MTU, the way
+            // it works is that the requestMtu() call will trigger a negotiation between the client (us)
+            // and the server (the remote device).
             //
             // We'll get notified in BluetoothGattCallback.onMtuChanged() below.
             //
             // The server will also be notified about the new MTU - if it's running Android
             // it'll be via BluetoothGattServerCallback.onMtuChanged(), see GattServer.java
             // for that in our implementation.
-            //
             try {
-                if (!gatt.requestMtu(517)) {
+                if (!gatt.requestMtu(515)) {
                     reportError(new Error("Error requesting MTU"));
                     return;
                 }
@@ -436,11 +448,27 @@ class GattClient extends BluetoothGattCallback {
                 return;
             }
             mIncomingMessage.write(data, 1, data.length - 1);
+            mLog.transportVerbose(String.format(Locale.US,
+                    "Received chunk with %d bytes (last=%s), incomingMessage.length=%d",
+                    data.length, data[0] == 0x00, mIncomingMessage.toByteArray().length));
             if (data[0] == 0x00) {
                 // Last message.
                 byte[] entireMessage = mIncomingMessage.toByteArray();
                 mIncomingMessage.reset();
                 reportMessageReceived(entireMessage);
+            } else if (data[0] == 0x01) {
+                if (data.length != mNegotiatedMtu - 3) {
+                    reportError(new Error(String.format(Locale.US,
+                            "Invalid size %d of data written Server2Client characteristic, "
+                                    + "expected size %d",
+                            data.length, mNegotiatedMtu - 3)));
+                    return;
+                }
+            } else {
+                reportError(new Error(String.format(Locale.US,
+                        "Invalid first byte %d in Server2Client data chunk, expected 0 or 1",
+                        data[0])));
+                return;
             }
         } else if (characteristic.getUuid().equals(mCharacteristicStateUuid)) {
             byte[] data = characteristic.getValue();
@@ -470,9 +498,9 @@ class GattClient extends BluetoothGattCallback {
             return;
         }
 
-        if (mLog.isTransportVerboseEnabled()) {
-            Util.dumpHex(TAG, "writing chunk to " + mCharacteristicClient2Server.getUuid(), chunk);
-        }
+        mLog.transportVerbose(String.format(Locale.US,
+                "Sending chunk with %d bytes (last=%s)",
+                chunk.length, chunk[0] == 0x00));
 
         mCharacteristicClient2Server.setValue(chunk);
         try {
