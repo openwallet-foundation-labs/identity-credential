@@ -230,20 +230,12 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
-        mLog.transport("onConnectionStateChange: " + status + " " + newState);
-        if (newState == BluetoothProfile.STATE_CONNECTED) {
-            if (mCurrentConnection != null) {
-                Log.w(TAG, "Got a connection but we already have one");
-                // TODO: possible to disconnect that 2nd device?
-                return;
-            }
-            mCurrentConnection = device;
-
-        } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-            if (!device.getAddress().equals(mCurrentConnection.getAddress())) {
-                Log.w(TAG, "Got a disconnection from a device we haven't seen before");
-                return;
-            }
+        mLog.transport("onConnectionStateChange: " + device.getAddress() + " " + status + " " + newState);
+        if (newState == BluetoothProfile.STATE_DISCONNECTED
+                && mCurrentConnection != null
+                && device.getAddress().equals(mCurrentConnection.getAddress())) {
+            mLog.transport("Device " + mCurrentConnection.getAddress() + " which we're currently "
+                    + "connected to, has disconnected");
             mCurrentConnection = null;
             reportPeerDisconnected();
         }
@@ -253,8 +245,8 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
                                             BluetoothGattCharacteristic characteristic) {
-        mLog.transport("onCharacteristicReadRequest: " + requestId + " " + offset + " "
-                + characteristic.getUuid());
+        mLog.transport("onCharacteristicReadRequest: "  + device.getAddress() + " "
+                + requestId + " " + offset + " " + characteristic.getUuid());
         if (mCharacteristicIdentUuid != null
                 && characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             try {
@@ -302,12 +294,30 @@ class GattServer extends BluetoothGattServerCallback {
                                              int offset,
                                              byte[] value) {
         UUID charUuid = characteristic.getUuid();
-        mLog.transport("onCharacteristicWriteRequest: "
+        mLog.transport("onCharacteristicWriteRequest: " + device.getAddress() + " "
                 + characteristic.getUuid() + " " + offset + " " + Util.toHex(value));
+
+        // If we are connected to a device, ignore write from any other device
+        if (mCurrentConnection != null &&
+                !device.getAddress().equals(mCurrentConnection.getAddress())) {
+            Log.e(TAG, "Ignoring characteristic write request from "
+            + device.getAddress() + " since we're already connected to "
+            + mCurrentConnection.getAddress());
+            return;
+        }
+
         if (charUuid.equals(mCharacteristicStateUuid) && value.length == 1) {
             if (value[0] == 0x01) {
                 // Close server socket when the connection was done by state characteristic
                 stopL2CAPServer();
+                if (mCurrentConnection != null) {
+                    Log.e(TAG, "Ignoring connection attempt from " + device.getAddress()
+                    + " since we're already connected to " + mCurrentConnection.getAddress());
+                } else {
+                    mCurrentConnection = device;
+                    mLog.transport("Received connection (state 0x01 on State characteristic) "
+                            + "from " + mCurrentConnection.getAddress());
+                }
                 reportPeerConnected();
             } else if (value[0] == 0x02) {
                 reportTransportSpecificSessionTermination();
@@ -318,6 +328,12 @@ class GattServer extends BluetoothGattServerCallback {
         } else if (charUuid.equals(mCharacteristicClient2ServerUuid)) {
             if (value.length < 1) {
                 reportError(new Error("Invalid value with length " + value.length));
+                return;
+            }
+            if (mCurrentConnection == null) {
+                // We expect a write 0x01 on the State characteristic before we consider
+                // the device to be connected.
+                reportError(new Error("Write on Client2Server but not connected yet"));
                 return;
             }
             mIncomingMessage.write(value, 1, value.length - 1);
@@ -357,7 +373,7 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset,
                                         BluetoothGattDescriptor descriptor) {
-        mLog.transport("onDescriptorReadRequest: "
+        mLog.transport("onDescriptorReadRequest: " + device.getAddress() + " "
                 + descriptor.getCharacteristic().getUuid() + " " + offset);
         /* Do nothing */
     }
@@ -368,7 +384,7 @@ class GattServer extends BluetoothGattServerCallback {
                                          boolean preparedWrite, boolean responseNeeded,
                                          int offset, byte[] value) {
         if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("onDescriptorWriteRequest: "
+            mLog.transportVerbose("onDescriptorWriteRequest: " + device.getAddress() + " "
                     + descriptor.getCharacteristic().getUuid() + " " + offset + " "
                     + Util.toHex(value));
         }
@@ -388,7 +404,7 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onMtuChanged(BluetoothDevice device, int mtu) {
         mNegotiatedMtu = mtu;
-        mLog.transport("Negotiated MTU " + mtu);
+        mLog.transport("Negotiated MTU " + mtu + " for " + device.getAddress() + " ");
     }
 
     void drainWritingQueue() {
@@ -422,7 +438,7 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onNotificationSent(BluetoothDevice device, int status) {
-        mLog.transport("onNotificationSent " + status);
+        mLog.transport("onNotificationSent " + status + " for " + device.getAddress() + " ");
         if (status != BluetoothGatt.GATT_SUCCESS) {
             reportError(new Error("Error in onNotificationSent status=" + status));
             return;
