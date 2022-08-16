@@ -37,6 +37,7 @@ import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
+import java.util.Locale;
 import java.util.Queue;
 import java.util.UUID;
 
@@ -321,11 +322,27 @@ class GattServer extends BluetoothGattServerCallback {
                 return;
             }
             mIncomingMessage.write(value, 1, value.length - 1);
+            mLog.transportVerbose(String.format(Locale.US,
+                    "Received chunk with %d bytes (last=%s), incomingMessage.length=%d",
+                    value.length, value[0] == 0x00, mIncomingMessage.toByteArray().length));
             if (value[0] == 0x00) {
                 // Last message.
                 byte[] entireMessage = mIncomingMessage.toByteArray();
                 mIncomingMessage.reset();
                 reportMessageReceived(entireMessage);
+            } else if (value[0] == 0x01) {
+                if (value.length != mNegotiatedMtu - 3) {
+                    reportError(new Error(String.format(Locale.US,
+                            "Invalid size %d of data written Client2Server characteristic, "
+                            + "expected size %d",
+                            value.length, mNegotiatedMtu - 3)));
+                    return;
+                }
+            } else {
+                reportError(new Error(String.format(Locale.US,
+                        "Invalid first byte %d in Client2Server data chunk, expected 0 or 1",
+                        value[0])));
+                return;
             }
 
             if (responseNeeded) {
@@ -401,10 +418,9 @@ class GattServer extends BluetoothGattServerCallback {
             return;
         }
 
-        if (mLog.isTransportVerboseEnabled()) {
-            Util.dumpHex(TAG, "writing chunk to " + mCharacteristicServer2Client.getUuid(), chunk);
-        }
-
+        mLog.transportVerbose(String.format(Locale.US,
+                "Sending chunk with %d bytes (last=%s)",
+                chunk.length, chunk[0] == 0x00));
         mCharacteristicServer2Client.setValue(chunk);
         try {
             if (!mGattServer.notifyCharacteristicChanged(mCurrentConnection,
