@@ -1789,7 +1789,7 @@ class Util {
         // See b/164480361 for more discussion.
         //
         //return IdentityCredentialStore.getHardwareInstance(context);
-        return IdentityCredentialStore.getHardwareKeystoreInstance(context, context.getNoBackupFilesDir());
+        return IdentityCredentialStore.getKeystoreInstance(context, context.getNoBackupFilesDir());
     }
 
     /**

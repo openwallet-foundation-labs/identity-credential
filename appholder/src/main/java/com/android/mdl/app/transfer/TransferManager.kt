@@ -60,10 +60,10 @@ class TransferManager private constructor(private val context: Context) {
         // what was used to store the first document on this device.
         store = if (PreferencesHelper.isHardwareBacked(context))
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                ?: IdentityCredentialStore.getKeystoreInstance(context,
                     PreferencesHelper.getKeystoreBackedStorageLocation(context))
         else
-            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+            IdentityCredentialStore.getKeystoreInstance(context,
                 PreferencesHelper.getKeystoreBackedStorageLocation(context))
 
         session = store?.createPresentationSession(
