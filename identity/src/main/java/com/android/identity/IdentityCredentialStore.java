@@ -91,7 +91,7 @@ import java.security.cert.X509Certificate;
  * in the keystore-based implementation.
  *
  * <p>When provisioning a document, applications should use either
- * {@link #getHardwareInstance(Context)} or {@link #getHardwareKeystoreInstance(Context, File)}
+ * {@link #getHardwareInstance(Context)} or {@link #getKeystoreInstance(Context, File)}
  * to obtain an {@link IdentityCredentialStore} instance and prefer the former if it
  * meets the app's feature version requirement, if any.
  *
@@ -232,7 +232,7 @@ public abstract class IdentityCredentialStore {
      *
      * Known backing types are {@link #IMPLEMENTATION_TYPE_HARDWARE} (corresponding to what
      * {@link #getHardwareInstance(Context)} returns) and {@link #IMPLEMENTATION_TYPE_KEYSTORE}
-     * (corresponding to what {@link #getHardwareKeystoreInstance(Context, File)} returns).
+     * (corresponding to what {@link #getKeystoreInstance(Context, File)} returns).
      *
      * @return the type of implementation of the store, either {@link #IMPLEMENTATION_TYPE_HARDWARE}
      *   or {@link #IMPLEMENTATION_TYPE_KEYSTORE}.
@@ -339,7 +339,7 @@ public abstract class IdentityCredentialStore {
      * of Hardware-Backed Android Keystore.
      */
     @SuppressWarnings("deprecation")
-    public static @NonNull IdentityCredentialStore getHardwareKeystoreInstance(
+    public static @NonNull IdentityCredentialStore getKeystoreInstance(
             @NonNull Context context,
             @NonNull File storageDirectory) {
         return KeystoreIdentityCredentialStore.getInstance(context, storageDirectory);

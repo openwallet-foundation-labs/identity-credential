@@ -96,7 +96,7 @@ class DocumentManager private constructor(private val context: Context) {
         if (PreferencesHelper.isHardwareBacked(context)) {
             IdentityCredentialStore.getHardwareInstance(context)!!
         } else {
-            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+            IdentityCredentialStore.getKeystoreInstance(context,
                 PreferencesHelper.getKeystoreBackedStorageLocation(context))
         }
     } else {
@@ -109,7 +109,7 @@ class DocumentManager private constructor(private val context: Context) {
         } else {
             // Nope, fall back to Keystore implementation
             PreferencesHelper.setHardwareBacked(context, false)
-            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+            IdentityCredentialStore.getKeystoreInstance(context,
                 PreferencesHelper.getKeystoreBackedStorageLocation(context))
         }
     }
@@ -615,10 +615,10 @@ class DocumentManager private constructor(private val context: Context) {
     fun deleteCredential(document: Document, credential: IdentityCredential): ByteArray? {
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                ?: IdentityCredentialStore.getKeystoreInstance(context,
                     PreferencesHelper.getKeystoreBackedStorageLocation(context))
         else
-            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+            IdentityCredentialStore.getKeystoreInstance(context,
                 PreferencesHelper.getKeystoreBackedStorageLocation(context))
 
         // Delete data from local storage
@@ -637,10 +637,10 @@ class DocumentManager private constructor(private val context: Context) {
 
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                ?: IdentityCredentialStore.getKeystoreInstance(context,
                     PreferencesHelper.getKeystoreBackedStorageLocation(context))
         else
-            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+            IdentityCredentialStore.getKeystoreInstance(context,
                 PreferencesHelper.getKeystoreBackedStorageLocation(context))
 
         val credential = mStore.getCredentialByName(
@@ -664,10 +664,10 @@ class DocumentManager private constructor(private val context: Context) {
     fun getCredential(document: Document): IdentityCredential? {
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getHardwareKeystoreInstance(context,
+                ?: IdentityCredentialStore.getKeystoreInstance(context,
                     PreferencesHelper.getKeystoreBackedStorageLocation(context))
         else
-            IdentityCredentialStore.getHardwareKeystoreInstance(context,
+            IdentityCredentialStore.getKeystoreInstance(context,
                 PreferencesHelper.getKeystoreBackedStorageLocation(context))
 
         return mStore.getCredentialByName(
