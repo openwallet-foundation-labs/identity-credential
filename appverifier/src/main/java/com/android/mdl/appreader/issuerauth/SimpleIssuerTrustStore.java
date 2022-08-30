@@ -1,21 +1,29 @@
 package com.android.mdl.appreader.issuerauth;
 
-import org.bouncycastle.asn1.x500.X500Name;
-
-import java.security.InvalidKeyException;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.SignatureException;
+import java.security.cert.CertPath;
+import java.security.cert.CertPathBuilder;
+import java.security.cert.CertPathBuilderException;
+import java.security.cert.CertPathValidator;
+import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertStore;
+import java.security.cert.CertStoreParameters;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.CollectionCertStoreParameters;
+import java.security.cert.PKIXBuilderParameters;
+import java.security.cert.PKIXCertPathBuilderResult;
+import java.security.cert.PKIXCertPathChecker;
+import java.security.cert.PKIXCertPathValidatorResult;
+import java.security.cert.PKIXParameters;
+import java.security.cert.X509CertSelector;
 import java.security.cert.X509Certificate;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Trust manager that verifies certificate chains starting with a DS certificate, possibly followed by CA certificates.
@@ -26,77 +34,92 @@ public class SimpleIssuerTrustStore implements IssuerTrustStore {
 
 	private static final int DIGITAL_SIGNATURE = 0;
 	private static final int KEY_CERT_SIGN = 5;
+	private final KeyStore trustStore;
 
-	private Map<X500Name, X509Certificate> trustedCertMap = new HashMap<>();
+	// private Map<X500Name, X509Certificate> trustedCertMap = new HashMap<>();
 
 	/**
 	 * Accepts any key store with trusted certificates.
+	 * <p>
+	 * The given trust store is not altered; any change to the key store is reflected; no defensive copy is created.
+	 * </p>
 	 *
 	 * @param trustStore any key store containing trusted certificates (the so-called certificate entries)
 	 */
 	public SimpleIssuerTrustStore(KeyStore trustStore) {
-		// retrieve all trusted certificates from the store to be able to reference them
-		// quickly without having to iterate over them
-		try {
-			Map<X500Name, X509Certificate> trustedCertMap = new HashMap<>();
-			Enumeration<String> aliasEnum = trustStore.aliases();
-			while (aliasEnum.hasMoreElements()) {
-				String alias = aliasEnum.nextElement();
-				if (trustStore.isCertificateEntry(alias)) {
-					Certificate cert = trustStore.getCertificate(alias);
-					// skip weird certificates, this is PKIX only
-					if (!(cert instanceof X509Certificate)) {
-						continue;
-					}
-					X509Certificate trustedCert = (X509Certificate) cert;
-
-					// TODO possibly more tests, e.g. w.r.t. validity period in advance?
-
-					trustedCertMap.put(new X500Name(trustedCert.getSubjectX500Principal().getName()), trustedCert);
-				}
-			}
-			this.trustedCertMap = trustedCertMap;
-		} catch (Exception e) {
-			throw new RuntimeException("Error retrieving trusted certificates from trust store", e);
+		if (trustStore == null) {
+			throw new IllegalArgumentException("No trust store indicated");
 		}
+		this.trustStore = trustStore;
 	}
 
+	/**
+	 * Accepts any key store with trusted certificates.
+	 *
+	 * @param trustedCertificates a list of trusted certificates
+	 */
 	public SimpleIssuerTrustStore(List<X509Certificate> trustedCertificates) {
-		for (X509Certificate trustedCert : trustedCertificates) {
-			trustedCertMap.put(new X500Name(trustedCert.getSubjectX500Principal().getName()), trustedCert);
+		if (trustedCertificates == null) {
+			throw new IllegalArgumentException("No trust store indicated");
 		}
-	}
 
-	private static boolean validateKeyUsageOfCA(boolean[] keyUsage) {
-//		if (!keyUsage[KEY_CERT_SIGN]) {
-//			throw new CertificateException("CA certificate doesn't have the key usage to sign certificates");
-//		}
-		return !keyUsage[KEY_CERT_SIGN];
+		KeyStore truststore;
+		try {
+			truststore = KeyStore.getInstance(KeyStore.getDefaultType());
+			truststore.load(null, null);
+			int count = 0;
+			for (X509Certificate trustedCertificate : trustedCertificates) {
+				truststore.setCertificateEntry(Integer.toString(count++), trustedCertificate);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Could not load certificates in default key/trust store");
+		}
+		this.trustStore = truststore;
 	}
 
 	@Override
-	public List<X509Certificate> createCertificationTrustPath(List<X509Certificate> chain) {
-		List<X509Certificate> certificationTrustPath = new LinkedList<>();
-		// iterate backwards over list to find certificate in trust store
-		Iterator<X509Certificate> certIterator = chain.listIterator();
-		X509Certificate trustedCert = null;
-		while (certIterator.hasNext()) {
-			X509Certificate currentCert = certIterator.next();
-			certificationTrustPath.add(currentCert);
+	public List<X509Certificate> createCertificationTrustPath(List<X509Certificate> chain) throws CertPathBuilderException {
+		CertPathBuilder cpb;
+		try {
+			cpb = CertPathBuilder.getInstance("PKIX");
+		} catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException("PKIX is a required algorithm for Java implementations of CertPathBuilder", e);
+		}
+		X509CertSelector cSelector = new X509CertSelector();
+		cSelector.setCertificate(chain.get(0));
 
-			X500Name x500Name = new X500Name(currentCert.getIssuerX500Principal().getName());
-			trustedCert = trustedCertMap.get(x500Name);
-			if (trustedCert != null) {
-				certificationTrustPath.add(trustedCert);
-				break;
-			}
+		PKIXBuilderParameters cpbParams;
+		try {
+			cpbParams = new PKIXBuilderParameters(trustStore, cSelector);
+		} catch (KeyStoreException e) {
+			throw new RuntimeException("Key store should be initialized and contain a trusted entry", e);
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new RuntimeException("Key store doesn't contain a trusted entry", e);
 		}
 
-		if (trustedCert != null) {
-			return certificationTrustPath;
+		cpbParams.setRevocationEnabled(false);
+
+		CertStoreParameters intermediates = new CollectionCertStoreParameters(chain);
+		try {
+			cpbParams.addCertStore(CertStore.getInstance("Collection", intermediates));
+		} catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException e) {
+			throw new RuntimeException("Certificate contains an unsupported algorithm", e);
 		}
 
-		return null;
+		PKIXCertPathBuilderResult cpbResult;
+		try {
+			cpbResult = (PKIXCertPathBuilderResult) cpb.build(cpbParams);
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new RuntimeException("Uncaught exception, blame developer", e);
+		}
+
+		CertPath cp = cpbResult.getCertPath();
+		List<X509Certificate> certificates = new LinkedList<>();
+		for (Certificate certificate : cp.getCertificates()) {
+			certificates.add((X509Certificate) certificate);
+		}
+		certificates.add(cpbResult.getTrustAnchor().getTrustedCert());
+		return certificates;
 	}
 
 	/**
@@ -125,62 +148,48 @@ public class SimpleIssuerTrustStore implements IssuerTrustStore {
 	 * <li>No check is performed on extended key usage / OID</li>
 	 * </ul>
 	 *
-	 * @see IssuerTrustStore#validateCertificationTrustPath(List)
+	 * @see IssuerTrustStore#validateCertificationTrustPath(List, List)
+	 * @return PKIXCertPathValidatorResult the validator result including trust anchor
 	 */
 	@Override
-	public boolean validateCertificationTrustPath(List<X509Certificate> certificationTrustPath) {
-		if (certificationTrustPath == null || certificationTrustPath.isEmpty()) {
-//			throw new IllegalArgumentException(
-//					"Certificate chain of document signer is empty (no certificates in signature)");
-			return false;
+	public PKIXCertPathValidatorResult validateCertificationTrustPath(
+			List<X509Certificate> certChain, List<PKIXCertPathChecker> mdocAndCRLPathCheckers)
+			throws KeyStoreException, CertPathValidatorException,
+			InvalidAlgorithmParameterException, CertificateException {
+		if (certChain == null || certChain.isEmpty()) {
+			throw new IllegalArgumentException(
+					"Certificate chain of document signer is empty (no certificates in signature)");
 		}
 
-		Iterator<X509Certificate> certIterator = (Iterator<X509Certificate>) certificationTrustPath.iterator();
-
-		X509Certificate leafCert = certIterator.next();
-
-		if (leafCert.getKeyUsage()[DIGITAL_SIGNATURE] == false) {
-//			throw new CertificateException("Document Signer certificate is not a signing certificate");
-			return false;
-		}
-
-		// check if the certificate is currently valid
-		// NOTE does not check if it is valid within the validity period of the issuing
-		// CA
+		CertificateFactory x509CertFactory;
 		try {
-			// NOTE throws multiple exceptions derived from CertificateException
-			leafCert.checkValidity();
+			x509CertFactory = CertificateFactory.getInstance("X509");
 		} catch (CertificateException e) {
-			return false;
+			throw new IllegalArgumentException("X509 is a required algorithm for Java implementations", e);
 		}
 
-		// Note that the signature of the trusted certificate itself is not verified even if it is self signed
-		X509Certificate prevCert = leafCert;
-		X509Certificate caCert;
-		while (certIterator.hasNext()) {
-			caCert = certIterator.next();
+		CertPath certPath = x509CertFactory.generateCertPath(certChain);
 
-			validateKeyUsageOfCA(caCert.getKeyUsage());
-			X500Name nameCert = new X500Name(prevCert.getIssuerX500Principal().getName());
-			X500Name nameCA = new X500Name(caCert.getSubjectX500Principal().getName());
-
-			if (!nameCert.equals(nameCA)) {
-//				throw new CertificateException(
-//						"CA certificate in chain at " + index + " isn't the issuer of the certificate before it");
-				return false;
-			}
-
-			try {
-				prevCert.verify(caCert.getPublicKey());
-			} catch (CertificateException | InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException | SignatureException e) {
-//				throw new CertificateException("Certificate chain verification failed at certificate index " + index,
-//						e);
-				return false;
-			}
-
-			prevCert = caCert;
+		CertPathValidator cpv;
+		try {
+			cpv = CertPathValidator.getInstance("PKIX");
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalArgumentException("PKIX is a required algorithm for Java implementations", e);
 		}
 
-		return true;
+		PKIXParameters cpvParams;
+		try {
+			cpvParams = new PKIXParameters(trustStore);
+		} catch (InvalidAlgorithmParameterException e) {
+			throw new IllegalArgumentException("PKIX is a required algorithm for Java implementations", e);
+		}
+
+		cpvParams.setRevocationEnabled(false);
+
+		for (PKIXCertPathChecker checker : mdocAndCRLPathCheckers) {
+			cpvParams.addCertPathChecker(checker);
+		}
+
+		return (PKIXCertPathValidatorResult) cpv.validate(certPath, cpvParams);
 	}
 }

@@ -159,7 +159,7 @@ class ShowDocumentFragment : Fragment() {
             sb.append("<h3>Doctype: <font color=\"$color\">${doc.docType}</font></h3>")
             val certPath =
                 simpleIssuerTrustStore.createCertificationTrustPath(doc.issuerCertificateChain.toList())
-            val isDSTrusted = simpleIssuerTrustStore.validateCertificationTrustPath(certPath)
+            val isDSTrusted = simpleIssuerTrustStore.validateCertificationTrustPath(certPath, listOf())
             var commonName = ""
             // Use the issuer certificate chain if we could not build the certificate trust path
             val certChain = if (certPath?.isNotEmpty() == true) {
@@ -174,7 +174,7 @@ class ShowDocumentFragment : Fragment() {
                     commonName = "($value)"
                 }
             }
-            sb.append("${getFormattedCheck(isDSTrusted)}Issuer’s DS Key Recognized: $commonName<br>")
+            sb.append("${getFormattedCheck(isDSTrusted != null)}Issuer’s DS Key Recognized: $commonName<br>")
             sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
             var macOrSignatureString = "MAC"
             if (doc.deviceSignedAuthenticatedViaSignature)

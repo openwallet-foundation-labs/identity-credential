@@ -1,5 +1,12 @@
 package com.android.mdl.appreader.issuerauth;
 
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyStoreException;
+import java.security.cert.CertPathBuilderException;
+import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertificateException;
+import java.security.cert.PKIXCertPathChecker;
+import java.security.cert.PKIXCertPathValidatorResult;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
@@ -21,7 +28,7 @@ public interface IssuerTrustStore {
      * @param chain the chain, leaf certificate first, followed by any certificate that signed the previous certificate
      * @return the certification path in the same order, or null if no certification trust path could be created
      */
-    List<X509Certificate> createCertificationTrustPath(List<X509Certificate> chain);
+    List<X509Certificate> createCertificationTrustPath(List<X509Certificate> chain) throws CertPathBuilderException;
 
     /**
      * This method validates that the given certificate chain is a valid chain that
@@ -38,5 +45,7 @@ public interface IssuerTrustStore {
      *                              and optional root certificate
      * @return false if no trusted certificate could be found for the certificate chain or if the certificate chain is invalid for any reason
      */
-    boolean validateCertificationTrustPath(List<X509Certificate> chainToDocumentSigner);
+    PKIXCertPathValidatorResult validateCertificationTrustPath(List<X509Certificate> chainToDocumentSigner, List<PKIXCertPathChecker> mdocAndCRLPathCheckers)
+            throws KeyStoreException, CertPathValidatorException,
+            InvalidAlgorithmParameterException, CertificateException;
 }
