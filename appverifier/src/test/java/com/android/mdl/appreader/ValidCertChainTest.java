@@ -51,16 +51,6 @@ public class ValidCertChainTest {
         SimpleIssuerTrustStore sits = createTrustStore(certificatePath.get(1));
         assertThrows(CertPathValidatorException.class, () -> sits.validateCertificationTrustPath(certificatePath, Collections.emptyList()));
     }
-    
-    @Test
-    public void testCertificatePathOutsideParentValidityPeriod() throws Exception {
-        // doesn't throw, and this seems to be a best practice rather than a requirement
-        // the best practice may get broken when cross signing is performed
-        List<X509Certificate> certificatePath = DynamicallyGenGoogleReaderValidationCertificates.createCertificatePathOutsideParentValidityPeriod();
-        SimpleIssuerTrustStore sits = createTrustStore(certificatePath.get(1));
-        System.out.println(certificatePath.get(0));
-        assertThrows(CertPathValidatorException.class, () -> sits.validateCertificationTrustPath(certificatePath, Collections.emptyList()));
-    }
 
     @Test
     public void testCertificatePathNoTrustAnchor() throws Exception {
