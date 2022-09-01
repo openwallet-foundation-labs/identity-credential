@@ -34,6 +34,8 @@ import androidx.annotation.Nullable;
 import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Locale;
@@ -75,14 +77,16 @@ class GattClient extends BluetoothGattCallback {
     private int mNegotiatedMtu;
     private byte[] mIdentValue;
     private boolean mUsingL2CAP = false;
+    private boolean mClearCache;
 
-    GattClient(@NonNull Context context, @LoggingFlag int loggingFlags, @NonNull UUID serviceUuid,
-            @NonNull byte[] encodedEDeviceKeyBytes,
-            @NonNull UUID characteristicStateUuid,
-            @NonNull UUID characteristicClient2ServerUuid,
-            @NonNull UUID characteristicServer2ClientUuid,
-            @Nullable UUID characteristicIdentUuid,
-            @Nullable UUID characteristicL2CAPUuid) {
+    GattClient(@NonNull Context context, @LoggingFlag int loggingFlags,
+               @NonNull UUID serviceUuid,
+               @NonNull byte[] encodedEDeviceKeyBytes,
+               @NonNull UUID characteristicStateUuid,
+               @NonNull UUID characteristicClient2ServerUuid,
+               @NonNull UUID characteristicServer2ClientUuid,
+               @Nullable UUID characteristicIdentUuid,
+               @Nullable UUID characteristicL2CAPUuid) {
         mContext = context;
         mLog = new Util.Logger(TAG, loggingFlags);
         mServiceUuid = serviceUuid;
@@ -96,6 +100,10 @@ class GattClient extends BluetoothGattCallback {
 
     void setListener(@Nullable Listener listener) {
         mListener = listener;
+    }
+
+    void setClearCache(boolean clearCache) {
+        mClearCache = clearCache;
     }
 
     void connect(BluetoothDevice device) {
@@ -126,12 +134,38 @@ class GattClient extends BluetoothGattCallback {
         }
     }
 
+    private void clearCache(BluetoothGatt gatt) {
+        mLog.info("Application requested clearing BLE Service Cache");
+        // BluetoothGatt.refresh() is not public API but can be accessed via introspection...
+        try {
+            Method refreshMethod = gatt.getClass().getMethod("refresh");
+            Boolean result = false;
+            if (refreshMethod != null) {
+                result = (Boolean) refreshMethod.invoke(gatt);
+            }
+            if (result) {
+                mLog.info("BluetoothGatt.refresh() invoked successfully");
+            } else {
+                Log.e(TAG, "BluetoothGatt.refresh() invoked but returned false");
+            }
+        } catch (NoSuchMethodException e) {
+            Log.e(TAG, "Getting BluetoothGatt.refresh() failed with NoSuchMethodException", e);
+        } catch (IllegalAccessException e) {
+            Log.e(TAG, "Getting BluetoothGatt.refresh() failed with IllegalAccessException", e);
+        } catch (InvocationTargetException e) {
+            Log.e(TAG, "Getting BluetoothGatt.refresh() failed with InvocationTargetException", e);
+        }
+    }
+
     @Override
     public void onConnectionStateChange(@NonNull BluetoothGatt gatt, int status, int newState) {
         mLog.transport("onConnectionStateChange: status=" + status + " newState=" + newState);
         if (newState == BluetoothProfile.STATE_CONNECTED) {
             //Log.d(TAG, "Connected");
             try {
+                if (mClearCache) {
+                    clearCache(gatt);
+                }
                 gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
                 gatt.discoverServices();
             } catch (SecurityException e) {

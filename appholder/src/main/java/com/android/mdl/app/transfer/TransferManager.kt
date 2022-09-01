@@ -93,6 +93,9 @@ class TransferManager private constructor(private val context: Context) {
         if (bleOptions != 0 && PreferencesHelper.isBleL2capEnabled(context)) {
             bleOptions += Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP
         }
+        if (bleOptions != 0 && PreferencesHelper.isBleClearCacheEnabled(context)) {
+            bleOptions += Constants.BLE_DATA_RETRIEVAL_CLEAR_CACHE
+        }
 
         val dataRetrievalConfiguration = DataRetrievalListenerConfiguration.Builder()
             .setBleEnabled(bleOptions != 0)

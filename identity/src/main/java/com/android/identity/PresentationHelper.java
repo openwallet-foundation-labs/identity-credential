@@ -307,11 +307,14 @@ public class PresentationHelper {
             UUID serviceUuid = UUID.randomUUID();
             boolean useL2CAPIfAvailable = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) != 0;
 
+            boolean bleClearCache = (opts & Constants.BLE_DATA_RETRIEVAL_CLEAR_CACHE) != 0;
+
             if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
                 DataTransportBleCentralClientMode bleTransport =
                         new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
                 bleTransport.setServiceUuid(serviceUuid);
                 bleTransport.setUseL2CAPIfAvailable(useL2CAPIfAvailable);
+                bleTransport.setClearCache(bleClearCache);
                 mLog.info("Adding BLE mdoc central client mode transport");
                 mTransports.add(bleTransport);
             }
@@ -321,6 +324,10 @@ public class PresentationHelper {
                 bleTransport.setServiceUuid(serviceUuid);
                 bleTransport.setUseL2CAPIfAvailable(useL2CAPIfAvailable);
                 mLog.info("Adding BLE mdoc peripheral server mode transport");
+                if (bleClearCache) {
+                    mLog.info("Ignoring bleClearCache flag since it only applies to "
+                            + "BLE mdoc central client mode when acting as a holder");
+                }
                 mTransports.add(bleTransport);
             }
         }

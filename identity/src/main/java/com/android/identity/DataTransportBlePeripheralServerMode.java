@@ -65,7 +65,6 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     GattClient mGattClient;
     BluetoothLeScanner mScanner;
     byte[] mEncodedEDeviceKeyBytes;
-    UUID mServiceUuid;
     long mTimeScanningStartedMillis;
     /**
      * Callback to receive information about the advertisement process.
@@ -135,6 +134,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                 mLog.transport("Scanned for " + scanTimeMillis + " milliseconds. "
                         + "Connecting to device with address " + result.getDevice().getAddress());
             }
+            mGattClient.setClearCache(mClearCache);
             mGattClient.connect(result.getDevice());
             if (mScanner != null) {
                 mLog.transport("Stopped scanning for UUID " + mServiceUuid);
@@ -177,10 +177,6 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     public @NonNull
     DataRetrievalAddress getListeningAddress() {
         return mListeningAddress;
-    }
-
-    public void setServiceUuid(@NonNull UUID serviceUuid) {
-        mServiceUuid = serviceUuid;
     }
 
     @Override
