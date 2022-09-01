@@ -5,6 +5,7 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreference
 import com.android.mdl.app.R
+import com.android.mdl.app.util.PreferencesHelper.BLE_CLEAR_CACHE
 import com.android.mdl.app.util.PreferencesHelper.BLE_DATA_RETRIEVAL
 import com.android.mdl.app.util.PreferencesHelper.BLE_DATA_RETRIEVAL_PERIPHERAL_MODE
 import com.android.mdl.app.util.PreferencesHelper.BLE_DATA_L2CAP
@@ -24,8 +25,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 if (!pref.isChecked) {
                     pref.isChecked = !hasDataRetrieval()
                 }
-                // Disable L2CAP if neither BLE_DATA_RETRIEVAL and BLE_DATA_RETRIEVAL_PERIPHERAL_MODE is selected
+                // Disable L2CAP and BLE_CLEAR_CACHE if neither BLE_DATA_RETRIEVAL or
+                // BLE_DATA_RETRIEVAL_PERIPHERAL_MODE are selected
                 findPreference<SwitchPreference>(BLE_DATA_L2CAP)?.isEnabled = isBleSelected()
+                findPreference<SwitchPreference>(BLE_CLEAR_CACHE)?.isEnabled = isBleSelected()
                 true
             }
 //            USE_READER_AUTH -> {

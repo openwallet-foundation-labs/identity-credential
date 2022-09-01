@@ -10,6 +10,7 @@ object PreferencesHelper {
     const val BLE_DATA_RETRIEVAL = "ble_transport"
     const val BLE_DATA_RETRIEVAL_PERIPHERAL_MODE = "ble_transport_peripheral_mode"
     const val BLE_DATA_L2CAP = "ble_l2cap"
+    const val BLE_CLEAR_CACHE = "ble_clear_cache"
     const val WIFI_DATA_RETRIEVAL = "wifi_transport"
     const val NFC_DATA_RETRIEVAL = "nfc_transport"
     private const val LOG_INFO = "log_info"
@@ -64,6 +65,12 @@ object PreferencesHelper {
     fun isBleL2capEnabled(context: Context): Boolean {
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
             BLE_DATA_L2CAP, false
+        )
+    }
+
+    fun isBleClearCacheEnabled(context: Context): Boolean {
+        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
+            BLE_CLEAR_CACHE, false
         )
     }
 
