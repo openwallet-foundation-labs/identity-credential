@@ -206,12 +206,23 @@ class ShowDocumentFragment : Fragment() {
             val deviceKeySha1 = FormatUtil.encodeToString(
                 MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.encoded))
             sb.append("${getFormattedCheck(true)}SHA-1: ${deviceKeySha1}<br>")
+
+            // the "mDoc owner"/"mDoc App" could be malicious and does not play by the rule
+            // While the mDoc here appears legitimate, the owner/App could refuse to provide the portrait.
+            // However, providing the portrait is mandatory, as specified in "BS ISO/IEC 18013-5:2021" (page 20, section 7.2.1)
+            // If not portrait is provided, the mDoc holder is not being compliant to the standard, and it should not be trusted by the reader
+            sb.append("<h6>Compliance</h6>")
+            // keep an offset, so we can insert a log later
+            val complianceAuthOffset = sb.length
+
             // TODO: log DeviceKey's that we've seen and show warning if a DeviceKey is seen
             //  a second time. Also would want button in Settings page to clear the log.
 
             for (ns in doc.issuerNamespaces) {
                 sb.append("<br>")
                 sb.append("<h5>Namespace: $ns</h5>")
+                sb.append("<br>")
+                sb.append("<h6>Receiving:</h6>")
                 sb.append("<p>")
                 for (elem in doc.getIssuerEntryNames(ns)) {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
@@ -236,6 +247,18 @@ class ShowDocumentFragment : Fragment() {
                     )
                 }
                 sb.append("</p><br>")
+                sb.append("<h6>Missing:</h6>")
+                sb.append("<p>")
+                // TODO: compare the original request with the received items, and show warning if necessary
+                if(portraitBytes==null){
+                    sb.append(
+                        "${
+                            getFormattedCheck(false)
+                        }<b>portrait</b> -> NULL<br>"
+                    )
+                    sb.insert(complianceAuthOffset, "${getFormattedCheck(false)}Provided portrait: NULL<br>")
+                }
+                sb.append("</p>")
             }
         }
         return sb.toString()
