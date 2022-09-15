@@ -31,8 +31,8 @@
 
         <LinearLayout
             android:id="@+id/layout_engagement"
-            android:layout_width="300dp"
-            android:layout_height="300dp"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
             android:orientation="vertical"
             app:engagementView="@{vm.deviceEngagementQr}"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -40,15 +40,36 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/txt_share_fragment" />
 
-        <Button
-            android:id="@+id/bt_cancel"
+        <LinearLayout
+            android:id="@+id/bt_layout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="24dp"
-            android:onClick="@{() -> fragment.onCancel()}"
-            android:text="@string/bt_cancel"
+            android:layout_marginTop="24dp"
+            android:orientation="horizontal"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/layout_engagement">
+
+            <Button
+                android:id="@+id/bt_show_qr"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:insetLeft="10dp"
+                android:insetRight="10dp"
+                android:onClick="@{() -> fragment.onShowQrCodeClicked()}"
+                android:text="@string/bt_show_qr_code" />
+
+            <Button
+                    android:id="@+id/bt_cancel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:insetLeft="10dp"
+                    android:insetRight="10dp"
+                    android:onClick="@{() -> fragment.onCancel()}"
+                    android:text="@string/bt_cancel"/>
+
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

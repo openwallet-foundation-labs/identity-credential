@@ -21,23 +21,33 @@ import android.os.Bundle
 import android.util.Log
 import com.android.mdl.app.transfer.TransferManager
 
-class NfcHandler : HostApduService() {
+class NfcEngagementHandler : HostApduService() {
 
     companion object {
-        private const val LOG_TAG = "NfcHandler"
+        private const val LOG_TAG = "NfcEngagementHandler"
+
+        private val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION : ByteArray = byteArrayOf(
+            0xD2.toByte(),
+            0x76.toByte(),
+            0x00.toByte(),
+            0x00.toByte(),
+            0x85.toByte(),
+            0x01.toByte(),
+            0x01.toByte())
     }
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
         Log.d(LOG_TAG, "processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
 
         TransferManager.getInstance(applicationContext)
-            .nfcEngagementProcessCommandApdu(this, commandApdu)
+            .nfcProcessCommandApdu(this, AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, commandApdu)
 
         return null
     }
 
     override fun onDeactivated(reason: Int) {
         Log.d(LOG_TAG, "onDeactivated: reason-> $reason")
-        TransferManager.getInstance(applicationContext).nfcEngagementOnDeactivated(this, reason)
+        TransferManager.getInstance(applicationContext)
+            .nfcOnDeactivated(this, AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, reason)
     }
 }
