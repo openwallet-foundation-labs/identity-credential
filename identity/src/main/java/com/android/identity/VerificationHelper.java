@@ -476,7 +476,12 @@ public class VerificationHelper {
             }
 
             @Override
-            public void onMessageReceived(@NonNull byte[] data) {
+            public void onMessageReceived() {
+                byte[] data = mDataTransport.getMessage();
+                if (data == null) {
+                    reportError(new Error("onMessageReceived but no message"));
+                    return;
+                }
                 if (mSessionEncryptionReader == null) {
                     reportError(new IllegalStateException("Message received but no session "
                             + "establishment with the remote device."));

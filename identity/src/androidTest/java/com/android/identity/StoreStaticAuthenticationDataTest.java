@@ -72,6 +72,7 @@ public class StoreStaticAuthenticationDataTest {
   private void checkStaticAuthData(int numAuthKeys, int staticAuthDataSizeBytes)
           throws IdentityCredentialException {
     final int usesPerKey = 3;
+    mStore.deleteCredentialByName(CREDENTIAL_NAME);
     ProvisioningTest.createCredential(mStore, CREDENTIAL_NAME);
     try {
       IdentityCredential credential = Preconditions.checkNotNull(

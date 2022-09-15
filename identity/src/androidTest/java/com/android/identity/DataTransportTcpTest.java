@@ -77,7 +77,7 @@ public class DataTransportTcpTest {
             }
 
             @Override
-            public void onMessageReceived(@NonNull byte[] data) {
+            public void onMessageReceived() {
                 Assert.fail();
             }
 
@@ -164,7 +164,8 @@ public class DataTransportTcpTest {
             }
 
             @Override
-            public void onMessageReceived(@NonNull byte[] data) {
+            public void onMessageReceived() {
+                byte[] data = prover.getMessage();
                 messageReceivedByProver[0] = data.clone();
                 proverMessageReceivedCondVar.open();
             }
@@ -213,7 +214,8 @@ public class DataTransportTcpTest {
             }
 
             @Override
-            public void onMessageReceived(@NonNull byte[] data) {
+            public void onMessageReceived() {
+                byte[] data = verifier.getMessage();
                 messageReceivedByVerifier[0] = data.clone();
                 verifierMessageReceivedCondVar.open();
             }
