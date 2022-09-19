@@ -16,7 +16,7 @@ buildscript {
         sonar_gradle_plugin = '2.6.2'
         jacoco = '0.7.9'
         jacoco_android = '0.1.4'
-        groovy = '2.4.12'
+        groovy = '3.0.12'
         navigation_version = '2.4.2'
         lifecycle_version = '2.2.0'
         lifecycle_ktx_version = '2.5.0-rc01'
