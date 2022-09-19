@@ -16,7 +16,6 @@ buildscript {
         sonar_gradle_plugin = '2.6.2'
         jacoco = '0.7.9'
         jacoco_android = '0.1.4'
-        groovy = '3.0.12'
         navigation_version = '2.4.2'
         lifecycle_version = '2.2.0'
         lifecycle_ktx_version = '2.5.0-rc01'
@@ -54,7 +53,6 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.21"
         classpath "org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:$sonar_gradle_plugin"
         classpath "org.jacoco:org.jacoco.core:$jacoco"
-        classpath "org.codehaus.groovy:groovy-all:$groovy"
         classpath "androidx.navigation:navigation-safe-args-gradle-plugin:$navigation_version"
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
