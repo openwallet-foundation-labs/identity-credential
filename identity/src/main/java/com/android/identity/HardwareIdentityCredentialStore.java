@@ -20,10 +20,13 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
+import androidx.annotation.DoNotInline;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -143,7 +146,7 @@ class HardwareIdentityCredentialStore extends IdentityCredentialStore {
         PackageManager pm = mContext.getPackageManager();
 
         if (pm.hasSystemFeature(featureName, FEATURE_VERSION_202201)) {
-            return 202101;
+            return 202201;
         } else if (pm.hasSystemFeature(featureName, FEATURE_VERSION_202101)) {
             return 202101;
         } else if (pm.hasSystemFeature(featureName)) {
@@ -156,7 +159,35 @@ class HardwareIdentityCredentialStore extends IdentityCredentialStore {
     }
 
     @Override
-    public @NonNull @ImplementationType String getImplementationType () {
+    public @NonNull
+    @ImplementationType String getImplementationType() {
         return IMPLEMENTATION_TYPE_HARDWARE;
+    }
+
+    @Override
+    public @NonNull
+    PresentationSession createPresentationSession(@Ciphersuite int cipherSuite)
+            throws CipherSuiteNotSupportedException {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                android.security.identity.PresentationSession session =
+                        ApiImplT.callCreatePresentationSession(mStore, cipherSuite);
+                return new HardwarePresentationSession(session);
+            } catch (android.security.identity.CipherSuiteNotSupportedException e) {
+                throw new CipherSuiteNotSupportedException(e.getMessage(), e);
+            }
+        }
+        throw new UnsupportedOperationException();
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private static class ApiImplT {
+        @DoNotInline
+        static android.security.identity.PresentationSession
+        callCreatePresentationSession(@NonNull android.security.identity.IdentityCredentialStore store,
+                                      @Ciphersuite int cipherSuite)
+                throws android.security.identity.CipherSuiteNotSupportedException {
+            return store.createPresentationSession(cipherSuite);
+        }
     }
 }
