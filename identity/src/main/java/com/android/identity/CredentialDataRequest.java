@@ -16,8 +16,11 @@
 
 package com.android.identity;
 
+import android.os.Build;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -119,6 +122,20 @@ final public class CredentialDataRequest {
     boolean mIncrementUseCount = true;
     byte[] mRequestMessage = null;
     byte[] mReaderSignature = null;
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    @NonNull android.security.identity.CredentialDataRequest getAsPlatformRequest() {
+        android.security.identity.CredentialDataRequest.Builder builder = new
+                android.security.identity.CredentialDataRequest.Builder();
+        builder.setAllowUsingExhaustedKeys(mAllowUsingExhaustedKeys);
+        builder.setAllowUsingExpiredKeys(mAllowUsingExpiredKeys);
+        builder.setIncrementUseCount(mIncrementUseCount);
+        builder.setDeviceSignedEntriesToRequest(mDeviceSignedEntriesToRequest);
+        builder.setIssuerSignedEntriesToRequest(mIssuerSignedEntriesToRequest);
+        builder.setRequestMessage(mRequestMessage);
+        builder.setReaderSignature(mReaderSignature);
+        return builder.build();
+    }
 
     /**
      * A builder for {@link CredentialDataRequest}.

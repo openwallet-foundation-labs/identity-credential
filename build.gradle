@@ -35,7 +35,7 @@ buildscript {
         cardview_version = '1.0.0'
         android_gradle_plugin = '7.2.0'
         androidx_identity_credential = '1.0.0-alpha02'
-        androidx_biometrics = '1.2.0-alpha04'
+        androidx_biometrics = '1.2.0-alpha05'
         androidx_preference = '1.1.1'
         androidx_room_version = '2.4.2'
         apache_http_version = '4.4.14'
