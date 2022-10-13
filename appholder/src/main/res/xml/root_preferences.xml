@@ -25,6 +25,13 @@
             app:title="Enable BLE with L2CAP" />
 
         <SwitchPreference
+            android:defaultValue="false"
+            app:key="ble_clear_cache"
+            app:summaryOff="Don't clear the cache"
+            app:summaryOn="Clear the cache"
+            app:title="Clear BLE Service Cache" />
+
+        <SwitchPreference
             app:key="wifi_transport"
             app:summaryOff="Wifi Aware transfer deactivated"
             app:summaryOn="Wifi Aware transfer activated"

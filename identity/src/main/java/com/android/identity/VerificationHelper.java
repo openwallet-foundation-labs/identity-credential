@@ -86,6 +86,7 @@ public class VerificationHelper {
     Util.Logger mLog;
     private boolean mIsListening;
     private boolean mUseL2CAP;
+    private boolean mBleClearCache;
 
     /**
      * Creates a new VerificationHelper object.
@@ -98,6 +99,7 @@ public class VerificationHelper {
         mSessionEncryptionReader = null;
         mLog = new Util.Logger(TAG, 0);
         mUseL2CAP = false;
+        mBleClearCache = false;
     }
 
     /**
@@ -122,6 +124,20 @@ public class VerificationHelper {
     public void setUseL2CAP(boolean useL2CAP) {
         mUseL2CAP = useL2CAP;
     }
+
+
+    /**
+     * Sets whether to clear the BLE Service Cache before service discovery when acting as
+     * a GATT Client.
+     *
+     * <p>The default value for this is <em>false</em>.
+     *
+     * @param bleClearCache indicates if the BLE Service Cache should be cleared.
+     */
+    public void setBleClearCache(boolean bleClearCache) {
+        mBleClearCache = bleClearCache;
+    }
+
 
     /**
      * Starts listening for device engagement.
@@ -396,6 +412,11 @@ public class VerificationHelper {
         } else if (mDataTransport instanceof DataTransportBle) {
             // Set the preference for using L2CAP
             ((DataTransportBle) mDataTransport).setUseL2CAPIfAvailable(mUseL2CAP);
+            ((DataTransportBle) mDataTransport).setClearCache(mBleClearCache);
+            if (mBleClearCache && mDataTransport instanceof DataTransportBleCentralClientMode) {
+                mLog.info("Ignoring bleClearCache flag since it only applies to "
+                        + "BLE mdoc peripheral server mode when acting as a reader");
+            }
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen
@@ -455,7 +476,12 @@ public class VerificationHelper {
             }
 
             @Override
-            public void onMessageReceived(@NonNull byte[] data) {
+            public void onMessageReceived() {
+                byte[] data = mDataTransport.getMessage();
+                if (data == null) {
+                    reportError(new Error("onMessageReceived but no message"));
+                    return;
+                }
                 if (mSessionEncryptionReader == null) {
                     reportError(new IllegalStateException("Message received but no session "
                             + "establishment with the remote device."));

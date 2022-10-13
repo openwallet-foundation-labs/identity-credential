@@ -113,6 +113,11 @@ public class Constants {
      * Flag indicating that L2CAP should be used for data retrieval if available and supported.
      */
     public static final int BLE_DATA_RETRIEVAL_OPTION_L2CAP = (1 << 2);
+    /**
+     * Flag indicating that BLE Services Cache should be cleared before service discovery
+     * when acting as a GATT Client.
+     */
+    public static final int BLE_DATA_RETRIEVAL_CLEAR_CACHE = (1 << 3);
 
     /**
      * The status code of the document response.
@@ -158,7 +163,8 @@ public class Constants {
             value = {
                     BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE,
                     BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE,
-                    BLE_DATA_RETRIEVAL_OPTION_L2CAP
+                    BLE_DATA_RETRIEVAL_OPTION_L2CAP,
+                    BLE_DATA_RETRIEVAL_CLEAR_CACHE
             })
     public @interface BleDataRetrievalOption {
     }

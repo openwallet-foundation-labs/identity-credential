@@ -361,7 +361,7 @@ public abstract class IdentityCredentialStore {
     public static @Nullable IdentityCredentialStore getHardwareInstance(@NonNull
             Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return HardwareIdentityCredentialStore.getInstance(context);
+            return HardwareIdentityCredentialStore.getInstanceIfSupported(context);
         }
         return null;
     }

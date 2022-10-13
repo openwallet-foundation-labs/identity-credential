@@ -16,7 +16,6 @@ buildscript {
         sonar_gradle_plugin = '2.6.2'
         jacoco = '0.7.9'
         jacoco_android = '0.1.4'
-        groovy = '2.4.12'
         navigation_version = '2.4.2'
         lifecycle_version = '2.2.0'
         lifecycle_ktx_version = '2.5.0-rc01'
@@ -35,7 +34,7 @@ buildscript {
         cardview_version = '1.0.0'
         android_gradle_plugin = '7.2.0'
         androidx_identity_credential = '1.0.0-alpha02'
-        androidx_biometrics = '1.2.0-alpha04'
+        androidx_biometrics = '1.2.0-alpha05'
         androidx_preference = '1.1.1'
         androidx_room_version = '2.4.2'
         apache_http_version = '4.4.14'
@@ -54,7 +53,6 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.6.21"
         classpath "org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:$sonar_gradle_plugin"
         classpath "org.jacoco:org.jacoco.core:$jacoco"
-        classpath "org.codehaus.groovy:groovy-all:$groovy"
         classpath "androidx.navigation:navigation-safe-args-gradle-plugin:$navigation_version"
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files

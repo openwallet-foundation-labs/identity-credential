@@ -59,6 +59,8 @@ abstract class DataTransportBle extends DataTransport {
 
     // The size of buffer for read() calls when using L2CAP sockets.
     static final int L2CAP_BUF_SIZE = 4096;
+    protected UUID mServiceUuid;
+    protected boolean mClearCache;
 
     public DataTransportBle(
             @NonNull Context context, @LoggingFlag int loggingFlags) {
@@ -272,6 +274,22 @@ abstract class DataTransportBle extends DataTransport {
     void setUseL2CAPIfAvailable(boolean useL2CAPIfAvailable) {
         this.mUseL2CAPIfAvailable = useL2CAPIfAvailable;
     }
+
+    /**
+     * Sets whether to clear service cache if acting as a GATT client.
+     *
+     * Used by PresentationHelper and VerificationHelper to inform the user preference.
+     *
+     * @param clearCache indicates if service cache should be clear if acting as a GATT client.
+     */
+    void setClearCache(boolean clearCache) {
+        mClearCache = clearCache;
+    }
+
+    void setServiceUuid(@NonNull UUID serviceUuid) {
+        mServiceUuid = serviceUuid;
+    }
+
 
     static abstract class DataRetrievalAddressBle extends DataRetrievalAddress {
 

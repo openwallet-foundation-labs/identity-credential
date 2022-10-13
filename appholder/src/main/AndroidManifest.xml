@@ -55,16 +55,14 @@
     </queries>
 
     <application
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/old_data_extraction_rules"
+        android:allowBackup="false"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Mdlrefapps"
-        tools:targetApi="s">
+        android:theme="@style/Theme.Mdlrefapps">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -74,9 +72,9 @@
         </activity>
 
         <service
-            android:name=".util.NfcHandler"
+            android:name=".util.NfcEngagementHandler"
             android:exported="true"
-            android:label="@string/engagement_service_desc"
+            android:label="@string/nfc_engagement_service_desc"
             android:permission="android.permission.BIND_NFC_SERVICE">
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
@@ -86,6 +84,21 @@
             <meta-data
                 android:name="android.nfc.cardemulation.host_apdu_service"
                 android:resource="@xml/nfc_engagement_apdu_service" />
+        </service>
+
+        <service
+            android:name=".util.NfcDataTransferHandler"
+            android:exported="true"
+            android:label="@string/nfc_data_transfer_service_desc"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/nfc_data_transfer_apdu_service" />
         </service>
 
         <provider

@@ -35,7 +35,9 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -47,7 +49,7 @@ import co.nstant.in.cbor.model.Map;
 /**
  * NFC data transport
  */
-class DataTransportNfc extends DataTransport {
+class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     public static final int DEVICE_RETRIEVAL_METHOD_TYPE = 1;
     public static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;
     public static final int RETRIEVAL_OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH = 0;
@@ -56,21 +58,23 @@ class DataTransportNfc extends DataTransport {
     private static final byte[] STATUS_WORD_OK = {(byte) 0x90, (byte) 0x00};
     private static final byte[] STATUS_WORD_WRONG_LENGTH = {(byte) 0x67, (byte) 0x00};
     private static final byte[] STATUS_WORD_FILE_NOT_FOUND = {(byte) 0x6a, (byte) 0x82};
+    private final Util.Logger mLog;
     IsoDep mIsoDep;
     ArrayList<byte[]> mListenerRemainingChunks;
     int mListenerTotalChunks;
     int mListenerRemainingBytesAvailable;
     boolean mEndTransceiverThread;
-    ResponseInterface mResponseInterface;
     int mListenerLeReceived = -1;
     BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
     boolean mListenerStillActive;
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     int numChunksReceived = 0;
     private DataRetrievalAddress mListeningAddress;
+    private NfcApduRouter mNfcApduRouter;
 
-    public DataTransportNfc(@NonNull Context context) {
+    public DataTransportNfc(@NonNull Context context, @LoggingFlag int loggingFlags) {
         super(context);
+        mLog = new Util.Logger(TAG, loggingFlags);
     }
 
     static void encodeInt(int dataType, int value, ByteArrayOutputStream baos) {
@@ -217,12 +221,8 @@ class DataTransportNfc extends DataTransport {
                     if (messageToSend == null) {
                         continue;
                     }
-                    //Log.d(TAG, "Sending message " + SUtil.toHex(messageToSend));
+                    mLog.transportVerbose("Sending message " + Util.toHex(messageToSend));
 
-                    if (mResponseInterface == null) {
-                        reportError(new Error("ResponseInterface not set"));
-                        return;
-                    }
                     if (mListenerLeReceived == -1) {
                         reportError(new Error("ListenerLeReceived not set"));
                         return;
@@ -248,7 +248,7 @@ class DataTransportNfc extends DataTransport {
                         offset += size;
                     } while (offset < data.length);
 
-                    //Log.d(TAG, "Have " + chunks.size() + " chunks..");
+                    mLog.transport("Have " + chunks.size() + " chunks..");
 
                     mListenerRemainingChunks = chunks;
                     mListenerRemainingBytesAvailable = data.length;
@@ -283,45 +283,51 @@ class DataTransportNfc extends DataTransport {
     public void setIsoDep(@NonNull IsoDep isoDep) {
         mIsoDep = isoDep;
     }
+    
+    private void listenerSendResponse(@NonNull byte[] apdu) {
+        //Log.d(TAG, "listenerSendResponse: APDU: " + SUtil.toHex(apdu));
+        mNfcApduRouter.sendResponseApdu(apdu);
+    }
 
-    /**
-     * Called by {@link PresentationHelper} implementation
-     * when remote verifier device selects the data transfer AID.
-     *
-     * @param responseInterface A way for this implementation to post APDU responses.
-     */
-    public void onDataTransferAidSelected(@NonNull ResponseInterface responseInterface) {
-        mResponseInterface = responseInterface;
+    public void setNfcApduRouter(NfcApduRouter nfcApduRouter, Executor executor) {
+        mNfcApduRouter = nfcApduRouter;
+        mNfcApduRouter.addListener(this, executor);
+
         reportListeningPeerConnected();
     }
 
-    private void listenerSendResponse(@NonNull byte[] apdu) {
-        if (mResponseInterface == null) {
-            Log.w(TAG, "Trying to send but ResponseInterface is null");
-            return;
+    @Override
+    public void onApduReceived(@NonNull byte[] aid, @NonNull byte[] apdu) {
+        byte[] ret = null;
+
+        mLog.info(String.format(Locale.US, "onApduReceived aid=%s apdu=%s",
+                Util.toHex(aid), Util.toHex(apdu)));
+
+        switch (NfcUtil.nfcGetCommandType(apdu)) {
+            case NfcUtil.COMMAND_TYPE_ENVELOPE:
+                ret = handleEnvelope(apdu);
+                break;
+            case NfcUtil.COMMAND_TYPE_RESPONSE:
+                ret = handleResponse(apdu);
+                break;
+            default:
+                ret = NfcUtil.STATUS_WORD_INSTRUCTION_NOT_SUPPORTED;
+                break;
         }
-        //Log.d(TAG, "listenerSendResponse: APDU: " + SUtil.toHex(apdu));
-        mResponseInterface.sendResponseApdu(apdu);
+
+        if (ret != null) {
+            if (mLog.isTransportVerboseEnabled()) {
+                mLog.transportVerbose("APDU response: " + Util.toHex(ret));
+            }
+            mNfcApduRouter.sendResponseApdu(ret);
+        }
     }
 
-    /**
-     * Called by {@link PresentationHelper} implementation
-     * when receiving GET RESPONSE APDUs for data transfer.
-     *
-     * <p>Use the {@link ResponseInterface} passed to
-     * {@link #onDataTransferAidSelected(ResponseInterface)} to post a response to this.
-     *
-     * @param apdu the APDU sent by the verifier device.
-     */
-    public void onGetResponseApduReceived(@NonNull byte[] apdu) {
-        //Log.d(TAG, "onGetResponseApduReceived, APDU: " + SUtil.toHex(apdu));
-
-        if (mListenerRemainingChunks == null || mListenerRemainingChunks.size() == 0) {
-            reportError(new Error("GET RESPONSE but we have no outstanding chunks"));
-            return;
-        }
-
-        sendNextChunk(true);
+    @Override
+    public void onDeactivated(@NonNull byte[] aid, int reason) {
+        mLog.info(String.format(Locale.US, "onDeactivated aid=%s reason=%d",
+                Util.toHex(aid), reason));
+        reportListeningPeerDisconnected();
     }
 
     void sendNextChunk(boolean isForGetResponse) {
@@ -330,11 +336,14 @@ class DataTransportNfc extends DataTransport {
 
         boolean isLastChunk = (mListenerRemainingChunks.size() == 0);
 
+        mLog.transport(String.format(Locale.US, "isForGetResponse=%b isLastChunk=%b chunk=%s",
+                isForGetResponse, isLastChunk, Util.toHex(chunk)));
+
         if (isLastChunk) {
             /* If Le ≥ the number of available bytes, the mdoc shall include all
              * available bytes in the response and set the status words to ’90 00’.
              */
-            mResponseInterface.sendResponseApdu(buildApduResponse(chunk, 0x90, 0x00));
+            mNfcApduRouter.sendResponseApdu(buildApduResponse(chunk, 0x90, 0x00));
         } else {
             if (mListenerRemainingBytesAvailable <= mListenerLeReceived + 255) {
                 /* If Le < the number of available bytes ≤ Le + 255, the mdoc shall
@@ -344,7 +353,7 @@ class DataTransportNfc extends DataTransport {
                  * command where Le is set to XX.
                  */
                 int numBytesRemaining = mListenerRemainingBytesAvailable - mListenerLeReceived;
-                mResponseInterface.sendResponseApdu(
+                mNfcApduRouter.sendResponseApdu(
                         buildApduResponse(chunk, 0x61, numBytesRemaining & 0xff));
             } else {
                 /* If the number of available bytes > Le + 255, the mdoc shall include
@@ -354,29 +363,20 @@ class DataTransportNfc extends DataTransport {
                  * response data field that is supported by both the mdoc and the mdoc
                  * reader.
                  */
-                mResponseInterface.sendResponseApdu(buildApduResponse(chunk, 0x61, 0x00));
+                mNfcApduRouter.sendResponseApdu(buildApduResponse(chunk, 0x61, 0x00));
             }
         }
 
         reportMessageProgress(mListenerRemainingChunks.size(), mListenerTotalChunks);
-
     }
 
-    /**
-     * Called by {@link PresentationHelper} implementation
-     * when receiving ENVELOPE APDUs for data transfer.
-     *
-     * <p>Use the {@link ResponseInterface} passed to
-     * {@link #onDataTransferAidSelected(ResponseInterface)} to post a response to this.
-     *
-     * @param apdu the APDU sent by the verifier device.
-     */
-    public void onEnvelopeApduReceived(@NonNull byte[] apdu) {
-        //Log.d(TAG, "onEnvelopeApduReceived, APDU: " + SUtil.toHex(apdu));
+
+    private @NonNull
+    byte[] handleEnvelope(@NonNull byte[] apdu) {
+        mLog.info("in handleEnvelope");
 
         if (apdu.length < 7) {
-            listenerSendResponse(STATUS_WORD_WRONG_LENGTH);
-            return;
+            return STATUS_WORD_WRONG_LENGTH;
         }
 
         boolean moreChunksComing = false;
@@ -386,19 +386,16 @@ class DataTransportNfc extends DataTransport {
             moreChunksComing = true;
         } else if (cla != 0x00) {
             reportError(new Error(String.format("Unexpected value 0x%02x in CLA of APDU", cla)));
-            listenerSendResponse(STATUS_WORD_FILE_NOT_FOUND);
-            return;
+            return STATUS_WORD_FILE_NOT_FOUND;
         }
         byte[] data = apduGetData(apdu);
         if (data == null) {
             reportError(new Error("Malformed APDU"));
-            listenerSendResponse(STATUS_WORD_FILE_NOT_FOUND);
-            return;
+            return STATUS_WORD_FILE_NOT_FOUND;
         }
         if (data.length == 0) {
             reportError(new Error("Received ENVELOPE with no data"));
-            listenerSendResponse(STATUS_WORD_FILE_NOT_FOUND);
-            return;
+            return STATUS_WORD_FILE_NOT_FOUND;
         }
         int le = apduGetLe(apdu);
 
@@ -407,8 +404,7 @@ class DataTransportNfc extends DataTransport {
             numChunksReceived += 1;
         } catch (IOException e) {
             reportError(e);
-            listenerSendResponse(STATUS_WORD_FILE_NOT_FOUND);
-            return;
+            return STATUS_WORD_FILE_NOT_FOUND;
         }
 
         if (moreChunksComing) {
@@ -417,11 +413,9 @@ class DataTransportNfc extends DataTransport {
              */
             if (le != 0) {
                 reportError(new Error("More chunks are coming but LE is not zero"));
-                listenerSendResponse(STATUS_WORD_FILE_NOT_FOUND);
-                return;
+                return STATUS_WORD_FILE_NOT_FOUND;
             }
-            listenerSendResponse(STATUS_WORD_OK);
-            return;
+            return STATUS_WORD_OK;
         }
 
         /* For the last ENVELOPE command in a chain, Le shall be set to the maximum length
@@ -442,13 +436,29 @@ class DataTransportNfc extends DataTransport {
         byte[] message = extractFromDo53(encapsulatedMessage);
         if (message == null) {
             reportError(new Error("Error extracting message from DO53 encoding"));
-            listenerSendResponse(STATUS_WORD_FILE_NOT_FOUND);
-            return;
+            return STATUS_WORD_FILE_NOT_FOUND;
         }
 
         Log.d(TAG, String.format("reportMessage %d bytes", message.length));
         reportMessageReceived(message);
+        // Defer response...
+        return null;
     }
+
+    private @NonNull
+    byte[] handleResponse(@NonNull byte[] apdu) {
+        mLog.info("in handleResponse");
+
+        if (mListenerRemainingChunks == null || mListenerRemainingChunks.size() == 0) {
+            reportError(new Error("GET RESPONSE but we have no outstanding chunks"));
+            return null;
+        }
+
+        sendNextChunk(true);
+
+        return null;
+    }
+
 
     int apduGetLe(@NonNull byte[] apdu) {
         int dataLength = apduGetDataLength(apdu);
@@ -729,6 +739,8 @@ class DataTransportNfc extends DataTransport {
                                     bitsPerSec));
                              */
 
+                            mLog.transportVerbose("Received " + Util.toHex(envelopeResponse));
+
                             offset += size;
 
                             if (moreChunksComing) {
@@ -903,10 +915,6 @@ class DataTransportNfc extends DataTransport {
         return false;
     }
 
-    public interface ResponseInterface {
-        void sendResponseApdu(@NonNull byte[] responseApdu);
-    }
-
     static class DataRetrievalAddressNfc extends DataRetrievalAddress {
         int commandDataFieldMaxLength;
         int responseDataFieldMaxLength;
@@ -919,7 +927,7 @@ class DataTransportNfc extends DataTransport {
         @NonNull
         DataTransport createDataTransport(
                 @NonNull Context context, @LoggingFlag int loggingFlags) {
-            return new DataTransportNfc(context /*, loggingFlags*/);
+            return new DataTransportNfc(context, loggingFlags);
         }
 
         @Override

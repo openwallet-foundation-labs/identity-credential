@@ -101,14 +101,20 @@ class DocumentManager private constructor(private val context: Context) {
         // No preference for which store to use ... first try with the HW-backed implementation
         // and use it only if it reports a sufficiently new version.
         val hwStore = IdentityCredentialStore.getHardwareInstance(context)
+        if (hwStore != null) {
+            Log.i(LOG_TAG, "Found HW-backed store with version ${hwStore.featureVersion}")
+        }
         if (hwStore != null && hwStore.featureVersion >= FEATURE_VERSION_202201) {
+            Log.i(LOG_TAG, "Using HW-backed store with version ${hwStore.featureVersion}")
             PreferencesHelper.setHardwareBacked(context, true)
             hwStore
         } else {
             // Nope, fall back to Keystore implementation
             PreferencesHelper.setHardwareBacked(context, false)
-            IdentityCredentialStore.getKeystoreInstance(context,
+            val ksStore = IdentityCredentialStore.getKeystoreInstance(context,
                 PreferencesHelper.getKeystoreBackedStorageLocation(context))
+            Log.i(LOG_TAG, "Using KS-backed store with version ${ksStore.featureVersion}")
+            ksStore
         }
     }
 
