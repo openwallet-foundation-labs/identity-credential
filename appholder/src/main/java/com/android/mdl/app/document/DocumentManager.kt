@@ -7,14 +7,14 @@ import android.graphics.BitmapFactory
 import android.security.keystore.KeyProperties
 import android.util.Log
 import androidx.preference.PreferenceManager
-import com.android.identity.*
-import com.android.identity.IdentityCredentialStore.FEATURE_VERSION_202201
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
+import com.android.identity.*
+import com.android.identity.IdentityCredentialStore.FEATURE_VERSION_202201
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.mdl.app.R
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
-import com.android.mdl.app.util.DocumentData
+import com.android.mdl.app.util.*
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.DUMMY_MICOV_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.DUMMY_MVR_CREDENTIAL_NAME
@@ -22,8 +22,6 @@ import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_NAMESPACE
-import com.android.mdl.app.util.FormatUtil
-import com.android.mdl.app.util.PreferencesHelper
 import com.android.mdl.app.util.PreferencesHelper.HARDWARE_BACKED_PREFERENCE
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.x500.X500Name
@@ -154,7 +152,11 @@ class DocumentManager private constructor(private val context: Context) {
                     context.resources,
                     R.drawable.driving_license_bg
                 ),
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
+                selfSigned = true,
+                userAuthentication = true,
+                KEY_COUNT,
+                MAX_USES_PER_KEY
             )
         } catch (e: IdentityCredentialException) {
             throw IllegalStateException("Error creating dummy credential", e)
@@ -304,8 +306,8 @@ class DocumentManager private constructor(private val context: Context) {
             iaSelfSignedCert,
             MICOV_DOCTYPE,
             personalizationData.build(),
-            5,
-            1
+            KEY_COUNT,
+            MAX_USES_PER_KEY
         )
     }
 
@@ -331,7 +333,11 @@ class DocumentManager private constructor(private val context: Context) {
                     context.resources,
                     R.drawable.driving_license_bg
                 ),
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
+                selfSigned = true,
+                userAuthentication = true,
+                KEY_COUNT,
+                MAX_USES_PER_KEY
             )
         } catch (e: IdentityCredentialException) {
             throw IllegalStateException("Error creating dummy credential", e)
@@ -414,8 +420,8 @@ class DocumentManager private constructor(private val context: Context) {
             iaSelfSignedCert,
             MVR_DOCTYPE,
             personalizationData.build(),
-            5,
-            1
+            KEY_COUNT,
+            MAX_USES_PER_KEY
         )
     }
 
@@ -430,7 +436,11 @@ class DocumentManager private constructor(private val context: Context) {
                     context.resources,
                     R.drawable.driving_license_bg
                 ),
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
+                selfSigned = true,
+                userAuthentication = true,
+                KEY_COUNT,
+                MAX_USES_PER_KEY
             )
         } catch (e: IdentityCredentialException) {
             throw IllegalStateException("Error creating dummy credential", e)
@@ -520,8 +530,8 @@ class DocumentManager private constructor(private val context: Context) {
             iaSelfSignedCert,
             MDL_DOCTYPE,
             personalizationData.build(),
-            5,
-            1
+            KEY_COUNT,
+            MAX_USES_PER_KEY
         )
     }
 
@@ -599,8 +609,12 @@ class DocumentManager private constructor(private val context: Context) {
             userVisibleName,
             null,
             store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
-            serverUrl,
-            provisioningCode
+            selfSigned = false,
+            userAuthentication = true,
+            KEY_COUNT,
+            MAX_USES_PER_KEY,
+            provisioningCode,
+            serverUrl
         )
         runBlocking {
             documentRepository.insert(document)
@@ -768,4 +782,324 @@ class DocumentManager private constructor(private val context: Context) {
             documentRepository.insert(document)
         }
     }
+
+    fun createSelfSignedCredential(dData: SelfSignedDocumentData) {
+        return if (MDL_DOCTYPE == dData.provisionInfo.docType) {
+            createSelfSignedMdl(dData)
+        } else if (MVR_DOCTYPE == dData.provisionInfo.docType) {
+            createSelfSignedMvr(dData)
+        //} else if (MICOV_DOCTYPE == dData.provisionInfo.docType) {
+            //createSelfSignedMicov(dData)
+        } else {
+            throw IllegalArgumentException("Invalid docType to create self signed document ${dData.provisionInfo.docType}")
+        }
+    }
+
+    private fun createSelfSignedMdl(dData: SelfSignedDocumentData) {
+        deleteCredentialByName(DUMMY_CREDENTIAL_NAME)
+        try {
+            provisionSelfSignedMdl(dData)
+            val document = Document(
+                dData.provisionInfo.docType,
+                DUMMY_CREDENTIAL_NAME,
+                dData.getValueString("document_name"),
+                null,
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
+                selfSigned = true,
+                userAuthentication = true,
+                KEY_COUNT,
+                MAX_USES_PER_KEY
+            )
+            runBlocking {
+                // Insert new document in our local database
+                documentRepository.insert(document)
+            }
+        } catch (e: IdentityCredentialException) {
+            throw IllegalStateException("Error creating self signed credential", e)
+        }
+    }
+
+
+    private fun provisionSelfSignedMdl(dData: SelfSignedDocumentData) {
+
+        val idSelf = AccessControlProfileId(0)
+        val profileSelf = AccessControlProfile.Builder(idSelf)
+            .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
+            .setUserAuthenticationTimeout(30 * 1000)
+            .build()
+        val idsSelf = listOf(idSelf)
+
+        val iaSelfSignedCert = KeysAndCertificates.getMdlDsCertificate(context)
+        val bitmap = dData.getValueBitmap("portrait")
+        val baos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
+        val portrait: ByteArray = baos.toByteArray()
+
+        val birthDate = UnicodeString(dData.getValueString("birth_date"))
+        birthDate.setTag(1004)
+        val issueDate = UnicodeString(dData.getValueString("issue_date"))
+        issueDate.setTag(1004)
+        val expiryDate = UnicodeString(dData.getValueString("expiry_date"))
+        expiryDate.setTag(1004)
+        val issueDateCatA = UnicodeString(dData.getValueString("issue_date_1"))
+        issueDateCatA.setTag(1004)
+        val expiryDateCatA = UnicodeString(dData.getValueString("expiry_date_1"))
+        expiryDateCatA.setTag(1004)
+        val issueDateCatB = UnicodeString(dData.getValueString("issue_date_2"))
+        issueDateCatB.setTag(1004)
+        val expiryDateCatB = UnicodeString(dData.getValueString("expiry_date_2"))
+        expiryDateCatB.setTag(1004)
+        val drivingPrivileges = CborBuilder().addArray()
+            .addMap()
+            .put("vehicle_category_code", dData.getValueString("vehicle_category_code_1"))
+            .put(UnicodeString("issue_date"), issueDateCatA)
+            .put(UnicodeString("expiry_date"), expiryDateCatA)
+            .end()
+            .addMap()
+            .put("vehicle_category_code", dData.getValueString("vehicle_category_code_2"))
+            .put(UnicodeString("issue_date"), issueDateCatB)
+            .put(UnicodeString("expiry_date"), expiryDateCatB)
+            .end()
+            .end()
+            .build()[0]
+
+        val personalizationData = PersonalizationData.Builder()
+            .putEntryString(DocumentData.MDL_NAMESPACE, "given_name", idsSelf, dData.getValueString("given_name"))
+            .putEntryString(DocumentData.MDL_NAMESPACE, "family_name", idsSelf, dData.getValueString("family_name"))
+            .putEntry(
+                DocumentData.MDL_NAMESPACE,
+                "birth_date",
+                idsSelf,
+                FormatUtil.cborEncode(birthDate)
+            )
+            .putEntryBytestring(DocumentData.MDL_NAMESPACE, "portrait", idsSelf, portrait)
+            .putEntry(
+                DocumentData.MDL_NAMESPACE,
+                "issue_date",
+                idsSelf,
+                FormatUtil.cborEncode(issueDate)
+            )
+            .putEntry(
+                DocumentData.MDL_NAMESPACE,
+                "expiry_date",
+                idsSelf,
+                FormatUtil.cborEncode(expiryDate)
+            )
+            .putEntryString(
+                DocumentData.MDL_NAMESPACE,
+                "issuing_country",
+                idsSelf,
+                dData.getValueString("issuing_country")
+            )
+            .putEntryString(
+                DocumentData.MDL_NAMESPACE,
+                "issuing_authority",
+                idsSelf,
+                dData.getValueString("issuing_authority")
+            )
+            .putEntryString(
+                DocumentData.MDL_NAMESPACE,
+                "document_number",
+                idsSelf,
+                dData.getValueString("document_number")
+            )
+            .putEntry(
+                DocumentData.MDL_NAMESPACE,
+                "driving_privileges",
+                idsSelf,
+                FormatUtil.cborEncode(drivingPrivileges)
+            )
+            .putEntryString(
+                DocumentData.MDL_NAMESPACE,
+                "un_distinguishing_sign",
+                idsSelf,
+                dData.getValueString("un_distinguishing_sign")
+            )
+            .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_18", idsSelf, dData.getValueBoolean("age_over_18"))
+            .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_21", idsSelf, dData.getValueBoolean("age_over_21"))
+            .putEntryBoolean(DocumentData.AAMVA_NAMESPACE, "real_id", idsSelf, dData.getValueBoolean("real_id"))
+
+        personalizationData.addAccessControlProfile(profileSelf)
+
+        Utility.provisionSelfSignedCredential(
+            store,
+            DUMMY_CREDENTIAL_NAME,
+            KeysAndCertificates.getMdlDsKeyPair(context).private,
+            iaSelfSignedCert,
+            dData.provisionInfo.docType,
+            personalizationData.build(),
+            dData.provisionInfo.numberMso,
+            dData.provisionInfo.maxUseMso
+        )
+    }
+
+
+    private fun createSelfSignedMvr(dData: SelfSignedDocumentData) {
+        deleteCredentialByName(DUMMY_MVR_CREDENTIAL_NAME)
+        try {
+            provisionSelfSignedMvr(dData)
+            val document = Document(
+                dData.provisionInfo.docType,
+                DUMMY_CREDENTIAL_NAME,
+                dData.getValueString("document_name"),
+                null,
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
+                selfSigned = true,
+                userAuthentication = true,
+                KEY_COUNT,
+                MAX_USES_PER_KEY
+            )
+            runBlocking {
+                // Insert new document in our local database
+                documentRepository.insert(document)
+            }
+        } catch (e: IdentityCredentialException) {
+            throw IllegalStateException("Error creating self signed credential", e)
+        }
+    }
+
+
+    private fun provisionSelfSignedMvr(dData: SelfSignedDocumentData) {
+
+        val idSelf = AccessControlProfileId(0)
+        val profileSelf = AccessControlProfile.Builder(idSelf)
+            .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
+            .setUserAuthenticationTimeout(30 * 1000)
+            .build()
+        val idsSelf = listOf(idSelf)
+        val iaSelfSignedCert = KeysAndCertificates.getMekbDsCertificate(context)
+
+        val validFrom = UnicodeString(dData.getValueString("validFrom"))
+        validFrom.setTag(0)
+        val validUntil = UnicodeString(dData.getValueString("validUntil"))
+        validUntil.setTag(0)
+        val registrationInfo = CborBuilder().addMap()
+            .put("issuingCountry", dData.getValueString("issuingCountry"))
+            .put("competentAuthority", dData.getValueString("competentAuthority"))
+            .put("registrationNumber", dData.getValueString("registrationNumber"))
+            .put(UnicodeString("validFrom"), validFrom)
+            .put(UnicodeString("validUntil"), validFrom)
+            .end()
+            .build()[0]
+        val issueDate = UnicodeString(dData.getValueString("issueDate"))
+        issueDate.setTag(1004)
+        val registrationHolderAddress = CborBuilder().addMap()
+            .put("streetName", dData.getValueString("streetName"))
+            .put("houseNumber", dData.getValueLong("houseNumber"))
+            .put("postalCode", dData.getValueString("postalCode"))
+            .put("placeOfResidence", dData.getValueString("placeOfResidence"))
+            .end()
+            .build()[0]
+        val registrationHolderHolderInfo = CborBuilder().addMap()
+            .put("name", dData.getValueString("name"))
+            .put(UnicodeString("address"), registrationHolderAddress)
+            .end()
+            .build()[0]
+        val registrationHolder = CborBuilder().addMap()
+            .put(UnicodeString("holderInfo"), registrationHolderHolderInfo)
+            .put("ownershipStatus", dData.getValueLong("ownershipStatus"))
+            .end()
+            .build()[0]
+        val basicVehicleInfo = CborBuilder().addMap()
+            .put(
+                UnicodeString("vehicle"), CborBuilder().addMap()
+                    .put("make", dData.getValueString("make"))
+                    .end()
+                    .build()[0]
+            )
+            .end()
+            .build()[0]
+
+        val personalizationData = PersonalizationData.Builder()
+            .putEntry(
+                MVR_NAMESPACE,
+                "registration_info",
+                idsSelf,
+                FormatUtil.cborEncode(registrationInfo)
+            )
+            .putEntry(MVR_NAMESPACE, "issue_date", idsSelf, FormatUtil.cborEncode(issueDate))
+            .putEntry(
+                MVR_NAMESPACE,
+                "registration_holder",
+                idsSelf,
+                FormatUtil.cborEncode(registrationHolder)
+            )
+            .putEntry(
+                MVR_NAMESPACE,
+                "basic_vehicle_info",
+                idsSelf,
+                FormatUtil.cborEncode(basicVehicleInfo)
+            )
+            .putEntryString(MVR_NAMESPACE, "vin", idsSelf, "1M8GDM9AXKP042788")
+
+        personalizationData.addAccessControlProfile(profileSelf)
+
+        Utility.provisionSelfSignedCredential(
+            store,
+            DUMMY_MVR_CREDENTIAL_NAME,
+            KeysAndCertificates.getMekbDsKeyPair(context).private,
+            iaSelfSignedCert,
+            dData.provisionInfo.docType,
+            personalizationData.build(),
+            dData.provisionInfo.numberMso,
+            dData.provisionInfo.maxUseMso
+        )
+    }
+
+//    fun refreshCredential(document: Document) {
+//
+//        val identityCredential = store.getCredentialByName(
+//            document.identityCredentialName,
+//            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+//        )
+//
+//        var presentation: PresentationHelper?
+//        val session = store.createPresentationSession(
+//            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+//        ).also {
+//            presentation = PresentationHelper(context, it)
+//            presentation?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
+//            presentation?.setSendSessionTerminationMessage(true)
+//        }
+//
+//        val entriesToRequest = mapOf<String, Collection<String>>(
+//            Pair(
+//                "org.iso.18013.5.1",
+//                listOf("given_name", "family_name", "birth_date")
+//            )
+//        )
+//
+//        val credentialRequest = CredentialDataRequest.Builder()
+//            .setIncrementUseCount(false)
+//            .setIssuerSignedEntriesToRequest(
+//                entriesToRequest
+//            )
+//            .build()
+//
+//        session.setSessionTranscript(byteArrayOf(0))
+//
+//        val credentialData =
+//            session.getCredentialData(document.identityCredentialName, credentialRequest)
+//        credentialData?.issuerSignedEntries?.let { ise ->
+//            ise.namespaces.forEach { ns ->
+//                ise.getEntryNames(ns).forEach { entry ->
+//                    Log.d("TEST", "Entry " + ise.getEntryString(ns, entry))
+//                }
+//            }
+//        }
+//
+//        val provisionInfo = ProvisionInfo(
+//            document.docType,
+//            document.userAuthentication,
+//            document.numberMso,
+//            document.maxUseMso
+//        )
+////        val mdlData = MdlData(
+////            provisionInfo,
+////            document.userVisibleName,
+////
+////            )
+////        provisionSelfSignedMdlDocument(mdlData)
+//
+//    }
 }

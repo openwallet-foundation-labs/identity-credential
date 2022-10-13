@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="document_type">
+        <item>mDL</item>
+        <item>mVR</item>
+        <item>micov</item>
+    </string-array>
+</resources>
