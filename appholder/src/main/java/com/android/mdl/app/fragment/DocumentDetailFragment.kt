@@ -104,11 +104,8 @@ class DocumentDetailFragment : Fragment() {
     }
 
     fun onShowData() {
-        Toast.makeText(
-            requireContext(), "Not implemented yet!",
-            Toast.LENGTH_SHORT
-        ).show()
-        DocumentManager.getInstance(requireContext()).showData(document)
+        val direction = DocumentDetailFragmentDirections.navigateToDocumentData(document)
+        findNavController().navigate(direction)
     }
 
     fun onDelete() {

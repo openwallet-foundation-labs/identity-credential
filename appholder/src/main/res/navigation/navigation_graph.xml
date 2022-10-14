@@ -81,6 +81,19 @@
         <action
             android:id="@+id/action_documentDetailFragment_to_selectDocumentFragment"
             app:destination="@id/selectDocumentFragment" />
+        <action
+            android:id="@+id/navigateToDocumentData"
+            app:destination="@id/showDocumentData"
+            app:popUpTo="@id/documentDetailFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/showDocumentData"
+        android:name="com.android.mdl.app.fragment.ShowDocumentDataFragment"
+        android:label="Document Data">
+
+        <argument
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
     </fragment>
     <fragment
         android:id="@+id/updateCheckFragment"

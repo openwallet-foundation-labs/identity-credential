@@ -1247,7 +1247,7 @@ class DocumentManager private constructor(private val context: Context) {
         )
     }
 
-    fun showData(document: Document) {
+    fun showData(document: Document): CredentialDataResult.Entries? {
 
         val session = store.createPresentationSession(
             IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
@@ -1278,23 +1278,6 @@ class DocumentManager private constructor(private val context: Context) {
         // It can display data if user consent is not required
         val credentialData =
             session.getCredentialData(document.identityCredentialName, credentialRequest)
-        credentialData?.issuerSignedEntries?.let { ise ->
-            ise.namespaces.forEach { ns ->
-                ise.getEntryNames(ns).forEach { entry ->
-                    try {
-                        Log.d("TEST", "$entry - ${ise.getEntryString(ns, entry)}")
-                    } catch (e: IllegalArgumentException) {
-                        // If not string print the bytes
-                        Log.d(
-                            "TEST", "$entry - ${
-                                FormatUtil.encodeToString(ise.getEntry(ns, entry) ?: byteArrayOf(0))
-                            }"
-                        )
-                    }
-                }
-            }
-        }
-
-
+        return credentialData?.issuerSignedEntries
     }
 }
