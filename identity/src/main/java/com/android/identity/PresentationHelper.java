@@ -19,7 +19,6 @@ package com.android.identity;
 import android.content.Context;
 import android.nfc.cardemulation.HostApduService;
 import android.os.Bundle;
-import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -108,7 +107,7 @@ public class PresentationHelper {
      */
     public PresentationHelper(@NonNull Context context,
                               @NonNull PresentationSession presentationSession,
-                              @NonNull DataTransport transport,
+                              @Nullable DataTransport transport, //TODO: make it NonNull
                               @NonNull byte[] deviceEngagement,
                               @NonNull byte[] handover,
                               @Nullable byte[] alternateDeviceEngagement,
