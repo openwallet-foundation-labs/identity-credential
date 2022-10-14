@@ -794,8 +794,8 @@ class DocumentManager private constructor(private val context: Context) {
             createSelfSignedMdl(dData)
         } else if (MVR_DOCTYPE == dData.provisionInfo.docType) {
             createSelfSignedMvr(dData)
-        //} else if (MICOV_DOCTYPE == dData.provisionInfo.docType) {
-            //createSelfSignedMicov(dData)
+        } else if (MICOV_DOCTYPE == dData.provisionInfo.docType) {
+            createSelfSignedMicov(dData)
         } else {
             throw IllegalArgumentException("Invalid docType to create self signed document ${dData.provisionInfo.docType}")
         }
@@ -946,7 +946,7 @@ class DocumentManager private constructor(private val context: Context) {
             provisionSelfSignedMvr(dData)
             val document = Document(
                 dData.provisionInfo.docType,
-                DUMMY_CREDENTIAL_NAME,
+                DUMMY_MVR_CREDENTIAL_NAME,
                 dData.getValueString("document_name"),
                 null,
                 store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
@@ -1044,6 +1044,181 @@ class DocumentManager private constructor(private val context: Context) {
             store,
             DUMMY_MVR_CREDENTIAL_NAME,
             KeysAndCertificates.getMekbDsKeyPair(context).private,
+            iaSelfSignedCert,
+            dData.provisionInfo.docType,
+            personalizationData.build(),
+            dData.provisionInfo.numberMso,
+            dData.provisionInfo.maxUseMso
+        )
+    }
+
+    private fun createSelfSignedMicov(dData: SelfSignedDocumentData) {
+        deleteCredentialByName(DUMMY_MICOV_CREDENTIAL_NAME)
+        try {
+            provisionSelfSignedMicov(dData)
+            val document = Document(
+                dData.provisionInfo.docType,
+                DUMMY_MICOV_CREDENTIAL_NAME,
+                dData.getValueString("document_name"),
+                null,
+                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
+                selfSigned = true,
+                userAuthentication = true,
+                KEY_COUNT,
+                MAX_USES_PER_KEY
+            )
+            runBlocking {
+                // Insert new document in our local database
+                documentRepository.insert(document)
+            }
+        } catch (e: IdentityCredentialException) {
+            throw IllegalStateException("Error creating self signed credential", e)
+        }
+    }
+
+
+    private fun provisionSelfSignedMicov(dData: SelfSignedDocumentData) {
+
+        val idSelf = AccessControlProfileId(0)
+        val profileSelf = AccessControlProfile.Builder(idSelf)
+            .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
+            .setUserAuthenticationTimeout(30 * 1000)
+            .build()
+        val idsSelf = listOf(idSelf)
+        val iaSelfSignedCert = KeysAndCertificates.getMicovDsCertificate(context)
+
+        // org.micov.vtr.1
+        val dob = UnicodeString(dData.getValueString("dob"))
+        dob.setTag(1004)
+        val ra011dt = UnicodeString(dData.getValueString("RA01_1_dt"))
+        ra011dt.setTag(1004)
+        val ra011nx = UnicodeString(dData.getValueString("RA01_1_nx"))
+        ra011nx.setTag(1004)
+        val ra012dt = UnicodeString(dData.getValueString("RA01_2_dt"))
+        ra011dt.setTag(1004)
+        val vRA011 = CborBuilder().addMap()
+            .put("tg", dData.getValueString("RA01_1_tg"))
+            .put("vp", dData.getValueString("RA01_1_vp"))
+            .put("mp", dData.getValueString("RA01_1_mp"))
+            .put("ma", dData.getValueString("RA01_1_ma"))
+            .put("bn", dData.getValueString("RA01_1_bn"))
+            .put("dn", dData.getValueString("RA01_1_dn"))
+            .put("sd", dData.getValueString("RA01_1_sd"))
+            .put(UnicodeString("dt"), ra011dt)
+            .put("co", dData.getValueString("RA01_1_co"))
+            .put("ao", dData.getValueString("RA01_1_ao"))
+            .put(UnicodeString("nx"), ra011nx)
+            .put("is", dData.getValueString("RA01_1_is"))
+            .put("ci", dData.getValueString("RA01_1_ci"))
+            .end()
+            .build()[0]
+        val vRA012 = CborBuilder().addMap()
+            .put("tg", dData.getValueString("RA01_2_tg"))
+            .put("vp", dData.getValueString("RA01_2_vp"))
+            .put("mp", dData.getValueString("RA01_2_mp"))
+            .put("ma", dData.getValueString("RA01_2_ma"))
+            .put("bn", dData.getValueString("RA01_2_bn"))
+            .put("dn", dData.getValueString("RA01_2_dn"))
+            .put("sd", dData.getValueString("RA01_2_sd"))
+            .put(UnicodeString("dt"), ra012dt)
+            .put("co", dData.getValueString("RA01_2_co"))
+            .put("ao", dData.getValueString("RA01_2_ao"))
+            .put("is", dData.getValueString("RA01_2_is"))
+            .put("ci", dData.getValueString("RA01_2_ci"))
+            .end()
+            .build()[0]
+        val pidPPN = CborBuilder().addMap()
+            .put("pty", dData.getValueString("PPN_pty"))
+            .put("pnr", dData.getValueString("PPN_pnr"))
+            .put("pic", dData.getValueString("PPN_pic"))
+            .end()
+            .build()[0]
+        val pidDL = CborBuilder().addMap()
+            .put("pty", dData.getValueString("DL_pty"))
+            .put("pnr", dData.getValueString("DL_pnr"))
+            .put("pic", dData.getValueString("DL_pic"))
+            .end()
+            .build()[0]
+
+        // org.micov.attestation.1
+        val timeOfTest = UnicodeString("2021-10-12T19:00:00Z")
+        timeOfTest.setTag(0)
+        val seCondExpiry = UnicodeString(dData.getValueString("SeCondExpiry"))
+        seCondExpiry.setTag(0)
+        val ra01Test = CborBuilder().addMap()
+            .put("Result", dData.getValueLong("Result"))
+            .put("TypeOfTest", dData.getValueString("TypeOfTest"))
+            .put(UnicodeString("TimeOfTest"), timeOfTest)
+            .end()
+            .build()[0]
+        val safeEntryLeisure = CborBuilder().addMap()
+            .put("SeCondFulfilled", dData.getValueLong("SeCondFulfilled"))
+            .put("SeCondType", dData.getValueString("SeCondType"))
+            .put(UnicodeString("SeCondExpiry"), seCondExpiry)
+            .end()
+            .build()[0]
+
+        val bitmap = dData.getValueBitmap("fac")
+        val baos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
+        val portrait: ByteArray = baos.toByteArray()
+        val personalizationData = PersonalizationData.Builder()
+            .putEntryString(DocumentData.MICOV_VTR_NAMESPACE, "fn", idsSelf, dData.getValueString("fn"))
+            .putEntryString(DocumentData.MICOV_VTR_NAMESPACE, "gn", idsSelf, dData.getValueString("gn"))
+            .putEntry(DocumentData.MICOV_VTR_NAMESPACE, "dob", idsSelf, FormatUtil.cborEncode(dob))
+            .putEntryInteger(DocumentData.MICOV_VTR_NAMESPACE, "sex", idsSelf, dData.getValueLong("sex"))
+            .putEntry(
+                DocumentData.MICOV_VTR_NAMESPACE,
+                "v_RA01_1",
+                idsSelf,
+                FormatUtil.cborEncode(vRA011)
+            )
+            .putEntry(
+                DocumentData.MICOV_VTR_NAMESPACE,
+                "v_RA01_2",
+                idsSelf,
+                FormatUtil.cborEncode(vRA012)
+            )
+            .putEntry(
+                DocumentData.MICOV_VTR_NAMESPACE,
+                "pid_PPN",
+                idsSelf,
+                FormatUtil.cborEncode(pidPPN)
+            )
+            .putEntry(
+                DocumentData.MICOV_VTR_NAMESPACE,
+                "pid_DL",
+                idsSelf,
+                FormatUtil.cborEncode(pidDL)
+            )
+            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "1D47_vaccinated", idsSelf, dData.getValueLong("1D47_vaccinated"))
+            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "RA01_vaccinated", idsSelf, dData.getValueLong("RA01_vaccinated"))
+            .putEntry(
+                DocumentData.MICOV_ATT_NAMESPACE,
+                "RA01_test",
+                idsSelf,
+                FormatUtil.cborEncode(ra01Test)
+            )
+            .putEntry(
+                DocumentData.MICOV_ATT_NAMESPACE,
+                "safeEntry_Leisure",
+                idsSelf,
+                FormatUtil.cborEncode(safeEntryLeisure)
+            )
+            .putEntryBytestring(DocumentData.MICOV_ATT_NAMESPACE, "fac", idsSelf, portrait)
+            .putEntryString(DocumentData.MICOV_ATT_NAMESPACE, "fni", idsSelf, dData.getValueString("fni"))
+            .putEntryString(DocumentData.MICOV_ATT_NAMESPACE, "gni", idsSelf, dData.getValueString("gni"))
+            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "by", idsSelf, dData.getValueLong("by"))
+            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "bm", idsSelf, dData.getValueLong("bm"))
+            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "bd", idsSelf, dData.getValueLong("bd"))
+
+
+        personalizationData.addAccessControlProfile(profileSelf)
+
+        Utility.provisionSelfSignedCredential(
+            store,
+            DUMMY_MICOV_CREDENTIAL_NAME,
+            KeysAndCertificates.getMicovDsKeyPair(context).private,
             iaSelfSignedCert,
             dData.provisionInfo.docType,
             personalizationData.build(),

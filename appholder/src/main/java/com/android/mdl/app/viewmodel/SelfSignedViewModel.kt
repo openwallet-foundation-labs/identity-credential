@@ -6,7 +6,6 @@ import android.view.View
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.mdl.app.R
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
@@ -85,7 +84,7 @@ class SelfSignedViewModel(val app: Application) :
 
         // Pre fill default values for MICOV document
         id = 1
-
+        fieldsMicov.add(Field(id++, "Document Name", "document_name", FieldType.STRING, "Vaccination Document"))
         fieldsMicov.add(Field(id++, "Family name initial", "fni", FieldType.STRING, "M"))
         fieldsMicov.add(Field(id++, "Family name", "fn", FieldType.STRING, "Mustermann"))
         fieldsMicov.add(Field(id++, "Given name initial", "gni", FieldType.STRING, "E"))
@@ -96,8 +95,8 @@ class SelfSignedViewModel(val app: Application) :
         fieldsMicov.add(Field(id++, "COVID-19 vaccinated", "RA01_vaccinated", FieldType.STRING, "2"))
         fieldsMicov.add(Field(id++, "Facial image", "fac", FieldType.BITMAP, bitmap))
         fieldsMicov.add(Field(id++, "Family name initial", "fni", FieldType.STRING, "M"))
-        fieldsMicov.add(Field(id++, "Birth year", "pty", FieldType.STRING, "1964"))
-        fieldsMicov.add(Field(id++, "Birth month", "by", FieldType.STRING, "8"))
+        fieldsMicov.add(Field(id++, "Birth year", "by", FieldType.STRING, "1964"))
+        fieldsMicov.add(Field(id++, "Birth month", "bm", FieldType.STRING, "8"))
         fieldsMicov.add(Field(id++, "Birth day", "bd", FieldType.STRING, "12"))
 
         fieldsMicov.add(Field(id++, "RA01 1 Disease or agent targeted", "RA01_1_tg", FieldType.STRING, "840539006"))
@@ -134,6 +133,10 @@ class SelfSignedViewModel(val app: Application) :
         fieldsMicov.add(Field(id++, "Type of person identifier", "DL_pty", FieldType.STRING, "DL"))
         fieldsMicov.add(Field(id++, "Unique number", "DL_pnr", FieldType.STRING, "987654321"))
         fieldsMicov.add(Field(id++, "pic", "DL_pic", FieldType.STRING, "UT"))
+
+        fieldsMicov.add(Field(id++, "Test Result", "Result", FieldType.STRING, "260415000"))
+        fieldsMicov.add(Field(id++, "Type Of Test", "TypeOfTest", FieldType.STRING, "LP6464-4"))
+        fieldsMicov.add(Field(id++, "Time Of Test", "TimeOfTest", FieldType.DATE, "2021-10-12"))
 
         fieldsMicov.add(Field(id++, "SafeEntry", "SeCondFulfilled", FieldType.STRING, "1"))
         fieldsMicov.add(Field(id++, "SafeEntry type", "SeCondType", FieldType.STRING, "leisure"))
