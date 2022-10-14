@@ -7,7 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.R
@@ -15,7 +15,6 @@ import com.android.mdl.appreader.databinding.FragmentTransferBinding
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.viewModel.TransferViewModel
-
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -32,7 +31,7 @@ class TransferFragment : Fragment() {
     // This property is only valid between onCreateView and
     // onDestroyView.
     private val binding get() = _binding!!
-    private lateinit var vm: TransferViewModel
+    private val vm: TransferViewModel by viewModels()
     private var keepConnection = false
 
     private lateinit var requestDocumentList: RequestDocumentList
@@ -48,11 +47,8 @@ class TransferFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
         _binding = FragmentTransferBinding.inflate(inflater, container, false)
-        vm = ViewModelProvider(this).get(TransferViewModel::class.java)
         return binding.root
-
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -108,6 +104,7 @@ class TransferFragment : Fragment() {
                     ).show()
                     findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
                 }
+                else -> {}
             }
         }
 

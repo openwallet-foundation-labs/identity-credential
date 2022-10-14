@@ -24,7 +24,6 @@ import com.android.mdl.appreader.util.TransferStatus
 import com.budiyev.android.codescanner.CodeScanner
 import com.budiyev.android.codescanner.DecodeCallback
 
-
 /**
  * A simple [Fragment] subclass as the second destination in the navigation.
  */
@@ -87,12 +86,13 @@ class DeviceEngagementFragment : Fragment() {
 
         binding.csScanner.setOnClickListener { mCodeScanner?.startPreview() }
 
-        transferManager.getTransferStatus().observe(viewLifecycleOwner, {
+        transferManager.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.ENGAGED -> {
                     Log.d(LOG_TAG, "Device engagement received")
                     onDeviceEngagementReceived()
                 }
+
                 TransferStatus.CONNECTED -> {
                     Log.d(LOG_TAG, "Device connected")
                     Toast.makeText(
@@ -101,6 +101,7 @@ class DeviceEngagementFragment : Fragment() {
                     ).show()
                     findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
+
                 TransferStatus.RESPONSE -> {
                     Log.d(LOG_TAG, "Device response received")
                     Toast.makeText(
@@ -109,6 +110,7 @@ class DeviceEngagementFragment : Fragment() {
                     ).show()
                     findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
+
                 TransferStatus.DISCONNECTED -> {
                     Log.d(LOG_TAG, "Device disconnected")
                     Toast.makeText(
@@ -117,6 +119,7 @@ class DeviceEngagementFragment : Fragment() {
                     ).show()
                     findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
+
                 TransferStatus.ERROR -> {
                     Log.d(LOG_TAG, "Error received")
                     Toast.makeText(
@@ -125,8 +128,9 @@ class DeviceEngagementFragment : Fragment() {
                     ).show()
                     findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)
                 }
+                else -> {}
             }
-        })
+        }
 
         binding.btCancel.setOnClickListener {
             findNavController().navigate(R.id.action_ScanDeviceEngagement_to_RequestOptions)

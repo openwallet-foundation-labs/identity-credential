@@ -1,0 +1,94 @@
+[versions]
+    compile-sdk = "33"
+    min-sdk = "26"
+    kotlin = "1.7.10"
+    gradle-plugin = "7.2.2"
+    core-ktx = "1.9.0"
+    appcompat = "1.5.1"
+    material = "1.6.1"
+    constraint-layout = "1.6.1"
+    lifecycle = "2.2.0"
+    lifecycle-ktx = "2.5.1"
+    fragment = "1.5.3"
+    legacy-support-v4 = "1.0.0"
+    androidx-preference = "1.2.0"
+    androidx-annotation = "1.3.0"
+    coroutines-version = "1.6.4"
+    zxing = "3.4.0"
+    volley = "1.2.1"
+    room = "2.4.3"
+    biometrics = "1.2.0-alpha05"
+    cbor = "0.9"
+    exif = "1.3.5"
+    bouncy-castle = "1.67"
+    sonar-gradle-plugin = "3.4.0.2513"
+    jacoco = "0.47.0"
+    navigation = "2.5.2"
+    code_scanner = "2.1.0"
+    junit-android-test = "1.1.3"
+    espresso-core = "3.4.0"
+    junit-jupiter = "5.9.1"
+    truth = "1.1.3"
+
+[libraries]
+    androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
+    androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+    androidx-material = { module = "com.google.android.material:material", version.ref = "material" }
+    androidx-contraint-layout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraint-layout" }
+    androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment" }
+    androidx-legacy-v4 = { module = "androidx.legacy:legacy-support-v4", version.ref = "legacy-support-v4" }
+    androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "androidx-preference" }
+
+    androidx-lifecycle-extensions = { module = "androidx.lifecycle:lifecycle-extensions", version.ref = "lifecycle" }
+    androidx-lifecycle-livedata = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "lifecycle-ktx" }
+    androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle-ktx" }
+
+    androidx-navigation-ktx = { module = "androidx.navigation:navigation-fragment-ktx", version.ref = "navigation" }
+    androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "navigation" }
+
+    volley = { module = "com.android.volley:volley", version.ref = "volley" }
+
+    androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+    androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+    androidx-room-kapt = { module = "androidx.room:room-compiler", version.ref = "room" }
+
+    androidx-biometrics = { module = "androidx.biometric:biometric", version.ref = "biometrics" }
+    androidx-zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+    androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "androidx-annotation"}
+
+    cbor = { module = "co.nstant.in:cbor", version.ref = "cbor" }
+
+    exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exif" }
+
+    bouncy-castle-bcprov = { module = "org.bouncycastle:bcprov-jdk15on", version.ref = "bouncy-castle" }
+    bouncy-castle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk15on", version.ref = "bouncy-castle" }
+
+    code-scanner = { module = "com.budiyev.android:code-scanner", version.ref = "code-scanner" }
+
+    androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "junit-android-test" }
+    androidx-test-espresso = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso-core" }
+
+    jupiter = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
+    junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
+    kotlinx-coroutine-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines-version" }
+    truth = { module = "com.google.truth:truth", version.ref = "truth" }
+
+[bundles]
+    androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx"]
+    androidx-lifecycle = ["androidx-lifecycle-extensions", "androidx-lifecycle-livedata", "androidx-lifecycle-viewmodel"]
+    androidx-navigation = ["androidx-navigation-ktx", "androidx-navigation-ui-ktx"]
+    androidx-room = ["androidx-room-runtime", "androidx-room-ktx"]
+    androidx-crypto = ["androidx-biometrics", "androidx-zxing-core"]
+    bouncy-castle = ["bouncy-castle-bcprov", "bouncy-castle-bcpkix"]
+    ui-testing = ["androidx-test-ext-junit", "androidx-test-espresso"]
+    unit-testing = ["jupiter", "kotlinx-coroutine-test", "truth"]
+
+[plugins]
+    android-application = { id = "com.android.application", version.ref = "gradle-plugin" }
+    android-library = { id = "com.android.library", version.ref = "gradle-plugin" }
+    kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+    sonarqube = { id = "org.sonarqube", version.ref = "sonar-gradle-plugin" }
+    jacoco = { id = "org.kordamp.gradle.jacoco", version.ref = "jacoco" }
+    navigation-safe-args = { id = "androidx.navigation.safeargs.kotlin", version.ref = "navigation" }
+    kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+    parcelable = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }

@@ -8,7 +8,6 @@ import android.view.*
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
@@ -17,8 +16,6 @@ import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
-import org.jetbrains.anko.support.v4.toast
-
 
 class SelectDocumentFragment : Fragment() {
     companion object {
@@ -53,7 +50,7 @@ class SelectDocumentFragment : Fragment() {
                         requireActivity().finish()
                         return
                     } else {
-                        toast(getString(R.string.toast_press_back_twice))
+                        Toast.makeText(requireContext(), R.string.toast_press_back_twice, Toast.LENGTH_SHORT).show()
                     }
                     mBackPressed = System.currentTimeMillis()
                 }
