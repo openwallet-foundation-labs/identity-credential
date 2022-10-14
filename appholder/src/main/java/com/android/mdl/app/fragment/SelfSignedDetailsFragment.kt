@@ -39,9 +39,6 @@ import com.android.mdl.app.util.ProvisionInfo
 import com.android.mdl.app.util.SelfSignedDocumentData
 import com.android.mdl.app.viewmodel.SelfSignedViewModel
 import com.google.android.material.datepicker.MaterialDatePicker
-import org.jetbrains.anko.collections.forEachWithIndex
-import org.jetbrains.anko.horizontalMargin
-import org.jetbrains.anko.imageBitmap
 import java.io.File
 import java.io.IOException
 import java.util.*
@@ -109,8 +106,8 @@ class SelfSignedDetailsFragment : Fragment() {
     }
 
     private fun updateList() {
-        vm.getFields(provisionInfo.docType).forEachWithIndex { i, field ->
-            vm.getFields(provisionInfo.docType)[i] = getField(field)
+        vm.getFields(provisionInfo.docType).forEachIndexed { index, field ->
+            vm.getFields(provisionInfo.docType)[index] = getField(field)
         }
     }
 
@@ -188,11 +185,10 @@ class SelfSignedDetailsFragment : Fragment() {
     ): View {
         val imageView = ImageView(requireContext())
         imageView.id = id
-        imageView.imageBitmap = bitmap
+        imageView.setImageBitmap(bitmap)
 
         imageView.layoutParams = LinearLayout.LayoutParams(bitmap.width, bitmap.height).also {
-            it.horizontalMargin = 16
-            it.topMargin = 16
+            it.setMargins(16, 16, 16, 0)
         }
         onClickListener?.let {
             imageView.setOnClickListener(it)
@@ -205,8 +201,7 @@ class SelfSignedDetailsFragment : Fragment() {
         textView.id = id
         textView.text = value
         textView.layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
-            it.horizontalMargin = 16
-            it.topMargin = 16
+            it.setMargins(16, 16, 16, 0)
         }
         onClickListener?.let {
             textView.setOnClickListener(it)
@@ -219,7 +214,7 @@ class SelfSignedDetailsFragment : Fragment() {
         editText.id = id
         editText.text = Editable.Factory.getInstance().newEditable(value)
         editText.layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
-            it.horizontalMargin = 16
+            it.setMargins(16, 0, 16, 0)
         }
         onClickListener?.let {
             editText.setOnClickListener(it)

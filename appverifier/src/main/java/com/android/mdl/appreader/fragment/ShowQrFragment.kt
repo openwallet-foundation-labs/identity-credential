@@ -93,12 +93,13 @@ class ShowQrFragment : Fragment() {
             findNavController().navigate(R.id.action_ShowQr_to_RequestOptions)
         }
 
-        transferManager.getTransferStatus().observe(viewLifecycleOwner, {
+        transferManager.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.READER_ENGAGEMENT_READY -> {
                     Log.d(LOG_TAG, "Reader engagement ready")
                     binding.layoutEngagement.addView(
-                        getViewForReaderEngagementQrCode(transferManager.readerEngagement!!))
+                        getViewForReaderEngagementQrCode(transferManager.readerEngagement!!)
+                    )
                 }
 
                 TransferStatus.CONNECTED -> {
@@ -109,8 +110,9 @@ class ShowQrFragment : Fragment() {
                         )
                     )
                 }
+                else -> {}
             }
-        })
+        }
     }
 
     override fun onDestroyView() {

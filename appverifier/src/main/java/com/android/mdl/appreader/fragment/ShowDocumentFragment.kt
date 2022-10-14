@@ -1,5 +1,6 @@
 package com.android.mdl.appreader.fragment
 
+import android.content.res.Resources
 import android.graphics.BitmapFactory
 import android.icu.text.SimpleDateFormat
 import android.icu.util.GregorianCalendar
@@ -7,11 +8,13 @@ import android.icu.util.TimeZone
 import android.os.Bundle
 import android.text.Html
 import android.util.Log
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.identity.DeviceResponseParser
@@ -22,9 +25,7 @@ import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
-import org.jetbrains.anko.attr
 import java.security.MessageDigest
-
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -140,6 +141,7 @@ class ShowDocumentFragment : Fragment() {
                     transferManager.disconnect()
                     hideButtons()
                 }
+                else -> {}
             }
         }
     }
@@ -249,6 +251,14 @@ class ShowDocumentFragment : Fragment() {
             }
         }
         return sb.toString()
+    }
+
+    private fun Resources.Theme.attr(@AttrRes attribute: Int): TypedValue {
+        val typedValue = TypedValue()
+        if (!resolveAttribute(attribute, typedValue, true)) {
+            throw IllegalArgumentException("Failed to resolve attribute: $attribute")
+        }
+        return typedValue
     }
 
     private fun getFormattedCheck(authenticated: Boolean) = if (authenticated) {

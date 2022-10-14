@@ -1,18 +1,18 @@
 plugins {
-    id 'com.android.application'
-    id 'kotlin-android'
-    id 'androidx.navigation.safeargs.kotlin'
-    id 'kotlin-parcelize'
-    id 'kotlin-kapt'
+    alias libs.plugins.android.application
+    alias libs.plugins.kotlin.android
+    alias libs.plugins.navigation.safe.args
+    alias libs.plugins.parcelable
+    alias libs.plugins.kapt
 }
 
 android {
-    compileSdk 33
+    compileSdk libs.versions.compile.sdk.get() as int
 
     defaultConfig {
         applicationId "com.android.mdl.appreader"
-        minSdkVersion 26
-        targetSdkVersion 33
+        minSdkVersion libs.versions.min.sdk.get() as int
+        targetSdkVersion libs.versions.compile.sdk.get() as int
         versionCode 1
         versionName "1.0"
 
@@ -25,68 +25,49 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = '1.8'
     }
+
     buildFeatures {
         dataBinding true
         viewBinding true
     }
+
     lintOptions {
         lintConfig file("lint.xml")
     }
+
     testOptions.unitTests.all {
         useJUnitPlatform()
         testLogging {
             events 'passed', 'failed', 'skipped', 'standardOut', 'standardError'
         }
     }
+
     namespace 'com.android.mdl.appreader'
 }
 
 dependencies {
     // Uses module as identity credential api
-    implementation project(path: ':identity')
+    implementation project(':identity')
 
-    implementation "org.jetbrains.anko:anko:$anko_version"
+    implementation libs.bundles.androidx.core
+    implementation libs.bundles.androidx.lifecycle
+    implementation libs.bundles.androidx.navigation
+    implementation libs.bundles.bouncy.castle
+    implementation libs.cbor
+    implementation libs.code.scanner
 
-    implementation "androidx.core:core-ktx:$core_ktx_version"
-    implementation "androidx.appcompat:appcompat:$appcompat_version"
-    implementation 'com.google.android.material:material:1.6.1'
-    implementation "androidx.constraintlayout:constraintlayout:$constraint_layout_version"
+    androidTestImplementation libs.bundles.ui.testing
 
-    implementation "androidx.lifecycle:lifecycle-extensions:$lifecycle_version"
-    implementation "androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_ktx_version"
-    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_ktx_version"
+    testImplementation libs.bundles.unit.testing
 
-    implementation "androidx.fragment:fragment-ktx:$fragment_version"
-    implementation "androidx.navigation:navigation-fragment-ktx:$navigation_version"
-    implementation "androidx.navigation:navigation-ui-ktx:$navigation_version"
-    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-    implementation "androidx.preference:preference-ktx:$androidx_preference"
-
-    // BouncyCastle
-    implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_bcprov_version"
-    implementation("org.bouncycastle:bcpkix-jdk15on:$bouncy_castle_bcpkix_version")
-
-    // Camera code scanner
-    implementation "com.budiyev.android:code-scanner:$code_scanner_version"
-
-    // Cbor Library
-    implementation "co.nstant.in:cbor:$cbor_version"
-
-    // UI Tests
-    androidTestImplementation "androidx.test.ext:junit:$junit_test"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$espresso_core_version"
-
-    // Unit Tests
-    testImplementation "junit:junit:$junit_version"
-    testImplementation "org.junit.jupiter:junit-jupiter-engine:5.9.1"
-    testImplementation "com.google.truth:truth:1.1.3"
-
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-api:5.9.1"
+    testRuntimeOnly libs.junit.jupiter.engine
 }
