@@ -42,6 +42,10 @@ class SelfSignedViewModel(val app: Application) :
             app.resources,
             R.drawable.img_erika_portrait
         )
+        val signature = BitmapFactory.decodeResource(
+            app.resources,
+            R.drawable.img_erika_signature
+        )
         fieldsMdl.add(Field(id++, "Portrait", "portrait", FieldType.BITMAP, bitmap))
         fieldsMdl.add(Field(id++, "Given Name", "given_name", FieldType.STRING, "Erika"))
         fieldsMdl.add(Field(id++, "Family Name", "family_name", FieldType.STRING, "Mustermann"))
@@ -51,6 +55,7 @@ class SelfSignedViewModel(val app: Application) :
         fieldsMdl.add(Field(id++, "Issuing Country", "issuing_country", FieldType.STRING, "UT"))
         fieldsMdl.add(Field(id++, "Issuing Authority", "issuing_authority", FieldType.STRING, "Google"))
         fieldsMdl.add(Field(id++, "Document Number", "document_number", FieldType.STRING, "987654321"))
+        fieldsMdl.add(Field(id++, "Signature", "signature_usual_mark", FieldType.BITMAP, signature))
         fieldsMdl.add(Field(id++, "UN Distinguishing Sign", "un_distinguishing_sign", FieldType.STRING, "UT"))
         fieldsMdl.add(Field(id++, "Age Over 18", "age_over_18", FieldType.BOOLEAN, "true"))
         fieldsMdl.add(Field(id++, "Age Over 21", "age_over_21", FieldType.BOOLEAN, "true"))

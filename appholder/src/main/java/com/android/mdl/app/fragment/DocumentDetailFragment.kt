@@ -108,6 +108,7 @@ class DocumentDetailFragment : Fragment() {
             requireContext(), "Not implemented yet!",
             Toast.LENGTH_SHORT
         ).show()
+        DocumentManager.getInstance(requireContext()).showData(document)
     }
 
     fun onDelete() {

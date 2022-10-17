@@ -14,7 +14,11 @@ import com.android.identity.IdentityCredentialStore.FEATURE_VERSION_202201
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.mdl.app.R
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
-import com.android.mdl.app.util.*
+import com.android.mdl.app.request.RequestMdl
+import com.android.mdl.app.request.RequestMicovAtt
+import com.android.mdl.app.request.RequestMicovVtr
+import com.android.mdl.app.request.RequestMvr
+import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.DUMMY_MICOV_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.DUMMY_MVR_CREDENTIAL_NAME
@@ -22,7 +26,10 @@ import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_NAMESPACE
+import com.android.mdl.app.util.FormatUtil
+import com.android.mdl.app.util.PreferencesHelper
 import com.android.mdl.app.util.PreferencesHelper.HARDWARE_BACKED_PREFERENCE
+import com.android.mdl.app.util.SelfSignedDocumentData
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
@@ -462,6 +469,13 @@ class DocumentManager private constructor(private val context: Context) {
         val baos = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
         val portrait: ByteArray = baos.toByteArray()
+        val bitmapSignature = BitmapFactory.decodeResource(
+            context.resources,
+            R.drawable.img_erika_signature
+        )
+        baos.reset()
+        bitmapSignature.compress(Bitmap.CompressFormat.JPEG, 50, baos)
+        val signature: ByteArray = baos.toByteArray()
         ids = getAccessProfileIds()
 
         val birthDate = UnicodeString("1971-09-01")
@@ -525,6 +539,7 @@ class DocumentManager private constructor(private val context: Context) {
             .putEntryString(DocumentData.MDL_NAMESPACE, "un_distinguishing_sign", ids, "UT")
             .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_18", ids, true)
             .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_21", ids, true)
+            .putEntryBytestring(DocumentData.MDL_NAMESPACE, "signature_usual_mark", ids, signature)
             .putEntryBoolean(DocumentData.AAMVA_NAMESPACE, "real_id", ids, true)
 
         setAccessControlProfile(personalizationData)
@@ -812,7 +827,7 @@ class DocumentManager private constructor(private val context: Context) {
                 null,
                 store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
                 selfSigned = true,
-                userAuthentication = true,
+                userAuthentication = dData.provisionInfo.userAuthentication,
                 KEY_COUNT,
                 MAX_USES_PER_KEY
             )
@@ -840,6 +855,10 @@ class DocumentManager private constructor(private val context: Context) {
         val baos = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
         val portrait: ByteArray = baos.toByteArray()
+        val bitmapSignature = dData.getValueBitmap("signature_usual_mark")
+        baos.reset()
+        bitmapSignature.compress(Bitmap.CompressFormat.JPEG, 50, baos)
+        val signature: ByteArray = baos.toByteArray()
 
         val birthDate = UnicodeString(dData.getValueString("birth_date"))
         birthDate.setTag(1004)
@@ -923,6 +942,7 @@ class DocumentManager private constructor(private val context: Context) {
             )
             .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_18", idsSelf, dData.getValueBoolean("age_over_18"))
             .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_21", idsSelf, dData.getValueBoolean("age_over_21"))
+            .putEntryBytestring(DocumentData.MDL_NAMESPACE, "signature_usual_mark", ids, signature)
             .putEntryBoolean(DocumentData.AAMVA_NAMESPACE, "real_id", idsSelf, dData.getValueBoolean("real_id"))
 
         personalizationData.addAccessControlProfile(profileSelf)
@@ -951,7 +971,7 @@ class DocumentManager private constructor(private val context: Context) {
                 null,
                 store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
                 selfSigned = true,
-                userAuthentication = true,
+                userAuthentication = dData.provisionInfo.userAuthentication,
                 KEY_COUNT,
                 MAX_USES_PER_KEY
             )
@@ -1063,7 +1083,7 @@ class DocumentManager private constructor(private val context: Context) {
                 null,
                 store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
                 selfSigned = true,
-                userAuthentication = true,
+                userAuthentication = dData.provisionInfo.userAuthentication,
                 KEY_COUNT,
                 MAX_USES_PER_KEY
             )
@@ -1227,60 +1247,54 @@ class DocumentManager private constructor(private val context: Context) {
         )
     }
 
-//    fun refreshCredential(document: Document) {
-//
-//        val identityCredential = store.getCredentialByName(
-//            document.identityCredentialName,
-//            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-//        )
-//
-//        var presentation: PresentationHelper?
-//        val session = store.createPresentationSession(
-//            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-//        ).also {
-//            presentation = PresentationHelper(context, it)
-//            presentation?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
-//            presentation?.setSendSessionTerminationMessage(true)
-//        }
-//
-//        val entriesToRequest = mapOf<String, Collection<String>>(
-//            Pair(
-//                "org.iso.18013.5.1",
-//                listOf("given_name", "family_name", "birth_date")
-//            )
-//        )
-//
-//        val credentialRequest = CredentialDataRequest.Builder()
-//            .setIncrementUseCount(false)
-//            .setIssuerSignedEntriesToRequest(
-//                entriesToRequest
-//            )
-//            .build()
-//
-//        session.setSessionTranscript(byteArrayOf(0))
-//
-//        val credentialData =
-//            session.getCredentialData(document.identityCredentialName, credentialRequest)
-//        credentialData?.issuerSignedEntries?.let { ise ->
-//            ise.namespaces.forEach { ns ->
-//                ise.getEntryNames(ns).forEach { entry ->
-//                    Log.d("TEST", "Entry " + ise.getEntryString(ns, entry))
-//                }
-//            }
-//        }
-//
-//        val provisionInfo = ProvisionInfo(
-//            document.docType,
-//            document.userAuthentication,
-//            document.numberMso,
-//            document.maxUseMso
-//        )
-////        val mdlData = MdlData(
-////            provisionInfo,
-////            document.userVisibleName,
-////
-////            )
-////        provisionSelfSignedMdlDocument(mdlData)
-//
-//    }
+    fun showData(document: Document) {
+
+        val session = store.createPresentationSession(
+            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+        )
+
+        // Request all data items based on doctype
+        val entriesToRequest = if (MDL_DOCTYPE == document.docType) {
+            RequestMdl.getFullItemsToRequest()
+        } else if (MVR_DOCTYPE == document.docType) {
+            RequestMvr.getFullItemsToRequest()
+        } else if (MICOV_DOCTYPE == document.docType) {
+            RequestMicovAtt.getFullItemsToRequest().plus(
+                RequestMicovVtr.getFullItemsToRequest()
+            )
+        } else {
+            throw IllegalArgumentException("Invalid docType to create request details ${document.docType}")
+        }
+
+        val credentialRequest = CredentialDataRequest.Builder()
+            .setIncrementUseCount(false)
+            .setIssuerSignedEntriesToRequest(
+                entriesToRequest
+            )
+            .build()
+
+        session.setSessionTranscript(byteArrayOf(0))
+
+        // It can display data if user consent is not required
+        val credentialData =
+            session.getCredentialData(document.identityCredentialName, credentialRequest)
+        credentialData?.issuerSignedEntries?.let { ise ->
+            ise.namespaces.forEach { ns ->
+                ise.getEntryNames(ns).forEach { entry ->
+                    try {
+                        Log.d("TEST", "$entry - ${ise.getEntryString(ns, entry)}")
+                    } catch (e: IllegalArgumentException) {
+                        // If not string print the bytes
+                        Log.d(
+                            "TEST", "$entry - ${
+                                FormatUtil.encodeToString(ise.getEntry(ns, entry) ?: byteArrayOf(0))
+                            }"
+                        )
+                    }
+                }
+            }
+        }
+
+
+    }
 }
