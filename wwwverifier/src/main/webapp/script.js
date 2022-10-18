@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-async function requestMDL() {
-    var response = await fetch('/request-mdl');
-    var responseConfirmation = await response.text();
-    document.getElementById('request-confirmation').innerText = responseConfirmation;
-    //var one = 1;
-    //var sampleWebsite = '' + String(responseConfirmation) + '';
-    //new QRCode(document.getElementById("request-confirmation"), sampleWebsite);
+function requestMDL() {
+    fetch('/request-mdl').then(response => response.text()).then((responseText) => {
+        document.getElementById('request-confirmation').innerText = responseText;
+    });
+}
+
+function getDeviceResponse() {
+    fetch('/device-response').then(response => response.text()).then((responseText) => {
+        document.getElementById('response-confirmation').innerText = responseText;
+    });
 }

@@ -35,6 +35,7 @@ import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.EntityNotFoundException;
+import com.google.appengine.api.datastore.Text;
 
 // imports for Identity Credential Library
 import com.android.identity.DeviceRequestGenerator;
@@ -65,9 +66,9 @@ public class RequestServlet extends HttpServlet {
         String fullURI = ServletConsts.MDOC_URI_PREFIX + base64Encode(readerEngagement);
 
         // put everything in Datastore
-        putItemInDatastore(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
-        putItemInDatastore(ServletConsts.PUBLIC_KEY_PROP, generator.getPublicKey().getEncoded());
-        putItemInDatastore(ServletConsts.PRIVATE_KEY_PROP, generator.getPrivateKey().getEncoded());
+        putByteArrInDatastore(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
+        putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, generator.getPublicKey().getEncoded());
+        putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, generator.getPrivateKey().getEncoded());
         setDeviceRequestBoolean(false);
 
         response.setContentType("text/html;");
@@ -82,7 +83,13 @@ public class RequestServlet extends HttpServlet {
             response.getWriter().println(base64Encode(sessionData));
         } else {
             String json = parseDeviceResponse(request);
-            deleteFromDatastore();
+
+            // put device response in datastore
+            Entity entity = getEntity();
+            entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(json));
+            datastore.put(entity);
+
+            // send response back
             response.setContentType("application/json;");
             response.getWriter().println(json);
         }
@@ -104,7 +111,7 @@ public class RequestServlet extends HttpServlet {
         byte[] sessionTranscript = sessionEncryption.getSessionTranscript();
 
         // put sessionTranscript in datastore
-        putItemInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
+        putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
         setDeviceRequestBoolean(true);
 
         // generate deviceRequest
@@ -141,10 +148,6 @@ public class RequestServlet extends HttpServlet {
         Entity entity = getEntity();
         entity.setProperty(ServletConsts.BOOLEAN_PROP, bool);
         datastore.put(entity);
-    }
-
-    public void deleteFromDatastore() {
-        datastore.delete(datastoreKey);
     }
 
     public byte[] CBOREncode(String str) {
@@ -186,9 +189,15 @@ public class RequestServlet extends HttpServlet {
         }
     }
 
-    public void putItemInDatastore(String propName, byte[] arr) {
+    public void putByteArrInDatastore(String propName, byte[] arr) {
         Entity entity = getEntity();
         entity.setProperty(propName, base64Encode(arr));
+        datastore.put(entity);
+    }
+
+    public void putStringInDatastore(String propName, String data) {
+        Entity entity = getEntity();
+        entity.setProperty(propName, data);
         datastore.put(entity);
     }
 
