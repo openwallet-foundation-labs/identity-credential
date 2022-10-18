@@ -105,21 +105,25 @@ class ShowDocumentFragment : Fragment() {
                 ShowDocumentFragmentDirections.actionShowDocumentToRequestOptions(true)
             )
         }
-        transferManager.getTransferStatus().observe(viewLifecycleOwner, {
+        transferManager.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.ENGAGED -> {
                     Log.d(LOG_TAG, "Device engagement received.")
                 }
+
                 TransferStatus.CONNECTED -> {
                     Log.d(LOG_TAG, "Device connected received.")
                 }
+
                 TransferStatus.RESPONSE -> {
                     Log.d(LOG_TAG, "Device response received.")
                 }
+
                 TransferStatus.DISCONNECTED -> {
                     Log.d(LOG_TAG, "Device disconnected received.")
                     hideButtons()
                 }
+
                 TransferStatus.ERROR -> {
                     Toast.makeText(
                         requireContext(), "Error with the connection.",
@@ -129,7 +133,7 @@ class ShowDocumentFragment : Fragment() {
                     hideButtons()
                 }
             }
-        })
+        }
     }
 
     private fun hideButtons() {

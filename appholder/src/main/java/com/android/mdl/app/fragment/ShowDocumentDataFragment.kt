@@ -1,12 +1,12 @@
 package com.android.mdl.app.fragment
 
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.text.Html
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.navArgs
 import co.nstant.`in`.cbor.CborDecoder
@@ -23,10 +23,9 @@ import co.nstant.`in`.cbor.model.SimpleValue
 import co.nstant.`in`.cbor.model.SimpleValueType
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
+import com.android.mdl.app.databinding.FragmentShowDocumentDataBinding
 import com.android.mdl.app.document.DocumentManager
-import com.android.mdl.app.util.FormatUtil
 import java.io.ByteArrayInputStream
-import java.lang.StringBuilder
 import java.math.BigInteger
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -34,58 +33,72 @@ import java.util.Locale
 
 class ShowDocumentDataFragment : Fragment() {
 
+    companion object {
+        private const val LOG_TAG = "ShowDocumentFragment"
+        private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
+        private const val MICOV_DOCTYPE = "org.micov.1"
+        private const val MDL_NAMESPACE = "org.iso.18013.5.1"
+        private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
+    }
+
     private val arguments by navArgs<ShowDocumentDataFragmentArgs>()
+    private var _binding: FragmentShowDocumentDataBinding? = null
+    private val binding get() = _binding!!
+    private var portraitBytes: ByteArray? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        return TextView(requireContext()).apply {
-            text = "Hello from Document Data"
-        }
+        _binding = FragmentShowDocumentDataBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        //TODO here we'll load the document data
         val entries = DocumentManager.getInstance(requireContext()).showData(arguments.document)
         val sb = StringBuilder()
+        val docType = arguments.document.docType
         entries?.namespaces?.forEach { ns ->
             sb.append("<br>")
             sb.append("<h5>Namespace: $ns</h5>")
             sb.append("<p>")
-            for (elem in entries.getEntryNames(ns)) {
-                val value: ByteArray? = entries.getEntry(ns, elem)
-                value?.let {
-                    var valueStr = cborPrettyPrint(value)
-                    sb.append("<b>$elem</b> -> $valueStr<br>")
+            entries.getEntryNames(ns).forEach { entryName ->
+                val byteArray: ByteArray? = entries.getEntry(ns, entryName)
+                byteArray?.let { value ->
+                    val valueStr: String
+                    if (docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && entryName == "portrait") {
+                        valueStr = String.format("(%d bytes, shown above)", value.size)
+                        portraitBytes = entries.getEntryBytestring(ns, entryName)
+                    } else if (docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && entryName == "fac") {
+                        valueStr = String.format("(%d bytes, shown above)", value.size)
+                        portraitBytes = entries.getEntryBytestring(ns, entryName)
+                    } else if (docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && entryName == "extra") {
+                        valueStr = String.format("%d bytes extra data", value.size)
+                    } else {
+                        valueStr = cborPrettyPrint(value)
+                    }
+                    sb.append("<b>$entryName</b> -> $valueStr<br>")
                 }
-//                if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "portrait") {
-//                    valueStr = String.format("(%d bytes, shown above)", value.size)
-//                    portraitBytes = doc.getIssuerEntryByteString(ns, elem)
-//                } else if (doc.docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && elem == "fac") {
-//                    valueStr = String.format("(%d bytes, shown above)", value.size)
-//                    portraitBytes = doc.getIssuerEntryByteString(ns, elem)
-//                } else if (doc.docType == MDL_DOCTYPE
-//                    && ns == MDL_NAMESPACE && elem == "extra"
-//                ) {
-//                    valueStr = String.format("%d bytes extra data", value.size)
-//                } else {
-//                    valueStr = FormatUtil.cborPrettyPrint(value)
-//                }
             }
             sb.append("</p><br>")
         }
-        (view as TextView).text = Html.fromHtml(sb.toString())
+        binding.tvResults.text = Html.fromHtml(sb.toString())
+        portraitBytes?.let { pb ->
+            Log.d(LOG_TAG, "Showing portrait " + pb.size + " bytes")
+            binding.ivPortrait.setImageBitmap(
+                BitmapFactory.decodeByteArray(portraitBytes, 0, pb.size)
+            )
+            binding.ivPortrait.visibility = View.VISIBLE
+        }
     }
 
-    fun cborPrettyPrint(dataItem: DataItem): String {
-        val sb = java.lang.StringBuilder()
-        cborPrettyPrintDataItem(sb, 0, dataItem)
-        return sb.toString()
-    }
-
-    fun cborPrettyPrint(encodedBytes: ByteArray): String {
+    private fun cborPrettyPrint(encodedBytes: ByteArray): String {
         val newLine = "<br>"
         val sb = java.lang.StringBuilder()
         val bais = ByteArrayInputStream(encodedBytes)
@@ -120,16 +133,19 @@ class ShowDocumentDataFragment : Fragment() {
         when (dataItem.majorType) {
             MajorType.INVALID ->                 // TODO: throw
                 sb.append("**invalid**")
+
             MajorType.UNSIGNED_INTEGER -> {
                 // Major type 0: an unsigned integer.
                 val value: BigInteger = (dataItem as UnsignedInteger).value
                 sb.append(value)
             }
+
             MajorType.NEGATIVE_INTEGER -> {
                 // Major type 1: a negative integer.
                 val value: BigInteger = (dataItem as NegativeInteger).value
                 sb.append(value)
             }
+
             MajorType.BYTE_STRING -> {
                 // Major type 2: a byte string.
                 val value = (dataItem as ByteString).bytes
@@ -142,12 +158,14 @@ class ShowDocumentDataFragment : Fragment() {
                 }
                 sb.append("]")
             }
+
             MajorType.UNICODE_STRING -> {
                 // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
                 val value = (dataItem as UnicodeString).string
                 // TODO: escape ' in |value|
                 sb.append("'$value'")
             }
+
             MajorType.ARRAY -> {
 
                 // Major type 4: an array of data items.
@@ -177,6 +195,7 @@ class ShowDocumentDataFragment : Fragment() {
                     sb.append("]")
                 }
             }
+
             MajorType.MAP -> {
                 // Major type 5: a map of pairs of data items.
                 val keys = (dataItem as Map).keys
@@ -198,6 +217,7 @@ class ShowDocumentDataFragment : Fragment() {
                     sb.append("}")
                 }
             }
+
             MajorType.TAG -> throw java.lang.IllegalStateException("Semantic tag data item not expected")
             MajorType.SPECIAL ->                 // Major type 7: floating point numbers and simple data types that need no
                 // content, as well as the "break" stop code.
