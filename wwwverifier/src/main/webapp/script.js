@@ -15,6 +15,12 @@
 function requestMDL() {
     fetch('/request-mdl').then(response => response.text()).then((responseText) => {
         document.getElementById('request-confirmation').innerText = responseText;
+        let qrcodeContainer = document.getElementById('request-qrcode');
+        qrcodeContainer.innerHTML = "";
+        new QRious({
+          element: qrcodeContainer,
+          value: responseText
+        });
     });
 }
 
