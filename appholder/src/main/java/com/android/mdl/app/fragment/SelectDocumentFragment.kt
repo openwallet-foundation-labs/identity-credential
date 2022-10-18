@@ -118,6 +118,12 @@ class SelectDocumentFragment : Fragment() {
         )
     }
 
+    fun onProvisioningSelfSigned() {
+        findNavController().navigate(
+            SelectDocumentFragmentDirections.actionSelectDocumentFragmentToAddSelfSigned()
+        )
+    }
+
     fun onPresentDocuments() {
         findNavController().navigate(
             SelectDocumentFragmentDirections.actionSelectDocumentFragmentToShareDocumentFragment()

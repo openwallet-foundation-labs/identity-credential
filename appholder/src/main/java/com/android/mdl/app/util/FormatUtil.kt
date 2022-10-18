@@ -1,5 +1,7 @@
 package com.android.mdl.app.util
 
+import android.icu.text.SimpleDateFormat
+import android.icu.util.TimeZone
 import android.util.Log
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborEncoder
@@ -84,4 +86,14 @@ object FormatUtil {
         return value.copyOfRange(n, value.size)
     }
 
+    fun fullDateStringToMilliseconds(date: String): Long {
+        val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd")
+        simpleDateFormat.timeZone = TimeZone.getTimeZone("UTC")
+        return simpleDateFormat.parse(date).toInstant().toEpochMilli()
+    }
+
+    fun millisecondsToFullDateString(milliseconds: Long): String {
+        val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd")
+        return simpleDateFormat.format(milliseconds)
+    }
 }

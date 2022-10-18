@@ -12,6 +12,7 @@
     <string name="nfc_data_transfer_service_desc">mDL NFC Data Transfer</string>
     <string name="engagement_aid_group_desc">mDL AID Group</string>
     <string name="bt_add_document">Add Document</string>
+    <string name="bt_add_self_signed_document">Add self-signed document</string>
     <string name="txt_server_url">Enter the server URL</string>
     <string name="txt_provisioning_code">Enter the provisioning code</string>
     <string name="value_server_url">http://192.168.1.169:18013/mdlServer</string>
@@ -32,6 +33,7 @@
     <string name="bt_check_for_update">Check for Update</string>
     <string name="bt_delete">Delete</string>
     <string name="label_date_provisioned">Date Provisioned</string>
+    <string name="label_mso_usage_count" translatable="false">MSO Usage Count</string>
     <string name="label_date_check_update">Last Update Check</string>
     <string name="toast_press_back_twice">Tap back button again to exit</string>
     <string name="bt_refresh_auth_keys">Refresh Auth Keys</string>
@@ -84,24 +86,32 @@
 
     <!-- micov strings -->
 
-    <string name="fn">Family Name</string>
-    <string name="gn">Given Name</string>
-    <string name="dob">Date of Birth</string>
-    <string name="v_RA01_1">First vaccination against RA01</string>
-    <string name="v_RA01_2">Second vaccination against RA01</string>
-    <string name="pid_PPN">ID with pasport number</string>
-    <string name="pid_DL">ID with driver’s license number</string>
-    <string name="micov.1_1D47_vaccinated">Indication of vaccination against Yellow Fever</string>
-    <string name="RA01_vaccinated">Indication of vaccination against COVID-19</string>
-    <string name="RA01_test">Indication of test event for COVID-19</string>
-    <string name="safeEntry_Leisure">Safe entry indication</string>
-    <string name="fac">Facial Image</string>
-    <string name="fni">Family Name Initial</string>
-    <string name="gni">Given Name Initial</string>
-    <string name="by">Birth Year</string>
-    <string name="bm">Birth Month</string>
-    <string name="bd">Birth Day</string>
+    <string name="micov_vtr_fn">Family Name</string>
+    <string name="micov_vtr_gn">Given Name</string>
+    <string name="micov_vtr_dob">Date of Birth</string>
+    <string name="micov_vtr_sex">Sex</string>
+    <string name="micov_vtr_v_RA01_1">First vaccination against RA01</string>
+    <string name="micov_vtr_v_RA01_2">Second vaccination against RA01</string>
+    <string name="micov_vtr_pid_PPN">ID with pasport number</string>
+    <string name="micov_vtr_pid_DL">ID with driver’s license number</string>
+    <string name="micov_att_1D47_vaccinated">Indication of vaccination against Yellow Fever</string>
+    <string name="micov_att_RA01_vaccinated">Indication of vaccination against COVID-19</string>
+    <string name="micov_att_RA01_test">Indication of test event for COVID-19</string>
+    <string name="micov_att_safeEntry_Leisure">Safe entry indication</string>
+    <string name="micov_att_fac">Facial Image</string>
+    <string name="micov_att_fni">Family Name Initial</string>
+    <string name="micov_att_gni">Given Name Initial</string>
+    <string name="micov_att_by">Birth Year</string>
+    <string name="micov_att_bm">Birth Month</string>
+    <string name="micov_att_bd">Birth Day</string>
 
     <string name="item_settings">Settings</string>
     <string name="bt_close_connection">Close Connection</string>
+    <string name="txt_document_type">Document type:</string>
+    <string name="txt_user_authentication">Use user authentication</string>
+    <string name="txt_number_mso">Number of MSOs</string>
+    <string name="label_self_signed">Self Signed</string>
+    <string name="label_user_auth">User Auth</string>
+    <string name="label_hardware_backed">Hardware Backed</string>
+    <string name="bt_show_data">Show Data Elements</string>
 </resources>
