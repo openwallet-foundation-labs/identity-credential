@@ -195,12 +195,6 @@ public class RequestServlet extends HttpServlet {
         datastore.put(entity);
     }
 
-    public void putStringInDatastore(String propName, String data) {
-        Entity entity = getEntity();
-        entity.setProperty(propName, data);
-        datastore.put(entity);
-    }
-
     public String getPropertyFromDatastore(String propertyName) {
         Entity entity = getEntity();
         return (String) entity.getProperty(propertyName);
