@@ -15,11 +15,16 @@
 function requestMDL() {
     fetch('/request-mdl').then(response => response.text()).then((responseText) => {
         document.getElementById('request-confirmation').innerText = responseText;
-        let qrcodeContainer = document.getElementById('request-qrcode');
-        qrcodeContainer.innerHTML = "";
         new QRious({
-          element: qrcodeContainer,
-          value: responseText
+            element: document.getElementById('request-qrcode'),
+            background: '#ffffff',
+            backgroundAlpha: 1,
+            foreground: '#000000',
+            foregroundAlpha: 1,
+            level: 'H',
+            padding: 0,
+            size: 300,
+            value: String(responseText)
         });
     });
 }
