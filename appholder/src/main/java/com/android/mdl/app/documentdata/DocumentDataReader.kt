@@ -38,6 +38,7 @@ class DocumentDataReader(private val entries: CredentialDataResult.Entries) {
 
         val builder = StringBuilder()
         var portraitBytes: ByteArray? = null
+        var signatureBytes: ByteArray? = null
         val docType = document.docType
         entries.namespaces.forEach { ns ->
             builder.append("<br>")
@@ -55,6 +56,9 @@ class DocumentDataReader(private val entries: CredentialDataResult.Entries) {
                         portraitBytes = entries.getEntryBytestring(ns, entryName)
                     } else if (docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && entryName == "extra") {
                         valueStr = String.format("%d bytes extra data", value.size)
+                    } else if (docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && entryName == "signature_usual_mark") {
+                        valueStr = String.format("(%d bytes, shown below)", value.size)
+                        signatureBytes = entries.getEntryBytestring(ns, entryName)
                     } else {
                         valueStr = cborPrettyPrint(value)
                     }
@@ -66,7 +70,10 @@ class DocumentDataReader(private val entries: CredentialDataResult.Entries) {
         val portrait = portraitBytes?.let { bytes ->
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         }
-        return DocumentElements(builder.toString(), portrait = portrait)
+        val signature = signatureBytes?.let { bytes ->
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }
+        return DocumentElements(builder.toString(), portrait = portrait, signature = signature)
     }
 
     private fun cborPrettyPrint(encodedBytes: ByteArray): String {

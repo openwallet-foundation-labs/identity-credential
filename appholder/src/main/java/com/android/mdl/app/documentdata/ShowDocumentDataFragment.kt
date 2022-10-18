@@ -62,6 +62,10 @@ class ShowDocumentDataFragment : Fragment() {
                     binding.ivPortrait.setImageBitmap(portrait)
                     binding.ivPortrait.visibility = View.VISIBLE
                 }
+                result.signature?.let { signature ->
+                    binding.ivSignature.setImageBitmap(signature)
+                    binding.ivSignature.visibility = View.VISIBLE
+                }
             }
         }
     }
