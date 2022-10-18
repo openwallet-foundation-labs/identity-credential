@@ -13,11 +13,11 @@ import com.android.identity.*
 import com.android.identity.IdentityCredentialStore.FEATURE_VERSION_202201
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.mdl.app.R
+import com.android.mdl.app.documentdata.RequestMdl
+import com.android.mdl.app.documentdata.RequestMicovAtt
+import com.android.mdl.app.documentdata.RequestMicovVtr
+import com.android.mdl.app.documentdata.RequestMvr
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
-import com.android.mdl.app.request.RequestMdl
-import com.android.mdl.app.request.RequestMicovAtt
-import com.android.mdl.app.request.RequestMicovVtr
-import com.android.mdl.app.request.RequestMvr
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.DUMMY_MICOV_CREDENTIAL_NAME

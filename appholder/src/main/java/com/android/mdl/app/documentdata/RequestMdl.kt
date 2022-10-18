@@ -1,8 +1,9 @@
-package com.android.mdl.app.request
+package com.android.mdl.app.documentdata
 
 import com.android.mdl.app.R
 
 object RequestMdl : RequestDocument() {
+
     override val docType = "org.iso.18013.5.1.mDL"
     override val nameSpace = "org.iso.18013.5.1"
     override val dataItems = DataItems.values().asList()

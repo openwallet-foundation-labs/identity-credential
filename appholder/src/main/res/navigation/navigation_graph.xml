@@ -88,7 +88,7 @@
     </fragment>
     <fragment
         android:id="@+id/showDocumentData"
-        android:name="com.android.mdl.app.fragment.ShowDocumentDataFragment"
+        android:name="com.android.mdl.app.documentdata.ShowDocumentDataFragment"
         android:label="Document Data">
 
         <argument

@@ -1,8 +1,9 @@
-package com.android.mdl.app.request
+package com.android.mdl.app.documentdata
 
 import com.android.mdl.app.R
 
 object RequestMvr : RequestDocument() {
+
     override val docType = "nl.rdw.mekb.1"
     override val nameSpace = "nl.rdw.mekb.1"
     override val dataItems = DataItems.values().asList()

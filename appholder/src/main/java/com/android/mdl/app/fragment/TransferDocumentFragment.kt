@@ -61,14 +61,16 @@ class TransferDocumentFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        vm.getTransferStatus().observe(viewLifecycleOwner, { transferStatus ->
+        vm.getTransferStatus().observe(viewLifecycleOwner) { transferStatus ->
             when (transferStatus) {
                 TransferStatus.QR_ENGAGEMENT_READY -> {
                     Log.d(LOG_TAG, "Engagement Ready")
                 }
+
                 TransferStatus.CONNECTED -> {
                     Log.d(LOG_TAG, "Connected")
                 }
+
                 TransferStatus.REQUEST -> {
                     Log.d(LOG_TAG, "Request")
                     // TODO: Add option to the user select the which document share when there
@@ -118,7 +120,8 @@ class TransferDocumentFragment : Fragment() {
                             }
                         }
 
-                        // Ask for user consent and send response
+                        // TODO Request the data, iterate over it and see which properties need signature
+                        // Then ask for user consent and send response
                         sendResponseWithConsent(false)
                     } catch (e: Exception) {
                         val message = "On request received error: ${e.message}"
@@ -130,11 +133,13 @@ class TransferDocumentFragment : Fragment() {
                         binding.txtConnectionStatus.append("\n$message")
                     }
                 }
+
                 TransferStatus.DISCONNECTED -> {
                     Log.d(LOG_TAG, "Disconnected")
                     hideButtons()
                     TransferManager.getInstance(requireContext()).disconnect()
                 }
+
                 TransferStatus.ERROR -> {
                     Toast.makeText(
                         requireContext(), "An error occurred.",
@@ -145,7 +150,6 @@ class TransferDocumentFragment : Fragment() {
                 }
             }
         }
-        )
     }
 
     private fun hideButtons() {
