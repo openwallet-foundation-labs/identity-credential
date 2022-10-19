@@ -94,8 +94,7 @@ class TransferManager private constructor(private val context: Context) {
             session!!,
             getDataRetrievalListenerConfiguration(),
             nfcApduRouter,
-            nfcEngagementListener, context.mainExecutor(),
-            PreferencesHelper.getLoggingFlags(context))
+            nfcEngagementListener, context.mainExecutor())
     }
 
     fun startQrEngagement() {
@@ -103,8 +102,7 @@ class TransferManager private constructor(private val context: Context) {
             session!!,
             getDataRetrievalListenerConfiguration(),
             nfcApduRouter,
-            qrEngagementListener, context.mainExecutor(),
-            PreferencesHelper.getLoggingFlags(context))
+            qrEngagementListener, context.mainExecutor())
     }
 
     private fun getDataRetrievalListenerConfiguration(): DataRetrievalListenerConfiguration {
@@ -157,7 +155,6 @@ class TransferManager private constructor(private val context: Context) {
                 transport,
                 qrEngagement!!.deviceEngagement, qrEngagement!!.handover,
                 null, null)
-            presentation?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
             presentation?.setSendSessionTerminationMessage(true)
             presentation?.setListener(presentationListener, context.mainExecutor())
             presentation?.start()
@@ -199,7 +196,6 @@ class TransferManager private constructor(private val context: Context) {
                 transport,
                 nfcEngagement!!.deviceEngagement, nfcEngagement!!.handover,
                 qrEngagement?.deviceEngagement, qrEngagement?.handover)
-            presentation?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
             presentation?.setSendSessionTerminationMessage(true)
             presentation?.setListener(presentationListener, context.mainExecutor())
             presentation?.start()

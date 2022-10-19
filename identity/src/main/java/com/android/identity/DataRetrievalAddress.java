@@ -5,7 +5,6 @@ import android.nfc.NdefRecord;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
-import com.android.identity.Constants.LoggingFlag;
 
 import java.util.List;
 
@@ -38,8 +37,7 @@ abstract public class DataRetrievalAddress {
     }
 
     abstract @NonNull
-    DataTransport createDataTransport(
-            @NonNull Context context, @LoggingFlag int loggingFlags);
+    DataTransport createDataTransport(@NonNull Context context);
 
     abstract void addDeviceRetrievalMethodsEntry(ArrayBuilder<CborBuilder> arrayBuilder,
             List<DataRetrievalAddress> listeningAddresses);

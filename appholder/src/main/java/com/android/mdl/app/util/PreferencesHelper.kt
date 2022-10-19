@@ -86,34 +86,6 @@ object PreferencesHelper {
         )
     }
 
-    fun getLoggingFlags(context: Context): Int {
-        var flags = 0
-        if (PreferenceManager.getDefaultSharedPreferences(context).getBoolean(LOG_INFO, false)) {
-            flags += Constants.LOGGING_FLAG_INFO
-        }
-        if (PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(LOG_DEVICE_ENGAGEMENT, false)
-        ) {
-            flags += Constants.LOGGING_FLAG_ENGAGEMENT
-        }
-        if (PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(LOG_SESSION_MESSAGES, false)
-        ) {
-            flags += Constants.LOGGING_FLAG_SESSION
-        }
-        if (PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(LOG_TRANSPORT, false)
-        ) {
-            flags += Constants.LOGGING_FLAG_TRANSPORT
-        }
-        if (PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(LOG_TRANSPORT_VERBOSE, false)
-        ) {
-            flags += Constants.LOGGING_FLAG_TRANSPORT_VERBOSE
-        }
-        return flags
-    }
-
     fun isReaderAuthenticationEnabled(context: Context): Boolean {
 //        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
 //            USE_READER_AUTH, false

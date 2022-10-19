@@ -21,7 +21,7 @@ import static org.junit.Assume.assumeTrue;
 import android.content.Context;
 import android.os.ConditionVariable;
 import android.security.keystore.KeyProperties;
-import android.util.Pair;
+import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -146,10 +146,8 @@ public class PresentationHelperTest {
         ConditionVariable condVarDeviceEngagementReady = new ConditionVariable();
 
         // TODO: use loopback instead of TCP transport
-        DataTransportTcp proverTransport = new DataTransportTcp(context,
-                Constants.LOGGING_FLAG_MAXIMUM);
-        DataTransportTcp verifierTransport = new DataTransportTcp(context,
-                Constants.LOGGING_FLAG_MAXIMUM);
+        DataTransportTcp proverTransport = new DataTransportTcp(context);
+        DataTransportTcp verifierTransport = new DataTransportTcp(context);
 
         Executor executor = Executors.newSingleThreadExecutor();
 
@@ -181,8 +179,7 @@ public class PresentationHelperTest {
                 new DataRetrievalListenerConfiguration.Builder().build(),
                 null,
                 qrHelperListener,
-                executor,
-                Constants.LOGGING_FLAG_MAXIMUM);
+                executor);
         qrHelper.addDataTransport(proverTransport);  // internal helper
         qrHelper.startListening();                   // internal helper
         Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
@@ -398,10 +395,8 @@ public class PresentationHelperTest {
         ConditionVariable condVarDeviceEngagementReady = new ConditionVariable();
 
         // TODO: use loopback transport
-        DataTransportTcp proverTransport = new DataTransportTcp(context,
-                Constants.LOGGING_FLAG_MAXIMUM);
-        DataTransportTcp verifierTransport = new DataTransportTcp(context,
-                Constants.LOGGING_FLAG_MAXIMUM);
+        DataTransportTcp proverTransport = new DataTransportTcp(context);
+        DataTransportTcp verifierTransport = new DataTransportTcp(context);
         QrEngagementHelper.Listener qrHelperListener = new QrEngagementHelper.Listener() {
                     @Override
                     public void onDeviceEngagementReady() {
@@ -429,8 +424,7 @@ public class PresentationHelperTest {
                 new DataRetrievalListenerConfiguration.Builder().build(),
                 null,
                 qrHelperListener,
-                executor,
-                Constants.LOGGING_FLAG_MAXIMUM);
+                executor);
         qrHelper.addDataTransport(proverTransport);  // internal helper
         qrHelper.startListening();                   // internal helper
         Assert.assertTrue(condVarDeviceEngagementReady.block(5000));

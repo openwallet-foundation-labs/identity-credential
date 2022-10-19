@@ -27,7 +27,6 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -63,16 +62,14 @@ class DataTransportTcp extends DataTransport {
     static final int RETRIEVAL_OPTION_KEY_PORT = 1;
     // The maximum message size we support.
     private static final int MAX_MESSAGE_SIZE = 16 * 1024 * 1024;
-    final Util.Logger mLog;
     Socket mSocket;
     BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
     ServerSocket mServerSocket = null;
     private DataRetrievalAddressTcp mListeningAddress;
     Thread mSocketWriterThread;
 
-    public DataTransportTcp(@NonNull Context context, @LoggingFlag int loggingFlags) {
+    public DataTransportTcp(@NonNull Context context) {
         super(context);
-        mLog = new Util.Logger(TAG, loggingFlags);
     }
 
     @SuppressWarnings("deprecation")
@@ -272,7 +269,7 @@ class DataTransportTcp extends DataTransport {
                         // An empty message is used to convey that the writing thread should be
                         // shut down.
                         if (messageToSend.length == 0) {
-                            mLog.transportVerbose("Empty message, shutting down writer");
+                            Logger.d(TAG, "Empty message, shutting down writer");
                             break;
                         }
                     } catch (InterruptedException e) {
@@ -354,9 +351,8 @@ class DataTransportTcp extends DataTransport {
 
         @Override
         @NonNull
-        DataTransport createDataTransport(
-                @NonNull Context context, @LoggingFlag int loggingFlags) {
-            return new DataTransportTcp(context, loggingFlags);
+        DataTransport createDataTransport(@NonNull Context context) {
+            return new DataTransportTcp(context);
         }
 
         @Override

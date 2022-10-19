@@ -16,14 +16,12 @@
 
 package com.android.identity;
 
-import android.util.Pair;
+import androidx.core.util.Pair;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.math.BigInteger;
 import java.security.PrivateKey;
@@ -34,8 +32,6 @@ import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 
-@SuppressWarnings("deprecation")
-@RunWith(AndroidJUnit4.class)
 public class SessionEncryptionReaderTest {
 
     @Test
