@@ -21,9 +21,8 @@ import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
 import android.security.keystore.KeyProperties;
-import android.util.Pair;
+import androidx.core.util.Pair;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
 import org.bouncycastle.asn1.x500.X500Name;
@@ -34,15 +33,12 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -50,8 +46,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("deprecation")
-@RunWith(AndroidJUnit4.class)
+// TODO: Move to non-Android tests - can't do that right now b/c it's used IdentityCredentialStore
+//   to generate DeviceNameSpaces and DeviceAuth.
 public class DeviceResponseGeneratorTest {
 
     private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
@@ -60,7 +56,7 @@ public class DeviceResponseGeneratorTest {
 
     private KeyPair generateIssuingAuthorityKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime256v1");
+        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
         kpg.initialize(ecSpec);
         return kpg.generateKeyPair();
     }

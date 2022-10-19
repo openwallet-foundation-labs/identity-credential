@@ -39,7 +39,7 @@ public class DataTransportTcpTest {
     @SmallTest
     public void setupReceivedWhileWaitingForConnection() {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
-        DataTransportTcp prover = new DataTransportTcp(appContext, Constants.LOGGING_FLAG_MAXIMUM);
+        DataTransportTcp prover = new DataTransportTcp(appContext);
 
         ConditionVariable proverSetupCompletedCondVar = new ConditionVariable();
 
@@ -103,9 +103,8 @@ public class DataTransportTcpTest {
     public void connectAndListen() {
 
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
-        DataTransportTcp verifier = new DataTransportTcp(appContext,
-                Constants.LOGGING_FLAG_MAXIMUM);
-        DataTransportTcp prover = new DataTransportTcp(appContext, Constants.LOGGING_FLAG_MAXIMUM);
+        DataTransportTcp verifier = new DataTransportTcp(appContext);
+        DataTransportTcp prover = new DataTransportTcp(appContext);
 
         byte[] messageSentByVerifier = Util.fromHex("010203");
         byte[] messageSentByProver = Util.fromHex("0405");

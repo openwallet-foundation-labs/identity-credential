@@ -32,7 +32,6 @@ import android.os.ParcelUuid;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import com.android.identity.Constants.LoggingFlag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +44,6 @@ import java.util.UUID;
 @SuppressWarnings("MissingPermission")
 class DataTransportBlePeripheralServerMode extends DataTransportBle {
     private static final String TAG = "DataTransportBlePSM"; // limit to <= 23 chars
-    final Util.Logger mLog;
 
     UUID mCharacteristicStateUuid = UUID.fromString("00000001-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000002-a123-48ce-896b-4c76973373e6");
@@ -86,7 +84,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             if (mUseL2CAPIfAvailable) {
                 characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
             }
-            mGattClient = new GattClient(mContext, mLoggingFlags,
+            mGattClient = new GattClient(mContext,
                     mServiceUuid, mEncodedEDeviceKeyBytes,
                     mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
                     mCharacteristicServer2ClientUuid, null,
@@ -128,16 +126,14 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                 }
             });
 
-            reportListeningPeerConnecting();
-            if (mLog.isTransportEnabled()) {
-                long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
-                mLog.transport("Scanned for " + scanTimeMillis + " milliseconds. "
-                        + "Connecting to device with address " + result.getDevice().getAddress());
-            }
+            reportListeningPeerConnecting();             
+            long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
+            Logger.d(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
+                    + "Connecting to device with address " + result.getDevice().getAddress());
             mGattClient.setClearCache(mClearCache);
             mGattClient.connect(result.getDevice());
             if (mScanner != null) {
-                mLog.transport("Stopped scanning for UUID " + mServiceUuid);
+                Logger.d(TAG, "Stopped scanning for UUID " + mServiceUuid);
                 try {
                     mScanner.stopScan(mScanCallback);
                 } catch (SecurityException e) {
@@ -162,10 +158,8 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     private GattServer mGattServer;
     private DataRetrievalAddress mListeningAddress;
 
-    public DataTransportBlePeripheralServerMode(@NonNull Context context,
-            @LoggingFlag int loggingFlags) {
-        super(context, loggingFlags);
-        mLog = new Util.Logger(TAG, loggingFlags);
+    public DataTransportBlePeripheralServerMode(@NonNull Context context) {
+        super(context);
     }
 
     @Override
@@ -209,7 +203,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         if (mUseL2CAPIfAvailable) {
             characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
         }
-        mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
+        mGattServer = new GattServer(mContext, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
                 mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
                 mCharacteristicServer2ClientUuid, null,
@@ -221,7 +215,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                 reportListeningPeerConnected();
                 // No need to advertise anymore since we now have a client...
                 if (mBluetoothLeAdvertiser != null) {
-                    mLog.transport("Stopping advertising UUID " + mServiceUuid);
+                    Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
                     try {
                         mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
                     } catch (SecurityException e) {
@@ -279,7 +273,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                     .setIncludeTxPowerLevel(false)
                     .addServiceUuid(new ParcelUuid(mServiceUuid))
                     .build();
-            mLog.transport("Started advertising UUID " + mServiceUuid);
+            Logger.d(TAG, "Started advertising UUID " + mServiceUuid);
             try {
                 mBluetoothLeAdvertiser.startAdvertising(settings, data, mAdvertiseCallback);
             } catch (SecurityException e) {
@@ -315,11 +309,9 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                 .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .build();
-
-        if (mLog.isTransportEnabled()) {
-            mTimeScanningStartedMillis = System.currentTimeMillis();
-            mLog.transport("Started scanning for UUID " + mServiceUuid);
-        }
+         
+        mTimeScanningStartedMillis = System.currentTimeMillis();
+        Logger.d(TAG, "Started scanning for UUID " + mServiceUuid);
         mScanner = bluetoothAdapter.getBluetoothLeScanner();
         List<ScanFilter> filterList = new ArrayList<>();
         filterList.add(filter);
@@ -334,7 +326,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     public void close() {
         inhibitCallbacks();
         if (mBluetoothLeAdvertiser != null) {
-            mLog.transport("Stopping advertising UUID " + mServiceUuid);
+            Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
             try {
                 mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
             } catch (SecurityException e) {

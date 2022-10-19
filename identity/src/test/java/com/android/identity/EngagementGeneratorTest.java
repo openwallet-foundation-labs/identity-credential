@@ -37,7 +37,7 @@ public class EngagementGeneratorTest {
     @SmallTest
     public void testNoConnectionMethodsOrOriginInfos() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime256v1");
+        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
         kpg.initialize(ecSpec);
         KeyPair eSenderKey = kpg.generateKeyPair();
 
@@ -58,7 +58,7 @@ public class EngagementGeneratorTest {
     @SmallTest
     public void testWebsiteEngagement() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime256v1");
+        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
         kpg.initialize(ecSpec);
         KeyPair eSenderKey = kpg.generateKeyPair();
 
@@ -85,7 +85,7 @@ public class EngagementGeneratorTest {
     @SmallTest
     public void testDeviceEngagementQrBleCentralClientMode() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime256v1");
+        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
         kpg.initialize(ecSpec);
         KeyPair eSenderKey = kpg.generateKeyPair();
 
