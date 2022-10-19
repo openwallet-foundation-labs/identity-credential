@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.databinding.FragmentShareDocumentBinding
+import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 
@@ -44,11 +45,13 @@ class ShareDocumentFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         vm.startPresentation()
 
+        vm.message.set("NFC tap with mdoc verifier device")
+
         vm.getTransferStatus().observe(viewLifecycleOwner, {
             when (it) {
-                TransferStatus.ENGAGEMENT_READY -> {
+                TransferStatus.QR_ENGAGEMENT_READY -> {
                     vm.message.set("Scan QR code or NFC tap with mdoc verifier device")
-                    vm.setDeviceEngagement()
+                    vm.showQrCode()
                 }
                 TransferStatus.CONNECTED -> {
                     vm.message.set("Connected!")
@@ -92,4 +95,10 @@ class ShareDocumentFragment : Fragment() {
             ShareDocumentFragmentDirections.actionShareDocumentFragmentToSelectDocumentFragment()
         )
     }
+
+    fun onShowQrCodeClicked() {
+        binding.btShowQr?.isEnabled = false
+        vm.onShowQrCodeClicked()
+    }
+
 }

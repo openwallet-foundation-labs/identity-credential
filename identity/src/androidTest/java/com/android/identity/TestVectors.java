@@ -17,6 +17,11 @@
 package com.android.identity;
 
 public class TestVectors {
+    static final String ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT =
+            "a30063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2"
+            + "e8a968ff289d93e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a"
+            + "8cfcf3de6aa672fc60a557aa32fc670281830201a300f401f50b5045efef742b2c4837a9a"
+            + "3b0e1d05a6917";
 
     static final String ISO_18013_5_ANNEX_D_DEVICE_RESPONSE =
             "a36776657273696f6e63312e3069646f63756d656e747381a367646f6354797065756f72672e69736"

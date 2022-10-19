@@ -68,25 +68,6 @@ abstract class DataTransportBle extends DataTransport {
         mLoggingFlags = loggingFlags;
     }
 
-    protected static @NonNull
-    byte[] uuidToBytes(@NonNull UUID uuid) {
-        ByteBuffer data = ByteBuffer.allocate(16);
-        data.order(ByteOrder.BIG_ENDIAN);
-        data.putLong(uuid.getMostSignificantBits());
-        data.putLong(uuid.getLeastSignificantBits());
-        return data.array();
-    }
-
-    protected static @NonNull
-    UUID uuidFromBytes(@NonNull byte[] bytes) {
-        if (bytes.length != 16) {
-            throw new IllegalStateException("Expected 16 bytes, found " + bytes.length);
-        }
-        ByteBuffer data = ByteBuffer.wrap(bytes, 0, 16);
-        data.order(ByteOrder.BIG_ENDIAN);
-        return new UUID(data.getLong(0), data.getLong(8));
-    }
-
     public static @Nullable
     List<DataRetrievalAddress> parseNdefRecord(@NonNull NdefRecord record) {
         boolean centralClient = false;
@@ -178,7 +159,7 @@ abstract class DataTransportBle extends DataTransport {
                 byte[] uuidBytes = Util.cborMapExtractByteString(options,
                         RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID);
                 addresses.add(
-                        new DataRetrievalAddressBleCentralClientMode(uuidFromBytes(uuidBytes)));
+                        new DataRetrievalAddressBleCentralClientMode(Util.uuidFromBytes(uuidBytes)));
             } else {
                 Log.w(TAG, "No UUID field for mdoc central client mode");
             }
@@ -191,7 +172,7 @@ abstract class DataTransportBle extends DataTransport {
                 byte[] uuidBytes = Util.cborMapExtractByteString(options,
                         RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID);
                 addresses.add(
-                        new DataRetrievalAddressBlePeripheralServerMode(uuidFromBytes(uuidBytes)));
+                        new DataRetrievalAddressBlePeripheralServerMode(Util.uuidFromBytes(uuidBytes)));
             } else {
                 Log.w(TAG, "No UUID field for mdoc peripheral server mode");
             }
@@ -441,9 +422,9 @@ abstract class DataTransportBle extends DataTransport {
                         .put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, true)
                         .put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, true)
                         .put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID,
-                                uuidToBytes(((DataRetrievalAddressBlePeripheralServerMode)
+                                Util.uuidToBytes(((DataRetrievalAddressBlePeripheralServerMode)
                                         otherAddress).uuid))
-                        .put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID, uuidToBytes(uuid))
+                        .put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID, Util.uuidToBytes(uuid))
                         .end()
                         .end();
             } else {
@@ -453,7 +434,7 @@ abstract class DataTransportBle extends DataTransport {
                         .addMap()
                         .put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, false)
                         .put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, true)
-                        .put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID, uuidToBytes(uuid))
+                        .put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID, Util.uuidToBytes(uuid))
                         .end()
                         .end();
             }
@@ -494,9 +475,9 @@ abstract class DataTransportBle extends DataTransport {
                         .addMap()
                         .put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, true)
                         .put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, true)
-                        .put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID, uuidToBytes(uuid))
+                        .put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID, Util.uuidToBytes(uuid))
                         .put(RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID,
-                                uuidToBytes(((DataRetrievalAddressBleCentralClientMode)
+                                Util.uuidToBytes(((DataRetrievalAddressBleCentralClientMode)
                                         otherAddress).uuid))
                         .end()
                         .end();
@@ -507,7 +488,7 @@ abstract class DataTransportBle extends DataTransport {
                         .addMap()
                         .put(RETRIEVAL_OPTION_KEY_SUPPORTS_PERIPHERAL_SERVER_MODE, true)
                         .put(RETRIEVAL_OPTION_KEY_SUPPORTS_CENTRAL_CLIENT_MODE, false)
-                        .put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID, uuidToBytes(uuid))
+                        .put(RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID, Util.uuidToBytes(uuid))
                         .end()
                         .end();
             }

@@ -26,8 +26,10 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Queue;
 import java.util.concurrent.Executor;
 
 import co.nstant.in.cbor.model.Array;
@@ -40,7 +42,7 @@ import co.nstant.in.cbor.model.Number;
  * <p>The data transfer is packetized, that is, data is delivered at the same
  * granularity as it is sent. For example, if {@link #sendMessage(byte[])} is used to send
  * <code>N</code> bytes then this blob is what the remote peer will receive in the
- * {@link Listener#onMessageReceived(byte[])} callback.
+ * {@link Listener#onMessageReceived()} callback.
  *
  * <p>Instances constructed from subclasses deriving from this class must be inert when
  * constructed, that is, they must not do anything. This constraint exists to easily facilitate
@@ -51,7 +53,7 @@ import co.nstant.in.cbor.model.Number;
  *
  * <p>This class can be used to implement both provers and verifiers.
  */
-abstract class DataTransport {
+public abstract class DataTransport {
     private static final String TAG = "DataTransport";
 
     protected final Context mContext;
@@ -64,6 +66,7 @@ abstract class DataTransport {
     TransmissionProgressListener mProgressListener;
     private @Nullable
     Executor mProgressListenerExecutor;
+    private Queue<byte[]> mMessageReceivedQueue = new ArrayDeque<>();
 
     DataTransport(Context context) {
         mContext = context;
@@ -360,11 +363,21 @@ abstract class DataTransport {
         }
     }
 
+    /**
+     * Returns the next message received, if any.
+     *
+     * @return the next message or {@code null} if none is available.
+     */
+    public @Nullable byte[] getMessage() {
+        return mMessageReceivedQueue.poll();
+    }
+
     protected void reportMessageReceived(@NonNull byte[] data) {
+        mMessageReceivedQueue.add(data);
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onMessageReceived(data));
+            executor.execute(() -> listener.onMessageReceived());
         }
     }
 
@@ -447,9 +460,9 @@ abstract class DataTransport {
         /**
          * Called when receiving data from the peer.
          *
-         * @param data the received data.
+         * <p>The received data can be retrieved using {@link DataTransport#getMessage()}.
          */
-        void onMessageReceived(@NonNull byte[] data);
+        void onMessageReceived();
 
         /**
          * Called when receiving a transport-specific session termination request.

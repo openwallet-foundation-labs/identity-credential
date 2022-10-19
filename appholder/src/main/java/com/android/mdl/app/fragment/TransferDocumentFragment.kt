@@ -63,7 +63,7 @@ class TransferDocumentFragment : Fragment() {
 
         vm.getTransferStatus().observe(viewLifecycleOwner, { transferStatus ->
             when (transferStatus) {
-                TransferStatus.ENGAGEMENT_READY -> {
+                TransferStatus.QR_ENGAGEMENT_READY -> {
                     Log.d(LOG_TAG, "Engagement Ready")
                 }
                 TransferStatus.CONNECTED -> {

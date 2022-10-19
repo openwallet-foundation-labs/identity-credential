@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -78,6 +79,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Queue;
 import java.util.TimeZone;
+import java.util.UUID;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.Mac;
@@ -1837,6 +1839,25 @@ class Util {
         pendingDataBaos.reset();
         pendingDataBaos.write(pendingData, dataItemLength, pendingData.length - dataItemLength);
         return dataItemBytes;
+    }
+
+    static @NonNull
+    byte[] uuidToBytes(@NonNull UUID uuid) {
+        ByteBuffer data = ByteBuffer.allocate(16);
+        data.order(ByteOrder.BIG_ENDIAN);
+        data.putLong(uuid.getMostSignificantBits());
+        data.putLong(uuid.getLeastSignificantBits());
+        return data.array();
+    }
+
+    static @NonNull
+    UUID uuidFromBytes(@NonNull byte[] bytes) {
+        if (bytes.length != 16) {
+            throw new IllegalStateException("Expected 16 bytes, found " + bytes.length);
+        }
+        ByteBuffer data = ByteBuffer.wrap(bytes, 0, 16);
+        data.order(ByteOrder.BIG_ENDIAN);
+        return new UUID(data.getLong(0), data.getLong(8));
     }
 
     /**

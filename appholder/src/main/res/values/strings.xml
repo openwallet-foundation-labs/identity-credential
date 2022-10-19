@@ -1,13 +1,15 @@
 <resources>
     <string name="app_name">App Holder</string>
     <string name="bt_cancel">Cancel</string>
+    <string name="bt_show_qr_code">Show QR Code</string>
     <string name="bt_done">Done</string>
     <string name="txt_transfer_completed">Transfer Completed!</string>
     <string name="txt_list_of_documents">List of Documents:</string>
     <string name="txt_transferring">Transferring</string>
     <string name="txt_consent">Approve sending data to mDL verifier</string>
     <string name="bt_approve">Approve</string>
-    <string name="engagement_service_desc">mDL Holder NFC Engagement</string>
+    <string name="nfc_engagement_service_desc">mDL NFC Engagement</string>
+    <string name="nfc_data_transfer_service_desc">mDL NFC Data Transfer</string>
     <string name="engagement_aid_group_desc">mDL AID Group</string>
     <string name="bt_add_document">Add Document</string>
     <string name="txt_server_url">Enter the server URL</string>
