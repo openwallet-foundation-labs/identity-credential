@@ -13,6 +13,7 @@ class UserAuthPromptBuilder private constructor(private val fragment: Fragment) 
 
     private var title: String = ""
     private var subtitle: String = ""
+    private var description: String = ""
     private var negativeButton: String = ""
     private var forceLskf: Boolean = false
     private var onSuccess: () -> Unit = {}
@@ -53,6 +54,10 @@ class UserAuthPromptBuilder private constructor(private val fragment: Fragment) 
         this.subtitle = subtitle
     }
 
+    fun withDescription(description: String) = apply {
+        this.description = description
+    }
+
     fun withNegativeButton(negativeButton: String) = apply {
         this.negativeButton = negativeButton
     }
@@ -77,6 +82,7 @@ class UserAuthPromptBuilder private constructor(private val fragment: Fragment) 
         val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(subtitle)
+            .setDescription(description)
 
         if (forceLskf) {
             // TODO: this works only on Android 11 or later but for now this is fine
