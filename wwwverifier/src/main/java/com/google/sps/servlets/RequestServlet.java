@@ -42,12 +42,24 @@ import com.android.identity.DeviceRequestGenerator;
 import com.android.identity.SessionEncryptionReader;
 import com.android.identity.DeviceResponseParser;
 
+/**
+ * This servlet performs three main functions:
+ * (1) Generates a mdoc:// URI upon button click, containing a ReaderEngagement CBOR message
+ * (2) Parses a POST request containing a SessionEstablishment CBOR message, and generates
+ * a DeviceRequest message.
+ * (3) Parses a POST request containing a DeviceResponse CBOR message, and sends back a JSON
+ * containing data extracted from the message.
+ */
 @WebServlet("/request-mdl")
 public class RequestServlet extends HttpServlet {
 
     private DatastoreService datastore;
     public static Key datastoreKey;
 
+    /**
+     * Initializes Datastore, and creates an entity within it that will store various
+     * pieces of data (ephemeral keys, ReaderEngagement, etc.) in the future.
+     */
     @Override
     public void init() {
         datastore = DatastoreServiceFactory.getDatastoreService();
@@ -55,17 +67,19 @@ public class RequestServlet extends HttpServlet {
         datastore.put(entity);
         datastoreKey = entity.getKey();
     }
-    
-    /** doGet is triggered by the user clicking the "Request mDL" button 
-     *  This function generates a mdoc:// URI
-    */
+
+    /**
+     * Generates ReaderEngagement CBOR message, and creates a URI from it.
+     * 
+     * @return Generated mdoc:// URI
+     */
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         ReaderEngagementGenerator generator = new ReaderEngagementGenerator();
         byte[] readerEngagement = new ReaderEngagementGenerator().generate();
         String fullURI = ServletConsts.MDOC_URI_PREFIX + base64Encode(readerEngagement);
 
-        // put everything in Datastore
+        // put ReaderEngagement and generated ephemeral keys into Datastore
         putByteArrInDatastore(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
         putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, generator.getPublicKey().getEncoded());
         putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, generator.getPrivateKey().getEncoded());
@@ -75,28 +89,44 @@ public class RequestServlet extends HttpServlet {
         response.getWriter().println(fullURI);
     }
 
+    /**
+     * Handles two distinct POST requests:
+     * (1) The first POST request sent to the servlet, which contains a SessionEstablishment message
+     * (2) The second POST request sent to the servlet, which contains a DeviceResponse message
+     * 
+     * @param request Either (1) SessionEstablishment or (2) DeviceResponse, as base 64 encoded 
+     * (and CBOR encoded) messages
+     * @return (1) response, containing a DeviceRequest message; 
+     * (2) response, containing parsed data from DeviceResponse as a JSON String
+     */
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (!getDeviceRequestBoolean()) {
-            byte[] sessionData = parseSessionEstablishmentAndGenerateDeviceRequest(request);
+            SessionEncryptionReader sessionEncryption = parseSessionEstablishment(request);
+            byte[] sessionData = generateDeviceRequest(sessionEncryption);
+            setDeviceRequestBoolean(true);
             response.setContentType("text/html;");
             response.getWriter().println(base64Encode(sessionData));
         } else {
             String json = parseDeviceResponse(request);
-
-            // put device response in datastore
             Entity entity = getEntity();
             entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(json));
             datastore.put(entity);
 
-            // send response back
             response.setContentType("application/json;");
             response.getWriter().println(json);
         }
     }
 
-    public byte[] parseSessionEstablishmentAndGenerateDeviceRequest(HttpServletRequest request) {
-        // decode Session Establishment CBOR message
+    /**
+     * Parses the Session Establishment CBOR message to isolate DeviceEngagement, and then uses it
+     * to get the session transcript.
+     * 
+     * @param request POST request containing SessionEstablishment
+     * @return SessionEncryptionReader, to be used to create DeviceRequest in the future.
+     */
+    public SessionEncryptionReader parseSessionEstablishment(HttpServletRequest request) {
+        // parse Session Establishment CBOR message
         byte[] sessionEstablishmentBytes = base64Decode(request.getParameter(ServletConsts.SESSION_ESTABLISHMENT_PARAM));
         DataItem deviceEngagementItem = CBORDecode(sessionEstablishmentBytes).get(ServletConsts.DEVICE_ENGAGEMENT_INDEX);
         byte[] deviceEngagement = ((ByteString) deviceEngagementItem).getBytes();
@@ -108,22 +138,39 @@ public class RequestServlet extends HttpServlet {
     
         SessionEncryptionReader sessionEncryption = new SessionEncryptionReader(
             privateKey, publicKey, deviceEngagement, readerEngagement);
-        byte[] sessionTranscript = sessionEncryption.getSessionTranscript();
 
         // put sessionTranscript in datastore
-        putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
-        setDeviceRequestBoolean(true);
+        putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionEncryption.getSessionTranscript());
 
-        // generate deviceRequest
+        return sessionEncryption;
+    }
+
+    /**
+     * Generates Device Request using the session transcript extracted from the initial SessionEstablishment
+     * message.
+     * 
+     * @param sessionEncryption SessionEncryptionReader object, to be used to create DeviceRequest
+     * @return DeviceRequest, to be sent back as a response to the initial POST request
+     */
+    public byte[] generateDeviceRequest(SessionEncryptionReader sessionEncryption) {
+        byte[] sessionTranscript = base64Decode(getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
         byte[] deviceRequest = new DeviceRequestGenerator().setSessionTranscript(sessionTranscript).generate();
         return sessionEncryption.encryptMessageToDevice(deviceRequest, OptionalInt.empty());
     }
 
+    /**
+     * Parses DeviceResponse CBOR message and converts its contents into a JSON string.
+     * 
+     * @param request POST request containing DeviceResponse
+     * @return JSON string containing Documents contained within DeviceResponse
+     */
     public String parseDeviceResponse(HttpServletRequest request) {
-        PrivateKey privateKey = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
-        byte[] sessionTranscript = base64Decode(getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
         byte[] deviceResponse = base64Decode(request.getParameter(ServletConsts.DEVICE_RESPONSE_PARAM));
 
+        // retrieve items from Datastore
+        PrivateKey privateKey = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
+        byte[] sessionTranscript = base64Decode(getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
+        
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
             .setDeviceResponse(deviceResponse)
             .setSessionTranscript(sessionTranscript)
@@ -132,6 +179,9 @@ public class RequestServlet extends HttpServlet {
         return new Gson().toJson(dr.getDocuments());
     }
 
+    /**
+     * @return Datastore entity linked to the key created in the init() function.
+     */
     public Entity getEntity() {
         try {
             return datastore.get(datastoreKey);
@@ -140,16 +190,28 @@ public class RequestServlet extends HttpServlet {
         }
     }
 
+    /**
+     * @return Boolean reflecting whether or not DeviceRequest has already been sent as a response
+     * to a POST request; this is used to identify how the doPost() function should process incoming
+     * POST requests.
+     */
     public boolean getDeviceRequestBoolean() {
         return (boolean) getEntity().getProperty(ServletConsts.BOOLEAN_PROP);
     }
 
+    /**
+     * Marks in database whether DeviceRequest has been sent as a response to a POST request
+     * @param bool
+     */
     public void setDeviceRequestBoolean(boolean bool) {
         Entity entity = getEntity();
         entity.setProperty(ServletConsts.BOOLEAN_PROP, bool);
         datastore.put(entity);
     }
 
+    /**
+     * @return a CBOR encoding of @param str
+     */
     public byte[] CBOREncode(String str) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
@@ -160,6 +222,9 @@ public class RequestServlet extends HttpServlet {
         }
     }
 
+    /**
+     * @return a List of DataItem objects extracted by decoding the previously CBOR encoded @param arr
+     */
     public List<DataItem> CBORDecode(byte[] arr) {
         ByteArrayInputStream bais = new ByteArrayInputStream(arr);
         try {
@@ -169,6 +234,9 @@ public class RequestServlet extends HttpServlet {
         }
     }
 
+    /**
+     * @return PublicKey, converted from a String @param str
+     */
     public PublicKey getPublicKeyFromString(String str) {
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(base64Decode(str));
         try {
@@ -179,6 +247,9 @@ public class RequestServlet extends HttpServlet {
         }
     }
 
+    /**
+     * @return PrivateKey, converted from a String @param str
+     */
     public PrivateKey getPrivateKeyFromString(String str) {
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(base64Decode(str));
         try {
@@ -189,21 +260,39 @@ public class RequestServlet extends HttpServlet {
         }
     }
 
+    /**
+     * Updates the entity in Datastore with new data.
+     * 
+     * @param propName Name of the property that should be inserted into Datastore
+     * @param arr data that should be inserted into Datastore
+     */
     public void putByteArrInDatastore(String propName, byte[] arr) {
         Entity entity = getEntity();
         entity.setProperty(propName, base64Encode(arr));
         datastore.put(entity);
     }
 
+    /**
+     * Retrieves data from Datastore.
+     * 
+     * @param propName Name of the property that should be retrieved from Datastore
+     * @return String data from Datastore corresponding to @param propName
+     */
     public String getPropertyFromDatastore(String propertyName) {
         Entity entity = getEntity();
         return (String) entity.getProperty(propertyName);
     }
 
+    /**
+     * @return Byte array from a base 64 decoded String @param str
+     */
     public byte[] base64Decode(String str) {
         return Base64.getMimeDecoder().decode(str.getBytes());
     }
 
+    /**
+     * @return String from a base 64 encoded byte array @param arr
+     */
     public String base64Encode(byte[] arr) {
         return Base64.getEncoder().encodeToString(arr);
     }

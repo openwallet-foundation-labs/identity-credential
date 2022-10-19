@@ -1,14 +1,9 @@
 package com.google.sps.servlets;
 
-import com.google.gson.Gson;
-import co.nstant.in.cbor.CborDecoder;
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.CborEncoder;
 import co.nstant.in.cbor.CborException;
-import co.nstant.in.cbor.model.DataItem;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -16,12 +11,6 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.PrivateKey;
-import java.util.Base64;
-import java.util.List;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 public class ReaderEngagementGenerator {
     private static final String TAG = "ReaderEngagementGenerator";

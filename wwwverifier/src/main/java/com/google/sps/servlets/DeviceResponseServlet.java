@@ -17,6 +17,10 @@ import com.google.appengine.api.datastore.Text;
 import com.google.sps.servlets.RequestServlet;
 import com.google.sps.servlets.ServletConsts;
 
+/**
+ * This servlet returns the JSON String containing data from DeviceResponse, on the condition
+ * that it has already been received and parsed in RequestServlet.java.
+ */
 @WebServlet("/device-response")
 public class DeviceResponseServlet extends HttpServlet {
 
@@ -45,7 +49,7 @@ public class DeviceResponseServlet extends HttpServlet {
             } else {
                 Text deviceResponse = (Text) entity.getProperty(ServletConsts.DEVICE_RESPONSE_PROP);
                 String deviceResponseString = deviceResponse.getValue();
-                response.getWriter().println(deviceResponse);
+                response.getWriter().println(deviceResponseString);
             }
         }
     }
