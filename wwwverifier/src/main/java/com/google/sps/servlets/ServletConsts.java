@@ -13,6 +13,8 @@ public class ServletConsts {
     public static final String DEVICE_RESPONSE_PARAM = "DeviceResponse";
 
     public static final String MDOC_URI_PREFIX = "mdoc://";
+    public static final String WEBSITE_URL_SERVLET = "https://mdoc-reader-external.uc.r.appspot.com/request-mdl";
+    public static final String WEBSITE_URL = "https://mdoc-reader-external.uc.r.appspot.com/";
 
     public static final String KEY_GENERATION_INSTANCE = "EC";
     public static final String KEY_GENERATION_CURVE = "secp256r1";

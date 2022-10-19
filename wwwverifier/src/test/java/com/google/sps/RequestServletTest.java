@@ -49,11 +49,16 @@ import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
 // imports from Identity Credential Library
 import com.android.identity.TestVectors;
 import com.android.identity.Util;
+import com.android.identity.EngagementParser;
+import com.android.identity.EngagementGenerator;
+import com.android.identity.ConnectionMethod;
+import com.android.identity.ConnectionMethodRestApi;
+import com.android.identity.OriginInfoWebsite;
+import com.android.identity.OriginInfo;
 
 // imports from custom classes
 import com.google.sps.servlets.RequestServlet;
 import com.google.sps.servlets.ServletConsts;
-import com.google.sps.servlets.ReaderEngagementGenerator;
 
 @RunWith(JUnit4.class)
 public class RequestServletTest {
@@ -92,17 +97,14 @@ public class RequestServletTest {
     public void checkReaderEngagementContents() throws IOException {
         servlet.doGet(request, response);
         String generatedURI = stringWriter.toString();
-        String generatedURISansPrefix = generatedURI.substring(7);
+        String readerEngagement = generatedURI.substring(7);
 
-        ReaderEngagementParser parser = new ReaderEngagementParser();
-        parser.parse(Base64.getMimeDecoder().decode(generatedURISansPrefix));
+        EngagementParser parser = new EngagementParser(Base64.getMimeDecoder().decode(readerEngagement));
+        EngagementParser.Engagement engagement = parser.parse();
 
-        Assert.assertEquals(parser.getTstr(), "1.1");
-        Assert.assertEquals(parser.getCipherSuite(), "1");
-        Assert.assertEquals(parser.getEReaderKeyBytes().length() > 0, true);
-        Assert.assertEquals(parser.getConnectionMethodType(), "4");
-        Assert.assertEquals(parser.getConnectionMethodVersion(), "1");
-        Assert.assertEquals(parser.getConnectionMethodWebsite(), "https://mdoc-reader.googleplex.com/request-mdl");
+        Assert.assertEquals(engagement.getVersion(), "1.1");
+        Assert.assertEquals(engagement.getConnectionMethods().size(), 1);
+        Assert.assertEquals(engagement.getOriginInfos().size(), 1);
     }
 
     @Test
@@ -147,16 +149,21 @@ public class RequestServletTest {
 
     public void FillDatastoreForDeviceRequestGeneration() {
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
-        ReaderEngagementGenerator generator = new ReaderEngagementGenerator();
+
+        KeyPair keyPair = RequestServlet.generateKeyPair();
+        PublicKey publicKey = keyPair.getPublic();
+        PrivateKey privateKey = keyPair.getPrivate();
+
+        EngagementGenerator generator = new EngagementGenerator(keyPair.getPublic(), EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+        generator.addConnectionMethod(new ConnectionMethodRestApi(ServletConsts.WEBSITE_URL_SERVLET));
+        generator.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.WEBSITE_URL));
         byte[] readerEngagement = generator.generate();
-        byte[] publicKey = generator.getPublicKey().getEncoded();
-        byte[] privateKey = generator.getPrivateKey().getEncoded();
 
         try {
             Entity entity = datastore.get(RequestServlet.datastoreKey);
             entity.setProperty(ServletConsts.READER_ENGAGEMENT_PROP, Base64.getEncoder().encodeToString(readerEngagement));
-            entity.setProperty(ServletConsts.PUBLIC_KEY_PROP, Base64.getEncoder().encodeToString(publicKey));
-            entity.setProperty(ServletConsts.PRIVATE_KEY_PROP, Base64.getEncoder().encodeToString(privateKey));
+            entity.setProperty(ServletConsts.PUBLIC_KEY_PROP, Base64.getEncoder().encodeToString(publicKey.getEncoded()));
+            entity.setProperty(ServletConsts.PRIVATE_KEY_PROP, Base64.getEncoder().encodeToString(privateKey.getEncoded()));
             entity.setProperty(ServletConsts.SESSION_TRANS_PROP, false);
             entity.setProperty(ServletConsts.BOOLEAN_PROP, false);
             datastore.put(entity);

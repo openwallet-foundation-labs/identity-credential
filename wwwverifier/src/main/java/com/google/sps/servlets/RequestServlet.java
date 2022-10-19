@@ -18,6 +18,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 import java.util.Base64;
@@ -41,6 +43,11 @@ import com.google.appengine.api.datastore.Text;
 import com.android.identity.DeviceRequestGenerator;
 import com.android.identity.SessionEncryptionReader;
 import com.android.identity.DeviceResponseParser;
+import com.android.identity.EngagementGenerator;
+import com.android.identity.ConnectionMethod;
+import com.android.identity.ConnectionMethodRestApi;
+import com.android.identity.OriginInfoWebsite;
+import com.android.identity.OriginInfo;
 
 /**
  * This servlet performs three main functions:
@@ -75,14 +82,21 @@ public class RequestServlet extends HttpServlet {
      */
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        ReaderEngagementGenerator generator = new ReaderEngagementGenerator();
-        byte[] readerEngagement = new ReaderEngagementGenerator().generate();
+        KeyPair keyPair = generateKeyPair();
+        PublicKey publicKey = keyPair.getPublic();
+        PrivateKey privateKey = keyPair.getPrivate();
+
+        EngagementGenerator generator = new EngagementGenerator(publicKey, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+        generator.addConnectionMethod(new ConnectionMethodRestApi(ServletConsts.WEBSITE_URL_SERVLET));
+        generator.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.WEBSITE_URL));
+        byte[] readerEngagement = generator.generate();
+
         String fullURI = ServletConsts.MDOC_URI_PREFIX + base64Encode(readerEngagement);
 
         // put ReaderEngagement and generated ephemeral keys into Datastore
         putByteArrInDatastore(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
-        putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, generator.getPublicKey().getEncoded());
-        putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, generator.getPrivateKey().getEncoded());
+        putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, publicKey.getEncoded());
+        putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, privateKey.getEncoded());
         setDeviceRequestBoolean(false);
 
         response.setContentType("text/html;");
@@ -115,6 +129,20 @@ public class RequestServlet extends HttpServlet {
 
             response.setContentType("application/json;");
             response.getWriter().println(json);
+        }
+    }
+
+    /**
+     * @return generated ephemeral reader key pair (containing a PublicKey and a PrivateKey)
+     */
+    public static KeyPair generateKeyPair() {
+        try {
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(ServletConsts.KEY_GENERATION_INSTANCE);
+            ECGenParameterSpec ecSpec = new ECGenParameterSpec(ServletConsts.KEY_GENERATION_CURVE);
+            keyPairGenerator.initialize(ecSpec);
+            return keyPairGenerator.generateKeyPair();
+        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
+            throw new IllegalStateException("Error generating ephemeral key-pair", e);
         }
     }
 
