@@ -178,7 +178,7 @@ public class DeviceRequestParserTest {
         KeyPair readerKeyPair = kpg.generateKeyPair();
 
         kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
-        ecSpec = new ECGenParameterSpec("prime256v1");
+        ecSpec = new ECGenParameterSpec("secp256r1");
         kpg.initialize(ecSpec);
         KeyPair trustPointKeyPair = kpg.generateKeyPair();
 

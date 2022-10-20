@@ -19,13 +19,10 @@ package com.android.identity;
 import android.content.Context;
 import android.nfc.cardemulation.HostApduService;
 import android.os.Bundle;
-import android.util.Log;
-import android.util.Pair;
+import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import com.android.identity.Constants.LoggingFlag;
 
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -91,13 +88,10 @@ public class PresentationHelper {
     DataTransport mTransport;
 
     boolean mReceivedSessionTerminated;
-    @LoggingFlag
-    int mLoggingFlags = 0;
 
     private boolean mInhibitCallbacks;
     private boolean mUseTransportSpecificSessionTermination;
     private boolean mSendSessionTerminationMessage;
-    Util.Logger mLog;
     private NfcApduRouter mNfcRouter;
 
     /**
@@ -121,7 +115,6 @@ public class PresentationHelper {
         mHandover = handover;
         mAlternateDeviceEngagement = alternateDeviceEngagement;
         mAlternateHandover = alternateHandover;
-        mLog = new Util.Logger(TAG, 0);
 
         mSessionEncryption = new SessionEncryptionDevice(
                 mEphemeralKeyPair.getPrivate(),
@@ -136,23 +129,10 @@ public class PresentationHelper {
         }
     }
 
-    /**
-     * Configures the amount of logging messages to emit.
-     *
-     * <p>By default no logging messages are emitted except for warnings and errors. Applications
-     * use this with caution as the emitted log messages may contain PII and secrets.
-     *
-     * @param loggingFlags One or more logging flags e.g. {@link Constants#LOGGING_FLAG_INFO}.
-     */
-    public void setLoggingFlags(@LoggingFlag int loggingFlags) {
-        mLoggingFlags = loggingFlags;
-        mLog.setLoggingFlags(loggingFlags);
-    }
-
     // Note: The report*() methods are safe to call from any thread.
 
     void reportDeviceRequest(@NonNull byte[] deviceRequestBytes) {
-        mLog.info("reportDeviceRequest: deviceRequestBytes: " + deviceRequestBytes.length + " bytes");
+        Logger.d(TAG, "reportDeviceRequest: deviceRequestBytes: " + deviceRequestBytes.length + " bytes");
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
@@ -161,7 +141,7 @@ public class PresentationHelper {
     }
 
     void reportDeviceDisconnected(boolean transportSpecificTermination) {
-        mLog.info("reportDeviceDisconnected: transportSpecificTermination: "
+        Logger.d(TAG, "reportDeviceDisconnected: transportSpecificTermination: "
                 + transportSpecificTermination);
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
@@ -172,7 +152,7 @@ public class PresentationHelper {
     }
 
     void reportError(@NonNull Throwable error) {
-        mLog.info("reportError: error: ", error);
+        Logger.d(TAG, "reportError: error: ", error);
         final Listener listener = mListener;
         final Executor executor = mDeviceRequestListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
@@ -184,25 +164,25 @@ public class PresentationHelper {
         mTransport.setListener(new DataTransport.Listener() {
             @Override
             public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
-                mLog.info("onListeningSetupCompleted");
+                Logger.d(TAG, "onListeningSetupCompleted");
                 reportError(new Error("Unexpected onListeningSetupCompleted"));
             }
 
             @Override
             public void onListeningPeerConnecting() {
-                mLog.info("onListeningPeerConnecting");
+                Logger.d(TAG, "onListeningPeerConnecting");
                 reportError(new Error("Unexpected onListeningPeerConnecting"));
             }
 
             @Override
             public void onListeningPeerConnected() {
-                mLog.info("onListeningPeerConnecting");
+                Logger.d(TAG, "onListeningPeerConnecting");
                 reportError(new Error("Unexpected onListeningPeerConnected"));
             }
 
             @Override
             public void onListeningPeerDisconnected() {
-                mLog.info("onListeningPeerDisconnected");
+                Logger.d(TAG, "onListeningPeerDisconnected");
                 mTransport.close();
                 if (!mReceivedSessionTerminated) {
                     reportError(new Error("Peer disconnected without proper session termination"));
@@ -213,7 +193,7 @@ public class PresentationHelper {
 
             @Override
             public void onConnectionResult(@Nullable Throwable error) {
-                mLog.info("onConnectionResult");
+                Logger.d(TAG, "onConnectionResult");
                 if (error != null) {
                     throw new IllegalStateException("Unexpected onConnectionResult callback", error);
                 }
@@ -222,7 +202,7 @@ public class PresentationHelper {
 
             @Override
             public void onConnectionDisconnected() {
-                mLog.info("onConnectionDisconnected");
+                Logger.d(TAG, "onConnectionDisconnected");
                 throw new IllegalStateException("Unexpected onConnectionDisconnected callback");
             }
 
@@ -244,7 +224,7 @@ public class PresentationHelper {
 
             @Override
             public void onTransportSpecificSessionTermination() {
-                mLog.info("Received transport-specific session termination");
+                Logger.d(TAG, "Received transport-specific session termination");
                 mReceivedSessionTerminated = true;
                 mTransport.close();
                 reportDeviceDisconnected(true);
@@ -259,7 +239,7 @@ public class PresentationHelper {
     }
 
     private void processMessageReceived(@NonNull byte[] data) {
-        if (mLog.isTransportVerboseEnabled()) {
+        if (Logger.isDebugEnabled()) {
             Util.dumpHex(TAG, "SessionData", data);
         }
         Pair<byte[], OptionalLong> decryptedMessage = null;
@@ -271,7 +251,7 @@ public class PresentationHelper {
             return;
         }
         if (decryptedMessage == null && mAlternateSessionEncryption != null) {
-            mLog.info("Decryption failed, trying alternate");
+            Logger.d(TAG, "Decryption failed, trying alternate");
             mSessionEncryption = mAlternateSessionEncryption;
             try {
                 decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
@@ -282,7 +262,7 @@ public class PresentationHelper {
             }
         }
         if (decryptedMessage == null) {
-            mLog.info("Decryption failed!");
+            Logger.d(TAG, "Decryption failed!");
             mTransport.close();
             reportError(new Error("Error decrypting message from reader"));
             return;
@@ -307,7 +287,7 @@ public class PresentationHelper {
                 }
             }
 
-            if (mLog.isSessionEnabled()) {
+            if (Logger.isDebugEnabled()) {
                 Util.dumpHex(TAG, "Received DeviceRequest", decryptedMessage.first);
             }
 
@@ -320,7 +300,7 @@ public class PresentationHelper {
             } else {
                 long statusCode = decryptedMessage.second.getAsLong();
 
-                mLog.session("Message received from reader with status: " + statusCode);
+                Logger.d(TAG, "Message received from reader with status: " + statusCode);
 
                 if (statusCode == 20) {
                     mReceivedSessionTerminated = true;
@@ -395,7 +375,7 @@ public class PresentationHelper {
     public void sendDeviceResponse(@NonNull byte[] deviceResponseBytes,
         @Nullable TransmissionProgressListener progressListener,
         @Nullable Executor progressExecutor) {
-        if (mLog.isSessionEnabled()) {
+        if (Logger.isDebugEnabled()) {
             Util.dumpHex(TAG, "Sending DeviceResponse", deviceResponseBytes);
         }
         byte[] encryptedData =
@@ -444,16 +424,16 @@ public class PresentationHelper {
             if (mSendSessionTerminationMessage && sessionEstablished) {
                 if (mUseTransportSpecificSessionTermination &&
                         mTransport.supportsTransportSpecificTerminationMessage()) {
-                    mLog.info("Sending transport-specific termination message");
+                    Logger.d(TAG, "Sending transport-specific termination message");
                     mTransport.sendTransportSpecificTerminationMessage();
                 } else {
-                    mLog.info("Sending generic session termination message");
+                    Logger.d(TAG, "Sending generic session termination message");
                     byte[] sessionTermination = mSessionEncryption.encryptMessageToReader(
                             null, OptionalLong.of(20));
                     mTransport.sendMessage(sessionTermination);
                 }
             } else {
-                mLog.info("Not sending session termination message");
+                Logger.d(TAG, "Not sending session termination message");
             }
             mTransport.close();
             mTransport = null;

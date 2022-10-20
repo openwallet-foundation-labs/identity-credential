@@ -49,7 +49,6 @@ import androidx.annotation.DoNotInline;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -740,9 +739,8 @@ class DataTransportWifiAware extends DataTransport {
 
         @Override
         @NonNull
-        DataTransport createDataTransport(
-                @NonNull Context context, @LoggingFlag int loggingFlags) {
-            return new DataTransportWifiAware(context /*, loggingFlags*/);
+        DataTransport createDataTransport(@NonNull Context context) {
+            return new DataTransportWifiAware(context);
         }
 
         @Override

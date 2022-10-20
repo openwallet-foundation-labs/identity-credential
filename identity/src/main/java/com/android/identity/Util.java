@@ -1119,7 +1119,7 @@ class Util {
 
         try {
             AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
-            params.init(new ECGenParameterSpec("prime256v1"));
+            params.init(new ECGenParameterSpec("secp256r1"));
             ECParameterSpec ecParameters = params.getParameterSpec(ECParameterSpec.class);
 
             ECPoint ecPoint = new ECPoint(x, y);
@@ -1527,7 +1527,7 @@ class Util {
     PrivateKey getPrivateKeyFromInteger(@NonNull BigInteger s) {
         try {
             AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
-            params.init(new ECGenParameterSpec("prime256v1"));
+            params.init(new ECGenParameterSpec("secp256r1"));
             ECParameterSpec ecParameters = params.getParameterSpec(ECParameterSpec.class);
 
             ECPrivateKeySpec privateKeySpec = new ECPrivateKeySpec(s, ecParameters);
@@ -1546,7 +1546,7 @@ class Util {
             @NonNull BigInteger y) {
         try {
             AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
-            params.init(new ECGenParameterSpec("prime256v1"));
+            params.init(new ECGenParameterSpec("secp256r1"));
             ECParameterSpec ecParameters = params.getParameterSpec(ECParameterSpec.class);
 
             ECPoint ecPoint = new ECPoint(x, y);
@@ -1605,7 +1605,7 @@ class Util {
     static @NonNull KeyPair createEphemeralKeyPair() {
         try {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
-            ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime256v1");
+            ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
             kpg.initialize(ecSpec);
             KeyPair keyPair = kpg.generateKeyPair();
             return keyPair;
@@ -1860,269 +1860,4 @@ class Util {
         return new UUID(data.getLong(0), data.getLong(8));
     }
 
-    /**
-     * Helper class for logging.
-     */
-    static class Logger {
-        private final String mTag;
-        private @Constants.LoggingFlag int mLoggingFlags;
-
-        /**
-         * Constructs a new logger.
-         *
-         * @param tag Tag to use.
-         * @param loggingFlags Logging flags.
-         */
-        Logger(@NonNull String tag, @Constants.LoggingFlag int loggingFlags) {
-            mTag = tag;
-            mLoggingFlags = loggingFlags;
-        }
-
-        /**
-         * Updates the logging flags to use for the logger.
-         *
-         * @param loggingFlags Logging flags.
-         */
-        void setLoggingFlags(@Constants.LoggingFlag int loggingFlags) {
-            mLoggingFlags = loggingFlags;
-        }
-
-        /**
-         * Gets the logging flags used by the logger.
-         *
-         * @return Logging flags.
-         */
-        @Constants.LoggingFlag
-        int getLoggingFlags() {
-            return mLoggingFlags;
-        }
-
-        /**
-         * Determines if the current logging flags includes {@link Constants#LOGGING_FLAG_INFO}.
-         *
-         * @return Whether the logging flag is currently enabled.
-         */
-        boolean isInfoEnabled() {
-            return (mLoggingFlags & Constants.LOGGING_FLAG_INFO) != 0;
-        }
-
-        /**
-         * Determines if the current logging flags includes
-         * {@link Constants#LOGGING_FLAG_ENGAGEMENT}.
-         *
-         * @return Whether the logging flag is currently enabled.
-         */
-        boolean isEngagementEnabled() {
-            return (mLoggingFlags & Constants.LOGGING_FLAG_ENGAGEMENT) != 0;
-        }
-
-        /**
-         * Determines if the current logging flags includes {@link Constants#LOGGING_FLAG_SESSION}.
-         *
-         * @return Whether the logging flag is currently enabled.
-         */
-        boolean isSessionEnabled() {
-            return (mLoggingFlags & Constants.LOGGING_FLAG_SESSION) != 0;
-        }
-
-        /**
-         * Determines if the current logging flags includes
-         * {@link Constants#LOGGING_FLAG_TRANSPORT}.
-         *
-         * @return Whether the logging flag is currently enabled.
-         */
-        boolean isTransportEnabled() {
-            return (mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT) != 0;
-        }
-
-        /**
-         * Determines if the current logging flags includes
-         * {@link Constants#LOGGING_FLAG_TRANSPORT_VERBOSE}.
-         *
-         * @return Whether the logging flag is currently enabled.
-         */
-        boolean isTransportVerboseEnabled() {
-            return (mLoggingFlags & Constants.LOGGING_FLAG_TRANSPORT_VERBOSE) != 0;
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_INFO} is enabled logs the given message, otherwise
-         * does nothing.
-         *
-         * <p>The {@link #isInfoEnabled()} method can be used to determine ahead of time if the
-         * message will be logged or not. This can be used to avoid expensive operations
-         * preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int info(@NonNull String message) {
-            if (!isInfoEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "INFO: " + message);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_INFO} is enabled logs the given message and throwable,
-         * otherwise does nothing.
-         *
-         * <p>The {@link #isInfoEnabled()} method can be used to determine ahead of time if the
-         * message will be logged or not. This can be used to avoid expensive operations
-         * preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int info(@NonNull String message, @NonNull Throwable throwable) {
-            if (!isInfoEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "INFO: " + message, throwable);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_ENGAGEMENT} is enabled logs the given message, otherwise
-         * does nothing.
-         *
-         * <p>The {@link #isEngagementEnabled()} method can be used to determine ahead of time if
-         * the message will be logged or not. This can be used to avoid expensive  operations
-         * preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int engagement(@NonNull String message) {
-            if (!isEngagementEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "ENGAGEMENT: " + message);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_ENGAGEMENT} is enabled logs the given message and
-         * throwable, otherwise does nothing.
-         *
-         * <p>The {@link #isEngagementEnabled()} method can be used to determine ahead of time if
-         * the message will be logged or not. This can be used to avoid expensive  operations
-         * preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int engagement(@NonNull String message, @NonNull Throwable throwable) {
-            if (!isEngagementEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "ENGAGEMENT: " + message, throwable);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_SESSION} is enabled logs the given message, otherwise
-         * does nothing.
-         *
-         * <p>The {@link #isSessionEnabled()} method can be used to determine ahead of time if
-         * the message will be logged or not. This can be used to avoid expensive operations
-         * preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int session(@NonNull String message) {
-            if (!isSessionEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "SESSION: " + message);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_SESSION} is enabled logs the given message and
-         * throwable, otherwise does nothing.
-         *
-         * <p>The {@link #isSessionEnabled()} method can be used to determine ahead of time if
-         * the message will be logged or not. This can be used to avoid expensive operations
-         * preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int session(@NonNull String message, @NonNull Throwable throwable) {
-            if (!isSessionEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "SESSION: " + message, throwable);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_TRANSPORT} is enabled logs the given message, otherwise
-         * does nothing.
-         *
-         * <p>The {@link #isTransportEnabled()} method can be used to determine ahead of time if
-         * the message will be logged or not. This can be used to avoid expensive operations
-         * preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int transport(@NonNull String message) {
-            if (!isTransportEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "TRANSPORT: " + message);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_TRANSPORT} is enabled logs the given message and
-         * throwable, otherwise does nothing.
-         *
-         * <p>The {@link #isTransportEnabled()} method can be used to determine ahead of time if
-         * the message will be logged or not. This can be used to avoid expensive operations
-         * preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int transport(@NonNull String message, @NonNull Throwable throwable) {
-            if (!isTransportEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "TRANSPORT: " + message, throwable);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_TRANSPORT_VERBOSE} is enabled logs the given message,
-         * otherwise does nothing.
-         *
-         * <p>The {@link #isTransportVerboseEnabled()}  method can be used to determine ahead of
-         * time if the message will be logged or not. This can be used to avoid expensive
-         * operations preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int transportVerbose(@NonNull String message) {
-            if (!isTransportVerboseEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "TRANSPORT_VERBOSE: " + message);
-        }
-
-        /**
-         * If {@link Constants#LOGGING_FLAG_TRANSPORT_VERBOSE} is enabled logs the given message
-         * and throwable, otherwise does nothing.
-         *
-         * <p>The {@link #isTransportVerboseEnabled()}  method can be used to determine ahead of
-         * time if the message will be logged or not. This can be used to avoid expensive
-         * operations preparing a message which will never be logged.
-         *
-         * @param message The message to print.
-         * @return The number of bytes logged or 0 if not logged.
-         */
-        int transportVerbose(@NonNull String message, @NonNull Throwable throwable) {
-            if (!isTransportVerboseEnabled()) {
-                return 0;
-            }
-            return Log.i(mTag, "TRANSPORT_VERBOSE: " + message, throwable);
-        }
-    }
 }

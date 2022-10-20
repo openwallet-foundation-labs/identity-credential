@@ -25,7 +25,6 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
@@ -52,8 +51,6 @@ abstract class DataTransportBle extends DataTransport {
     public static final int RETRIEVAL_OPTION_KEY_CENTRAL_CLIENT_MODE_UUID = 11;
     public static final int RETRIEVAL_OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS = 20;
     private static final String TAG = "DataTransportBle";
-    @LoggingFlag
-    protected int mLoggingFlags;
     // Indicates to use L2CAP for BLE transfer by default
     protected boolean mUseL2CAPIfAvailable = false;
 
@@ -63,9 +60,8 @@ abstract class DataTransportBle extends DataTransport {
     protected boolean mClearCache;
 
     public DataTransportBle(
-            @NonNull Context context, @LoggingFlag int loggingFlags) {
+            @NonNull Context context) {
         super(context);
-        mLoggingFlags = loggingFlags;
     }
 
     public static @Nullable
@@ -401,9 +397,8 @@ abstract class DataTransportBle extends DataTransport {
 
         @Override
         @NonNull
-        DataTransport createDataTransport(
-                @NonNull Context context, @LoggingFlag int loggingFlags) {
-            return new DataTransportBleCentralClientMode(context, loggingFlags);
+        DataTransport createDataTransport(@NonNull Context context) {
+            return new DataTransportBleCentralClientMode(context);
         }
 
         @Override
@@ -455,9 +450,8 @@ abstract class DataTransportBle extends DataTransport {
 
         @Override
         @NonNull
-        DataTransport createDataTransport(
-                @NonNull Context context, @LoggingFlag int loggingFlags) {
-            return new DataTransportBlePeripheralServerMode(context, loggingFlags);
+        DataTransport createDataTransport(@NonNull Context context) {
+            return new DataTransportBlePeripheralServerMode(context);
         }
 
         @Override

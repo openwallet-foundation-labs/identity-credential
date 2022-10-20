@@ -30,11 +30,10 @@ import android.nfc.tech.Ndef;
 import android.os.Bundle;
 import android.util.Base64;
 import android.util.Log;
-import android.util.Pair;
+import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.android.identity.Constants.LoggingFlag;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -83,7 +82,6 @@ public class VerificationHelper {
     private byte[] mHandover;
     private boolean mUseTransportSpecificSessionTermination;
     private boolean mSendSessionTerminationMessage = true;
-    Util.Logger mLog;
     private boolean mIsListening;
     private boolean mUseL2CAP;
     private boolean mBleClearCache;
@@ -97,21 +95,8 @@ public class VerificationHelper {
         mContext = context;
         mEphemeralKeyPair = Util.createEphemeralKeyPair();
         mSessionEncryptionReader = null;
-        mLog = new Util.Logger(TAG, 0);
         mUseL2CAP = false;
         mBleClearCache = false;
-    }
-
-    /**
-     * Configures the amount of logging messages to emit.
-     *
-     * <p>By default no logging messages are emitted except for warnings and errors. Applications
-     * use this with caution as the emitted log messages may contain PII and secrets.
-     *
-     * @param loggingFlags One or more logging flags e.g. {@link Constants#LOGGING_FLAG_INFO}.
-     */
-    public void setLoggingFlags(@LoggingFlag int loggingFlags) {
-        mLog.setLoggingFlags(loggingFlags);
     }
 
     /**
@@ -183,13 +168,13 @@ public class VerificationHelper {
         if (!mIsListening) {
             throw new IllegalStateException("Not currently listening");
         }
-        mLog.engagement("Tag discovered!");
+        Logger.d(TAG, "Tag discovered!");
         for (String tech : tag.getTechList()) {
-            mLog.engagement("tech: " + tech);
+            Logger.d(TAG, "tech: " + tech);
             if (tech.equals(Ndef.class.getName())) {
-                mLog.engagement("Found ndef tech!");
+                Logger.d(TAG, "Found ndef tech!");
                 if (mDeviceEngagement != null) {
-                    mLog.engagement("Already have device engagement "
+                    Logger.d(TAG, "Already have device engagement "
                             + "so not inspecting what was received via "
                             + "NFC");
                 } else {
@@ -203,7 +188,7 @@ public class VerificationHelper {
                 // waiting for the reader to be in the NFC field... see
                 // also comment in connect() for this case...
                 if (mConnectWaitingForIsoDepAddress != null) {
-                    mLog.engagement("NFC data transfer + QR engagement, "
+                    Logger.d(TAG, "NFC data transfer + QR engagement, "
                             + "reader is now in field");
                     mDeviceResponseListenerExecutor.execute(
                             () -> connect(mConnectWaitingForIsoDepAddress)
@@ -239,10 +224,9 @@ public class VerificationHelper {
                     uri.getEncodedSchemeSpecificPart(),
                     Base64.URL_SAFE | Base64.NO_PADDING);
             if (encodedDeviceEngagement != null) {
-                if (mLog.isEngagementEnabled()) {
-                    mLog.engagement(
-                            "Device Engagement from QR code: " + Util.toHex(
-                                    encodedDeviceEngagement));
+                if (Logger.isDebugEnabled()) {
+                    Logger.d(TAG, "Device Engagement from QR code: "
+                            + Util.toHex(encodedDeviceEngagement));
                 }
 
                 byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
@@ -262,9 +246,9 @@ public class VerificationHelper {
                         addresses.addAll(addressesFromMethod);
                     }
                 }
-                if (mLog.isEngagementEnabled()) {
+                if (Logger.isDebugEnabled()) {
                     for (DataRetrievalAddress address : addresses) {
-                        mLog.engagement("Have address: " + address);
+                        Logger.d(TAG, "Have address: " + address);
                     }
                 }
                 if (!addresses.isEmpty()) {
@@ -285,15 +269,15 @@ public class VerificationHelper {
         NdefMessage m = ndef.getCachedNdefMessage();
 
         handoverSelectMessage = m.toByteArray();
-        if (mLog.isEngagementEnabled()) {
-            mLog.engagement(
+        if (Logger.isDebugEnabled()) {
+            Logger.d(TAG, 
                     "In decodeNdefTag, handoverSelectMessage: " + Util.toHex(m.toByteArray()));
         }
 
         List<DataRetrievalAddress> addresses = new ArrayList<>();
         for (NdefRecord r : m.getRecords()) {
-            if (mLog.isEngagementEnabled()) {
-                mLog.engagement("record: " + Util.toHex(r.getPayload()));
+            if (Logger.isDebugEnabled()) {
+                Logger.d(TAG, "record: " + Util.toHex(r.getPayload()));
             }
 
             // Handle Handover Select record for NFC Forum Connection Handover specification
@@ -312,7 +296,7 @@ public class VerificationHelper {
                     // - One or more ALTERNATIVE_CARRIER_RECORDs followed by an ERROR_RECORD
                     // - An ERROR_RECORD.
                     //
-                    mLog.engagement("Processing Handover Select message");
+                    Logger.d(TAG, "Processing Handover Select message");
                     //byte[] ndefMessage = Arrays.copyOfRange(payload, 1, payload.length);
                     // TODO: check that the ALTERNATIVE_CARRIER_RECORD matches
                     //   the ALTERNATIVE_CARRIER_CONFIGURATION record retrieved below.
@@ -327,8 +311,8 @@ public class VerificationHelper {
                     "iso.org:18013:deviceengagement".getBytes(UTF_8))
                     && Arrays.equals(r.getId(), "mdoc".getBytes(UTF_8))) {
                 encodedDeviceEngagement = r.getPayload();
-                if (mLog.isEngagementEnabled()) {
-                    mLog.engagement(
+                if (Logger.isDebugEnabled()) {
+                    Logger.d(TAG, 
                             "Device Engagement from NFC: " + Util.toHex(encodedDeviceEngagement));
                 }
             }
@@ -347,14 +331,14 @@ public class VerificationHelper {
 
         }
 
-        if (mLog.isEngagementEnabled()) {
+        if (Logger.isDebugEnabled()) {
             for (DataRetrievalAddress address : addresses) {
-                mLog.engagement("Have address " + address);
+                Logger.d(TAG, "Have address " + address);
             }
         }
 
         if (validHandoverSelectMessage && !addresses.isEmpty()) {
-            mLog.engagement("Reporting Device Engagement through NFC");
+            Logger.d(TAG, "Reporting Device Engagement through NFC");
             byte[] readerHandover = Util.cborEncode(new CborBuilder()
                     .addArray()
                     .add(handoverSelectMessage)    // Handover Select message
@@ -394,7 +378,7 @@ public class VerificationHelper {
      */
     public void connect(@NonNull DataRetrievalAddress address) {
 
-        mDataTransport = address.createDataTransport(mContext, mLog.getLoggingFlags());
+        mDataTransport = address.createDataTransport(mContext);
         if (mDataTransport instanceof DataTransportNfc) {
             if (mNfcIsoDep == null) {
                 // This can happen if using NFC data transfer with QR code engagement
@@ -403,7 +387,7 @@ public class VerificationHelper {
                 // is detected... once detected, this routine can just call connect()
                 // again.
                 mConnectWaitingForIsoDepAddress = address;
-                mLog.engagement("In connect() with NFC data transfer but no ISO dep has been set. "
+                Logger.d(TAG, "In connect() with NFC data transfer but no ISO dep has been set. "
                         + "Assuming QR engagement, waiting for mdoc to move into field");
                 reportMoveIntoNfcField();
                 return;
@@ -414,7 +398,7 @@ public class VerificationHelper {
             ((DataTransportBle) mDataTransport).setUseL2CAPIfAvailable(mUseL2CAP);
             ((DataTransportBle) mDataTransport).setClearCache(mBleClearCache);
             if (mBleClearCache && mDataTransport instanceof DataTransportBleCentralClientMode) {
-                mLog.info("Ignoring bleClearCache flag since it only applies to "
+                Logger.d(TAG, "Ignoring bleClearCache flag since it only applies to "
                         + "BLE mdoc peripheral server mode when acting as a reader");
             }
         }
@@ -430,28 +414,28 @@ public class VerificationHelper {
         mDataTransport.setListener(new DataTransport.Listener() {
             @Override
             public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
-                mLog.info("onListeningSetupCompleted for " + mDataTransport);
+                Logger.d(TAG, "onListeningSetupCompleted for " + mDataTransport);
             }
 
             @Override
             public void onListeningPeerConnecting() {
-                mLog.info("onListeningPeerConnecting for " + mDataTransport);
+                Logger.d(TAG, "onListeningPeerConnecting for " + mDataTransport);
             }
 
             @Override
             public void onListeningPeerConnected() {
-                mLog.info("onListeningPeerConnected for " + mDataTransport);
+                Logger.d(TAG, "onListeningPeerConnected for " + mDataTransport);
             }
 
             @Override
             public void onListeningPeerDisconnected() {
-                mLog.info("onListeningPeerDisconnected for " + mDataTransport);
+                Logger.d(TAG, "onListeningPeerDisconnected for " + mDataTransport);
                 reportDeviceDisconnected(false);
             }
 
             @Override
             public void onConnectionResult(@Nullable Throwable error) {
-                mLog.info("onConnectionResult for " + mDataTransport + ": " + error);
+                Logger.d(TAG, "onConnectionResult for " + mDataTransport + ": " + error);
                 if (error != null) {
                     mDataTransport.close();
                     reportError(error);
@@ -462,14 +446,14 @@ public class VerificationHelper {
 
             @Override
             public void onConnectionDisconnected() {
-                mLog.info("onConnectionDisconnected for " + mDataTransport);
+                Logger.d(TAG, "onConnectionDisconnected for " + mDataTransport);
                 mDataTransport.close();
                 reportError(new IllegalStateException("Error: Disconnected"));
             }
 
             @Override
             public void onError(@NonNull Throwable error) {
-                mLog.info("onError for " + mDataTransport + ": " + error);
+                Logger.d(TAG, "onError for " + mDataTransport + ": " + error);
                 mDataTransport.close();
                 reportError(error);
                 error.printStackTrace();
@@ -501,9 +485,9 @@ public class VerificationHelper {
                 // currently does not define other kinds of messages).
                 //
                 if (decryptedMessage.first != null) {
-                    mLog.info("SessionData with decrypted payload"
+                    Logger.d(TAG, "SessionData with decrypted payload"
                             + " (" + decryptedMessage.first.length + " bytes)");
-                    if (mLog.isSessionEnabled()) {
+                    if (Logger.isDebugEnabled()) {
                         Util.dumpHex(TAG, "Received DeviceResponse", decryptedMessage.first);
                     }
                     reportResponseReceived(decryptedMessage.first);
@@ -514,7 +498,7 @@ public class VerificationHelper {
                         reportError(new Error("No data and no status in SessionData"));
                     } else {
                         int statusCode = decryptedMessage.second.getAsInt();
-                        mLog.info("SessionData with status code " + statusCode);
+                        Logger.d(TAG, "SessionData with status code " + statusCode);
                         if (statusCode == 20) {
                             mDataTransport.close();
                             reportDeviceDisconnected(false);
@@ -529,7 +513,7 @@ public class VerificationHelper {
 
             @Override
             public void onTransportSpecificSessionTermination() {
-                mLog.info("Received onTransportSpecificSessionTermination");
+                Logger.d(TAG, "Received onTransportSpecificSessionTermination");
                 mDataTransport.close();
                 reportDeviceDisconnected(true);
             }
@@ -549,7 +533,7 @@ public class VerificationHelper {
     }
 
     void reportDeviceDisconnected(boolean transportSpecificTermination) {
-        mLog.info("reportDeviceDisconnected: transportSpecificTermination: "
+        Logger.d(TAG, "reportDeviceDisconnected: transportSpecificTermination: "
                 + transportSpecificTermination);
         if (mListener != null) {
             mDeviceResponseListenerExecutor.execute(
@@ -558,7 +542,7 @@ public class VerificationHelper {
     }
 
     void reportResponseReceived(@NonNull byte[] deviceResponseBytes) {
-        mLog.info("reportResponseReceived (" + deviceResponseBytes.length + " bytes)");
+        Logger.d(TAG, "reportResponseReceived (" + deviceResponseBytes.length + " bytes)");
         if (mListener != null) {
             mDeviceResponseListenerExecutor.execute(
                     () -> mListener.onResponseReceived(deviceResponseBytes));
@@ -566,7 +550,7 @@ public class VerificationHelper {
     }
 
     void reportMoveIntoNfcField() {
-        mLog.info("reportMoveIntoNfcField");
+        Logger.d(TAG, "reportMoveIntoNfcField");
         if (mListener != null) {
             mDeviceResponseListenerExecutor.execute(
                     () -> mListener.onMoveIntoNfcField());
@@ -574,7 +558,7 @@ public class VerificationHelper {
     }
 
     void reportDeviceConnected() {
-        mLog.info("reportDeviceConnected");
+        Logger.d(TAG, "reportDeviceConnected");
         if (mListener != null) {
             mDeviceResponseListenerExecutor.execute(
                     () -> mListener.onDeviceConnected());
@@ -582,10 +566,10 @@ public class VerificationHelper {
     }
 
     void reportDeviceEngagementReceived(@NonNull List<DataRetrievalAddress> addresses) {
-        if (mLog.isInfoEnabled()) {
-            mLog.info("reportDeviceEngagementReceived");
+        if (Logger.isDebugEnabled()) {
+            Logger.d(TAG, "reportDeviceEngagementReceived");
             for (DataRetrievalAddress address : addresses) {
-                mLog.info("  address: " + address);
+                Logger.d(TAG, "  address: " + address);
             }
         }
         if (mListener != null) {
@@ -595,7 +579,7 @@ public class VerificationHelper {
     }
 
     void reportError(Throwable error) {
-        mLog.info("reportError: error: " + error);
+        Logger.d(TAG, "reportError: error: " + error);
         if (mListener != null) {
             mDeviceResponseListenerExecutor.execute(() -> mListener.onError(error));
         }
@@ -671,7 +655,7 @@ public class VerificationHelper {
             throw new IllegalStateException("Not connected to a remote device");
         }
 
-        if (mLog.isSessionEnabled()) {
+        if (Logger.isDebugEnabled()) {
             Util.dumpHex(TAG, "Sending DeviceRequest", deviceRequestBytes);
         }
 
