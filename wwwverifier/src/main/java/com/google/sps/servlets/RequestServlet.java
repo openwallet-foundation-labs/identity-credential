@@ -19,12 +19,10 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 import java.util.Base64;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.OptionalInt;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -60,7 +58,7 @@ import com.android.identity.OriginInfo;
 @WebServlet("/request-mdl")
 public class RequestServlet extends HttpServlet {
 
-    private DatastoreService datastore;
+    public static DatastoreService datastore;
     public static Key datastoreKey;
 
     /**
@@ -73,6 +71,7 @@ public class RequestServlet extends HttpServlet {
         Entity entity = new Entity(ServletConsts.ENTITY_NAME);
         datastore.put(entity);
         datastoreKey = entity.getKey();
+        setDeviceRequestBoolean(false);
     }
 
     /**
@@ -86,10 +85,7 @@ public class RequestServlet extends HttpServlet {
         PublicKey publicKey = keyPair.getPublic();
         PrivateKey privateKey = keyPair.getPrivate();
 
-        EngagementGenerator generator = new EngagementGenerator(publicKey, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        generator.addConnectionMethod(new ConnectionMethodRestApi(ServletConsts.WEBSITE_URL_SERVLET));
-        generator.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.WEBSITE_URL));
-        byte[] readerEngagement = generator.generate();
+        byte[] readerEngagement = generateReaderEngagement(publicKey);
 
         String fullURI = ServletConsts.MDOC_URI_PREFIX + base64Encode(readerEngagement);
 
@@ -97,7 +93,6 @@ public class RequestServlet extends HttpServlet {
         putByteArrInDatastore(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
         putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, publicKey.getEncoded());
         putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, privateKey.getEncoded());
-        setDeviceRequestBoolean(false);
 
         response.setContentType("text/html;");
         response.getWriter().println(fullURI);
@@ -130,6 +125,16 @@ public class RequestServlet extends HttpServlet {
             response.setContentType("application/json;");
             response.getWriter().println(json);
         }
+    }
+
+    /**
+     * @return generated readerEngagement CBOR message, using EngagementGenerator
+     */
+    public static byte[] generateReaderEngagement(PublicKey publicKey) {
+        EngagementGenerator generator = new EngagementGenerator(publicKey, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+        generator.addConnectionMethod(new ConnectionMethodRestApi(ServletConsts.WEBSITE_URL_SERVLET));
+        generator.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.WEBSITE_URL));
+        return generator.generate();
     }
 
     /**
@@ -210,7 +215,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return Datastore entity linked to the key created in the init() function.
      */
-    public Entity getEntity() {
+    public static Entity getEntity() {
         try {
             return datastore.get(datastoreKey);
         } catch (EntityNotFoundException e) {
@@ -231,7 +236,7 @@ public class RequestServlet extends HttpServlet {
      * Marks in database whether DeviceRequest has been sent as a response to a POST request
      * @param bool
      */
-    public void setDeviceRequestBoolean(boolean bool) {
+    public static void setDeviceRequestBoolean(boolean bool) {
         Entity entity = getEntity();
         entity.setProperty(ServletConsts.BOOLEAN_PROP, bool);
         datastore.put(entity);
@@ -294,7 +299,7 @@ public class RequestServlet extends HttpServlet {
      * @param propName Name of the property that should be inserted into Datastore
      * @param arr data that should be inserted into Datastore
      */
-    public void putByteArrInDatastore(String propName, byte[] arr) {
+    public static void putByteArrInDatastore(String propName, byte[] arr) {
         Entity entity = getEntity();
         entity.setProperty(propName, base64Encode(arr));
         datastore.put(entity);
@@ -314,14 +319,14 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return Byte array from a base 64 decoded String @param str
      */
-    public byte[] base64Decode(String str) {
+    public static byte[] base64Decode(String str) {
         return Base64.getMimeDecoder().decode(str.getBytes());
     }
 
     /**
      * @return String from a base 64 encoded byte array @param arr
      */
-    public String base64Encode(byte[] arr) {
+    public static String base64Encode(byte[] arr) {
         return Base64.getEncoder().encodeToString(arr);
     }
 }

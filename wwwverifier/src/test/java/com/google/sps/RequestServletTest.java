@@ -109,7 +109,7 @@ public class RequestServletTest {
 
     @Test
     public void checkDeviceRequestGenerationWithTestVector() throws IOException {
-        FillDatastoreForDeviceRequestGeneration();
+        fillDatastoreForDeviceRequestGeneration();
         byte[] sessionEstablishmentBytes = createMockSessionEstablishment();
         String sessionEstablishmentStr = Base64.getEncoder().encodeToString(sessionEstablishmentBytes);
 
@@ -147,29 +147,19 @@ public class RequestServletTest {
         Assert.assertTrue(documentsJSON.length() > 0);
     }
 
-    public void FillDatastoreForDeviceRequestGeneration() {
+    public void fillDatastoreForDeviceRequestGeneration() {
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
         KeyPair keyPair = RequestServlet.generateKeyPair();
         PublicKey publicKey = keyPair.getPublic();
         PrivateKey privateKey = keyPair.getPrivate();
 
-        EngagementGenerator generator = new EngagementGenerator(keyPair.getPublic(), EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        generator.addConnectionMethod(new ConnectionMethodRestApi(ServletConsts.WEBSITE_URL_SERVLET));
-        generator.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.WEBSITE_URL));
-        byte[] readerEngagement = generator.generate();
+        byte[] readerEngagement = RequestServlet.generateReaderEngagement(publicKey);
 
-        try {
-            Entity entity = datastore.get(RequestServlet.datastoreKey);
-            entity.setProperty(ServletConsts.READER_ENGAGEMENT_PROP, Base64.getEncoder().encodeToString(readerEngagement));
-            entity.setProperty(ServletConsts.PUBLIC_KEY_PROP, Base64.getEncoder().encodeToString(publicKey.getEncoded()));
-            entity.setProperty(ServletConsts.PRIVATE_KEY_PROP, Base64.getEncoder().encodeToString(privateKey.getEncoded()));
-            entity.setProperty(ServletConsts.SESSION_TRANS_PROP, false);
-            entity.setProperty(ServletConsts.BOOLEAN_PROP, false);
-            datastore.put(entity);
-        } catch (EntityNotFoundException e) {
-            throw new IllegalStateException("Entity could not be found in database", e);
-        }
+        RequestServlet.putByteArrInDatastore(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
+        RequestServlet.putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, publicKey.getEncoded());
+        RequestServlet.putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, privateKey.getEncoded());
+        RequestServlet.setDeviceRequestBoolean(false);
     }
 
     public byte[] createMockSessionEstablishment() {
@@ -204,14 +194,8 @@ public class RequestServletTest {
                 Util.cborExtractTaggedAndEncodedCbor(
                         Util.cborDecode(encodedSessionTranscriptBytes)));
 
-        try {
-            Entity entity = datastore.get(RequestServlet.datastoreKey);
-            entity.setProperty(ServletConsts.PRIVATE_KEY_PROP, Base64.getEncoder().encodeToString(eReaderKeyPrivate.getEncoded()));
-            entity.setProperty(ServletConsts.SESSION_TRANS_PROP, Base64.getEncoder().encodeToString(sessionTranscript));
-            entity.setProperty(ServletConsts.BOOLEAN_PROP, true);
-            datastore.put(entity);
-        } catch (EntityNotFoundException e) {
-            throw new IllegalStateException("Entity could not be found in database", e);
-        }
+        RequestServlet.putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
+        RequestServlet.putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
+        RequestServlet.setDeviceRequestBoolean(true);
     }
 }
