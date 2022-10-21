@@ -13,10 +13,6 @@ import com.android.identity.*
 import com.android.identity.IdentityCredentialStore.FEATURE_VERSION_202201
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.mdl.app.R
-import com.android.mdl.app.documentdata.RequestMdl
-import com.android.mdl.app.documentdata.RequestMicovAtt
-import com.android.mdl.app.documentdata.RequestMicovVtr
-import com.android.mdl.app.documentdata.RequestMvr
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
@@ -844,10 +840,12 @@ class DocumentManager private constructor(private val context: Context) {
     private fun provisionSelfSignedMdl(dData: SelfSignedDocumentData) {
 
         val idSelf = AccessControlProfileId(0)
-        val profileSelf = AccessControlProfile.Builder(idSelf)
+        val profileSelfBuilder = AccessControlProfile.Builder(idSelf)
             .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
-            .setUserAuthenticationTimeout(30 * 1000)
-            .build()
+        if (dData.provisionInfo.userAuthentication) {
+            profileSelfBuilder.setUserAuthenticationTimeout(30 * 1000)
+        }
+        val profileSelf = profileSelfBuilder.build()
         val idsSelf = listOf(idSelf)
 
         val iaSelfSignedCert = KeysAndCertificates.getMdlDsCertificate(context)
@@ -988,10 +986,12 @@ class DocumentManager private constructor(private val context: Context) {
     private fun provisionSelfSignedMvr(dData: SelfSignedDocumentData) {
 
         val idSelf = AccessControlProfileId(0)
-        val profileSelf = AccessControlProfile.Builder(idSelf)
+        val profileSelfBuilder = AccessControlProfile.Builder(idSelf)
             .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
-            .setUserAuthenticationTimeout(30 * 1000)
-            .build()
+        if (dData.provisionInfo.userAuthentication) {
+            profileSelfBuilder.setUserAuthenticationTimeout(30 * 1000)
+        }
+        val profileSelf = profileSelfBuilder.build()
         val idsSelf = listOf(idSelf)
         val iaSelfSignedCert = KeysAndCertificates.getMekbDsCertificate(context)
 
@@ -1100,10 +1100,12 @@ class DocumentManager private constructor(private val context: Context) {
     private fun provisionSelfSignedMicov(dData: SelfSignedDocumentData) {
 
         val idSelf = AccessControlProfileId(0)
-        val profileSelf = AccessControlProfile.Builder(idSelf)
+        val profileSelfBuilder = AccessControlProfile.Builder(idSelf)
             .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
-            .setUserAuthenticationTimeout(30 * 1000)
-            .build()
+        if (dData.provisionInfo.userAuthentication) {
+            profileSelfBuilder.setUserAuthenticationTimeout(30 * 1000)
+        }
+        val profileSelf = profileSelfBuilder.build()
         val idsSelf = listOf(idSelf)
         val iaSelfSignedCert = KeysAndCertificates.getMicovDsCertificate(context)
 
