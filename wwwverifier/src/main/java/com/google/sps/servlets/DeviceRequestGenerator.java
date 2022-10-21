@@ -14,7 +14,7 @@
 * limitations under the License.
 */
  
-package com.android.identity;
+package com.google.sps.servlets;
  
 //import androidx.annotation.NonNull;
 //import androidx.annotation.Nullable;

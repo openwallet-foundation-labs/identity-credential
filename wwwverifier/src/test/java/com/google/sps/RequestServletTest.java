@@ -47,14 +47,14 @@ import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
 
 // imports from Identity Credential Library
-import com.android.identity.TestVectors;
-import com.android.identity.Util;
-import com.android.identity.EngagementParser;
-import com.android.identity.EngagementGenerator;
-import com.android.identity.ConnectionMethod;
-import com.android.identity.ConnectionMethodRestApi;
-import com.android.identity.OriginInfoWebsite;
-import com.android.identity.OriginInfo;
+import com.google.sps.servlets.TestVectors;
+import com.google.sps.servlets.Util;
+import com.google.sps.servlets.EngagementParser;
+import com.google.sps.servlets.EngagementGenerator;
+import com.google.sps.servlets.ConnectionMethod;
+import com.google.sps.servlets.ConnectionMethodRestApi;
+import com.google.sps.servlets.OriginInfoWebsite;
+import com.google.sps.servlets.OriginInfo;
 
 // imports from custom classes
 import com.google.sps.servlets.RequestServlet;

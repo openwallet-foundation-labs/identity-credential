@@ -38,14 +38,14 @@ import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.appengine.api.datastore.Text;
 
 // imports for Identity Credential Library
-import com.android.identity.DeviceRequestGenerator;
-import com.android.identity.SessionEncryptionReader;
-import com.android.identity.DeviceResponseParser;
-import com.android.identity.EngagementGenerator;
-import com.android.identity.ConnectionMethod;
-import com.android.identity.ConnectionMethodRestApi;
-import com.android.identity.OriginInfoWebsite;
-import com.android.identity.OriginInfo;
+import com.google.sps.servlets.DeviceRequestGenerator;
+import com.google.sps.servlets.SessionEncryptionReader;
+import com.google.sps.servlets.DeviceResponseParser;
+import com.google.sps.servlets.EngagementGenerator;
+import com.google.sps.servlets.ConnectionMethod;
+import com.google.sps.servlets.ConnectionMethodRestApi;
+import com.google.sps.servlets.OriginInfoWebsite;
+import com.google.sps.servlets.OriginInfo;
 
 /**
  * This servlet performs three main functions:

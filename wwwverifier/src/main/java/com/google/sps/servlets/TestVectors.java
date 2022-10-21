@@ -14,7 +14,7 @@
 * limitations under the License.
 */
  
-package com.android.identity;
+package com.google.sps.servlets;
  
 public class TestVectors {
  
