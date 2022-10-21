@@ -1246,38 +1246,4 @@ class DocumentManager private constructor(private val context: Context) {
             dData.provisionInfo.maxUseMso
         )
     }
-
-    fun showData(document: Document): CredentialDataResult.Entries? {
-
-        val session = store.createPresentationSession(
-            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-        )
-
-        // Request all data items based on doctype
-        val entriesToRequest = if (MDL_DOCTYPE == document.docType) {
-            RequestMdl.getFullItemsToRequest()
-        } else if (MVR_DOCTYPE == document.docType) {
-            RequestMvr.getFullItemsToRequest()
-        } else if (MICOV_DOCTYPE == document.docType) {
-            RequestMicovAtt.getFullItemsToRequest().plus(
-                RequestMicovVtr.getFullItemsToRequest()
-            )
-        } else {
-            throw IllegalArgumentException("Invalid docType to create request details ${document.docType}")
-        }
-
-        val credentialRequest = CredentialDataRequest.Builder()
-            .setIncrementUseCount(false)
-            .setIssuerSignedEntriesToRequest(
-                entriesToRequest
-            )
-            .build()
-
-        session.setSessionTranscript(byteArrayOf(0))
-
-        // It can display data if user consent is not required
-        val credentialData =
-            session.getCredentialData(document.identityCredentialName, credentialRequest)
-        return credentialData?.issuerSignedEntries
-    }
 }

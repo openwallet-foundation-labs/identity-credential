@@ -18,6 +18,10 @@ import co.nstant.`in`.cbor.model.UnsignedInteger
 import com.android.identity.CredentialDataResult
 import com.android.identity.CredentialDataResult.Entries.STATUS_USER_AUTHENTICATION_FAILED
 import com.android.mdl.app.document.Document
+import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
+import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
+import com.android.mdl.app.util.DocumentData.MICOV_ATT_NAMESPACE
+import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import java.io.ByteArrayInputStream
 import java.math.BigInteger
 import java.text.DecimalFormat
@@ -238,12 +242,5 @@ class DocumentDataReader(private val entries: CredentialDataResult.Entries) {
             }
         }
         return true
-    }
-
-    companion object {
-        private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        private const val MICOV_DOCTYPE = "org.micov.1"
-        private const val MDL_NAMESPACE = "org.iso.18013.5.1"
-        private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
     }
 }

@@ -107,7 +107,7 @@ public class PresentationHelper {
      */
     public PresentationHelper(@NonNull Context context,
                               @NonNull PresentationSession presentationSession,
-                              @Nullable DataTransport transport, //TODO: make it NonNull
+                              @NonNull DataTransport transport,
                               @NonNull byte[] deviceEngagement,
                               @NonNull byte[] handover,
                               @Nullable byte[] alternateDeviceEngagement,
