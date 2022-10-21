@@ -19,7 +19,6 @@ package com.android.identity;
 import android.content.Context;
 import android.nfc.cardemulation.HostApduService;
 import android.os.Bundle;
-import android.util.Log;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;

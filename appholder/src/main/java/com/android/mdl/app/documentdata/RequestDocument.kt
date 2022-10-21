@@ -1,9 +1,9 @@
-package com.android.mdl.app.request
+package com.android.mdl.app.documentdata
 
 import java.io.Serializable
 
-
 abstract class RequestDocument : Serializable {
+
     abstract val docType: String
     abstract val nameSpace: String
     abstract val dataItems: List<RequestDataItem>

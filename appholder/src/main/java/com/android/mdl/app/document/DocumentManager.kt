@@ -13,11 +13,11 @@ import com.android.identity.*
 import com.android.identity.IdentityCredentialStore.FEATURE_VERSION_202201
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.mdl.app.R
+import com.android.mdl.app.documentdata.RequestMdl
+import com.android.mdl.app.documentdata.RequestMicovAtt
+import com.android.mdl.app.documentdata.RequestMicovVtr
+import com.android.mdl.app.documentdata.RequestMvr
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
-import com.android.mdl.app.request.RequestMdl
-import com.android.mdl.app.request.RequestMicovAtt
-import com.android.mdl.app.request.RequestMicovVtr
-import com.android.mdl.app.request.RequestMvr
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.DUMMY_MICOV_CREDENTIAL_NAME
@@ -1245,56 +1245,5 @@ class DocumentManager private constructor(private val context: Context) {
             dData.provisionInfo.numberMso,
             dData.provisionInfo.maxUseMso
         )
-    }
-
-    fun showData(document: Document) {
-
-        val session = store.createPresentationSession(
-            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-        )
-
-        // Request all data items based on doctype
-        val entriesToRequest = if (MDL_DOCTYPE == document.docType) {
-            RequestMdl.getFullItemsToRequest()
-        } else if (MVR_DOCTYPE == document.docType) {
-            RequestMvr.getFullItemsToRequest()
-        } else if (MICOV_DOCTYPE == document.docType) {
-            RequestMicovAtt.getFullItemsToRequest().plus(
-                RequestMicovVtr.getFullItemsToRequest()
-            )
-        } else {
-            throw IllegalArgumentException("Invalid docType to create request details ${document.docType}")
-        }
-
-        val credentialRequest = CredentialDataRequest.Builder()
-            .setIncrementUseCount(false)
-            .setIssuerSignedEntriesToRequest(
-                entriesToRequest
-            )
-            .build()
-
-        session.setSessionTranscript(byteArrayOf(0))
-
-        // It can display data if user consent is not required
-        val credentialData =
-            session.getCredentialData(document.identityCredentialName, credentialRequest)
-        credentialData?.issuerSignedEntries?.let { ise ->
-            ise.namespaces.forEach { ns ->
-                ise.getEntryNames(ns).forEach { entry ->
-                    try {
-                        Log.d("TEST", "$entry - ${ise.getEntryString(ns, entry)}")
-                    } catch (e: IllegalArgumentException) {
-                        // If not string print the bytes
-                        Log.d(
-                            "TEST", "$entry - ${
-                                FormatUtil.encodeToString(ise.getEntry(ns, entry) ?: byteArrayOf(0))
-                            }"
-                        )
-                    }
-                }
-            }
-        }
-
-
     }
 }

@@ -1,8 +1,9 @@
-package com.android.mdl.app.request
+package com.android.mdl.app.documentdata
 
 import com.android.mdl.app.R
 
 object RequestMicovVtr : RequestDocument() {
+
     override val docType = "org.micov.1"
     override val nameSpace = "org.micov.vtr.1"
     override val dataItems = DataItems.values().asList()
