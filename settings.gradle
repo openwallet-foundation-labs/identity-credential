@@ -1,2 +1,2 @@
-include ':appholder', ':appverifier',':identity'
+include ':identity',':wwwverifier'
 rootProject.name = 'Identity Credential'
