@@ -52,7 +52,7 @@ class AddSelfSignedFragment : Fragment() {
     fun onNext() {
         val provisionInfo = ProvisionInfo(
             getSelectedDocType(),
-            binding.scUserAuthentication.equals(true),
+            binding.scUserAuthentication.isChecked,
             binding.totalMso.text.toString().toInt(),
             binding.totalUse.text.toString().toInt()
 
