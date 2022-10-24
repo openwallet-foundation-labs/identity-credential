@@ -110,6 +110,7 @@
     <string name="txt_document_type">Document type:</string>
     <string name="txt_user_authentication">Use user authentication</string>
     <string name="txt_number_mso">Number of MSOs</string>
+    <string name="txt_max_use_mso">Max use of MSO</string>
     <string name="label_self_signed">Self Signed</string>
     <string name="label_user_auth">User Auth</string>
     <string name="label_hardware_backed">Hardware Backed</string>
