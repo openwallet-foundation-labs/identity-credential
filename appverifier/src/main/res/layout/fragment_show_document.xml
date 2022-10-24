@@ -10,7 +10,7 @@
         android:id="@+id/sv_document"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@+id/bt_close_termination_message"
+        app:layout_constraintBottom_toTopOf="@id/bt_close_termination_message"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -18,29 +18,44 @@
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/cl_document"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:padding="16dp">
 
             <ImageView
                 android:id="@+id/iv_portrait"
-                android:layout_width="150dp"
-                android:layout_height="150dp"
-                android:layout_marginTop="48dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:scaleType="centerCrop"
                 android:src="@android:drawable/ic_delete"
                 android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                tools:visibility="visible" />
 
             <TextView
                 android:id="@+id/tv_results"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="16dp"
                 android:text="Show results"
-                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/iv_portrait" />
+
+            <ImageView
+                android:id="@+id/iv_signature"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:src="@android:drawable/ic_delete"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_results"
+                tools:visibility="visible" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
     </ScrollView>
