@@ -1,11 +1,11 @@
 package com.android.mdl.app.fragment
 
-import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Matrix
 import android.icu.text.SimpleDateFormat
 import android.net.Uri
 import android.os.Bundle
@@ -21,7 +21,11 @@ import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.core.content.FileProvider
+import androidx.exifinterface.media.ExifInterface
+import androidx.exifinterface.media.ExifInterface.ORIENTATION_UNDEFINED
+import androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
@@ -31,8 +35,8 @@ import com.android.mdl.app.util.Field
 import com.android.mdl.app.util.FieldType
 import com.android.mdl.app.util.FormatUtil.fullDateStringToMilliseconds
 import com.android.mdl.app.util.FormatUtil.millisecondsToFullDateString
-import com.android.mdl.app.util.SelfSignedDocumentData
 import com.android.mdl.app.util.ProvisionInfo
+import com.android.mdl.app.util.SelfSignedDocumentData
 import com.android.mdl.app.viewmodel.SelfSignedViewModel
 import com.google.android.material.datepicker.MaterialDatePicker
 import org.jetbrains.anko.collections.forEachWithIndex
@@ -41,11 +45,13 @@ import org.jetbrains.anko.imageBitmap
 import java.io.File
 import java.io.IOException
 import java.util.*
+import kotlin.math.max
+import kotlin.math.min
 
 class SelfSignedDetailsFragment : Fragment() {
+
     companion object {
         private const val LOG_TAG = "SelfSignedDetailsFragment"
-        private const val REQUEST_IMAGE_CAPTURE = 1
     }
 
     private lateinit var vm: SelfSignedViewModel
@@ -119,10 +125,12 @@ class SelfSignedDetailsFragment : Fragment() {
                     getImageViewValue(field.id)
                 )
             }
+
             FieldType.BOOLEAN -> {
                 // TODO: get value from switch button for boolean type
                 Field(field.id, field.label, field.name, field.fieldType, getViewValue(field.id))
             }
+
             FieldType.STRING, FieldType.DATE -> {
                 Field(field.id, field.label, field.name, field.fieldType, getViewValue(field.id))
             }
@@ -136,9 +144,13 @@ class SelfSignedDetailsFragment : Fragment() {
                     getTextView(field.id + 500, field.label, null)
                 )
                 binding.layoutSelfSignedDetails.addView(
-                    getImageView(field.id, field.value as Bitmap) { dispatchTakePictureIntent(field.id) }
+                    getImageView(
+                        field.id,
+                        field.value as Bitmap
+                    ) { dispatchTakePictureIntent(field.id) }
                 )
             }
+
             FieldType.BOOLEAN -> {
                 // TODO: create switch button for boolean type
                 binding.layoutSelfSignedDetails.addView(
@@ -148,6 +160,7 @@ class SelfSignedDetailsFragment : Fragment() {
                     getEditView(field.id, field.value as String, null)
                 )
             }
+
             FieldType.STRING -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTextView(field.id + 500, field.label, null)
@@ -156,6 +169,7 @@ class SelfSignedDetailsFragment : Fragment() {
                     getEditView(field.id, field.value as String, null)
                 )
             }
+
             FieldType.DATE -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTextView(field.id + 500, field.label, null)
@@ -241,6 +255,7 @@ class SelfSignedDetailsFragment : Fragment() {
             is TextView -> {
                 view.text.toString()
             }
+
             else -> {
                 String()
             }
@@ -274,8 +289,49 @@ class SelfSignedDetailsFragment : Fragment() {
     }
 
     // Following to enable take picture
-    lateinit var currentPhotoPath: String
+    private lateinit var photoUri: Uri
+    private lateinit var currentPhotoPath: String
     private var imageViewId: Int? = null
+    private val takePicture = registerForActivityResult(TakePicture()) { isSuccess ->
+        if (isSuccess) {
+            val rotation = calculateDegrees()
+            setPic(rotation)
+        }
+    }
+
+    private fun dispatchTakePictureIntent(viewId: Int) {
+        imageViewId = viewId
+        if (!hasCameraAvailable()) return
+        if (!canTakePhoto()) return
+        try {
+            val imageFile = createImageFile()
+            photoUri = getUriForFile(imageFile)
+            takePicture.launch(photoUri)
+        } catch (exception: IOException) {
+            Log.e(LOG_TAG, "Error capturing image", exception)
+        }
+    }
+
+    private fun hasCameraAvailable(): Boolean {
+        val packageManager = requireContext().packageManager
+        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
+            val errorMessage = "This device does not have a camera."
+            Toast.makeText(activity, errorMessage, Toast.LENGTH_SHORT).show()
+            return false
+        }
+        return true
+    }
+
+    private fun canTakePhoto(): Boolean {
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(requireContext().packageManager) == null) {
+            val errorMessage = "Could not find camera activity."
+            Toast.makeText(activity, errorMessage, Toast.LENGTH_SHORT).show()
+            return false
+        }
+        return true
+    }
 
     @Throws(IOException::class)
     private fun createImageFile(): File {
@@ -287,60 +343,29 @@ class SelfSignedDetailsFragment : Fragment() {
             ".jpg", /* suffix */
             storageDir /* directory */
         ).apply {
-            // Save a file: path for use with ACTION_VIEW intents
             currentPhotoPath = absolutePath
         }
     }
 
-    private fun dispatchTakePictureIntent(viewId: Int) {
-        imageViewId = viewId
+    private fun getUriForFile(file: File): Uri {
+        val authority = "${requireContext().packageName}.fileprovider"
+        return FileProvider.getUriForFile(requireContext(), authority, file)
+    }
 
-        // Check if there is a camera.
-        val packageManager = requireContext().packageManager
-        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
-            Toast.makeText(activity, "This device does not have a camera.", Toast.LENGTH_SHORT)
-                .show()
-            return
-        }
-
-        Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-            // Ensure that there's a camera activity to handle the intent
-            if (takePictureIntent.resolveActivity(packageManager) == null) {
-                Toast.makeText(activity, "Could not find camera activity.", Toast.LENGTH_SHORT)
-                    .show()
-                return
-            }
-            takePictureIntent.resolveActivity(packageManager)?.also {
-                // Create the File where the photo should go
-                val photoFile: File? = try {
-                    createImageFile()
-                } catch (ex: IOException) {
-                    Log.e(LOG_TAG, "Error capturing image", ex)
-                    null
-                }
-                // Continue only if the File was successfully created
-                photoFile?.also {
-                    val photoURI: Uri = FileProvider.getUriForFile(
-                        requireContext(),
-                        "com.android.mdl.app.fileprovider",
-                        it
-                    )
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                    Log.d(LOG_TAG, "Start activity $currentPhotoPath")
-                    startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
-                }
-            }
+    private fun calculateDegrees(): Float {
+        val inputStream = requireContext().contentResolver.openInputStream(photoUri)
+        val exifInterface = ExifInterface(inputStream!!)
+        return when (exifInterface.getAttributeInt(TAG_ORIENTATION, ORIENTATION_UNDEFINED)) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }.apply {
+            inputStream.close()
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            Log.d(LOG_TAG, "Picture taken $currentPhotoPath")
-            setPic()
-        }
-    }
-
-    private fun setPic() {
+    private fun setPic(rotation: Float) {
         val id = imageViewId
         if (id == null) {
             Log.e(LOG_TAG, "No image view id, impossible to set picture")
@@ -361,16 +386,22 @@ class SelfSignedDetailsFragment : Fragment() {
             val photoH: Int = outHeight
 
             // Determine how much to scale down the image
-            val scaleFactor: Int = Math.max(1, Math.min(photoW / targetW, photoH / targetH))
+            val scaleFactor: Int = max(1, min(photoW / targetW, photoH / targetH))
 
             // Decode the image file into a Bitmap sized to fill the View
             inJustDecodeBounds = false
             inSampleSize = scaleFactor
             inPurgeable = true
         }
-        BitmapFactory.decodeFile(currentPhotoPath, bmOptions)?.also { bitmap ->
-            imageView.setImageBitmap(bitmap)
-        }
+
+        val original = BitmapFactory.decodeFile(currentPhotoPath, bmOptions)
+        val rotated = if (rotation != 0f) {
+            val matrix = Matrix()
+            matrix.postRotate(rotation)
+            Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
+        } else original
+        original.recycle()
+        imageView.setImageBitmap(rotated)
     }
 }
 
