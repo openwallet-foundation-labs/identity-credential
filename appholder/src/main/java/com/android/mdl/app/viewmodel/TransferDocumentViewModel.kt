@@ -62,7 +62,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     fun getCryptoObject() = transferManager.getCryptoObject()
 
     @Throws(InvalidRequestMessageException::class)
-    fun sendResponse(): CryptoObject? {
+    fun sendResponse(): Boolean {
         inProgress.set(View.VISIBLE)
         // Currently we don't care about the request, for now we just send the mdoc we have
         // without any regard to what the reader actually requested...
@@ -88,7 +88,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 if (authNeeded) {
                     inProgress.set(View.GONE)
                     inProgress.notifyChange()
-                    return transferManager.getCryptoObject()
+                    return true
                 }
             } catch (e : NoSuchElementException) {
                 Log.w(LOG_TAG, "No document for docType " + reqDoc.docType)
@@ -99,7 +99,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         documentsCount++
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
         inProgress.set(View.GONE)
-        return null
+        return false
     }
 
     fun cancelPresentation(

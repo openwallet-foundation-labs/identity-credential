@@ -12,13 +12,11 @@ import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import com.android.identity.CredentialDataResult
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.KeysAndCertificates
-import com.android.mdl.app.documentdata.DocumentDataReader
 import com.android.mdl.app.readerauth.SimpleReaderTrustStore
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
@@ -117,7 +115,9 @@ class TransferDocumentFragment : Fragment() {
             // TODO Request the data, iterate over it and see which properties need signature
             // Then ask for user consent and send response
 
-            requestUserAuth(false)
+            if (viewModel.sendResponse()) {
+                requestUserAuth(false)
+            }
         } catch (e: Exception) {
             val message = "On request received error: ${e.message}"
             Log.e(LOG_TAG, message, e)
@@ -209,7 +209,7 @@ class TransferDocumentFragment : Fragment() {
     private fun authenticationSucceeded() {
         // Send response again after user biometric authentication
         try {
-            if (viewModel.sendResponse() != null) {
+            if (viewModel.sendResponse()) {
                 // If this returns non-null it means that user-auth is still required.
                 //
                 // Wait, what? We just authenticated, so how can this happen?
