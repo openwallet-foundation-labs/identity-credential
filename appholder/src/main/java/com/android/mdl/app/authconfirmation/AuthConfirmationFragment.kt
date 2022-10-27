@@ -9,23 +9,22 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.Space
-import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
 import com.android.mdl.app.databinding.FragmentAuthConfirmationBinding
-import com.android.mdl.app.document.Document
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
+import com.google.android.material.switchmaterial.SwitchMaterial
 
 class AuthConfirmationFragment : Fragment() {
 
     private var _binding: FragmentAuthConfirmationBinding? = null
     private val binding get() = _binding!!
-    private val viewModel: TransferDocumentViewModel by viewModels()
+    private val viewModel: TransferDocumentViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -41,49 +40,73 @@ class AuthConfirmationFragment : Fragment() {
         _binding = null
     }
 
+    class MyDataStructure {
+
+        private val data = mutableMapOf<String, RequestedDocumentData>()
+        private val map = mutableMapOf<String, ArrayList<String>>()
+
+        fun addNamespace(requestedData: RequestedDocumentData) {
+            data[requestedData.namespace] = requestedData
+            map[requestedData.namespace] = ArrayList()
+        }
+
+        fun toggleProperty(namespace: String, property: String) {
+            val propertiesForNamespace = map.getOrDefault(namespace, ArrayList())
+            if (!propertiesForNamespace.remove(property)) {
+                propertiesForNamespace.add(property)
+            }
+            map[namespace] = propertiesForNamespace
+        }
+
+        fun collect(): List<SignedDocumentData> {
+            return data.keys.map { namespace ->
+                val document = data.getValue(namespace)
+                SignedDocumentData(
+                    namespace,
+                    map[namespace] as Collection<String>,
+                    document.identityCredentialName,
+                    document.requestedDocument.docType,
+                    document.requestedDocument.readerAuth,
+                    document.requestedDocument.itemsRequest
+                )
+            }
+        }
+    }
+
+    private val signedProperties = MyDataStructure()
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-//        val requestedDocTypes = viewModel.getRequestedDocuments().map { it.docType }
-//        val requestedDocs = viewModel.getDocuments().filter { it.docType in requestedDocTypes }
-//        val transferManager = TransferManager.getInstance(requireContext())
-//        val propertiesToSign = mutableMapOf<Document, MutableList<String>>()
-//        requestedDocs.forEach { document ->
-//            transferManager.readDocumentEntries(document)?.let { entries ->
-//                val fieldsNeedingAuth = mutableListOf<String>()
-//                entries.namespaces.forEach { namespace ->
-//                    entries.getEntryNames(namespace).forEach { entry ->
-//                        if(entries.getStatus(namespace, entry) == CredentialDataResult.Entries.STATUS_USER_AUTHENTICATION_FAILED) {
-//                            fieldsNeedingAuth.add(entry)
-//                        }
-//                    }
-//                }
-//                propertiesToSign[document] = fieldsNeedingAuth
-//            }
-//        }
-        val propertiesToSign = viewModel.getEntryNames()
-        propertiesToSign.forEach { (document, properties) ->
-            binding.llPropertiesContainer.addView(documentNameFor(document))
-            properties.forEach { property ->
-                binding.llPropertiesContainer.addView(switchFor(property))
+        val propertiesToSign = viewModel.requested
+        propertiesToSign.forEach { documentData ->
+            binding.llPropertiesContainer.addView(documentNameFor(documentData))
+            documentData.requestedProperties.forEach { property ->
+                binding.llPropertiesContainer.addView(switchFor(documentData.namespace, property))
             }
             binding.llPropertiesContainer.addView(spacer())
         }
         binding.btnConfirm.setOnClickListener { requestUserAuth(false) }
     }
 
-    private fun documentNameFor(document: Document): View {
+    private fun documentNameFor(document: RequestedDocumentData): View {
+        signedProperties.addNamespace(document)
         return TextView(requireContext()).apply {
-            val value = "${document.userVisibleName}  |  ${document.docType}"
-            text = value
+            text = document.nameTypeTitle()
             textSize = 16f
         }
     }
 
-    private fun switchFor(property: String): View {
-        return Switch(requireContext()).apply {
-            text = property
+    private fun switchFor(namespace: String, property: String): View {
+        signedProperties.toggleProperty(namespace, property)
+        val switch = SwitchMaterial(requireContext()).apply {
+            val identifier = resources.getIdentifier(property, "string", context.packageName)
+            text = if (identifier != 0) getString(identifier) else property
             isChecked = true
             setPadding(24, 0, 24, 0)
         }
+        switch.setOnCheckedChangeListener { _, _ ->
+            signedProperties.toggleProperty(namespace, property)
+        }
+        return switch
     }
 
     private fun spacer(): View {
@@ -107,11 +130,12 @@ class AuthConfirmationFragment : Fragment() {
 
     private fun authenticationSucceeded() {
         try {
-            if (viewModel.sendResponse()) {
-                val message = "Auth took too long, try again"
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-                retryForcingPinUse()
-            }
+//            if (viewModel.sendResponse()) {
+//                val message = "Auth took too long, try again"
+//                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+//                retryForcingPinUse()
+//            }
+            viewModel.sendResponseForSelection(signedProperties.collect())
             findNavController().navigateUp()
         } catch (e: Exception) {
             val message = "Send response error: ${e.message}"
@@ -127,7 +151,7 @@ class AuthConfirmationFragment : Fragment() {
     }
 
     private fun authenticationFailed() {
-        TODO()
+        //TODO close connection (call here or call in the prev fragment)
     }
 
     private companion object {
