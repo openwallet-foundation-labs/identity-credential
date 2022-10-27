@@ -75,7 +75,7 @@ public final class EngagementGenerator {
      */
     public @NonNull
     EngagementGenerator addConnectionMethod(@NonNull ConnectionMethod connectionMethod) {
-        mConnectionMethodsArrayBuilder.add(connectionMethod.encode());
+        mConnectionMethodsArrayBuilder.add(connectionMethod.toDeviceEngagement());
         mNumConnectionMethods++;
         return this;
     }

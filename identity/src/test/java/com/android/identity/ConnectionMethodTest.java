@@ -30,7 +30,7 @@ public class ConnectionMethodTest {
     @SmallTest
     public void testConnectionMethodNfc() {
         ConnectionMethodNfc cm = new ConnectionMethodNfc(4096, 32768);
-        ConnectionMethodNfc decoded = ConnectionMethodNfc.decode(cm.encode());
+        ConnectionMethodNfc decoded = ConnectionMethodNfc.fromDeviceEngagement(cm.toDeviceEngagement());
         Assert.assertEquals(cm.getCommandDataFieldMaxLength(), decoded.getCommandDataFieldMaxLength());
         Assert.assertEquals(cm.getResponseDataFieldMaxLength(), decoded.getResponseDataFieldMaxLength());
         Assert.assertEquals("[\n" +
@@ -40,7 +40,7 @@ public class ConnectionMethodTest {
                 "    0 : 4096,\n" +
                 "    1 : 32768\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.encode()));
+                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
     }
 
     @Test
@@ -53,7 +53,7 @@ public class ConnectionMethodTest {
                 true,
                 uuidPeripheral,
                 uuidCentral);
-        ConnectionMethodBle decoded = ConnectionMethodBle.decode(cm.encode());
+        ConnectionMethodBle decoded = ConnectionMethodBle.fromDeviceEngagement(cm.toDeviceEngagement());
         Assert.assertTrue(cm.getSupportsPeripheralServerMode());
         Assert.assertTrue(cm.getSupportsCentralClientMode());
         Assert.assertEquals(uuidPeripheral, cm.getPeripheralServerModeUuid());
@@ -67,7 +67,7 @@ public class ConnectionMethodTest {
                 "    10 : [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01],\n" +
                 "    11 : [0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15, 0x00, 0x00, 0x00, 0x00, 0x3a, 0xde, 0x68, 0xb1]\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.encode()));
+                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
     }
 
     @Test
@@ -79,7 +79,7 @@ public class ConnectionMethodTest {
                 true,
                 null,
                 uuid);
-        ConnectionMethodBle decoded = ConnectionMethodBle.decode(cm.encode());
+        ConnectionMethodBle decoded = ConnectionMethodBle.fromDeviceEngagement(cm.toDeviceEngagement());
         Assert.assertFalse(cm.getSupportsPeripheralServerMode());
         Assert.assertTrue(cm.getSupportsCentralClientMode());
         Assert.assertNull(cm.getPeripheralServerModeUuid());
@@ -92,7 +92,7 @@ public class ConnectionMethodTest {
                 "    1 : true,\n" +
                 "    11 : [0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15, 0x00, 0x00, 0x00, 0x00, 0x3a, 0xde, 0x68, 0xb1]\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.encode()));
+                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
     }
 
     @Test
@@ -104,7 +104,7 @@ public class ConnectionMethodTest {
                 false,
                 uuid,
                 null);
-        ConnectionMethodBle decoded = ConnectionMethodBle.decode(cm.encode());
+        ConnectionMethodBle decoded = ConnectionMethodBle.fromDeviceEngagement(cm.toDeviceEngagement());
         Assert.assertTrue(cm.getSupportsPeripheralServerMode());
         Assert.assertFalse(cm.getSupportsCentralClientMode());
         Assert.assertEquals(uuid, cm.getPeripheralServerModeUuid());
@@ -117,7 +117,7 @@ public class ConnectionMethodTest {
                 "    1 : false,\n" +
                 "    10 : [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.encode()));
+                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
     }
 
     @Test
@@ -128,7 +128,7 @@ public class ConnectionMethodTest {
                 OptionalLong.of(42),
                 OptionalLong.of(43),
                 new byte[] {1, 2});
-        ConnectionMethodWifiAware decoded = ConnectionMethodWifiAware.decode(cm.encode());
+        ConnectionMethodWifiAware decoded = ConnectionMethodWifiAware.fromDeviceEngagement(cm.toDeviceEngagement());
         Assert.assertEquals("foobar", cm.getPassphraseInfoPassphrase());
         Assert.assertEquals(42, cm.getChannelInfoChannelNumber().getAsLong());
         Assert.assertEquals(43, cm.getChannelInfoOperatingClass().getAsLong());
@@ -142,21 +142,21 @@ public class ConnectionMethodTest {
                 "    1 : 43,\n" +
                 "    3 : [0x01, 0x02]\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.encode()));
+                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
     }
 
     @Test
     @SmallTest
     public void testConnectionMethodRestApi() {
-        ConnectionMethodRestApi cm = new ConnectionMethodRestApi("www.example.com/mdocReader");
-        ConnectionMethodRestApi decoded = ConnectionMethodRestApi.decode(cm.encode());
+        ConnectionMethodHttp cm = new ConnectionMethodHttp("https://www.example.com/mdocReader");
+        ConnectionMethodHttp decoded = ConnectionMethodHttp.fromDeviceEngagement(cm.toDeviceEngagement());
         Assert.assertEquals(decoded.getUriWebsite(), cm.getUriWebsite());
         Assert.assertEquals("[\n" +
                 "  4,\n" +
                 "  1,\n" +
                 "  {\n" +
-                "    0 : 'www.example.com/mdocReader'\n" +
+                "    0 : 'https://www.example.com/mdocReader'\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.encode()));
+                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
     }
 }

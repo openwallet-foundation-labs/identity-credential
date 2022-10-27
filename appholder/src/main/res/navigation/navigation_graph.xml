@@ -37,6 +37,9 @@
         <action
             android:id="@+id/action_selectDocumentFragment_to_settingsFragment"
             app:destination="@id/settingsFragment" />
+        <action
+            android:id="@+id/action_selectDocumentFragment_to_reverseEngagementFragment"
+            app:destination="@id/reverseEngagementFragment" />
     </fragment>
     <fragment
         android:id="@+id/settingsFragment"
@@ -141,5 +144,17 @@
         <action
             android:id="@+id/action_transferDocumentFragment_to_selectDocumentFragment"
             app:destination="@id/selectDocumentFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/reverseEngagementFragment"
+        android:name="com.android.mdl.app.fragment.ReverseEngagementFragment"
+        android:label="Reverse Engagement"
+        tools:layout="@layout/fragment_reverse_engagement">
+        <action
+            android:id="@+id/action_reverseEngagementFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
+        <action
+            android:id="@+id/action_reverseEngagementFragment_to_transferDocumentFragment"
+            app:destination="@id/transferDocumentFragment" />
     </fragment>
 </navigation>

@@ -33,13 +33,13 @@ import java.util.concurrent.Executors;
 
 @SuppressWarnings("deprecation")
 @RunWith(AndroidJUnit4.class)
-public class DataTransportTcpTest {
+public class DataTransportHttpTest {
 
     @Test
     @SmallTest
     public void setupReceivedWhileWaitingForConnection() {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
-        DataTransportTcp prover = new DataTransportTcp(appContext,
+        DataTransportHttp prover = new DataTransportHttp(appContext,
                 new DataTransportOptions.Builder().build());
 
         ConditionVariable proverSetupCompletedCondVar = new ConditionVariable();
@@ -101,12 +101,64 @@ public class DataTransportTcpTest {
 
     @Test
     @SmallTest
-    public void connectAndListen() {
+    public void connectAndListenNoTls() {
+        connectAndListen(false);
+    }
 
+    @Test
+    @SmallTest
+    public void connectAndListenTls() {
+        // TODO: add TLS support
+    }
+
+    @Test
+    @SmallTest
+    public void uriParsing() {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
-        DataTransportTcp verifier = new DataTransportTcp(appContext,
+        DataTransportOptions options = new DataTransportOptions.Builder().build();
+
+        ConnectionMethodHttp cm = new ConnectionMethodHttp("http://www.example.com/mdlReader/session123");
+        DataTransportHttp transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+        Assert.assertEquals("www.example.com", transport.getHost());
+        Assert.assertEquals("/mdlReader/session123", transport.getPath());
+        Assert.assertEquals(80, transport.getPort());
+        Assert.assertFalse(transport.getUseTls());
+
+        cm = new ConnectionMethodHttp("http://www.example2.com:1234/mdlVerifier/session456");
+        transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+        Assert.assertEquals("www.example2.com", transport.getHost());
+        Assert.assertEquals("/mdlVerifier/session456", transport.getPath());
+        Assert.assertEquals(1234, transport.getPort());
+        Assert.assertFalse(transport.getUseTls());
+
+        cm = new ConnectionMethodHttp("https://www.example3.net/mdocreader/s42");
+        transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+        Assert.assertEquals("www.example3.net", transport.getHost());
+        Assert.assertEquals("/mdocreader/s42", transport.getPath());
+        Assert.assertEquals(443, transport.getPort());
+        Assert.assertTrue(transport.getUseTls());
+
+        cm = new ConnectionMethodHttp("https://www.example.com:8080/mdocreader/s43");
+        transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+        Assert.assertEquals("www.example.com", transport.getHost());
+        Assert.assertEquals("/mdocreader/s43", transport.getPath());
+        Assert.assertEquals(8080, transport.getPort());
+        Assert.assertTrue(transport.getUseTls());
+
+        cm = new ConnectionMethodHttp("unsupported://www.example.com/mdocreader/s43");
+        try {
+            transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+            Assert.assertTrue(false);
+        } catch (IllegalArgumentException e) {
+            // expected path
+        }
+    }
+
+    void connectAndListen(boolean useTls) {
+        Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
+        DataTransportHttp verifier = new DataTransportHttp(appContext,
                 new DataTransportOptions.Builder().build());
-        DataTransportTcp prover = new DataTransportTcp(appContext,
+        DataTransportHttp prover = new DataTransportHttp(appContext,
                 new DataTransportOptions.Builder().build());
 
         byte[] messageSentByVerifier = Util.fromHex("010203");
@@ -225,7 +277,8 @@ public class DataTransportTcpTest {
 
         prover.listen();
         Assert.assertTrue(proverListeningSetupCompleteCondVar.block(5000));
-        verifier.setHostAndPort(prover.getHost(), prover.getPort());
+        verifier.setHost(prover.getHost());
+        verifier.setPort(prover.getPort());
         verifier.connect();
 
         Assert.assertTrue(proverPeerConnectingCondVar.block(5000));

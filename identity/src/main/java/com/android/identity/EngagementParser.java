@@ -137,7 +137,7 @@ public class EngagementParser {
             if (Util.cborMapHasKey(map, 2)) {
                 List<DataItem> connectionMethodItems = Util.cborMapExtractArray(map, 2);
                 for (DataItem cmDataItem : connectionMethodItems) {
-                    ConnectionMethod connectionMethod = ConnectionMethod.decode(cmDataItem);
+                    ConnectionMethod connectionMethod = ConnectionMethod.fromDeviceEngagement(cmDataItem);
                     if (connectionMethod != null) {
                         mConnectionMethods.add(connectionMethod);
                     }

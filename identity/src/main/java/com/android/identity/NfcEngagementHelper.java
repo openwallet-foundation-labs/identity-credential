@@ -35,8 +35,9 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
     private final PresentationSession mPresentationSession;
     private final Context mContext;
     private final KeyPair mEphemeralKeyPair;
-    private final DataRetrievalListenerConfiguration mDataRetrievalListenerConfiguration;
     private final NfcApduRouter mNfcApduRouter;
+    private final List<ConnectionMethod> mConnectionMethods;
+    private final DataTransportOptions mOptions;
     private Listener mListener;
     private final Executor mExecutor;
     private boolean mInhibitCallbacks;
@@ -67,7 +68,8 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
 
     public NfcEngagementHelper(@NonNull Context context,
                                @NonNull PresentationSession presentationSession,
-                               @NonNull DataRetrievalListenerConfiguration dataRetrievalListenerConfiguration,
+                               @NonNull List<ConnectionMethod> connectionMethods,
+                               @NonNull DataTransportOptions options,
                                @Nullable NfcApduRouter nfcApduRouter,
                                @NonNull Listener listener, @NonNull Executor executor) {
         mContext = context;
@@ -79,7 +81,8 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
             mNfcApduRouter.addListener(this, executor);
         }
         mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
-        mDataRetrievalListenerConfiguration = dataRetrievalListenerConfiguration;
+        mConnectionMethods = connectionMethods;
+        mOptions = options;
     }
 
     public void close() {
@@ -117,58 +120,17 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
         mTransports = new ArrayList<>();
         mTimeStartedSettingUpTransports = System.currentTimeMillis();
 
-        if (mDataRetrievalListenerConfiguration.isBleEnabled()) {
-            @Constants.BleDataRetrievalOption int opts =
-                    mDataRetrievalListenerConfiguration.getBleDataRetrievalOptions();
-
-            boolean useL2CAPIfAvailable = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) != 0;
-
-            boolean bleClearCache = (opts & Constants.BLE_DATA_RETRIEVAL_CLEAR_CACHE) != 0;
-
-            // Use same UUID for both mdoc central client mode and mdoc peripheral server mode.
-            // Why? Because it's required by ISO 18013-5 when using NFC engagement.
-            UUID serviceUuid = UUID.randomUUID();
-
-            if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
-                DataTransportBleCentralClientMode bleTransport =
-                        new DataTransportBleCentralClientMode(mContext);
-                bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setUseL2CAPIfAvailable(useL2CAPIfAvailable);
-                bleTransport.setClearCache(bleClearCache);
-                Logger.d(TAG, "Adding BLE mdoc central client mode transport");
-                mTransports.add(bleTransport);
-            }
-            if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE) != 0) {
-                DataTransportBlePeripheralServerMode bleTransport =
-                        new DataTransportBlePeripheralServerMode(mContext);
-                bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setUseL2CAPIfAvailable(useL2CAPIfAvailable);
-                Logger.d(TAG, "Adding BLE mdoc peripheral server mode transport");
-                if (bleClearCache) {
-                    Logger.d(TAG, "Ignoring bleClearCache flag since it only applies to "
-                            + "BLE mdoc central client mode when acting as a holder");
-                }
-                mTransports.add(bleTransport);
-            }
-        }
-        if (mDataRetrievalListenerConfiguration.isWifiAwareEnabled()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                Logger.d(TAG, "Adding Wifi Aware transport");
-                mTransports.add(new DataTransportWifiAware(mContext));
-            } else {
-                throw new IllegalArgumentException("Wifi Aware only available on API 29 or later");
-            }
-        }
-        if (mDataRetrievalListenerConfiguration.isNfcEnabled()) {
-            Logger.d(TAG, "Adding NFC transport");
-            mTransports.add(new DataTransportNfc(mContext));
-        }
-
         byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
                 Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()))));
 
-        for (DataTransport t : mTransports) {
-            t.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
+        // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
+        // if both BLE modes are available at the same time.
+        List<ConnectionMethod> disambiguatedMethods = ConnectionMethod.disambiguate(mConnectionMethods);
+        for (ConnectionMethod cm : disambiguatedMethods) {
+            DataTransport transport = cm.createDataTransport(mContext, mOptions);
+            transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
+            mTransports.add(transport);
+            Logger.d(TAG, "Added transport for " + cm);
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen
@@ -185,7 +147,7 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
             for (DataTransport transport : mTransports) {
                 transport.setListener(new DataTransport.Listener() {
                     @Override
-                    public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+                    public void onListeningSetupCompleted() {
                         Logger.d(TAG, "onListeningSetupCompleted for " + transport);
                         synchronized (helper) {
                             mNumTransportsStillSettingUp -= 1;
@@ -294,12 +256,6 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
         long setupTimeMillis = System.currentTimeMillis() - mTimeStartedSettingUpTransports;
         Logger.d(TAG, String.format(Locale.US, "All transports set up in %d msec", setupTimeMillis));
 
-        // Calculate DeviceEngagement and Handover for NFC
-        //
-        List<DataRetrievalAddress> listeningAddresses = new ArrayList<>();
-        for (DataTransport transport : mTransports) {
-            listeningAddresses.add(transport.getListeningAddress());
-        }
         mEncodedDeviceEngagement = generateDeviceEngagement();
         mEncodedHandover = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -459,23 +415,22 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
         List<NdefRecord> carrierConfigurationRecords = new ArrayList<>();
         List<byte[]> alternativeCarrierRecords = new ArrayList<>();
 
-        List<DataRetrievalAddress> listeningAddresses = new ArrayList<>();
-        for (DataTransport transport : mTransports) {
-            listeningAddresses.add(transport.getListeningAddress());
-        }
-        for (DataRetrievalAddress address : listeningAddresses) {
+        // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
+        // if both BLE modes are available at the same time.
+        List<ConnectionMethod> disambiguatedMethods = ConnectionMethod.disambiguate(mConnectionMethods);
+        for (ConnectionMethod cm : disambiguatedMethods) {
 
-            Pair<NdefRecord, byte[]> records = address.createNdefRecords(listeningAddresses);
+            Pair<NdefRecord, byte[]> records = cm.toNdefRecord();
             if (records != null) {
                 if (Logger.isDebugEnabled()) {
-                    Logger.d(TAG, "Address " + address + ": alternativeCarrierRecord: "
+                    Logger.d(TAG, "ConnectionMethod " + cm + ": alternativeCarrierRecord: "
                             + Util.toHex(records.second) + " carrierConfigurationRecord: "
                             + Util.toHex(records.first.getPayload()));
                 }
                 alternativeCarrierRecords.add(records.second);
                 carrierConfigurationRecords.add(records.first);
             } else {
-                Logger.d(TAG, "Address " + address + " yielded no NDEF records");
+                Logger.d(TAG, "Address " + cm + " yielded no NDEF records");
             }
 
         }

@@ -74,7 +74,8 @@ class GattServer extends BluetoothGattServerCallback {
 
     GattServer(@NonNull Context context,
                @NonNull BluetoothManager bluetoothManager,
-               @NonNull UUID serviceUuid, @NonNull byte[] encodedEDeviceKeyBytes,
+               @NonNull UUID serviceUuid,
+               @Nullable byte[] encodedEDeviceKeyBytes,
                @NonNull UUID characteristicStateUuid,
                @NonNull UUID characteristicClient2ServerUuid,
                @NonNull UUID characteristicServer2ClientUuid,
@@ -97,10 +98,12 @@ class GattServer extends BluetoothGattServerCallback {
 
     @SuppressLint("NewApi")
     boolean start() {
-        byte[] ikm = mEncodedEDeviceKeyBytes;
-        byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
-        byte[] salt = new byte[]{};
-        mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
+        if (mEncodedEDeviceKeyBytes != null) {
+            byte[] ikm = mEncodedEDeviceKeyBytes;
+            byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
+            byte[] salt = new byte[]{};
+            mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
+        }
 
         try {
             mGattServer = mBluetoothManager.openGattServer(mContext, this);
@@ -217,11 +220,12 @@ class GattServer extends BluetoothGattServerCallback {
         if (mCharacteristicIdentUuid != null
                 && characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             try {
+                byte[] ident = mIdentValue != null ? mIdentValue : new byte[0];
                 mGattServer.sendResponse(device,
                         requestId,
                         BluetoothGatt.GATT_SUCCESS,
                         0,
-                        mIdentValue);
+                        ident);
             } catch (SecurityException e) {
                 reportError(e);
             }

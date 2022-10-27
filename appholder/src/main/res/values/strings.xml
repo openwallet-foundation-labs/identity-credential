@@ -104,4 +104,6 @@
 
     <string name="item_settings">Settings</string>
     <string name="bt_close_connection">Close Connection</string>
+    <string name="bt_present_documents_reverse_engagement">Present with\nReverse Engagement</string>
+    <string name="txt_reverse_engagement_description">Scan QR code from mdoc reader application.\n\nNOTE: This is not supported for ISO 18013-7, only 23220-4</string>
 </resources>

@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
+    android:label="Reverse Engagement"
     app:startDestination="@id/RequestOptions">
 
     <fragment
@@ -26,6 +27,9 @@
         <action
             android:id="@+id/action_RequestOptions_to_settingsFragment"
             app:destination="@id/settingsFragment" />
+        <action
+            android:id="@+id/action_RequestOptions_to_ShowQr"
+            app:destination="@id/ShowQr" />
     </fragment>
     <fragment
         android:id="@+id/settingsFragment"
@@ -122,5 +126,21 @@
         <action
             android:id="@+id/action_ShowDocument_to_RequestOptions"
             app:destination="@id/RequestOptions" />
+    </fragment>
+    <fragment
+        android:id="@+id/ShowQr"
+        android:name="com.android.mdl.appreader.fragment.ShowQrFragment"
+        android:label="Reverse Engagement"
+        tools:layout="@layout/fragment_show_qr">
+        <argument
+            android:name="requestDocumentList"
+            app:argType="com.android.mdl.appreader.document.RequestDocumentList"
+            app:nullable="false" />
+        <action
+            android:id="@+id/action_ShowQr_to_RequestOptions"
+            app:destination="@id/RequestOptions" />
+        <action
+            android:id="@+id/action_ShowQr_to_Transfer"
+            app:destination="@id/Transfer" />
     </fragment>
 </navigation>
