@@ -55,17 +55,12 @@ public class SessionEncryptionReaderTest {
         DataItem handover = ((Array) sessionTranscript).getDataItems().get(2);
         byte[] encodedHandover = Util.cborEncode(handover);
 
-        SessionEncryptionReader sessionEncryption = new SessionEncryptionReader(
-                eReaderKeyPrivate, eReaderKeyPublic, encodedDeviceEngagement, encodedHandover);
+        EngagementParser engagementParser = new EngagementParser(encodedDeviceEngagement);
+        EngagementParser.Engagement engagement = engagementParser.parse();
+        PublicKey eDeviceKey = engagement.getESenderKey();
 
-        // Check the correct session transcript was calculated, e.g. that it
-        // matches what's in ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES
-        //
-        // Ensure the session transcript is available before exchanging any messages
-        // since we might need it for calculating the first message.
-        //
-        Assert.assertArrayEquals(Util.cborEncode(sessionTranscript),
-                sessionEncryption.getSessionTranscript());
+        SessionEncryptionReader sessionEncryption = new SessionEncryptionReader(
+                eReaderKeyPrivate, eReaderKeyPublic, eDeviceKey, Util.cborEncode(sessionTranscript));
 
         // Check that encryption works.
         Assert.assertArrayEquals(

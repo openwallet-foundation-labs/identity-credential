@@ -72,5 +72,7 @@
     <string name="micov_att_bm">Birth Month</string>
     <string name="micov_att_bd">Birth Day</string>
     <string name="item_settings">Settings</string>
+    <string name="show_qr_code_instructions">Scan QR code with mdoc application.\n\nNOTE: This is not supported for ISO 18013-7, only 23220-4.</string>
+    <string name="show_qr">Show QR Code for\nReverse Engagement</string>
 
 </resources>

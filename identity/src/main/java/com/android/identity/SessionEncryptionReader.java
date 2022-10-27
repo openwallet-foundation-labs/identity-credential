@@ -65,12 +65,9 @@ final class SessionEncryptionReader {
 
     private boolean mSessionEstablishmentSent;
 
-    private final byte[] mEncodedDeviceEngagement;
-    private final DataItem mHandover;
-
     private final PrivateKey mEReaderKeyPrivate;
     private final PublicKey mEReaderKeyPublic;
-    private byte[] mEncodedSessionTranscript;
+    private final PublicKey mEDeviceKeyPublic;
 
     private SecretKeySpec mSKDevice;
     private SecretKeySpec mSKReader;
@@ -80,97 +77,27 @@ final class SessionEncryptionReader {
     /**
      * Creates a new {@link SessionEncryptionReader} object.
      *
-     * <p>The <code>DeviceEngagement</code> and <code>Handover</code> CBOR referenced in the
-     * parameters below must conform to the CDDL in ISO 18013-5.
-     *
      * @param eReaderKeyPrivate the reader private ephemeral key.
      * @param eReaderKeyPublic the reader public ephemeral key.
-     * @param encodedDeviceEngagement the bytes of the <code>DeviceEngagement</code> CBOR.
-     * @param encodedHandover the bytes of the <code>Handover</code> CBOR.
+     * @param eDeviceKeyPublic the device public key.
+     * @param encodedSessionTranscript the bytes of the <code>SessionTranscript</code> CBOR.
      */
     public SessionEncryptionReader(@NonNull PrivateKey eReaderKeyPrivate,
             @NonNull PublicKey eReaderKeyPublic,
-            @NonNull byte[] encodedDeviceEngagement,
-            @NonNull byte[] encodedHandover) {
+            @NonNull PublicKey eDeviceKeyPublic,
+            @NonNull byte[] encodedSessionTranscript) {
         mEReaderKeyPrivate = eReaderKeyPrivate;
         mEReaderKeyPublic = eReaderKeyPublic;
-        mEncodedDeviceEngagement = encodedDeviceEngagement;
-        mHandover = Util.cborDecode(encodedHandover);
-    }
-
-    private PublicKey deviceEngagementExtractEDeviceKey(byte[] encodedDeviceEngagement) {
-        ByteArrayInputStream bais = new ByteArrayInputStream(encodedDeviceEngagement);
-        List<DataItem> dataItems;
-        try {
-            dataItems = new CborDecoder(bais).decode();
-        } catch (CborException e) {
-            throw new IllegalArgumentException("Data is not valid CBOR", e);
-        }
-        if (dataItems.size() != 1) {
-            throw new IllegalArgumentException("Expected 1 item, found " + dataItems.size());
-        }
-        if (!(dataItems.get(0) instanceof Map)) {
-            throw new IllegalArgumentException("Item is not a map");
-        }
-        Map map = (Map) dataItems.get(0);
-        DataItem dataItemSecurity = map.get(new UnsignedInteger(1));
-        if (!(dataItemSecurity instanceof Array)) {
-            throw new IllegalArgumentException("Key 1 (Security) is not set or not array");
-        }
-        List<DataItem> securityArrayDataItems = ((Array) dataItemSecurity).getDataItems();
-        if (securityArrayDataItems.size() < 2) {
-            throw new IllegalArgumentException("Security array is shorter than two elements");
-        }
-
-        DataItem cipherSuiteDataItem = securityArrayDataItems.get(0);
-        if (!(cipherSuiteDataItem instanceof Number)) {
-            throw new IllegalArgumentException("Cipher suite not a Number");
-        }
-        final long cipherSuite = Util.checkedLongValue(cipherSuiteDataItem);
-        if (cipherSuite != 1) {
-            throw new IllegalArgumentException("Expected cipher suite 1, got " + cipherSuite);
-        }
-
-        DataItem eDeviceKeyBytesDataItem = securityArrayDataItems.get(1);
-        if (!(eDeviceKeyBytesDataItem instanceof ByteString)) {
-            throw new IllegalArgumentException("eDeviceKeyBytes not a bstr");
-        }
-        if (eDeviceKeyBytesDataItem.getTag().getValue() != 24) {
-            throw new IllegalArgumentException("eDeviceKeyBytes is not tagged with tag 24");
-        }
-        byte[] eDeviceKeyBytes = ((ByteString) eDeviceKeyBytesDataItem).getBytes();
-
-        DataItem eDeviceKey = Util.cborDecode(eDeviceKeyBytes);
-        return Util.coseKeyDecode(eDeviceKey);
-    }
-
-    private void ensureSessionEncryptionKeysAndSessionTranscript() {
-        if (mSKReader != null) {
-            return;
-        }
-
-        PublicKey eDeviceKeyPub = deviceEngagementExtractEDeviceKey(mEncodedDeviceEngagement);
-
-        // TODO: See SessionEncryptionDevice#computeEncryptionKeysAndSessionTranscript()
-        //  for similar code. Maybe maybe factor into common utility function.
-        //
-        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(mEReaderKeyPublic));
-        mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
-                .addArray()
-                .add(Util.cborBuildTaggedByteString(mEncodedDeviceEngagement))
-                .add(Util.cborBuildTaggedByteString(encodedEReaderKeyPub))
-                .add(mHandover)
-                .end()
-                .build().get(0));
+        mEDeviceKeyPublic = eDeviceKeyPublic;
 
         try {
             KeyAgreement ka = KeyAgreement.getInstance("ECDH");
             ka.init(mEReaderKeyPrivate);
-            ka.doPhase(eDeviceKeyPub, true);
+            ka.doPhase(mEDeviceKeyPublic, true);
             byte[] sharedSecret = ka.generateSecret();
 
             byte[] sessionTranscriptBytes = Util.cborEncode(
-                    Util.cborBuildTaggedByteString(mEncodedSessionTranscript));
+                    Util.cborBuildTaggedByteString(encodedSessionTranscript));
             byte[] salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes);
 
             byte[] info = "SKDevice".getBytes(UTF_8);
@@ -201,7 +128,6 @@ final class SessionEncryptionReader {
      */
     public @NonNull byte[] encryptMessageToDevice(@Nullable byte[] messagePlaintext,
             @NonNull OptionalInt statusCode) {
-        ensureSessionEncryptionKeysAndSessionTranscript();
         byte[] messageCiphertext = null;
         if (messagePlaintext != null) {
             try {
@@ -301,7 +227,6 @@ final class SessionEncryptionReader {
 
         byte[] plainText = null;
         if (messageCiphertext != null) {
-            ensureSessionEncryptionKeysAndSessionTranscript();
             ByteBuffer iv = ByteBuffer.allocate(12);
             iv.putInt(0, 0x00000000);
             iv.putInt(4, 0x00000001);
@@ -341,17 +266,5 @@ final class SessionEncryptionReader {
      */
     public int getNumMessagesDecrypted() {
         return mSKDeviceCounter - 1;
-    }
-
-    /**
-     * Gets the <code>SessionTranscript</code> CBOR.
-     *
-     * <p>This CBOR defined in the ISO 18013-5 9.1.5.1 Session transcript.
-     *
-     * @return the bytes of <code>SessionTranscript</code> CBOR.
-     */
-    public @NonNull byte[] getSessionTranscript() {
-        ensureSessionEncryptionKeysAndSessionTranscript();
-        return mEncodedSessionTranscript;
     }
 }

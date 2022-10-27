@@ -25,6 +25,7 @@ import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
@@ -54,6 +55,8 @@ import java.util.OptionalInt;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
 
 @SuppressWarnings("deprecation")
@@ -103,7 +106,7 @@ public class PresentationHelperTest {
     @Test
     @SmallTest
     public void testPresentation() throws Exception {
-        Context context = androidx.test.InstrumentationRegistry.getTargetContext();
+        Context context = InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(context);
         assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
 
@@ -146,8 +149,10 @@ public class PresentationHelperTest {
         ConditionVariable condVarDeviceEngagementReady = new ConditionVariable();
 
         // TODO: use loopback instead of TCP transport
-        DataTransportTcp proverTransport = new DataTransportTcp(context);
-        DataTransportTcp verifierTransport = new DataTransportTcp(context);
+        DataTransportTcp proverTransport = new DataTransportTcp(context,
+                new DataTransportOptions.Builder().build());
+        DataTransportTcp verifierTransport = new DataTransportTcp(context,
+                new DataTransportOptions.Builder().build());
 
         Executor executor = Executors.newSingleThreadExecutor();
 
@@ -176,7 +181,8 @@ public class PresentationHelperTest {
                 };
         QrEngagementHelper qrHelper = new QrEngagementHelper(context,
                 session,
-                new DataRetrievalListenerConfiguration.Builder().build(),
+                new ArrayList<>(),
+                new DataTransportOptions.Builder().build(),
                 null,
                 qrHelperListener,
                 executor);
@@ -185,13 +191,21 @@ public class PresentationHelperTest {
         Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
-        byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
+        DataItem handover = SimpleValue.NULL;
         KeyPair eReaderKeyPair = Util.createEphemeralKeyPair();
+        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
+                .addArray()
+                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(encodedEReaderKeyPub))
+                .add(handover)
+                .end()
+                .build().get(0));
         SessionEncryptionReader seReader = new SessionEncryptionReader(
                 eReaderKeyPair.getPrivate(),
                 eReaderKeyPair.getPublic(),
-                encodedDeviceEngagement,
-                encodedHandover);
+                session.getEphemeralKeyPair().getPublic(),
+                encodedSessionTranscript);
 
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
         Map<String, Boolean> mdlNsItems = new HashMap<>();
@@ -209,7 +223,7 @@ public class PresentationHelperTest {
                 OptionalInt.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+            public void onListeningSetupCompleted() {
             }
 
             @Override
@@ -251,7 +265,7 @@ public class PresentationHelperTest {
 
                 DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
                         .setDeviceResponse(decryptedMessage.first)
-                        .setSessionTranscript(seReader.getSessionTranscript())
+                        .setSessionTranscript(encodedSessionTranscript)
                         .setEphemeralReaderKey(eReaderKeyPair.getPrivate())
                         .parse();
                 Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.getStatus());
@@ -276,26 +290,20 @@ public class PresentationHelperTest {
             }
         }, executor);
 
-        verifierTransport.connect(proverTransport.getListeningAddress());
+        verifierTransport.setHostAndPort(proverTransport.getHost(), proverTransport.getPort());
+        verifierTransport.connect();
         Assert.assertTrue(condVarDeviceConnecting.block(5000));
         Assert.assertTrue(condVarDeviceConnected.block(5000));
 
-        PresentationHelper presentation = new PresentationHelper(
-                context,
-                session,
-                proverTransport,
-                qrHelper.getDeviceEngagement(),
-                qrHelper.getHandover(),
-                null,
-                null);
-        presentation.setListener(
+        final PresentationHelper[] presentation = {null};
+        PresentationHelper.Listener listener =
                 new PresentationHelper.Listener() {
 
                     @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
                         DeviceRequestParser parser = new DeviceRequestParser();
                         parser.setDeviceRequest(deviceRequestBytes);
-                        parser.setSessionTranscript(presentation.getSessionTranscript());
+                        parser.setSessionTranscript(presentation[0].getSessionTranscript());
                         DeviceRequestParser.DeviceRequest deviceRequest = parser.parse();
 
                         Collection<DeviceRequestParser.DocumentRequest> docRequests =
@@ -346,7 +354,7 @@ public class PresentationHelperTest {
                                     result,
                                     issuerSignedDataItemsWithValues,
                                     encodedIssuerAuth);
-                            presentation.sendDeviceResponse(generator.generate());
+                            presentation[0].sendDeviceResponse(generator.generate());
 
                         } catch (NoAuthenticationKeyAvailableException |
                                 InvalidReaderSignatureException |
@@ -368,8 +376,16 @@ public class PresentationHelperTest {
                         throw new AssertionError(error);
                     }
 
-                }, executor);
-        presentation.start();
+                };
+        presentation[0] = new PresentationHelper.Builder(
+                context,
+                listener,
+                context.getMainExecutor(),
+                session)
+                .useForwardEngagement(proverTransport,
+                        qrHelper.getDeviceEngagement(),
+                        qrHelper.getHandover())
+                .build();
 
         verifierTransport.sendMessage(sessionEstablishment);
         Assert.assertTrue(condVarDeviceDisconnected.block(5000));
@@ -395,8 +411,10 @@ public class PresentationHelperTest {
         ConditionVariable condVarDeviceEngagementReady = new ConditionVariable();
 
         // TODO: use loopback transport
-        DataTransportTcp proverTransport = new DataTransportTcp(context);
-        DataTransportTcp verifierTransport = new DataTransportTcp(context);
+        DataTransportTcp proverTransport = new DataTransportTcp(context,
+                new DataTransportOptions.Builder().build());
+        DataTransportTcp verifierTransport = new DataTransportTcp(context,
+                new DataTransportOptions.Builder().build());
         QrEngagementHelper.Listener qrHelperListener = new QrEngagementHelper.Listener() {
                     @Override
                     public void onDeviceEngagementReady() {
@@ -421,7 +439,8 @@ public class PresentationHelperTest {
                 };
         QrEngagementHelper qrHelper = new QrEngagementHelper(context,
                 session,
-                new DataRetrievalListenerConfiguration.Builder().build(),
+                new ArrayList<>(),
+                new DataTransportOptions.Builder().build(),
                 null,
                 qrHelperListener,
                 executor);
@@ -432,11 +451,19 @@ public class PresentationHelperTest {
 
         byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
         KeyPair eReaderKeyPair = Util.createEphemeralKeyPair();
+        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
+                .addArray()
+                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(encodedEReaderKeyPub))
+                .add(Util.cborDecode(encodedHandover))
+                .end()
+                .build().get(0));
         SessionEncryptionReader seReader = new SessionEncryptionReader(
                 eReaderKeyPair.getPrivate(),
                 eReaderKeyPair.getPublic(),
-                encodedDeviceEngagement,
-                encodedHandover);
+                session.getEphemeralKeyPair().getPublic(),
+                encodedSessionTranscript);
 
         // Just make an empty request since the verifier will disconnect immediately anyway.
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
@@ -447,7 +474,7 @@ public class PresentationHelperTest {
                 OptionalInt.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+            public void onListeningSetupCompleted() {
             }
 
             @Override
@@ -486,19 +513,12 @@ public class PresentationHelperTest {
             }
         }, executor);
 
-        verifierTransport.connect(proverTransport.getListeningAddress());
+        verifierTransport.setHostAndPort(proverTransport.getHost(), proverTransport.getPort());
+        verifierTransport.connect();
         Assert.assertTrue(condVarDeviceConnecting.block(5000));
         Assert.assertTrue(condVarDeviceConnected.block(5000));
 
-        PresentationHelper presentation = new PresentationHelper(
-                context,
-                session,
-                proverTransport,
-                qrHelper.getDeviceEngagement(),
-                qrHelper.getHandover(),
-                null,
-                null);
-        presentation.setListener(
+        PresentationHelper.Listener listener =
                 new PresentationHelper.Listener() {
                     @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
@@ -517,8 +537,16 @@ public class PresentationHelperTest {
                         condVarOnError.open();
                     }
 
-                }, executor);
-        presentation.start();
+                };
+        PresentationHelper presentation = new PresentationHelper.Builder(
+                context,
+                listener,
+                context.getMainExecutor(),
+                session)
+                .useForwardEngagement(proverTransport,
+                    qrHelper.getDeviceEngagement(),
+                    qrHelper.getHandover())
+                .build();
 
         verifierTransport.sendMessage(sessionEstablishment);
         Assert.assertTrue(condVarDeviceRequestReceived.block(5000));

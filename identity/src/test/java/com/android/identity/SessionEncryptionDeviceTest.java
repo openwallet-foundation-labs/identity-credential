@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import java.math.BigInteger;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.OptionalLong;
 
 import co.nstant.in.cbor.model.Array;
@@ -46,31 +47,26 @@ public class SessionEncryptionDeviceTest {
 
         DataItem sessionTranscript = Util.cborExtractTaggedAndEncodedCbor(
                 Util.cborDecode(encodedSessionTranscriptBytes));
+        byte[] encodedSessionTranscript = Util.cborEncode(sessionTranscript);
         DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
         byte[] encodedDeviceEngagement = ((ByteString) deviceEngagementBytes).getBytes();
         DataItem handover = ((Array) sessionTranscript).getDataItems().get(2);
         byte[] encodedHandover = Util.cborEncode(handover);
 
+        byte[] sessionEstablishment = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT);
+        byte[] eReaderKeyBytes = Util.cborMapExtractByteString(Util.cborDecode(sessionEstablishment), "eReaderKey");
+        PublicKey eReaderKey = Util.coseKeyDecode(Util.cborDecode(eReaderKeyBytes));
+
         SessionEncryptionDevice sessionEncryption = new SessionEncryptionDevice(
-                eDeviceKeyPrivate, encodedDeviceEngagement, encodedHandover);
+                eDeviceKeyPrivate, eReaderKey, encodedSessionTranscript);
 
         // Check that decryption works.
         Pair<byte[], OptionalLong> result = sessionEncryption.decryptMessageFromReader(
-                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT));
+                sessionEstablishment);
         Assert.assertFalse(result.second.isPresent());
         Assert.assertArrayEquals(
                 Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST),
                 result.first);
-
-        // Check the correct session transcript was calculated, e.g. that it
-        // matches what's in ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES
-        //
-        // This is the earliest we can get the session transcsript (we don't have
-        // eReaderKeyPub until a message has been received) and we may indeed need
-        // it this early for the initial response message.
-        //
-        Assert.assertArrayEquals(Util.cborEncode(sessionTranscript),
-                sessionEncryption.getSessionTranscript());
 
         // Check that encryption works.
         Assert.assertArrayEquals(

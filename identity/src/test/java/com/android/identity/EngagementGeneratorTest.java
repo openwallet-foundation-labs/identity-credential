@@ -64,7 +64,7 @@ public class EngagementGeneratorTest {
 
         EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
                 ENGAGEMENT_VERSION_1_1);
-        eg.addConnectionMethod(new ConnectionMethodRestApi("www.example.com/verifier/123"));
+        eg.addConnectionMethod(new ConnectionMethodHttp("www.example.com/verifier/123"));
         eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "www.example.com/verifier"));
         byte[] encodedEngagement = eg.generate();
 
@@ -74,7 +74,7 @@ public class EngagementGeneratorTest {
         Assert.assertEquals(engagement.getESenderKey(), eSenderKey.getPublic());
         Assert.assertEquals(ENGAGEMENT_VERSION_1_1, engagement.getVersion());
         Assert.assertEquals(1, engagement.getConnectionMethods().size());
-        ConnectionMethodRestApi cm = (ConnectionMethodRestApi) engagement.getConnectionMethods().get(0);
+        ConnectionMethodHttp cm = (ConnectionMethodHttp) engagement.getConnectionMethods().get(0);
         Assert.assertEquals("www.example.com/verifier/123", cm.getUriWebsite());
         Assert.assertEquals(1, engagement.getOriginInfos().size());
         OriginInfoWebsite oi = (OriginInfoWebsite) engagement.getOriginInfos().get(0);

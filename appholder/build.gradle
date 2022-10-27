@@ -90,4 +90,6 @@ dependencies {
     implementation "org.bouncycastle:bcprov-jdk15on:$bouncy_castle_bcprov_version"
     implementation("org.bouncycastle:bcpkix-jdk15on:$bouncy_castle_bcpkix_version")
 
+    // Camera code scanner
+    implementation "com.budiyev.android:code-scanner:$code_scanner_version"
 }

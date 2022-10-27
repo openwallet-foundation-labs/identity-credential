@@ -124,6 +124,12 @@ class SelectDocumentFragment : Fragment() {
         )
     }
 
+    fun onPresentDocumentsReverseEngagement() {
+        findNavController().navigate(
+            SelectDocumentFragmentDirections.actionSelectDocumentFragmentToReverseEngagementFragment()
+        )
+    }
+
     private val permissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             permissions.entries.forEach {

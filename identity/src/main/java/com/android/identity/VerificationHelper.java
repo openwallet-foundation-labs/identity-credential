@@ -37,6 +37,7 @@ import androidx.annotation.Nullable;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,22 +46,18 @@ import java.util.concurrent.Executor;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.SimpleValue;
 
 /**
- * Class used for engaging with and receiving documents from a remote mdoc verifier device.
+ * Helper used for engaging with and receiving documents from a remote mdoc verifier device.
  *
  * <p>This class implements the interface between an <em>mdoc</em> and <em>mdoc verifier</em> using
  * the connection setup and device retrieval interfaces defined in
- * <a href="https://www.iso.org/standard/69084.html">ISO/IEC 18013-5</a>.
+ * <a href="https://www.iso.org/standard/69084.html">ISO/IEC 18013-5:2021</a>.
  *
- * <p>Supported device engagement methods include QR code and NFC static handover. Support for
- * NFC negotiated handover may be added in a future release.
- *
- * <p>Supported device retrieval transfer methods include BLE (both <em>mdoc central client
- * mode</em> and <em>mdoc peripheral server mode</em>), Wifi Aware, and NFC.
- *
- * <p>Additional device engagement and device retrieval methods may be added in the future.
+ * <p>Reverse engagement as per drafts of 18013-7 and 23220-4 is supported. These protocols
+ * are not finalized so should only be used for testing.
  */
 // Suppress with NotCloseable since we actually don't hold any resources needing to be
 // cleaned up at object finalization time.
@@ -68,88 +65,177 @@ import co.nstant.in.cbor.model.SimpleValue;
 public class VerificationHelper {
 
     private static final String TAG = "VerificationHelper";
-    private final Context mContext;
+    private Context mContext;
     DataTransport mDataTransport;
     Listener mListener;
     KeyPair mEphemeralKeyPair;
     SessionEncryptionReader mSessionEncryptionReader;
     byte[] mDeviceEngagement;
-    Executor mDeviceResponseListenerExecutor;
+    byte[] mEncodedSessionTranscript;
+    Executor mListenerExecutor;
     IsoDep mNfcIsoDep;
-    DataRetrievalAddress mConnectWaitingForIsoDepAddress;
     // The handover used
     //
-    private byte[] mHandover;
     private boolean mUseTransportSpecificSessionTermination;
     private boolean mSendSessionTerminationMessage = true;
-    private boolean mIsListening;
-    private boolean mUseL2CAP;
-    private boolean mBleClearCache;
+    private DataTransportOptions mOptions;
 
-    /**
-     * Creates a new VerificationHelper object.
-     *
-     * @param context the application context.
-     */
-    public VerificationHelper(@NonNull Context context) {
-        mContext = context;
-        mEphemeralKeyPair = Util.createEphemeralKeyPair();
-        mSessionEncryptionReader = null;
-        mUseL2CAP = false;
-        mBleClearCache = false;
+    // If this is non-null it means we're using Reverse Engagement
+    //
+    private List<ConnectionMethod> mReverseEngagementConnectionMethods;
+    private List<DataTransport> mReverseEngagementListeningTransports;
+    private int mNumReverseEngagementTransportsStillSettingUp;
+    private byte[] mReaderEngagement;
+
+    VerificationHelper() {
     }
 
-    /**
-     * Sets the preference for use BLE L2CAP transmission profile.
-     *
-     * <p>Use L2CAP if supported by the OS and remote mdoc. It is by default set as <em>false</em>
-     *
-     * @param useL2CAP indicates if it should use L2CAP socket if available.
-     */
-    public void setUseL2CAP(boolean useL2CAP) {
-        mUseL2CAP = useL2CAP;
+    private void start() {
+        if (mReverseEngagementConnectionMethods != null) {
+            setupReverseEngagement();
+        }
     }
 
+    private void
+    setupReverseEngagement() {
+        Logger.d(TAG, "Setting up reverse engagement");
 
-    /**
-     * Sets whether to clear the BLE Service Cache before service discovery when acting as
-     * a GATT Client.
-     *
-     * <p>The default value for this is <em>false</em>.
-     *
-     * @param bleClearCache indicates if the BLE Service Cache should be cleared.
-     */
-    public void setBleClearCache(boolean bleClearCache) {
-        mBleClearCache = bleClearCache;
+        // Calculate ReaderEngagement
+        EngagementGenerator readerEngagementGenerator = new EngagementGenerator(
+                mEphemeralKeyPair.getPublic(),
+                EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+
+        mReverseEngagementListeningTransports = new ArrayList<>();
+        // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
+        // if both BLE modes are available at the same time.
+        List<ConnectionMethod> disambiguatedMethods =
+                ConnectionMethod.disambiguate(mReverseEngagementConnectionMethods);
+        for (ConnectionMethod cm : disambiguatedMethods) {
+            DataTransport transport = cm.createDataTransport(mContext, mOptions);
+            mReverseEngagementListeningTransports.add(transport);
+            // TODO: we may want to have the DataTransport actually give us a ConnectionMethod,
+            //   for example consider the case where a HTTP-based transport uses a cloud-service
+            //   to relay messages.
+            readerEngagementGenerator.addConnectionMethod(cm);
+        }
+        mReaderEngagement = readerEngagementGenerator.generate();
+
+        // Careful, we're using the user-provided Executor below so these callbacks might happen
+        // in another thread than we're in right now. For example this happens if using
+        // ThreadPoolExecutor.
+        //
+        // In particular, it means we need locking around `mNumTransportsStillSettingUp`. We'll
+        // use the monitor for the PresentationHelper object for to achieve that.
+        //
+        final VerificationHelper helper = this;
+        mNumReverseEngagementTransportsStillSettingUp = 0;
+
+        synchronized (helper) {
+            for (DataTransport transport : mReverseEngagementListeningTransports) {
+                transport.setListener(new DataTransport.Listener() {
+                    @Override
+                    public void onListeningSetupCompleted() {
+                        Logger.d(TAG, "onListeningSetupCompleted for " + transport);
+                        synchronized (helper) {
+                            mNumReverseEngagementTransportsStillSettingUp -= 1;
+                            if (mNumReverseEngagementTransportsStillSettingUp == 0) {
+                                allReverseEngagementTransportsAreSetup();
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onListeningPeerConnecting() {
+                        Logger.d(TAG, "onListeningPeerConnecting for " + transport);
+                        reverseEngagementPeerIsConnecting(transport);
+                    }
+
+                    @Override
+                    public void onListeningPeerConnected() {
+                        Logger.d(TAG, "onListeningPeerConnected for " + transport);
+                        reverseEngagementPeerHasConnected(transport);
+                    }
+
+                    @Override
+                    public void onListeningPeerDisconnected() {
+                        Logger.d(TAG, "onListeningPeerDisconnected for " + transport);
+                        transport.close();
+                    }
+
+                    @Override
+                    public void onConnectionResult(@Nullable Throwable error) {
+                        Logger.d(TAG, "onConnectionResult for " + transport);
+                        if (error != null) {
+                            throw new IllegalStateException("Unexpected onConnectionResult "
+                                    + "callback from transport " + transport, error);
+                        }
+                        throw new IllegalStateException("Unexpected onConnectionResult "
+                                + "callback from transport " + transport);
+                    }
+
+                    @Override
+                    public void onConnectionDisconnected() {
+                        Logger.d(TAG, "onConnectionDisconnected for " + transport);
+                        throw new IllegalStateException("Unexpected onConnectionDisconnected "
+                                + "callback from transport " + transport);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable error) {
+                        transport.close();
+                        reportError(error);
+                    }
+
+                    @Override
+                    public void onMessageReceived() {
+                        Logger.d(TAG, "onMessageReceived for " + transport);
+                        handleOnMessageReceived();
+                    }
+
+                    @Override
+                    public void onTransportSpecificSessionTermination() {
+                        Logger.d(TAG, "Received transport-specific session termination");
+                        transport.close();
+                        reportDeviceDisconnected(true);
+                    }
+
+                }, mListenerExecutor);
+                Logger.d(TAG, "Listening on transport " + transport);
+                transport.listen();
+                mNumReverseEngagementTransportsStillSettingUp += 1;
+            }
+        }
     }
 
-
-    /**
-     * Starts listening for device engagement.
-     *
-     * <p>This should be called after constructing a new instance and configuring it using
-     * {@link #setListener(Listener, Executor)}.
-     *
-     * <p>When engagement with a mdoc is detected the
-     * {@link Listener#onDeviceEngagementReceived(List)} is called with a list of possible
-     * transports and the application is expected to pick a transport and pass it to
-     * {@link #connect(DataRetrievalAddress)}.
-     *
-     * If the application wishes to use NFC engagement it should set up a listener using
-     * {@link NfcAdapter#enableReaderMode(Activity, NfcAdapter.ReaderCallback, int, Bundle)}
-     * and pass the tag received in
-     * {@link android.nfc.NfcAdapter.ReaderCallback#onTagDiscovered(Tag)}
-     * to {@link #nfcProcessOnTagDiscovered(Tag)}. It should stop listening (e.g. call
-     * {@link NfcAdapter#disableReaderMode(Activity)} once engagement has been detected or when
-     * it decides to stop listening for engagement.
-     *
-     * If the application wishes to use QR engagement the application is
-     * expected to capture the QR code itself and pass it using
-     * {@link #setDeviceEngagementFromQrCode(String)}.
-     */
-    public void startListening() {
-        mIsListening = true;
+    // TODO: handle the case where a transport never calls onListeningSetupCompleted... that
+    //  is, set up a timeout to call this.
+    //
+    void allReverseEngagementTransportsAreSetup() {
+        Logger.d(TAG, "All reverse engagement listening transports are now set up");
+        reportReaderEngagementReady(mReaderEngagement);
     }
+
+    void reverseEngagementPeerIsConnecting(@NonNull DataTransport transport) {
+    }
+
+    void reverseEngagementPeerHasConnected(@NonNull DataTransport transport) {
+        // stop listening on other transports
+        //
+        Logger.d(TAG, "Peer has connected on transport " + transport
+                + " - shutting down other transports");
+        for (DataTransport t : mReverseEngagementListeningTransports) {
+            if (t != transport) {
+                t.setListener(null, null);
+                t.close();
+            }
+        }
+        mReverseEngagementListeningTransports.clear();
+        mDataTransport = transport;
+
+        // We're connected to the remote device but we don't want to let the application
+        // know this until we've received the first message with DeviceEngagement CBOR...
+    }
+
 
     /**
      * Processes a {@link Tag} received when in NFC reader mode.
@@ -157,17 +243,11 @@ public class VerificationHelper {
      * <p>Applications should call this method in their
      * {@link android.nfc.NfcAdapter.ReaderCallback#onTagDiscovered(Tag)} callback.
      *
-     * <p>This should only be called after calling {@link #startListening()} and not after
-     * {@link #disconnect()}
-     *
      * @param tag the tag.
      * @throws IllegalStateException if called while not listening.
      */
     public void
     nfcProcessOnTagDiscovered(@NonNull Tag tag) {
-        if (!mIsListening) {
-            throw new IllegalStateException("Not currently listening");
-        }
         Logger.d(TAG, "Tag discovered!");
         for (String tech : tag.getTechList()) {
             Logger.d(TAG, "tech: " + tech);
@@ -187,11 +267,11 @@ public class VerificationHelper {
                 // it's possible that we're now in a state where we're
                 // waiting for the reader to be in the NFC field... see
                 // also comment in connect() for this case...
-                if (mConnectWaitingForIsoDepAddress != null) {
+                if (mDataTransport instanceof DataTransportNfc) {
                     Logger.d(TAG, "NFC data transfer + QR engagement, "
                             + "reader is now in field");
-                    mDeviceResponseListenerExecutor.execute(
-                            () -> connect(mConnectWaitingForIsoDepAddress)
+                    mListenerExecutor.execute(
+                            () -> connectWithDataTransport(mDataTransport)
                     );
                 }
             }
@@ -208,10 +288,10 @@ public class VerificationHelper {
      * {@link Listener#onDeviceEngagementReceived(List)} will be called. If an error occurred it
      * is reported using the {@link Listener#onError(Throwable)} callback.
      *
-     * <p>This method must be called before {@link #connect(DataRetrievalAddress)}.
+     * <p>This method must be called before {@link #connect(ConnectionMethod)}.
      *
      * @param qrDeviceEngagement textual form of QR device engagement.
-     * @throws IllegalStateException if called after {@link #connect(DataRetrievalAddress)}.
+     * @throws IllegalStateException if called after {@link #connect(ConnectionMethod)}.
      */
     public void setDeviceEngagementFromQrCode(@NonNull String qrDeviceEngagement) {
         if (mDataTransport != null) {
@@ -229,30 +309,19 @@ public class VerificationHelper {
                             + Util.toHex(encodedDeviceEngagement));
                 }
 
-                byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
-                setDeviceEngagement(encodedDeviceEngagement, encodedHandover);
+                DataItem handover = SimpleValue.NULL;
+                setDeviceEngagement(encodedDeviceEngagement, handover);
+
+                EngagementParser engagementParser = new EngagementParser(encodedDeviceEngagement);
+                EngagementParser.Engagement engagement = engagementParser.parse();
+
                 List<byte[]> readerAvailableDeviceRetrievalMethods =
                         Util.extractDeviceRetrievalMethods(
                                 encodedDeviceEngagement);
 
-                List<DataRetrievalAddress> addresses = new ArrayList<>();
-                for (byte[] deviceRetrievalMethod : readerAvailableDeviceRetrievalMethods) {
-                    List<DataRetrievalAddress> addressesFromMethod =
-                            DataTransport.parseDeviceRetrievalMethod(deviceRetrievalMethod);
-                    if (addressesFromMethod == null) {
-                        Log.w(TAG, "Ignoring unknown device retrieval method with payload "
-                                + Util.toHex(deviceRetrievalMethod));
-                    } else {
-                        addresses.addAll(addressesFromMethod);
-                    }
-                }
-                if (Logger.isDebugEnabled()) {
-                    for (DataRetrievalAddress address : addresses) {
-                        Logger.d(TAG, "Have address: " + address);
-                    }
-                }
-                if (!addresses.isEmpty()) {
-                    reportDeviceEngagementReceived(addresses);
+                List<ConnectionMethod> connectionMethods = engagement.getConnectionMethods();
+                if (!connectionMethods.isEmpty()) {
+                    reportDeviceEngagementReceived(connectionMethods);
                     return;
                 }
             }
@@ -274,7 +343,7 @@ public class VerificationHelper {
                     "In decodeNdefTag, handoverSelectMessage: " + Util.toHex(m.toByteArray()));
         }
 
-        List<DataRetrievalAddress> addresses = new ArrayList<>();
+        List<ConnectionMethod> parsedConnectionMethodsFromNfc = new ArrayList<>();
         for (NdefRecord r : m.getRecords()) {
             if (Logger.isDebugEnabled()) {
                 Logger.d(TAG, "record: " + Util.toHex(r.getPayload()));
@@ -321,64 +390,79 @@ public class VerificationHelper {
             // DataTransport.parseNdefRecord() for details.
             //
             if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
-                List<DataRetrievalAddress> addressesFromMethod = DataTransport.parseNdefRecord(r);
-                if (addressesFromMethod != null) {
-                    addresses.addAll(addressesFromMethod);
-                } else {
-                    Log.w(TAG, "Ignoring unrecognized NdefRecord: " + r);
+                ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r);
+                if (cm != null) {
+                    parsedConnectionMethodsFromNfc.add(cm);
                 }
             }
 
         }
 
         if (Logger.isDebugEnabled()) {
-            for (DataRetrievalAddress address : addresses) {
-                Logger.d(TAG, "Have address " + address);
+            for (ConnectionMethod cm : parsedConnectionMethodsFromNfc) {
+                Logger.d(TAG, "Have connection method " + cm);
             }
         }
 
-        if (validHandoverSelectMessage && !addresses.isEmpty()) {
+        if (validHandoverSelectMessage && !parsedConnectionMethodsFromNfc.isEmpty()) {
             Logger.d(TAG, "Reporting Device Engagement through NFC");
-            byte[] readerHandover = Util.cborEncode(new CborBuilder()
+            DataItem readerHandover = new CborBuilder()
                     .addArray()
                     .add(handoverSelectMessage)    // Handover Select message
                     .add(SimpleValue.NULL)         // Handover Request message
                     .end()
-                    .build().get(0));
+                    .build().get(0);
             setDeviceEngagement(encodedDeviceEngagement, readerHandover);
-            reportDeviceEngagementReceived(addresses);
+
+            reportDeviceEngagementReceived(parsedConnectionMethodsFromNfc);
         } else {
             reportError(new IllegalArgumentException(
                     "Invalid Handover Select message: " + Util.toHex(m.toByteArray())));
         }
     }
 
-    private void setDeviceEngagement(@NonNull byte[] deviceEngagement, @NonNull byte[] handover) {
+    private void setDeviceEngagement(@NonNull byte[] deviceEngagement, @NonNull DataItem handover) {
         if (mDeviceEngagement != null) {
             throw new IllegalStateException("Device Engagement already set");
         }
         mDeviceEngagement = deviceEngagement;
-        mHandover = handover;
+
+        EngagementParser engagementParser = new EngagementParser(deviceEngagement);
+        EngagementParser.Engagement engagement = engagementParser.parse();
+        PublicKey eDeviceKey = engagement.getESenderKey();
+
+        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()));
+        mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
+                .addArray()
+                .add(Util.cborBuildTaggedByteString(mDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(encodedEReaderKeyPub))
+                .add(handover)
+                .end()
+                .build().get(0));
+        Logger.d(TAG, "SessionTranscript:\n" + Util.toHex(mEncodedSessionTranscript));
 
         mSessionEncryptionReader = new SessionEncryptionReader(
                 mEphemeralKeyPair.getPrivate(),
                 mEphemeralKeyPair.getPublic(),
-                mDeviceEngagement,
-                mHandover);
+                eDeviceKey,
+                mEncodedSessionTranscript);
     }
 
     /**
-     * Establishes connection to remote mdoc using the given <code>DataRetrievalAddress</code>.
+     * Establishes connection to remote mdoc using the given {@link ConnectionMethod}.
      *
-     * <p>This method is usually called after receiving the
+     * <p>This method should be called after receiving the
      * {@link Listener#onDeviceEngagementReceived(List)} callback with one of the addresses from
      * said callback.
      *
-     * @param address the address/method to connect to.
+     * @param connectionMethod the address/method to connect to.
      */
-    public void connect(@NonNull DataRetrievalAddress address) {
+    public void connect(@NonNull ConnectionMethod connectionMethod) {
+        connectWithDataTransport(connectionMethod.createDataTransport(mContext, mOptions));
+    }
 
-        mDataTransport = address.createDataTransport(mContext);
+    private void connectWithDataTransport(DataTransport transport) {
+        mDataTransport = transport;
         if (mDataTransport instanceof DataTransportNfc) {
             if (mNfcIsoDep == null) {
                 // This can happen if using NFC data transfer with QR code engagement
@@ -386,7 +470,6 @@ public class VerificationHelper {
                 // weird). In this case we just sit and wait until the tag (reader)
                 // is detected... once detected, this routine can just call connect()
                 // again.
-                mConnectWaitingForIsoDepAddress = address;
                 Logger.d(TAG, "In connect() with NFC data transfer but no ISO dep has been set. "
                         + "Assuming QR engagement, waiting for mdoc to move into field");
                 reportMoveIntoNfcField();
@@ -394,10 +477,8 @@ public class VerificationHelper {
             }
             ((DataTransportNfc) mDataTransport).setIsoDep(mNfcIsoDep);
         } else if (mDataTransport instanceof DataTransportBle) {
-            // Set the preference for using L2CAP
-            ((DataTransportBle) mDataTransport).setUseL2CAPIfAvailable(mUseL2CAP);
-            ((DataTransportBle) mDataTransport).setClearCache(mBleClearCache);
-            if (mBleClearCache && mDataTransport instanceof DataTransportBleCentralClientMode) {
+            // Helpful warning
+            if (mOptions.getBleClearCache() && mDataTransport instanceof DataTransportBleCentralClientMode) {
                 Logger.d(TAG, "Ignoring bleClearCache flag since it only applies to "
                         + "BLE mdoc peripheral server mode when acting as a reader");
             }
@@ -413,7 +494,7 @@ public class VerificationHelper {
 
         mDataTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+            public void onListeningSetupCompleted() {
                 Logger.d(TAG, "onListeningSetupCompleted for " + mDataTransport);
             }
 
@@ -461,54 +542,7 @@ public class VerificationHelper {
 
             @Override
             public void onMessageReceived() {
-                byte[] data = mDataTransport.getMessage();
-                if (data == null) {
-                    reportError(new Error("onMessageReceived but no message"));
-                    return;
-                }
-                if (mSessionEncryptionReader == null) {
-                    reportError(new IllegalStateException("Message received but no session "
-                            + "establishment with the remote device."));
-                    return;
-                }
-
-                Pair<byte[], OptionalInt> decryptedMessage = null;
-                try {
-                    decryptedMessage = mSessionEncryptionReader.decryptMessageFromDevice(data);
-                } catch (Exception e) {
-                    mDataTransport.close();
-                    reportError(new Error("Error decrypting message from device", e));
-                    return;
-                }
-
-                // If there's data in the message, assume it's DeviceResponse (ISO 18013-5
-                // currently does not define other kinds of messages).
-                //
-                if (decryptedMessage.first != null) {
-                    Logger.d(TAG, "SessionData with decrypted payload"
-                            + " (" + decryptedMessage.first.length + " bytes)");
-                    if (Logger.isDebugEnabled()) {
-                        Util.dumpHex(TAG, "Received DeviceResponse", decryptedMessage.first);
-                    }
-                    reportResponseReceived(decryptedMessage.first);
-                } else {
-                    // No data, so status must be set.
-                    if (!decryptedMessage.second.isPresent()) {
-                        mDataTransport.close();
-                        reportError(new Error("No data and no status in SessionData"));
-                    } else {
-                        int statusCode = decryptedMessage.second.getAsInt();
-                        Logger.d(TAG, "SessionData with status code " + statusCode);
-                        if (statusCode == 20) {
-                            mDataTransport.close();
-                            reportDeviceDisconnected(false);
-                        } else {
-                            mDataTransport.close();
-                            reportError(new Error("Expected status code 20, got "
-                                    + statusCode + " instead"));
-                        }
-                    }
-                }
+                handleOnMessageReceived();
             }
 
             @Override
@@ -518,25 +552,107 @@ public class VerificationHelper {
                 reportDeviceDisconnected(true);
             }
 
-        }, mDeviceResponseListenerExecutor);
+        }, mListenerExecutor);
 
         try {
             DataItem deDataItem = Util.cborDecode(mDeviceEngagement);
             DataItem eDeviceKeyBytesDataItem = Util.cborMapExtractArray(deDataItem, 1).get(1);
             byte[] encodedEDeviceKeyBytes = Util.cborEncode(eDeviceKeyBytesDataItem);
             mDataTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
-            mDataTransport.connect(address);
+            mDataTransport.connect();
         } catch (Exception e) {
             reportError(e);
         }
+    }
 
+    private void handleReverseEngagementMessageData(@NonNull byte[] data) {
+        Logger.d(TAG, "MessageData = " + Util.toHex(data));
+        byte[] encodedDeviceEngagement = null;
+        DataItem handover = null;
+        try {
+            DataItem map = Util.cborDecode(data);
+            encodedDeviceEngagement = Util.cborMapExtractByteString(map, "deviceEngagementBytes");
+        } catch (Exception e) {
+            mDataTransport.close();
+            reportError(new Error("Error extracting DeviceEngagement from MessageData", e));
+            return;
+        }
+
+        Logger.d(TAG, "Extracted DeviceEngagement " + Util.toHex(encodedDeviceEngagement));
+
+        // 18013-7 says to use ReaderEngagementBytes for Handover when ReaderEngagement
+        // is available and neither QR or NFC is used.
+        handover = Util.cborBuildTaggedByteString(mReaderEngagement);
+
+        setDeviceEngagement(encodedDeviceEngagement, handover);
+
+        // Tell the application it can start sending requests...
+        reportDeviceConnected();
+    }
+
+    private void handleOnMessageReceived() {
+        byte[] data = mDataTransport.getMessage();
+        if (data == null) {
+            reportError(new Error("onMessageReceived but no message"));
+            return;
+        }
+
+        if (mDeviceEngagement == null) {
+            // DeviceEngagement is delivered in the first message...
+            handleReverseEngagementMessageData(data);
+            return;
+        }
+
+        if (mSessionEncryptionReader == null) {
+            reportError(new IllegalStateException("Message received but no session "
+                    + "establishment with the remote device."));
+            return;
+        }
+
+        Pair<byte[], OptionalInt> decryptedMessage = null;
+        try {
+            decryptedMessage = mSessionEncryptionReader.decryptMessageFromDevice(data);
+        } catch (Exception e) {
+            mDataTransport.close();
+            reportError(new Error("Error decrypting message from device", e));
+            return;
+        }
+
+        // If there's data in the message, assume it's DeviceResponse (ISO 18013-5
+        // currently does not define other kinds of messages).
+        //
+        if (decryptedMessage.first != null) {
+            Logger.d(TAG, "SessionData with decrypted payload"
+                    + " (" + decryptedMessage.first.length + " bytes)");
+            if (Logger.isDebugEnabled()) {
+                Util.dumpHex(TAG, "Received DeviceResponse", decryptedMessage.first);
+            }
+            reportResponseReceived(decryptedMessage.first);
+        } else {
+            // No data, so status must be set.
+            if (!decryptedMessage.second.isPresent()) {
+                mDataTransport.close();
+                reportError(new Error("No data and no status in SessionData"));
+            } else {
+                int statusCode = decryptedMessage.second.getAsInt();
+                Logger.d(TAG, "SessionData with status code " + statusCode);
+                if (statusCode == 20) {
+                    mDataTransport.close();
+                    reportDeviceDisconnected(false);
+                } else {
+                    mDataTransport.close();
+                    reportError(new Error("Expected status code 20, got "
+                            + statusCode + " instead"));
+                }
+            }
+        }
     }
 
     void reportDeviceDisconnected(boolean transportSpecificTermination) {
         Logger.d(TAG, "reportDeviceDisconnected: transportSpecificTermination: "
                 + transportSpecificTermination);
         if (mListener != null) {
-            mDeviceResponseListenerExecutor.execute(
+            mListenerExecutor.execute(
                     () -> mListener.onDeviceDisconnected(transportSpecificTermination));
         }
     }
@@ -544,7 +660,7 @@ public class VerificationHelper {
     void reportResponseReceived(@NonNull byte[] deviceResponseBytes) {
         Logger.d(TAG, "reportResponseReceived (" + deviceResponseBytes.length + " bytes)");
         if (mListener != null) {
-            mDeviceResponseListenerExecutor.execute(
+            mListenerExecutor.execute(
                     () -> mListener.onResponseReceived(deviceResponseBytes));
         }
     }
@@ -552,7 +668,7 @@ public class VerificationHelper {
     void reportMoveIntoNfcField() {
         Logger.d(TAG, "reportMoveIntoNfcField");
         if (mListener != null) {
-            mDeviceResponseListenerExecutor.execute(
+            mListenerExecutor.execute(
                     () -> mListener.onMoveIntoNfcField());
         }
     }
@@ -560,28 +676,38 @@ public class VerificationHelper {
     void reportDeviceConnected() {
         Logger.d(TAG, "reportDeviceConnected");
         if (mListener != null) {
-            mDeviceResponseListenerExecutor.execute(
+            mListenerExecutor.execute(
                     () -> mListener.onDeviceConnected());
         }
     }
 
-    void reportDeviceEngagementReceived(@NonNull List<DataRetrievalAddress> addresses) {
+    void reportReaderEngagementReady(@NonNull byte[] readerEngagement) {
+        if (Logger.isDebugEnabled()) {
+            Logger.d(TAG, "reportReaderEngagementReady: " + Util.toHex(readerEngagement));
+        }
+        if (mListener != null) {
+            mListenerExecutor.execute(
+                    () -> mListener.onReaderEngagementReady(readerEngagement));
+        }
+    }
+
+    void reportDeviceEngagementReceived(@NonNull List<ConnectionMethod> connectionMethods) {
         if (Logger.isDebugEnabled()) {
             Logger.d(TAG, "reportDeviceEngagementReceived");
-            for (DataRetrievalAddress address : addresses) {
-                Logger.d(TAG, "  address: " + address);
+            for (ConnectionMethod cm : connectionMethods) {
+                Logger.d(TAG, "  ConnectionMethod: " + cm);
             }
         }
         if (mListener != null) {
-            mDeviceResponseListenerExecutor.execute(
-                    () -> mListener.onDeviceEngagementReceived(addresses));
+            mListenerExecutor.execute(
+                    () -> mListener.onDeviceEngagementReceived(connectionMethods));
         }
     }
 
     void reportError(Throwable error) {
         Logger.d(TAG, "reportError: error: " + error);
         if (mListener != null) {
-            mDeviceResponseListenerExecutor.execute(() -> mListener.onError(error));
+            mListenerExecutor.execute(() -> mListener.onError(error));
         }
     }
 
@@ -603,7 +729,13 @@ public class VerificationHelper {
      * <p>This method is idempotent so it is safe to call multiple times.
      */
     public void disconnect() {
-        mIsListening = false;
+        if (mReverseEngagementListeningTransports != null) {
+            for (DataTransport transport : mReverseEngagementListeningTransports) {
+                transport.close();
+            }
+            mReverseEngagementListeningTransports = null;
+        }
+
         if (mDataTransport != null) {
             // Only send session termination message if the session was actually established.
             boolean sessionEstablished = (mSessionEncryptionReader.getNumMessagesEncrypted() > 0);
@@ -630,8 +762,6 @@ public class VerificationHelper {
     /**
      * Sends a request to the remote mdoc device.
      *
-     * <p>Should be called in response to {@link Listener#onDeviceConnected()} callback.
-     *
      * <p>The <code>deviceRequestBytes</code> parameter must be <code>DeviceRequest</code>
      * <a href="http://cbor.io/">CBOR</a>
      * as specified in <em>ISO/IEC 18013-5</em> section 8.3 <em>Device Retrieval</em>. The
@@ -641,6 +771,8 @@ public class VerificationHelper {
      * {@link Listener#onResponseReceived(byte[])} method is invoked. This will usually take
      * several seconds as it typically involves authenticating the holder and asking for their
      * consent to release identity data.
+     *
+     * <p>This is usually called in response to {@link Listener#onDeviceConnected()} callback.
      *
      * @param deviceRequestBytes request message to the remote device
      */
@@ -675,10 +807,10 @@ public class VerificationHelper {
      */
     public @NonNull
     byte[] getSessionTranscript() {
-        if (mSessionEncryptionReader == null) {
+        if (mEncodedSessionTranscript == null) {
             throw new IllegalStateException("Not engaging with mdoc device");
         }
-        return mSessionEncryptionReader.getSessionTranscript();
+        return mEncodedSessionTranscript;
     }
 
     /**
@@ -690,26 +822,6 @@ public class VerificationHelper {
     public @NonNull
     PrivateKey getEphemeralReaderKey() {
         return mEphemeralKeyPair.getPrivate();
-    }
-
-    /**
-     * Sets the listener for listening to events from the remote mdoc device.
-     *
-     * <p>This may be called multiple times but only the most recent listener will be used.
-     *
-     * @param listener the listener or <code>null</code> to stop listening.
-     * @param executor an {@link Executor} to do the call in or <code>null</code> if
-     *                 <code>listener</code> is <code>null</code>.
-     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
-     * listener.
-     */
-    public void setListener(@Nullable Listener listener,
-            @Nullable Executor executor) {
-        if (listener != null && executor == null) {
-            throw new IllegalStateException("Cannot have non-null listener with null executor");
-        }
-        mListener = listener;
-        mDeviceResponseListenerExecutor = executor;
     }
 
     /**
@@ -772,13 +884,29 @@ public class VerificationHelper {
     public interface Listener {
 
         /**
+         * Called when using reverse engagement and the reader engagement is ready.
+         *
+         * The app can display this as QR code (for 23220-4) or send it to a remote
+         * user agent as an mdoc:// URI (for 18013-7).
+         *
+         * @param readerEngagement the bytes of reader engagement.
+         */
+        void onReaderEngagementReady(@NonNull byte[] readerEngagement);
+
+        /**
          * Called when a valid device engagement is received from QR code of NFC.
          *
          * <p>This is called either in response to {@link #setDeviceEngagementFromQrCode(String)}
          * or as a result of a NFC tap. The application should call
-         * {@link #connect(DataRetrievalAddress)} in response to this callback.
+         * {@link #connect(ConnectionMethod)} in response to this callback to establish a
+         * connection.
+         *
+         * <p>If reverse engagement is used, this is never called.
+         *
+         * @param connectionMethods a list of connection methods that can be used to establish
+         *                          a connection to the mdoc.
          */
-        void onDeviceEngagementReceived(@NonNull List<DataRetrievalAddress> addresses);
+        void onDeviceEngagementReceived(@NonNull List<ConnectionMethod> connectionMethods);
 
         /**
          * Called when NFC data transfer has been selected but the mdoc reader device isn't yet
@@ -831,6 +959,82 @@ public class VerificationHelper {
          * @param error the error.
          */
         void onError(@NonNull Throwable error);
+    }
+
+    /**
+     * Builder for {@link VerificationHelper}.
+     */
+    public static class Builder {
+        private VerificationHelper mHelper;
+
+        /**
+         * Creates a new Builder for {@link VerificationHelper}.
+         *
+         * @param context application context.
+         * @param listener listener.
+         * @param executor executor.
+         */
+        public Builder(@NonNull Context context,
+                       @NonNull Listener listener,
+                       @NonNull Executor executor) {
+            mHelper = new VerificationHelper();
+            mHelper.mContext = context;
+            mHelper.mListener = listener;
+            mHelper.mListenerExecutor = executor;
+            mHelper.mEphemeralKeyPair = Util.createEphemeralKeyPair();
+        }
+
+        /**
+         * Sets the options to use when setting up transports.
+         *
+         * @param options the options to use.
+         * @return the builder.
+         */
+        public @NonNull Builder setDataTransportOptions(DataTransportOptions options) {
+            mHelper.mOptions = options;
+            return this;
+        }
+
+        /**
+         * Configures the verification helper to use reverse engagement.
+         *
+         * @param connectionMethods a list of connection methods to offer via reverse engagement
+         * @return the builder.
+         */
+        public @NonNull Builder setUseReverseEngagement(@NonNull List<ConnectionMethod> connectionMethods) {
+            mHelper.mReverseEngagementConnectionMethods = connectionMethods;
+            return this;
+        }
+
+        /**
+         * Builds a {@link VerificationHelper} with the configuration specified in the builder.
+         *
+         * <p>If using normal engagement and the application wishes to use NFC engagement it
+         * should use {@link NfcAdapter} and pass received tags to
+         * {@link #nfcProcessOnTagDiscovered(Tag)}. For QR engagement the application is
+         * expected to capture the QR code itself and pass it using
+         * {@link #setDeviceEngagementFromQrCode(String)}. When engagement with a mdoc is detected
+         * {@link Listener#onDeviceEngagementReceived(List)} is called with a list of possible
+         * transports and the application is expected to pick a transport and pass it to
+         * {@link #connect(ConnectionMethod)}.
+         *
+         * <p>If using reverse engagement, the application should wait for the
+         * {@link Listener#onReaderEngagementReady(byte[])} callback and then convey the
+         * reader engagement to the mdoc, for example via QR code or sending an mdoc:// URI
+         * to a suitable user agent. After this, application should wait for the
+         * {@link Listener#onDeviceConnected()} callback which is called when the mdoc
+         * connects via one of the connection methods specified using
+         * {@link #setUseReverseEngagement(List)}.
+         *
+         * <p>When the application is done interacting with the mdoc it should call
+         * {@link #disconnect()}.
+         *
+         * @return A {@link VerificationHelper}.
+         */
+        public @NonNull VerificationHelper build() {
+            mHelper.start();
+            return mHelper;
+        }
     }
 
 }

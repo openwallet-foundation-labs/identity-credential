@@ -57,6 +57,7 @@ public abstract class DataTransport {
     private static final String TAG = "DataTransport";
 
     protected final Context mContext;
+    protected final DataTransportOptions mOptions;
     boolean mInhibitCallbacks;
     private @Nullable
     Listener mListener;
@@ -68,111 +69,10 @@ public abstract class DataTransport {
     Executor mProgressListenerExecutor;
     private Queue<byte[]> mMessageReceivedQueue = new ArrayDeque<>();
 
-    DataTransport(Context context) {
+    DataTransport(@NonNull Context context,
+                  @NonNull DataTransportOptions options) {
         mContext = context;
-    }
-
-    /**
-     * Returns a list of addresses (typically one) inferred from parsing DeviceRetrievalMethod CBOR.
-     *
-     * @param encodedDeviceRetrievalMethod bytes of DeviceRetrievalMethod CBOR.
-     * @return List of {@link DataRetrievalAddress} or <code>null</code> if none were found.
-     */
-    static @Nullable
-    List<DataRetrievalAddress> parseDeviceRetrievalMethod(
-            @NonNull byte[] encodedDeviceRetrievalMethod) {
-
-        DataItem d = Util.cborDecode(encodedDeviceRetrievalMethod);
-        if (!(d instanceof Array)) {
-            throw new IllegalArgumentException("Given CBOR is not an array");
-        }
-        DataItem[] items = ((Array) d).getDataItems().toArray(new DataItem[0]);
-        if (items.length < 2) {
-            throw new IllegalArgumentException("Expected two elems or more, got " + items.length);
-        }
-        if (!(items[0] instanceof Number) || !(items[1] instanceof Number)) {
-            throw new IllegalArgumentException("Items not of required type");
-        }
-        int type = ((Number) items[0]).getValue().intValue();
-        int version = ((Number) items[1]).getValue().intValue();
-
-        switch (type) {
-            case DataTransportBle.DEVICE_RETRIEVAL_METHOD_TYPE:
-                return DataTransportBle.parseDeviceRetrievalMethod(version, items);
-
-            case DataTransportWifiAware.DEVICE_RETRIEVAL_METHOD_TYPE:
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    return DataTransportWifiAware.parseDeviceRetrievalMethod(version, items);
-                } else {
-                    Log.i(TAG, "Ignoring Wifi Aware DeviceRetrievalMethod CBOR since Wifi Aware "
-                            + "is not available on this API level");
-                    return null;
-                }
-
-            case DataTransportNfc.DEVICE_RETRIEVAL_METHOD_TYPE:
-                return DataTransportNfc.parseDeviceRetrievalMethod(version, items);
-
-            case DataTransportTcp.DEVICE_RETRIEVAL_METHOD_TYPE:
-                return DataTransportTcp.parseDeviceRetrievalMethod(version, items);
-
-            default:
-                Log.w(TAG, "Unsupported device engagement with type " + type);
-                return null;
-        }
-    }
-
-    /**
-     * Returns a list of addresses (typically one) inferred from parsing an NDEF record.
-     *
-     * @param record an NDEF record.
-     * @return List of {@link DataRetrievalAddress} or <code>null</code> if none were found.
-     */
-    static @Nullable
-    List<DataRetrievalAddress> parseNdefRecord(
-            @NonNull NdefRecord record) {
-        // BLE Carrier Configuration record
-        //
-        if (record.getTnf() == 0x02
-                && Arrays.equals(record.getType(),
-                "application/vnd.bluetooth.le.oob".getBytes(UTF_8))
-                && Arrays.equals(record.getId(), "0".getBytes(UTF_8))) {
-            return DataTransportBle.parseNdefRecord(record);
-        }
-
-        // Wifi Aware Carrier Configuration record
-        //
-        if (record.getTnf() == 0x02
-                && Arrays.equals(record.getType(),
-                "application/vnd.wfa.nan".getBytes(UTF_8))
-                && Arrays.equals(record.getId(), "W".getBytes(UTF_8))) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                return DataTransportWifiAware.parseNdefRecord(record);
-            } else {
-                Log.i(TAG, "Ignoring Wifi Aware Carrier Configuration since Wifi Aware "
-                        + "is not available on this API level");
-                return null;
-            }
-        }
-
-        // NFC Carrier Configuration record
-        //
-        if (record.getTnf() == 0x02
-                && Arrays.equals(record.getType(),
-                "iso.org:18013:nfc".getBytes(UTF_8))
-                && Arrays.equals(record.getId(), "nfc".getBytes(UTF_8))) {
-            return DataTransportNfc.parseNdefRecord(record);
-        }
-
-        // Generic Carrier Configuration record
-        //
-        if (record.getTnf() == 0x02
-                && Arrays.equals(record.getType(),
-                "application/vnd.android.ic.dmr".getBytes(UTF_8))) {
-            byte[] deviceRetrievalMethod = record.getPayload();
-            return parseDeviceRetrievalMethod(deviceRetrievalMethod);
-        }
-
-        return null;
+        mOptions = options;
     }
 
     /**
@@ -183,7 +83,7 @@ public abstract class DataTransport {
      * they receive through device engagement.
      *
      * <p>This should be called before calling {@link #listen()} or
-     * {@link #connect(DataRetrievalAddress)}.
+     * {@link #connect()}.
      *
      * @param encodedEDeviceKeyBytes bytes of <code>EDeviceKeyBytes</code> CBOR.
      */
@@ -194,11 +94,8 @@ public abstract class DataTransport {
      *
      * <p>This is an asynchronous operation, {@link Listener#onConnectionResult(Throwable)}
      * is called with whether the connection attempt worked.
-     *
-     * @param address a {@link DataRetrievalAddress}.
-     * @throws IllegalArgumentException if the given address is malformed.
      */
-    abstract void connect(@NonNull DataRetrievalAddress address);
+    abstract void connect();
 
     /**
      * Starts listening on the transport.
@@ -208,24 +105,13 @@ public abstract class DataTransport {
      * as part of the <code>DeviceRetrievalMethod</code> CBOR returned.
      *
      * <p>This is an asynchronous operation. When listening has been set up the
-     * {@link Listener#onListeningSetupCompleted(DataRetrievalAddress)} method is called with
+     * {@link Listener#onListeningSetupCompleted()} method is called with
      * address the listener is listening to or <code>null</code> if the operation fails. When a
      * peer connects {@link Listener#onListeningPeerConnected()} is called. Only a single peer
      * will be allowed to connect. When the peer disconnects
      * {@link Listener#onListeningPeerDisconnected()} is called.
      */
     abstract void listen();
-
-    /**
-     * Gets the address that can be used to connecting to the listening transport.
-     *
-     * <p>This is the same address which is returned by the
-     * {@link Listener#onListeningSetupCompleted(DataRetrievalAddress)} callback.
-     *
-     * @return A {@link DataRetrievalAddress}.
-     */
-    abstract @NonNull
-    DataRetrievalAddress getListeningAddress();
 
     /**
      * If this is a listening transport, stops listening and disconnects any peer already
@@ -244,8 +130,8 @@ public abstract class DataTransport {
      * Sends data to the remote peer.
      *
      * <p>This is an asynchronous operation, data will be sent by another thread. It's safe to
-     * call this right after {@link #connect(DataRetrievalAddress)}, data will be queued up and
-     * sent once a connection has been established.
+     * call this right after {@link #connect()}, data will be queued up and sent once a connection
+     * has been established.
      *
      * @param data the data to send
      */
@@ -315,11 +201,11 @@ public abstract class DataTransport {
 
     // Note: The report*() methods are safe to call from any thread.
 
-    protected void reportListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+    protected void reportListeningSetupCompleted() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onListeningSetupCompleted(address));
+            executor.execute(() -> listener.onListeningSetupCompleted());
         }
     }
 
@@ -414,7 +300,7 @@ public abstract class DataTransport {
          * Called on a listening transport when listening setup has completed and
          * an address for how to connect is ready.
          */
-        void onListeningSetupCompleted(@Nullable DataRetrievalAddress address);
+        void onListeningSetupCompleted();
 
         /**
          * Called when a listening transport first sees a new connection.
@@ -438,7 +324,7 @@ public abstract class DataTransport {
         void onListeningPeerDisconnected();
 
         /**
-         * Called when the connection started with {@link #connect(DataRetrievalAddress)} succeeds.
+         * Called when the connection started with {@link #connect()} succeeds.
          *
          * <p>If the connection didn't succeed, the transport can no longer be used and the caller
          * should call {@link DataTransport#close()} to release resources.
@@ -449,7 +335,7 @@ public abstract class DataTransport {
         void onConnectionResult(@Nullable Throwable error);
 
         /**
-         * Called when the connection established with {@link #connect(DataRetrievalAddress)} has
+         * Called when the connection established with {@link #connect()} has
          * been disconnected.
          *
          * <p>If this is called, the transport can no longer be used and the caller

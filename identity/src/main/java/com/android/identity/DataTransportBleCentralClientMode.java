@@ -67,7 +67,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             UUID characteristicL2CAPUuid = null;
-            if (mUseL2CAPIfAvailable) {
+            if (mOptions.getBleUseL2CAP()) {
                 characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
             }
             mGattClient = new GattClient(mContext,
@@ -117,7 +117,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
             long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
             Logger.d(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
                     + "Connecting to device with address " + result.getDevice().getAddress());
-            mGattClient.setClearCache(mClearCache);
+            mGattClient.setClearCache(mOptions.getBleClearCache());
             mGattClient.connect(result.getDevice());
             if (mScanner != null) {
                 Logger.d(TAG, "Stopped scanning for UUID " + mServiceUuid);
@@ -157,10 +157,10 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         }
     };
     private GattServer mGattServer;
-    private DataRetrievalAddress mListeningAddress;
 
-    public DataTransportBleCentralClientMode(@NonNull Context context) {
-        super(context);
+    public DataTransportBleCentralClientMode(@NonNull Context context,
+                                             @NonNull DataTransportOptions options) {
+        super(context, options);
     }
 
     @Override
@@ -169,25 +169,12 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     }
 
     @Override
-    public @NonNull
-    DataRetrievalAddress getListeningAddress() {
-        return mListeningAddress;
-    }
-
-    @Override
     public void listen() {
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
         if (mServiceUuid == null) {
             mServiceUuid = UUID.randomUUID();
         }
 
-        mListeningAddress = new DataRetrievalAddressBleCentralClientMode(mServiceUuid);
-
-        reportListeningSetupCompleted(mListeningAddress);
+        reportListeningSetupCompleted();
 
         // TODO: Check if BLE is enabled and error out if not so...
 
@@ -217,22 +204,12 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     }
 
     @Override
-    public void connect(@NonNull DataRetrievalAddress genericAddress) {
-        DataRetrievalAddressBleCentralClientMode address =
-                (DataRetrievalAddressBleCentralClientMode) genericAddress;
-
+    public void connect() {
         // TODO: Check if BLE is enabled and error out if not so...
-
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
-        mServiceUuid = address.uuid;
 
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
         UUID characteristicL2CAPUuid = null;
-        if (mUseL2CAPIfAvailable) {
+        if (mOptions.getBleUseL2CAP()) {
             characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
         }
         mGattServer = new GattServer(mContext, bluetoothManager, mServiceUuid,

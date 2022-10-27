@@ -17,8 +17,7 @@
 package com.android.identity;
 
 import android.content.Context;
-import android.nfc.cardemulation.HostApduService;
-import android.os.Bundle;
+
 import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
@@ -26,44 +25,35 @@ import androidx.annotation.Nullable;
 
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
+import java.security.PublicKey;
+import java.util.List;
 import java.util.OptionalLong;
 import java.util.concurrent.Executor;
 
+import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.builder.MapBuilder;
+import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.UnicodeString;
+
 /**
  * Helper used for establishing engagement with, interacting with, and presenting credentials to a
- * remote <em>mdoc verifier</em> device.
+ * remote <em>mdoc reader</em> device.
  *
  * <p>This class implements the interface between an <em>mdoc</em> and <em>mdoc verifier</em> using
  * the connection setup and device retrieval interfaces defined in
  * <a href="https://www.iso.org/standard/69084.html">ISO/IEC 18013-5</a>.
  *
- * <p>Supported device engagement methods include QR code and NFC static handover. Support for
- * NFC negotiated handover may be added in a future release.
- *
- * <p>Supported device retrieval transfer methods include BLE (both <em>mdoc central client
- * mode</em> and <em>mdoc peripheral server</em>), Wifi Aware, and NFC.
- *
- * <p>Additional device engagement and device retrieval methods may be added in the future.
+ * <p>Reverse engagement as per drafts of 18013-7 and 23220-4 is supported. These protocols
+ * are not finalized so should only be used for testing.
  *
  * <p>As with {@link PresentationSession}, instances of this class are only good for a single
- * session with a remote verifier. Once a session ends (indicated by e.g.
+ * session with a remote reader. Once a session ends (indicated by e.g.
  * {@link Listener#onDeviceDisconnected(boolean)} or {@link Listener#onError(Throwable)} the
  * object should no longer be used.
  *
- * <p>For NFC device engagement the application should use a {@link HostApduService}
- * registered for AID <code>D2 76 00 00 85 01 01</code> (NFC Type 4 Tag) and for NFC data
- * transfer it should also be registered for AID <code>A0 00 00 02 48 04 00</code> (as per
- * ISO/IEC 18013-5 section 8.3.3.1.2). In both cases
- * {@link HostApduService#processCommandApdu(byte[], Bundle)} calls should be forwarded to
- * {@link #nfcProcessCommandApdu(byte[])} and
- * {@link HostApduService#onDeactivated(int)} calls should be forwarded to
- * {@link #nfcOnDeactivated(HostApduService, int)}. The application should also use
- * {@link #setNfcResponder(NfcApduRouter)} to set up a {@link NfcApduRouter} to send
- * response APDUs back to the reader.
- *
  * <p>Unlike {@link IdentityCredentialStore}, {@link IdentityCredential},
  * {@link WritableIdentityCredential}, and {@link PresentationSession} this class is never backed
- * by secure hardware and is entirely implemented in the Jetpack. The class does however depend
+ * by secure hardware and is entirely implemented in the library. The class does however depend
  * on data returned by
  * {@link PresentationSession#getCredentialData(String, CredentialDataRequest)} which may be
  * backed by secure hardware.
@@ -74,17 +64,23 @@ import java.util.concurrent.Executor;
 public class PresentationHelper {
     private static final String TAG = "PresentationHelper";
 
-    private final KeyPair mEphemeralKeyPair;
-    private final Context mContext;
-    private final byte[] mDeviceEngagement;
-    private final byte[] mHandover;
+    private KeyPair mEphemeralKeyPair;
+    private Context mContext;
+    private PublicKey mEReaderKey;
+
+    private byte[] mDeviceEngagement;
+    private byte[] mHandover;
     SessionEncryptionDevice mSessionEncryption;
-    private final byte[] mAlternateDeviceEngagement;
-    private final byte[] mAlternateHandover;
+    private byte[] mEncodedSessionTranscript;
+
+    private byte[] mAlternateDeviceEngagement;
+    private byte[] mAlternateHandover;
     SessionEncryptionDevice mAlternateSessionEncryption;
+    private byte[] mEncodedAlternateSessionTranscript;
+
     PresentationSession mPresentationSession;
     Listener mListener;
-    Executor mDeviceRequestListenerExecutor;
+    Executor mListenerExecutor;
     DataTransport mTransport;
 
     boolean mReceivedSessionTerminated;
@@ -92,49 +88,17 @@ public class PresentationHelper {
     private boolean mInhibitCallbacks;
     private boolean mUseTransportSpecificSessionTermination;
     private boolean mSendSessionTerminationMessage;
-    private NfcApduRouter mNfcRouter;
+    private byte[] mReverseEngagementReaderEngagement;
+    private List<OriginInfo> mReverseEngagementOriginInfos;
 
-    /**
-     * Creates a new {@link PresentationHelper}.
-     *
-     * @param context             the application context.
-     * @param presentationSession a {@link PresentationSession} instance.
-     */
-    public PresentationHelper(@NonNull Context context,
-                              @NonNull PresentationSession presentationSession,
-                              @NonNull DataTransport transport,
-                              @NonNull byte[] deviceEngagement,
-                              @NonNull byte[] handover,
-                              @Nullable byte[] alternateDeviceEngagement,
-                              @Nullable byte[] alternateHandover) {
-        mPresentationSession = presentationSession;
-        mContext = context;
-        mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
-        mTransport = transport;
-        mDeviceEngagement = deviceEngagement;
-        mHandover = handover;
-        mAlternateDeviceEngagement = alternateDeviceEngagement;
-        mAlternateHandover = alternateHandover;
-
-        mSessionEncryption = new SessionEncryptionDevice(
-                mEphemeralKeyPair.getPrivate(),
-                mDeviceEngagement,
-                mHandover);
-
-        if (mAlternateDeviceEngagement != null && mAlternateHandover != null) {
-            mAlternateSessionEncryption = new SessionEncryptionDevice(
-                    mEphemeralKeyPair.getPrivate(),
-                    mAlternateDeviceEngagement,
-                    mAlternateHandover);
-        }
-    }
+    PresentationHelper() {}
 
     // Note: The report*() methods are safe to call from any thread.
 
     void reportDeviceRequest(@NonNull byte[] deviceRequestBytes) {
         Logger.d(TAG, "reportDeviceRequest: deviceRequestBytes: " + deviceRequestBytes.length + " bytes");
         final Listener listener = mListener;
-        final Executor executor = mDeviceRequestListenerExecutor;
+        final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
             executor.execute(() -> listener.onDeviceRequest(deviceRequestBytes));
         }
@@ -144,7 +108,7 @@ public class PresentationHelper {
         Logger.d(TAG, "reportDeviceDisconnected: transportSpecificTermination: "
                 + transportSpecificTermination);
         final Listener listener = mListener;
-        final Executor executor = mDeviceRequestListenerExecutor;
+        final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
             executor.execute(() -> listener.onDeviceDisconnected(
                     transportSpecificTermination));
@@ -154,16 +118,16 @@ public class PresentationHelper {
     void reportError(@NonNull Throwable error) {
         Logger.d(TAG, "reportError: error: ", error);
         final Listener listener = mListener;
-        final Executor executor = mDeviceRequestListenerExecutor;
+        final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
             executor.execute(() -> listener.onError(error));
         }
     }
 
-    public void start() {
+    void start() {
         mTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+            public void onListeningSetupCompleted() {
                 Logger.d(TAG, "onListeningSetupCompleted");
                 reportError(new Error("Unexpected onListeningSetupCompleted"));
             }
@@ -193,6 +157,33 @@ public class PresentationHelper {
 
             @Override
             public void onConnectionResult(@Nullable Throwable error) {
+                if (mReverseEngagementReaderEngagement != null) {
+                    Logger.d(TAG, "onConnectionResult for reverse engagement");
+
+                    EngagementGenerator generator = new EngagementGenerator(
+                            mEphemeralKeyPair.getPublic(),
+                            EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+                    for (OriginInfo originInfo : mReverseEngagementOriginInfos) {
+                        generator.addOriginInfo(originInfo);
+                    }
+                    mDeviceEngagement = generator.generate();
+
+                    // 18013-7 says to use ReaderEngagementBytes for Handover when ReaderEngagement
+                    // is available and neither QR or NFC is used.
+                    mHandover = Util.cborEncode(Util.cborBuildTaggedByteString(mReverseEngagementReaderEngagement));
+
+                    // 18013-7 says to transmit DeviceEngagementBytes in MessageData
+                    CborBuilder builder = new CborBuilder();
+                    MapBuilder<CborBuilder> mapBuilder = builder.addMap();
+                    mapBuilder.put(new UnicodeString("deviceEngagementBytes"),
+                            Util.cborBuildTaggedByteString(mDeviceEngagement));
+                    mapBuilder.end();
+                    byte[] messageData = Util.cborEncode(builder.build().get(0));
+
+                    mTransport.sendMessage(messageData);
+
+                    return;
+                }
                 Logger.d(TAG, "onConnectionResult");
                 if (error != null) {
                     throw new IllegalStateException("Unexpected onConnectionResult callback", error);
@@ -203,7 +194,8 @@ public class PresentationHelper {
             @Override
             public void onConnectionDisconnected() {
                 Logger.d(TAG, "onConnectionDisconnected");
-                throw new IllegalStateException("Unexpected onConnectionDisconnected callback");
+                mTransport.close();
+                reportError(new IllegalStateException("Unexpected onConnectionDisconnected callback"));
             }
 
             @Override
@@ -230,15 +222,61 @@ public class PresentationHelper {
                 reportDeviceDisconnected(true);
             }
 
-        }, mDeviceRequestListenerExecutor);
+        }, mListenerExecutor);
 
         byte[] data = mTransport.getMessage();
         if (data != null) {
             processMessageReceived(data);
         }
+
+        if (mReverseEngagementReaderEngagement != null) {
+            // This is reverse engagement, we actually haven't connected yet...
+            byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
+                    Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()))));
+            mTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
+            mTransport.connect();
+        }
+
+    }
+
+    private void ensureSessionEncryption(@NonNull byte[] data) {
+        if (mSessionEncryption != null) {
+            return;
+        }
+
+        // This is the first message. Extract eReaderKey to set up session encryption...
+        DataItem decodedData = Util.cborDecode(data);
+        byte[] eReaderKeyBytes = Util.cborMapExtractByteString(decodedData, "eReaderKey");
+        mEReaderKey = Util.coseKeyDecode(Util.cborDecode(eReaderKeyBytes));
+
+        mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
+                .addArray()
+                .add(Util.cborBuildTaggedByteString(mDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(eReaderKeyBytes))
+                .add(Util.cborDecode(mHandover))
+                .end()
+                .build().get(0));
+        mSessionEncryption = new SessionEncryptionDevice(mEphemeralKeyPair.getPrivate(),
+                mEReaderKey,
+                mEncodedSessionTranscript);
+
+        if (mAlternateDeviceEngagement != null && mAlternateHandover != null) {
+            mEncodedAlternateSessionTranscript = Util.cborEncode(new CborBuilder()
+                    .addArray()
+                    .add(Util.cborBuildTaggedByteString(mAlternateDeviceEngagement))
+                    .add(Util.cborBuildTaggedByteString(eReaderKeyBytes))
+                    .add(Util.cborDecode(mAlternateHandover))
+                    .end()
+                    .build().get(0));
+            mAlternateSessionEncryption = new SessionEncryptionDevice(mEphemeralKeyPair.getPrivate(),
+                    mEReaderKey,
+                    mEncodedAlternateSessionTranscript);
+        }
     }
 
     private void processMessageReceived(@NonNull byte[] data) {
+        ensureSessionEncryption(data);
+
         if (Logger.isDebugEnabled()) {
             Util.dumpHex(TAG, "SessionData", data);
         }
@@ -253,6 +291,7 @@ public class PresentationHelper {
         if (decryptedMessage == null && mAlternateSessionEncryption != null) {
             Logger.d(TAG, "Decryption failed, trying alternate");
             mSessionEncryption = mAlternateSessionEncryption;
+            mEncodedSessionTranscript = mEncodedAlternateSessionTranscript;
             try {
                 decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
             } catch (RuntimeException e) {
@@ -275,11 +314,9 @@ public class PresentationHelper {
             // Only initialize the PresentationSession a single time.
             //
             if (mSessionEncryption.getNumMessagesEncrypted() == 0) {
-                mPresentationSession.setSessionTranscript(
-                        mSessionEncryption.getSessionTranscript());
+                mPresentationSession.setSessionTranscript(mEncodedSessionTranscript);
                 try {
-                    mPresentationSession.setReaderEphemeralPublicKey(
-                            mSessionEncryption.getEphemeralReaderPublicKey());
+                    mPresentationSession.setReaderEphemeralPublicKey(mEReaderKey);
                 } catch (InvalidKeyException e) {
                     mTransport.close();
                     reportError(new Error("Reader ephemeral public key is invalid", e));
@@ -327,10 +364,10 @@ public class PresentationHelper {
      */
     public @NonNull
     byte[] getSessionTranscript() {
-        if (mSessionEncryption == null) {
+        if (mEncodedSessionTranscript == null) {
             throw new IllegalStateException("No message received from verifier");
         }
-        return mSessionEncryption.getSessionTranscript();
+        return mEncodedSessionTranscript;
     }
 
     public @NonNull
@@ -341,7 +378,7 @@ public class PresentationHelper {
     /**
      * Send a response to the remote mdoc verifier.
      *
-     * <p>This is typically called in response to the {@link Listener#onDeviceRequest(int, byte[])}
+     * <p>This is typically called in response to the {@link Listener#onDeviceRequest(byte[])}
      * callback.
      *
      * <p>The <code>deviceResponseBytes</code> parameter should contain CBOR conforming to
@@ -358,7 +395,7 @@ public class PresentationHelper {
     /**
      * Send a response to the remote mdoc verifier.
      *
-     * <p>This is typically called in response to the {@link Listener#onDeviceRequest(int, byte[])}
+     * <p>This is typically called in response to the {@link Listener#onDeviceRequest(byte[])}
      * callback.
      *
      * <p>The <code>deviceResponseBytes</code> parameter should contain CBOR conforming to
@@ -384,28 +421,7 @@ public class PresentationHelper {
     }
 
     /**
-     * Sets the listener for listening to events from the remote mdoc verifier device.
-     *
-     * <p>This may be called multiple times but only the most recent listener will be used.
-     *
-     * @param listener the listener or <code>null</code> to stop listening.
-     * @param executor a {@link Executor} to do the call in or <code>null</code> if
-     *                 <code>listener</code> is <code>null</code>.
-     * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
-     * listener.
-     */
-    public void setListener(@Nullable Listener listener, @Nullable Executor executor) {
-        if (listener != null && executor == null) {
-            throw new IllegalStateException("Cannot have non-null listener with null executor");
-        }
-        mListener = listener;
-        mDeviceRequestListenerExecutor = executor;
-    }
-
-    /**
-     * Stops the presentation, shuts down all transports used, and stops listening on
-     * transports previously brought into a listening state using
-     * {@link #startListening(DataRetrievalListenerConfiguration)}.
+     * Stops the presentation and shuts down the transport.
      *
      * <p>If connected to a mdoc verifier also sends a session termination message prior to
      * disconnecting if applicable. See {@link #setSendSessionTerminationMessage(boolean)} and
@@ -420,7 +436,8 @@ public class PresentationHelper {
         mInhibitCallbacks = true;
         if (mTransport != null) {
             // Only send session termination message if the session was actually established.
-            boolean sessionEstablished = (mSessionEncryption.getNumMessagesDecrypted() > 0);
+            boolean sessionEstablished = (mSessionEncryption != null)
+                            && (mSessionEncryption.getNumMessagesDecrypted() > 0);
             if (mSendSessionTerminationMessage && sessionEstablished) {
                 if (mUseTransportSpecificSessionTermination &&
                         mTransport.supportsTransportSpecificTerminationMessage()) {
@@ -494,29 +511,6 @@ public class PresentationHelper {
     /**
      * Interface for listening to messages from the remote verifier device.
      *
-     * <p>The callbacks on this interface are called in the following order:
-     * <ul>
-     *     <li>{@link Listener#onDeviceEngagementReady()} is called when the transports requested
-     *     via {@link #startListening(DataRetrievalListenerConfiguration)} have all been set up.
-     *     At this point it's safe for the application to call
-     *     {@link #getDeviceEngagementForQrCode()} to get the data to put in a QR code which can
-     *     be displayed in the application.
-     *     <li>{@link Listener#onEngagementDetected()} is called at the first sign of engagement
-     *     with a remote verifier device when NFC engagement is used. It is never called if QR
-     *     engagement is used.
-     *     <li>{@link Listener#onDeviceConnecting()} is called at the first sign of a remote
-     *     verifier device. Depending on the transport in use it could be several seconds until
-     *     the next callback is called.
-     *     <li>{@link Listener#onDeviceConnected()} is called when a remote verifier device has
-     *     connected.
-     *     <li>{@link Listener#onDeviceRequest(int, byte[])} is called when a request has been
-     *     received from the remote verifier. It may be called multiple times.
-     *     For each request the application is expected to process the request and call
-     *     {@link #sendDeviceResponse(byte[])} or {@link #disconnect()}.
-     *     <li>{@link Listener#onDeviceDisconnected(boolean)} is called when the remote verifier
-     *     disconnects properly.
-     * </ul>
-     *
      * <p>The {@link Listener#onError(Throwable)} callback can be called at any time - for
      * example - if the remote verifier disconnects without using session termination or if the
      * underlying transport encounters an unrecoverable error.
@@ -534,7 +528,6 @@ public class PresentationHelper {
          * {@link #sendDeviceResponse(byte[])}. Alternatively, the application may also choose to
          * terminate the session using {@link #disconnect()}.
          *
-         * @param deviceEngagementMethod the engagement method used by the device
          * @param deviceRequestBytes     the device request.
          */
         void onDeviceRequest(@NonNull byte[] deviceRequestBytes);
@@ -561,5 +554,117 @@ public class PresentationHelper {
          * @param error the error.
          */
         void onError(@NonNull Throwable error);
+    }
+
+    /**
+     * Builder for {@link PresentationHelper}.
+     */
+    public static class Builder {
+        PresentationHelper mHelper;
+
+        /**
+         * Create a new Builder for {@link PresentationHelper}.
+         *
+         * <p>Use {@link #useForwardEngagement(DataTransport, byte[], byte[])} or
+         * {@link #useReverseEngagement(DataTransport, byte[], List)} to specifiy which
+         * kind of engagement will be used. At least one of these must be used.
+         *
+         * @param context
+         * @param listener the listener or <code>null</code> to stop listening.
+         * @param executor a {@link Executor} to do the call in or <code>null</code> if
+         *                 <code>listener</code> is <code>null</code>.
+         * @param session a {@link PresentationSession}.
+         * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
+         * listener.
+         */
+        public Builder(@NonNull Context context,
+                       @Nullable Listener listener,
+                       @Nullable Executor executor,
+                       @NonNull PresentationSession session) {
+            mHelper = new PresentationHelper();
+            mHelper.mContext = context;
+            if (listener != null && executor == null) {
+                throw new IllegalStateException("Cannot have non-null listener with null executor");
+            }
+            mHelper.mListener = listener;
+            mHelper.mListenerExecutor = executor;
+            mHelper.mPresentationSession = session;
+            mHelper.mEphemeralKeyPair = mHelper.mPresentationSession.getEphemeralKeyPair();
+        }
+
+        /**
+         * Configures the helper to use normal engagement.
+         *
+         * <p>Applications can use this together with {@link QrEngagementHelper} and
+         * {@link NfcEngagementHelper}.
+         *
+         * @param transport the transport the mdoc reader used to connect with.
+         * @param deviceEngagement the bytes of the <code>DeviceEngagement</code> CBOR.
+         * @param handover the bytes of the <code>Handover</code> CBOR.
+         * @return the builder.
+         */
+        public @NonNull Builder useForwardEngagement(@NonNull DataTransport transport,
+                                                     @NonNull byte[] deviceEngagement,
+                                                     @NonNull byte[] handover) {
+            mHelper.mTransport = transport;
+            mHelper.mDeviceEngagement = deviceEngagement;
+            mHelper.mHandover = handover;
+            return this;
+        }
+
+        /**
+         * Tells the helper about secondary/alternate engagement mechanisms.
+         *
+         * <p>This is useful if using multiple forward engagement mechanisms at the same time, for
+         * example QR and NFC.
+         *
+         * @param deviceEngagement the bytes of the <code>DeviceEngagement</code> CBOR.
+         * @param handover the bytes of the <code>Handover</code> CBOR.
+         * @return
+         */
+        public @NonNull Builder addAlternateForwardEngagement(@Nullable byte[] deviceEngagement,
+                                                              @Nullable byte[] handover) {
+            if (mHelper.mDeviceEngagement == null) {
+                throw new IllegalStateException("Helper isn't configured to use forward engagement");
+            }
+            // TODO: consider if there's an use-case for calling this multiple times
+            if (mHelper.mAlternateDeviceEngagement != null) {
+                throw new IllegalStateException("Can only add a single alternate engagement");
+            }
+            mHelper.mAlternateDeviceEngagement = deviceEngagement;
+            mHelper.mAlternateHandover = handover;
+            return this;
+        }
+
+        /**
+         * Configures the helper to use reverse engagement.
+         *
+         * @param transport the transport to use.
+         * @param readerEngagement the bytes of the <code>ReaderEngagement</code> CBOR.
+         * @param originInfos a set of origin infos describing how reader engagement was obtained.
+         * @return the builder.
+         */
+        public @NonNull Builder useReverseEngagement(@NonNull DataTransport transport,
+                                                     @Nullable byte[] readerEngagement,
+                                                     List<OriginInfo> originInfos) {
+            mHelper.mTransport = transport;
+            mHelper.mReverseEngagementReaderEngagement = readerEngagement;
+            mHelper.mReverseEngagementOriginInfos = originInfos;
+            return this;
+        }
+
+        /**
+         * Builds the {@link PresentationHelper} and starts presentation.
+         *
+         * @return the helper, ready to be used.
+         */
+        public @NonNull PresentationHelper build() {
+            if (mHelper.mTransport == null) {
+                throw new IllegalStateException("Neither forward nor reverse engagement configured");
+            }
+            mHelper.start();
+            return mHelper;
+        }
+
     }
 }

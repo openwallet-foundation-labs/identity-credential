@@ -81,7 +81,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             UUID characteristicL2CAPUuid = null;
-            if (mUseL2CAPIfAvailable) {
+            if (mOptions.getBleUseL2CAP()) {
                 characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
             }
             mGattClient = new GattClient(mContext,
@@ -130,7 +130,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
             Logger.d(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
                     + "Connecting to device with address " + result.getDevice().getAddress());
-            mGattClient.setClearCache(mClearCache);
+            mGattClient.setClearCache(mOptions.getBleClearCache());
             mGattClient.connect(result.getDevice());
             if (mScanner != null) {
                 Logger.d(TAG, "Stopped scanning for UUID " + mServiceUuid);
@@ -156,10 +156,10 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         }
     };
     private GattServer mGattServer;
-    private DataRetrievalAddress mListeningAddress;
 
-    public DataTransportBlePeripheralServerMode(@NonNull Context context) {
-        super(context);
+    public DataTransportBlePeripheralServerMode(@NonNull Context context,
+                                                @NonNull DataTransportOptions options) {
+        super(context, options);
     }
 
     @Override
@@ -168,18 +168,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     }
 
     @Override
-    public @NonNull
-    DataRetrievalAddress getListeningAddress() {
-        return mListeningAddress;
-    }
-
-    @Override
     public void listen() {
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
         BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
 
@@ -187,20 +176,18 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             mServiceUuid = UUID.randomUUID();
         }
 
-        mListeningAddress = new DataRetrievalAddressBlePeripheralServerMode(mServiceUuid);
-
         // TODO: It would be nice if we got get the MAC address that will be assigned to
         //  this advertisement so we can send it to the mDL reader, out of band. Android
         //  currently doesn't have any APIs to do this but it's possible this could be
         //  added without violating the security/privacy goals behind removing identifiers.
         //
 
-        reportListeningSetupCompleted(mListeningAddress);
+        reportListeningSetupCompleted();
 
         // TODO: Check if BLE is enabled and error out if not so...
 
         UUID characteristicL2CAPUuid = null;
-        if (mUseL2CAPIfAvailable) {
+        if (mOptions.getBleUseL2CAP()) {
             characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
         }
         mGattServer = new GattServer(mContext, bluetoothManager, mServiceUuid,
@@ -284,18 +271,8 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     }
 
     @Override
-    public void connect(@NonNull DataRetrievalAddress genericAddress) {
-        DataRetrievalAddressBlePeripheralServerMode address =
-                (DataRetrievalAddressBlePeripheralServerMode) genericAddress;
-
+    public void connect() {
         // TODO: Check if BLE is enabled and error out if not so...
-
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
-        mServiceUuid = address.uuid;
 
         // Start scanning...
         mBluetoothManager = mContext.getSystemService(BluetoothManager.class);

@@ -77,7 +77,7 @@ class GattClient extends BluetoothGattCallback {
 
     GattClient(@NonNull Context context,
                @NonNull UUID serviceUuid,
-               @NonNull byte[] encodedEDeviceKeyBytes,
+               @Nullable byte[] encodedEDeviceKeyBytes,
                @NonNull UUID characteristicStateUuid,
                @NonNull UUID characteristicClient2ServerUuid,
                @NonNull UUID characteristicServer2ClientUuid,
@@ -102,10 +102,12 @@ class GattClient extends BluetoothGattCallback {
     }
 
     void connect(BluetoothDevice device) {
-        byte[] ikm = mEncodedEDeviceKeyBytes;
-        byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
-        byte[] salt = new byte[]{};
-        mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
+        if (mEncodedEDeviceKeyBytes != null) {
+            byte[] ikm = mEncodedEDeviceKeyBytes;
+            byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
+            byte[] salt = new byte[]{};
+            mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
+        }
         try {
             mGatt = device.connectGatt(mContext, false, this, BluetoothDevice.TRANSPORT_LE);
         } catch (SecurityException e) {
@@ -261,7 +263,7 @@ class GattClient extends BluetoothGattCallback {
 
         Logger.d(TAG, "Negotiated MTU " + mtu);
 
-        if (mCharacteristicIdent != null) {
+        if (mCharacteristicIdent != null && mIdentValue != null) {
             // Read ident characteristics...
             //
             // TODO: maybe skip this, it's optional after all...
