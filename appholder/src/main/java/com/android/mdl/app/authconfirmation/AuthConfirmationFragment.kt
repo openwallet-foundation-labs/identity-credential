@@ -111,7 +111,7 @@ class AuthConfirmationFragment : Fragment() {
     }
 
     private fun authenticationFailed() {
-        //TODO close connection (call here or call in the prev fragment)
+        viewModel.closeConnection()
     }
 
     private companion object {

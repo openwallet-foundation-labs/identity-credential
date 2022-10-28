@@ -47,7 +47,6 @@ class TransferDocumentFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
         viewModel.getTransferStatus().observe(viewLifecycleOwner) { transferStatus ->
             when (transferStatus) {
                 TransferStatus.QR_ENGAGEMENT_READY -> Log.d(LOG_TAG, "Engagement Ready")
@@ -55,7 +54,14 @@ class TransferDocumentFragment : Fragment() {
                 TransferStatus.REQUEST -> onTransferRequested()
                 TransferStatus.DISCONNECTED -> onTransferDisconnected()
                 TransferStatus.ERROR -> onTransferError()
+                else -> {}
             }
+        }
+        viewModel.connectionClosedLiveData.observe(viewLifecycleOwner) {
+            onCloseConnection(
+                sendSessionTerminationMessage = true,
+                useTransportSpecificSessionTermination = false
+            )
         }
     }
 
@@ -108,7 +114,6 @@ class TransferDocumentFragment : Fragment() {
             }
             if (viewModel.sendResponseForRequestedDocument().isNotEmpty()) {
                 //TODO pass readerIsTrusted and readerCommonName for auth prompt subtitle
-                //call onCloseConnection when transfer done?
                 val direction = TransferDocumentFragmentDirections.navigateToConfirmation()
                 findNavController().navigate(direction)
             }

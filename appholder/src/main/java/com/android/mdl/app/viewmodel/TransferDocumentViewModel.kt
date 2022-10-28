@@ -7,6 +7,7 @@ import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.android.identity.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.DeviceRequestParser
 import com.android.identity.DeviceResponseGenerator
@@ -23,13 +24,15 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         private const val LOG_TAG = "TransferDocumentViewModel"
     }
 
-    var inProgress = ObservableInt(View.GONE)
-    var documentsSent = ObservableField<String>()
-
     private val transferManager = TransferManager.getInstance(app.applicationContext)
     private val documentManager = DocumentManager.getInstance(app.applicationContext)
     private val signedProperties = SignedPropertiesCollection()
     private val requestedProperties = mutableListOf<RequestedDocumentData>()
+    private val closeConnectionMutableLiveData = MutableLiveData<Boolean>()
+
+    var inProgress = ObservableInt(View.GONE)
+    var documentsSent = ObservableField<String>()
+    val connectionClosedLiveData: LiveData<Boolean> = closeConnectionMutableLiveData
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
@@ -41,6 +44,10 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     fun getCryptoObject() = transferManager.getCryptoObject()
 
     fun requestedProperties() =  requestedProperties
+
+    fun closeConnection() {
+        closeConnectionMutableLiveData.value = true
+    }
 
     fun addDocumentForSigning(document: RequestedDocumentData) {
         signedProperties.addNamespace(document)
@@ -116,6 +123,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         transferManager.sendResponse(response.generate())
         val documentsCount = propertiesToSend.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
+        signedProperties.clear()
     }
 
     private fun requestedPropertiesFrom(

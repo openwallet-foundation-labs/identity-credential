@@ -31,4 +31,9 @@ class SignedPropertiesCollection {
             )
         }
     }
+
+    fun clear() {
+        requestedDocuments.clear()
+        signedProperties.clear()
+    }
 }
