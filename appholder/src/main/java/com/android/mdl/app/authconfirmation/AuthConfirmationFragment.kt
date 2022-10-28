@@ -40,39 +40,6 @@ class AuthConfirmationFragment : Fragment() {
         _binding = null
     }
 
-    class MyDataStructure {
-
-        private val data = mutableMapOf<String, RequestedDocumentData>()
-        private val map = mutableMapOf<String, ArrayList<String>>()
-
-        fun addNamespace(requestedData: RequestedDocumentData) {
-            data[requestedData.namespace] = requestedData
-            map[requestedData.namespace] = ArrayList()
-        }
-
-        fun toggleProperty(namespace: String, property: String) {
-            val propertiesForNamespace = map.getOrDefault(namespace, ArrayList())
-            if (!propertiesForNamespace.remove(property)) {
-                propertiesForNamespace.add(property)
-            }
-            map[namespace] = propertiesForNamespace
-        }
-
-        fun collect(): List<SignedDocumentData> {
-            return data.keys.map { namespace ->
-                val document = data.getValue(namespace)
-                SignedDocumentData(
-                    namespace,
-                    map[namespace] as Collection<String>,
-                    document.identityCredentialName,
-                    document.requestedDocument.docType,
-                    document.requestedDocument.readerAuth,
-                    document.requestedDocument.itemsRequest
-                )
-            }
-        }
-    }
-
     private val signedProperties = MyDataStructure()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
