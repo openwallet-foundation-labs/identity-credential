@@ -143,15 +143,16 @@ public class PresentationHelperTest {
         PresentationSession session = store.createPresentationSession(
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
 
-        ConditionVariable condVarDeviceConnecting = new ConditionVariable();
         ConditionVariable condVarDeviceConnected = new ConditionVariable();
         ConditionVariable condVarDeviceDisconnected = new ConditionVariable();
         ConditionVariable condVarDeviceEngagementReady = new ConditionVariable();
 
         // TODO: use loopback instead of TCP transport
         DataTransportTcp proverTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC,
                 new DataTransportOptions.Builder().build());
         DataTransportTcp verifierTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC_READER,
                 new DataTransportOptions.Builder().build());
 
         Executor executor = Executors.newSingleThreadExecutor();
@@ -165,7 +166,6 @@ public class PresentationHelperTest {
 
                     @Override
                     public void onDeviceConnecting() {
-                        condVarDeviceConnecting.open();
                     }
 
                     @Override
@@ -223,27 +223,19 @@ public class PresentationHelperTest {
                 OptionalInt.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
+            public void onConnectionMethodReady() {
             }
 
             @Override
-            public void onListeningPeerConnecting() {
+            public void onConnecting() {
             }
 
             @Override
-            public void onListeningPeerConnected() {
+            public void onConnected() {
             }
 
             @Override
-            public void onListeningPeerDisconnected() {
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
+            public void onDisconnected() {
             }
 
             @Override
@@ -292,7 +284,6 @@ public class PresentationHelperTest {
 
         verifierTransport.setHostAndPort(proverTransport.getHost(), proverTransport.getPort());
         verifierTransport.connect();
-        Assert.assertTrue(condVarDeviceConnecting.block(5000));
         Assert.assertTrue(condVarDeviceConnected.block(5000));
 
         final PresentationHelper[] presentation = {null};
@@ -404,7 +395,6 @@ public class PresentationHelperTest {
 
         Executor executor = Executors.newSingleThreadExecutor();
 
-        ConditionVariable condVarDeviceConnecting = new ConditionVariable();
         ConditionVariable condVarDeviceConnected = new ConditionVariable();
         ConditionVariable condVarDeviceRequestReceived = new ConditionVariable();
         ConditionVariable condVarOnError = new ConditionVariable();
@@ -412,8 +402,10 @@ public class PresentationHelperTest {
 
         // TODO: use loopback transport
         DataTransportTcp proverTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC,
                 new DataTransportOptions.Builder().build());
         DataTransportTcp verifierTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC_READER,
                 new DataTransportOptions.Builder().build());
         QrEngagementHelper.Listener qrHelperListener = new QrEngagementHelper.Listener() {
                     @Override
@@ -423,7 +415,6 @@ public class PresentationHelperTest {
 
                     @Override
                     public void onDeviceConnecting() {
-                        condVarDeviceConnecting.open();
                     }
 
                     @Override
@@ -474,27 +465,19 @@ public class PresentationHelperTest {
                 OptionalInt.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
+            public void onConnectionMethodReady() {
             }
 
             @Override
-            public void onListeningPeerConnecting() {
+            public void onConnecting() {
             }
 
             @Override
-            public void onListeningPeerConnected() {
+            public void onConnected() {
             }
 
             @Override
-            public void onListeningPeerDisconnected() {
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
+            public void onDisconnected() {
             }
 
             @Override
@@ -515,7 +498,6 @@ public class PresentationHelperTest {
 
         verifierTransport.setHostAndPort(proverTransport.getHost(), proverTransport.getPort());
         verifierTransport.connect();
-        Assert.assertTrue(condVarDeviceConnecting.block(5000));
         Assert.assertTrue(condVarDeviceConnected.block(5000));
 
         PresentationHelper.Listener listener =

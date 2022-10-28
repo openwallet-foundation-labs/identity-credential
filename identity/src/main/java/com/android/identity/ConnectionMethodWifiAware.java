@@ -100,11 +100,12 @@ public class ConnectionMethodWifiAware extends ConnectionMethod {
     public @Override
     @NonNull
     DataTransport createDataTransport(@NonNull Context context,
+                                      @DataTransport.Role int role,
                                       @NonNull DataTransportOptions options) {
         if (!(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)) {
             throw new IllegalStateException("Wifi Aware is not supported");
         }
-        DataTransportWifiAware t = new DataTransportWifiAware(context, options);
+        DataTransportWifiAware t = new DataTransportWifiAware(context, role, this, options);
         if (mPassphraseInfoPassphrase != null) {
             t.setPassphrase(mPassphraseInfoPassphrase);
         }

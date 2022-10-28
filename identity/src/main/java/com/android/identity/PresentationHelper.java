@@ -127,26 +127,18 @@ public class PresentationHelper {
     void start() {
         mTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
-                Logger.d(TAG, "onListeningSetupCompleted");
-                reportError(new Error("Unexpected onListeningSetupCompleted"));
+            public void onConnectionMethodReady() {
+                Logger.d(TAG, "onConnectionMethodReady");
             }
 
             @Override
-            public void onListeningPeerConnecting() {
-                Logger.d(TAG, "onListeningPeerConnecting");
-                reportError(new Error("Unexpected onListeningPeerConnecting"));
+            public void onConnecting() {
+                Logger.d(TAG, "onConnecting");
             }
 
             @Override
-            public void onListeningPeerConnected() {
-                Logger.d(TAG, "onListeningPeerConnecting");
-                reportError(new Error("Unexpected onListeningPeerConnected"));
-            }
-
-            @Override
-            public void onListeningPeerDisconnected() {
-                Logger.d(TAG, "onListeningPeerDisconnected");
+            public void onDisconnected() {
+                Logger.d(TAG, "onDisconnected");
                 mTransport.close();
                 if (!mReceivedSessionTerminated) {
                     reportError(new Error("Peer disconnected without proper session termination"));
@@ -156,9 +148,10 @@ public class PresentationHelper {
             }
 
             @Override
-            public void onConnectionResult(@Nullable Throwable error) {
+            public void onConnected() {
+                Logger.d(TAG, "onConnected");
                 if (mReverseEngagementReaderEngagement != null) {
-                    Logger.d(TAG, "onConnectionResult for reverse engagement");
+                    Logger.d(TAG, "onConnected for reverse engagement");
 
                     EngagementGenerator generator = new EngagementGenerator(
                             mEphemeralKeyPair.getPublic(),
@@ -181,21 +174,9 @@ public class PresentationHelper {
                     byte[] messageData = Util.cborEncode(builder.build().get(0));
 
                     mTransport.sendMessage(messageData);
-
-                    return;
+                } else {
+                    throw new IllegalStateException("Unexpected onConnected callback");
                 }
-                Logger.d(TAG, "onConnectionResult");
-                if (error != null) {
-                    throw new IllegalStateException("Unexpected onConnectionResult callback", error);
-                }
-                throw new IllegalStateException("Unexpected onConnectionResult callback");
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
-                Logger.d(TAG, "onConnectionDisconnected");
-                mTransport.close();
-                reportError(new IllegalStateException("Unexpected onConnectionDisconnected callback"));
             }
 
             @Override
@@ -427,8 +408,7 @@ public class PresentationHelper {
      * disconnecting if applicable. See {@link #setSendSessionTerminationMessage(boolean)} and
      * {@link #setUseTransportSpecificSessionTermination(boolean)} for how to configure this.
      *
-     * <p>No callbacks will be done on a listener registered with
-     * {@link #setListener(Listener, Executor)} after calling this.
+     * <p>No callbacks will be done on a listener after calling this.
      *
      * <p>This method is idempotent so it is safe to call multiple times.
      */

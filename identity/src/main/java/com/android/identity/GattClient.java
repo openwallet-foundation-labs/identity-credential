@@ -292,11 +292,11 @@ class GattClient extends BluetoothGattCallback {
             if (Logger.isDebugEnabled()) {
                 Logger.d(TAG, "Received identValue: " + Util.toHex(identValue));
             }
-            // TODO: maybe comment out or change to warning since it's optional... several readers
-            //  send the wrong value (others send the right one though)
+            // TODO: Don't even request IDENT since it cannot work w/ reverse engagement (there's
+            //   no way the mdoc reader knows EDeviceKeyBytes at this point) and it's also optional.
             if (!Arrays.equals(identValue, mIdentValue)) {
-                reportError(new Error("Received ident does not match expected ident"));
-                return;
+                Logger.w(TAG, "Received ident '" + Util.toHex(identValue)
+                        + "' does not match expected ident '" + Util.toHex(mIdentValue) + "'");
             }
 
             afterIdentObtained(gatt);

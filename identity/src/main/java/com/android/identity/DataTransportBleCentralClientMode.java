@@ -78,7 +78,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
-                    reportListeningPeerConnected();
+                    reportConnected();
                 }
 
                 @Override
@@ -88,7 +88,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
                         mGattClient.disconnect();
                         mGattClient = null;
                     }
-                    reportListeningPeerDisconnected();
+                    reportDisconnected();
                 }
 
                 @Override
@@ -113,7 +113,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
 
             });
 
-            reportListeningPeerConnecting();
+            reportConnecting();
             long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
             Logger.d(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
                     + "Connecting to device with address " + result.getDevice().getAddress());
@@ -159,8 +159,10 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     private GattServer mGattServer;
 
     public DataTransportBleCentralClientMode(@NonNull Context context,
+                                             @Role int role,
+                                             @NonNull ConnectionMethodBle connectionMethod,
                                              @NonNull DataTransportOptions options) {
-        super(context, options);
+        super(context, role, connectionMethod, options);
     }
 
     @Override
@@ -168,14 +170,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
     }
 
-    @Override
-    public void listen() {
-        if (mServiceUuid == null) {
-            mServiceUuid = UUID.randomUUID();
-        }
-
-        reportListeningSetupCompleted();
-
+    private void connectAsMdoc() {
         // TODO: Check if BLE is enabled and error out if not so...
 
         // Start scanning...
@@ -203,10 +198,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         }
     }
 
-    @Override
-    public void connect() {
-        // TODO: Check if BLE is enabled and error out if not so...
-
+    private void connectAsMdocReader() {
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
         UUID characteristicL2CAPUuid = null;
         if (mOptions.getBleUseL2CAP()) {
@@ -220,7 +212,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
-                reportConnectionResult(null);
+                reportConnected();
                 // No need to advertise anymore since we now have a client...
                 if (mBluetoothLeAdvertiser != null) {
                     Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
@@ -236,7 +228,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
 
             @Override
             public void onPeerDisconnected() {
-                reportConnectionDisconnected();
+                reportDisconnected();
             }
 
             @Override
@@ -290,6 +282,18 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
                 reportError(e);
             }
         }
+    }
+
+    @Override
+    public void connect() {
+        // TODO: Check if BLE is enabled and error out if not so...
+
+        if (mRole == ROLE_MDOC) {
+            connectAsMdoc();
+        } else {
+            connectAsMdocReader();
+        }
+        reportConnectionMethodReady();
     }
 
     @Override
