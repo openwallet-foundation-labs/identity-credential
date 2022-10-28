@@ -29,9 +29,6 @@ class TransferDocumentFragment : Fragment() {
 
     private val viewModel: TransferDocumentViewModel by activityViewModels()
 
-    private var readerCommonName = ""
-    private var readerIsTrusted: Boolean = false
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -74,6 +71,8 @@ class TransferDocumentFragment : Fragment() {
                 KeysAndCertificates.getTrustedReaderCertificates(requireContext())
             )
             val requestedDocuments = viewModel.getRequestedDocuments()
+            var readerCommonName = ""
+            var readerIsTrusted = false
             requestedDocuments.forEach { reqDoc ->
                 val doc = viewModel.getDocuments().find { reqDoc.docType == it.docType }
                 if (reqDoc.readerAuth != null && reqDoc.readerAuthenticated) {
@@ -113,8 +112,8 @@ class TransferDocumentFragment : Fragment() {
                 }
             }
             if (viewModel.sendResponseForRequestedDocument().isNotEmpty()) {
-                //TODO pass readerIsTrusted and readerCommonName for auth prompt subtitle
-                val direction = TransferDocumentFragmentDirections.navigateToConfirmation()
+                val direction = TransferDocumentFragmentDirections
+                    .navigateToConfirmation(readerCommonName, readerIsTrusted)
                 findNavController().navigate(direction)
             }
         } catch (e: Exception) {
@@ -164,18 +163,6 @@ class TransferDocumentFragment : Fragment() {
 //        val runnable = { requestUserAuth(true) }
 //        // Without this delay, the prompt won't reshow
 //        Handler(Looper.getMainLooper()).postDelayed(runnable, 100)
-//    }
-//
-//    private fun getSubtitle(): String {
-//        return if (readerCommonName != "") {
-//            if (readerIsTrusted) {
-//                getString(R.string.bio_auth_verifier_trusted_with_name, readerCommonName)
-//            } else {
-//                getString(R.string.bio_auth_verifier_untrusted_with_name, readerCommonName)
-//            }
-//        } else {
-//            getString(R.string.bio_auth_verifier_anonymous)
-//        }
 //    }
 //
 //    private fun formatEntryNames(documents: Map<Document, List<String>>): String {

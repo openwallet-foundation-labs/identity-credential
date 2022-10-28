@@ -1,5 +1,6 @@
 package com.android.mdl.app.authconfirmation
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
 import com.android.mdl.app.databinding.FragmentAuthConfirmationBinding
@@ -25,6 +27,7 @@ class AuthConfirmationFragment : Fragment() {
     private var _binding: FragmentAuthConfirmationBinding? = null
     private val binding get() = _binding!!
     private val viewModel: TransferDocumentViewModel by activityViewModels()
+    private val arguments by navArgs<AuthConfirmationFragmentArgs>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,6 +63,7 @@ class AuthConfirmationFragment : Fragment() {
         }
     }
 
+    @SuppressLint("DiscouragedApi")
     private fun switchFor(namespace: String, property: String): View {
         viewModel.toggleSignedProperty(namespace, property)
         val switch = SwitchMaterial(requireContext()).apply {
@@ -83,6 +87,7 @@ class AuthConfirmationFragment : Fragment() {
     private fun requestUserAuth(forceLskf: Boolean) {
         val userAuthRequest = UserAuthPromptBuilder.requestUserAuth(this)
             .withTitle(getString(R.string.bio_auth_title))
+            .withSubtitle(getSubtitle())
             .withNegativeButton(getString(R.string.bio_auth_use_pin))
             .withSuccessCallback { authenticationSucceeded() }
             .withCancelledCallback { retryForcingPinUse() }
@@ -91,6 +96,20 @@ class AuthConfirmationFragment : Fragment() {
             .build()
         val cryptoObject = viewModel.getCryptoObject()
         userAuthRequest.authenticate(cryptoObject)
+    }
+
+    private fun getSubtitle(): String {
+        val readerCommonName = arguments.readerCommonName
+        val readerIsTrusted = arguments.readerIsTrusted
+        return if (readerCommonName != "") {
+            if (readerIsTrusted) {
+                getString(R.string.bio_auth_verifier_trusted_with_name, readerCommonName)
+            } else {
+                getString(R.string.bio_auth_verifier_untrusted_with_name, readerCommonName)
+            }
+        } else {
+            getString(R.string.bio_auth_verifier_anonymous)
+        }
     }
 
     private fun authenticationSucceeded() {

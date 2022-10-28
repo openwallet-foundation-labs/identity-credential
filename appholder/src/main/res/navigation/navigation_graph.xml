@@ -168,6 +168,15 @@
         android:label="Confirmation"
         tools:layout="@layout/fragment_auth_confirmation">
 
+        <argument
+            android:name="readerCommonName"
+            android:defaultValue=""
+            app:argType="string" />
+
+        <argument
+            android:name="readerIsTrusted"
+            android:defaultValue="false"
+            app:argType="boolean" />
     </fragment>
     <fragment
         android:id="@+id/addSelfSigned"
