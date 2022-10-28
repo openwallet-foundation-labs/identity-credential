@@ -127,7 +127,7 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
         // if both BLE modes are available at the same time.
         List<ConnectionMethod> disambiguatedMethods = ConnectionMethod.disambiguate(mConnectionMethods);
         for (ConnectionMethod cm : disambiguatedMethods) {
-            DataTransport transport = cm.createDataTransport(mContext, mOptions);
+            DataTransport transport = cm.createDataTransport(mContext, DataTransport.ROLE_MDOC, mOptions);
             transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
             mTransports.add(transport);
             Logger.d(TAG, "Added transport for " + cm);
@@ -147,8 +147,8 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
             for (DataTransport transport : mTransports) {
                 transport.setListener(new DataTransport.Listener() {
                     @Override
-                    public void onListeningSetupCompleted() {
-                        Logger.d(TAG, "onListeningSetupCompleted for " + transport);
+                    public void onConnectionMethodReady() {
+                        Logger.d(TAG, "onConnectionMethodReady for " + transport);
                         synchronized (helper) {
                             mNumTransportsStillSettingUp -= 1;
                             if (mNumTransportsStillSettingUp == 0) {
@@ -158,39 +158,21 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
                     }
 
                     @Override
-                    public void onListeningPeerConnecting() {
-                        Logger.d(TAG, "onListeningPeerConnecting for " + transport);
+                    public void onConnecting() {
+                        Logger.d(TAG, "onConnecting for " + transport);
                         peerIsConnecting(transport);
                     }
 
                     @Override
-                    public void onListeningPeerConnected() {
-                        Logger.d(TAG, "onListeningPeerConnected for " + transport);
+                    public void onConnected() {
+                        Logger.d(TAG, "onConnected for " + transport);
                         peerHasConnected(transport);
                     }
 
                     @Override
-                    public void onListeningPeerDisconnected() {
-                        Logger.d(TAG, "onListeningPeerDisconnected for " + transport);
+                    public void onDisconnected() {
+                        Logger.d(TAG, "onDisconnected for " + transport);
                         transport.close();
-                    }
-
-                    @Override
-                    public void onConnectionResult(@Nullable Throwable error) {
-                        Logger.d(TAG, "onConnectionResult for " + transport);
-                        if (error != null) {
-                            throw new IllegalStateException("Unexpected onConnectionResult "
-                                    + "callback from transport " + transport, error);
-                        }
-                        throw new IllegalStateException("Unexpected onConnectionResult "
-                                + "callback from transport " + transport);
-                    }
-
-                    @Override
-                    public void onConnectionDisconnected() {
-                        Logger.d(TAG, "onConnectionDisconnected for " + transport);
-                        throw new IllegalStateException("Unexpected onConnectionDisconnected "
-                                + "callback from transport " + transport);
                     }
 
                     @Override
@@ -211,8 +193,8 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
                     }
 
                 }, mExecutor);
-                Logger.d(TAG, "Listening on transport " + transport);
-                transport.listen();
+                Logger.d(TAG, "Connecting to transport " + transport);
+                transport.connect();
                 mNumTransportsStillSettingUp += 1;
             }
         }
@@ -247,7 +229,7 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
         return Util.cborEncode(builder.build().get(0));
     }
 
-    // TODO: handle the case where a transport never calls onListeningSetupCompleted... that
+    // TODO: handle the case where a transport never calls onConnectionMethodReady... that
     //  is, set up a timeout to call this.
     //
     void allTransportsAreSetup() {

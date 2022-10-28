@@ -54,8 +54,9 @@ class DataTransportTcp extends DataTransport {
     private int mPort;
 
     public DataTransportTcp(@NonNull Context context,
+                            @Role int role,
                             @NonNull DataTransportOptions options) {
-        super(context, options);
+        super(context, role, options);
     }
 
     @SuppressWarnings("deprecation")
@@ -69,8 +70,7 @@ class DataTransportTcp extends DataTransport {
         // Not used.
     }
 
-    @Override
-    void listen() {
+    private void connectAsMdoc() {
         String address = getWifiIpAddress(mContext);
         try {
             mServerSocket = new ServerSocket(0);
@@ -90,14 +90,13 @@ class DataTransportTcp extends DataTransport {
 
                     setupWritingThread();
 
-                    reportListeningPeerConnecting();
-                    reportListeningPeerConnected();
+                    reportConnected();
 
                     Throwable e = processMessagesFromSocket();
                     if (e != null) {
                         reportError(e);
                     } else {
-                        reportListeningPeerDisconnected();
+                        reportDisconnected();
                     }
 
                 } catch (Exception e) {
@@ -108,7 +107,6 @@ class DataTransportTcp extends DataTransport {
         socketServerThread.start();
         mHost = address;
         mPort = port;
-        reportListeningSetupCompleted();
     }
 
     // Should be called from worker thread to handle incoming messages from the peer.
@@ -171,8 +169,7 @@ class DataTransportTcp extends DataTransport {
         mPort = port;
     }
 
-    @Override
-    void connect() {
+    private void connectAsMdocReader() {
         mSocket = new Socket();
         Thread socketReaderThread = new Thread() {
             @Override
@@ -181,11 +178,11 @@ class DataTransportTcp extends DataTransport {
                 try {
                     mSocket.connect(endpoint);
                 } catch (IOException e) {
-                    reportConnectionResult(e);
+                    reportError(e);
                     return;
                 }
 
-                reportConnectionResult(null);
+                reportConnected();
 
                 setupWritingThread();
 
@@ -193,11 +190,21 @@ class DataTransportTcp extends DataTransport {
                 if (e != null) {
                     reportError(e);
                 } else {
-                    reportConnectionDisconnected();
+                    reportDisconnected();
                 }
             }
         };
         socketReaderThread.start();
+    }
+
+    @Override
+    void connect() {
+        if (mRole == ROLE_MDOC) {
+            connectAsMdoc();
+        } else {
+            connectAsMdocReader();
+        }
+        reportConnectionMethodReady();
     }
 
     void setupWritingThread() {
@@ -278,5 +285,10 @@ class DataTransportTcp extends DataTransport {
     @Override
     boolean supportsTransportSpecificTerminationMessage() {
         return false;
+    }
+
+    @Override
+    public @NonNull ConnectionMethod getConnectionMethod() {
+        return null;
     }
 }

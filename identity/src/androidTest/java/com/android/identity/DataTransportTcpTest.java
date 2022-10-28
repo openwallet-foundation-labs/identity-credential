@@ -40,6 +40,7 @@ public class DataTransportTcpTest {
     public void setupReceivedWhileWaitingForConnection() {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         DataTransportTcp prover = new DataTransportTcp(appContext,
+                DataTransport.ROLE_MDOC,
                 new DataTransportOptions.Builder().build());
 
         ConditionVariable proverSetupCompletedCondVar = new ConditionVariable();
@@ -48,32 +49,22 @@ public class DataTransportTcpTest {
 
         prover.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
+            public void onConnectionMethodReady() {
                 proverSetupCompletedCondVar.open();
             }
 
             @Override
-            public void onListeningPeerConnecting() {
+            public void onConnecting() {
                 Assert.fail();
             }
 
             @Override
-            public void onListeningPeerConnected() {
+            public void onConnected() {
                 Assert.fail();
             }
 
             @Override
-            public void onListeningPeerDisconnected() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
+            public void onDisconnected() {
                 Assert.fail();
             }
 
@@ -94,7 +85,7 @@ public class DataTransportTcpTest {
 
         }, executor);
 
-        prover.listen();
+        prover.connect();
         Assert.assertTrue(proverSetupCompletedCondVar.block(5000));
         prover.close();
     }
@@ -105,8 +96,10 @@ public class DataTransportTcpTest {
 
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         DataTransportTcp verifier = new DataTransportTcp(appContext,
+                DataTransport.ROLE_MDOC_READER,
                 new DataTransportOptions.Builder().build());
         DataTransportTcp prover = new DataTransportTcp(appContext,
+                DataTransport.ROLE_MDOC,
                 new DataTransportOptions.Builder().build());
 
         byte[] messageSentByVerifier = Util.fromHex("010203");
@@ -115,44 +108,33 @@ public class DataTransportTcpTest {
         final byte[][] messageReceivedByProver = {null};
         final byte[][] messageReceivedByVerifier = {null};
 
-        final ConditionVariable proverListeningSetupCompleteCondVar = new ConditionVariable();
+        final ConditionVariable proverConnectionMethodReadyCondVar = new ConditionVariable();
         final ConditionVariable proverMessageReceivedCondVar = new ConditionVariable();
-        final ConditionVariable proverPeerConnectingCondVar = new ConditionVariable();
         final ConditionVariable proverPeerConnectedCondVar = new ConditionVariable();
         final ConditionVariable proverPeerDisconnectedCondVar = new ConditionVariable();
+        final ConditionVariable verifierConnectionMethodReadyCondVar = new ConditionVariable();
         final ConditionVariable verifierMessageReceivedCondVar = new ConditionVariable();
         final ConditionVariable verifierPeerConnectedCondVar = new ConditionVariable();
         Executor executor = Executors.newSingleThreadExecutor();
 
         prover.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
-                proverListeningSetupCompleteCondVar.open();
+            public void onConnectionMethodReady() {
+                proverConnectionMethodReadyCondVar.open();
             }
 
             @Override
-            public void onListeningPeerConnecting() {
-                proverPeerConnectingCondVar.open();
+            public void onConnecting() {
             }
 
             @Override
-            public void onListeningPeerConnected() {
+            public void onConnected() {
                 proverPeerConnectedCondVar.open();
             }
 
             @Override
-            public void onListeningPeerDisconnected() {
+            public void onDisconnected() {
                 proverPeerDisconnectedCondVar.open();
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
-                Assert.fail();
             }
 
             @Override
@@ -175,33 +157,21 @@ public class DataTransportTcpTest {
 
         verifier.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
-                Assert.fail();
+            public void onConnectionMethodReady() {
+                verifierConnectionMethodReadyCondVar.open();
             }
 
             @Override
-            public void onListeningPeerConnecting() {
-                Assert.fail();
+            public void onConnecting() {
             }
 
             @Override
-            public void onListeningPeerConnected() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onListeningPeerDisconnected() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-                Assert.assertNull(error);
+            public void onConnected() {
                 verifierPeerConnectedCondVar.open();
             }
 
             @Override
-            public void onConnectionDisconnected() {
+            public void onDisconnected() {
                 Assert.fail();
             }
 
@@ -223,12 +193,12 @@ public class DataTransportTcpTest {
             }
         }, executor);
 
-        prover.listen();
-        Assert.assertTrue(proverListeningSetupCompleteCondVar.block(5000));
+        prover.connect();
+        Assert.assertTrue(proverConnectionMethodReadyCondVar.block(5000));
         verifier.setHostAndPort(prover.getHost(), prover.getPort());
         verifier.connect();
+        Assert.assertTrue(verifierConnectionMethodReadyCondVar.block(5000));
 
-        Assert.assertTrue(proverPeerConnectingCondVar.block(5000));
         Assert.assertTrue(verifierPeerConnectedCondVar.block(5000));
         verifier.sendMessage(messageSentByVerifier);
 

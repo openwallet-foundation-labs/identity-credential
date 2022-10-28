@@ -46,6 +46,7 @@ public class DataTransportHttp extends DataTransport {
     private static final String TAG = "DataTransportHttp";
     // The maximum message size we support.
     private static final int MAX_MESSAGE_SIZE = 16 * 1024 * 1024;
+    private ConnectionMethodHttp mConnectionMethod;
     Socket mSocket;
     BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
     ServerSocket mServerSocket = null;
@@ -56,8 +57,11 @@ public class DataTransportHttp extends DataTransport {
     private boolean mUseTls;
 
     public DataTransportHttp(@NonNull Context context,
+                             @Role int role,
+                             @NonNull ConnectionMethodHttp connectionMethod,
                              @NonNull DataTransportOptions options) {
-        super(context, options);
+        super(context, role, options);
+        mConnectionMethod = connectionMethod;
     }
 
     @SuppressWarnings("deprecation")
@@ -77,19 +81,16 @@ public class DataTransportHttp extends DataTransport {
     //
     // Returns null on error.
     byte[] readMessageFromSocket(InputStream inputStream) {
-        Logger.d(TAG, "Reading HTTP message...");
         DataInputStream dis = new DataInputStream(inputStream);
         int contentLength = -1;
         try {
             // Loop to read headers.
             while (true) {
-                Logger.d(TAG, "Calling readLine()...");
                 String line = dis.readLine();
                 if (line == null) {
                     // End of stream...
                     return new byte[0];
                 }
-                Logger.d(TAG, "read line '" + line + "'");
                 if (line.toLowerCase(Locale.US).startsWith("content-length:")) {
                     try {
                         contentLength = Integer.parseInt(line.substring(15).trim());
@@ -109,7 +110,6 @@ public class DataTransportHttp extends DataTransport {
                                 + "exceeds max size of " + MAX_MESSAGE_SIZE);
                         return null;
                     }
-                    Logger.d(TAG, "Going to read " + contentLength + " bytes");
                     byte[] data = new byte[contentLength];
                     dis.readFully(data);
                     return data;
@@ -121,16 +121,8 @@ public class DataTransportHttp extends DataTransport {
         }
     }
 
-
-    @Override
-    void listen() {
-        String address = getWifiIpAddress(mContext);
+    private void connectAsMdocReader() {
         try {
-            /*
-            SSLContext context = SSLContext.getDefault();
-            SSLServerSocketFactory factory = context.getServerSocketFactory();
-            mServerSocket = factory.createServerSocket(0);
-             */
             mServerSocket = new ServerSocket(0);
         } catch (IOException e) {
             reportError(e);
@@ -148,8 +140,7 @@ public class DataTransportHttp extends DataTransport {
 
                     setupWritingThread(true);
 
-                    reportListeningPeerConnecting();
-                    reportListeningPeerConnected();
+                    reportConnected();
 
                     InputStream inputStream = mSocket.getInputStream();
                     while (!mSocket.isClosed()) {
@@ -159,7 +150,7 @@ public class DataTransportHttp extends DataTransport {
                             break;
                         } else if (data.length == 0) {
                             // End Of Stream
-                            reportListeningPeerDisconnected();
+                            reportDisconnected();
                             break;
                         }
                         reportMessageReceived(data);
@@ -171,9 +162,15 @@ public class DataTransportHttp extends DataTransport {
             }
         };
         socketServerThread.start();
-        mHost = address;
+        // Use http://<ip>:<port>/mdocreader as the URI
+        //
+        mHost = getWifiIpAddress(mContext);;
         mPort = port;
-        reportListeningSetupCompleted();
+        Logger.d(TAG, String.format(Locale.US,
+                "Listening with host=%s port=%d useTls=%s", mHost, mPort, mUseTls));
+        mConnectionMethod = new ConnectionMethodHttp(
+                String.format(Locale.US, "http://%s:%d/mdocreader", mHost, mPort));
+        reportConnectionMethodReady();
     }
 
     public @NonNull String getHost() {
@@ -208,28 +205,22 @@ public class DataTransportHttp extends DataTransport {
         mUseTls = useTls;
     }
 
-    @Override
-    void connect() {
+    private void connectAsMdoc() {
+        Logger.d(TAG, String.format(Locale.US,
+                "Connecting to host=%s port=%d useTls=%s", mHost, mPort, mUseTls));
         Thread socketReaderThread = new Thread() {
             @Override
             public void run() {
                 InputStream inputStream = null;
                 try {
-                    /*
-                    SSLContext context = SSLContext.getDefault();
-                    SSLSocketFactory factory = context.getSocketFactory();
-                    SSLSocket socket = (SSLSocket) factory.createSocket(mHost, mPort);
-                    mSocket = socket;
-                    socket.startHandshake();
-                     */
                     mSocket = new Socket(mHost, mPort);
                     inputStream = mSocket.getInputStream();
                 } catch (IOException e) {
-                    reportConnectionResult(e);
+                    reportError(e);
                     return;
                 }
 
-                reportConnectionResult(null);
+                reportConnected();
 
                 setupWritingThread(false);
 
@@ -240,7 +231,7 @@ public class DataTransportHttp extends DataTransport {
                         break;
                     } else if (data.length == 0) {
                         // End Of Stream
-                        reportConnectionDisconnected();
+                        reportDisconnected();
                         break;
                     }
                     reportMessageReceived(data);
@@ -248,6 +239,17 @@ public class DataTransportHttp extends DataTransport {
             }
         };
         socketReaderThread.start();
+        // No change to the ConnectionMethod, use what was passed into the constructor.
+        reportConnectionMethodReady();
+    }
+
+    @Override
+    void connect() {
+        if (mRole == ROLE_MDOC) {
+            connectAsMdoc();
+        } else {
+            connectAsMdocReader();
+        }
     }
 
     void setupWritingThread(boolean isListener) {
@@ -339,5 +341,10 @@ public class DataTransportHttp extends DataTransport {
     @Override
     boolean supportsTransportSpecificTerminationMessage() {
         return false;
+    }
+
+    @Override
+    public @NonNull ConnectionMethod getConnectionMethod() {
+        return mConnectionMethod;
     }
 }

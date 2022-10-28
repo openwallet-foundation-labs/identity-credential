@@ -19,6 +19,7 @@ import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
+import com.android.identity.DataTransport.ROLE_MDOC
 import com.android.identity.DeviceRequestParser.DeviceRequest
 import com.android.mdl.app.util.FormatUtil
 import com.android.mdl.app.util.PreferencesHelper
@@ -125,7 +126,9 @@ class TransferManager private constructor(private val context: Context) {
         val connectionMethod = engagement.connectionMethods[0]
         Log.d(LOG_TAG, "Using connection method " + connectionMethod)
 
-        val transport = connectionMethod.createDataTransport(context, getConnectionOptions())
+        val transport = connectionMethod.createDataTransport(context,
+            ROLE_MDOC,
+            getConnectionOptions())
 
         val builder = PresentationHelper.Builder(context,
             presentationListener,

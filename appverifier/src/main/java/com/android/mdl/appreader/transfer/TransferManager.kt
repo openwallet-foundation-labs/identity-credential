@@ -10,11 +10,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.ConnectionMethod
-import com.android.identity.ConnectionMethodBle
+import com.android.identity.ConnectionMethodHttp
 import com.android.identity.DataTransportOptions
+import com.android.identity.VerificationHelper
 import com.android.identity.DeviceRequestGenerator
 import com.android.identity.DeviceResponseParser
-import com.android.identity.VerificationHelper
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
 import com.android.mdl.appreader.readercertgen.SupportedCurves.*
@@ -85,12 +85,11 @@ class TransferManager private constructor(private val context: Context) {
             .build()
         builder.setDataTransportOptions(options)
         val methods = ArrayList<ConnectionMethod>()
-        // For now use BLE - in the future use ConnectionMethodHttp
-        methods.add(ConnectionMethodBle(
-            false,
-            true,
-            null,
-            UUID.randomUUID()))
+        // Passing the empty URI in means that DataTransportHttp will use local IP as host
+        // and the dynamically allocated TCP port as port. So the resulting ConnectionMethodHttp
+        // which will be included in ReaderEngagement CBOR will contain an URI of the
+        // form http://192.168.1.2:18013/mdocreader
+        methods.add(ConnectionMethodHttp(""));
         builder.setUseReverseEngagement(methods)
         verification = builder.build()
         usingReverseEngagement = true

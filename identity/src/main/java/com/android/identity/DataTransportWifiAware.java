@@ -39,18 +39,14 @@ import android.net.wifi.aware.WifiAwareManager;
 import android.net.wifi.aware.WifiAwareNetworkInfo;
 import android.net.wifi.aware.WifiAwareNetworkSpecifier;
 import android.net.wifi.aware.WifiAwareSession;
-import android.nfc.NdefRecord;
 import android.os.Build;
 import android.util.Base64;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.DoNotInline;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
@@ -61,23 +57,13 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.OptionalLong;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
 
 /**
  * Wifi Aware data transport.
@@ -85,6 +71,7 @@ import co.nstant.in.cbor.model.Map;
 @RequiresApi(Build.VERSION_CODES.Q)
 class DataTransportWifiAware extends DataTransport {
     private static final String TAG = "DataTransportWifiAware";
+    private final ConnectionMethodWifiAware mConnectionMethod;
 
     BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
     String mServiceName;
@@ -100,8 +87,11 @@ class DataTransportWifiAware extends DataTransport {
     private int mCipherSuites;
 
     public DataTransportWifiAware(@NonNull Context context,
+                                  @Role int role,
+                                  @NonNull ConnectionMethodWifiAware connectionMethod,
                                   @NonNull DataTransportOptions options) {
-        super(context, options);
+        super(context, role, options);
+        mConnectionMethod = connectionMethod;
     }
 
     @Override
@@ -129,8 +119,7 @@ class DataTransportWifiAware extends DataTransport {
         }
     }
 
-    @Override
-    public void listen() {
+    private void connectAsMdoc() {
         mWifiAwareManager = mContext.getSystemService(WifiAwareManager.class);
 
         mWifiAwareManager.attach(
@@ -186,8 +175,6 @@ class DataTransportWifiAware extends DataTransport {
         }
         byte[] bandInfoSupportedBands = new byte[]{(byte) (supportedBandsBitmap & 0xff)};
 
-        reportListeningSetupCompleted();
-
         Characteristics characteristics = mWifiAwareManager.getCharacteristics();
         if (characteristics != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -200,7 +187,7 @@ class DataTransportWifiAware extends DataTransport {
     }
 
     void listenerOnMessageReceived(PublishDiscoverySession session, PeerHandle peerHandle) {
-        reportListeningPeerConnecting();
+        reportConnecting();
 
         try {
             mListenerServerSocket = new ServerSocket(0);
@@ -267,7 +254,7 @@ class DataTransportWifiAware extends DataTransport {
                     };
                     writingThread.start();
 
-                    reportListeningPeerConnected();
+                    reportConnected();
 
                     readFromSocket(true, mListenerSocket);
 
@@ -283,8 +270,7 @@ class DataTransportWifiAware extends DataTransport {
         mPassphrase = passphrase;
     }
 
-    @Override
-    public void connect() {
+    private void connectAsMdocReader() {
 
         mWifiAwareManager = mContext.getSystemService(WifiAwareManager.class);
 
@@ -351,6 +337,16 @@ class DataTransportWifiAware extends DataTransport {
                     }
                 },
                 null);
+    }
+
+    @Override
+    public void connect() {
+        if (mRole == ROLE_MDOC) {
+            connectAsMdoc();
+        } else {
+            connectAsMdocReader();
+        }
+        reportConnectionMethodReady();
     }
 
     void initiatorOnMessageReceived(SubscribeDiscoverySession session, PeerHandle peerHandle) {
@@ -450,9 +446,9 @@ class DataTransportWifiAware extends DataTransport {
                 }
             };
             listenerThread.start();
-            reportConnectionResult(null);
+            reportConnected();
         } catch (IOException e) {
-            reportConnectionResult(e);
+            reportError(e);
         }
     }
 
@@ -576,9 +572,9 @@ class DataTransportWifiAware extends DataTransport {
                 if (line == null) {
                     // End of stream...
                     if (isListener) {
-                        reportListeningPeerDisconnected();
+                        reportDisconnected();
                     } else {
-                        reportConnectionDisconnected();
+                        reportDisconnected();
                     }
                     return;
                 }
@@ -675,4 +671,8 @@ class DataTransportWifiAware extends DataTransport {
 
     }
 
+    @Override
+    public @NonNull ConnectionMethod getConnectionMethod() {
+        return mConnectionMethod;
+    }
 }

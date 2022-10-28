@@ -16,28 +16,11 @@
 
 package com.android.identity;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import android.content.Context;
-import android.nfc.NdefRecord;
-import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
 
 /**
  * BLE data transport
@@ -48,13 +31,23 @@ abstract class DataTransportBle extends DataTransport {
     // The size of buffer for read() calls when using L2CAP sockets.
     static final int L2CAP_BUF_SIZE = 4096;
     protected UUID mServiceUuid;
+    protected ConnectionMethodBle mConnectionMethod;
 
     public DataTransportBle(@NonNull Context context,
+                            @Role int role,
+                            @NonNull ConnectionMethodBle connectionMethod,
                             @NonNull DataTransportOptions options) {
-        super(context, options);
+        super(context, role, options);
+        mConnectionMethod = connectionMethod;
     }
 
     void setServiceUuid(@NonNull UUID serviceUuid) {
         mServiceUuid = serviceUuid;
     }
+
+    @Override
+    public @NonNull ConnectionMethod getConnectionMethod() {
+        return mConnectionMethod;
+    }
+
 }

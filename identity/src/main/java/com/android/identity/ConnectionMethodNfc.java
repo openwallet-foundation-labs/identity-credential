@@ -70,8 +70,9 @@ public class ConnectionMethodNfc extends ConnectionMethod {
     public @Override
     @NonNull
     DataTransport createDataTransport(@NonNull Context context,
+                                      @DataTransport.Role int role,
                                       @NonNull DataTransportOptions options) {
-        DataTransportNfc t = new DataTransportNfc(context, options);
+        DataTransportNfc t = new DataTransportNfc(context, role, this, options);
         // TODO: set mCommandDataFieldMaxLength and mResponseDataFieldMaxLength
         return t;
     }

@@ -16,33 +16,21 @@
 
 package com.android.identity;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import android.content.Context;
-import android.nfc.NdefRecord;
 import android.nfc.tech.IsoDep;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
 
 /**
  * NFC data transport
@@ -56,6 +44,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     private static final byte[] STATUS_WORD_OK = {(byte) 0x90, (byte) 0x00};
     private static final byte[] STATUS_WORD_WRONG_LENGTH = {(byte) 0x67, (byte) 0x00};
     private static final byte[] STATUS_WORD_FILE_NOT_FOUND = {(byte) 0x6a, (byte) 0x82};
+    private final ConnectionMethodNfc mConnectionMethod;
     IsoDep mIsoDep;
     ArrayList<byte[]> mListenerRemainingChunks;
     int mListenerTotalChunks;
@@ -69,27 +58,11 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     private NfcApduRouter mNfcApduRouter;
 
     public DataTransportNfc(@NonNull Context context,
+                            @Role int role,
+                            @NonNull ConnectionMethodNfc connectionMethod,
                             @NonNull DataTransportOptions options) {
-        super(context, options);
-    }
-
-    static void encodeInt(int dataType, int value, ByteArrayOutputStream baos) {
-        if (value < 0x100) {
-            baos.write(0x02); // Length
-            baos.write(dataType);
-            baos.write(value & 0xff);
-        } else if (value < 0x10000) {
-            baos.write(0x03); // Length
-            baos.write(dataType);
-            baos.write(value / 0x100);
-            baos.write(value & 0xff);
-        } else {
-            baos.write(0x04); // Length
-            baos.write(dataType);
-            baos.write(value / 0x10000);
-            baos.write((value / 0x100) & 0xff);
-            baos.write(value & 0xff);
-        }
+        super(context, role, options);
+        mConnectionMethod = connectionMethod;
     }
 
     @Override
@@ -97,16 +70,13 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         // Not used.
     }
 
-    @Override
-    public void listen() {
+    private void connectAsMdoc() {
         // From ISO 18013-5 8.3.3.1.2 Data retrieval using near field communication (NFC):
         //
         // NOTE 2: The minimum and maximum possible values for the command data field limit are
         // 'FF' and 'FF FF', i.e. the limit is between 255 and 65 535 bytes (inclusive). The
         // minimum and maximum possible values for the response data limit are '01 00' and
         // '01 00 00', i.e. the limit is between 256 and 65 536 bytes (inclusive).
-
-        reportListeningSetupCompleted();
 
         mListenerStillActive = true;
         setupListenerWritingThread();
@@ -199,7 +169,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         mNfcApduRouter = nfcApduRouter;
         mNfcApduRouter.addListener(this, executor);
 
-        reportListeningPeerConnected();
+        reportConnected();
     }
 
     @Override
@@ -233,7 +203,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     public void onDeactivated(@NonNull byte[] aid, int reason) {
         Logger.d(TAG, String.format(Locale.US, 
                 "onDeactivated aid=%s reason=%d", Util.toHex(aid), reason));
-        reportListeningPeerDisconnected();
+        reportDisconnected();
     }
 
     void sendNextChunk(boolean isForGetResponse) {
@@ -551,8 +521,17 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
 
     @Override
     public void connect() {
+        if (mRole == ROLE_MDOC) {
+            connectAsMdoc();
+        } else {
+            connectAsMdocReader();
+        }
+        reportConnectionMethodReady();
+    }
+
+    private void connectAsMdocReader() {
         if (mIsoDep == null) {
-            reportConnectionResult(new Error("NFC IsoDep not set"));
+            reportError(new Error("NFC IsoDep not set"));
             return;
         }
         int maxTransceiveLength = mIsoDep.getMaxTransceiveLength();
@@ -568,7 +547,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
 
                     // We're up and running...
                     //
-                    reportConnectionResult(null);
+                    reportConnected();
 
                     byte[] selectCommand = buildApdu(0x00, 0xa4, 0x04, 0x0c,
                             new byte[]{(byte) 0xa0, (byte) 0x00, (byte) 0x00, (byte) 0x02,
@@ -787,7 +766,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                     reportError(e);
                 }
 
-                reportConnectionDisconnected();
+                reportDisconnected();
 
                 Logger.d(TAG, "Ending transceiver thread");
                 mIsoDep = null;
@@ -818,5 +797,10 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
         return false;
+    }
+
+    @Override
+    public @NonNull ConnectionMethod getConnectionMethod() {
+        return mConnectionMethod;
     }
 }

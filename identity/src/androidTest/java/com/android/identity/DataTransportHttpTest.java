@@ -40,6 +40,8 @@ public class DataTransportHttpTest {
     public void setupReceivedWhileWaitingForConnection() {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         DataTransportHttp prover = new DataTransportHttp(appContext,
+                DataTransport.ROLE_MDOC,
+                null,
                 new DataTransportOptions.Builder().build());
 
         ConditionVariable proverSetupCompletedCondVar = new ConditionVariable();
@@ -48,32 +50,22 @@ public class DataTransportHttpTest {
 
         prover.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
+            public void onConnectionMethodReady() {
                 proverSetupCompletedCondVar.open();
             }
 
             @Override
-            public void onListeningPeerConnecting() {
+            public void onConnecting() {
                 Assert.fail();
             }
 
             @Override
-            public void onListeningPeerConnected() {
+            public void onConnected() {
                 Assert.fail();
             }
 
             @Override
-            public void onListeningPeerDisconnected() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
+            public void onDisconnected() {
                 Assert.fail();
             }
 
@@ -94,7 +86,7 @@ public class DataTransportHttpTest {
 
         }, executor);
 
-        prover.listen();
+        prover.connect();
         Assert.assertTrue(proverSetupCompletedCondVar.block(5000));
         prover.close();
     }
@@ -118,28 +110,28 @@ public class DataTransportHttpTest {
         DataTransportOptions options = new DataTransportOptions.Builder().build();
 
         ConnectionMethodHttp cm = new ConnectionMethodHttp("http://www.example.com/mdlReader/session123");
-        DataTransportHttp transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+        DataTransportHttp transport = (DataTransportHttp) cm.createDataTransport(appContext, DataTransport.ROLE_MDOC, options);
         Assert.assertEquals("www.example.com", transport.getHost());
         Assert.assertEquals("/mdlReader/session123", transport.getPath());
         Assert.assertEquals(80, transport.getPort());
         Assert.assertFalse(transport.getUseTls());
 
         cm = new ConnectionMethodHttp("http://www.example2.com:1234/mdlVerifier/session456");
-        transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+        transport = (DataTransportHttp) cm.createDataTransport(appContext, DataTransport.ROLE_MDOC, options);
         Assert.assertEquals("www.example2.com", transport.getHost());
         Assert.assertEquals("/mdlVerifier/session456", transport.getPath());
         Assert.assertEquals(1234, transport.getPort());
         Assert.assertFalse(transport.getUseTls());
 
         cm = new ConnectionMethodHttp("https://www.example3.net/mdocreader/s42");
-        transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+        transport = (DataTransportHttp) cm.createDataTransport(appContext, DataTransport.ROLE_MDOC, options);
         Assert.assertEquals("www.example3.net", transport.getHost());
         Assert.assertEquals("/mdocreader/s42", transport.getPath());
         Assert.assertEquals(443, transport.getPort());
         Assert.assertTrue(transport.getUseTls());
 
         cm = new ConnectionMethodHttp("https://www.example.com:8080/mdocreader/s43");
-        transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+        transport = (DataTransportHttp) cm.createDataTransport(appContext, DataTransport.ROLE_MDOC, options);
         Assert.assertEquals("www.example.com", transport.getHost());
         Assert.assertEquals("/mdocreader/s43", transport.getPath());
         Assert.assertEquals(8080, transport.getPort());
@@ -147,7 +139,7 @@ public class DataTransportHttpTest {
 
         cm = new ConnectionMethodHttp("unsupported://www.example.com/mdocreader/s43");
         try {
-            transport = (DataTransportHttp) cm.createDataTransport(appContext, options);
+            transport = (DataTransportHttp) cm.createDataTransport(appContext, DataTransport.ROLE_MDOC, options);
             Assert.assertTrue(false);
         } catch (IllegalArgumentException e) {
             // expected path
@@ -157,8 +149,12 @@ public class DataTransportHttpTest {
     void connectAndListen(boolean useTls) {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         DataTransportHttp verifier = new DataTransportHttp(appContext,
+                DataTransport.ROLE_MDOC_READER,
+                null,
                 new DataTransportOptions.Builder().build());
         DataTransportHttp prover = new DataTransportHttp(appContext,
+                DataTransport.ROLE_MDOC,
+                null,
                 new DataTransportOptions.Builder().build());
 
         byte[] messageSentByVerifier = Util.fromHex("010203");
@@ -167,44 +163,33 @@ public class DataTransportHttpTest {
         final byte[][] messageReceivedByProver = {null};
         final byte[][] messageReceivedByVerifier = {null};
 
-        final ConditionVariable proverListeningSetupCompleteCondVar = new ConditionVariable();
+        final ConditionVariable proverConnectionMethodReadyCondVar = new ConditionVariable();
         final ConditionVariable proverMessageReceivedCondVar = new ConditionVariable();
-        final ConditionVariable proverPeerConnectingCondVar = new ConditionVariable();
         final ConditionVariable proverPeerConnectedCondVar = new ConditionVariable();
         final ConditionVariable proverPeerDisconnectedCondVar = new ConditionVariable();
+        final ConditionVariable verifierConnectionMethodReadyCondVar = new ConditionVariable();
         final ConditionVariable verifierMessageReceivedCondVar = new ConditionVariable();
         final ConditionVariable verifierPeerConnectedCondVar = new ConditionVariable();
         Executor executor = Executors.newSingleThreadExecutor();
 
         prover.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
-                proverListeningSetupCompleteCondVar.open();
+            public void onConnectionMethodReady() {
+                proverConnectionMethodReadyCondVar.open();
             }
 
             @Override
-            public void onListeningPeerConnecting() {
-                proverPeerConnectingCondVar.open();
+            public void onConnecting() {
             }
 
             @Override
-            public void onListeningPeerConnected() {
+            public void onConnected() {
                 proverPeerConnectedCondVar.open();
             }
 
             @Override
-            public void onListeningPeerDisconnected() {
+            public void onDisconnected() {
                 proverPeerDisconnectedCondVar.open();
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
-                Assert.fail();
             }
 
             @Override
@@ -227,33 +212,22 @@ public class DataTransportHttpTest {
 
         verifier.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
+            public void onConnectionMethodReady() {
+                verifierConnectionMethodReadyCondVar.open();
+            }
+
+            @Override
+            public void onConnecting() {
                 Assert.fail();
             }
 
             @Override
-            public void onListeningPeerConnecting() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onListeningPeerConnected() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onListeningPeerDisconnected() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-                Assert.assertNull(error);
+            public void onConnected() {
                 verifierPeerConnectedCondVar.open();
             }
 
             @Override
-            public void onConnectionDisconnected() {
+            public void onDisconnected() {
                 Assert.fail();
             }
 
@@ -275,32 +249,30 @@ public class DataTransportHttpTest {
             }
         }, executor);
 
-        prover.listen();
-        Assert.assertTrue(proverListeningSetupCompleteCondVar.block(5000));
-        verifier.setHost(prover.getHost());
-        verifier.setPort(prover.getPort());
         verifier.connect();
-
-        Assert.assertTrue(proverPeerConnectingCondVar.block(5000));
-        Assert.assertTrue(verifierPeerConnectedCondVar.block(5000));
-        verifier.sendMessage(messageSentByVerifier);
+        Assert.assertTrue(verifierConnectionMethodReadyCondVar.block(5000));
+        prover.setHost(verifier.getHost());
+        prover.setPort(verifier.getPort());
+        prover.connect();
+        Assert.assertTrue(proverConnectionMethodReadyCondVar.block(5000));
 
         Assert.assertTrue(proverPeerConnectedCondVar.block(5000));
         prover.sendMessage(messageSentByProver);
+
+        Assert.assertTrue(verifierPeerConnectedCondVar.block(5000));
+        verifier.sendMessage(messageSentByVerifier);
 
         // Since we send the message over a socket and this data is received in a separate thread
         // we need to sit here and wait until this data is delivered to the callbacks above.
         //
 
-        Assert.assertTrue(proverMessageReceivedCondVar.block(5000));
         Assert.assertTrue(verifierMessageReceivedCondVar.block(5000));
+        Assert.assertTrue(proverMessageReceivedCondVar.block(5000));
 
-        Assert.assertArrayEquals(messageSentByVerifier, messageReceivedByProver[0]);
         Assert.assertArrayEquals(messageSentByProver, messageReceivedByVerifier[0]);
+        Assert.assertArrayEquals(messageSentByVerifier, messageReceivedByProver[0]);
 
         verifier.close();
         Assert.assertTrue(proverPeerDisconnectedCondVar.block(5000));
-
-        // TODO: also test the path where the prover calls disconnect().
     }
 }
