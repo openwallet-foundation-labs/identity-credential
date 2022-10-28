@@ -40,10 +40,8 @@ class AuthConfirmationFragment : Fragment() {
         _binding = null
     }
 
-    private val signedProperties = MyDataStructure()
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val propertiesToSign = viewModel.requested
+        val propertiesToSign = viewModel.requestedProperties()
         propertiesToSign.forEach { documentData ->
             binding.llPropertiesContainer.addView(documentNameFor(documentData))
             documentData.requestedProperties.forEach { property ->
@@ -55,7 +53,7 @@ class AuthConfirmationFragment : Fragment() {
     }
 
     private fun documentNameFor(document: RequestedDocumentData): View {
-        signedProperties.addNamespace(document)
+        viewModel.addDocumentForSigning(document)
         return TextView(requireContext()).apply {
             text = document.nameTypeTitle()
             textSize = 16f
@@ -63,7 +61,7 @@ class AuthConfirmationFragment : Fragment() {
     }
 
     private fun switchFor(namespace: String, property: String): View {
-        signedProperties.toggleProperty(namespace, property)
+        viewModel.toggleSignedProperty(namespace, property)
         val switch = SwitchMaterial(requireContext()).apply {
             val identifier = resources.getIdentifier(property, "string", context.packageName)
             text = if (identifier != 0) getString(identifier) else property
@@ -71,7 +69,7 @@ class AuthConfirmationFragment : Fragment() {
             setPadding(24, 0, 24, 0)
         }
         switch.setOnCheckedChangeListener { _, _ ->
-            signedProperties.toggleProperty(namespace, property)
+            viewModel.toggleSignedProperty(namespace, property)
         }
         return switch
     }
@@ -97,12 +95,7 @@ class AuthConfirmationFragment : Fragment() {
 
     private fun authenticationSucceeded() {
         try {
-//            if (viewModel.sendResponse()) {
-//                val message = "Auth took too long, try again"
-//                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-//                retryForcingPinUse()
-//            }
-            viewModel.sendResponseForSelection(signedProperties.collect())
+            viewModel.sendResponseForSelection()
             findNavController().navigateUp()
         } catch (e: Exception) {
             val message = "Send response error: ${e.message}"
