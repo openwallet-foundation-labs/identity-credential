@@ -43,9 +43,10 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun getCryptoObject() = transferManager.getCryptoObject()
 
-    fun requestedProperties() =  requestedProperties
+    fun requestedProperties() = requestedProperties
 
     fun closeConnection() {
+        cleanUp()
         closeConnectionMutableLiveData.value = true
     }
 
@@ -123,8 +124,16 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         transferManager.sendResponse(response.generate())
         val documentsCount = propertiesToSend.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
-        signedProperties.clear()
+        cleanUp()
     }
+
+    fun cancelPresentation(
+        sendSessionTerminationMessage: Boolean,
+        useTransportSpecificSessionTermination: Boolean
+    ) = transferManager.stopPresentation(
+        sendSessionTerminationMessage,
+        useTransportSpecificSessionTermination
+    )
 
     private fun requestedPropertiesFrom(
         requestedDocument: DeviceRequestParser.DocumentRequest
@@ -138,11 +147,8 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         return result
     }
 
-    fun cancelPresentation(
-        sendSessionTerminationMessage: Boolean,
-        useTransportSpecificSessionTermination: Boolean
-    ) = transferManager.stopPresentation(
-        sendSessionTerminationMessage,
-        useTransportSpecificSessionTermination
-    )
+    private fun cleanUp() {
+        requestedProperties.clear()
+        signedProperties.clear()
+    }
 }
