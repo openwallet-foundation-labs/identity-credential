@@ -115,4 +115,5 @@
     <string name="label_user_auth">User Auth</string>
     <string name="label_hardware_backed">Hardware Backed</string>
     <string name="bt_show_data">Show Data Elements</string>
+    <string name="btn_confirm">Confirm</string>
 </resources>
