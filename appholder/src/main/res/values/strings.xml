@@ -33,6 +33,7 @@
     <string name="bt_check_for_update">Check for Update</string>
     <string name="bt_delete">Delete</string>
     <string name="label_date_provisioned">Date Provisioned</string>
+    <string name="label_mso_usage_count">MSO Usage Count</string>
     <string name="label_date_check_update">Last Update Check</string>
     <string name="toast_press_back_twice">Tap back button again to exit</string>
     <string name="bt_refresh_auth_keys">Refresh Auth Keys</string>
