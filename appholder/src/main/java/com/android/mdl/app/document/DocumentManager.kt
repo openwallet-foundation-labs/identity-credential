@@ -10,7 +10,6 @@ import androidx.preference.PreferenceManager
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.*
-import com.android.identity.IdentityCredentialStore.FEATURE_VERSION_202201
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.mdl.app.R
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
@@ -88,38 +87,45 @@ class DocumentManager private constructor(private val context: Context) {
     private val id = AccessControlProfileId(0)
     private val profile = AccessControlProfile.Builder(id)
         .setUserAuthenticationRequired(true)
-        .setUserAuthenticationTimeout(30*1000)
+        .setUserAuthenticationTimeout(30 * 1000)
         .build()
 
     private var ids: Collection<AccessControlProfileId> = listOf(id)
 
-    private val store = if (PreferencesHelper.hasHardwareBackedPreference(context)) {
-        if (PreferencesHelper.isHardwareBacked(context)) {
-            IdentityCredentialStore.getHardwareInstance(context)!!
-        } else {
-            IdentityCredentialStore.getKeystoreInstance(context,
-                PreferencesHelper.getKeystoreBackedStorageLocation(context))
-        }
-    } else {
-        // No preference for which store to use ... first try with the HW-backed implementation
-        // and use it only if it reports a sufficiently new version.
-        val hwStore = IdentityCredentialStore.getHardwareInstance(context)
-        if (hwStore != null) {
-            Log.i(LOG_TAG, "Found HW-backed store with version ${hwStore.featureVersion}")
-        }
-        if (hwStore != null && hwStore.featureVersion >= FEATURE_VERSION_202201) {
-            Log.i(LOG_TAG, "Using HW-backed store with version ${hwStore.featureVersion}")
-            PreferencesHelper.setHardwareBacked(context, true)
-            hwStore
-        } else {
-            // Nope, fall back to Keystore implementation
-            PreferencesHelper.setHardwareBacked(context, false)
-            val ksStore = IdentityCredentialStore.getKeystoreInstance(context,
-                PreferencesHelper.getKeystoreBackedStorageLocation(context))
-            Log.i(LOG_TAG, "Using KS-backed store with version ${ksStore.featureVersion}")
-            ksStore
-        }
-    }
+//    private val store = if (PreferencesHelper.hasHardwareBackedPreference(context)) {
+//        if (PreferencesHelper.isHardwareBacked(context)) {
+//            IdentityCredentialStore.getHardwareInstance(context)!!
+//        } else {
+//            IdentityCredentialStore.getKeystoreInstance(context,
+//                PreferencesHelper.getKeystoreBackedStorageLocation(context))
+//        }
+//    } else {
+//        // No preference for which store to use ... first try with the HW-backed implementation
+//        // and use it only if it reports a sufficiently new version.
+//        val hwStore = IdentityCredentialStore.getHardwareInstance(context)
+//        if (hwStore != null) {
+//            Log.i(LOG_TAG, "Found HW-backed store with version ${hwStore.featureVersion}")
+//        }
+//        if (hwStore != null && hwStore.featureVersion >= FEATURE_VERSION_202201) {
+//            Log.i(LOG_TAG, "Using HW-backed store with version ${hwStore.featureVersion}")
+//            PreferencesHelper.setHardwareBacked(context, true)
+//            hwStore
+//        } else {
+//            // Nope, fall back to Keystore implementation
+//            PreferencesHelper.setHardwareBacked(context, false)
+//            val ksStore = IdentityCredentialStore.getKeystoreInstance(context,
+//                PreferencesHelper.getKeystoreBackedStorageLocation(context))
+//            Log.i(LOG_TAG, "Using KS-backed store with version ${ksStore.featureVersion}")
+//            ksStore
+//        }
+//    }
+
+    // There is some issue using hardware backed impl with Pixel 6a Android 13, we are hardcoding
+    // to use keystore implementation for now.
+    private val store = IdentityCredentialStore.getKeystoreInstance(
+        context, PreferencesHelper.getKeystoreBackedStorageLocation(context)
+    )
+
 
     // Database to store document information
     private val documentRepository = DocumentRepository.getInstance(
@@ -127,6 +133,9 @@ class DocumentManager private constructor(private val context: Context) {
     )
 
     init {
+
+        PreferencesHelper.setHardwareBacked(context, false)
+
         // We always use the same implementation once the app is installed
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         if (!sharedPreferences.contains(HARDWARE_BACKED_PREFERENCE)) {
@@ -140,12 +149,20 @@ class DocumentManager private constructor(private val context: Context) {
             val documents = documentRepository.getAll()
 
             if (documents.isEmpty()) {
-                // Create the dummy credential...
-                documentRepository.insert(createDummyCredential(store))
-                // Create dummy mVR document...
-                documentRepository.insert(createDummyMvrDocument(store))
-                // Create dummy micov document...
-                documentRepository.insert(createDummyMicovDocument(store))
+                try {
+                    // Create the dummy credential...
+                    documentRepository.insert(createDummyCredential(store))
+                    // Create dummy mVR document...
+                    documentRepository.insert(createDummyMvrDocument(store))
+                    // Create dummy micov document...
+                    documentRepository.insert(createDummyMicovDocument(store))
+                } catch (e: RuntimeException) {
+                    Log.e(
+                        LOG_TAG,
+                        "Ignoring error while creating default credentials ${e.message}",
+                        e
+                    )
+                }
             }
         }
     }
