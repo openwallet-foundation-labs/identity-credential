@@ -2,30 +2,35 @@ package com.google.sps;
 
 import static org.mockito.Mockito.doReturn;
 
+// imports for CBOR encoding/decoding
 import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.CborEncoder;
 import co.nstant.in.cbor.CborDecoder;
+import co.nstant.in.cbor.CborEncoder;
 import co.nstant.in.cbor.CborException;
+import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+
+// imports for HTTP requests
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.math.BigInteger;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.spec.ECGenParameterSpec;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.security.PrivateKey;
-import java.util.Base64;
-import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.ServletInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import javax.servlet.ReadListener;
+
+// key generation imports
+import java.security.KeyPair;
+import java.security.PublicKey;
+import java.security.PrivateKey;
+
+// unit testing imports
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Assert;
@@ -36,6 +41,12 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+// other imports
+import java.math.BigInteger;
+import java.util.Base64;
+import java.util.List;
+import java.util.OptionalInt;
+
 // imports from Datastore
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
@@ -45,6 +56,7 @@ import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 import static com.google.appengine.api.datastore.FetchOptions.Builder.withLimit;
+import com.google.appengine.api.datastore.Text;
 
 // imports from Identity Credential Library
 import com.google.sps.servlets.TestVectors;
@@ -52,9 +64,10 @@ import com.google.sps.servlets.Util;
 import com.google.sps.servlets.EngagementParser;
 import com.google.sps.servlets.EngagementGenerator;
 import com.google.sps.servlets.ConnectionMethod;
-import com.google.sps.servlets.ConnectionMethodRestApi;
+import com.google.sps.servlets.ConnectionMethodHttp;
 import com.google.sps.servlets.OriginInfoWebsite;
 import com.google.sps.servlets.OriginInfo;
+import com.google.sps.servlets.SessionEncryptionReader;
 
 // imports from custom classes
 import com.google.sps.servlets.RequestServlet;
@@ -74,9 +87,6 @@ public class RequestServletTest {
     public void setUp() throws IOException {
         MockitoAnnotations.initMocks(this);
         servlet = new RequestServlet();
-        stringWriter = new StringWriter();
-        PrintWriter writer = new PrintWriter(stringWriter);
-        Mockito.when(response.getWriter()).thenReturn(writer);
         helper.setUp();
         servlet.init();
     }
@@ -88,36 +98,92 @@ public class RequestServletTest {
     
     @Test
     public void checkURIPrefix() throws IOException {
+        stringWriter = new StringWriter();
+        PrintWriter writer = new PrintWriter(stringWriter);
+        Mockito.when(response.getWriter()).thenReturn(writer);
+
+        doReturn(ServletConsts.GET_PARAM_URI).when(request).getParameter(ServletConsts.GET_PARAM);
         servlet.doGet(request, response);
         String generatedURI = stringWriter.toString();
-        Assert.assertEquals(generatedURI.substring(0,7), ServletConsts.MDOC_URI_PREFIX);
+        Assert.assertEquals(generatedURI.substring(0,ServletConsts.MDOC_URI_PREFIX.length()), ServletConsts.MDOC_URI_PREFIX);
     }
-
+  
     @Test
     public void checkReaderEngagementContents() throws IOException {
+        stringWriter = new StringWriter();
+        PrintWriter writer = new PrintWriter(stringWriter);
+        Mockito.when(response.getWriter()).thenReturn(writer);
+
+        doReturn(ServletConsts.GET_PARAM_URI).when(request).getParameter(ServletConsts.GET_PARAM);
         servlet.doGet(request, response);
         String generatedURI = stringWriter.toString();
-        String readerEngagement = generatedURI.substring(7);
-
+        String readerEngagement = generatedURI.substring(ServletConsts.MDOC_URI_PREFIX.length());
+  
         EngagementParser parser = new EngagementParser(Base64.getMimeDecoder().decode(readerEngagement));
         EngagementParser.Engagement engagement = parser.parse();
-
+  
         Assert.assertEquals(engagement.getVersion(), "1.1");
         Assert.assertEquals(engagement.getConnectionMethods().size(), 1);
-        Assert.assertEquals(engagement.getOriginInfos().size(), 1);
-    }
+    } 
 
     @Test
-    public void checkDeviceRequestGenerationWithTestVector() throws IOException {
-        fillDatastoreForDeviceRequestGeneration();
-        byte[] sessionEstablishmentBytes = createMockSessionEstablishment();
-        String sessionEstablishmentStr = Base64.getEncoder().encodeToString(sessionEstablishmentBytes);
+    public void checkDefaultDeviceResponseMessage() throws IOException {
+        stringWriter = new StringWriter();
+        PrintWriter writer = new PrintWriter(stringWriter);
+        Mockito.when(response.getWriter()).thenReturn(writer);
 
-        doReturn(sessionEstablishmentStr).when(request).getParameter(ServletConsts.SESSION_ESTABLISHMENT_PARAM);
+        doReturn(ServletConsts.GET_PARAM_RESPONSE).when(request).getParameter(ServletConsts.GET_PARAM);
+        servlet.doGet(request, response);
+        String responseStr = stringWriter.toString().trim();
+        Assert.assertEquals(responseStr, ServletConsts.DEFAULT_RESPONSE_MSSG);
+    } 
+
+    @Test
+    public void checkNonEmptyDeviceResponseMessage() throws IOException {
+        stringWriter = new StringWriter();
+        PrintWriter writer = new PrintWriter(stringWriter);
+        Mockito.when(response.getWriter()).thenReturn(writer);
+
+        DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+        Entity entity = RequestServlet.getEntity();
+        String correctMessage = "Sample Device Response";
+        entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(correctMessage));
+        datastore.put(entity);
+  
+        doReturn(ServletConsts.GET_PARAM_RESPONSE).when(request).getParameter(ServletConsts.GET_PARAM);
+        servlet.doGet(request, response);
+        String responseStr = stringWriter.toString().trim();
+        Assert.assertEquals(responseStr, correctMessage);
+    }
+
+    /*
+    @Test
+    public void checkDeviceRequestGenerationWithTestVector() throws IOException {
+        stringWriter = new StringWriter();
+        PrintWriter writer = new PrintWriter(stringWriter);
+        Mockito.when(response.getWriter()).thenReturn(writer);
+
+        fillDatastoreForDeviceRequestGeneration();
+        byte[] encodedSessionTranscriptBytes = Util.fromHex(
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
+        DataItem sessionTranscript = Util.cborExtractTaggedAndEncodedCbor(
+                Util.cborDecode(encodedSessionTranscriptBytes));
+        DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
+        byte[] encodedDeviceEngagement = ((ByteString) deviceEngagementBytes).getBytes();
+        byte[] messageDataBytes = createMockMessageData(ServletConsts.DEVICE_ENGAGEMENT_KEY, encodedDeviceEngagement);
+
+        ServletInputStream sis = createMockInputStream(messageDataBytes);
+
+        doReturn(messageDataBytes.length).when(request).getContentLength();
+        doReturn(sis).when(request).getInputStream();
         servlet.doPost(request, response);
 
         String sessionDataString = stringWriter.toString();
         byte[] sessionDataBytes = Base64.getMimeDecoder().decode(sessionDataString.getBytes());
+
+        //ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        //baos.writeTo(os);
+        //byte[] sessionDataBytes = baos.toByteArray();
 
         // decode sessionData
         ByteArrayInputStream bais = new ByteArrayInputStream(sessionDataBytes);
@@ -134,18 +200,26 @@ public class RequestServletTest {
 
     @Test
     public void checkDeviceResponseParsingWithTestVector() throws IOException {
-        fillDatastoreForDeviceResponseParsing();
-        byte[] deviceResponseBytes = Util.fromHex(
-            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE);
-        String deviceResponseStr = Base64.getEncoder().encodeToString(deviceResponseBytes);
+        stringWriter = new StringWriter();
+        PrintWriter writer = new PrintWriter(stringWriter);
+        Mockito.when(response.getWriter()).thenReturn(writer);
 
-        doReturn(deviceResponseStr).when(request).getParameter(ServletConsts.DEVICE_RESPONSE_PARAM);
+        SessionEncryptionReader reader = fillDatastoreForDeviceResponseParsing();
+        byte[] encodedDeviceResponse = Util.fromHex(
+            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE);
+        
+        byte[] message = reader.encryptMessageToDevice(encodedDeviceResponse, OptionalInt.empty());
+        ServletInputStream sis = createMockInputStream(message);
+
+        doReturn(message.length).when(request).getContentLength();
+        doReturn(sis).when(request).getInputStream();
         servlet.doPost(request, response);
 
         // get back response (parsed DeviceResponse documents)
         String documentsJSON = stringWriter.toString();
         Assert.assertTrue(documentsJSON.length() > 0);
     }
+    */
 
     public void fillDatastoreForDeviceRequestGeneration() {
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
@@ -162,40 +236,93 @@ public class RequestServletTest {
         RequestServlet.setDeviceRequestBoolean(false);
     }
 
-    public byte[] createMockSessionEstablishment() {
-        byte[] encodedSessionTranscriptBytes = Util.fromHex(
-            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
-        DataItem sessionTranscript = Util.cborExtractTaggedAndEncodedCbor(
-                Util.cborDecode(encodedSessionTranscriptBytes));
-        DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
-        byte[] encodedDeviceEngagement = ((ByteString) deviceEngagementBytes).getBytes();
+    public byte[] createMockMessageData(String name, byte[] data) {
+        CborBuilder builder = new CborBuilder();
+        MapBuilder<CborBuilder> map = builder.addMap();
+        map.put(name,data);
+        map.end();
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            new CborEncoder(baos).encode(new CborBuilder()
-                .add("mock eReaderKey") // eReaderKeyBytes
-                .add("mock data") // data
-                .add(encodedDeviceEngagement) // device engagement
-                .build());
-        } catch (CborException e) {
-            throw new IllegalStateException("Error with CBOR encoding", e);
-        }
-        return baos.toByteArray();
+        return Util.cborEncode(builder.build().get(0));
     }
 
-    public void fillDatastoreForDeviceResponseParsing() {
+    public SessionEncryptionReader fillDatastoreForDeviceResponseParsing() {
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
+        PublicKey eReaderKeyPublic = Util.getPublicKeyFromIntegers(
+            new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X, 16),
+            new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y, 16));
         PrivateKey eReaderKeyPrivate = Util.getPrivateKeyFromInteger(new BigInteger(
             TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
+        PublicKey eDeviceKeyPublic = Util.getPublicKeyFromIntegers(
+            new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X, 16),
+            new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y, 16));
         byte[] encodedSessionTranscriptBytes = Util.fromHex(
                 TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
         byte[] sessionTranscript = Util.cborEncode(
                 Util.cborExtractTaggedAndEncodedCbor(
                         Util.cborDecode(encodedSessionTranscriptBytes)));
 
+        RequestServlet.putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded());
         RequestServlet.putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
+        RequestServlet.putByteArrInDatastore("Device Key", eDeviceKeyPublic.getEncoded());
         RequestServlet.putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
         RequestServlet.setDeviceRequestBoolean(true);
+
+        return new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
+    }
+
+    public ServletInputStream createMockInputStream(byte[] data) {
+        return new ServletInputStream() {
+            private int lastIndexRetrieved = -1;
+            private ReadListener readListener = null;
+    
+            @Override
+            public boolean isFinished() {
+                return (lastIndexRetrieved == data.length-1);
+            }
+    
+            @Override
+            public boolean isReady() {
+                return isFinished();
+            }
+    
+            @Override
+            public void setReadListener(ReadListener readListener) {
+                this.readListener = readListener;
+                if (!isFinished()) {
+                    try {
+                        readListener.onDataAvailable();
+                    } catch (IOException e) {
+                        readListener.onError(e);
+                    }
+                } else {
+                    try {
+                        readListener.onAllDataRead();
+                    } catch (IOException e) {
+                        readListener.onError(e);
+                    }
+                }
+            }
+    
+            @Override
+            public int read() throws IOException {
+                int i;
+                if (!isFinished()) {
+                    i = data[lastIndexRetrieved+1];
+                    lastIndexRetrieved++;
+                    if (isFinished() && (readListener != null)) {
+                        try {
+                            readListener.onAllDataRead();
+                        } catch (IOException ex) {
+                            readListener.onError(ex);
+                            throw ex;
+                        }
+                    }
+                    return i;
+                } else {
+                    return -1;
+                }
+            }
+        };
     }
 }

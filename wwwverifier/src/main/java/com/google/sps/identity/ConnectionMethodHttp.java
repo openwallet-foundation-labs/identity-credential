@@ -1,10 +1,14 @@
 package com.google.sps.servlets;
 
+//import android.content.Context;
+
 //import android.util.Log;
 
 //import androidx.annotation.NonNull;
 //import androidx.annotation.Nullable;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
 import co.nstant.in.cbor.CborBuilder;
@@ -17,7 +21,7 @@ import co.nstant.in.cbor.model.Number;
 /**
  * Connection method for REST API.
  */
-public class ConnectionMethodRestApi extends ConnectionMethod {
+public class ConnectionMethodHttp extends ConnectionMethod {
     private static final String TAG = "ConnectionOptionsRestApi";
     private String mUriWebsite;
 
@@ -30,7 +34,7 @@ public class ConnectionMethodRestApi extends ConnectionMethod {
      *
      * @param uriWebsite the URL for the website.
      */
-    public ConnectionMethodRestApi(String uriWebsite) {
+    public ConnectionMethodHttp(String uriWebsite) {
         mUriWebsite = uriWebsite;
     }
 
@@ -44,19 +48,43 @@ public class ConnectionMethodRestApi extends ConnectionMethod {
     }
 
     @Override
-    DataItem encode() {
-        MapBuilder<CborBuilder> builder = new CborBuilder().addMap();
-        builder.put(OPTION_KEY_URI_WEBSITE, mUriWebsite);
-        return new CborBuilder()
-                .addArray()
-                .add(METHOD_TYPE)
-                .add(METHOD_MAX_VERSION)
-                .add(builder.end().build().get(0))
-                .end()
-                .build().get(0);
+    public DataTransport createDataTransport(DataTransportOptions options) {
+        URI uri = null;
+        try {
+            uri = new URI(mUriWebsite);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e);
+        }
+        DataTransportHttp transport = new DataTransportHttp(options);
+        if (uri.getScheme().equals("http")) {
+            transport.setHost(uri.getHost());
+            int port = uri.getPort();
+            if (port == -1) {
+                port = 80;
+            }
+            transport.setPort(port);
+            transport.setPath(uri.getPath());
+            return transport;
+        } else if (uri.getScheme().equals("https")) {
+            transport.setHost(uri.getHost());
+            int port = uri.getPort();
+            if (port == -1) {
+                port = 443;
+            }
+            transport.setPort(port);
+            transport.setPath(uri.getPath());
+            transport.setUseTls(true);
+            return transport;
+        }
+        throw new IllegalArgumentException("Unsupported scheme " + uri.getScheme());
     }
 
-    static ConnectionMethodRestApi decode(DataItem cmDataItem) {
+    @Override
+    public String toString() {
+        return "http:uri=" + mUriWebsite;
+    }
+
+    static ConnectionMethodHttp fromDeviceEngagement(DataItem cmDataItem) {
         if (!(cmDataItem instanceof co.nstant.in.cbor.model.Array)) {
             throw new IllegalArgumentException("Top-level CBOR is not an array");
         }
@@ -81,7 +109,20 @@ public class ConnectionMethodRestApi extends ConnectionMethod {
             //Log.w(TAG, "Unsupported options version " + version);
             return null;
         }
-        return new ConnectionMethodRestApi(
+        return new ConnectionMethodHttp(
                 Util.cborMapExtractString(options, OPTION_KEY_URI_WEBSITE));
+    }
+
+    @Override
+    DataItem toDeviceEngagement() {
+        MapBuilder<CborBuilder> builder = new CborBuilder().addMap();
+        builder.put(OPTION_KEY_URI_WEBSITE, mUriWebsite);
+        return new CborBuilder()
+                .addArray()
+                .add(METHOD_TYPE)
+                .add(METHOD_MAX_VERSION)
+                .add(builder.end().build().get(0))
+                .end()
+                .build().get(0);
     }
 }

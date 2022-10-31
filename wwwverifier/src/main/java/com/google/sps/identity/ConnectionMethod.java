@@ -1,5 +1,9 @@
 package com.google.sps.servlets;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+//import android.content.Context;
+
 //import android.util.Log;
 
 //import androidx.annotation.NonNull;
@@ -21,10 +25,10 @@ public abstract class ConnectionMethod {
     private static final String TAG = "ConnectionMethod";
 
     abstract
-    DataItem encode();
+    DataItem toDeviceEngagement();
 
     static
-    ConnectionMethod decode(DataItem cmDataItem) {
+    ConnectionMethod fromDeviceEngagement(DataItem cmDataItem) {
         if (!(cmDataItem instanceof co.nstant.in.cbor.model.Array)) {
             throw new IllegalArgumentException("Top-level CBOR is not an array");
         }
@@ -48,10 +52,22 @@ public abstract class ConnectionMethod {
             case ConnectionMethodWifiAware.METHOD_TYPE:
                 return ConnectionMethodWifiAware.decode(cmDataItem);
             */
-            case ConnectionMethodRestApi.METHOD_TYPE:
-                return ConnectionMethodRestApi.decode(cmDataItem);
+            case ConnectionMethodHttp.METHOD_TYPE:
+                return ConnectionMethodHttp.fromDeviceEngagement(cmDataItem);
         }
         //Log.w(TAG, "Unsupported type " + type);
         return null;
     }
+
+    /**
+     * Creates a new {@link DataTransport}-derived instance for the given type
+     * of {@link ConnectionMethod}.
+     *
+     * @param context application context.
+     * @param options options for configuring the created instance.
+     * @return A {@link DataTransport}-derived instance configured with the given options.
+     * @throws IllegalArgumentException if the connection-method has invalid options specified.
+     */
+    public abstract
+    DataTransport createDataTransport(DataTransportOptions options);
 }

@@ -1,51 +1,51 @@
 package com.google.sps.servlets;
 
 import com.google.gson.Gson;
-import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.CborDecoder;
+import java.util.Base64;
+import java.util.OptionalInt;
+
+// imports for CBOR encoding/decoding
 import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.CborDecoder;
 import co.nstant.in.cbor.CborEncoder;
 import co.nstant.in.cbor.CborException;
+import co.nstant.in.cbor.builder.MapBuilder;
+import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.UnsignedInteger;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+
+// imports for key generation
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.spec.ECGenParameterSpec;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.PublicKey;
 import java.security.PrivateKey;
-import java.util.Base64;
-import java.util.List;
-import java.util.OptionalInt;
+
+// Java servlet imports
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.ServletInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 // imports for Datastore
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
-import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.EntityNotFoundException;
+import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.Text;
-
-// imports for Identity Credential Library
-import com.google.sps.servlets.DeviceRequestGenerator;
-import com.google.sps.servlets.SessionEncryptionReader;
-import com.google.sps.servlets.DeviceResponseParser;
-import com.google.sps.servlets.EngagementGenerator;
-import com.google.sps.servlets.ConnectionMethod;
-import com.google.sps.servlets.ConnectionMethodRestApi;
-import com.google.sps.servlets.OriginInfoWebsite;
-import com.google.sps.servlets.OriginInfo;
 
 /**
  * This servlet performs three main functions:
@@ -74,29 +74,58 @@ public class RequestServlet extends HttpServlet {
         setDeviceRequestBoolean(false);
     }
 
-    /**
-     * Generates ReaderEngagement CBOR message, and creates a URI from it.
-     * 
-     * @return Generated mdoc:// URI
-     */
+   /**
+    * Handles HTTP GET requests, invoked from the front-end through the "Request mDL"
+    * or "Get Device Response" buttons.
+    *
+    * @return String, containing either a generated mdoc:// URI or parsed DeviceResponse data
+    */
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String requestType = request.getParameter(ServletConsts.GET_PARAM);
+        response.setContentType("text/html;");
+        if (requestType.equals(ServletConsts.GET_PARAM_URI)) {
+            response.getWriter().println(createMdocUri());
+        } else if (requestType.equals(ServletConsts.GET_PARAM_RESPONSE)) {
+            response.getWriter().println(getDeviceResponse());
+        } else {
+            response.getWriter().println("Invalid GET request");
+        }
+    }
+
+    /**
+    * Generates ReaderEngagement CBOR message, and creates a URI from it.
+    *
+    * @return Generated mdoc:// URI
+    */
+    public String createMdocUri() {
         KeyPair keyPair = generateKeyPair();
-        PublicKey publicKey = keyPair.getPublic();
-        PrivateKey privateKey = keyPair.getPrivate();
-
-        byte[] readerEngagement = generateReaderEngagement(publicKey);
-
-        String fullURI = ServletConsts.MDOC_URI_PREFIX + base64Encode(readerEngagement);
-
+        byte[] readerEngagement = generateReaderEngagement(keyPair.getPublic());
+  
         // put ReaderEngagement and generated ephemeral keys into Datastore
         putByteArrInDatastore(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
-        putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, publicKey.getEncoded());
-        putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, privateKey.getEncoded());
+        putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, keyPair.getPublic().getEncoded());
+        putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, keyPair.getPrivate().getEncoded());
 
-        response.setContentType("text/html;");
-        response.getWriter().println(fullURI);
+        String readerEngagementStr = Base64.getEncoder().withoutPadding().encodeToString(arr);
+  
+        return ServletConsts.MDOC_URI_PREFIX + base64Encode(readerEngagementStr);
     }
+
+    /**
+     * Retrieves DeviceResponse message from Datastore.
+     * 
+     * @return String containing DeviceResponse message, or default message if it does not exist
+     */
+    public String getDeviceResponse() {
+        Entity entity = getEntity();
+        if (!entity.hasProperty(ServletConsts.DEVICE_RESPONSE_PROP)) {
+            return ServletConsts.DEFAULT_RESPONSE_MSSG;
+        } else {
+            Text deviceResponse = (Text) entity.getProperty(ServletConsts.DEVICE_RESPONSE_PROP);
+            return deviceResponse.getValue();
+        }
+    } 
 
     /**
      * Handles two distinct POST requests:
@@ -111,13 +140,17 @@ public class RequestServlet extends HttpServlet {
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (!getDeviceRequestBoolean()) {
-            SessionEncryptionReader sessionEncryption = parseSessionEstablishment(request);
+            byte[] messageData = getBytesFromRequest(request);
+            SessionEncryptionReader sessionEncryption = createSessionEncryptionReader(messageData);
             byte[] sessionData = generateDeviceRequest(sessionEncryption);
             setDeviceRequestBoolean(true);
             response.setContentType("text/html;");
-            response.getWriter().println(base64Encode(sessionData));
+            //response.getWriter().println(base64Encode(sessionData));
+            
+            response.getOutputStream().write(sessionData,0,sessionData.length);
         } else {
-            String json = parseDeviceResponse(request);
+            byte[] messageData = getBytesFromRequest(request);
+            String json = parseDeviceResponse(messageData);
             Entity entity = getEntity();
             entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(json));
             datastore.put(entity);
@@ -131,10 +164,9 @@ public class RequestServlet extends HttpServlet {
      * @return generated readerEngagement CBOR message, using EngagementGenerator
      */
     public static byte[] generateReaderEngagement(PublicKey publicKey) {
-        EngagementGenerator generator = new EngagementGenerator(publicKey, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        generator.addConnectionMethod(new ConnectionMethodRestApi(ServletConsts.WEBSITE_URL_SERVLET));
-        generator.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.WEBSITE_URL));
-        return generator.generate();
+        EngagementGenerator eg = new EngagementGenerator(publicKey, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.WEBSITE_URL));
+        return eg.generate();
     }
 
     /**
@@ -142,40 +174,66 @@ public class RequestServlet extends HttpServlet {
      */
     public static KeyPair generateKeyPair() {
         try {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(ServletConsts.KEY_GENERATION_INSTANCE);
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance(ServletConsts.KEY_GENERATION_INSTANCE);
             ECGenParameterSpec ecSpec = new ECGenParameterSpec(ServletConsts.KEY_GENERATION_CURVE);
-            keyPairGenerator.initialize(ecSpec);
-            return keyPairGenerator.generateKeyPair();
+            kpg.initialize(ecSpec);
+            return kpg.generateKeyPair();
         } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
             throw new IllegalStateException("Error generating ephemeral key-pair", e);
         }
     }
 
+    public byte[] getBytesFromRequest(HttpServletRequest request) {
+        byte[] arr = new byte[request.getContentLength()];
+        try {
+            ServletInputStream stream = request.getInputStream();
+            stream.read(arr);
+        } catch (IOException e) {
+            throw new IllegalStateException("Error reading request body", e);
+        }
+        return arr;
+    }
+
     /**
-     * Parses the Session Establishment CBOR message to isolate DeviceEngagement, and then uses it
+     * Parses the MessageData CBOR message to isolate DeviceEngagement, and then uses it
      * to get the session transcript.
      * 
-     * @param request POST request containing SessionEstablishment
+     * @param request POST request containing MessageData
      * @return SessionEncryptionReader, to be used to create DeviceRequest in the future.
      */
-    public SessionEncryptionReader parseSessionEstablishment(HttpServletRequest request) {
-        // parse Session Establishment CBOR message
-        byte[] sessionEstablishmentBytes = base64Decode(request.getParameter(ServletConsts.SESSION_ESTABLISHMENT_PARAM));
-        DataItem deviceEngagementItem = CBORDecode(sessionEstablishmentBytes).get(ServletConsts.DEVICE_ENGAGEMENT_INDEX);
-        byte[] deviceEngagement = ((ByteString) deviceEngagementItem).getBytes();
+    public SessionEncryptionReader createSessionEncryptionReader(byte[] data) {
+        byte[] encodedDeviceEngagement = Util.cborMapExtractByteString(Util.cborDecode(data), ServletConsts.DEVICE_ENGAGEMENT_KEY);
+        putByteArrInDatastore("Device Engagement", encodedDeviceEngagement);
 
-        // retrieve items from Datastore
-        byte[] readerEngagement = CBOREncode(getPropertyFromDatastore(ServletConsts.READER_ENGAGEMENT_PROP));
-        PublicKey publicKey = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.PUBLIC_KEY_PROP));
-        PrivateKey privateKey = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
-    
-        SessionEncryptionReader sessionEncryption = new SessionEncryptionReader(
-            privateKey, publicKey, deviceEngagement, readerEngagement);
+        // retrieve keys from datastore
+        PublicKey eReaderKeyPublic = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.PUBLIC_KEY_PROP));
+        PrivateKey eReaderKeyPrivate = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
 
-        // put sessionTranscript in datastore
-        putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionEncryption.getSessionTranscript());
+        // get eDeviceKey
+        EngagementParser.Engagement deviceEngagement = new EngagementParser(encodedDeviceEngagement).parse();
+        PublicKey eDeviceKey = deviceEngagement.getESenderKey();
+        putByteArrInDatastore("Device Key", eDeviceKey.getEncoded());
 
-        return sessionEncryption;
+        byte[] sessionTranscript = createSessionTranscript(encodedDeviceEngagement, eReaderKeyPublic);
+
+        return new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKey, sessionTranscript);
+    }
+
+    public byte[] createSessionTranscript(byte[] encodedDeviceEngagement, PublicKey eReaderKeyPublic) {
+        byte[] readerEngagementBytes = base64Decode(getPropertyFromDatastore(ServletConsts.READER_ENGAGEMENT_PROP));
+        byte[] eReaderKeyBytes = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPublic));
+
+        byte[] sessionTranscript = Util.cborEncode(new CborBuilder()
+            .addArray()
+                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(eReaderKeyBytes))
+                .add(Util.cborBuildTaggedByteString(readerEngagementBytes))
+            .end()
+            .build().get(0));
+
+        putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
+
+        return sessionTranscript;
     }
 
     /**
@@ -185,10 +243,10 @@ public class RequestServlet extends HttpServlet {
      * @param sessionEncryption SessionEncryptionReader object, to be used to create DeviceRequest
      * @return DeviceRequest, to be sent back as a response to the initial POST request
      */
-    public byte[] generateDeviceRequest(SessionEncryptionReader sessionEncryption) {
+    public byte[] generateDeviceRequest(SessionEncryptionReader reader) {
         byte[] sessionTranscript = base64Decode(getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
         byte[] deviceRequest = new DeviceRequestGenerator().setSessionTranscript(sessionTranscript).generate();
-        return sessionEncryption.encryptMessageToDevice(deviceRequest, OptionalInt.empty());
+        return reader.encryptMessageToDevice(deviceRequest, OptionalInt.empty());
     }
 
     /**
@@ -197,17 +255,19 @@ public class RequestServlet extends HttpServlet {
      * @param request POST request containing DeviceResponse
      * @return JSON string containing Documents contained within DeviceResponse
      */
-    public String parseDeviceResponse(HttpServletRequest request) {
-        byte[] deviceResponse = base64Decode(request.getParameter(ServletConsts.DEVICE_RESPONSE_PARAM));
-
-        // retrieve items from Datastore
-        PrivateKey privateKey = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
+    public String parseDeviceResponse(byte[] data) {
+        PublicKey eReaderKeyPublic = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.PUBLIC_KEY_PROP));
+        PrivateKey eReaderKeyPrivate = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
+        PublicKey eDeviceKeyPublic = getPublicKeyFromString(getPropertyFromDatastore("Device Key"));
         byte[] sessionTranscript = base64Decode(getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
+
+        SessionEncryptionReader reader = new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
+        byte[] deviceResponseBytes = reader.decryptMessageFromDevice(data);
         
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
-            .setDeviceResponse(deviceResponse)
+            .setDeviceResponse(deviceResponseBytes)
             .setSessionTranscript(sessionTranscript)
-            .setEphemeralReaderKey(privateKey)
+            .setEphemeralReaderKey(eReaderKeyPrivate)
             .parse();
         return new Gson().toJson(dr.getDocuments());
     }
@@ -240,31 +300,6 @@ public class RequestServlet extends HttpServlet {
         Entity entity = getEntity();
         entity.setProperty(ServletConsts.BOOLEAN_PROP, bool);
         datastore.put(entity);
-    }
-
-    /**
-     * @return a CBOR encoding of @param str
-     */
-    public byte[] CBOREncode(String str) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            new CborEncoder(baos).encode(new CborBuilder().add(str).build());
-            return baos.toByteArray();
-        } catch (CborException e) {
-            throw new IllegalStateException("Error with CBOR encoding", e);
-        }
-    }
-
-    /**
-     * @return a List of DataItem objects extracted by decoding the previously CBOR encoded @param arr
-     */
-    public List<DataItem> CBORDecode(byte[] arr) {
-        ByteArrayInputStream bais = new ByteArrayInputStream(arr);
-        try {
-            return new CborDecoder(bais).decode();
-        } catch (CborException e) {
-            throw new IllegalStateException("Error with CBOR decoding", e);
-        }
     }
 
     /**

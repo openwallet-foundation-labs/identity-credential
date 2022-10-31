@@ -1,8 +1,14 @@
+const GET_URL = '/request-mdl?request-type=';
+const GET_URL_CREATE = 'create-uri';
+const GET_URL_DISPLAY = 'display-response';
+
+const QRCODE_ID = 'request-qrcode';
+const RESPONSE_ID = 'response-confirmation';
+
 function requestMDL() {
-    fetch('/request-mdl').then(response => response.text()).then((responseText) => {
-        document.getElementById('request-confirmation').innerText = responseText;
+    fetch(GET_URL + GET_URL_CREATE).then(response => response.text()).then((responseText) => {
         new QRious({
-            element: document.getElementById('request-qrcode'),
+            element: document.getElementById(QRCODE_ID),
             background: '#ffffff',
             backgroundAlpha: 1,
             foreground: '#000000',
@@ -13,10 +19,10 @@ function requestMDL() {
             value: String(responseText)
         });
     });
-}
-
-function getDeviceResponse() {
-    fetch('/device-response').then(response => response.text()).then((responseText) => {
-        document.getElementById('response-confirmation').innerText = responseText;
+ }
+  
+ function getDeviceResponse() {
+    fetch(GET_URL + GET_URL_DISPLAY).then(response => response.text()).then((responseText) => {
+        document.getElementById(RESPONSE_ID).innerText = responseText;
     });
-}
+ } 

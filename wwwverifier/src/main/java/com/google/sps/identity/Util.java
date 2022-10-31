@@ -1393,7 +1393,7 @@ public class Util {
         }
     }
 
-    static  
+    public static  
     PublicKey getPublicKeyFromIntegers(  BigInteger x,
               BigInteger y) {
         try {
