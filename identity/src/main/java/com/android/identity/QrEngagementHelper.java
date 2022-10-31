@@ -4,7 +4,6 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Build;
 import android.util.Base64;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 
@@ -30,14 +30,13 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
     private final PresentationSession mPresentationSession;
     private final Context mContext;
     private final KeyPair mEphemeralKeyPair;
-    private final Util.Logger mLog;
     private final NfcApduRouter mNfcApduRouter;
-    private final DataRetrievalListenerConfiguration mDataRetrievalListenerConfiguration;
-    private int mLoggingFlags;
+    private final DataTransportOptions mOptions;
     private Listener mListener;
     private Executor mExecutor;
     private boolean mInhibitCallbacks;
     private ArrayList<DataTransport> mTransports = new ArrayList<>();
+    private List<ConnectionMethod> mConnectionMethods = new ArrayList<>();
     private int mNumTransportsStillSettingUp;
     private byte[] mEncodedDeviceEngagement;
     private byte[] mEncodedHandover;
@@ -47,10 +46,11 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
 
     public QrEngagementHelper(@NonNull Context context,
                               @NonNull PresentationSession presentationSession,
-                              @NonNull DataRetrievalListenerConfiguration dataRetrievalListenerConfiguration,
+                              @NonNull List<ConnectionMethod> connectionMethods,
+                              @NonNull DataTransportOptions options,
                               @Nullable NfcApduRouter nfcApduRouter,
-                              @NonNull Listener listener, @NonNull Executor executor,
-                              @Constants.LoggingFlag int loggingFlags) {
+                              @NonNull Listener listener,
+                              @NonNull Executor executor) {
         mContext = context;
         mPresentationSession = presentationSession;
         mListener = listener;
@@ -60,10 +60,8 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
             mNfcApduRouter.addListener(this, executor);
         }
         mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
-        mLog = new Util.Logger(TAG, loggingFlags);
-        mLoggingFlags = loggingFlags;
-
-        mDataRetrievalListenerConfiguration = dataRetrievalListenerConfiguration;
+        mConnectionMethods = connectionMethods;
+        mOptions = options;
         startListening();
     }
 
@@ -82,7 +80,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
 
     @Override
     public void onApduReceived(@NonNull byte[] aid, @NonNull byte[] apdu) {
-        mLog.info(String.format(Locale.US, "onApduReceived aid=%s apdu=%s",
+        Logger.d(TAG, String.format(Locale.US, "onApduReceived aid=%s apdu=%s",
                 Util.toHex(aid), Util.toHex(apdu)));
         if (Arrays.equals(aid, NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)) {
             mNumEngagementApdusReceived += 1;
@@ -90,7 +88,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
             mNumDataTransferApdusReceived += 1;
         }
 
-        mLog.info(String.format(Locale.US,
+        Logger.d(TAG, String.format(Locale.US,
                         "mNumEngagementApdusReceived=%d mNumDataTransferApdusReceived=%d",
                         mNumEngagementApdusReceived, mNumDataTransferApdusReceived));
 
@@ -106,7 +104,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
                             NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER)) {
                         for (DataTransport t : mTransports) {
                             if (t instanceof DataTransportNfc) {
-                                mLog.info("NFC data transfer AID selected");
+                                Logger.d(TAG, "NFC data transfer AID selected");
                                 DataTransportNfc dataTransportNfc = (DataTransportNfc) t;
                                 // Hand over the APDU router to the NFC data transport
                                 mNfcApduRouter.removeListener(this, mExecutor);
@@ -124,7 +122,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
 
     @Override
     public void onDeactivated(@NonNull byte[] aid, int reason) {
-        mLog.info(String.format(Locale.US, "onDeactivated aid=%s reason=%d",
+        Logger.d(TAG, String.format(Locale.US, "onDeactivated aid=%s reason=%d",
                 Util.toHex(aid), reason));
         if (Arrays.equals(aid, NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)) {
             mNumEngagementApdusReceived = 0;
@@ -144,59 +142,17 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
      * Called by constructor and also used by PresentationHelperTest.java.
      */
     void startListening() {
-        // The order here matters... it will be the same order in the array in the QR code
-        // and we expect readers to pick the first one.
-        //
-        if (mDataRetrievalListenerConfiguration.isBleEnabled()) {
-            @Constants.BleDataRetrievalOption int opts =
-                    mDataRetrievalListenerConfiguration.getBleDataRetrievalOptions();
-
-            boolean useL2CAPIfAvailable = (opts & Constants.BLE_DATA_RETRIEVAL_OPTION_L2CAP) != 0;
-
-            boolean bleClearCache = (opts & Constants.BLE_DATA_RETRIEVAL_CLEAR_CACHE) != 0;
-
-            if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_CENTRAL_CLIENT_MODE) != 0) {
-                UUID serviceUuid = UUID.randomUUID();
-                DataTransportBleCentralClientMode bleTransport =
-                        new DataTransportBleCentralClientMode(mContext, mLoggingFlags);
-                bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setUseL2CAPIfAvailable(useL2CAPIfAvailable);
-                bleTransport.setClearCache(bleClearCache);
-                mLog.info("Adding BLE mdoc central client mode transport");
-                mTransports.add(bleTransport);
-            }
-            if ((opts & Constants.BLE_DATA_RETRIEVAL_OPTION_MDOC_PERIPHERAL_SERVER_MODE) != 0) {
-                UUID serviceUuid = UUID.randomUUID();
-                DataTransportBlePeripheralServerMode bleTransport =
-                        new DataTransportBlePeripheralServerMode(mContext, mLoggingFlags);
-                bleTransport.setServiceUuid(serviceUuid);
-                bleTransport.setUseL2CAPIfAvailable(useL2CAPIfAvailable);
-                mLog.info("Adding BLE mdoc peripheral server mode transport");
-                if (bleClearCache) {
-                    mLog.info("Ignoring bleClearCache flag since it only applies to "
-                            + "BLE mdoc central client mode when acting as a holder");
-                }
-                mTransports.add(bleTransport);
-            }
-        }
-        if (mDataRetrievalListenerConfiguration.isWifiAwareEnabled()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                mLog.info("Adding Wifi Aware transport");
-                mTransports.add(new DataTransportWifiAware(mContext));
-            } else {
-                throw new IllegalArgumentException("Wifi Aware only available on API 29 or later");
-            }
-        }
-        if (mDataRetrievalListenerConfiguration.isNfcEnabled()) {
-            mLog.info("Adding NFC transport");
-            mTransports.add(new DataTransportNfc(mContext, mLoggingFlags));
-        }
-
         byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
                 Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()))));
 
-        for (DataTransport t : mTransports) {
-            t.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
+        // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
+        // if both BLE modes are available at the same time.
+        List<ConnectionMethod> disambiguatedMethods = ConnectionMethod.disambiguate(mConnectionMethods);
+        for (ConnectionMethod cm : disambiguatedMethods) {
+            DataTransport transport = cm.createDataTransport(mContext, mOptions);
+            transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
+            mTransports.add(transport);
+            Logger.d(TAG, "Added transport for " + cm);
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen
@@ -213,8 +169,8 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
             for (DataTransport transport : mTransports) {
                 transport.setListener(new DataTransport.Listener() {
                     @Override
-                    public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
-                        mLog.info("onListeningSetupCompleted for " + transport);
+                    public void onListeningSetupCompleted() {
+                        Logger.d(TAG, "onListeningSetupCompleted for " + transport);
                         synchronized (helper) {
                             mNumTransportsStillSettingUp -= 1;
                             if (mNumTransportsStillSettingUp == 0) {
@@ -225,25 +181,25 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
 
                     @Override
                     public void onListeningPeerConnecting() {
-                        mLog.info("onListeningPeerConnecting for " + transport);
+                        Logger.d(TAG, "onListeningPeerConnecting for " + transport);
                         peerIsConnecting(transport);
                     }
 
                     @Override
                     public void onListeningPeerConnected() {
-                        mLog.info("onListeningPeerConnected for " + transport);
+                        Logger.d(TAG, "onListeningPeerConnected for " + transport);
                         peerHasConnected(transport);
                     }
 
                     @Override
                     public void onListeningPeerDisconnected() {
-                        mLog.info("onListeningPeerDisconnected for " + transport);
+                        Logger.d(TAG, "onListeningPeerDisconnected for " + transport);
                         transport.close();
                     }
 
                     @Override
                     public void onConnectionResult(@Nullable Throwable error) {
-                        mLog.info("onConnectionResult for " + transport);
+                        Logger.d(TAG, "onConnectionResult for " + transport);
                         if (error != null) {
                             throw new IllegalStateException("Unexpected onConnectionResult "
                                     + "callback from transport " + transport, error);
@@ -254,7 +210,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
 
                     @Override
                     public void onConnectionDisconnected() {
-                        mLog.info("onConnectionDisconnected for " + transport);
+                        Logger.d(TAG, "onConnectionDisconnected for " + transport);
                         throw new IllegalStateException("Unexpected onConnectionDisconnected "
                                 + "callback from transport " + transport);
                     }
@@ -267,71 +223,44 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
 
                     @Override
                     public void onMessageReceived() {
-                        mLog.info("onMessageReceived for " + transport);
+                        Logger.d(TAG, "onMessageReceived for " + transport);
                     }
 
                     @Override
                     public void onTransportSpecificSessionTermination() {
-                        mLog.info("Received transport-specific session termination");
+                        Logger.d(TAG, "Received transport-specific session termination");
                         transport.close();
                     }
 
                 }, mExecutor);
-                mLog.info("Listening on transport " + transport);
+                Logger.d(TAG, "Listening on transport " + transport);
                 transport.listen();
                 mNumTransportsStillSettingUp += 1;
             }
         }
     }
 
-    private @NonNull
-    byte[] generateDeviceEngagement(@NonNull List<DataRetrievalAddress> listeningAddresses) {
-        DataItem eDeviceKeyBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic())));
-
-        DataItem securityDataItem = new CborBuilder()
-                .addArray()
-                .add(1) // cipher suite
-                .add(eDeviceKeyBytes)
-                .end()
-                .build().get(0);
-
-        DataItem deviceRetrievalMethodsDataItem = null;
-        CborBuilder deviceRetrievalMethodsBuilder = new CborBuilder();
-        ArrayBuilder<CborBuilder> arrayBuilder = deviceRetrievalMethodsBuilder.addArray();
-        for (DataRetrievalAddress address : listeningAddresses) {
-            address.addDeviceRetrievalMethodsEntry(arrayBuilder, listeningAddresses);
-        }
-        arrayBuilder.end();
-        deviceRetrievalMethodsDataItem = deviceRetrievalMethodsBuilder.build().get(0);
-
-        CborBuilder builder = new CborBuilder();
-        MapBuilder<CborBuilder> map = builder.addMap();
-        map.put(0, "1.0").put(new UnsignedInteger(1), securityDataItem);
-        if (deviceRetrievalMethodsDataItem != null) {
-            map.put(new UnsignedInteger(2), deviceRetrievalMethodsDataItem);
-        }
-        map.end();
-        return Util.cborEncode(builder.build().get(0));
-    }
-
     // TODO: handle the case where a transport never calls onListeningSetupCompleted... that
     //  is, set up a timeout to call this.
     //
     void allTransportsAreSetup() {
-        mLog.info("All transports are now set up");
+        Logger.d(TAG, "All transports are now set up");
 
         // Calculate DeviceEngagement and Handover for QR code...
         //
-        List<DataRetrievalAddress> listeningAddresses = new ArrayList<>();
-        for (DataTransport transport : mTransports) {
-            listeningAddresses.add(transport.getListeningAddress());
+        // TODO: Figure out when we need to use version "1.1".
+        //
+        EngagementGenerator engagementGenerator =
+                new EngagementGenerator(mEphemeralKeyPair.getPublic(),
+                        EngagementGenerator.ENGAGEMENT_VERSION_1_0);
+        for (ConnectionMethod cm : mConnectionMethods) {
+            engagementGenerator.addConnectionMethod(cm);
         }
-        mEncodedDeviceEngagement = generateDeviceEngagement(listeningAddresses);
+        mEncodedDeviceEngagement = engagementGenerator.generate();
         mEncodedHandover = Util.cborEncode(SimpleValue.NULL);
-        if (mLog.isEngagementEnabled()) {
-            mLog.engagement("QR DE: " + Util.toHex(mEncodedDeviceEngagement));
-            mLog.engagement("QR handover: " + Util.toHex(mEncodedHandover));
+        if (Logger.isDebugEnabled()) {
+            Logger.d(TAG, "QR DE: " + Util.toHex(mEncodedDeviceEngagement));
+            Logger.d(TAG, "QR handover: " + Util.toHex(mEncodedHandover));
         }
 
         reportDeviceEngagementReady();
@@ -348,7 +277,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
                 .encodedOpaquePart(base64EncodedDeviceEngagement)
                 .build();
         String uriString = uri.toString();
-        mLog.info("qrCode URI: " + uriString);
+        Logger.d(TAG, "qrCode URI: " + uriString);
         return uriString;
     }
 
@@ -372,7 +301,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
     void peerHasConnected(@NonNull DataTransport transport) {
         // stop listening on other transports
         //
-        mLog.info("Peer has connected on transport " + transport
+        Logger.d(TAG, "Peer has connected on transport " + transport
                 + " - shutting down other transports");
         for (DataTransport t : mTransports) {
             if (t != transport) {
@@ -390,7 +319,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
     // Note: The report*() methods are safe to call from any thread.
 
     void reportDeviceEngagementReady() {
-        mLog.info("reportDeviceEngagementReady");
+        Logger.d(TAG, "reportDeviceEngagementReady");
         final Listener listener = mListener;
         final Executor executor = mExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
@@ -399,7 +328,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
     }
 
     void reportDeviceConnecting() {
-        mLog.info("reportDeviceConnecting");
+        Logger.d(TAG, "reportDeviceConnecting");
         final Listener listener = mListener;
         final Executor executor = mExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
@@ -408,7 +337,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
     }
 
     void reportDeviceConnected(DataTransport transport) {
-        mLog.info("reportDeviceConnected");
+        Logger.d(TAG, "reportDeviceConnected");
         final Listener listener = mListener;
         final Executor executor = mExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
@@ -417,7 +346,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
     }
 
     void reportError(@NonNull Throwable error) {
-        mLog.info("reportError: error: ", error);
+        Logger.d(TAG, "reportError: error: ", error);
         final Listener listener = mListener;
         final Executor executor = mExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {

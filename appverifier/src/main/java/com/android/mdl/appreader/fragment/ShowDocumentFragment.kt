@@ -160,7 +160,7 @@ class ShowDocumentFragment : Fragment() {
 
         val sb = StringBuffer()
         sb.append("Number of documents returned: <b>${documents.size}</b><br>")
-        sb.append("Address: <b>" + transferManager.mdocAddress + "</b><br>")
+        sb.append("Address: <b>" + transferManager.mdocConnectionMethod + "</b><br>")
         sb.append("<br>")
         for (doc in documents) {
             // Get primary color from theme to use in the HTML formatted document.

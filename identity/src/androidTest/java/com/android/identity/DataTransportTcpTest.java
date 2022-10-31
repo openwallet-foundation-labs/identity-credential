@@ -39,7 +39,8 @@ public class DataTransportTcpTest {
     @SmallTest
     public void setupReceivedWhileWaitingForConnection() {
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
-        DataTransportTcp prover = new DataTransportTcp(appContext, Constants.LOGGING_FLAG_MAXIMUM);
+        DataTransportTcp prover = new DataTransportTcp(appContext,
+                new DataTransportOptions.Builder().build());
 
         ConditionVariable proverSetupCompletedCondVar = new ConditionVariable();
 
@@ -47,7 +48,7 @@ public class DataTransportTcpTest {
 
         prover.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+            public void onListeningSetupCompleted() {
                 proverSetupCompletedCondVar.open();
             }
 
@@ -104,8 +105,9 @@ public class DataTransportTcpTest {
 
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
         DataTransportTcp verifier = new DataTransportTcp(appContext,
-                Constants.LOGGING_FLAG_MAXIMUM);
-        DataTransportTcp prover = new DataTransportTcp(appContext, Constants.LOGGING_FLAG_MAXIMUM);
+                new DataTransportOptions.Builder().build());
+        DataTransportTcp prover = new DataTransportTcp(appContext,
+                new DataTransportOptions.Builder().build());
 
         byte[] messageSentByVerifier = Util.fromHex("010203");
         byte[] messageSentByProver = Util.fromHex("0405");
@@ -124,7 +126,7 @@ public class DataTransportTcpTest {
 
         prover.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+            public void onListeningSetupCompleted() {
                 proverListeningSetupCompleteCondVar.open();
             }
 
@@ -173,7 +175,7 @@ public class DataTransportTcpTest {
 
         verifier.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+            public void onListeningSetupCompleted() {
                 Assert.fail();
             }
 
@@ -223,8 +225,8 @@ public class DataTransportTcpTest {
 
         prover.listen();
         Assert.assertTrue(proverListeningSetupCompleteCondVar.block(5000));
-        DataRetrievalAddress listeningAddress = prover.getListeningAddress();
-        verifier.connect(listeningAddress);
+        verifier.setHostAndPort(prover.getHost(), prover.getPort());
+        verifier.connect();
 
         Assert.assertTrue(proverPeerConnectingCondVar.block(5000));
         Assert.assertTrue(verifierPeerConnectedCondVar.block(5000));

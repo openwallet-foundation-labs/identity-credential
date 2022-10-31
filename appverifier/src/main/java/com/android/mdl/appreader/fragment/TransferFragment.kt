@@ -63,8 +63,12 @@ class TransferFragment : Fragment() {
                 vm.sendNewRequest(requestDocumentList)
                 binding.tvStatus.text = "New request sent..."
             } else {
-                binding.tvStatus.text = "Trying to connect to mDoc app..."
-                vm.connect()
+                if (vm.isUsingReverseEngagement()) {
+                    Log.d(LOG_TAG, "Using reverse engagement")
+                } else {
+                    binding.tvStatus.text = "Trying to connect to mDoc app..."
+                    vm.connect()
+                }
             }
         } catch (e: RuntimeException) {
             Log.e(LOG_TAG, "Error starting connection: ${e.message}", e)

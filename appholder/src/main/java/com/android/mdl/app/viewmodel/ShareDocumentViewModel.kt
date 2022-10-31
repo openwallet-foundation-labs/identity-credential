@@ -6,6 +6,7 @@ import android.widget.Button
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import com.android.identity.OriginInfo
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 
@@ -27,6 +28,14 @@ class ShareDocumentViewModel(val app: Application) :
         // No need to call more than once
         if (!hasStarted) {
             transferManager.startPresentation()
+            hasStarted = true
+        }
+    }
+
+    fun startPresentationReverseEngagement(reverseEngagementUri: String,
+                                           originInfos : List<OriginInfo>) {
+        if (!hasStarted) {
+            transferManager.startPresentationReverseEngagement(reverseEngagementUri, originInfos)
             hasStarted = true
         }
     }

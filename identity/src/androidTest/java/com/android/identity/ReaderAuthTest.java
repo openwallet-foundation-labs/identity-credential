@@ -202,6 +202,8 @@ public class ReaderAuthTest {
                         .putEntry(mdlNs, "Accessible to C", idsReaderAuthC,
                                 Util.cborEncodeString("bat"))
                         .build();
+        Collection<X509Certificate> credentialKeyCertificateChain =
+                wc.getCredentialKeyCertificateChain(new byte[] {1, 2});  // Don't care about this.
         byte[] proofOfProvisioningSignature = wc.personalize(personalizationData);
         byte[] proofOfProvisioning =
                 Util.coseSign1GetData(Util.cborDecode(proofOfProvisioningSignature));

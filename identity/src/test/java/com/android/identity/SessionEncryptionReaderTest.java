@@ -16,14 +16,12 @@
 
 package com.android.identity;
 
-import android.util.Pair;
+import androidx.core.util.Pair;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.math.BigInteger;
 import java.security.PrivateKey;
@@ -34,8 +32,6 @@ import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 
-@SuppressWarnings("deprecation")
-@RunWith(AndroidJUnit4.class)
 public class SessionEncryptionReaderTest {
 
     @Test
@@ -59,17 +55,12 @@ public class SessionEncryptionReaderTest {
         DataItem handover = ((Array) sessionTranscript).getDataItems().get(2);
         byte[] encodedHandover = Util.cborEncode(handover);
 
-        SessionEncryptionReader sessionEncryption = new SessionEncryptionReader(
-                eReaderKeyPrivate, eReaderKeyPublic, encodedDeviceEngagement, encodedHandover);
+        EngagementParser engagementParser = new EngagementParser(encodedDeviceEngagement);
+        EngagementParser.Engagement engagement = engagementParser.parse();
+        PublicKey eDeviceKey = engagement.getESenderKey();
 
-        // Check the correct session transcript was calculated, e.g. that it
-        // matches what's in ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES
-        //
-        // Ensure the session transcript is available before exchanging any messages
-        // since we might need it for calculating the first message.
-        //
-        Assert.assertArrayEquals(Util.cborEncode(sessionTranscript),
-                sessionEncryption.getSessionTranscript());
+        SessionEncryptionReader sessionEncryption = new SessionEncryptionReader(
+                eReaderKeyPrivate, eReaderKeyPublic, eDeviceKey, Util.cborEncode(sessionTranscript));
 
         // Check that encryption works.
         Assert.assertArrayEquals(

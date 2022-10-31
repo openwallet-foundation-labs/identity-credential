@@ -20,16 +20,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.content.Context;
 import android.net.wifi.WifiManager;
-import android.nfc.NdefRecord;
 import android.text.format.Formatter;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import com.android.identity.Constants.LoggingFlag;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -38,17 +33,9 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
 
 /**
  * TCP data transport.
@@ -57,22 +44,18 @@ import co.nstant.in.cbor.model.Map;
  */
 class DataTransportTcp extends DataTransport {
     private static final String TAG = "DataTransportTcp";
-    static final int DEVICE_RETRIEVAL_METHOD_TYPE = -18224;  // Google specific method 0
-    static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;
-    static final int RETRIEVAL_OPTION_KEY_ADDRESS = 0;
-    static final int RETRIEVAL_OPTION_KEY_PORT = 1;
     // The maximum message size we support.
     private static final int MAX_MESSAGE_SIZE = 16 * 1024 * 1024;
-    final Util.Logger mLog;
     Socket mSocket;
     BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
     ServerSocket mServerSocket = null;
-    private DataRetrievalAddressTcp mListeningAddress;
     Thread mSocketWriterThread;
+    private String mHost;
+    private int mPort;
 
-    public DataTransportTcp(@NonNull Context context, @LoggingFlag int loggingFlags) {
-        super(context);
-        mLog = new Util.Logger(TAG, loggingFlags);
+    public DataTransportTcp(@NonNull Context context,
+                            @NonNull DataTransportOptions options) {
+        super(context, options);
     }
 
     @SuppressWarnings("deprecation")
@@ -81,54 +64,9 @@ class DataTransportTcp extends DataTransport {
         return Formatter.formatIpAddress(wifiManager.getConnectionInfo().getIpAddress());
     }
 
-    static @Nullable
-    List<DataRetrievalAddress> parseDeviceRetrievalMethod(int version, @NonNull DataItem[] items) {
-        if (version > DEVICE_RETRIEVAL_METHOD_VERSION) {
-            Log.w(TAG, "Unexpected version " + version + " for retrieval method");
-            return null;
-        }
-        if (items.length < 3 || !(items[2] instanceof Map)) {
-            Log.w(TAG, "Item 3 in device retrieval array is not a map");
-            return null;
-        }
-        Map options = ((Map) items[2]);
-
-        String host = Util.cborMapExtractString(options, RETRIEVAL_OPTION_KEY_ADDRESS);
-        long port = Util.cborMapExtractNumber(options, RETRIEVAL_OPTION_KEY_PORT);
-
-        if (!isValidServerPort(port)) {
-            Log.w(TAG, "Port is invalid: " + port);
-            return null;
-        }
-
-        List<DataRetrievalAddress> addresses = new ArrayList<>();
-        addresses.add(new DataRetrievalAddressTcp(host, (int)port));
-        return addresses;
-    }
-
-    static byte[] buildDeviceRetrievalMethod(String address, int port) {
-        byte[] encodedDeviceRetrievalMethod = Util.cborEncode(new CborBuilder()
-                .addArray()
-                .add(DEVICE_RETRIEVAL_METHOD_TYPE)
-                .add(DEVICE_RETRIEVAL_METHOD_VERSION)
-                .addMap()
-                .put(RETRIEVAL_OPTION_KEY_ADDRESS, address)
-                .put(RETRIEVAL_OPTION_KEY_PORT, port)
-                .end()
-                .end()
-                .build().get(0));
-        return encodedDeviceRetrievalMethod;
-    }
-
     @Override
     void setEDeviceKeyBytes(@NonNull byte[] encodedEDeviceKeyBytes) {
         // Not used.
-    }
-
-    @Override
-    @NonNull
-    DataRetrievalAddress getListeningAddress() {
-        return mListeningAddress;
     }
 
     @Override
@@ -168,9 +106,9 @@ class DataTransportTcp extends DataTransport {
             }
         };
         socketServerThread.start();
-
-        mListeningAddress = new DataRetrievalAddressTcp(address, port);
-        reportListeningSetupCompleted(mListeningAddress);
+        mHost = address;
+        mPort = port;
+        reportListeningSetupCompleted();
     }
 
     // Should be called from worker thread to handle incoming messages from the peer.
@@ -220,22 +158,26 @@ class DataTransportTcp extends DataTransport {
         return errorToReport;
     }
 
+    String getHost() {
+        return mHost;
+    }
+
+    int getPort() {
+        return mPort;
+    }
+
+    void setHostAndPort(String host, int port) {
+        mHost = host;
+        mPort = port;
+    }
+
     @Override
-    void connect(@NonNull DataRetrievalAddress genericAddress) {
-        DataRetrievalAddressTcp address = (DataRetrievalAddressTcp) genericAddress;
-
-        // This hack is here solely here to work around that the app apparently can only
-        // connect to its own port using 127.0.0.1 and not IP on the Wifi interface.
-        //
-        final String ipAddress =
-                address.host.equals(getWifiIpAddress(mContext)) ? "127.0.0.1" : address.host;
-        int port = address.port;
-
+    void connect() {
         mSocket = new Socket();
         Thread socketReaderThread = new Thread() {
             @Override
             public void run() {
-                SocketAddress endpoint = new InetSocketAddress(ipAddress, port);
+                SocketAddress endpoint = new InetSocketAddress(mHost, mPort);
                 try {
                     mSocket.connect(endpoint);
                 } catch (IOException e) {
@@ -272,7 +214,7 @@ class DataTransportTcp extends DataTransport {
                         // An empty message is used to convey that the writing thread should be
                         // shut down.
                         if (messageToSend.length == 0) {
-                            mLog.transportVerbose("Empty message, shutting down writer");
+                            Logger.d(TAG, "Empty message, shutting down writer");
                             break;
                         }
                     } catch (InterruptedException e) {
@@ -336,74 +278,5 @@ class DataTransportTcp extends DataTransport {
     @Override
     boolean supportsTransportSpecificTerminationMessage() {
         return false;
-    }
-
-    private static boolean isValidServerPort(long port) {
-        // 0 is not valid, as that is the wildcard port, telling the OS to pick a free port for
-        // us. A server could never be listening on port 0.
-        return port > 0 && port <= 65535;
-    }
-
-    static class DataRetrievalAddressTcp extends DataRetrievalAddress {
-        String host;
-        int port;
-        DataRetrievalAddressTcp(String host, int port) {
-            this.host = host;
-            this.port = port;
-        }
-
-        @Override
-        @NonNull
-        DataTransport createDataTransport(
-                @NonNull Context context, @LoggingFlag int loggingFlags) {
-            return new DataTransportTcp(context, loggingFlags);
-        }
-
-        @Override
-        Pair<NdefRecord, byte[]> createNdefRecords(List<DataRetrievalAddress> listeningAddresses) {
-            byte[] reference = String.format(Locale.US, "%d", DEVICE_RETRIEVAL_METHOD_TYPE)
-                    .getBytes(UTF_8);
-            NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
-                    "application/vnd.android.ic.dmr".getBytes(UTF_8),
-                    reference,
-                    buildDeviceRetrievalMethod(host, port));
-
-            // From 7.1 Alternative Carrier Record
-            //
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            baos.write(0x01); // CPS: active
-            baos.write(reference.length); // Length of carrier data reference ("0")
-            try {
-                baos.write(reference);
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            }
-            baos.write(0x01); // Number of auxiliary references
-            byte[] auxReference = "mdoc".getBytes(UTF_8);
-            baos.write(auxReference.length);
-            baos.write(auxReference, 0, auxReference.length);
-            byte[] acRecordPayload = baos.toByteArray();
-
-            return new Pair<>(record, acRecordPayload);
-        }
-
-        @Override
-        void addDeviceRetrievalMethodsEntry(ArrayBuilder<CborBuilder> arrayBuilder,
-                List<DataRetrievalAddress> listeningAddresses) {
-            arrayBuilder.addArray()
-                    .add(DEVICE_RETRIEVAL_METHOD_TYPE)
-                    .add(DEVICE_RETRIEVAL_METHOD_VERSION)
-                    .addMap()
-                    .put(RETRIEVAL_OPTION_KEY_ADDRESS, host)
-                    .put(RETRIEVAL_OPTION_KEY_PORT, port)
-                    .end()
-                    .end();
-        }
-
-        @Override
-        @NonNull
-        public String toString() {
-            return "tcp:host=" + host + ":port=" + port;
-        }
     }
 }

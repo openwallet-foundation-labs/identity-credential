@@ -23,7 +23,6 @@ import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
 import com.budiyev.android.codescanner.CodeScanner
 import com.budiyev.android.codescanner.DecodeCallback
-import java.util.*
 
 
 /**
@@ -206,7 +205,7 @@ class DeviceEngagementFragment : Fragment() {
     }
 
     private fun onDeviceEngagementReceived() {
-        if (transferManager.availableMdocAddresses?.size == 1) {
+        if (transferManager.availableMdocConnectionMethods?.size == 1) {
             findNavController().navigate(
                 DeviceEngagementFragmentDirections.actionScanDeviceEngagementToTransfer(
                     args.requestDocumentList

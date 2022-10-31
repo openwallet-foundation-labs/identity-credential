@@ -33,7 +33,6 @@
     <string name="bt_check_for_update">Check for Update</string>
     <string name="bt_delete">Delete</string>
     <string name="label_date_provisioned">Date Provisioned</string>
-    <string name="label_mso_usage_count" translatable="false">MSO Usage Count</string>
     <string name="label_date_check_update">Last Update Check</string>
     <string name="toast_press_back_twice">Tap back button again to exit</string>
     <string name="bt_refresh_auth_keys">Refresh Auth Keys</string>
@@ -116,4 +115,6 @@
     <string name="label_hardware_backed">Hardware Backed</string>
     <string name="bt_show_data">Show Data Elements</string>
     <string name="btn_confirm">Confirm</string>
+    <string name="bt_present_documents_reverse_engagement">Present with\nReverse Engagement</string>
+    <string name="txt_reverse_engagement_description">Scan QR code from mdoc reader application.\n\nNOTE: This is not supported for ISO 18013-7, only 23220-4</string>
 </resources>
