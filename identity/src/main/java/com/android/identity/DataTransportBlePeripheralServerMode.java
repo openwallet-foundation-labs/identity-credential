@@ -92,7 +92,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
-                    reportConnectionResult(null);
+                    reportConnected();
                 }
 
                 @Override
@@ -102,7 +102,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                         mGattClient.disconnect();
                         mGattClient = null;
                     }
-                    reportConnectionDisconnected();
+                    reportDisconnected();
                 }
 
                 @Override
@@ -126,7 +126,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                 }
             });
 
-            reportListeningPeerConnecting();             
+            reportConnecting();
             long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
             Logger.d(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
                     + "Connecting to device with address " + result.getDevice().getAddress());
@@ -158,8 +158,10 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     private GattServer mGattServer;
 
     public DataTransportBlePeripheralServerMode(@NonNull Context context,
+                                                @Role int role,
+                                                @NonNull ConnectionMethodBle connectionMethod,
                                                 @NonNull DataTransportOptions options) {
-        super(context, options);
+        super(context, role, connectionMethod, options);
     }
 
     @Override
@@ -167,22 +169,15 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
     }
 
-    @Override
-    public void listen() {
+    private void connectAsMdoc() {
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
         BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
-
-        if (mServiceUuid == null) {
-            mServiceUuid = UUID.randomUUID();
-        }
 
         // TODO: It would be nice if we got get the MAC address that will be assigned to
         //  this advertisement so we can send it to the mDL reader, out of band. Android
         //  currently doesn't have any APIs to do this but it's possible this could be
         //  added without violating the security/privacy goals behind removing identifiers.
         //
-
-        reportListeningSetupCompleted();
 
         // TODO: Check if BLE is enabled and error out if not so...
 
@@ -199,7 +194,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             @Override
             public void onPeerConnected() {
                 Log.d(TAG, "onPeerConnected");
-                reportListeningPeerConnected();
+                reportConnected();
                 // No need to advertise anymore since we now have a client...
                 if (mBluetoothLeAdvertiser != null) {
                     Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
@@ -215,7 +210,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             @Override
             public void onPeerDisconnected() {
                 Log.d(TAG, "onPeerDisconnected");
-                reportListeningPeerDisconnected();
+                reportDisconnected();
             }
 
             @Override
@@ -270,10 +265,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
     }
 
-    @Override
-    public void connect() {
-        // TODO: Check if BLE is enabled and error out if not so...
-
+    private void connectAsMdocReader() {
         // Start scanning...
         mBluetoothManager = mContext.getSystemService(BluetoothManager.class);
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
@@ -297,6 +289,17 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         } catch (SecurityException e) {
             reportError(e);
         }
+    }
+
+    @Override
+    public void connect() {
+        // TODO: Check if BLE is enabled and error out if not so...
+        if (mRole == ROLE_MDOC) {
+            connectAsMdoc();
+        } else {
+            connectAsMdocReader();
+        }
+        reportConnectionMethodReady();
     }
 
     @Override

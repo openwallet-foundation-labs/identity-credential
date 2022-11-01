@@ -24,42 +24,55 @@ import co.nstant.in.cbor.model.Number;
  */
 public class ConnectionMethodHttp extends ConnectionMethod {
     private static final String TAG = "ConnectionOptionsRestApi";
-    private String mUriWebsite;
+    private final String mUri;
 
     static final int METHOD_TYPE = 4;
     static final int METHOD_MAX_VERSION = 1;
-    private static final int OPTION_KEY_URI_WEBSITE = 0;
+    private static final int OPTION_KEY_URI = 0;
 
     /**
      * Creates a new connection method for HTTP.
      *
-     * @param uriWebsite the URL for the website.
+     * @param uri the URI.
      */
-    public ConnectionMethodHttp(@NonNull String uriWebsite) {
-        mUriWebsite = uriWebsite;
+    public ConnectionMethodHttp(@NonNull String uri) {
+        mUri = uri;
     }
 
     /**
-     * Gets the URL for the website.
+     * Gets the URI.
      *
-     * @return the website URL.
+     * @return the URI.
      */
     public @NonNull
-    String getUriWebsite() {
-        return mUriWebsite;
+    String getUri() {
+        return mUri;
     }
 
     public @Override
     @NonNull
     DataTransport createDataTransport(@NonNull Context context,
+                                      @DataTransport.Role int role,
                                       @NonNull DataTransportOptions options) {
+        // For the mdoc reader role, this should be empty since DataTransportHttp will return
+        // an ConnectionMethodHttp object containing the local IP address and the TCP port that
+        // was assigned.
+        if (role == DataTransport.ROLE_MDOC_READER) {
+            if (!mUri.equals("")) {
+                throw new IllegalArgumentException("URI must be empty for mdoc reader role");
+            }
+            DataTransportHttp transport = new DataTransportHttp(context, role, this, options);
+            return transport;
+        }
+
+        // For the mdoc role, this should be an URI pointing to a server on the Internet.
         URI uri = null;
         try {
-            uri = new URI(mUriWebsite);
+            uri = new URI(mUri);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException(e);
         }
-        DataTransportHttp transport = new DataTransportHttp(context, options);
+        DataTransportHttp transport = new DataTransportHttp(context, role, this, options);
         if (uri.getScheme().equals("http")) {
             transport.setHost(uri.getHost());
             int port = uri.getPort();
@@ -86,7 +99,7 @@ public class ConnectionMethodHttp extends ConnectionMethod {
     @Override
     public @NonNull
     String toString() {
-        return "http:uri=" + mUriWebsite;
+        return "http:uri=" + mUri;
     }
 
     @Nullable
@@ -116,14 +129,14 @@ public class ConnectionMethodHttp extends ConnectionMethod {
             return null;
         }
         return new ConnectionMethodHttp(
-                Util.cborMapExtractString(options, OPTION_KEY_URI_WEBSITE));
+                Util.cborMapExtractString(options, OPTION_KEY_URI));
     }
 
     @NonNull
     @Override
     DataItem toDeviceEngagement() {
         MapBuilder<CborBuilder> builder = new CborBuilder().addMap();
-        builder.put(OPTION_KEY_URI_WEBSITE, mUriWebsite);
+        builder.put(OPTION_KEY_URI, mUri);
         return new CborBuilder()
                 .addArray()
                 .add(METHOD_TYPE)

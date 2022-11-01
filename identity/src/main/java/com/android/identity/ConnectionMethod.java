@@ -147,10 +147,13 @@ public abstract class ConnectionMethod {
      * of {@link ConnectionMethod}.
      *
      * @param context application context.
+     * @param role whether the transport will be used by the mdoc or mdoc reader.
      * @param options options for configuring the created instance.
      * @return A {@link DataTransport}-derived instance configured with the given options.
      * @throws IllegalArgumentException if the connection-method has invalid options specified.
      */
     public abstract @NonNull
-    DataTransport createDataTransport(@NonNull Context context, @NonNull DataTransportOptions options);
+    DataTransport createDataTransport(@NonNull Context context,
+                                      @DataTransport.Role int role,
+                                      @NonNull DataTransportOptions options);
 }

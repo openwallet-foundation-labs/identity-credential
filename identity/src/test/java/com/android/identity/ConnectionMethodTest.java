@@ -150,7 +150,7 @@ public class ConnectionMethodTest {
     public void testConnectionMethodRestApi() {
         ConnectionMethodHttp cm = new ConnectionMethodHttp("https://www.example.com/mdocReader");
         ConnectionMethodHttp decoded = ConnectionMethodHttp.fromDeviceEngagement(cm.toDeviceEngagement());
-        Assert.assertEquals(decoded.getUriWebsite(), cm.getUriWebsite());
+        Assert.assertEquals(decoded.getUri(), cm.getUri());
         Assert.assertEquals("[\n" +
                 "  4,\n" +
                 "  1,\n" +

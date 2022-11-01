@@ -102,6 +102,7 @@ public class ConnectionMethodBle extends ConnectionMethod {
     public @Override
     @NonNull
     DataTransport createDataTransport(@NonNull Context context,
+                                      @DataTransport.Role int role,
                                       @NonNull DataTransportOptions options) {
         if (mSupportsCentralClientMode && mSupportsPeripheralServerMode) {
             throw new IllegalArgumentException(
@@ -109,12 +110,12 @@ public class ConnectionMethodBle extends ConnectionMethod {
                             + "before picking one.");
         }
         if (mSupportsCentralClientMode) {
-            DataTransportBle t = new DataTransportBleCentralClientMode(context, options);
+            DataTransportBle t = new DataTransportBleCentralClientMode(context, role, this, options);
             t.setServiceUuid(mCentralClientModeUuid);
             return t;
         }
         if (mSupportsPeripheralServerMode) {
-            DataTransportBle t = new DataTransportBlePeripheralServerMode(context, options);
+            DataTransportBle t = new DataTransportBlePeripheralServerMode(context, role, this, options);
             t.setServiceUuid(mPeripheralServerModeUuid);
             return t;
         }

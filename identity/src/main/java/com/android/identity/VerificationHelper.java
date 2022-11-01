@@ -85,6 +85,7 @@ public class VerificationHelper {
     private List<ConnectionMethod> mReverseEngagementConnectionMethods;
     private List<DataTransport> mReverseEngagementListeningTransports;
     private int mNumReverseEngagementTransportsStillSettingUp;
+    private EngagementGenerator mReaderEngagementGenerator;
     private byte[] mReaderEngagement;
 
     VerificationHelper() {
@@ -100,25 +101,18 @@ public class VerificationHelper {
     setupReverseEngagement() {
         Logger.d(TAG, "Setting up reverse engagement");
 
-        // Calculate ReaderEngagement
-        EngagementGenerator readerEngagementGenerator = new EngagementGenerator(
-                mEphemeralKeyPair.getPublic(),
-                EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-
         mReverseEngagementListeningTransports = new ArrayList<>();
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
         List<ConnectionMethod> disambiguatedMethods =
                 ConnectionMethod.disambiguate(mReverseEngagementConnectionMethods);
         for (ConnectionMethod cm : disambiguatedMethods) {
-            DataTransport transport = cm.createDataTransport(mContext, mOptions);
+            DataTransport transport = cm.createDataTransport(mContext, DataTransport.ROLE_MDOC_READER, mOptions);
             mReverseEngagementListeningTransports.add(transport);
             // TODO: we may want to have the DataTransport actually give us a ConnectionMethod,
             //   for example consider the case where a HTTP-based transport uses a cloud-service
             //   to relay messages.
-            readerEngagementGenerator.addConnectionMethod(cm);
         }
-        mReaderEngagement = readerEngagementGenerator.generate();
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen
         // in another thread than we're in right now. For example this happens if using
@@ -130,13 +124,20 @@ public class VerificationHelper {
         final VerificationHelper helper = this;
         mNumReverseEngagementTransportsStillSettingUp = 0;
 
+        // Calculate ReaderEngagement as we're setting up methods
+        mReaderEngagementGenerator = new EngagementGenerator(
+                mEphemeralKeyPair.getPublic(),
+                EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+
         synchronized (helper) {
             for (DataTransport transport : mReverseEngagementListeningTransports) {
                 transport.setListener(new DataTransport.Listener() {
                     @Override
-                    public void onListeningSetupCompleted() {
-                        Logger.d(TAG, "onListeningSetupCompleted for " + transport);
+                    public void onConnectionMethodReady() {
+                        Logger.d(TAG, "onConnectionMethodReady for " + transport);
                         synchronized (helper) {
+                            mReaderEngagementGenerator.addConnectionMethod(
+                                    transport.getConnectionMethod());
                             mNumReverseEngagementTransportsStillSettingUp -= 1;
                             if (mNumReverseEngagementTransportsStillSettingUp == 0) {
                                 allReverseEngagementTransportsAreSetup();
@@ -145,39 +146,21 @@ public class VerificationHelper {
                     }
 
                     @Override
-                    public void onListeningPeerConnecting() {
-                        Logger.d(TAG, "onListeningPeerConnecting for " + transport);
+                    public void onConnecting() {
+                        Logger.d(TAG, "onConnecting for " + transport);
                         reverseEngagementPeerIsConnecting(transport);
                     }
 
                     @Override
-                    public void onListeningPeerConnected() {
-                        Logger.d(TAG, "onListeningPeerConnected for " + transport);
+                    public void onConnected() {
+                        Logger.d(TAG, "onConnected for " + transport);
                         reverseEngagementPeerHasConnected(transport);
                     }
 
                     @Override
-                    public void onListeningPeerDisconnected() {
+                    public void onDisconnected() {
                         Logger.d(TAG, "onListeningPeerDisconnected for " + transport);
                         transport.close();
-                    }
-
-                    @Override
-                    public void onConnectionResult(@Nullable Throwable error) {
-                        Logger.d(TAG, "onConnectionResult for " + transport);
-                        if (error != null) {
-                            throw new IllegalStateException("Unexpected onConnectionResult "
-                                    + "callback from transport " + transport, error);
-                        }
-                        throw new IllegalStateException("Unexpected onConnectionResult "
-                                + "callback from transport " + transport);
-                    }
-
-                    @Override
-                    public void onConnectionDisconnected() {
-                        Logger.d(TAG, "onConnectionDisconnected for " + transport);
-                        throw new IllegalStateException("Unexpected onConnectionDisconnected "
-                                + "callback from transport " + transport);
                     }
 
                     @Override
@@ -200,18 +183,22 @@ public class VerificationHelper {
                     }
 
                 }, mListenerExecutor);
-                Logger.d(TAG, "Listening on transport " + transport);
-                transport.listen();
+                Logger.d(TAG, "Connecting transport " + transport);
+                transport.connect();
                 mNumReverseEngagementTransportsStillSettingUp += 1;
             }
         }
     }
 
-    // TODO: handle the case where a transport never calls onListeningSetupCompleted... that
+    // TODO: handle the case where a transport never calls onConnectionMethodReady... that
     //  is, set up a timeout to call this.
     //
     void allReverseEngagementTransportsAreSetup() {
         Logger.d(TAG, "All reverse engagement listening transports are now set up");
+
+        mReaderEngagement = mReaderEngagementGenerator.generate();
+        mReaderEngagementGenerator = null;
+
         reportReaderEngagementReady(mReaderEngagement);
     }
 
@@ -458,7 +445,7 @@ public class VerificationHelper {
      * @param connectionMethod the address/method to connect to.
      */
     public void connect(@NonNull ConnectionMethod connectionMethod) {
-        connectWithDataTransport(connectionMethod.createDataTransport(mContext, mOptions));
+        connectWithDataTransport(connectionMethod.createDataTransport(mContext, DataTransport.ROLE_MDOC_READER, mOptions));
     }
 
     private void connectWithDataTransport(DataTransport transport) {
@@ -494,42 +481,26 @@ public class VerificationHelper {
 
         mDataTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onListeningSetupCompleted() {
-                Logger.d(TAG, "onListeningSetupCompleted for " + mDataTransport);
+            public void onConnectionMethodReady() {
+                Logger.d(TAG, "onConnectionMethodReady for " + mDataTransport);
             }
 
             @Override
-            public void onListeningPeerConnecting() {
-                Logger.d(TAG, "onListeningPeerConnecting for " + mDataTransport);
+            public void onConnecting() {
+                Logger.d(TAG, "onConnecting for " + mDataTransport);
             }
 
             @Override
-            public void onListeningPeerConnected() {
-                Logger.d(TAG, "onListeningPeerConnected for " + mDataTransport);
+            public void onConnected() {
+                Logger.d(TAG, "onConnected for " + mDataTransport);
+                reportDeviceConnected();
             }
 
             @Override
-            public void onListeningPeerDisconnected() {
-                Logger.d(TAG, "onListeningPeerDisconnected for " + mDataTransport);
-                reportDeviceDisconnected(false);
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-                Logger.d(TAG, "onConnectionResult for " + mDataTransport + ": " + error);
-                if (error != null) {
-                    mDataTransport.close();
-                    reportError(error);
-                } else {
-                    reportDeviceConnected();
-                }
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
-                Logger.d(TAG, "onConnectionDisconnected for " + mDataTransport);
+            public void onDisconnected() {
+                Logger.d(TAG, "onDisconnected for " + mDataTransport);
                 mDataTransport.close();
-                reportError(new IllegalStateException("Error: Disconnected"));
+                reportDeviceDisconnected(false);
             }
 
             @Override
@@ -537,7 +508,6 @@ public class VerificationHelper {
                 Logger.d(TAG, "onError for " + mDataTransport + ": " + error);
                 mDataTransport.close();
                 reportError(error);
-                error.printStackTrace();
             }
 
             @Override

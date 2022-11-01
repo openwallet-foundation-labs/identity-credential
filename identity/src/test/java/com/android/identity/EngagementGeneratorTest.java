@@ -64,8 +64,8 @@ public class EngagementGeneratorTest {
 
         EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
                 ENGAGEMENT_VERSION_1_1);
-        eg.addConnectionMethod(new ConnectionMethodHttp("www.example.com/verifier/123"));
-        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "www.example.com/verifier"));
+        eg.addConnectionMethod(new ConnectionMethodHttp("http://www.example.com/verifier/123"));
+        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "http://www.example.com/verifier"));
         byte[] encodedEngagement = eg.generate();
 
         EngagementParser parser = new EngagementParser(encodedEngagement);
@@ -75,10 +75,10 @@ public class EngagementGeneratorTest {
         Assert.assertEquals(ENGAGEMENT_VERSION_1_1, engagement.getVersion());
         Assert.assertEquals(1, engagement.getConnectionMethods().size());
         ConnectionMethodHttp cm = (ConnectionMethodHttp) engagement.getConnectionMethods().get(0);
-        Assert.assertEquals("www.example.com/verifier/123", cm.getUriWebsite());
+        Assert.assertEquals("http://www.example.com/verifier/123", cm.getUri());
         Assert.assertEquals(1, engagement.getOriginInfos().size());
         OriginInfoWebsite oi = (OriginInfoWebsite) engagement.getOriginInfos().get(0);
-        Assert.assertEquals("www.example.com/verifier", oi.getBaseUrl());
+        Assert.assertEquals("http://www.example.com/verifier", oi.getBaseUrl());
     }
 
     @Test
