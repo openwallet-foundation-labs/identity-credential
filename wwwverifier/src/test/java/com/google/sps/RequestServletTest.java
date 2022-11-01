@@ -179,10 +179,10 @@ public class RequestServletTest {
         byte[] sessionData = baos.toByteArray();
 
         // parse sessionData to extract DeviceRequest
-        byte[] generatedSessionTranscript = RequestServlet.base64Decode(RequestServlet.getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
-        SessionEncryptionDevice seDevice = new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedSessionTranscript);
+        byte[] generatedSessionTranscript = RequestServlet.getDatastoreProp(ServletConsts.SESSION_TRANS_PROP);
+        SessionEncryptionDevice sed = new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedSessionTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
-            .setDeviceRequest(seDevice.decryptMessageFromReader(sessionData))
+            .setDeviceRequest(sed.decryptMessageFromReader(sessionData))
             .setSessionTranscript(generatedSessionTranscript)
             .parse();
 
@@ -213,9 +213,9 @@ public class RequestServletTest {
 
         byte[] readerEngagement = RequestServlet.generateReaderEngagement(eReaderKeyPublic);
 
-        RequestServlet.putByteArrInDatastore(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
-        RequestServlet.putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded());
-        RequestServlet.putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
+        RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
+        RequestServlet.setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded());
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
         RequestServlet.setDeviceRequestBoolean(false);
     }
 
@@ -230,10 +230,10 @@ public class RequestServletTest {
     public void fillDatastoreForDeviceResponseParsing() {
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
-        RequestServlet.putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded());
-        RequestServlet.putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
-        RequestServlet.putByteArrInDatastore(ServletConsts.DEVICE_KEY_PROP, eDeviceKeyPublic.getEncoded());
-        RequestServlet.putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, Util.cborEncode(sessionTranscript));
+        RequestServlet.setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded());
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
+        RequestServlet.setDatastoreProp(ServletConsts.DEVICE_KEY_PROP, eDeviceKeyPublic.getEncoded());
+        RequestServlet.setDatastoreProp(ServletConsts.SESSION_TRANS_PROP, Util.cborEncode(sessionTranscript));
         RequestServlet.setDeviceRequestBoolean(true);
     }
 
