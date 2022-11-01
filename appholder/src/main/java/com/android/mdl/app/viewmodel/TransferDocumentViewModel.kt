@@ -3,21 +3,20 @@ package com.android.mdl.app.viewmodel
 import android.app.Application
 import android.util.Log
 import android.view.View
-import androidx.biometric.BiometricPrompt.CryptoObject
 import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.android.identity.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.DeviceRequestParser
 import com.android.identity.DeviceResponseGenerator
-import com.android.identity.InvalidRequestMessageException
 import com.android.mdl.app.R
-import com.android.mdl.app.document.Document
+import com.android.mdl.app.authconfirmation.RequestedDocumentData
+import com.android.mdl.app.authconfirmation.SignedPropertiesCollection
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
-import java.util.NoSuchElementException
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
@@ -25,12 +24,15 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         private const val LOG_TAG = "TransferDocumentViewModel"
     }
 
-    var inProgress = ObservableInt(View.GONE)
-    var documentsSent = ObservableField<String>()
-    private var documentsCount = 0
-
     private val transferManager = TransferManager.getInstance(app.applicationContext)
     private val documentManager = DocumentManager.getInstance(app.applicationContext)
+    private val signedProperties = SignedPropertiesCollection()
+    private val requestedProperties = mutableListOf<RequestedDocumentData>()
+    private val closeConnectionMutableLiveData = MutableLiveData<Boolean>()
+
+    var inProgress = ObservableInt(View.GONE)
+    var documentsSent = ObservableField<String>()
+    val connectionClosedLiveData: LiveData<Boolean> = closeConnectionMutableLiveData
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
@@ -39,75 +41,114 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun getDocuments() = documentManager.getDocuments()
 
-    fun getEntryNames(): Map<Document, List<String>> {
-        val documents = mutableMapOf<Document, List<String>>()
-        val docRequests =
-            transferManager.getDeviceRequest().documentRequests
-
-        docRequests.forEach { doc ->
-            try {
-                val entryNames = mutableListOf<String>()
-                doc.namespaces.forEach { ns ->
-                    entryNames.addAll(doc.getEntryNames(ns))
-                }
-                documents[documentManager.getDocuments().first { it.docType == doc.docType }] =
-                    entryNames
-            } catch (e : NoSuchElementException) {
-                Log.w(LOG_TAG, "No document for docType " + doc.docType)
-            }
-        }
-        return documents
-    }
-
     fun getCryptoObject() = transferManager.getCryptoObject()
 
-    @Throws(InvalidRequestMessageException::class)
-    fun sendResponse(): CryptoObject? {
-        inProgress.set(View.VISIBLE)
-        // Currently we don't care about the request, for now we just send the mdoc we have
-        // without any regard to what the reader actually requested...
-        //
-        val documents = getDocuments()
+    fun requestedProperties() = requestedProperties
+
+    fun closeConnection() {
+        cleanUp()
+        closeConnectionMutableLiveData.value = true
+    }
+
+    fun addDocumentForSigning(document: RequestedDocumentData) {
+        signedProperties.addNamespace(document)
+    }
+
+    fun toggleSignedProperty(namespace: String, property: String) {
+        signedProperties.toggleProperty(namespace, property)
+    }
+
+    fun sendResponseForRequestedDocument(): List<RequestedDocumentData> {
+        val ownDocuments = getDocuments()
         val requestedDocuments = getRequestedDocuments()
+        val result = mutableListOf<RequestedDocumentData>()
         val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
-        requestedDocuments.forEach { reqDoc ->
+        requestedDocuments.forEach { requestedDocument ->
             try {
-                val doc = documents.first { it.docType == reqDoc.docType }
-                val issuerSignedEntriesToRequest = mutableMapOf<String, Collection<String>>()
-                reqDoc.namespaces.forEach { ns ->
-                    issuerSignedEntriesToRequest[ns] = reqDoc.getEntryNames(ns)
-                }
+                val ownDocument = ownDocuments.first { it.docType == requestedDocument.docType }
+                val userReadableName = ownDocument.userVisibleName
+                val identityCredentialName = ownDocument.identityCredentialName
+                val issuerSignedEntriesToRequest = requestedPropertiesFrom(requestedDocument)
                 val authNeeded = transferManager.addDocumentToResponse(
-                    doc.identityCredentialName,
-                    doc.docType,
+                    identityCredentialName,
+                    requestedDocument.docType,
                     issuerSignedEntriesToRequest,
                     response,
-                    reqDoc.readerAuth,
-                    reqDoc.itemsRequest
+                    requestedDocument.readerAuth,
+                    requestedDocument.itemsRequest
                 )
-                if (authNeeded) {
-                    inProgress.set(View.GONE)
-                    inProgress.notifyChange()
-                    return transferManager.getCryptoObject()
-                }
-            } catch (e : NoSuchElementException) {
-                Log.w(LOG_TAG, "No document for docType " + reqDoc.docType)
+                result.addAll(issuerSignedEntriesToRequest.map {
+                    RequestedDocumentData(
+                        userReadableName,
+                        it.key,
+                        identityCredentialName,
+                        authNeeded,
+                        it.value,
+                        requestedDocument
+                    )
+                })
+            } catch (e: NoSuchElementException) {
+                Log.w(LOG_TAG, "No requestedDocument for docType " + requestedDocument.docType)
             }
         }
-
+        if (result.any { it.needsAuth }) {
+            requestedProperties.addAll(result)
+            return result
+        }
         transferManager.sendResponse(response.generate())
-        documentsCount++
+        val documentsCount = result.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
-        inProgress.set(View.GONE)
-        return null
+        return emptyList()
+    }
+
+    fun sendResponseForSelection() {
+        val propertiesToSend = signedProperties.collect()
+        val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
+        propertiesToSend.forEach { signedDocument ->
+            try {
+                val issuerSignedEntries = with(signedDocument) {
+                    mutableMapOf(namespace to signedProperties)
+                }
+                transferManager.addDocumentToResponse(
+                    signedDocument.identityCredentialName,
+                    signedDocument.documentType,
+                    issuerSignedEntries,
+                    response,
+                    signedDocument.readerAuth,
+                    signedDocument.itemsRequest
+                )
+            } catch (e: NoSuchElementException) {
+                Log.w(LOG_TAG, "No requestedDocument for " + signedDocument.documentType)
+            }
+        }
+        transferManager.sendResponse(response.generate())
+        val documentsCount = propertiesToSend.count()
+        documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
+        cleanUp()
     }
 
     fun cancelPresentation(
         sendSessionTerminationMessage: Boolean,
         useTransportSpecificSessionTermination: Boolean
-    ) =
-        transferManager.stopPresentation(
-            sendSessionTerminationMessage,
-            useTransportSpecificSessionTermination
-        )
+    ) = transferManager.stopPresentation(
+        sendSessionTerminationMessage,
+        useTransportSpecificSessionTermination
+    )
+
+    private fun requestedPropertiesFrom(
+        requestedDocument: DeviceRequestParser.DocumentRequest
+    ): MutableMap<String, Collection<String>> {
+        val result = mutableMapOf<String, Collection<String>>()
+        requestedDocument.namespaces.forEach { namespace ->
+            val list = result.getOrDefault(namespace, ArrayList())
+            (list as ArrayList).addAll(requestedDocument.getEntryNames(namespace))
+            result[namespace] = list
+        }
+        return result
+    }
+
+    private fun cleanUp() {
+        requestedProperties.clear()
+        signedProperties.clear()
+    }
 }

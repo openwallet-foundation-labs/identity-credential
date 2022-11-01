@@ -40,6 +40,9 @@
         <action
             android:id="@+id/action_selectDocumentFragment_to_reverseEngagementFragment"
             app:destination="@id/reverseEngagementFragment" />
+        <action
+            android:id="@+id/action_selectDocumentFragment_to_addSelfSigned"
+            app:destination="@id/addSelfSigned" />
     </fragment>
     <fragment
         android:id="@+id/settingsFragment"
@@ -81,6 +84,19 @@
         <action
             android:id="@+id/action_documentDetailFragment_to_selectDocumentFragment"
             app:destination="@id/selectDocumentFragment" />
+        <action
+            android:id="@+id/navigateToDocumentData"
+            app:destination="@id/showDocumentData"
+            app:popUpTo="@id/documentDetailFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/showDocumentData"
+        android:name="com.android.mdl.app.documentdata.ShowDocumentDataFragment"
+        android:label="Document Data">
+
+        <argument
+            android:name="document"
+            app:argType="com.android.mdl.app.document.Document" />
     </fragment>
     <fragment
         android:id="@+id/updateCheckFragment"
@@ -143,6 +159,47 @@
         tools:layout="@layout/fragment_transfer_document">
         <action
             android:id="@+id/action_transferDocumentFragment_to_selectDocumentFragment"
+            app:destination="@id/selectDocumentFragment" />
+        <action
+            android:id="@+id/navigateToConfirmation"
+            app:destination="@id/authConfirmation"
+            app:popUpTo="@id/transferDocumentFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/authConfirmation"
+        android:name="com.android.mdl.app.authconfirmation.AuthConfirmationFragment"
+        android:label="Confirmation"
+        tools:layout="@layout/fragment_auth_confirmation">
+
+        <argument
+            android:name="readerCommonName"
+            android:defaultValue=""
+            app:argType="string" />
+
+        <argument
+            android:name="readerIsTrusted"
+            android:defaultValue="false"
+            app:argType="boolean" />
+    </fragment>
+    <fragment
+        android:id="@+id/addSelfSigned"
+        android:name="com.android.mdl.app.fragment.AddSelfSignedFragment"
+        android:label="Add Self Signed Document"
+        tools:layout="@layout/fragment_add_self_signed">
+        <action
+            android:id="@+id/action_addSelfSigned_to_selfSignedDetails"
+            app:destination="@id/selfSignedDetails" />
+    </fragment>
+    <fragment
+        android:id="@+id/selfSignedDetails"
+        android:name="com.android.mdl.app.fragment.SelfSignedDetailsFragment"
+        android:label="Self Signed Document Details"
+        tools:layout="@layout/fragment_self_signed_details">
+        <argument
+            android:name="provisionInfo"
+            app:argType="com.android.mdl.app.util.ProvisionInfo" />
+        <action
+            android:id="@+id/action_selfSignedDetails_to_selectDocumentFragment"
             app:destination="@id/selectDocumentFragment" />
     </fragment>
     <fragment

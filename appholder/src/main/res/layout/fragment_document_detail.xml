@@ -95,54 +95,99 @@
             tools:text="dd-MM-yyyy" />
 
         <TextView
-            android:id="@+id/tv_label_date_check_update"
+            android:id="@+id/tv_label_self_signed"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="16dp"
-            android:text="@string/label_date_check_update"
+            android:text="@string/label_self_signed"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_date_provisioned" />
 
         <TextView
-            android:id="@+id/tv_date_check_update"
+            android:id="@+id/tv_self_signed"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
-            app:displayDateTime="@{document.dateCheckForUpdate}"
-            app:layout_constraintBottom_toBottomOf="@id/tv_label_date_check_update"
-            app:layout_constraintStart_toEndOf="@id/tv_label_date_check_update"
-            app:layout_constraintTop_toTopOf="@id/tv_label_date_check_update"
-            tools:text="dd-MM-yyyy" />
+            app:layout_constraintBottom_toBottomOf="@id/tv_label_self_signed"
+            app:layout_constraintStart_toEndOf="@id/tv_label_self_signed"
+            app:layout_constraintTop_toTopOf="@id/tv_label_self_signed"
+            tools:text="yes" />
 
         <TextView
-            android:id="@+id/tv_label_refresh_auth_keys"
+            android:id="@+id/tv_label_user_auth"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="16dp"
-            android:text="@string/label_refresh_auth_keys"
+            android:text="@string/label_user_auth"
             android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_date_check_update" />
+            app:layout_constraintTop_toBottomOf="@id/tv_self_signed" />
 
         <TextView
-            android:id="@+id/tv_date_refresh_auth_keys"
+            android:id="@+id/tv_user_auth"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
-            app:displayDateTime="@{document.dateRefreshAuthKeys}"
-            app:layout_constraintBottom_toBottomOf="@id/tv_label_refresh_auth_keys"
-            app:layout_constraintStart_toEndOf="@id/tv_label_refresh_auth_keys"
-            app:layout_constraintTop_toTopOf="@id/tv_label_refresh_auth_keys"
-            tools:text="dd-MM-yyyy" />
+            app:layout_constraintBottom_toBottomOf="@id/tv_label_user_auth"
+            app:layout_constraintStart_toEndOf="@id/tv_label_user_auth"
+            app:layout_constraintTop_toTopOf="@id/tv_label_user_auth"
+            tools:text="no" />
+
+        <TextView
+            android:id="@+id/tv_label_hardware_backed"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:text="@string/label_hardware_backed"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_user_auth" />
+
+        <TextView
+            android:id="@+id/tv_hardware_backed"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintBottom_toBottomOf="@id/tv_label_hardware_backed"
+            app:layout_constraintStart_toEndOf="@id/tv_label_hardware_backed"
+            app:layout_constraintTop_toTopOf="@id/tv_label_hardware_backed"
+            tools:text="no" />
+
+        <TextView
+            android:id="@+id/tv_label_mso_usage_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:text="@string/label_mso_usage_count"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_hardware_backed" />
+
+        <TextView
+            android:id="@+id/tv_mso_usage_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintBottom_toBottomOf="@id/tv_label_mso_usage_count"
+            app:layout_constraintStart_toEndOf="@id/tv_label_mso_usage_count"
+            app:layout_constraintTop_toTopOf="@id/tv_label_mso_usage_count" />
 
         <Button
             android:id="@+id/bt_refresh_auth_keys"
@@ -154,7 +199,7 @@
             android:text="@string/bt_refresh_auth_keys"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_label_refresh_auth_keys" />
+            app:layout_constraintTop_toBottomOf="@+id/tv_label_mso_usage_count" />
 
         <Button
             android:id="@+id/bt_check_updates"
@@ -168,6 +213,17 @@
             app:layout_constraintTop_toBottomOf="@+id/bt_refresh_auth_keys" />
 
         <Button
+            android:id="@+id/bt_show_data"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:onClick="@{() -> fragment.onShowData()}"
+            android:text="@string/bt_show_data"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/bt_check_updates" />
+
+        <Button
             android:id="@+id/bt_delete"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="wrap_content"
@@ -177,7 +233,7 @@
             android:text="@string/bt_delete"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/bt_check_updates" />
+            app:layout_constraintTop_toBottomOf="@+id/bt_show_data" />
 
         <!-- check automatically for auth keys-->
 
