@@ -247,7 +247,7 @@ public class TestVectors {
    static final String ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_D =
            "6ed542ad4783f0b18c833fadf2171273a35d969c581691ef704359cc7cf1e8c0";
  
-   static final String ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT =
+   public static final String ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT =
            "a26a655265616465724b6579d818584ba40102200121582060e3392385041f51403051f2415531cb5"
            + "6dd3f999c71687013aac6768bc8187e225820e58deb8fdbe907f7dd5368245551a34796f7d2215c44"
            + "0c339bb0f7b67beccdfa64646174615902df52ada2acbeb6c390f2ca0bc659b484678eb94dd450743"
@@ -270,7 +270,7 @@ public class TestVectors {
            + "ebb224e983db12677e316c22aae042d6ce4adae0d8b0f40437b8e1afa0859c9501beb63974496859a"
            + "60f11069b1965b4ffac5779a96191f89eac7caa688b9e67c";
  
-   static final String ISO_18013_5_ANNEX_D_SESSION_DATA =
+   public static final String ISO_18013_5_ANNEX_D_SESSION_DATA =
            "a16464617461590dfa46da5fb292a7880af38f2e4d9eb23ecac231ad21dfe81e3b5c21e7f3d2b5a2d"
            + "4676dd13331112f0fba678275dc2fcd889150a7bbb333b7ecf5f35fc8b2e4aee701651a4bdc93cd25"
            + "bc533582647507b5b9a075deaf7e1ef035acb3c8b403ac6e51a19d4289381035199da169b5ab175d8"

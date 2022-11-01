@@ -9,6 +9,7 @@ public class ServletConsts {
     public static final String PRIVATE_KEY_PROP = "Reader Key Private";
     public static final String READER_ENGAGEMENT_PROP = "Reader Engagement";
     public static final String SESSION_TRANS_PROP = "Session Transcript";
+    public static final String DEVICE_KEY_PROP = "Device Key";
 
     // HTTP request constants
     public static final String GET_PARAM = "request-type";

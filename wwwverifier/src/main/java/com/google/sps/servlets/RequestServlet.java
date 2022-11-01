@@ -1,23 +1,12 @@
 package com.google.sps.servlets;
 
+import co.nstant.in.cbor.CborBuilder;
 import com.google.gson.Gson;
 import java.util.Base64;
 import java.util.OptionalInt;
 
-// imports for CBOR encoding/decoding
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.CborDecoder;
-import co.nstant.in.cbor.CborEncoder;
-import co.nstant.in.cbor.CborException;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.UnsignedInteger;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 // imports for key generation
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -26,18 +15,16 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.security.InvalidAlgorithmParameterException;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 
 // Java servlet imports
+import java.io.IOException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.ServletInputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 // imports for Datastore
 import com.google.appengine.api.datastore.DatastoreService;
@@ -107,9 +94,10 @@ public class RequestServlet extends HttpServlet {
         putByteArrInDatastore(ServletConsts.PUBLIC_KEY_PROP, keyPair.getPublic().getEncoded());
         putByteArrInDatastore(ServletConsts.PRIVATE_KEY_PROP, keyPair.getPrivate().getEncoded());
 
-        String readerEngagementStr = Base64.getEncoder().withoutPadding().encodeToString(arr);
+        String readerEngagementStr = Base64.getUrlEncoder().withoutPadding().encodeToString(readerEngagement);
+        String readerEngagementStrEdited = readerEngagementStr.replace("\n","");
   
-        return ServletConsts.MDOC_URI_PREFIX + base64Encode(readerEngagementStr);
+        return ServletConsts.MDOC_URI_PREFIX + readerEngagementStrEdited;
     }
 
     /**
@@ -140,17 +128,12 @@ public class RequestServlet extends HttpServlet {
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (!getDeviceRequestBoolean()) {
-            byte[] messageData = getBytesFromRequest(request);
-            SessionEncryptionReader sessionEncryption = createSessionEncryptionReader(messageData);
+            SessionEncryptionReader sessionEncryption = createSessionEncryptionReader(getBytesFromRequest(request));
             byte[] sessionData = generateDeviceRequest(sessionEncryption);
             setDeviceRequestBoolean(true);
-            response.setContentType("text/html;");
-            //response.getWriter().println(base64Encode(sessionData));
-            
-            response.getOutputStream().write(sessionData,0,sessionData.length);
+            response.getOutputStream().write(sessionData);
         } else {
-            byte[] messageData = getBytesFromRequest(request);
-            String json = parseDeviceResponse(messageData);
+            String json = parseDeviceResponse(getBytesFromRequest(request));
             Entity entity = getEntity();
             entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(json));
             datastore.put(entity);
@@ -184,10 +167,11 @@ public class RequestServlet extends HttpServlet {
     }
 
     public byte[] getBytesFromRequest(HttpServletRequest request) {
-        byte[] arr = new byte[request.getContentLength()];
+        int length = request.getContentLength();
+        byte[] arr = new byte[length];
         try {
             ServletInputStream stream = request.getInputStream();
-            stream.read(arr);
+            stream.read(arr,0,length);
         } catch (IOException e) {
             throw new IllegalStateException("Error reading request body", e);
         }
@@ -201,9 +185,8 @@ public class RequestServlet extends HttpServlet {
      * @param request POST request containing MessageData
      * @return SessionEncryptionReader, to be used to create DeviceRequest in the future.
      */
-    public SessionEncryptionReader createSessionEncryptionReader(byte[] data) {
-        byte[] encodedDeviceEngagement = Util.cborMapExtractByteString(Util.cborDecode(data), ServletConsts.DEVICE_ENGAGEMENT_KEY);
-        putByteArrInDatastore("Device Engagement", encodedDeviceEngagement);
+    public SessionEncryptionReader createSessionEncryptionReader(byte[] messageData) {
+        byte[] encodedDeviceEngagement = Util.cborMapExtractByteString(Util.cborDecode(messageData), ServletConsts.DEVICE_ENGAGEMENT_KEY);
 
         // retrieve keys from datastore
         PublicKey eReaderKeyPublic = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.PUBLIC_KEY_PROP));
@@ -212,7 +195,7 @@ public class RequestServlet extends HttpServlet {
         // get eDeviceKey
         EngagementParser.Engagement deviceEngagement = new EngagementParser(encodedDeviceEngagement).parse();
         PublicKey eDeviceKey = deviceEngagement.getESenderKey();
-        putByteArrInDatastore("Device Key", eDeviceKey.getEncoded());
+        putByteArrInDatastore(ServletConsts.DEVICE_KEY_PROP, eDeviceKey.getEncoded());
 
         byte[] sessionTranscript = createSessionTranscript(encodedDeviceEngagement, eReaderKeyPublic);
 
@@ -255,14 +238,15 @@ public class RequestServlet extends HttpServlet {
      * @param request POST request containing DeviceResponse
      * @return JSON string containing Documents contained within DeviceResponse
      */
-    public String parseDeviceResponse(byte[] data) {
+    public String parseDeviceResponse(byte[] messageData) {
         PublicKey eReaderKeyPublic = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.PUBLIC_KEY_PROP));
         PrivateKey eReaderKeyPrivate = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
-        PublicKey eDeviceKeyPublic = getPublicKeyFromString(getPropertyFromDatastore("Device Key"));
+        PublicKey eDeviceKeyPublic = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.DEVICE_KEY_PROP));
         byte[] sessionTranscript = base64Decode(getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
 
         SessionEncryptionReader reader = new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
-        byte[] deviceResponseBytes = reader.decryptMessageFromDevice(data);
+
+        byte[] deviceResponseBytes = reader.decryptMessageFromDevice(messageData);
         
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
             .setDeviceResponse(deviceResponseBytes)
@@ -305,7 +289,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return PublicKey, converted from a String @param str
      */
-    public PublicKey getPublicKeyFromString(String str) {
+    public static PublicKey getPublicKeyFromString(String str) {
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(base64Decode(str));
         try {
             KeyFactory keyFactory = KeyFactory.getInstance(ServletConsts.KEY_GENERATION_INSTANCE);
@@ -318,7 +302,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return PrivateKey, converted from a String @param str
      */
-    public PrivateKey getPrivateKeyFromString(String str) {
+    public static PrivateKey getPrivateKeyFromString(String str) {
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(base64Decode(str));
         try {
             KeyFactory keyFactory = KeyFactory.getInstance(ServletConsts.KEY_GENERATION_INSTANCE);
@@ -346,7 +330,7 @@ public class RequestServlet extends HttpServlet {
      * @param propName Name of the property that should be retrieved from Datastore
      * @return String data from Datastore corresponding to @param propName
      */
-    public String getPropertyFromDatastore(String propertyName) {
+    public static String getPropertyFromDatastore(String propertyName) {
         Entity entity = getEntity();
         return (String) entity.getProperty(propertyName);
     }

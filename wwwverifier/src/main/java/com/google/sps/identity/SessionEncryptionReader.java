@@ -244,7 +244,6 @@ public final class SessionEncryptionReader {
             }
             mSKDeviceCounter += 1;
         }
-
         return plainText;
     }
  
