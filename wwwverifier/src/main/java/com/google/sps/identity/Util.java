@@ -708,7 +708,7 @@ public class Util {
     /**
      * Returns #6.24(bstr) of the given already encoded CBOR
      */
-    static  
+    public static  
     DataItem cborBuildTaggedByteString(  byte[] encodedCbor) {
         DataItem item = new ByteString(encodedCbor);
         item.setTag(CBOR_SEMANTIC_TAG_ENCODED_CBOR);
@@ -819,7 +819,7 @@ public class Util {
         return ret;
     }
 
-    static  
+    public static  
     DataItem cborBuildCoseKey(  PublicKey key) {
         ECPublicKey ecKey = (ECPublicKey) key;
         ECPoint w = ecKey.getW();
@@ -921,7 +921,7 @@ public class Util {
         return castTo(ByteString.class, item).getBytes();
     }
 
-    static  
+    public static  
     byte[] cborMapExtractByteString(  DataItem map,
               String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));

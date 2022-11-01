@@ -128,8 +128,7 @@ public class RequestServlet extends HttpServlet {
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         if (!getDeviceRequestBoolean()) {
-            SessionEncryptionReader sessionEncryption = createSessionEncryptionReader(getBytesFromRequest(request));
-            byte[] sessionData = generateDeviceRequest(sessionEncryption);
+            byte[] sessionData = createDeviceRequest(getBytesFromRequest(request));
             setDeviceRequestBoolean(true);
             response.getOutputStream().write(sessionData);
         } else {
@@ -141,6 +140,35 @@ public class RequestServlet extends HttpServlet {
             response.setContentType("application/json;");
             response.getWriter().println(json);
         }
+    }
+
+     /**
+      * Parses the MessageData CBOR message to isolate DeviceEngagement; DeviceEngagement is then used
+      * to create a DeviceRequest.
+      *
+      * @param messageData CBOR message extracted from POST request
+      * @return SessionData CBOR message containing DeviceRequest
+      */
+    public byte[] createDeviceRequest(byte[] messageData) {
+        byte[] encodedDeviceEngagement = Util.cborMapExtractByteString(Util.cborDecode(messageData), ServletConsts.DEVICE_ENGAGEMENT_KEY);
+        PublicKey eReaderKeyPublic = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.PUBLIC_KEY_PROP));
+        PrivateKey eReaderKeyPrivate = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
+        byte[] readerEngagementBytes = base64Decode(getPropertyFromDatastore(ServletConsts.READER_ENGAGEMENT_PROP));
+
+        PublicKey eDeviceKeyPublic = new EngagementParser(encodedDeviceEngagement).parse().getESenderKey();
+        putByteArrInDatastore(ServletConsts.DEVICE_KEY_PROP, eDeviceKeyPublic.getEncoded());
+
+        byte[] sessionTranscript = Util.cborEncode(new CborBuilder()
+            .addArray()
+                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPublic))))
+                .add(Util.cborBuildTaggedByteString(readerEngagementBytes))
+            .end().build().get(0));
+        putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
+
+        SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
+        byte[] deviceRequest = new DeviceRequestGenerator().setSessionTranscript(sessionTranscript).generate();
+        return ser.encryptMessageToDevice(deviceRequest, OptionalInt.empty());
     }
 
     /**
@@ -166,6 +194,11 @@ public class RequestServlet extends HttpServlet {
         }
     }
 
+    /**
+     * 
+     * @param request HTTP POST request
+     * @return byte array with data extracted from {@ request}
+     */
     public byte[] getBytesFromRequest(HttpServletRequest request) {
         int length = request.getContentLength();
         byte[] arr = new byte[length];
@@ -176,60 +209,6 @@ public class RequestServlet extends HttpServlet {
             throw new IllegalStateException("Error reading request body", e);
         }
         return arr;
-    }
-
-    /**
-     * Parses the MessageData CBOR message to isolate DeviceEngagement, and then uses it
-     * to get the session transcript.
-     * 
-     * @param request POST request containing MessageData
-     * @return SessionEncryptionReader, to be used to create DeviceRequest in the future.
-     */
-    public SessionEncryptionReader createSessionEncryptionReader(byte[] messageData) {
-        byte[] encodedDeviceEngagement = Util.cborMapExtractByteString(Util.cborDecode(messageData), ServletConsts.DEVICE_ENGAGEMENT_KEY);
-
-        // retrieve keys from datastore
-        PublicKey eReaderKeyPublic = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.PUBLIC_KEY_PROP));
-        PrivateKey eReaderKeyPrivate = getPrivateKeyFromString(getPropertyFromDatastore(ServletConsts.PRIVATE_KEY_PROP));
-
-        // get eDeviceKey
-        EngagementParser.Engagement deviceEngagement = new EngagementParser(encodedDeviceEngagement).parse();
-        PublicKey eDeviceKey = deviceEngagement.getESenderKey();
-        putByteArrInDatastore(ServletConsts.DEVICE_KEY_PROP, eDeviceKey.getEncoded());
-
-        byte[] sessionTranscript = createSessionTranscript(encodedDeviceEngagement, eReaderKeyPublic);
-
-        return new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKey, sessionTranscript);
-    }
-
-    public byte[] createSessionTranscript(byte[] encodedDeviceEngagement, PublicKey eReaderKeyPublic) {
-        byte[] readerEngagementBytes = base64Decode(getPropertyFromDatastore(ServletConsts.READER_ENGAGEMENT_PROP));
-        byte[] eReaderKeyBytes = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPublic));
-
-        byte[] sessionTranscript = Util.cborEncode(new CborBuilder()
-            .addArray()
-                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
-                .add(Util.cborBuildTaggedByteString(eReaderKeyBytes))
-                .add(Util.cborBuildTaggedByteString(readerEngagementBytes))
-            .end()
-            .build().get(0));
-
-        putByteArrInDatastore(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
-
-        return sessionTranscript;
-    }
-
-    /**
-     * Generates Device Request using the session transcript extracted from the initial SessionEstablishment
-     * message.
-     * 
-     * @param sessionEncryption SessionEncryptionReader object, to be used to create DeviceRequest
-     * @return DeviceRequest, to be sent back as a response to the initial POST request
-     */
-    public byte[] generateDeviceRequest(SessionEncryptionReader reader) {
-        byte[] sessionTranscript = base64Decode(getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
-        byte[] deviceRequest = new DeviceRequestGenerator().setSessionTranscript(sessionTranscript).generate();
-        return reader.encryptMessageToDevice(deviceRequest, OptionalInt.empty());
     }
 
     /**
@@ -244,9 +223,9 @@ public class RequestServlet extends HttpServlet {
         PublicKey eDeviceKeyPublic = getPublicKeyFromString(getPropertyFromDatastore(ServletConsts.DEVICE_KEY_PROP));
         byte[] sessionTranscript = base64Decode(getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
 
-        SessionEncryptionReader reader = new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
+        SessionEncryptionReader seReader = new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
 
-        byte[] deviceResponseBytes = reader.decryptMessageFromDevice(messageData);
+        byte[] deviceResponseBytes = seReader.decryptMessageFromDevice(messageData);
         
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
             .setDeviceResponse(deviceResponseBytes)

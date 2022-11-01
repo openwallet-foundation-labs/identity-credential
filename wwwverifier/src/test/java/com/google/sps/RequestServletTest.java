@@ -53,9 +53,11 @@ import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 import com.google.appengine.api.datastore.Text;
 
 // imports from Identity Credential Library
+import com.google.sps.servlets.DeviceRequestParser;
+import com.google.sps.servlets.EngagementParser;
+import com.google.sps.servlets.SessionEncryptionDevice;
 import com.google.sps.servlets.TestVectors;
 import com.google.sps.servlets.Util;
-import com.google.sps.servlets.EngagementParser;
 
 // imports from custom classes
 import com.google.sps.servlets.RequestServlet;
@@ -79,6 +81,8 @@ public class RequestServletTest {
     private PublicKey eDeviceKeyPublic = Util.getPublicKeyFromIntegers(
         new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X, 16),
         new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y, 16));
+    private PrivateKey eDeviceKeyPrivate = Util.getPrivateKeyFromInteger(new BigInteger(
+        TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D, 16));
     private byte[] encodedSessionTranscriptBytes = Util.fromHex(
         TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
     private DataItem sessionTranscript = Util.cborExtractTaggedAndEncodedCbor(
@@ -174,16 +178,16 @@ public class RequestServletTest {
 
         byte[] sessionData = baos.toByteArray();
 
-        ByteArrayInputStream bais = new ByteArrayInputStream(sessionData);
-        try {
-            List<DataItem> dataItems = new CborDecoder(bais).decode();
-            // assert that the size of dataItems is either 1 or 2 (depending on whether status is included)
-            Assert.assertTrue(dataItems.size() > 0 && dataItems.size() < 3);
-            // assert that DeviceRequest is present
-            Assert.assertNotNull(dataItems.get(0));
-        } catch (CborException e) {
-            throw new IllegalStateException("Error with CBOR decoding", e);
-        }
+        // parse sessionData to extract DeviceRequest
+        byte[] generatedSessionTranscript = RequestServlet.base64Decode(RequestServlet.getPropertyFromDatastore(ServletConsts.SESSION_TRANS_PROP));
+        SessionEncryptionDevice seDevice = new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedSessionTranscript);
+        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
+            .setDeviceRequest(seDevice.decryptMessageFromReader(sessionData))
+            .setSessionTranscript(generatedSessionTranscript)
+            .parse();
+
+        Assert.assertEquals("1.0", dr.getVersion());
+        Assert.assertEquals(0, dr.getDocumentRequests().size());
     }
 
     @Test
