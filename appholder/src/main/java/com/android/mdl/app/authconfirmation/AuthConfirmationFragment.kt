@@ -46,6 +46,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        binding.tvTitle.text = getSubtitle()
         val propertiesToSign = viewModel.requestedProperties()
         propertiesToSign.forEach { documentData ->
             binding.llPropertiesContainer.addView(documentNameFor(documentData))
@@ -107,7 +108,6 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     private fun requestUserAuth(forceLskf: Boolean) {
         val userAuthRequest = UserAuthPromptBuilder.requestUserAuth(this)
             .withTitle(getString(R.string.bio_auth_title))
-            .withSubtitle(getSubtitle())
             .withNegativeButton(getString(R.string.bio_auth_use_pin))
             .withSuccessCallback { authenticationSucceeded() }
             .withCancelledCallback { retryForcingPinUse() }
