@@ -4,6 +4,8 @@ import co.nstant.in.cbor.CborBuilder;
 import com.google.gson.Gson;
 import java.util.Base64;
 import java.util.OptionalInt;
+import java.util.Map;
+import java.util.HashMap;
 
 // imports for key generation
 import java.security.InvalidAlgorithmParameterException;
@@ -168,8 +170,26 @@ public class RequestServlet extends HttpServlet {
         setDatastoreProp(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
 
         SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
-        byte[] dr = new DeviceRequestGenerator().setSessionTranscript(sessionTranscript).generate();
+        byte[] dr = new DeviceRequestGenerator()
+            .setSessionTranscript(sessionTranscript)
+            .addDocumentRequest(ServletConsts.MDL_DOCTYPE, createMdlItemsToRequest(), null, null, null)
+            .generate();
         return ser.encryptMessageToDevice(dr, OptionalInt.empty());
+    }
+
+    /**
+     * @return Map of items to request from the mDL app
+     */
+    public Map<String, Map<String, Boolean>> createMdlItemsToRequest() {
+        Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
+        Map<String, Boolean> mdlNsItems = new HashMap<>();
+        mdlNsItems.put("family_name", true);
+        mdlNsItems.put("portrait", false);
+        mdlItemsToRequest.put(ServletConsts.MDL_NAMESPACE, mdlNsItems);
+        Map<String, Boolean> aamvaNsItems = new HashMap<>();
+        aamvaNsItems.put("real_id", false);
+        mdlItemsToRequest.put(ServletConsts.AAMVA_NAMESPACE, aamvaNsItems);
+        return mdlItemsToRequest;
     }
 
     /**

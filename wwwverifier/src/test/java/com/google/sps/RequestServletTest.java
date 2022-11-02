@@ -161,7 +161,7 @@ public class RequestServletTest {
     @Test
     public void checkDeviceRequestGenerationWithTestVector() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ServletOutputStream os = createMockServletOutputStream(baos);
+        ServletOutputStream os = createMockOutputStream(baos);
         Mockito.when(response.getOutputStream()).thenReturn(os);
 
         fillDatastoreForDeviceRequestGeneration();
@@ -187,7 +187,7 @@ public class RequestServletTest {
             .parse();
 
         Assert.assertEquals("1.0", dr.getVersion());
-        Assert.assertEquals(0, dr.getDocumentRequests().size());
+        Assert.assertEquals(1, dr.getDocumentRequests().size());
     }
 
     @Test
@@ -216,13 +216,12 @@ public class RequestServletTest {
         RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
         RequestServlet.setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded());
         RequestServlet.setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
-        RequestServlet.setDeviceRequestBoolean(false);
     }
 
     public byte[] createMockMessageData(String name, byte[] data) {
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
-        map.put(name,data);
+        map.put(name, data);
         map.end();
         return Util.cborEncode(builder.build().get(0));
     }
@@ -263,7 +262,7 @@ public class RequestServletTest {
         };
     }
 
-    public ServletOutputStream createMockServletOutputStream(ByteArrayOutputStream baos) {
+    public ServletOutputStream createMockOutputStream(ByteArrayOutputStream baos) {
         return new ServletOutputStream() {
             private WriteListener writeListener = null;
 

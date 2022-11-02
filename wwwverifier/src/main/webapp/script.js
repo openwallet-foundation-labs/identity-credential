@@ -3,10 +3,12 @@ const GET_URL_CREATE = 'create-uri';
 const GET_URL_DISPLAY = 'display-response';
 
 const QRCODE_ID = 'request-qrcode';
+const QRCODE_TEXT_ID = 'request-confirmation-text'
 const RESPONSE_ID = 'response-confirmation';
 
 function requestMDL() {
     fetch(GET_URL + GET_URL_CREATE).then(response => response.text()).then((responseText) => {
+        document.getElementById(QRCODE_TEXT_ID).innerText = responseText;
         new QRious({
             element: document.getElementById(QRCODE_ID),
             background: '#ffffff',

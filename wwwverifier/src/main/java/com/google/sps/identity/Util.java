@@ -1675,4 +1675,128 @@ public class Util {
         pendingDataBaos.write(pendingData, dataItemLength, pendingData.length - dataItemLength);
         return dataItemBytes;
     }
+
+    static
+    DataItem coseSign1Sign(Signature s, byte[] data, byte[] detachedContent, Collection<X509Certificate> certificateChain) {
+
+        int dataLen = (data != null ? data.length : 0);
+        int detachedContentLen = (detachedContent != null ? detachedContent.length : 0);
+        if (dataLen > 0 && detachedContentLen > 0) {
+            throw new IllegalArgumentException("data and detachedContent cannot both be non-empty");
+        }
+
+        int keySize;
+        long alg;
+        if (s.getAlgorithm().equals("SHA256withECDSA")) {
+            keySize = 32;
+            alg = COSE_ALG_ECDSA_256;
+        } else if (s.getAlgorithm().equals("SHA384withECDSA")) {
+            keySize = 48;
+            alg = COSE_ALG_ECDSA_384;
+        } else if (s.getAlgorithm().equals("SHA512withECDSA")) {
+            keySize = 64;
+            alg = COSE_ALG_ECDSA_512;
+        } else {
+            throw new IllegalArgumentException("Unsupported algorithm " + s.getAlgorithm());
+        }
+
+        CborBuilder protectedHeaders = new CborBuilder();
+        MapBuilder<CborBuilder> protectedHeadersMap = protectedHeaders.addMap();
+        protectedHeadersMap.put(COSE_LABEL_ALG, alg);
+        byte[] protectedHeadersBytes = cborEncode(protectedHeaders.build().get(0));
+
+        byte[] toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent);
+
+        byte[] coseSignature = null;
+        try {
+            s.update(toBeSigned);
+            byte[] derSignature = s.sign();
+            coseSignature = signatureDerToCose(derSignature, keySize);
+        } catch (SignatureException e) {
+            throw new IllegalStateException("Error signing data", e);
+        }
+
+        CborBuilder builder = new CborBuilder();
+        ArrayBuilder<CborBuilder> array = builder.addArray();
+        array.add(protectedHeadersBytes);
+        MapBuilder<ArrayBuilder<CborBuilder>> unprotectedHeaders = array.addMap();
+        try {
+            if (certificateChain != null && certificateChain.size() > 0) {
+                if (certificateChain.size() == 1) {
+                    X509Certificate cert = certificateChain.iterator().next();
+                    unprotectedHeaders.put(COSE_LABEL_X5CHAIN, cert.getEncoded());
+                } else {
+                    ArrayBuilder<MapBuilder<ArrayBuilder<CborBuilder>>> x5chainsArray =
+                            unprotectedHeaders.putArray(COSE_LABEL_X5CHAIN);
+                    for (X509Certificate cert : certificateChain) {
+                        x5chainsArray.add(cert.getEncoded());
+                    }
+                }
+            }
+        } catch (CertificateEncodingException e) {
+            throw new IllegalStateException("Error encoding certificate", e);
+        }
+        if (data == null || data.length == 0) {
+            array.add(new SimpleValue(SimpleValueType.NULL));
+        } else {
+            array.add(data);
+        }
+        array.add(coseSignature);
+
+        return builder.build().get(0);
+    }
+
+    /**
+     * Note: this uses the default JCA provider which may not support a lot of curves, for
+     * example it doesn't support Brainpool curves. If you need to use such curves, use
+     * {@link #coseSign1Sign(Signature, byte[], byte[], Collection)} instead with a
+     * Signature created using a provider that does have support.
+     *
+     * Currently only ECDSA signatures are supported.
+     *
+     * TODO: add support and tests for Ed25519 and Ed448.
+     */
+    static
+    DataItem coseSign1Sign(PrivateKey key, String algorithm, byte[] data, byte[] additionalData, Collection<X509Certificate> certificateChain) {
+        try {
+            Signature s = Signature.getInstance(algorithm);
+            s.initSign(key);
+            return coseSign1Sign(s, data, additionalData, certificateChain);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IllegalStateException("Caught exception", e);
+        }
+    }
+
+    private static byte[] signatureDerToCose(byte[] signature, int keySize) {
+        ASN1Primitive asn1;
+        try {
+            asn1 = new ASN1InputStream(new ByteArrayInputStream(signature)).readObject();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Error decoding DER signature", e);
+        }
+        ASN1Encodable[] asn1Encodables = castTo(ASN1Sequence.class, asn1).toArray();
+        if (asn1Encodables.length != 2) {
+            throw new IllegalArgumentException("Expected two items in sequence");
+        }
+        BigInteger r = castTo(ASN1Integer.class, asn1Encodables[0].toASN1Primitive()).getValue();
+        BigInteger s = castTo(ASN1Integer.class, asn1Encodables[1].toASN1Primitive()).getValue();
+
+        byte[] rBytes = stripLeadingZeroes(r.toByteArray());
+        byte[] sBytes = stripLeadingZeroes(s.toByteArray());
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            for (int n = 0; n < keySize - rBytes.length; n++) {
+                baos.write(0x00);
+            }
+            baos.write(rBytes);
+            for (int n = 0; n < keySize - sBytes.length; n++) {
+                baos.write(0x00);
+            }
+            baos.write(sBytes);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return baos.toByteArray();
+    }
 }
