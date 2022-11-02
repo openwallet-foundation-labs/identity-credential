@@ -21,8 +21,19 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import android.content.Context;
 import android.net.wifi.WifiManager;
 import android.text.format.Formatter;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.NetworkResponse;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.HttpHeaderParser;
+import com.android.volley.toolbox.Volley;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -38,9 +49,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * HTTP data transport.
  *
- * TODO: port connection-part (HTTP Client) to use volley or okhttp
- * TODO: mark listening-part (HTTP Server) as dangerous to use
- * TODO: support HTTPS
+ * TODO: Maybe make it possible for the application to check the TLS root certificate via
+ *   DataTransportOptions
  */
 public class DataTransportHttp extends DataTransport {
     private static final String TAG = "DataTransportHttp";
@@ -205,42 +215,63 @@ public class DataTransportHttp extends DataTransport {
         mUseTls = useTls;
     }
 
+    private RequestQueue mRequestQueue;
+
     private void connectAsMdoc() {
         Logger.d(TAG, String.format(Locale.US,
-                "Connecting to host=%s port=%d useTls=%s", mHost, mPort, mUseTls));
-        Thread socketReaderThread = new Thread() {
-            @Override
-            public void run() {
-                InputStream inputStream = null;
-                try {
-                    mSocket = new Socket(mHost, mPort);
-                    inputStream = mSocket.getInputStream();
-                } catch (IOException e) {
-                    reportError(e);
-                    return;
-                }
+                "Connecting to uri=%s (host=%s port=%d useTls=%s)",
+                mConnectionMethod.getUri(),
+                mHost, mPort, mUseTls));
 
-                reportConnected();
-
-                setupWritingThread(false);
-
-                while (!mSocket.isClosed()) {
-                    byte[] data = readMessageFromSocket(inputStream);
-                    if (data == null) {
-                        reportError(new Error("Error reading message from socket"));
-                        break;
-                    } else if (data.length == 0) {
-                        // End Of Stream
-                        reportDisconnected();
-                        break;
-                    }
-                    reportMessageReceived(data);
-                }
-            }
-        };
-        socketReaderThread.start();
-        // No change to the ConnectionMethod, use what was passed into the constructor.
         reportConnectionMethodReady();
+
+        mRequestQueue = Volley.newRequestQueue(mContext);
+
+        // We're not really connected yet but if it doesn't work, we'll fail later...
+        reportConnected();
+    }
+
+    private void sendMessageAsMdoc(@NonNull byte[] data) {
+        if (mRequestQueue == null) {
+            Logger.w(TAG, "Not sending message since the connection is closed.");
+            return;
+        }
+
+        if (Logger.isDebugEnabled()) {
+            Logger.d(TAG, String.format(Locale.US, "HTTP POST to %s with payload of length %d",
+                    mConnectionMethod.getUri(), data.length));
+        }
+        CborRequest request = new CborRequest(Request.Method.POST,
+                mConnectionMethod.getUri(),
+                data,
+                "application/CBOR",
+                new Response.Listener<byte[]>() {
+                    @Override
+                    public void onResponse(byte[] response) {
+                        if (Logger.isDebugEnabled()) {
+                            Logger.d(TAG, "Received response to HTTP request payload of length " + response.length);
+                        }
+                        reportMessageReceived(response);
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Logger.d(TAG, "Received error in response to HTTP request", error);
+                        error.printStackTrace();
+                        reportError(new Error("Error sending HTTP request", error));
+                    }
+                }
+        );
+        // We use long-polling because the duration between delivering a HTTP Request (containing
+        // DeviceResponse) and receiving the response (containing DeviceRequest) may be spent
+        // by the verifier configuring the mdoc reader which request to make next... set this
+        // to two minutes and no retries.
+        request.setRetryPolicy(new DefaultRetryPolicy(
+                2*60*1000,
+                0,
+                1.0f));
+        mRequestQueue.add(request);
     }
 
     @Override
@@ -326,11 +357,19 @@ public class DataTransportHttp extends DataTransport {
                 Logger.e(TAG, "Caught exception while shutting down: " + e);
             }
         }
+        if (mRequestQueue != null) {
+            mRequestQueue.cancelAll(request -> true);
+            mRequestQueue = null;
+        }
     }
 
     @Override
     void sendMessage(@NonNull byte[] data) {
-        mWriterQueue.add(data);
+        if (mRole == ROLE_MDOC) {
+            sendMessageAsMdoc(data);
+        } else {
+            mWriterQueue.add(data);
+        }
     }
 
     @Override
@@ -346,5 +385,56 @@ public class DataTransportHttp extends DataTransport {
     @Override
     public @NonNull ConnectionMethod getConnectionMethod() {
         return mConnectionMethod;
+    }
+
+    static class CborRequest extends Request<byte[]> {
+        private static final String TAG = "BlobRequest";
+        private final Response.Listener<byte[]> mListener;
+        private final byte[] mBody;
+        private final String mBodyContentType;
+
+        /**
+         * Creates a new request with the given method.
+         *
+         * @param method        the request {@link Method} to use
+         * @param url           URL to fetch the string at
+         * @param body          the data to POST
+         * @param listener      Listener to receive the String response
+         * @param errorListener Error mListener, or null to ignore errors
+         */
+        public CborRequest(
+                int method,
+                @NonNull String url,
+                @Nullable byte[] body,
+                @Nullable String bodyContentType,
+                @NonNull Response.Listener<byte[]> listener,
+                @Nullable Response.ErrorListener errorListener) {
+            super(method, url, errorListener);
+            mListener = listener;
+            mBody = body;
+            mBodyContentType = bodyContentType;
+        }
+
+        @Override
+        protected void deliverResponse(byte[] response) {
+            mListener.onResponse(response);
+        }
+
+        @Override
+        protected Response<byte[]> parseNetworkResponse(NetworkResponse response) {
+            Log.d(TAG, "response.data");
+            return Response.success(response.data, HttpHeaderParser.parseCacheHeaders(response));
+        }
+
+        @Override
+        public byte[] getBody() {
+            return mBody;
+        }
+
+        @Override
+        public String getBodyContentType() {
+            return mBodyContentType;
+        }
+
     }
 }
