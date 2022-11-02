@@ -165,7 +165,7 @@
             app:destination="@id/authConfirmation"
             app:popUpTo="@id/transferDocumentFragment" />
     </fragment>
-    <fragment
+    <dialog
         android:id="@+id/authConfirmation"
         android:name="com.android.mdl.app.authconfirmation.AuthConfirmationFragment"
         android:label="Confirmation"
@@ -180,7 +180,7 @@
             android:name="readerIsTrusted"
             android:defaultValue="false"
             app:argType="boolean" />
-    </fragment>
+    </dialog>
     <fragment
         android:id="@+id/addSelfSigned"
         android:name="com.android.mdl.app.fragment.AddSelfSignedFragment"

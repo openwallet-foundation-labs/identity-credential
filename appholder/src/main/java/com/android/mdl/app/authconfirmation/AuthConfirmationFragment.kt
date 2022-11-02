@@ -12,7 +12,7 @@ import android.widget.LinearLayout
 import android.widget.Space
 import android.widget.TextView
 import android.widget.Toast
-import androidx.fragment.app.Fragment
+import androidx.core.view.setPadding
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
@@ -20,9 +20,11 @@ import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
 import com.android.mdl.app.databinding.FragmentAuthConfirmationBinding
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.switchmaterial.SwitchMaterial
 
-class AuthConfirmationFragment : Fragment() {
+class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private var _binding: FragmentAuthConfirmationBinding? = null
     private val binding get() = _binding!!
@@ -52,7 +54,16 @@ class AuthConfirmationFragment : Fragment() {
             }
             binding.llPropertiesContainer.addView(spacer())
         }
-        binding.btnConfirm.setOnClickListener { sendResponse() }
+        binding.llPropertiesContainer.addView(confirmationButton())
+    }
+
+    private fun confirmationButton(): View {
+        val button = MaterialButton(requireContext()).apply {
+            text = getString(R.string.btn_confirm)
+            setPadding(16)
+        }
+        button.setOnClickListener { sendResponse() }
+        return button
     }
 
     private fun sendResponse() {
