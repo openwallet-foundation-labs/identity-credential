@@ -49,6 +49,7 @@ class TransferDocumentFragment : Fragment() {
                 TransferStatus.QR_ENGAGEMENT_READY -> Log.d(LOG_TAG, "Engagement Ready")
                 TransferStatus.CONNECTED -> Log.d(LOG_TAG, "Connected")
                 TransferStatus.REQUEST -> onTransferRequested()
+                TransferStatus.REQUEST_SERVED -> Log.d(LOG_TAG, "Request Served")
                 TransferStatus.DISCONNECTED -> onTransferDisconnected()
                 TransferStatus.ERROR -> onTransferError()
                 else -> {}
@@ -111,11 +112,10 @@ class TransferDocumentFragment : Fragment() {
                     binding.txtDocuments.append("- No document found for ${reqDoc.docType}\n")
                 }
             }
-            if (viewModel.sendResponseForRequestedDocument().isNotEmpty()) {
-                val direction = TransferDocumentFragmentDirections
-                    .navigateToConfirmation(readerCommonName, readerIsTrusted)
-                findNavController().navigate(direction)
-            }
+            viewModel.createSelectedItemsList()
+            val direction = TransferDocumentFragmentDirections
+                .navigateToConfirmation(readerCommonName, readerIsTrusted)
+            findNavController().navigate(direction)
         } catch (e: Exception) {
             val message = "On request received error: ${e.message}"
             Log.e(LOG_TAG, message, e)

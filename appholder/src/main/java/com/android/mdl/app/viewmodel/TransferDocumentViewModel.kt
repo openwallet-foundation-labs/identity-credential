@@ -8,6 +8,7 @@ import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.android.identity.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.DeviceRequestParser
 import com.android.identity.DeviceResponseGenerator
@@ -17,6 +18,9 @@ import com.android.mdl.app.authconfirmation.SignedPropertiesCollection
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
@@ -58,50 +62,32 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         signedProperties.toggleProperty(namespace, property)
     }
 
-    fun sendResponseForRequestedDocument(): List<RequestedDocumentData> {
+    fun createSelectedItemsList() {
         val ownDocuments = getDocuments()
         val requestedDocuments = getRequestedDocuments()
         val result = mutableListOf<RequestedDocumentData>()
-        val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
         requestedDocuments.forEach { requestedDocument ->
             try {
                 val ownDocument = ownDocuments.first { it.docType == requestedDocument.docType }
-                val userReadableName = ownDocument.userVisibleName
-                val identityCredentialName = ownDocument.identityCredentialName
                 val issuerSignedEntriesToRequest = requestedPropertiesFrom(requestedDocument)
-                val authNeeded = transferManager.addDocumentToResponse(
-                    identityCredentialName,
-                    requestedDocument.docType,
-                    issuerSignedEntriesToRequest,
-                    response,
-                    requestedDocument.readerAuth,
-                    requestedDocument.itemsRequest
-                )
                 result.addAll(issuerSignedEntriesToRequest.map {
                     RequestedDocumentData(
-                        userReadableName,
+                        ownDocument.userVisibleName,
                         it.key,
-                        identityCredentialName,
-                        authNeeded,
+                        ownDocument.identityCredentialName,
+                        false,
                         it.value,
                         requestedDocument
                     )
                 })
             } catch (e: NoSuchElementException) {
-                Log.w(LOG_TAG, "No requestedDocument for docType " + requestedDocument.docType)
+                Log.w(LOG_TAG, "No document for docType " + requestedDocument.docType)
             }
         }
-        if (result.any { it.needsAuth }) {
-            requestedProperties.addAll(result)
-            return result
-        }
-        transferManager.sendResponse(response.generate())
-        val documentsCount = result.count()
-        documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
-        return emptyList()
+        requestedProperties.addAll(result)
     }
 
-    fun sendResponseForSelection() {
+    fun sendResponseForSelection(): Boolean {
         val propertiesToSend = signedProperties.collect()
         val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
         propertiesToSend.forEach { signedDocument ->
@@ -109,7 +95,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 val issuerSignedEntries = with(signedDocument) {
                     mutableMapOf(namespace to signedProperties)
                 }
-                transferManager.addDocumentToResponse(
+                val authNeeded = transferManager.addDocumentToResponse(
                     signedDocument.identityCredentialName,
                     signedDocument.documentType,
                     issuerSignedEntries,
@@ -117,14 +103,23 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                     signedDocument.readerAuth,
                     signedDocument.itemsRequest
                 )
+                if (authNeeded) {
+                    return false
+                }
             } catch (e: NoSuchElementException) {
                 Log.w(LOG_TAG, "No requestedDocument for " + signedDocument.documentType)
             }
         }
-        transferManager.sendResponse(response.generate())
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                transferManager.sendResponse(response.generate())
+            }
+        }
+        transferManager.setResponseServed()
         val documentsCount = propertiesToSend.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
         cleanUp()
+        return true
     }
 
     fun cancelPresentation(

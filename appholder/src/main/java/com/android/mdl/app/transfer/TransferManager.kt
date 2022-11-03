@@ -509,4 +509,8 @@ class TransferManager private constructor(private val context: Context) {
         val credentialData = session?.getCredentialData(document.identityCredentialName, credentialRequest)
         return credentialData?.issuerSignedEntries
     }
+
+    fun setResponseServed() {
+        transferStatusLd.value = TransferStatus.REQUEST_SERVED
+    }
 }
