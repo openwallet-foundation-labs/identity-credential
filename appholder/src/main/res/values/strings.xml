@@ -115,7 +115,7 @@
     <string name="label_user_auth">User Auth</string>
     <string name="label_hardware_backed">Hardware Backed</string>
     <string name="bt_show_data">Show Data Elements</string>
-    <string name="btn_confirm">Confirm</string>
+    <string name="btn_send_data">Send Data</string>
     <string name="bt_present_documents_reverse_engagement">Present with\nReverse Engagement</string>
     <string name="txt_reverse_engagement_description">Scan QR code from mdoc reader application.\n\nNOTE: This is not supported for ISO 18013-7, only 23220-4</string>
 </resources>
