@@ -60,7 +60,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private fun confirmationButton(): View {
         val button = MaterialButton(requireContext()).apply {
-            text = getString(R.string.btn_confirm)
+            text = getString(R.string.btn_send_data)
             setPadding(16)
         }
         button.setOnClickListener { sendResponse() }
