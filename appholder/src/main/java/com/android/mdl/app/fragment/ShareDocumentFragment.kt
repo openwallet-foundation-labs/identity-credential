@@ -74,6 +74,8 @@ class ShareDocumentFragment : Fragment() {
                 TransferStatus.CONNECTING -> {
                     viewModel.message.set("Connecting...")
                 }
+
+                else -> {}
             }
         }
     }
