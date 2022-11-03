@@ -18,39 +18,47 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/navigation_graph"
-    app:startDestination="@id/selectDocumentFragment">
+    app:startDestination="@id/wallet">
 
     <fragment
-        android:id="@+id/selectDocumentFragment"
+        android:id="@+id/wallet"
         android:name="com.android.mdl.app.fragment.SelectDocumentFragment"
-        android:label="mDL Ref App - Holder"
+        android:label="@string/menu_wallet"
         tools:layout="@layout/fragment_select_document">
         <action
-            android:id="@+id/action_selectDocumentFragment_to_shareDocumentFragment"
-            app:destination="@id/shareDocumentFragment" />
-        <action
-            android:id="@+id/action_selectDocumentFragment_to_provisioningFragment"
-            app:destination="@id/provisioningFragment" />
-        <action
-            android:id="@+id/action_selectDocumentFragment_to_documentDetailFragment"
+            android:id="@+id/toDocumentDetail"
             app:destination="@id/documentDetailFragment" />
-        <action
-            android:id="@+id/action_selectDocumentFragment_to_settingsFragment"
-            app:destination="@id/settingsFragment" />
-        <action
-            android:id="@+id/action_selectDocumentFragment_to_reverseEngagementFragment"
-            app:destination="@id/reverseEngagementFragment" />
-        <action
-            android:id="@+id/action_selectDocumentFragment_to_addSelfSigned"
-            app:destination="@id/addSelfSigned" />
     </fragment>
     <fragment
-        android:id="@+id/settingsFragment"
+        android:id="@+id/add"
+        android:name="com.android.mdl.app.adddocument.AddDocumentFragment"
+        android:label="@string/menu_add_document"
+        tools:layout="@layout/fragment_add_document">
+        <action
+            android:id="@+id/toAddDocument"
+            app:destination="@id/provisioningFragment" />
+        <action
+            android:id="@+id/toAddSelfSigned"
+            app:destination="@id/addSelfSignedDocument" />
+    </fragment>
+    <fragment android:id="@+id/present"
+        android:name="com.android.mdl.app.present.PresentDocumentFragment"
+        tools:layout="@layout/fragment_present_document"
+        android:label="@string/menu_present_document">
+        <action
+            android:id="@+id/toShareDocument"
+            app:destination="@id/share_document" />
+        <action
+            android:id="@+id/toReverseEngagement"
+            app:destination="@id/reverseEngagementFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/settings"
         android:name="com.android.mdl.app.fragment.SettingsFragment"
         android:label="Settings">
         <action
             android:id="@+id/action_settingsFragment_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
     </fragment>
     <fragment
         android:id="@+id/provisioningFragment"
@@ -59,7 +67,7 @@
         tools:layout="@layout/fragment_provisioning">
         <action
             android:id="@+id/action_provisioningFragment_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
         <action
             android:id="@+id/action_provisioningFragment_to_refreshAuthKeyFragment"
             app:destination="@id/refreshAuthKeyFragment" />
@@ -83,7 +91,7 @@
             app:destination="@id/deleteDocumentFragment" />
         <action
             android:id="@+id/action_documentDetailFragment_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
         <action
             android:id="@+id/navigateToDocumentData"
             app:destination="@id/showDocumentData"
@@ -123,7 +131,7 @@
             app:argType="com.android.mdl.app.document.Document" />
         <action
             android:id="@+id/action_deleteDocumentFragment_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
     </fragment>
     <fragment
         android:id="@+id/refreshAuthKeyFragment"
@@ -138,16 +146,16 @@
             app:argType="com.android.mdl.app.document.Document" />
         <action
             android:id="@+id/action_refreshAuthKeyFragment_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
     </fragment>
     <fragment
-        android:id="@+id/shareDocumentFragment"
+        android:id="@+id/share_document"
         android:name="com.android.mdl.app.fragment.ShareDocumentFragment"
         android:label="Sharing Document"
         tools:layout="@layout/fragment_share_document">
         <action
             android:id="@+id/action_shareDocumentFragment_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
         <action
             android:id="@+id/action_shareDocumentFragment_to_transferDocumentFragment"
             app:destination="@id/transferDocumentFragment" />
@@ -159,7 +167,7 @@
         tools:layout="@layout/fragment_transfer_document">
         <action
             android:id="@+id/action_transferDocumentFragment_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
         <action
             android:id="@+id/navigateToConfirmation"
             app:destination="@id/authConfirmation"
@@ -182,7 +190,7 @@
             app:argType="boolean" />
     </dialog>
     <fragment
-        android:id="@+id/addSelfSigned"
+        android:id="@+id/addSelfSignedDocument"
         android:name="com.android.mdl.app.fragment.AddSelfSignedFragment"
         android:label="Add Self Signed Document"
         tools:layout="@layout/fragment_add_self_signed">
@@ -200,7 +208,7 @@
             app:argType="com.android.mdl.app.util.ProvisionInfo" />
         <action
             android:id="@+id/action_selfSignedDetails_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
     </fragment>
     <fragment
         android:id="@+id/reverseEngagementFragment"
@@ -209,7 +217,7 @@
         tools:layout="@layout/fragment_reverse_engagement">
         <action
             android:id="@+id/action_reverseEngagementFragment_to_selectDocumentFragment"
-            app:destination="@id/selectDocumentFragment" />
+            app:destination="@id/wallet" />
         <action
             android:id="@+id/action_reverseEngagementFragment_to_transferDocumentFragment"
             app:destination="@id/transferDocumentFragment" />

@@ -10,7 +10,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
@@ -61,8 +60,6 @@ class SelectDocumentFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        setHasOptionsMenu(true)
-
         val binding = FragmentSelectDocumentBinding.inflate(inflater)
         val adapter = DocumentAdapter()
         binding.fragment = this
@@ -92,45 +89,6 @@ class SelectDocumentFragment : Fragment() {
         }
 
         return binding.root
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        inflater.inflate(R.menu.main_menu, menu)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.item_settings -> {
-                findNavController().navigate(R.id.action_selectDocumentFragment_to_settingsFragment)
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
-    fun onStartProvisioning() {
-        findNavController().navigate(
-            SelectDocumentFragmentDirections.actionSelectDocumentFragmentToProvisioningFragment()
-        )
-    }
-
-    fun onProvisioningSelfSigned() {
-        findNavController().navigate(
-            SelectDocumentFragmentDirections.actionSelectDocumentFragmentToAddSelfSigned()
-        )
-    }
-
-    fun onPresentDocuments() {
-        findNavController().navigate(
-            SelectDocumentFragmentDirections.actionSelectDocumentFragmentToShareDocumentFragment()
-        )
-    }
-
-    fun onPresentDocumentsReverseEngagement() {
-        findNavController().navigate(
-            SelectDocumentFragmentDirections.actionSelectDocumentFragmentToReverseEngagementFragment()
-        )
     }
 
     private val permissionsLauncher =

@@ -67,7 +67,7 @@ class DocumentAdapter :
                     document
                 )
 
-            if (view.findNavController().currentDestination?.id == R.id.selectDocumentFragment) {
+            if (view.findNavController().currentDestination?.id == R.id.wallet) {
                 view.findNavController().navigate(direction)
             }
         }

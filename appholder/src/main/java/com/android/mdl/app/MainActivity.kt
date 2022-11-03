@@ -6,19 +6,19 @@ import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import android.util.Log
-import android.util.LogPrinter
+import android.view.View.GONE
+import android.view.View.VISIBLE
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.findNavController
-import androidx.navigation.fragment.findNavController
 import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.NavigationUI.setupWithNavController
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.android.identity.OriginInfo
 import com.android.identity.OriginInfoWebsite
-import com.android.mdl.app.fragment.ReverseEngagementFragmentDirections
-import com.android.mdl.app.fragment.TransferDocumentFragment
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,13 +35,15 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val navController = findNavController(R.id.nav_host_fragment)
-        appBarConfiguration = AppBarConfiguration(
-            setOf(
-                R.id.selectDocumentFragment,
-                R.id.transferDocumentFragment,
-            )
-        )
+        val topLevelDestinationIds = setOf(R.id.wallet, R.id.add, R.id.present, R.id.settings)
+        appBarConfiguration = AppBarConfiguration(topLevelDestinationIds)
         setupActionBarWithNavController(navController, appBarConfiguration)
+        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        setupWithNavController(bottomNavigationView, navController)
+        navController.addOnDestinationChangedListener { _, destination, _ ->
+            val visibility = if (destination.id in topLevelDestinationIds) VISIBLE else GONE
+            bottomNavigationView.visibility = visibility
+        }
 
         mAdapter = NfcAdapter.getDefaultAdapter(this)
         // Create a generic PendingIntent that will be deliver to this activity. The NFC stack
@@ -71,8 +73,8 @@ class MainActivity : AppCompatActivity() {
             return;
         }
 
-        var mdocUri : String? = null
-        var mdocReferrerUri : String? = null
+        var mdocUri: String? = null
+        var mdocReferrerUri: String? = null
         if (intent.scheme.equals("mdoc")) {
             val uri = Uri.parse(intent.toUri(0))
             mdocUri = "mdoc://" + uri.authority
