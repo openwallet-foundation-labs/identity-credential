@@ -19,6 +19,7 @@ import com.android.identity.OriginInfo
 import com.android.identity.OriginInfoWebsite
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.elevation.SurfaceColors
 
 class MainActivity : AppCompatActivity() {
 
@@ -32,6 +33,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val color = SurfaceColors.SURFACE_2.getColor(this)
+        window.statusBarColor = color
+        window.navigationBarColor = color
         setContentView(R.layout.activity_main)
 
         val navController = findNavController(R.id.nav_host_fragment)
