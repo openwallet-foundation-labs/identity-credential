@@ -58,15 +58,8 @@ class DocumentAdapter :
             }
         }
 
-        private fun navigateToDetail(
-            document: Document,
-            view: View
-        ) {
-            val direction =
-                SelectDocumentFragmentDirections.actionSelectDocumentFragmentToDocumentDetailFragment(
-                    document
-                )
-
+        private fun navigateToDetail(document: Document, view: View) {
+            val direction = SelectDocumentFragmentDirections.toDocumentDetail(document)
             if (view.findNavController().currentDestination?.id == R.id.wallet) {
                 view.findNavController().navigate(direction)
             }
