@@ -110,11 +110,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 Log.w(LOG_TAG, "No requestedDocument for " + signedDocument.documentType)
             }
         }
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                transferManager.sendResponse(response.generate())
-            }
-        }
+        transferManager.sendResponse(response.generate())
         transferManager.setResponseServed()
         val documentsCount = propertiesToSend.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
