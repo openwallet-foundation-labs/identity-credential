@@ -52,7 +52,16 @@ class AuthConfirmationFragment : Fragment() {
             }
             binding.llPropertiesContainer.addView(spacer())
         }
-        binding.btnConfirm.setOnClickListener { requestUserAuth(false) }
+        binding.btnConfirm.setOnClickListener { sendResponse() }
+    }
+
+    private fun sendResponse() {
+        // Will return false if authentication is needed
+        if (!viewModel.sendResponseForSelection()) {
+            requestUserAuth(false)
+        } else {
+            findNavController().navigateUp()
+        }
     }
 
     private fun documentNameFor(document: RequestedDocumentData): View {
