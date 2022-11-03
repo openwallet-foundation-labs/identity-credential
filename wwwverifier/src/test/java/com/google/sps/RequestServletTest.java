@@ -233,7 +233,7 @@ public class RequestServletTest {
         RequestServlet.setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
         RequestServlet.setDatastoreProp(ServletConsts.DEVICE_KEY_PROP, eDeviceKeyPublic.getEncoded());
         RequestServlet.setDatastoreProp(ServletConsts.SESSION_TRANS_PROP, Util.cborEncode(sessionTranscript));
-        RequestServlet.setDeviceRequestBoolean(true);
+        RequestServlet.numPostRequests = 1;
     }
 
     public ServletInputStream createMockInputStream(ByteArrayInputStream bais) {

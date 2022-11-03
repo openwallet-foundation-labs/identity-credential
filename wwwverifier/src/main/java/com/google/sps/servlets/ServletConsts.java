@@ -15,6 +15,7 @@ public class ServletConsts {
     public static final String GET_PARAM = "request-type";
     public static final String GET_PARAM_URI = "create-uri";
     public static final String GET_PARAM_RESPONSE = "display-response";
+    public static final String GET_PARAM_RESET = "reset";
     public static final String DEVICE_RESPONSE_PARAM = "deviceResponse";
     public static final String DEVICE_ENGAGEMENT_KEY = "deviceEngagementBytes";
     public static final String SESSION_ESTABLISHMENT_PARAM = "sessionEstablishment";
@@ -34,4 +35,5 @@ public class ServletConsts {
 
     // other messages
     public static final String DEFAULT_RESPONSE_MSSG = "Device Response has not yet been generated.";
+    public static final String RESET_MSSG = "Reset was successfully completed.";
 }

@@ -50,6 +50,7 @@ public class RequestServlet extends HttpServlet {
 
     public static DatastoreService datastore;
     public static Key datastoreKey;
+    public static int numPostRequests;
 
     /**
      * Initializes Datastore, and creates an entity within it that will store various
@@ -58,10 +59,14 @@ public class RequestServlet extends HttpServlet {
     @Override
     public void init() {
         datastore = DatastoreServiceFactory.getDatastoreService();
+        createEntityAndSetKey();
+    }
+
+    public void createEntityAndSetKey() {
         Entity entity = new Entity(ServletConsts.ENTITY_NAME);
         datastore.put(entity);
         datastoreKey = entity.getKey();
-        setDeviceRequestBoolean(false);
+        numPostRequests = 0;
     }
 
    /**
@@ -78,9 +83,17 @@ public class RequestServlet extends HttpServlet {
             response.getWriter().println(createMdocUri());
         } else if (requestType.equals(ServletConsts.GET_PARAM_RESPONSE)) {
             response.getWriter().println(getDeviceResponse());
+        } else if (requestType.equals(ServletConsts.GET_PARAM_RESET)) {
+            response.getWriter().println(resetServletState());
         } else {
             response.getWriter().println("Invalid GET request");
         }
+    }
+
+    public String resetServletState() {
+        datastore.delete(datastoreKey);
+        createEntityAndSetKey();
+        return ServletConsts.RESET_MSSG;
     }
 
     /**
@@ -130,15 +143,17 @@ public class RequestServlet extends HttpServlet {
      */
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        if (!getDeviceRequestBoolean()) {
+        if (numPostRequests == 0) {
             byte[] sessionData = createDeviceRequest(getBytesFromRequest(request));
-            setDeviceRequestBoolean(true);
+            numPostRequests += 1;
             response.getOutputStream().write(sessionData);
-        } else {
+        } else if (numPostRequests == 1) {
             String json = parseDeviceResponse(getBytesFromRequest(request));
             Entity entity = getEntity();
             entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(json));
             datastore.put(entity);
+
+            numPostRequests += 1;
 
             response.setContentType("application/json;");
             response.getWriter().println(json);
@@ -263,25 +278,6 @@ public class RequestServlet extends HttpServlet {
         } catch (EntityNotFoundException e) {
             throw new IllegalStateException("Entity could not be found in database", e);
         }
-    }
-
-    /**
-     * @return Boolean reflecting whether or not DeviceRequest has already been sent as a response
-     * to a POST request; this is used to identify how the doPost() function should process incoming
-     * POST requests.
-     */
-    public boolean getDeviceRequestBoolean() {
-        return (boolean) getEntity().getProperty(ServletConsts.BOOLEAN_PROP);
-    }
-
-    /**
-     * Marks in database whether DeviceRequest has been sent as a response to a POST request
-     * @param bool
-     */
-    public static void setDeviceRequestBoolean(boolean bool) {
-        Entity entity = getEntity();
-        entity.setProperty(ServletConsts.BOOLEAN_PROP, bool);
-        datastore.put(entity);
     }
 
     /**
