@@ -120,4 +120,10 @@
     <string name="btn_send_data">Send Data</string>
     <string name="bt_present_documents_reverse_engagement">Present with\nReverse Engagement</string>
     <string name="txt_reverse_engagement_description">Scan QR code from mdoc reader application.\n\nNOTE: This is not supported for ISO 18013-7, only 23220-4</string>
+
+    <!-- Bottom nav -->
+    <string name="menu_wallet">Wallet</string>
+    <string name="menu_add_document">Add Document</string>
+    <string name="menu_present_document">Present</string>
+    <string name="menu_settings">Settings</string>
 </resources>
