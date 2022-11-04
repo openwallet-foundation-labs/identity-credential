@@ -58,16 +58,4 @@ public abstract class ConnectionMethod {
         //Log.w(TAG, "Unsupported type " + type);
         return null;
     }
-
-    /**
-     * Creates a new {@link DataTransport}-derived instance for the given type
-     * of {@link ConnectionMethod}.
-     *
-     * @param context application context.
-     * @param options options for configuring the created instance.
-     * @return A {@link DataTransport}-derived instance configured with the given options.
-     * @throws IllegalArgumentException if the connection-method has invalid options specified.
-     */
-    public abstract
-    DataTransport createDataTransport(DataTransportOptions options);
 }

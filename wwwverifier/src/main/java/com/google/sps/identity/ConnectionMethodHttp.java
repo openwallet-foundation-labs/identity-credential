@@ -48,38 +48,6 @@ public class ConnectionMethodHttp extends ConnectionMethod {
     }
 
     @Override
-    public DataTransport createDataTransport(DataTransportOptions options) {
-        URI uri = null;
-        try {
-            uri = new URI(mUriWebsite);
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException(e);
-        }
-        DataTransportHttp transport = new DataTransportHttp(options);
-        if (uri.getScheme().equals("http")) {
-            transport.setHost(uri.getHost());
-            int port = uri.getPort();
-            if (port == -1) {
-                port = 80;
-            }
-            transport.setPort(port);
-            transport.setPath(uri.getPath());
-            return transport;
-        } else if (uri.getScheme().equals("https")) {
-            transport.setHost(uri.getHost());
-            int port = uri.getPort();
-            if (port == -1) {
-                port = 443;
-            }
-            transport.setPort(port);
-            transport.setPath(uri.getPath());
-            transport.setUseTls(true);
-            return transport;
-        }
-        throw new IllegalArgumentException("Unsupported scheme " + uri.getScheme());
-    }
-
-    @Override
     public String toString() {
         return "http:uri=" + mUriWebsite;
     }
