@@ -68,6 +68,8 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun sendResponse() {
+        binding.loadingProgress.visibility = View.VISIBLE
+        binding.llPropertiesContainer.visibility = View.GONE
         // Will return false if authentication is needed
         if (!viewModel.sendResponseForSelection()) {
             requestUserAuth(false)
