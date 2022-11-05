@@ -7,14 +7,14 @@
 
         <variable
             name="fragment"
-            type="com.android.mdl.app.fragment.SelectDocumentFragment" />
+            type="com.android.mdl.app.wallet.SelectDocumentFragment" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/select_document"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        tools:context=".fragment.SelectDocumentFragment">
+        tools:context=".wallet.SelectDocumentFragment">
 
         <TextView
             android:id="@+id/message"
@@ -27,13 +27,25 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <androidx.viewpager2.widget.ViewPager2
-            android:id="@+id/document_list"
+            android:id="@+id/vp_documents"
             android:layout_width="match_parent"
             android:layout_height="250dp"
             android:layout_marginTop="24dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/message" />
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tl_page_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:tabBackground="@drawable/pager_indicator_selector"
+            app:tabGravity="center"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/vp_documents"
+            app:tabIndicatorHeight="0dp"
+            android:layout_gravity="bottom"/>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

@@ -1,10 +1,12 @@
-package com.android.mdl.app.fragment
+package com.android.mdl.app.wallet
 
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
-import android.view.*
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,6 +17,7 @@ import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
+import com.google.android.material.tabs.TabLayoutMediator
 
 class SelectDocumentFragment : Fragment() {
     companion object {
@@ -24,7 +27,7 @@ class SelectDocumentFragment : Fragment() {
     private val timeInterval = 2000 // # milliseconds passed between two back presses
     private var mBackPressed: Long = 0
 
-    private val appPermissions:Array<String> =
+    private val appPermissions: Array<String> =
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
@@ -49,7 +52,11 @@ class SelectDocumentFragment : Fragment() {
                         requireActivity().finish()
                         return
                     } else {
-                        Toast.makeText(requireContext(), R.string.toast_press_back_twice, Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            requireContext(),
+                            R.string.toast_press_back_twice,
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     mBackPressed = System.currentTimeMillis()
                 }
@@ -62,8 +69,9 @@ class SelectDocumentFragment : Fragment() {
     ): View {
         val binding = FragmentSelectDocumentBinding.inflate(inflater)
         val adapter = DocumentAdapter()
+        binding.vpDocuments.adapter = adapter
         binding.fragment = this
-        binding.documentList.adapter = adapter
+        setupDocumentsPager(binding)
 
         val documentManager = DocumentManager.getInstance(requireContext())
         // Call stop presentation to finish all presentation that could be running
@@ -72,7 +80,6 @@ class SelectDocumentFragment : Fragment() {
             sendSessionTerminationMessage = true,
             useTransportSpecificSessionTermination = false
         )
-
         adapter.submitList(documentManager.getDocuments().toMutableList())
 
         val permissionsNeeded = appPermissions.filter { permission ->
@@ -89,6 +96,17 @@ class SelectDocumentFragment : Fragment() {
         }
 
         return binding.root
+    }
+
+    private fun setupDocumentsPager(binding: FragmentSelectDocumentBinding) {
+        TabLayoutMediator(binding.tlPageIndicator, binding.vpDocuments) { _, _ -> }.attach()
+        binding.vpDocuments.offscreenPageLimit = 1
+        binding.vpDocuments.setPageTransformer(DocumentPageTransformer(requireContext()))
+        val itemDecoration = DocumentPagerItemDecoration(
+            requireContext(),
+            R.dimen.viewpager_current_item_horizontal_margin
+        )
+        binding.vpDocuments.addItemDecoration(itemDecoration)
     }
 
     private val permissionsLauncher =
