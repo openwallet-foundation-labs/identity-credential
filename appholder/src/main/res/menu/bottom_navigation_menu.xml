@@ -5,23 +5,27 @@
         android:id="@+id/wallet"
         android:enabled="true"
         android:icon="@drawable/ic_wallet"
+        android:checkable="true"
         android:title="@string/menu_wallet" />
 
     <item
         android:id="@+id/add"
         android:enabled="true"
+        android:checkable="true"
         android:icon="@drawable/ic_add_document"
         android:title="@string/menu_add_document" />
 
     <item
         android:id="@+id/present"
         android:enabled="true"
+        android:checkable="true"
         android:icon="@drawable/ic_present_document"
         android:title="@string/menu_present_document" />
 
     <item
         android:id="@+id/settings"
         android:enabled="true"
+        android:checkable="true"
         android:icon="@drawable/ic_settings"
         android:title="@string/menu_settings" />
 </menu>
