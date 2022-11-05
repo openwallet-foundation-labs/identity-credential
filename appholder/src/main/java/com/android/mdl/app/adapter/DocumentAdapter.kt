@@ -26,7 +26,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.ListItemDocumentBinding
 import com.android.mdl.app.document.Document
-import com.android.mdl.app.fragment.SelectDocumentFragmentDirections
+import com.android.mdl.app.wallet.SelectDocumentFragmentDirections
 
 /**
  * Adapter for the [RecyclerView].
