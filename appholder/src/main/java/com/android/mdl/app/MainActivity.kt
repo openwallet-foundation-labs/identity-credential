@@ -6,19 +6,18 @@ import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import android.util.Log
-import android.view.View.GONE
-import android.view.View.VISIBLE
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.Navigation
 import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.NavigationUI.setupWithNavController
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
+import androidx.navigation.ui.NavigationUI
+import androidx.navigation.ui.NavigationUI.setupActionBarWithNavController
+import androidx.navigation.ui.setupWithNavController
 import com.android.identity.OriginInfo
 import com.android.identity.OriginInfoWebsite
+import com.android.mdl.app.databinding.ActivityMainBinding
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.elevation.SurfaceColors
 
 class MainActivity : AppCompatActivity() {
@@ -27,46 +26,49 @@ class MainActivity : AppCompatActivity() {
         private const val LOG_TAG = "MainActivity"
     }
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
-    private var mAdapter: NfcAdapter? = null
-    private var mPendingIntent: PendingIntent? = null
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var pendingIntent: PendingIntent
+    private var nfcAdapter: NfcAdapter? = null
+
+    private val navController by lazy {
+        Navigation.findNavController(this, R.id.nav_host_fragment)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val color = SurfaceColors.SURFACE_2.getColor(this)
         window.statusBarColor = color
         window.navigationBarColor = color
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setupDrawerLayout()
+        setupNfc()
+    }
 
-        val navController = findNavController(R.id.nav_host_fragment)
-        val topLevelDestinationIds = setOf(R.id.wallet, R.id.add, R.id.present, R.id.settings)
-        appBarConfiguration = AppBarConfiguration(topLevelDestinationIds)
-        setupActionBarWithNavController(navController, appBarConfiguration)
-        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_navigation)
-        setupWithNavController(bottomNavigationView, navController)
-        navController.addOnDestinationChangedListener { _, destination, _ ->
-            val visibility = if (destination.id in topLevelDestinationIds) VISIBLE else GONE
-            bottomNavigationView.visibility = visibility
-        }
-
-        mAdapter = NfcAdapter.getDefaultAdapter(this)
+    private fun setupNfc() {
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         // Create a generic PendingIntent that will be deliver to this activity. The NFC stack
         // will fill in the intent with the details of the discovered tag before delivering to
         // this activity.
-        val i = Intent(this, javaClass).apply {
+        val intent = Intent(this, javaClass).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        mPendingIntent = PendingIntent.getActivity(this, 0, i, PendingIntent.FLAG_IMMUTABLE)
+        pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    private fun setupDrawerLayout() {
+        binding.nvSideDrawer.setupWithNavController(navController)
+        setupActionBarWithNavController(this, navController, binding.dlMainDrawer)
     }
 
     override fun onResume() {
         super.onResume()
-        mAdapter?.enableForegroundDispatch(this, mPendingIntent, null, null)
+        nfcAdapter?.enableForegroundDispatch(this, pendingIntent, null, null)
     }
 
     override fun onPause() {
         super.onPause()
-        mAdapter?.disableForegroundDispatch(this)
+        nfcAdapter?.disableForegroundDispatch(this)
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -107,8 +109,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+        return NavigationUI.navigateUp(navController, binding.dlMainDrawer)
+    }
+
+    override fun onBackPressed() {
+        if (binding.dlMainDrawer.isDrawerOpen(GravityCompat.START)) {
+            binding.dlMainDrawer.closeDrawer(GravityCompat.START)
+        } else {
+            super.onBackPressed()
+        }
     }
 }
