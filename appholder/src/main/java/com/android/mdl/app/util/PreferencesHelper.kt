@@ -10,6 +10,7 @@ object PreferencesHelper {
     const val BLE_DATA_RETRIEVAL = "ble_transport"
     const val BLE_DATA_RETRIEVAL_PERIPHERAL_MODE = "ble_transport_peripheral_mode"
     const val BLE_DATA_L2CAP = "ble_l2cap"
+    const val BLE_CLEAR_CACHE = "ble_clear_cache"
     const val WIFI_DATA_RETRIEVAL = "wifi_transport"
     const val NFC_DATA_RETRIEVAL = "nfc_transport"
     private const val LOG_INFO = "log_info"
@@ -67,6 +68,12 @@ object PreferencesHelper {
         )
     }
 
+    fun isBleClearCacheEnabled(context: Context): Boolean {
+        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
+            BLE_CLEAR_CACHE, false
+        )
+    }
+
     fun isWifiDataRetrievalEnabled(context: Context): Boolean {
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
             WIFI_DATA_RETRIEVAL, false
@@ -77,34 +84,6 @@ object PreferencesHelper {
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
             NFC_DATA_RETRIEVAL, false
         )
-    }
-
-    fun getLoggingFlags(context: Context): Int {
-        var flags = 0
-        if (PreferenceManager.getDefaultSharedPreferences(context).getBoolean(LOG_INFO, false)) {
-            flags += Constants.LOGGING_FLAG_INFO
-        }
-        if (PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(LOG_DEVICE_ENGAGEMENT, false)
-        ) {
-            flags += Constants.LOGGING_FLAG_ENGAGEMENT
-        }
-        if (PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(LOG_SESSION_MESSAGES, false)
-        ) {
-            flags += Constants.LOGGING_FLAG_SESSION
-        }
-        if (PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(LOG_TRANSPORT, false)
-        ) {
-            flags += Constants.LOGGING_FLAG_TRANSPORT
-        }
-        if (PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(LOG_TRANSPORT_VERBOSE, false)
-        ) {
-            flags += Constants.LOGGING_FLAG_TRANSPORT_VERBOSE
-        }
-        return flags
     }
 
     fun isReaderAuthenticationEnabled(context: Context): Boolean {

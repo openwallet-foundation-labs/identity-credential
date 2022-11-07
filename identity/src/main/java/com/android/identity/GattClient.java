@@ -26,14 +26,13 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.Constants.LoggingFlag;
-
 import java.io.ByteArrayOutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Locale;
@@ -48,7 +47,6 @@ class GattClient extends BluetoothGattCallback {
     private final Context mContext;
     private final UUID mServiceUuid;
     private final byte[] mEncodedEDeviceKeyBytes;
-    final Util.Logger mLog;
     Listener mListener;
     BluetoothGatt mGatt;
 
@@ -75,16 +73,17 @@ class GattClient extends BluetoothGattCallback {
     private int mNegotiatedMtu;
     private byte[] mIdentValue;
     private boolean mUsingL2CAP = false;
+    private boolean mClearCache;
 
-    GattClient(@NonNull Context context, @LoggingFlag int loggingFlags, @NonNull UUID serviceUuid,
-            @NonNull byte[] encodedEDeviceKeyBytes,
-            @NonNull UUID characteristicStateUuid,
-            @NonNull UUID characteristicClient2ServerUuid,
-            @NonNull UUID characteristicServer2ClientUuid,
-            @Nullable UUID characteristicIdentUuid,
-            @Nullable UUID characteristicL2CAPUuid) {
+    GattClient(@NonNull Context context,
+               @NonNull UUID serviceUuid,
+               @Nullable byte[] encodedEDeviceKeyBytes,
+               @NonNull UUID characteristicStateUuid,
+               @NonNull UUID characteristicClient2ServerUuid,
+               @NonNull UUID characteristicServer2ClientUuid,
+               @Nullable UUID characteristicIdentUuid,
+               @Nullable UUID characteristicL2CAPUuid) {
         mContext = context;
-        mLog = new Util.Logger(TAG, loggingFlags);
         mServiceUuid = serviceUuid;
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
         mCharacteristicStateUuid = characteristicStateUuid;
@@ -98,11 +97,17 @@ class GattClient extends BluetoothGattCallback {
         mListener = listener;
     }
 
+    void setClearCache(boolean clearCache) {
+        mClearCache = clearCache;
+    }
+
     void connect(BluetoothDevice device) {
-        byte[] ikm = mEncodedEDeviceKeyBytes;
-        byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
-        byte[] salt = new byte[]{};
-        mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
+        if (mEncodedEDeviceKeyBytes != null) {
+            byte[] ikm = mEncodedEDeviceKeyBytes;
+            byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
+            byte[] salt = new byte[]{};
+            mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
+        }
         try {
             mGatt = device.connectGatt(mContext, false, this, BluetoothDevice.TRANSPORT_LE);
         } catch (SecurityException e) {
@@ -120,39 +125,65 @@ class GattClient extends BluetoothGattCallback {
             try {
                 mGatt.disconnect();
             } catch (SecurityException e) {
-                Log.e(TAG, "Caught SecurityException while shutting down: " + e);
+                Logger.e(TAG, "Caught SecurityException while shutting down: " + e);
             }
             mGatt = null;
         }
     }
 
+    private void clearCache(BluetoothGatt gatt) {
+        Logger.d(TAG, "Application requested clearing BLE Service Cache");
+        // BluetoothGatt.refresh() is not public API but can be accessed via introspection...
+        try {
+            Method refreshMethod = gatt.getClass().getMethod("refresh");
+            Boolean result = false;
+            if (refreshMethod != null) {
+                result = (Boolean) refreshMethod.invoke(gatt);
+            }
+            if (result) {
+                Logger.d(TAG, "BluetoothGatt.refresh() invoked successfully");
+            } else {
+                Logger.e(TAG, "BluetoothGatt.refresh() invoked but returned false");
+            }
+        } catch (NoSuchMethodException e) {
+            Logger.e(TAG, "Getting BluetoothGatt.refresh() failed with NoSuchMethodException", e);
+        } catch (IllegalAccessException e) {
+            Logger.e(TAG, "Getting BluetoothGatt.refresh() failed with IllegalAccessException", e);
+        } catch (InvocationTargetException e) {
+            Logger.e(TAG, "Getting BluetoothGatt.refresh() failed with InvocationTargetException", e);
+        }
+    }
+
     @Override
     public void onConnectionStateChange(@NonNull BluetoothGatt gatt, int status, int newState) {
-        mLog.transport("onConnectionStateChange: status=" + status + " newState=" + newState);
+        Logger.d(TAG, "onConnectionStateChange: status=" + status + " newState=" + newState);
         if (newState == BluetoothProfile.STATE_CONNECTED) {
-            //Log.d(TAG, "Connected");
+            //Logger.d(TAG, "Connected");
             try {
+                if (mClearCache) {
+                    clearCache(gatt);
+                }
                 gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
                 gatt.discoverServices();
             } catch (SecurityException e) {
                 reportError(e);
             }
         } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-            //Log.d(TAG, "Disconnected");
+            //Logger.d(TAG, "Disconnected");
             reportPeerDisconnected();
         }
     }
 
     @Override
     public void onServicesDiscovered(@NonNull BluetoothGatt gatt, int status) {
-        mLog.transport("onServicesDiscovered: status=" + status);
+        Logger.d(TAG, "onServicesDiscovered: status=" + status);
         if (status == BluetoothGatt.GATT_SUCCESS) {
             BluetoothGattService s = gatt.getService(mServiceUuid);
             if (s != null) {
                 if (mCharacteristicL2CAPUuid != null) {
                     mCharacteristicL2CAP = s.getCharacteristic(mCharacteristicL2CAPUuid);
                     if (mCharacteristicL2CAP != null) {
-                        mLog.transport("L2CAP characteristic found " + mCharacteristicL2CAPUuid);
+                        Logger.d(TAG, "L2CAP characteristic found " + mCharacteristicL2CAPUuid);
                     }
                 }
                 mCharacteristicState = s.getCharacteristic(mCharacteristicStateUuid);
@@ -230,9 +261,9 @@ class GattClient extends BluetoothGattCallback {
             return;
         }
 
-        mLog.transport("Negotiated MTU " + mtu);
+        Logger.d(TAG, "Negotiated MTU " + mtu);
 
-        if (mCharacteristicIdent != null) {
+        if (mCharacteristicIdent != null && mIdentValue != null) {
             // Read ident characteristics...
             //
             // TODO: maybe skip this, it's optional after all...
@@ -258,14 +289,14 @@ class GattClient extends BluetoothGattCallback {
             int status) {
         if (characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             byte[] identValue = characteristic.getValue();
-            if (mLog.isTransportEnabled()) {
-                mLog.transport("Received identValue: " + Util.toHex(identValue));
+            if (Logger.isDebugEnabled()) {
+                Logger.d(TAG, "Received identValue: " + Util.toHex(identValue));
             }
-            // TODO: maybe comment out or change to warning since it's optional... several readers
-            //  send the wrong value (others send the right one though)
+            // TODO: Don't even request IDENT since it cannot work w/ reverse engagement (there's
+            //   no way the mdoc reader knows EDeviceKeyBytes at this point) and it's also optional.
             if (!Arrays.equals(identValue, mIdentValue)) {
-                reportError(new Error("Received ident does not match expected ident"));
-                return;
+                Logger.w(TAG, "Received ident '" + Util.toHex(identValue)
+                        + "' does not match expected ident '" + Util.toHex(mIdentValue) + "'");
             }
 
             afterIdentObtained(gatt);
@@ -300,7 +331,7 @@ class GattClient extends BluetoothGattCallback {
                 public void onMessageSendProgress(long progress, long max) {
                     reportMessageSendProgress(progress, max);
                 }
-            }, mLog.getLoggingFlags());
+            });
 
             mL2CAPClient.connect(mGatt.getDevice(), characteristic.getValue());
         } else {
@@ -312,10 +343,8 @@ class GattClient extends BluetoothGattCallback {
     private void afterIdentObtained(@NonNull BluetoothGatt gatt) {
         try {
             // Use L2CAP if supported by GattServer and by this OS version
-            mUsingL2CAP = mCharacteristicL2CAP != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
-            if (mLog.isTransportEnabled()) {
-                mLog.transport("Using L2CAP: " + mUsingL2CAP);
-            }
+            mUsingL2CAP = mCharacteristicL2CAP != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;             
+            Logger.d(TAG, "Using L2CAP: " + mUsingL2CAP);
             if (mUsingL2CAP) {
                 // value is returned async above in onCharacteristicRead()
                 if (!gatt.readCharacteristic(mCharacteristicL2CAP)) {
@@ -354,7 +383,7 @@ class GattClient extends BluetoothGattCallback {
     public void onDescriptorWrite(@NonNull BluetoothGatt gatt,
             @NonNull BluetoothGattDescriptor descriptor,
             int status) {
-        mLog.transport("onDescriptorWrite: " + descriptor.getUuid() + " char="
+        Logger.d(TAG, "onDescriptorWrite: " + descriptor.getUuid() + " char="
                     + descriptor.getCharacteristic().getUuid() + " status="
                     + status);
         try {
@@ -408,7 +437,7 @@ class GattClient extends BluetoothGattCallback {
             int status) {
         UUID charUuid = characteristic.getUuid();
 
-        mLog.transport("onCharacteristicWrite " + status + " " + charUuid);
+        Logger.d(TAG, "onCharacteristicWrite " + status + " " + charUuid);
 
         if (charUuid.equals(mCharacteristicStateUuid)) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
@@ -443,7 +472,7 @@ class GattClient extends BluetoothGattCallback {
     @Override
     public void onCharacteristicChanged(@NonNull BluetoothGatt gatt,
             @NonNull BluetoothGattCharacteristic characteristic) {
-        mLog.transport("in onCharacteristicChanged, uuid=" + characteristic.getUuid());
+        Logger.d(TAG, "in onCharacteristicChanged, uuid=" + characteristic.getUuid());
         if (characteristic.getUuid().equals(mCharacteristicServer2ClientUuid)) {
             byte[] data = characteristic.getValue();
 
@@ -453,7 +482,7 @@ class GattClient extends BluetoothGattCallback {
                 return;
             }
             mIncomingMessage.write(data, 1, data.length - 1);
-            mLog.transportVerbose(String.format(Locale.US,
+            Logger.d(TAG, String.format(Locale.US,
                     "Received chunk with %d bytes (last=%s), incomingMessage.length=%d",
                     data.length, data[0] == 0x00, mIncomingMessage.toByteArray().length));
             if (data[0] == 0x00) {
@@ -494,7 +523,7 @@ class GattClient extends BluetoothGattCallback {
     }
 
     void drainWritingQueue() {
-        mLog.transport("drainWritingQueue " + writeIsOutstanding);
+        Logger.d(TAG, "drainWritingQueue " + writeIsOutstanding);
         if (writeIsOutstanding) {
             return;
         }
@@ -503,7 +532,7 @@ class GattClient extends BluetoothGattCallback {
             return;
         }
 
-        mLog.transportVerbose(String.format(Locale.US,
+        Logger.d(TAG, String.format(Locale.US,
                 "Sending chunk with %d bytes (last=%s)",
                 chunk.length, chunk[0] == 0x00));
 
@@ -522,7 +551,7 @@ class GattClient extends BluetoothGattCallback {
 
 
     void sendMessage(@NonNull byte[] data) {
-        if (mLog.isTransportVerboseEnabled()) {
+        if (Logger.isDebugEnabled()) {
             Util.dumpHex(TAG, "sendMessage", data);
         }
 
@@ -533,7 +562,7 @@ class GattClient extends BluetoothGattCallback {
         }
 
         if (mNegotiatedMtu == 0) {
-            Log.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
+            Logger.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
             mNegotiatedMtu = 23;
         }
 

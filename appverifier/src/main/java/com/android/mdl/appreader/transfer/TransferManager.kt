@@ -9,10 +9,12 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.DataRetrievalAddress
+import com.android.identity.ConnectionMethod
+import com.android.identity.ConnectionMethodHttp
+import com.android.identity.DataTransportOptions
+import com.android.identity.VerificationHelper
 import com.android.identity.DeviceRequestGenerator
 import com.android.identity.DeviceResponseParser
-import com.android.identity.VerificationHelper
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
 import com.android.mdl.appreader.readercertgen.SupportedCurves.*
@@ -44,14 +46,16 @@ class TransferManager private constructor(private val context: Context) {
             }
     }
 
+    var usingReverseEngagement: Boolean = false
+    var readerEngagement: ByteArray? = null
 
-    var mdocAddress: DataRetrievalAddress? = null
+    var mdocConnectionMethod: ConnectionMethod? = null
         private set
     private var hasStarted = false
     var responseBytes: ByteArray? = null
         private set
     private var verification: VerificationHelper? = null
-    var availableMdocAddresses: Collection<DataRetrievalAddress>? = null
+    var availableMdocConnectionMethods: Collection<ConnectionMethod>? = null
         private set
 
     private var transferStatusLd = MutableLiveData<TransferStatus>()
@@ -59,10 +63,36 @@ class TransferManager private constructor(private val context: Context) {
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
     fun initVerificationHelper() {
-        verification = VerificationHelper(context)
-        verification?.setListener(responseListener, context.mainExecutor())
-        verification?.setLoggingFlags(PreferencesHelper.getLoggingFlags(context))
-        verification?.setUseL2CAP(PreferencesHelper.isBleL2capEnabled(context))
+        val builder = VerificationHelper.Builder(context,
+            responseListener,
+            context.mainExecutor())
+        val options = DataTransportOptions.Builder()
+            .setBleUseL2CAP(PreferencesHelper.isBleL2capEnabled(context))
+            .setBleClearCache(PreferencesHelper.isBleClearCacheEnabled(context))
+            .build()
+        builder.setDataTransportOptions(options)
+        verification = builder.build()
+        usingReverseEngagement = false
+    }
+
+    fun initVerificationHelperReverseEngagement() {
+        val builder = VerificationHelper.Builder(context,
+            responseListener,
+            context.mainExecutor())
+        val options = DataTransportOptions.Builder()
+            .setBleUseL2CAP(PreferencesHelper.isBleL2capEnabled(context))
+            .setBleClearCache(PreferencesHelper.isBleClearCacheEnabled(context))
+            .build()
+        builder.setDataTransportOptions(options)
+        val methods = ArrayList<ConnectionMethod>()
+        // Passing the empty URI in means that DataTransportHttp will use local IP as host
+        // and the dynamically allocated TCP port as port. So the resulting ConnectionMethodHttp
+        // which will be included in ReaderEngagement CBOR will contain an URI of the
+        // form http://192.168.1.2:18013/mdocreader
+        methods.add(ConnectionMethodHttp(""));
+        builder.setUseReverseEngagement(methods)
+        verification = builder.build()
+        usingReverseEngagement = true
     }
 
     fun setQrDeviceEngagement(qrDeviceEngagement: String) {
@@ -74,19 +104,18 @@ class TransferManager private constructor(private val context: Context) {
             activity, readerModeListener,
             NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B,
             null)
-        verification?.startListening()
     }
 
     private val readerModeListener = NfcAdapter.ReaderCallback { tag ->
         verification?.nfcProcessOnTagDiscovered(tag)
     }
 
-    fun setAvailableTransferMethods(availableMdocAddresses: Collection<DataRetrievalAddress>) {
-        this.availableMdocAddresses = availableMdocAddresses
+    fun setAvailableTransferMethods(availableMdocConnectionMethods: Collection<ConnectionMethod>) {
+        this.availableMdocConnectionMethods = availableMdocConnectionMethods
         // Select the first method as default, let the user select other transfer method
         // if there are more than one
-        if (availableMdocAddresses.isNotEmpty()) {
-            this.mdocAddress = availableMdocAddresses.first()
+        if (availableMdocConnectionMethods.isNotEmpty()) {
+            this.mdocConnectionMethod = availableMdocConnectionMethods.first()
         }
     }
 
@@ -97,12 +126,12 @@ class TransferManager private constructor(private val context: Context) {
         if (verification == null)
             throw IllegalStateException("It is necessary to start a new engagement.")
 
-        if (mdocAddress == null)
-            throw IllegalStateException("No mdoc address selected.")
+        if (mdocConnectionMethod == null)
+            throw IllegalStateException("No mdoc connection method selected.")
 
         // Start connection
         verification?.let {
-            mdocAddress?.let { dr ->
+            mdocConnectionMethod?.let { dr ->
                 it.connect(dr)
             }
             hasStarted = true
@@ -121,7 +150,6 @@ class TransferManager private constructor(private val context: Context) {
         } catch (e: IllegalStateException) {
             Log.e(LOG_TAG, "Error ignored.", e)
         }
-        verification?.setListener(null, null)
         disconnect()
     }
 
@@ -143,8 +171,15 @@ class TransferManager private constructor(private val context: Context) {
 
 
     private val responseListener = object : VerificationHelper.Listener {
-        override fun onDeviceEngagementReceived(addresses: MutableList<DataRetrievalAddress>) {
-            setAvailableTransferMethods(addresses)
+        override fun onReaderEngagementReady(readerEngagement: ByteArray) {
+            this@TransferManager.readerEngagement = readerEngagement
+            transferStatusLd.value = TransferStatus.READER_ENGAGEMENT_READY
+        }
+
+        override fun onDeviceEngagementReceived(connectionMethods: MutableList<ConnectionMethod>) {
+            // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
+            // if both BLE modes are available at the same time.
+            setAvailableTransferMethods(ConnectionMethod.disambiguate(connectionMethods))
             transferStatusLd.value = TransferStatus.ENGAGED
         }
 
@@ -294,8 +329,8 @@ class TransferManager private constructor(private val context: Context) {
         sendRequest(requestDocumentList)
     }
 
-    fun setMdocAddress(address: DataRetrievalAddress) {
-        this.mdocAddress = address
+    fun setMdocConnectionMethod(connectionMethod: ConnectionMethod) {
+        this.mdocConnectionMethod = connectionMethod
     }
 
     fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {

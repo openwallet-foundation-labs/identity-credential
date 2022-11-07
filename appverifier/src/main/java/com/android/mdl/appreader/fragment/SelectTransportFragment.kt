@@ -46,7 +46,7 @@ class SelectTransportFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         val transferManager = TransferManager.getInstance(requireContext())
 
-        transferManager.availableMdocAddresses?.forEach {
+        transferManager.availableMdocConnectionMethods?.forEach {
             // For now just use the raw textual representation.
             //
             val buttonText = addressToHTML(it.toString())
@@ -55,10 +55,10 @@ class SelectTransportFragment : Fragment() {
             button.text = Html.fromHtml(buttonText, Html.FROM_HTML_MODE_COMPACT)
             button.id = View.generateViewId()
             val encodedDeviceRetrievalMethod = it
-            button.isChecked = (it.toString() == transferManager.mdocAddress.toString())
+            button.isChecked = (it.toString() == transferManager.mdocConnectionMethod.toString())
             button.setOnClickListener {
                 Log.d(LOG_TAG, "optionsText '$buttonText' was selected")
-                transferManager.setMdocAddress(encodedDeviceRetrievalMethod)
+                transferManager.setMdocConnectionMethod(encodedDeviceRetrievalMethod)
             }
             binding.rgTransferMethod.addView(button)
         }

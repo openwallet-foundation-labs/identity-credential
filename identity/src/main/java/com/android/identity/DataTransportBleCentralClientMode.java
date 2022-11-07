@@ -29,10 +29,8 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.os.ParcelUuid;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
-import com.android.identity.Constants.LoggingFlag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +43,6 @@ import java.util.UUID;
 @SuppressWarnings("MissingPermission")
 class DataTransportBleCentralClientMode extends DataTransportBle {
     private static final String TAG = "DataTransportBleCCM"; // limit to <= 23 chars
-    final Util.Logger mLog;
 
     UUID mCharacteristicStateUuid = UUID.fromString("00000005-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000006-a123-48ce-896b-4c76973373e6");
@@ -65,16 +62,15 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     GattClient mGattClient;
     BluetoothLeScanner mScanner;
     byte[] mEncodedEDeviceKeyBytes;
-    UUID mServiceUuid;
     long mTimeScanningStartedMillis;
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             UUID characteristicL2CAPUuid = null;
-            if (mUseL2CAPIfAvailable) {
+            if (mOptions.getBleUseL2CAP()) {
                 characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
             }
-            mGattClient = new GattClient(mContext, mLoggingFlags,
+            mGattClient = new GattClient(mContext,
                     mServiceUuid, mEncodedEDeviceKeyBytes,
                     mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
                     mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
@@ -82,7 +78,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
-                    reportListeningPeerConnected();
+                    reportConnected();
                 }
 
                 @Override
@@ -92,7 +88,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
                         mGattClient.disconnect();
                         mGattClient = null;
                     }
-                    reportListeningPeerDisconnected();
+                    reportDisconnected();
                 }
 
                 @Override
@@ -117,15 +113,14 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
 
             });
 
-            reportListeningPeerConnecting();
-            if (mLog.isTransportEnabled()) {
-                long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
-                mLog.transport("Scanned for " + scanTimeMillis + " milliseconds. "
-                        + "Connecting to device with address " + result.getDevice().getAddress());
-            }
+            reportConnecting();
+            long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
+            Logger.d(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
+                    + "Connecting to device with address " + result.getDevice().getAddress());
+            mGattClient.setClearCache(mOptions.getBleClearCache());
             mGattClient.connect(result.getDevice());
             if (mScanner != null) {
-                mLog.transport("Stopped scanning for UUID " + mServiceUuid);
+                Logger.d(TAG, "Stopped scanning for UUID " + mServiceUuid);
                 try {
                     mScanner.stopScan(mScanCallback);
                 } catch (SecurityException e) {
@@ -140,7 +135,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
 
         @Override
         public void onBatchScanResults(List<ScanResult> results) {
-            Log.w(TAG, "Ignoring unexpected onBatchScanResults");
+            Logger.w(TAG, "Ignoring unexpected onBatchScanResults");
         }
 
         @Override
@@ -162,12 +157,12 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         }
     };
     private GattServer mGattServer;
-    private DataRetrievalAddress mListeningAddress;
 
     public DataTransportBleCentralClientMode(@NonNull Context context,
-            @LoggingFlag int loggingFlags) {
-        super(context, loggingFlags);
-        mLog = new Util.Logger(TAG, loggingFlags);
+                                             @Role int role,
+                                             @NonNull ConnectionMethodBle connectionMethod,
+                                             @NonNull DataTransportOptions options) {
+        super(context, role, connectionMethod, options);
     }
 
     @Override
@@ -175,31 +170,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
     }
 
-    @Override
-    public @NonNull
-    DataRetrievalAddress getListeningAddress() {
-        return mListeningAddress;
-    }
-
-    public void setServiceUuid(@NonNull UUID serviceUuid) {
-        mServiceUuid = serviceUuid;
-    }
-
-    @Override
-    public void listen() {
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
-        if (mServiceUuid == null) {
-            mServiceUuid = UUID.randomUUID();
-        }
-
-        mListeningAddress = new DataRetrievalAddressBleCentralClientMode(mServiceUuid);
-
-        reportListeningSetupCompleted(mListeningAddress);
-
+    private void connectAsMdoc() {
         // TODO: Check if BLE is enabled and error out if not so...
 
         // Start scanning...
@@ -215,7 +186,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .build();
 
-        mLog.transport("Started scanning for UUID " + mServiceUuid);
+        Logger.d(TAG, "Started scanning for UUID " + mServiceUuid);
         mTimeScanningStartedMillis = System.currentTimeMillis();
         mScanner = bluetoothAdapter.getBluetoothLeScanner();
         List<ScanFilter> filterList = new ArrayList<>();
@@ -227,26 +198,13 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         }
     }
 
-    @Override
-    public void connect(@NonNull DataRetrievalAddress genericAddress) {
-        DataRetrievalAddressBleCentralClientMode address =
-                (DataRetrievalAddressBleCentralClientMode) genericAddress;
-
-        // TODO: Check if BLE is enabled and error out if not so...
-
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
-        mServiceUuid = address.uuid;
-
+    private void connectAsMdocReader() {
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
         UUID characteristicL2CAPUuid = null;
-        if (mUseL2CAPIfAvailable) {
+        if (mOptions.getBleUseL2CAP()) {
             characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
         }
-        mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
+        mGattServer = new GattServer(mContext, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
                 mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
                 mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
@@ -254,10 +212,10 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
-                reportConnectionResult(null);
+                reportConnected();
                 // No need to advertise anymore since we now have a client...
                 if (mBluetoothLeAdvertiser != null) {
-                    mLog.transport("Stopping advertising UUID " + mServiceUuid);
+                    Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
                     try {
                         mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
                     } catch (SecurityException e) {
@@ -270,12 +228,12 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
 
             @Override
             public void onPeerDisconnected() {
-                reportConnectionDisconnected();
+                reportDisconnected();
             }
 
             @Override
             public void onTransportSpecificSessionTermination() {
-                Log.d(TAG, "onTransportSpecificSessionTermination");
+                Logger.d(TAG, "onTransportSpecificSessionTermination");
                 reportTransportSpecificSessionTermination();
             }
 
@@ -317,7 +275,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
                     .setIncludeTxPowerLevel(false)
                     .addServiceUuid(new ParcelUuid(mServiceUuid))
                     .build();
-            mLog.transport("Started advertising UUID " + mServiceUuid);
+            Logger.d(TAG, "Started advertising UUID " + mServiceUuid);
             try {
                 mBluetoothLeAdvertiser.startAdvertising(settings, data, mAdvertiseCallback);
             } catch (SecurityException e) {
@@ -327,14 +285,26 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     }
 
     @Override
+    public void connect() {
+        // TODO: Check if BLE is enabled and error out if not so...
+
+        if (mRole == ROLE_MDOC) {
+            connectAsMdoc();
+        } else {
+            connectAsMdocReader();
+        }
+        reportConnectionMethodReady();
+    }
+
+    @Override
     public void close() {
         inhibitCallbacks();
         if (mBluetoothLeAdvertiser != null) {
-            mLog.transport("Stopping advertising UUID " + mServiceUuid);
+            Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
             try {
                 mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
             } catch (SecurityException e) {
-                Log.e(TAG, "Caught SecurityException while shutting down: " + e);
+                Logger.e(TAG, "Caught SecurityException while shutting down: " + e);
             }
             mBluetoothLeAdvertiser = null;
         }
@@ -344,11 +314,11 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
             mGattServer = null;
         }
         if (mScanner != null) {
-            mLog.transport("Stopped scanning for UUID " + mServiceUuid);
+            Logger.d(TAG, "Stopped scanning for UUID " + mServiceUuid);
             try {
                 mScanner.stopScan(mScanCallback);
             } catch (SecurityException e) {
-                Log.e(TAG, "Caught SecurityException while shutting down: " + e);
+                Logger.e(TAG, "Caught SecurityException while shutting down: " + e);
             }
             mScanner = null;
         }

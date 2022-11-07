@@ -28,12 +28,9 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayDeque;
@@ -49,7 +46,6 @@ class GattServer extends BluetoothGattServerCallback {
     private final UUID mServiceUuid;
     private final BluetoothManager mBluetoothManager;
     private final Context mContext;
-    final Util.Logger mLog;
     UUID mCharacteristicStateUuid;
     UUID mCharacteristicClient2ServerUuid;
     UUID mCharacteristicServer2ClientUuid;
@@ -76,16 +72,16 @@ class GattServer extends BluetoothGattServerCallback {
     private byte[] mIdentValue;
     private boolean mUsingL2CAP = false;
 
-    GattServer(@NonNull Context context, @LoggingFlag int loggingFlags,
+    GattServer(@NonNull Context context,
                @NonNull BluetoothManager bluetoothManager,
-               @NonNull UUID serviceUuid, @NonNull byte[] encodedEDeviceKeyBytes,
+               @NonNull UUID serviceUuid,
+               @Nullable byte[] encodedEDeviceKeyBytes,
                @NonNull UUID characteristicStateUuid,
                @NonNull UUID characteristicClient2ServerUuid,
                @NonNull UUID characteristicServer2ClientUuid,
                @Nullable UUID characteristicIdentUuid,
                @Nullable UUID characteristicL2CAPUuid) {
         mContext = context;
-        mLog = new Util.Logger(TAG, loggingFlags);
         mBluetoothManager = bluetoothManager;
         mServiceUuid = serviceUuid;
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
@@ -102,10 +98,12 @@ class GattServer extends BluetoothGattServerCallback {
 
     @SuppressLint("NewApi")
     boolean start() {
-        byte[] ikm = mEncodedEDeviceKeyBytes;
-        byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
-        byte[] salt = new byte[]{};
-        mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
+        if (mEncodedEDeviceKeyBytes != null) {
+            byte[] ikm = mEncodedEDeviceKeyBytes;
+            byte[] info = new byte[]{'B', 'L', 'E', 'I', 'd', 'e', 'n', 't'};
+            byte[] salt = new byte[]{};
+            mIdentValue = Util.computeHkdf("HmacSha256", ikm, salt, info, 16);
+        }
 
         try {
             mGattServer = mBluetoothManager.openGattServer(mContext, this);
@@ -163,10 +161,8 @@ class GattServer extends BluetoothGattServerCallback {
         }
 
         // Offers support to L2CAP when we have UUID characteristic and the OS version support it
-        mUsingL2CAP = (mCharacteristicL2CAPUuid != null) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q);
-        if (mLog.isTransportEnabled()) {
-            mLog.transport("Is L2CAP supported: " + mUsingL2CAP);
-        }
+        mUsingL2CAP = (mCharacteristicL2CAPUuid != null) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q);         
+        Logger.d(TAG, "Is L2CAP supported: " + mUsingL2CAP);
         if (mUsingL2CAP) {
             c = new BluetoothGattCharacteristic(mCharacteristicL2CAPUuid,
                     BluetoothGattCharacteristic.PROPERTY_READ,
@@ -197,18 +193,18 @@ class GattServer extends BluetoothGattServerCallback {
                 }
                 mGattServer.close();
             } catch (SecurityException e) {
-                Log.e(TAG, "Caught SecurityException while shutting down: " + e);
+                Logger.e(TAG, "Caught SecurityException while shutting down: " + e);
             }
         }
     }
 
     @Override
     public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
-        mLog.transport("onConnectionStateChange: " + device.getAddress() + " " + status + " " + newState);
+        Logger.d(TAG, "onConnectionStateChange: " + device.getAddress() + " " + status + " " + newState);
         if (newState == BluetoothProfile.STATE_DISCONNECTED
                 && mCurrentConnection != null
                 && device.getAddress().equals(mCurrentConnection.getAddress())) {
-            mLog.transport("Device " + mCurrentConnection.getAddress() + " which we're currently "
+            Logger.d(TAG, "Device " + mCurrentConnection.getAddress() + " which we're currently "
                     + "connected to, has disconnected");
             mCurrentConnection = null;
             reportPeerDisconnected();
@@ -219,16 +215,17 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
                                             BluetoothGattCharacteristic characteristic) {
-        mLog.transport("onCharacteristicReadRequest: "  + device.getAddress() + " "
+        Logger.d(TAG, "onCharacteristicReadRequest: "  + device.getAddress() + " "
                 + requestId + " " + offset + " " + characteristic.getUuid());
         if (mCharacteristicIdentUuid != null
                 && characteristic.getUuid().equals(mCharacteristicIdentUuid)) {
             try {
+                byte[] ident = mIdentValue != null ? mIdentValue : new byte[0];
                 mGattServer.sendResponse(device,
                         requestId,
                         BluetoothGatt.GATT_SUCCESS,
                         0,
-                        mIdentValue);
+                        ident);
             } catch (SecurityException e) {
                 reportError(e);
             }
@@ -265,7 +262,7 @@ class GattServer extends BluetoothGattServerCallback {
                 public void onMessageSendProgress(long progress, long max) {
                     reportMessageSendProgress(progress, max);
                 }
-            }, mLog.getLoggingFlags());
+            });
 
             byte[] psmValue = mL2CAPServer.start(mBluetoothManager.getAdapter());
             if (psmValue == null) {
@@ -292,13 +289,13 @@ class GattServer extends BluetoothGattServerCallback {
                                              int offset,
                                              byte[] value) {
         UUID charUuid = characteristic.getUuid();
-        mLog.transport("onCharacteristicWriteRequest: " + device.getAddress() + " "
+        Logger.d(TAG, "onCharacteristicWriteRequest: " + device.getAddress() + " "
                 + characteristic.getUuid() + " " + offset + " " + Util.toHex(value));
 
         // If we are connected to a device, ignore write from any other device
         if (mCurrentConnection != null &&
                 !device.getAddress().equals(mCurrentConnection.getAddress())) {
-            Log.e(TAG, "Ignoring characteristic write request from "
+            Logger.e(TAG, "Ignoring characteristic write request from "
             + device.getAddress() + " since we're already connected to "
             + mCurrentConnection.getAddress());
             return;
@@ -309,11 +306,11 @@ class GattServer extends BluetoothGattServerCallback {
                 // Close server socket when the connection was done by state characteristic
                 stopL2CAPServer();
                 if (mCurrentConnection != null) {
-                    Log.e(TAG, "Ignoring connection attempt from " + device.getAddress()
+                    Logger.e(TAG, "Ignoring connection attempt from " + device.getAddress()
                     + " since we're already connected to " + mCurrentConnection.getAddress());
                 } else {
                     mCurrentConnection = device;
-                    mLog.transport("Received connection (state 0x01 on State characteristic) "
+                    Logger.d(TAG, "Received connection (state 0x01 on State characteristic) "
                             + "from " + mCurrentConnection.getAddress());
                 }
                 reportPeerConnected();
@@ -335,7 +332,7 @@ class GattServer extends BluetoothGattServerCallback {
                 return;
             }
             mIncomingMessage.write(value, 1, value.length - 1);
-            mLog.transportVerbose(String.format(Locale.US,
+            Logger.d(TAG, String.format(Locale.US,
                     "Received chunk with %d bytes (last=%s), incomingMessage.length=%d",
                     value.length, value[0] == 0x00, mIncomingMessage.toByteArray().length));
             if (value[0] == 0x00) {
@@ -387,7 +384,7 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset,
                                         BluetoothGattDescriptor descriptor) {
-        mLog.transport("onDescriptorReadRequest: " + device.getAddress() + " "
+        Logger.d(TAG, "onDescriptorReadRequest: " + device.getAddress() + " "
                 + descriptor.getCharacteristic().getUuid() + " " + offset);
         /* Do nothing */
     }
@@ -397,8 +394,8 @@ class GattServer extends BluetoothGattServerCallback {
                                          BluetoothGattDescriptor descriptor,
                                          boolean preparedWrite, boolean responseNeeded,
                                          int offset, byte[] value) {
-        if (mLog.isTransportVerboseEnabled()) {
-            mLog.transportVerbose("onDescriptorWriteRequest: " + device.getAddress() + " "
+        if (Logger.isDebugEnabled()) {
+            Logger.d(TAG, "onDescriptorWriteRequest: " + device.getAddress() + " "
                     + descriptor.getCharacteristic().getUuid() + " " + offset + " "
                     + Util.toHex(value));
         }
@@ -418,11 +415,11 @@ class GattServer extends BluetoothGattServerCallback {
     @Override
     public void onMtuChanged(BluetoothDevice device, int mtu) {
         mNegotiatedMtu = mtu;
-        mLog.transport("Negotiated MTU " + mtu + " for " + device.getAddress() + " ");
+        Logger.d(TAG, "Negotiated MTU " + mtu + " for " + device.getAddress() + " ");
     }
 
     void drainWritingQueue() {
-        mLog.transport("drainWritingQueue " + writeIsOutstanding);
+        Logger.d(TAG, "drainWritingQueue " + writeIsOutstanding);
         if (writeIsOutstanding) {
             return;
         }
@@ -431,7 +428,7 @@ class GattServer extends BluetoothGattServerCallback {
             return;
         }
 
-        mLog.transportVerbose(String.format(Locale.US,
+        Logger.d(TAG, String.format(Locale.US,
                 "Sending chunk with %d bytes (last=%s)",
                 chunk.length, chunk[0] == 0x00));
         mCharacteristicServer2Client.setValue(chunk);
@@ -451,7 +448,7 @@ class GattServer extends BluetoothGattServerCallback {
 
     @Override
     public void onNotificationSent(BluetoothDevice device, int status) {
-        mLog.transport("onNotificationSent " + status + " for " + device.getAddress() + " ");
+        Logger.d(TAG, "onNotificationSent " + status + " for " + device.getAddress() + " ");
         if (status != BluetoothGatt.GATT_SUCCESS) {
             reportError(new Error("Error in onNotificationSent status=" + status));
             return;
@@ -472,7 +469,7 @@ class GattServer extends BluetoothGattServerCallback {
     }
 
     void sendMessage(@NonNull byte[] data) {
-        if (mLog.isTransportVerboseEnabled()) {
+        if (Logger.isDebugEnabled()) {
             Util.dumpHex(TAG, "sendMessage", data);
         }
 
@@ -483,7 +480,7 @@ class GattServer extends BluetoothGattServerCallback {
         }
 
         if (mNegotiatedMtu == 0) {
-            Log.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
+            Logger.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
             mNegotiatedMtu = 23;
         }
 

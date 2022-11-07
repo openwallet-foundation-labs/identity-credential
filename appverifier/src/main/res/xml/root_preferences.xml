@@ -8,6 +8,13 @@
         app:summaryOff="Don't use L2CAP"
         app:summaryOn="Use L2CAP"
         app:title="Use L2CAP if available" />
+
+    <SwitchPreference
+        android:defaultValue="false"
+        app:key="ble_clear_cache"
+        app:summaryOff="Don't clear the cache"
+        app:summaryOn="Clear the cache"
+        app:title="Clear BLE Service Cache" />
     </PreferenceCategory>
     <PreferenceCategory app:title="Debug Logging options">
         <SwitchPreference

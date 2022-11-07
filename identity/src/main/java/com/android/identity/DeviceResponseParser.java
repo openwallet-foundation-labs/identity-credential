@@ -16,11 +16,9 @@
 
 package com.android.identity;
 
-import android.util.Log;
-import android.util.Pair;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -146,8 +144,9 @@ public final class DeviceResponseParser {
 
         // Returns deviceKey and digestIdMapping. The byte[] is the digest.
         //
-        private @NonNull Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(DataItem mso,
-                String expectedDoctype) {
+        private @NonNull
+        Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(DataItem mso,
+                                                                 String expectedDoctype) {
             /* don't care about version for now */
             String digestAlgorithm = Util.cborMapExtractString(mso, "digestAlgorithm");
             if (!digestAlgorithm.equals("SHA-256")) {
@@ -217,7 +216,7 @@ public final class DeviceResponseParser {
 
             boolean issuerSignedAuthenticated = Util.coseSign1CheckSignature(
                     issuerAuthDataItem, null, issuerAuthorityKey);
-            Log.d(TAG, "issuerSignedAuthenticated: " + issuerSignedAuthenticated);
+            Logger.d(TAG, "issuerSignedAuthenticated: " + issuerSignedAuthenticated);
             builder.setIssuerSignedAuthenticated(issuerSignedAuthenticated);
             builder.setIssuerCertificateChain(issuerAuthorityCertChain);
 
@@ -330,9 +329,9 @@ public final class DeviceResponseParser {
                 byte[] expectedTag = Util.coseMac0GetTag(expectedMac);
                 deviceSignedAuthenticated = Arrays.equals(expectedTag, tagInResponse);
                 if (deviceSignedAuthenticated) {
-                    Log.i(TAG, "Verified DeviceSigned using MAC");
+                    Logger.d(TAG, "Verified DeviceSigned using MAC");
                 } else {
-                    Log.i(TAG, "Device MAC mismatch, got " + Util.toHex(tagInResponse)
+                    Logger.d(TAG, "Device MAC mismatch, got " + Util.toHex(tagInResponse)
                         + " expected " + Util.toHex(expectedTag));
                 }
             }

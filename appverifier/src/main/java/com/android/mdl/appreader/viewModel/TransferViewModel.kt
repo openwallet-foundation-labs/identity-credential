@@ -17,6 +17,8 @@ class TransferViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
+    fun isUsingReverseEngagement(): Boolean = transferManager.usingReverseEngagement
+
     fun connect() {
         transferManager.connect()
     }

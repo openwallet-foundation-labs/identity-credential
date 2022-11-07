@@ -2,9 +2,11 @@ package com.android.mdl.app.viewmodel
 
 import android.app.Application
 import android.view.View
+import android.widget.Button
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import com.android.identity.OriginInfo
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 
@@ -30,6 +32,14 @@ class ShareDocumentViewModel(val app: Application) :
         }
     }
 
+    fun startPresentationReverseEngagement(reverseEngagementUri: String,
+                                           originInfos : List<OriginInfo>) {
+        if (!hasStarted) {
+            transferManager.startPresentationReverseEngagement(reverseEngagementUri, originInfos)
+            hasStarted = true
+        }
+    }
+
     fun cancelPresentation() {
         transferManager.stopPresentation(
             sendSessionTerminationMessage = true,
@@ -39,9 +49,11 @@ class ShareDocumentViewModel(val app: Application) :
         message.set("Presentation canceled")
     }
 
-    fun setDeviceEngagement() {
+    fun showQrCode() {
         deviceEngagementQr.set(transferManager.getDeviceEngagementQrCode())
     }
 
+    fun onShowQrCodeClicked() {
+        transferManager.startQrEngagement()
+    }
 }
-

@@ -56,7 +56,7 @@ public class DeviceRequestGeneratorTest {
 
     private KeyPair generateReaderKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime256v1");
+        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
         kpg.initialize(ecSpec);
         return kpg.generateKeyPair();
     }

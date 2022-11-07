@@ -17,15 +17,12 @@
   -->
 
 <host-apdu-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:description="@string/engagement_service_desc"
+    android:description="@string/nfc_engagement_service_desc"
     android:requireDeviceUnlock="true">
 
     <aid-group android:description="@string/engagement_aid_group_desc" android:category="other">
         <!-- NFC Type 4 Tag -->
         <aid-filter android:name="D2760000850101"/>
-
-        <!-- Defined in ISO 18013-5:2021 clause 8.3.3.1.2 -->
-        <aid-filter android:name="A0000002480400"/>
     </aid-group>
 
 </host-apdu-service>

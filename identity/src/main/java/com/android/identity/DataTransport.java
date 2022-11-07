@@ -16,23 +16,17 @@
 
 package com.android.identity;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 import android.content.Context;
-import android.nfc.NdefRecord;
-import android.os.Build;
-import android.util.Log;
 
+import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.util.Arrays;
-import java.util.List;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import java.util.concurrent.Executor;
-
-import co.nstant.in.cbor.model.Array;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Number;
 
 /**
  * Abstraction for data transfer between prover and verifier devices.
@@ -40,7 +34,7 @@ import co.nstant.in.cbor.model.Number;
  * <p>The data transfer is packetized, that is, data is delivered at the same
  * granularity as it is sent. For example, if {@link #sendMessage(byte[])} is used to send
  * <code>N</code> bytes then this blob is what the remote peer will receive in the
- * {@link Listener#onMessageReceived(byte[])} callback.
+ * {@link Listener#onMessageReceived()} callback.
  *
  * <p>Instances constructed from subclasses deriving from this class must be inert when
  * constructed, that is, they must not do anything. This constraint exists to easily facilitate
@@ -51,10 +45,21 @@ import co.nstant.in.cbor.model.Number;
  *
  * <p>This class can be used to implement both provers and verifiers.
  */
-abstract class DataTransport {
+public abstract class DataTransport {
     private static final String TAG = "DataTransport";
 
+    public static final int ROLE_MDOC = 0;
+    public static final int ROLE_MDOC_READER = 1;
+
+    /** @hidden */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(value = {ROLE_MDOC, ROLE_MDOC_READER})
+    public @interface Role {
+    }
+
     protected final Context mContext;
+    protected final @Role int mRole;
+    protected final DataTransportOptions mOptions;
     boolean mInhibitCallbacks;
     private @Nullable
     Listener mListener;
@@ -64,112 +69,14 @@ abstract class DataTransport {
     TransmissionProgressListener mProgressListener;
     private @Nullable
     Executor mProgressListenerExecutor;
+    private Queue<byte[]> mMessageReceivedQueue = new ArrayDeque<>();
 
-    DataTransport(Context context) {
+    DataTransport(@NonNull Context context,
+                  @Role int role,
+                  @NonNull DataTransportOptions options) {
         mContext = context;
-    }
-
-    /**
-     * Returns a list of addresses (typically one) inferred from parsing DeviceRetrievalMethod CBOR.
-     *
-     * @param encodedDeviceRetrievalMethod bytes of DeviceRetrievalMethod CBOR.
-     * @return List of {@link DataRetrievalAddress} or <code>null</code> if none were found.
-     */
-    static @Nullable
-    List<DataRetrievalAddress> parseDeviceRetrievalMethod(
-            @NonNull byte[] encodedDeviceRetrievalMethod) {
-
-        DataItem d = Util.cborDecode(encodedDeviceRetrievalMethod);
-        if (!(d instanceof Array)) {
-            throw new IllegalArgumentException("Given CBOR is not an array");
-        }
-        DataItem[] items = ((Array) d).getDataItems().toArray(new DataItem[0]);
-        if (items.length < 2) {
-            throw new IllegalArgumentException("Expected two elems or more, got " + items.length);
-        }
-        if (!(items[0] instanceof Number) || !(items[1] instanceof Number)) {
-            throw new IllegalArgumentException("Items not of required type");
-        }
-        int type = ((Number) items[0]).getValue().intValue();
-        int version = ((Number) items[1]).getValue().intValue();
-
-        switch (type) {
-            case DataTransportBle.DEVICE_RETRIEVAL_METHOD_TYPE:
-                return DataTransportBle.parseDeviceRetrievalMethod(version, items);
-
-            case DataTransportWifiAware.DEVICE_RETRIEVAL_METHOD_TYPE:
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    return DataTransportWifiAware.parseDeviceRetrievalMethod(version, items);
-                } else {
-                    Log.i(TAG, "Ignoring Wifi Aware DeviceRetrievalMethod CBOR since Wifi Aware "
-                            + "is not available on this API level");
-                    return null;
-                }
-
-            case DataTransportNfc.DEVICE_RETRIEVAL_METHOD_TYPE:
-                return DataTransportNfc.parseDeviceRetrievalMethod(version, items);
-
-            case DataTransportTcp.DEVICE_RETRIEVAL_METHOD_TYPE:
-                return DataTransportTcp.parseDeviceRetrievalMethod(version, items);
-
-            default:
-                Log.w(TAG, "Unsupported device engagement with type " + type);
-                return null;
-        }
-    }
-
-    /**
-     * Returns a list of addresses (typically one) inferred from parsing an NDEF record.
-     *
-     * @param record an NDEF record.
-     * @return List of {@link DataRetrievalAddress} or <code>null</code> if none were found.
-     */
-    static @Nullable
-    List<DataRetrievalAddress> parseNdefRecord(
-            @NonNull NdefRecord record) {
-        // BLE Carrier Configuration record
-        //
-        if (record.getTnf() == 0x02
-                && Arrays.equals(record.getType(),
-                "application/vnd.bluetooth.le.oob".getBytes(UTF_8))
-                && Arrays.equals(record.getId(), "0".getBytes(UTF_8))) {
-            return DataTransportBle.parseNdefRecord(record);
-        }
-
-        // Wifi Aware Carrier Configuration record
-        //
-        if (record.getTnf() == 0x02
-                && Arrays.equals(record.getType(),
-                "application/vnd.wfa.nan".getBytes(UTF_8))
-                && Arrays.equals(record.getId(), "W".getBytes(UTF_8))) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                return DataTransportWifiAware.parseNdefRecord(record);
-            } else {
-                Log.i(TAG, "Ignoring Wifi Aware Carrier Configuration since Wifi Aware "
-                        + "is not available on this API level");
-                return null;
-            }
-        }
-
-        // NFC Carrier Configuration record
-        //
-        if (record.getTnf() == 0x02
-                && Arrays.equals(record.getType(),
-                "iso.org:18013:nfc".getBytes(UTF_8))
-                && Arrays.equals(record.getId(), "nfc".getBytes(UTF_8))) {
-            return DataTransportNfc.parseNdefRecord(record);
-        }
-
-        // Generic Carrier Configuration record
-        //
-        if (record.getTnf() == 0x02
-                && Arrays.equals(record.getType(),
-                "application/vnd.android.ic.dmr".getBytes(UTF_8))) {
-            byte[] deviceRetrievalMethod = record.getPayload();
-            return parseDeviceRetrievalMethod(deviceRetrievalMethod);
-        }
-
-        return null;
+        mRole = role;
+        mOptions = options;
     }
 
     /**
@@ -179,70 +86,39 @@ abstract class DataTransport {
      * pass the value they generate and initiators (e.g. mdoc reader apps) will pass the value
      * they receive through device engagement.
      *
-     * <p>This should be called before calling {@link #listen()} or
-     * {@link #connect(DataRetrievalAddress)}.
+     * <p>This should be called before calling {@link #connect()}.
      *
      * @param encodedEDeviceKeyBytes bytes of <code>EDeviceKeyBytes</code> CBOR.
      */
     abstract void setEDeviceKeyBytes(@NonNull byte[] encodedEDeviceKeyBytes);
 
     /**
-     * Connects to the mdoc.
+     * Starts connecting to the remote mdoc or mdoc reader.
      *
-     * <p>This is an asynchronous operation, {@link Listener#onConnectionResult(Throwable)}
-     * is called with whether the connection attempt worked.
-     *
-     * @param address a {@link DataRetrievalAddress}.
-     * @throws IllegalArgumentException if the given address is malformed.
+     * <p>This is an asynchronous operation, {@link Listener#onConnected()} will
+     * be called on success. On error {@link Listener#onError(Throwable)} will
+     * be called.
      */
-    abstract void connect(@NonNull DataRetrievalAddress address);
+    abstract void connect();
 
     /**
-     * Starts listening on the transport.
-     *
-     * Parameters that may vary (e.g. port number) are chosen by the implementation or informed
-     * by the caller out-of-band using e.g. transport-specific setters. All details are returned
-     * as part of the <code>DeviceRetrievalMethod</code> CBOR returned.
-     *
-     * <p>This is an asynchronous operation. When listening has been set up the
-     * {@link Listener#onListeningSetupCompleted(DataRetrievalAddress)} method is called with
-     * address the listener is listening to or <code>null</code> if the operation fails. When a
-     * peer connects {@link Listener#onListeningPeerConnected()} is called. Only a single peer
-     * will be allowed to connect. When the peer disconnects
-     * {@link Listener#onListeningPeerDisconnected()} is called.
-     */
-    abstract void listen();
-
-    /**
-     * Gets the address that can be used to connecting to the listening transport.
-     *
-     * <p>This is the same address which is returned by the
-     * {@link Listener#onListeningSetupCompleted(DataRetrievalAddress)} callback.
-     *
-     * @return A {@link DataRetrievalAddress}.
-     */
-    abstract @NonNull
-    DataRetrievalAddress getListeningAddress();
-
-    /**
-     * If this is a listening transport, stops listening and disconnects any peer already
-     * connected. If it's a connecting transport, disconnects the active peer. If no peer is
-     * connected, does nothing.
+     * Closes the connection with the remote mdoc or mdoc reader.
      *
      * <p>Messages previously sent with {@link #sendMessage(byte[])} will be sent before the
      * connection is closed.
-     * TODO: actually implement this guarantee for all transports.
+     *
+     * <p>If not connected, this method does nothing.
      *
      * <p>After calling this method, no more callbacks will be delivered.
      */
     abstract void close();
 
     /**
-     * Sends data to the remote peer.
+     * Sends data to the remote mdoc or mdoc reader.
      *
      * <p>This is an asynchronous operation, data will be sent by another thread. It's safe to
-     * call this right after {@link #connect(DataRetrievalAddress)}, data will be queued up and
-     * sent once a connection has been established.
+     * call this right after {@link #connect()}, data will be queued up and sent once a connection
+     * has been established.
      *
      * @param data the data to send
      */
@@ -265,6 +141,10 @@ abstract class DataTransport {
         this.mProgressListener = progressListener;
         this.mProgressListenerExecutor = progressListenerExecutor;
         sendMessage(data);
+    }
+
+    @Role int getRole() {
+        return mRole;
     }
 
     /**
@@ -303,6 +183,15 @@ abstract class DataTransport {
         mListenerExecutor = executor;
     }
 
+    /**
+     * Returns the next message received, if any.
+     *
+     * @return the next message or {@code null} if none is available.
+     */
+    public @Nullable byte[] getMessage() {
+        return mMessageReceivedQueue.poll();
+    }
+
     // Should be called by close() in subclasses to signal that no callbacks should be made
     // from here on.
     //
@@ -312,59 +201,44 @@ abstract class DataTransport {
 
     // Note: The report*() methods are safe to call from any thread.
 
-    protected void reportListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
+    protected void reportConnectionMethodReady() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onListeningSetupCompleted(address));
+            executor.execute(() -> listener.onConnectionMethodReady());
         }
     }
 
-    protected void reportListeningPeerConnecting() {
+    protected void reportConnecting() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onListeningPeerConnecting);
+            executor.execute(listener::onConnecting);
         }
     }
 
-    protected void reportListeningPeerConnected() {
+    protected void reportConnected() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onListeningPeerConnected);
+            executor.execute(listener::onConnected);
         }
     }
 
-    protected void reportListeningPeerDisconnected() {
+    protected void reportDisconnected() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onListeningPeerDisconnected);
-        }
-    }
-
-    protected void reportConnectionResult(@Nullable Throwable error) {
-        final Listener listener = mListener;
-        final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onConnectionResult(error));
-        }
-    }
-
-    protected void reportConnectionDisconnected() {
-        final Listener listener = mListener;
-        final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onConnectionDisconnected);
+            executor.execute(listener::onDisconnected);
         }
     }
 
     protected void reportMessageReceived(@NonNull byte[] data) {
+        mMessageReceivedQueue.add(data);
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onMessageReceived(data));
+            executor.execute(() -> listener.onMessageReceived());
         }
     }
 
@@ -393,63 +267,70 @@ abstract class DataTransport {
     }
 
     /**
+     * Returns a {@link ConnectionMethod} instance that can be used to connect to this transport.
+     *
+     * <p>This is used for listening transports where the address to listen on is not known
+     * until the connection has been set up for example if dynamic TCP port assignments are
+     * used or cloud relays.
+     *
+     * <p>For most data transports this will return the same {@link ConnectionMethod} instance
+     * that was passed at construction time. However for some transports where the address to
+     * listen on is not known until the connection have been set up (for example dynamic TCP
+     * listening port assignments or when a cloud relay is in use) it will differ.
+     *
+     * <p>This cannot be called until the {@link Listener#onConnectionMethodReady()} callback
+     * has been fired.
+     *
+     * @return A {@link ConnectionMethod}-derived instance.
+     */
+    public abstract @NonNull ConnectionMethod getConnectionMethod();
+
+    /**
      * Interface for listener.
      */
     interface Listener {
 
         /**
-         * Called on a listening transport when listening setup has completed and
-         * an address for how to connect is ready.
+         * Called when the {@link ConnectionMethod} is ready for the transport.
+         *
+         * <p>This is usually called right after {@link #connect()} is called.
+         *
+         * <p>After this is called it's permitted to call {@link #getConnectionMethod()}.
          */
-        void onListeningSetupCompleted(@Nullable DataRetrievalAddress address);
+        void onConnectionMethodReady();
 
         /**
-         * Called when a listening transport first sees a new connection.
+         * May be called when attempting to connect and the first sign of progress is seen.
+         *
+         * <p>The sole purpose of this is to allow the application to convey progress to the
+         * user, for example change from a screen where a QR engagement code is show to
+         * showing "Connecting to mDL reader...".
          *
          * <p>Depending on the transport in use it could be several seconds until
-         * {@link #onListeningPeerConnected()} is called.
+         * {@link #onConnected()} is called.
          */
-        void onListeningPeerConnecting();
+        void onConnecting();
 
         /**
-         * Called when a listening transport has accepted a new connection.
+         * Called when the attempt started with {@link #connect()} succeeds.
          */
-        void onListeningPeerConnected();
+        void onConnected();
 
         /**
-         * Called when the peer which connected to a listening transport disconnects.
-         *
-         * <p>If this is called, the transport can no longer be used and the caller
-         * should call {@link DataTransport#close()} to release resources.
-         */
-        void onListeningPeerDisconnected();
-
-        /**
-         * Called when the connection started with {@link #connect(DataRetrievalAddress)} succeeds.
-         *
-         * <p>If the connection didn't succeed, the transport can no longer be used and the caller
-         * should call {@link DataTransport#close()} to release resources.
-         *
-         * @param error if the connection succeeded, this is <code>null</code>, otherwise
-         *              details about what failed
-         */
-        void onConnectionResult(@Nullable Throwable error);
-
-        /**
-         * Called when the connection established with {@link #connect(DataRetrievalAddress)} has
+         * Called when the connection previously established with {@link #connect()} has
          * been disconnected.
          *
          * <p>If this is called, the transport can no longer be used and the caller
          * should call {@link DataTransport#close()} to release resources.
          */
-        void onConnectionDisconnected();
+        void onDisconnected();
 
         /**
          * Called when receiving data from the peer.
          *
-         * @param data the received data.
+         * <p>The received data can be retrieved using {@link DataTransport#getMessage()}.
          */
-        void onMessageReceived(@NonNull byte[] data);
+        void onMessageReceived();
 
         /**
          * Called when receiving a transport-specific session termination request.

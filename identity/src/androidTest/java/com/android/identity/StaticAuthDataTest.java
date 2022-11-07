@@ -16,7 +16,7 @@
 
 package com.android.identity;
 
-import android.util.Pair;
+import androidx.core.util.Pair;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;

@@ -44,12 +44,10 @@ import java.security.Security;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
-import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.LinkedList;
-import java.util.Queue;
 import java.util.Random;
 import java.util.TimeZone;
 

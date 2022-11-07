@@ -22,13 +22,10 @@ import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-
-import com.android.identity.Constants.LoggingFlag;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -44,7 +41,6 @@ class L2CAPClient {
     private static final String TAG = "L2CAPClient";
     private final Context mContext;
     Listener mListener;
-    final Util.Logger mLog;
 
     private BluetoothSocket mSocket;
     private BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
@@ -52,10 +48,9 @@ class L2CAPClient {
 
     private boolean mInhibitCallbacks = false;
 
-    L2CAPClient(Context context, @Nullable Listener listener, @LoggingFlag int loggingFlags) {
+    L2CAPClient(Context context, @Nullable Listener listener) {
         mContext = context;
         mListener = listener;
-        mLog = new Util.Logger(TAG, loggingFlags);
     }
 
     void disconnect() {
@@ -65,7 +60,7 @@ class L2CAPClient {
             try {
                 mWritingThread.join();
             } catch (InterruptedException e) {
-                Log.e(TAG, "Caught exception while joining writing thread: " + e);
+                Logger.e(TAG, "Caught exception while joining writing thread: " + e);
             }
         }
         try {
@@ -75,7 +70,7 @@ class L2CAPClient {
             }
         } catch (IOException e) {
             // Ignoring this error
-            Log.e(TAG, " Error closing socket connection " + e.getMessage(), e);
+            Logger.e(TAG, " Error closing socket connection " + e.getMessage(), e);
         }
     }
 
@@ -93,7 +88,7 @@ class L2CAPClient {
             psmSized = psmValue;
         }
         int psm = ByteBuffer.wrap(psmSized).getInt();
-        mLog.transport("Received psmValue: " + Util.toHex(psmValue) + " psm: " + psm);
+        Logger.d(TAG, "Received psmValue: " + Util.toHex(psmValue) + " psm: " + psm);
 
         // As per https://developer.android.com/reference/android/bluetooth/BluetoothAdapter#cancelDiscovery()
         // we should cancel any ongoing discovery since it interfere with the connection process
@@ -111,14 +106,14 @@ class L2CAPClient {
                     // Using insecure L2CAP allows the app to use L2CAP frictionless, otherwise
                     // Android will require bluetooth pairing with other device showing the pairing code
                     mSocket = bluetoothDevice.createInsecureL2capChannel(psm);
-                    mLog.transport("Connecting using L2CAP on PSM: " + psm);
+                    Logger.d(TAG, "Connecting using L2CAP on PSM: " + psm);
                     mSocket.connect();
                 } catch (IOException e) {
-                    Log.e(TAG, "Error connecting to socket L2CAP " + e.getMessage(), e);
+                    Logger.e(TAG, "Error connecting to socket L2CAP " + e.getMessage(), e);
                     reportError(new Error("Error connecting to socket L2CAP", e));
                 }
 
-                mLog.transport("Connected using L2CAP");
+                Logger.d(TAG, "Connected using L2CAP");
 
                 // Let the app know we're connected.
                 reportPeerConnected();
@@ -143,7 +138,7 @@ class L2CAPClient {
                     continue;
                 }
                 if (messageToSend.length == 0) {
-                    mLog.transport("Empty message, exiting writer thread");
+                    Logger.d(TAG, "Empty message, exiting writer thread");
                     return;
                 }
             } catch (InterruptedException e) {
@@ -155,10 +150,10 @@ class L2CAPClient {
                 os.write(messageToSend);
                 os.flush();
                 reportMessageSendProgress(messageToSend.length, messageToSend.length);
-                mLog.transport(String.format(Locale.US, "Wrote CBOR data item of size %d bytes",
+                Logger.d(TAG, String.format(Locale.US, "Wrote CBOR data item of size %d bytes",
                         messageToSend.length));
             } catch (IOException e) {
-                Log.e(TAG, "Error writing message on L2CAP socket", e);
+                Logger.e(TAG, "Error writing message on L2CAP socket", e);
                 reportError(new Error("Error writing message on L2CAP socket", e));
                 return;
             }
@@ -167,13 +162,13 @@ class L2CAPClient {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
-                Log.e(TAG, "Error sleeping after writing", e);
+                Logger.e(TAG, "Error sleeping after writing", e);
             }
         }
     }
 
     private void readFromSocket() {
-        mLog.transport("Start reading socket input");
+        Logger.d(TAG, "Start reading socket input");
         ByteArrayOutputStream pendingDataBaos = new ByteArrayOutputStream();
 
         // Keep listening to the InputStream until an exception occurs.
@@ -189,7 +184,7 @@ class L2CAPClient {
             try {
                 int numBytesRead = inputStream.read(buf);
                 if (numBytesRead == -1) {
-                    mLog.transport("End of stream reading from socket");
+                    Logger.d(TAG, "End of stream reading from socket");
                     reportPeerDisconnected();
                     break;
                 }
@@ -199,7 +194,7 @@ class L2CAPClient {
                 if (dataItemBytes == null) {
                     continue;
                 }
-                mLog.transport(String.format(Locale.US, "Received CBOR data item of size %d bytes",
+                Logger.d(TAG, String.format(Locale.US, "Received CBOR data item of size %d bytes",
                         dataItemBytes.length));
                 reportMessageReceived(dataItemBytes);
             } catch (IOException e) {

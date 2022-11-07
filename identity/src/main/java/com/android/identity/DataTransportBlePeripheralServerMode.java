@@ -32,7 +32,6 @@ import android.os.ParcelUuid;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import com.android.identity.Constants.LoggingFlag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +44,6 @@ import java.util.UUID;
 @SuppressWarnings("MissingPermission")
 class DataTransportBlePeripheralServerMode extends DataTransportBle {
     private static final String TAG = "DataTransportBlePSM"; // limit to <= 23 chars
-    final Util.Logger mLog;
 
     UUID mCharacteristicStateUuid = UUID.fromString("00000001-a123-48ce-896b-4c76973373e6");
     UUID mCharacteristicClient2ServerUuid = UUID.fromString("00000002-a123-48ce-896b-4c76973373e6");
@@ -65,7 +63,6 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     GattClient mGattClient;
     BluetoothLeScanner mScanner;
     byte[] mEncodedEDeviceKeyBytes;
-    UUID mServiceUuid;
     long mTimeScanningStartedMillis;
     /**
      * Callback to receive information about the advertisement process.
@@ -84,10 +81,10 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             UUID characteristicL2CAPUuid = null;
-            if (mUseL2CAPIfAvailable) {
+            if (mOptions.getBleUseL2CAP()) {
                 characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
             }
-            mGattClient = new GattClient(mContext, mLoggingFlags,
+            mGattClient = new GattClient(mContext,
                     mServiceUuid, mEncodedEDeviceKeyBytes,
                     mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
                     mCharacteristicServer2ClientUuid, null,
@@ -95,7 +92,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             mGattClient.setListener(new GattClient.Listener() {
                 @Override
                 public void onPeerConnected() {
-                    reportConnectionResult(null);
+                    reportConnected();
                 }
 
                 @Override
@@ -105,7 +102,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                         mGattClient.disconnect();
                         mGattClient = null;
                     }
-                    reportConnectionDisconnected();
+                    reportDisconnected();
                 }
 
                 @Override
@@ -129,15 +126,14 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                 }
             });
 
-            reportListeningPeerConnecting();
-            if (mLog.isTransportEnabled()) {
-                long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
-                mLog.transport("Scanned for " + scanTimeMillis + " milliseconds. "
-                        + "Connecting to device with address " + result.getDevice().getAddress());
-            }
+            reportConnecting();
+            long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
+            Logger.d(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
+                    + "Connecting to device with address " + result.getDevice().getAddress());
+            mGattClient.setClearCache(mOptions.getBleClearCache());
             mGattClient.connect(result.getDevice());
             if (mScanner != null) {
-                mLog.transport("Stopped scanning for UUID " + mServiceUuid);
+                Logger.d(TAG, "Stopped scanning for UUID " + mServiceUuid);
                 try {
                     mScanner.stopScan(mScanCallback);
                 } catch (SecurityException e) {
@@ -160,12 +156,12 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         }
     };
     private GattServer mGattServer;
-    private DataRetrievalAddress mListeningAddress;
 
     public DataTransportBlePeripheralServerMode(@NonNull Context context,
-            @LoggingFlag int loggingFlags) {
-        super(context, loggingFlags);
-        mLog = new Util.Logger(TAG, loggingFlags);
+                                                @Role int role,
+                                                @NonNull ConnectionMethodBle connectionMethod,
+                                                @NonNull DataTransportOptions options) {
+        super(context, role, connectionMethod, options);
     }
 
     @Override
@@ -173,31 +169,9 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
     }
 
-    @Override
-    public @NonNull
-    DataRetrievalAddress getListeningAddress() {
-        return mListeningAddress;
-    }
-
-    public void setServiceUuid(@NonNull UUID serviceUuid) {
-        mServiceUuid = serviceUuid;
-    }
-
-    @Override
-    public void listen() {
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
+    private void connectAsMdoc() {
         BluetoothManager bluetoothManager = mContext.getSystemService(BluetoothManager.class);
         BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
-
-        if (mServiceUuid == null) {
-            mServiceUuid = UUID.randomUUID();
-        }
-
-        mListeningAddress = new DataRetrievalAddressBlePeripheralServerMode(mServiceUuid);
 
         // TODO: It would be nice if we got get the MAC address that will be assigned to
         //  this advertisement so we can send it to the mDL reader, out of band. Android
@@ -205,15 +179,13 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
         //  added without violating the security/privacy goals behind removing identifiers.
         //
 
-        reportListeningSetupCompleted(mListeningAddress);
-
         // TODO: Check if BLE is enabled and error out if not so...
 
         UUID characteristicL2CAPUuid = null;
-        if (mUseL2CAPIfAvailable) {
+        if (mOptions.getBleUseL2CAP()) {
             characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdoc;
         }
-        mGattServer = new GattServer(mContext, mLoggingFlags, bluetoothManager, mServiceUuid,
+        mGattServer = new GattServer(mContext, bluetoothManager, mServiceUuid,
                 mEncodedEDeviceKeyBytes,
                 mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
                 mCharacteristicServer2ClientUuid, null,
@@ -222,10 +194,10 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             @Override
             public void onPeerConnected() {
                 Log.d(TAG, "onPeerConnected");
-                reportListeningPeerConnected();
+                reportConnected();
                 // No need to advertise anymore since we now have a client...
                 if (mBluetoothLeAdvertiser != null) {
-                    mLog.transport("Stopping advertising UUID " + mServiceUuid);
+                    Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
                     try {
                         mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
                     } catch (SecurityException e) {
@@ -238,7 +210,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
             @Override
             public void onPeerDisconnected() {
                 Log.d(TAG, "onPeerDisconnected");
-                reportListeningPeerDisconnected();
+                reportDisconnected();
             }
 
             @Override
@@ -283,7 +255,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                     .setIncludeTxPowerLevel(false)
                     .addServiceUuid(new ParcelUuid(mServiceUuid))
                     .build();
-            mLog.transport("Started advertising UUID " + mServiceUuid);
+            Logger.d(TAG, "Started advertising UUID " + mServiceUuid);
             try {
                 mBluetoothLeAdvertiser.startAdvertising(settings, data, mAdvertiseCallback);
             } catch (SecurityException e) {
@@ -293,20 +265,7 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
     }
 
-    @Override
-    public void connect(@NonNull DataRetrievalAddress genericAddress) {
-        DataRetrievalAddressBlePeripheralServerMode address =
-                (DataRetrievalAddressBlePeripheralServerMode) genericAddress;
-
-        // TODO: Check if BLE is enabled and error out if not so...
-
-        if (mEncodedEDeviceKeyBytes == null) {
-            reportError(new Error("EDeviceKeyBytes not set"));
-            return;
-        }
-
-        mServiceUuid = address.uuid;
-
+    private void connectAsMdocReader() {
         // Start scanning...
         mBluetoothManager = mContext.getSystemService(BluetoothManager.class);
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
@@ -319,11 +278,9 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
                 .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .build();
-
-        if (mLog.isTransportEnabled()) {
-            mTimeScanningStartedMillis = System.currentTimeMillis();
-            mLog.transport("Started scanning for UUID " + mServiceUuid);
-        }
+         
+        mTimeScanningStartedMillis = System.currentTimeMillis();
+        Logger.d(TAG, "Started scanning for UUID " + mServiceUuid);
         mScanner = bluetoothAdapter.getBluetoothLeScanner();
         List<ScanFilter> filterList = new ArrayList<>();
         filterList.add(filter);
@@ -335,10 +292,21 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
     }
 
     @Override
+    public void connect() {
+        // TODO: Check if BLE is enabled and error out if not so...
+        if (mRole == ROLE_MDOC) {
+            connectAsMdoc();
+        } else {
+            connectAsMdocReader();
+        }
+        reportConnectionMethodReady();
+    }
+
+    @Override
     public void close() {
         inhibitCallbacks();
         if (mBluetoothLeAdvertiser != null) {
-            mLog.transport("Stopping advertising UUID " + mServiceUuid);
+            Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
             try {
                 mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
             } catch (SecurityException e) {

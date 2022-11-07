@@ -26,8 +26,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
-import com.android.identity.Constants.LoggingFlag;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,7 +38,6 @@ import java.util.concurrent.TimeUnit;
 
 class L2CAPServer {
     private static final String TAG = "L2CAPServer";
-    final Util.Logger mLog;
 
     Listener mListener;
     boolean mInhibitCallbacks = false;
@@ -49,9 +46,8 @@ class L2CAPServer {
     private BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
     Thread mWritingThread;
 
-    L2CAPServer(@Nullable L2CAPServer.Listener listener, @LoggingFlag int loggingFlags) {
+    L2CAPServer(@Nullable L2CAPServer.Listener listener) {
         mListener = listener;
-        mLog = new Util.Logger(TAG, loggingFlags);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
@@ -65,7 +61,7 @@ class L2CAPServer {
             //   seem to give enough guidance on it.
             int psm = mServerSocket.getPsm();
             byte[] psmValue = ByteBuffer.allocate(4).putInt(psm).array();
-            mLog.transport("PSM Value generated: " + psm + " byte: " + Util.toHex(psmValue));
+            Logger.d(TAG, "PSM Value generated: " + psm + " byte: " + Util.toHex(psmValue));
 
             Thread waitingForConnectionThread = new Thread(this::waitForConnectionThread);
             waitingForConnectionThread.start();
@@ -111,9 +107,9 @@ class L2CAPServer {
 
     private void waitForConnectionThread() {
         try {
-            mLog.transport("Calling accept() to wait for connection");
+            Logger.d(TAG, "Calling accept() to wait for connection");
             mSocket = mServerSocket.accept();
-            mLog.transport("Accepted a connection");
+            Logger.d(TAG, "Accepted a connection");
 
             // Stop accepting new connections
             mServerSocket.close();
@@ -143,7 +139,7 @@ class L2CAPServer {
                     continue;
                 }
                 if (messageToSend.length == 0) {
-                    mLog.transport("Empty message, exiting writer thread");
+                    Logger.d(TAG, "Empty message, exiting writer thread");
                     return;
                 }
             } catch (InterruptedException e) {
@@ -155,7 +151,7 @@ class L2CAPServer {
                 os.write(messageToSend);
                 os.flush();
                 reportMessageSendProgress(messageToSend.length, messageToSend.length);
-                mLog.transport(String.format(Locale.US, "Wrote CBOR data item of size %d bytes",
+                Logger.d(TAG, String.format(Locale.US, "Wrote CBOR data item of size %d bytes",
                         messageToSend.length));
             } catch (IOException e) {
                 Log.e(TAG, "Error writing message on L2CAP socket", e);
@@ -173,7 +169,7 @@ class L2CAPServer {
     }
 
     private void readFromSocket() {
-        mLog.transport("Start reading socket input");
+        Logger.d(TAG, "Start reading socket input");
         ByteArrayOutputStream pendingDataBaos = new ByteArrayOutputStream();
 
         // Keep listening to the InputStream until an exception occurs.
@@ -189,7 +185,7 @@ class L2CAPServer {
             try {
                 int numBytesRead = inputStream.read(buf);
                 if (numBytesRead == -1) {
-                    mLog.transport("End of stream reading from socket");
+                    Logger.d(TAG, "End of stream reading from socket");
                     reportPeerDisconnected();
                     break;
                 }
@@ -199,7 +195,7 @@ class L2CAPServer {
                 if (dataItemBytes == null) {
                     continue;
                 }
-                mLog.transport(String.format(Locale.US, "Received CBOR data item of size %d bytes",
+                Logger.d(TAG, String.format(Locale.US, "Received CBOR data item of size %d bytes",
                         dataItemBytes.length));
                 reportMessageReceived(dataItemBytes);
             } catch (IOException e) {

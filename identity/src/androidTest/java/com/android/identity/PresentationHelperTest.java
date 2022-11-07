@@ -21,10 +21,11 @@ import static org.junit.Assume.assumeTrue;
 import android.content.Context;
 import android.os.ConditionVariable;
 import android.security.keystore.KeyProperties;
-import android.util.Pair;
+import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.test.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
@@ -54,6 +55,8 @@ import java.util.OptionalInt;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
 
 @SuppressWarnings("deprecation")
@@ -103,7 +106,7 @@ public class PresentationHelperTest {
     @Test
     @SmallTest
     public void testPresentation() throws Exception {
-        Context context = androidx.test.InstrumentationRegistry.getTargetContext();
+        Context context = InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(context);
         assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
 
@@ -139,52 +142,159 @@ public class PresentationHelperTest {
 
         PresentationSession session = store.createPresentationSession(
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
-        PresentationHelper presentation = new PresentationHelper(context, session);
 
-        // TODO: use loopback instead of TCP transport
-        DataTransportTcp proverTransport = new DataTransportTcp(context,
-                Constants.LOGGING_FLAG_MAXIMUM);
-        DataTransportTcp verifierTransport = new DataTransportTcp(context,
-                Constants.LOGGING_FLAG_MAXIMUM);
-        presentation.addDataTransport(proverTransport);  // internal helper
-
-        Executor executor = Executors.newSingleThreadExecutor();
-
-        ConditionVariable condVarDeviceConnecting = new ConditionVariable();
         ConditionVariable condVarDeviceConnected = new ConditionVariable();
         ConditionVariable condVarDeviceDisconnected = new ConditionVariable();
         ConditionVariable condVarDeviceEngagementReady = new ConditionVariable();
 
-        presentation.setListener(
-                new PresentationHelper.Listener() {
+        // TODO: use loopback instead of TCP transport
+        DataTransportTcp proverTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC,
+                new DataTransportOptions.Builder().build());
+        DataTransportTcp verifierTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC_READER,
+                new DataTransportOptions.Builder().build());
+
+        Executor executor = Executors.newSingleThreadExecutor();
+
+        QrEngagementHelper.Listener qrHelperListener =
+                new QrEngagementHelper.Listener() {
                     @Override
                     public void onDeviceEngagementReady() {
                         condVarDeviceEngagementReady.open();
                     }
 
                     @Override
-                    public void onEngagementDetected() {
-                        Assert.fail();
-                    }
-
-                    @Override
                     public void onDeviceConnecting() {
-                        condVarDeviceConnecting.open();
                     }
 
                     @Override
-                    public void onDeviceConnected() {
+                    public void onDeviceConnected(DataTransport transport) {
                         condVarDeviceConnected.open();
+                        Assert.assertEquals(proverTransport, transport);
                     }
 
                     @Override
-                    public void onDeviceRequest(
-                            @PresentationHelper.DeviceEngagementMethod int deviceEngagementMethod,
-                            @NonNull byte[] deviceRequestBytes) {
+                    public void onError(@NonNull Throwable error) {
+                        throw new AssertionError(error);
+                    }
+                };
+        QrEngagementHelper qrHelper = new QrEngagementHelper(context,
+                session,
+                new ArrayList<>(),
+                new DataTransportOptions.Builder().build(),
+                null,
+                qrHelperListener,
+                executor);
+        qrHelper.addDataTransport(proverTransport);  // internal helper
+        qrHelper.startListening();                   // internal helper
+        Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
+        byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
+        DataItem handover = SimpleValue.NULL;
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair();
+        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
+                .addArray()
+                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(encodedEReaderKeyPub))
+                .add(handover)
+                .end()
+                .build().get(0));
+        SessionEncryptionReader seReader = new SessionEncryptionReader(
+                eReaderKeyPair.getPrivate(),
+                eReaderKeyPair.getPublic(),
+                session.getEphemeralKeyPair().getPublic(),
+                encodedSessionTranscript);
+
+        Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
+        Map<String, Boolean> mdlNsItems = new HashMap<>();
+        mdlNsItems.put("family_name", true);
+        mdlNsItems.put("portrait", false);
+        mdlItemsToRequest.put(MDL_NAMESPACE, mdlNsItems);
+        Map<String, Boolean> aamvaNsItems = new HashMap<>();
+        aamvaNsItems.put("real_id", false);
+        mdlItemsToRequest.put(AAMVA_NAMESPACE, aamvaNsItems);
+
+        byte[] encodedDeviceRequest = new DeviceRequestGenerator()
+                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
+                .generate();
+        byte[] sessionEstablishment = seReader.encryptMessageToDevice(encodedDeviceRequest,
+                OptionalInt.empty());
+        verifierTransport.setListener(new DataTransport.Listener() {
+            @Override
+            public void onConnectionMethodReady() {
+            }
+
+            @Override
+            public void onConnecting() {
+            }
+
+            @Override
+            public void onConnected() {
+            }
+
+            @Override
+            public void onDisconnected() {
+            }
+
+            @Override
+            public void onTransportSpecificSessionTermination() {
+                Assert.fail();
+            }
+
+            @Override
+            public void onError(@NonNull Throwable error) {
+                throw new AssertionError(error);
+            }
+
+            @Override
+            public void onMessageReceived() {
+                byte[] data = verifierTransport.getMessage();
+                Pair<byte[], OptionalInt> decryptedMessage =
+                        seReader.decryptMessageFromDevice(data);
+                Assert.assertFalse(decryptedMessage.second.isPresent());
+
+                DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
+                        .setDeviceResponse(decryptedMessage.first)
+                        .setSessionTranscript(encodedSessionTranscript)
+                        .setEphemeralReaderKey(eReaderKeyPair.getPrivate())
+                        .parse();
+                Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.getStatus());
+                Assert.assertEquals("1.0", dr.getVersion());
+                Collection<DeviceResponseParser.Document> documents = dr.getDocuments();
+                Assert.assertEquals(1, documents.size());
+                DeviceResponseParser.Document d = documents.iterator().next();
+                Assert.assertEquals(MDL_DOCTYPE, d.getDocType());
+                Assert.assertEquals(0, d.getDeviceNamespaces().size());
+                Assert.assertEquals(2, d.getIssuerNamespaces().size());
+                Assert.assertEquals(2, d.getIssuerEntryNames(MDL_NAMESPACE).size());
+                Assert.assertEquals("Erika",
+                        d.getIssuerEntryString(MDL_NAMESPACE, "given_name"));
+                Assert.assertEquals("Mustermann",
+                        d.getIssuerEntryString(MDL_NAMESPACE, "family_name"));
+                Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size());
+                Assert.assertTrue(d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"));
+
+                // Send a close message (status 20 is "session termination")
+                verifierTransport.sendMessage(
+                        seReader.encryptMessageToDevice(null, OptionalInt.of(20)));
+            }
+        }, executor);
+
+        verifierTransport.setHostAndPort(proverTransport.getHost(), proverTransport.getPort());
+        verifierTransport.connect();
+        Assert.assertTrue(condVarDeviceConnected.block(5000));
+
+        final PresentationHelper[] presentation = {null};
+        PresentationHelper.Listener listener =
+                new PresentationHelper.Listener() {
+
+                    @Override
+                    public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
                         DeviceRequestParser parser = new DeviceRequestParser();
                         parser.setDeviceRequest(deviceRequestBytes);
-                        parser.setSessionTranscript(presentation.getSessionTranscript());
+                        parser.setSessionTranscript(presentation[0].getSessionTranscript());
                         DeviceRequestParser.DeviceRequest deviceRequest = parser.parse();
 
                         Collection<DeviceRequestParser.DocumentRequest> docRequests =
@@ -235,7 +345,7 @@ public class PresentationHelperTest {
                                     result,
                                     issuerSignedDataItemsWithValues,
                                     encodedIssuerAuth);
-                            presentation.sendDeviceResponse(generator.generate());
+                            presentation[0].sendDeviceResponse(generator.generate());
 
                         } catch (NoAuthenticationKeyAvailableException |
                                 InvalidReaderSignatureException |
@@ -257,106 +367,17 @@ public class PresentationHelperTest {
                         throw new AssertionError(error);
                     }
 
-                }, executor);
+                };
+        presentation[0] = new PresentationHelper.Builder(
+                context,
+                listener,
+                context.getMainExecutor(),
+                session)
+                .useForwardEngagement(proverTransport,
+                        qrHelper.getDeviceEngagement(),
+                        qrHelper.getHandover())
+                .build();
 
-        // Use empty data retrieval configuration (we already added TCP transport above)
-        presentation.startListening(new DataRetrievalListenerConfiguration.Builder().build());
-        Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
-        byte[] encodedDeviceEngagement = presentation.getDeviceEngagementForQrCodeRaw();
-
-        byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
-        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair();
-        SessionEncryptionReader seReader = new SessionEncryptionReader(
-                eReaderKeyPair.getPrivate(),
-                eReaderKeyPair.getPublic(),
-                encodedDeviceEngagement,
-                encodedHandover);
-
-        Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
-        Map<String, Boolean> mdlNsItems = new HashMap<>();
-        mdlNsItems.put("family_name", true);
-        mdlNsItems.put("portrait", false);
-        mdlItemsToRequest.put(MDL_NAMESPACE, mdlNsItems);
-        Map<String, Boolean> aamvaNsItems = new HashMap<>();
-        aamvaNsItems.put("real_id", false);
-        mdlItemsToRequest.put(AAMVA_NAMESPACE, aamvaNsItems);
-
-        byte[] encodedDeviceRequest = new DeviceRequestGenerator()
-                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
-                .generate();
-        byte[] sessionEstablishment = seReader.encryptMessageToDevice(encodedDeviceRequest,
-                OptionalInt.empty());
-        verifierTransport.setListener(new DataTransport.Listener() {
-            @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
-            }
-
-            @Override
-            public void onListeningPeerConnecting() {
-            }
-
-            @Override
-            public void onListeningPeerConnected() {
-            }
-
-            @Override
-            public void onListeningPeerDisconnected() {
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
-            }
-
-            @Override
-            public void onTransportSpecificSessionTermination() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onError(@NonNull Throwable error) {
-                throw new AssertionError(error);
-            }
-
-            @Override
-            public void onMessageReceived(@NonNull byte[] data) {
-                Pair<byte[], OptionalInt> decryptedMessage =
-                        seReader.decryptMessageFromDevice(data);
-                Assert.assertFalse(decryptedMessage.second.isPresent());
-
-                DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
-                        .setDeviceResponse(decryptedMessage.first)
-                        .setSessionTranscript(seReader.getSessionTranscript())
-                        .setEphemeralReaderKey(eReaderKeyPair.getPrivate())
-                        .parse();
-                Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.getStatus());
-                Assert.assertEquals("1.0", dr.getVersion());
-                Collection<DeviceResponseParser.Document> documents = dr.getDocuments();
-                Assert.assertEquals(1, documents.size());
-                DeviceResponseParser.Document d = documents.iterator().next();
-                Assert.assertEquals(MDL_DOCTYPE, d.getDocType());
-                Assert.assertEquals(0, d.getDeviceNamespaces().size());
-                Assert.assertEquals(2, d.getIssuerNamespaces().size());
-                Assert.assertEquals(2, d.getIssuerEntryNames(MDL_NAMESPACE).size());
-                Assert.assertEquals("Erika",
-                        d.getIssuerEntryString(MDL_NAMESPACE, "given_name"));
-                Assert.assertEquals("Mustermann",
-                        d.getIssuerEntryString(MDL_NAMESPACE, "family_name"));
-                Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size());
-                Assert.assertTrue(d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"));
-
-                // Send a close message (status 20 is "session termination")
-                verifierTransport.sendMessage(
-                        seReader.encryptMessageToDevice(null, OptionalInt.of(20)));
-            }
-        }, executor);
-
-        verifierTransport.connect(proverTransport.getListeningAddress());
-        Assert.assertTrue(condVarDeviceConnecting.block(5000));
-        Assert.assertTrue(condVarDeviceConnected.block(5000));
         verifierTransport.sendMessage(sessionEstablishment);
         Assert.assertTrue(condVarDeviceDisconnected.block(5000));
 
@@ -371,49 +392,118 @@ public class PresentationHelperTest {
 
         PresentationSession session = store.createPresentationSession(
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
-        PresentationHelper presentation = new PresentationHelper(context, session);
-
-        // TODO: use loopback transport
-        DataTransportTcp proverTransport = new DataTransportTcp(context,
-                Constants.LOGGING_FLAG_MAXIMUM);
-        DataTransportTcp verifierTransport = new DataTransportTcp(context,
-                Constants.LOGGING_FLAG_MAXIMUM);
-        presentation.addDataTransport(proverTransport);
 
         Executor executor = Executors.newSingleThreadExecutor();
 
-        ConditionVariable condVarDeviceConnecting = new ConditionVariable();
         ConditionVariable condVarDeviceConnected = new ConditionVariable();
         ConditionVariable condVarDeviceRequestReceived = new ConditionVariable();
         ConditionVariable condVarOnError = new ConditionVariable();
         ConditionVariable condVarDeviceEngagementReady = new ConditionVariable();
 
-        presentation.setListener(
-                new PresentationHelper.Listener() {
+        // TODO: use loopback transport
+        DataTransportTcp proverTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC,
+                new DataTransportOptions.Builder().build());
+        DataTransportTcp verifierTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC_READER,
+                new DataTransportOptions.Builder().build());
+        QrEngagementHelper.Listener qrHelperListener = new QrEngagementHelper.Listener() {
                     @Override
                     public void onDeviceEngagementReady() {
                         condVarDeviceEngagementReady.open();
                     }
 
                     @Override
-                    public void onEngagementDetected() {
-                        Assert.fail();
-                    }
-
-                    @Override
                     public void onDeviceConnecting() {
-                        condVarDeviceConnecting.open();
                     }
 
                     @Override
-                    public void onDeviceConnected() {
+                    public void onDeviceConnected(DataTransport transport) {
                         condVarDeviceConnected.open();
+                        Assert.assertEquals(proverTransport, transport);
                     }
 
                     @Override
-                    public void onDeviceRequest(
-                            @PresentationHelper.DeviceEngagementMethod int deviceEngagementMethod,
-                            @NonNull byte[] deviceRequestBytes) {
+                    public void onError(@NonNull Throwable error) {
+                        throw new AssertionError(error);
+                    }
+                };
+        QrEngagementHelper qrHelper = new QrEngagementHelper(context,
+                session,
+                new ArrayList<>(),
+                new DataTransportOptions.Builder().build(),
+                null,
+                qrHelperListener,
+                executor);
+        qrHelper.addDataTransport(proverTransport);  // internal helper
+        qrHelper.startListening();                   // internal helper
+        Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
+        byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
+
+        byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair();
+        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
+                .addArray()
+                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(encodedEReaderKeyPub))
+                .add(Util.cborDecode(encodedHandover))
+                .end()
+                .build().get(0));
+        SessionEncryptionReader seReader = new SessionEncryptionReader(
+                eReaderKeyPair.getPrivate(),
+                eReaderKeyPair.getPublic(),
+                session.getEphemeralKeyPair().getPublic(),
+                encodedSessionTranscript);
+
+        // Just make an empty request since the verifier will disconnect immediately anyway.
+        Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
+        byte[] encodedDeviceRequest = new DeviceRequestGenerator()
+                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
+                .generate();
+        byte[] sessionEstablishment = seReader.encryptMessageToDevice(encodedDeviceRequest,
+                OptionalInt.empty());
+        verifierTransport.setListener(new DataTransport.Listener() {
+            @Override
+            public void onConnectionMethodReady() {
+            }
+
+            @Override
+            public void onConnecting() {
+            }
+
+            @Override
+            public void onConnected() {
+            }
+
+            @Override
+            public void onDisconnected() {
+            }
+
+            @Override
+            public void onTransportSpecificSessionTermination() {
+                Assert.fail();
+            }
+
+            @Override
+            public void onError(@NonNull Throwable error) {
+                throw new AssertionError(error);
+            }
+
+            @Override
+            public void onMessageReceived() {
+                Assert.fail();
+            }
+        }, executor);
+
+        verifierTransport.setHostAndPort(proverTransport.getHost(), proverTransport.getPort());
+        verifierTransport.connect();
+        Assert.assertTrue(condVarDeviceConnected.block(5000));
+
+        PresentationHelper.Listener listener =
+                new PresentationHelper.Listener() {
+                    @Override
+                    public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
                         // Don't respond yet.. simulate the holder taking infinity to respond.
                         // instead, we'll simply wait for the verifier to disconnect instead.
                         condVarDeviceRequestReceived.open();
@@ -429,71 +519,17 @@ public class PresentationHelperTest {
                         condVarOnError.open();
                     }
 
-                }, executor);
-        // Use empty data retrieval configuration (we already added TCP transport above)
-        presentation.startListening(new DataRetrievalListenerConfiguration.Builder().build());
-        Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
-        byte[] encodedDeviceEngagement = presentation.getDeviceEngagementForQrCodeRaw();
+                };
+        PresentationHelper presentation = new PresentationHelper.Builder(
+                context,
+                listener,
+                context.getMainExecutor(),
+                session)
+                .useForwardEngagement(proverTransport,
+                    qrHelper.getDeviceEngagement(),
+                    qrHelper.getHandover())
+                .build();
 
-        byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
-        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair();
-        SessionEncryptionReader seReader = new SessionEncryptionReader(
-                eReaderKeyPair.getPrivate(),
-                eReaderKeyPair.getPublic(),
-                encodedDeviceEngagement,
-                encodedHandover);
-
-        // Just make an empty request since the verifier will disconnect immediately anyway.
-        Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
-        byte[] encodedDeviceRequest = new DeviceRequestGenerator()
-                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
-                .generate();
-        byte[] sessionEstablishment = seReader.encryptMessageToDevice(encodedDeviceRequest,
-                OptionalInt.empty());
-        verifierTransport.setListener(new DataTransport.Listener() {
-            @Override
-            public void onListeningSetupCompleted(@Nullable DataRetrievalAddress address) {
-            }
-
-            @Override
-            public void onListeningPeerConnecting() {
-            }
-
-            @Override
-            public void onListeningPeerConnected() {
-            }
-
-            @Override
-            public void onListeningPeerDisconnected() {
-            }
-
-            @Override
-            public void onConnectionResult(@Nullable Throwable error) {
-            }
-
-            @Override
-            public void onConnectionDisconnected() {
-            }
-
-            @Override
-            public void onTransportSpecificSessionTermination() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onError(@NonNull Throwable error) {
-                throw new AssertionError(error);
-            }
-
-            @Override
-            public void onMessageReceived(@NonNull byte[] data) {
-                Assert.fail();
-            }
-        }, executor);
-
-        verifierTransport.connect(proverTransport.getListeningAddress());
-        Assert.assertTrue(condVarDeviceConnecting.block(5000));
-        Assert.assertTrue(condVarDeviceConnected.block(5000));
         verifierTransport.sendMessage(sessionEstablishment);
         Assert.assertTrue(condVarDeviceRequestReceived.block(5000));
         verifierTransport.close();

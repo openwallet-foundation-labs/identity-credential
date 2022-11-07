@@ -30,8 +30,6 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.List;
 
-@SuppressWarnings("deprecation")
-@RunWith(AndroidJUnit4.class)
 public class DeviceResponseParserTest {
 
     private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";

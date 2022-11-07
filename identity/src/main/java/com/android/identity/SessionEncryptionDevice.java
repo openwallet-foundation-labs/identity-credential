@@ -18,7 +18,7 @@ package com.android.identity;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import android.util.Pair;
+import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -59,24 +59,15 @@ final class SessionEncryptionDevice {
 
     private static final String TAG = "SessionEncryptionDevice";
 
-    private boolean mEReaderKeyReceived;
-
     private byte[] mEncodedEReaderKeyPub;
     private PublicKey mEReaderKeyPub;
 
     private final PrivateKey mEDeviceKeyPrivate;
-    private final byte[] mEncodedDeviceEngagement;
-    private final DataItem mHandover;
 
     private SecretKeySpec mSKDevice;
     private SecretKeySpec mSKReader;
     private int mSKDeviceCounter = 1;
     private int mSKReaderCounter = 1;
-
-
-    // Calculated upon receipt of first message, in computeEncryptionKeysAndSessionTranscript().
-    //
-    private byte[] mEncodedSessionTranscript;
 
     /**
      * Creates a new {@link SessionEncryptionDevice} object.
@@ -85,15 +76,36 @@ final class SessionEncryptionDevice {
      * parameters below must conform to the CDDL in ISO 18013-5.
      *
      * @param eDeviceKeyPrivate the device private ephemeral key.
-     * @param encodedDeviceEngagement the bytes of the <code>DeviceEngagement</code> CBOR.
-     * @param encodedHandover the bytes of the <code>Handover</code> CBOR.
+     * @param encodedSessionTranscript
+     * @param eReaderKeyPublic
      */
     public SessionEncryptionDevice(@NonNull PrivateKey eDeviceKeyPrivate,
-            @NonNull byte[] encodedDeviceEngagement,
-            @NonNull byte[] encodedHandover) {
+                                   @NonNull PublicKey eReaderKeyPublic,
+                                   @NonNull byte[] encodedSessionTranscript) {
         mEDeviceKeyPrivate = eDeviceKeyPrivate;
-        mEncodedDeviceEngagement = encodedDeviceEngagement;
-        mHandover = Util.cborDecode(encodedHandover);
+        mEReaderKeyPub = eReaderKeyPublic;
+
+        try {
+            KeyAgreement ka = KeyAgreement.getInstance("ECDH");
+            ka.init(mEDeviceKeyPrivate);
+            ka.doPhase(mEReaderKeyPub, true);
+            byte[] sharedSecret = ka.generateSecret();
+
+            byte[] sessionTranscriptBytes = Util.cborEncode(
+                    Util.cborBuildTaggedByteString(encodedSessionTranscript));
+            byte[] salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes);
+
+            byte[] info = "SKDevice".getBytes(UTF_8);
+            byte[] derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
+
+            mSKDevice = new SecretKeySpec(derivedKey, "AES");
+
+            info = "SKReader".getBytes(UTF_8);
+            derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
+            mSKReader = new SecretKeySpec(derivedKey, "AES");
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new IllegalStateException("Error deriving keys", e);
+        }
     }
 
     /**
@@ -111,11 +123,6 @@ final class SessionEncryptionDevice {
      */
     public @NonNull byte[] encryptMessageToReader(@Nullable byte[] messagePlaintext,
             @NonNull OptionalLong statusCode) {
-        if (!mEReaderKeyReceived) {
-            throw new IllegalStateException("Cannot send messages to reader until a message "
-                    + "from the reader has been received");
-        }
-
         byte[] messageCiphertextAndAuthTag = null;
         if (messagePlaintext != null) {
             try {
@@ -182,20 +189,6 @@ final class SessionEncryptionDevice {
         }
         Map map = (Map) dataItems.get(0);
 
-        if (!mEReaderKeyReceived) {
-            // If it's the first message, retrieve reader key and setup crypto
-            DataItem dataItemEReaderKey = map.get(new UnicodeString("eReaderKey"));
-            if (!(dataItemEReaderKey instanceof ByteString)) {
-                throw new IllegalArgumentException("No 'eReaderKey' item found or not bstr");
-            }
-            byte[] eReaderKeyBytes = ((ByteString) dataItemEReaderKey).getBytes();
-            DataItem eReaderKey = Util.cborDecode(eReaderKeyBytes);
-            mEncodedEReaderKeyPub = eReaderKeyBytes;
-            mEReaderKeyPub = Util.coseKeyDecode(eReaderKey);
-            mEReaderKeyReceived = true;
-            computeEncryptionKeysAndSessionTranscript();
-        }
-
         DataItem dataItemData = map.get(new UnicodeString("data"));
         byte[] messageCiphertext = null;
         if (dataItemData != null) {
@@ -236,43 +229,6 @@ final class SessionEncryptionDevice {
         return new Pair<>(plainText, status);
     }
 
-    private void computeEncryptionKeysAndSessionTranscript() {
-        // TODO: See SessionEncryptionReader#ensureSessionEncryptionKeysAndSessionTranscript()
-        //  for similar code. Maybe maybe factor into common utility function.
-        //
-
-        // Calculate sessionTranscript
-        mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
-                .addArray()
-                .add(Util.cborBuildTaggedByteString(mEncodedDeviceEngagement))
-                .add(Util.cborBuildTaggedByteString(mEncodedEReaderKeyPub))
-                .add(mHandover)
-                .end()
-                .build().get(0));
-
-        try {
-            KeyAgreement ka = KeyAgreement.getInstance("ECDH");
-            ka.init(mEDeviceKeyPrivate);
-            ka.doPhase(mEReaderKeyPub, true);
-            byte[] sharedSecret = ka.generateSecret();
-
-            byte[] sessionTranscriptBytes = Util.cborEncode(
-                    Util.cborBuildTaggedByteString(mEncodedSessionTranscript));
-            byte[] salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes);
-
-            byte[] info = "SKDevice".getBytes(UTF_8);
-            byte[] derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
-
-            mSKDevice = new SecretKeySpec(derivedKey, "AES");
-
-            info = "SKReader".getBytes(UTF_8);
-            derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
-            mSKReader = new SecretKeySpec(derivedKey, "AES");
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new IllegalStateException("Error deriving keys", e);
-        }
-    }
-
     /**
      * Gets the number of messages encrypted with
      * {@link #encryptMessageToReader(byte[], OptionalLong)} .
@@ -290,37 +246,5 @@ final class SessionEncryptionDevice {
      */
     public int getNumMessagesDecrypted() {
         return mSKReaderCounter - 1;
-    }
-
-    /**
-     * Gets the <code>SessionTranscript</code> CBOR.
-     *
-     * <p>This CBOR defined in the ISO 18013-5 9.1.5.1 Session transcript.
-     *
-     * @return the bytes of <code>SessionTranscript</code> CBOR.
-     * @exception IllegalStateException if trying to get the SessionTranscript before a
-     *                                  message from the reader has been received.
-     */
-    public @NonNull byte[] getSessionTranscript() {
-        if (!mEReaderKeyReceived) {
-            throw new IllegalStateException("Session transcript not available until the first "
-                    + "message from the reader is received.");
-        }
-        return mEncodedSessionTranscript;
-    }
-
-    /**
-     * Gets the ephemeral reader public key.
-     *
-     * @return the ephemeral reader key received from the reader.
-     * @exception IllegalStateException if trying to get the SessionTranscript before a
-     *                                  message from the reader has been received.
-     */
-    public @NonNull PublicKey getEphemeralReaderPublicKey() {
-        if (!mEReaderKeyReceived) {
-            throw new IllegalStateException("Reader Ephemeral public key not available until the "
-                    + "first message from the reader is received.");
-        }
-        return mEReaderKeyPub;
     }
 }

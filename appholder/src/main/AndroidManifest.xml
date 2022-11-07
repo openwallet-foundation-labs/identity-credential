@@ -23,7 +23,10 @@
     <uses-feature
         android:name="android.hardware.nfc"
         android:required="true" />
+    <uses-feature android:name="android.hardware.camera"
+        android:required="true" />
 
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- As of API 31 BLE doesn't need location permission, but WiFi aware still requires it. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -45,6 +48,12 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:hardwareAccelerated="true"
@@ -63,9 +72,9 @@
         </activity>
 
         <service
-            android:name=".util.NfcHandler"
+            android:name=".util.NfcEngagementHandler"
             android:exported="true"
-            android:label="@string/engagement_service_desc"
+            android:label="@string/nfc_engagement_service_desc"
             android:permission="android.permission.BIND_NFC_SERVICE">
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
@@ -76,6 +85,32 @@
                 android:name="android.nfc.cardemulation.host_apdu_service"
                 android:resource="@xml/nfc_engagement_apdu_service" />
         </service>
+
+        <service
+            android:name=".util.NfcDataTransferHandler"
+            android:exported="true"
+            android:label="@string/nfc_data_transfer_service_desc"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/nfc_data_transfer_apdu_service" />
+        </service>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>
