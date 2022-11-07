@@ -29,6 +29,36 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp" />
 
+        <TextView
+            android:id="@+id/tv_document_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:layout_marginTop="16dp"
+            android:labelFor="@id/ed_document_name"
+            android:text="@string/txt_document_name" />
+
+        <EditText
+            android:id="@+id/ed_document_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp" />
+
+        <TextView
+            android:id="@+id/tv_storage_implementation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:layout_marginTop="16dp"
+            android:labelFor="@id/sp_storage_implementation"
+            android:text="@string/txt_storage_implementation" />
+
+        <Spinner
+            android:id="@+id/sp_storage_implementation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp" />
+
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content">

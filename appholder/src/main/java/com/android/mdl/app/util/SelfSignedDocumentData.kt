@@ -32,6 +32,8 @@ data class SelfSignedDocumentData(
 @Parcelize
 data class ProvisionInfo(
     val docType: String,
+    var docName: String,
+    val storageImplementationType: String,
     val userAuthentication: Boolean,
     val numberMso: Int,
     val maxUseMso: Int

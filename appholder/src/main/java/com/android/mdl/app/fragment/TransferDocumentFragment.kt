@@ -7,11 +7,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.readerauth.SimpleReaderTrustStore
 import com.android.mdl.app.transfer.TransferManager
@@ -65,8 +67,7 @@ class TransferDocumentFragment : Fragment() {
 
     private fun onTransferRequested() {
         Log.d(LOG_TAG, "Request")
-        // TODO: Add option to the user select the which document share when there
-        //  are more than one for now we are just returning the first document we found
+
         try {
             val trustStore = SimpleReaderTrustStore(
                 KeysAndCertificates.getTrustedReaderCertificates(requireContext())
@@ -75,53 +76,77 @@ class TransferDocumentFragment : Fragment() {
             var readerCommonName = ""
             var readerIsTrusted = false
             requestedDocuments.forEach { reqDoc ->
-                val doc = viewModel.getDocuments().find { reqDoc.docType == it.docType }
-                if (reqDoc.readerAuth != null && reqDoc.readerAuthenticated) {
-                    val readerChain = reqDoc.readerCertificateChain
-                    if (readerChain != null) {
-                        val trustPath =
-                            trustStore.createCertificationTrustPath(readerChain.toList())
-                        // Look for the common name in the root certificate if it is trusted or not
-                        val certChain = if (trustPath?.isNotEmpty() == true) {
-                            trustPath
-                        } else {
-                            readerChain
-                        }
-
-                        certChain.first().subjectX500Principal.name.split(",")
-                            .forEach { line ->
-                                val (key, value) = line.split("=", limit = 2)
-                                if (key == "CN") {
-                                    readerCommonName = value
-                                }
-                            }
-
-                        // Add some information about the reader certificate used
-                        if (trustStore.validateCertificationTrustPath(trustPath)) {
-                            readerIsTrusted = true
-                            binding.txtDocuments.append("- Trusted reader auth used: ($readerCommonName)\n")
-                        } else {
-                            readerIsTrusted = false
-                            binding.txtDocuments.append("- Not trusted reader auth used: ($readerCommonName)\n")
-                        }
+                val docs = viewModel.getDocuments().filter { reqDoc.docType == it.docType }
+                if (!viewModel.getSelectedDocuments().any { reqDoc.docType == it.docType }) {
+                    if (docs.isEmpty()) {
+                        binding.txtDocuments.append("- No document found for ${reqDoc.docType}\n")
+                        return@forEach
+                    } else if (docs.size == 1) {
+                        viewModel.getSelectedDocuments().add(docs[0])
+                    } else {
+                        showDocumentSelection(docs)
+                        return
                     }
                 }
-                if (doc != null) {
-                    binding.txtDocuments.append("- ${doc.userVisibleName} (${doc.docType})\n")
-                } else {
-                    binding.txtDocuments.append("- No document found for ${reqDoc.docType}\n")
+                val doc = viewModel.getSelectedDocuments().first { reqDoc.docType == it.docType }
+                if (reqDoc.readerAuth != null && reqDoc.readerAuthenticated) {
+                    val readerChain = reqDoc.readerCertificateChain
+                    val trustPath =
+                        trustStore.createCertificationTrustPath(readerChain.toList())
+                    // Look for the common name in the root certificate if it is trusted or not
+                    val certChain = if (trustPath?.isNotEmpty() == true) {
+                        trustPath
+                    } else {
+                        readerChain
+                    }
+
+                    certChain.first().subjectX500Principal.name.split(",")
+                        .forEach { line ->
+                            val (key, value) = line.split("=", limit = 2)
+                            if (key == "CN") {
+                                readerCommonName = value
+                            }
+                        }
+
+                    // Add some information about the reader certificate used
+                    if (trustStore.validateCertificationTrustPath(trustPath)) {
+                        readerIsTrusted = true
+                        binding.txtDocuments.append("- Trusted reader auth used: ($readerCommonName)\n")
+                    } else {
+                        readerIsTrusted = false
+                        binding.txtDocuments.append("- Not trusted reader auth used: ($readerCommonName)\n")
+                    }
                 }
+                binding.txtDocuments.append("- ${doc.userVisibleName} (${doc.docType})\n")
             }
-            viewModel.createSelectedItemsList()
-            val direction = TransferDocumentFragmentDirections
-                .navigateToConfirmation(readerCommonName, readerIsTrusted)
-            findNavController().navigate(direction)
+            if (viewModel.getSelectedDocuments().isNotEmpty()) {
+                viewModel.createSelectedItemsList()
+                val direction = TransferDocumentFragmentDirections
+                    .navigateToConfirmation(readerCommonName, readerIsTrusted)
+                findNavController().navigate(direction)
+            } else {
+                // Send response with 0 documents
+                viewModel.sendResponseForSelection()
+            }
         } catch (e: Exception) {
             val message = "On request received error: ${e.message}"
             Log.e(LOG_TAG, message, e)
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             binding.txtConnectionStatus.append("\n$message")
         }
+    }
+
+    private fun showDocumentSelection(doc: List<Document>) {
+        val alertDialogBuilder = AlertDialog.Builder(requireContext())
+        alertDialogBuilder.setTitle("Select which document to share")
+        val listItems = doc.map { it.userVisibleName }.toTypedArray()
+        alertDialogBuilder.setSingleChoiceItems(listItems, -1) { dialogInterface, i ->
+            viewModel.getSelectedDocuments().add(doc[i])
+            onTransferRequested()
+            dialogInterface.dismiss()
+        }
+        val mDialog = alertDialogBuilder.create()
+        mDialog.show()
     }
 
     private fun onTransferDisconnected() {

@@ -107,7 +107,9 @@
 
     <string name="item_settings">Settings</string>
     <string name="bt_close_connection">Close Connection</string>
-    <string name="txt_document_type">Document type:</string>
+    <string name="txt_document_type">Document type</string>
+    <string name="txt_document_name">Document name</string>
+    <string name="txt_storage_implementation">Storage implementation</string>
     <string name="txt_user_authentication">Use user authentication</string>
     <string name="txt_number_mso">Number of MSOs</string>
     <string name="txt_max_use_mso">Max use of MSO</string>
