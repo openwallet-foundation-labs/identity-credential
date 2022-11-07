@@ -28,15 +28,28 @@ function requestMDL() {
     });
  }
 
- const interval = setInterval(getDeviceResponse(), 5000);
+window.setInterval(getDeviceResponse, 5000);
   
- function getDeviceResponse() {
+function getDeviceResponse() {
+    document.getElementById(RESPONSE_ID).innerHTML = "";
     fetch(GET_URL + GET_URL_DISPLAY).then(response => response.text()).then((responseText) => {
-        document.getElementById(RESPONSE_ID).innerText = responseText;
+        if (responseText.length != 0) {
+            var table = document.createElement("table");
+            var textArr = responseText.substring(1, responseText.length - 1).split(",");
+            for (var i = 0; i < textArr.length; i++) {
+                var row = table.insertRow(i);
+                var rowText = textArr[i].substring(1, textArr[i].length - 1).split(":");
+                row.insertCell(0).innerHTML = rowText[0];
+                if (rowText.length == 2) {
+                    row.insertCell(1).innerHTML = rowText[1];
+                }
+            }
+            document.getElementById(RESPONSE_ID).append(table);
+        }
     });
- } 
+} 
 
- function resetServlet() {
+function resetServlet() {
     fetch(GET_URL + GET_URL_RESET).then(response => response.text()).then((responseText) => {
         document.getElementById(RESPONSE_ID).innerText = "";
         document.getElementById(QRCODE_TEXT_ID).innerText = "";
@@ -53,4 +66,4 @@ function requestMDL() {
         });
         document.getElementById(RESET_ID).innerText = responseText;
     });
- }
+}

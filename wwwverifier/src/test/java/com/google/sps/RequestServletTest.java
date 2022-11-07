@@ -139,7 +139,7 @@ public class RequestServletTest {
         doReturn(ServletConsts.GET_PARAM_RESPONSE).when(request).getParameter(ServletConsts.GET_PARAM);
         servlet.doGet(request, response);
         String responseStr = stringWriter.toString().trim();
-        Assert.assertEquals(responseStr, ServletConsts.DEFAULT_RESPONSE_MSSG);
+        Assert.assertEquals(responseStr, "");
     } 
 
     @Test

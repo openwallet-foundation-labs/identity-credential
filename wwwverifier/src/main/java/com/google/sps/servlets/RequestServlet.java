@@ -6,6 +6,8 @@ import java.util.Base64;
 import java.util.OptionalInt;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 
 // imports for key generation
 import java.security.InvalidAlgorithmParameterException;
@@ -123,12 +125,11 @@ public class RequestServlet extends HttpServlet {
      */
     public String getDeviceResponse() {
         Entity entity = getEntity();
-        if (!entity.hasProperty(ServletConsts.DEVICE_RESPONSE_PROP)) {
-            return ServletConsts.DEFAULT_RESPONSE_MSSG;
-        } else {
+        if (entity.hasProperty(ServletConsts.DEVICE_RESPONSE_PROP)) {
             Text deviceResponse = (Text) entity.getProperty(ServletConsts.DEVICE_RESPONSE_PROP);
             return deviceResponse.getValue();
         }
+        return "";
     } 
 
     /**
@@ -266,7 +267,57 @@ public class RequestServlet extends HttpServlet {
             .setSessionTranscript(sessionTranscript)
             .setEphemeralReaderKey(eReaderKeyPrivate)
             .parse();
-        return new Gson().toJson(dr.getDocuments());
+        return new Gson().toJson(buildJson(dr.getDocuments()));
+    }
+
+    public ArrayList<String> buildJson(List<DeviceResponseParser.Document> docs) {
+        ArrayList<String> arr = new ArrayList<String>();
+        arr.add("Number of documents returned: " + docs.size());
+        for (DeviceResponseParser.Document doc : docs) {
+            arr.add("Doctype: " + doc.getDocType());
+            if (doc.getIssuerSignedAuthenticated()) {
+                arr.add("Issuer Signed Authenticated");
+            }
+            if (doc.getDeviceSignedAuthenticatedViaSignature()) {
+                arr.add("Device Signed Authenticated (ECDSA");
+            } else if (doc.getDeviceSignedAuthenticated()) {
+                arr.add("Device Signed Authenticated");
+            }
+            arr.add("MSO");
+            arr.add("Signed: " + doc.getValidityInfoSigned().toString());
+            arr.add("Valid From: " + doc.getValidityInfoValidFrom().toString());
+            arr.add("Valid Until: " + doc.getValidityInfoValidUntil().toString());
+            arr.add("DeviceKey: " + Base64.getEncoder().encodeToString(doc.getDeviceKey().getEncoded()));
+            List<String> issuerNamespaces = doc.getIssuerNamespaces();
+            for (String namespace : issuerNamespaces) {
+                arr.add("Namespace: " + namespace);
+                List<String> entryNames = doc.getIssuerEntryNames(namespace);
+                for (String name : entryNames) {
+                    String nameVal = "";
+                    switch (name) {
+                        case "portrait":
+                            nameVal = Base64.getEncoder().encodeToString(doc.getIssuerEntryByteString(namespace, name));
+                            break;
+                        case "family_name":
+                            nameVal = doc.getIssuerEntryString(namespace, name);
+                            break;
+                        case "issue_date":
+                            nameVal = doc.getIssuerEntryString(namespace, name);
+                            break;
+                        case "expiry_date":
+                            nameVal = doc.getIssuerEntryString(namespace, name);
+                            break;
+                        case "document_number":
+                            nameVal = doc.getIssuerEntryString(namespace, name);
+                            break;
+                        default:
+                            nameVal = Base64.getEncoder().encodeToString(doc.getIssuerEntryData(namespace, name));
+                    }
+                    arr.add(name + ": " + nameVal);
+                }
+            }
+        }
+        return arr;
     }
 
     /**

@@ -34,6 +34,5 @@ public class ServletConsts {
     public static String AAMVA_NAMESPACE = "org.aamva.18013.5.1";
 
     // other messages
-    public static final String DEFAULT_RESPONSE_MSSG = "Device Response has not yet been generated.";
     public static final String RESET_MSSG = "Reset was successfully completed.";
 }
