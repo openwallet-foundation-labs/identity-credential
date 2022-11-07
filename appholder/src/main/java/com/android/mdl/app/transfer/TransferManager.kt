@@ -60,7 +60,6 @@ class TransferManager private constructor(private val context: Context) {
     private var nfcEngagement: NfcEngagementHelper? = null
     private var presentation: PresentationHelper? = null
     private var hasStarted = false
-    private var isTranscriptSet: Boolean = false
 
     private var hostApduService : HostApduService? = null
 
@@ -410,7 +409,6 @@ class TransferManager private constructor(private val context: Context) {
         nfcEngagement = null
         presentation = null
         session = null
-        isTranscriptSet = false
     }
 
     fun stopPresentation(
@@ -484,7 +482,7 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun readDocumentEntries(document: Document): CredentialDataResult.Entries? {
-        // Request all data items based on doctype
+        // Request all data items based on docType
         val entriesToRequest = if (DocumentData.MDL_DOCTYPE == document.docType) {
             RequestMdl.getFullItemsToRequest()
         } else if (DocumentData.MVR_DOCTYPE == document.docType) {
@@ -495,19 +493,40 @@ class TransferManager private constructor(private val context: Context) {
             throw IllegalArgumentException("Invalid docType to create request details ${document.docType}")
         }
 
-        val credentialRequest = CredentialDataRequest.Builder()
-            .setIncrementUseCount(false)
-            .setIssuerSignedEntriesToRequest(entriesToRequest)
-            .build()
+        // Create identity credential store from hardware or software implementation depending on
+        // what was used on each document provisioned
+        val mStore = if (document.hardwareBacked)
+            IdentityCredentialStore.getHardwareInstance(context)
+                ?: IdentityCredentialStore.getKeystoreInstance(context,
+                    PreferencesHelper.getKeystoreBackedStorageLocation(context))
+        else
+            IdentityCredentialStore.getKeystoreInstance(context,
+                PreferencesHelper.getKeystoreBackedStorageLocation(context))
 
-        if (!isTranscriptSet) {
-            session?.setSessionTranscript(byteArrayOf(0))
-            isTranscriptSet = true
+        try {
+            val mSession = mStore.createPresentationSession(
+                IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+            )
+
+            val credentialRequest = CredentialDataRequest.Builder()
+                .setIncrementUseCount(false)
+                .setIssuerSignedEntriesToRequest(entriesToRequest)
+                .build()
+
+            try {
+                mSession.setSessionTranscript(byteArrayOf(0))
+            } catch (e: IllegalStateException) {
+                Log.i(LOG_TAG, "Ignoring session transcript already set ${e.message}")
+            }
+
+            // It can display data if user consent is not required
+            val credentialData =
+                mSession.getCredentialData(document.identityCredentialName, credentialRequest)
+            return credentialData?.issuerSignedEntries
+        } catch (e: UnsupportedOperationException) {
+            Log.e(LOG_TAG, "Presentation session not supported in this device - ${e.message}", e)
+            return null
         }
-
-        // It can display data if user consent is not required
-        val credentialData = session?.getCredentialData(document.identityCredentialName, credentialRequest)
-        return credentialData?.issuerSignedEntries
     }
 
     fun setResponseServed() {

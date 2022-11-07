@@ -114,7 +114,7 @@ class ProvisioningFragment : Fragment() {
                 )
                 mDocType = docType
                 try {
-                    wc = documentManager.createCredential(credentialName, docType)
+                    wc = documentManager.createCredential(document, credentialName, docType)
                     val certificateChain =
                         wc?.getCredentialKeyCertificateChain(challenge)
                     Log.d(LOG_TAG, "sendMessageSetCertificateChain")

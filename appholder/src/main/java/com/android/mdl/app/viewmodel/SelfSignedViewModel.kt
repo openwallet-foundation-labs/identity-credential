@@ -37,7 +37,6 @@ class SelfSignedViewModel(val app: Application) :
         var id = 1
 
         // Pre fill default values for MDL document
-        fieldsMdl.add(Field(id++, "Document Name", "document_name", FieldType.STRING, "Driving License"))
         val bitmap = BitmapFactory.decodeResource(
             app.resources,
             R.drawable.img_erika_portrait
@@ -70,7 +69,6 @@ class SelfSignedViewModel(val app: Application) :
 
         // Pre fill default values for MRV document
         id = 1
-        fieldsMvr.add(Field(id++, "Document Name", "document_name", FieldType.STRING, "Vehicle Registration"))
         fieldsMvr.add(Field(id++, "Issuing Country", "issuingCountry", FieldType.STRING, "UT"))
         fieldsMvr.add(Field(id++, "Competent Authority", "competentAuthority", FieldType.STRING, "RDW"))
         fieldsMvr.add(Field(id++, "Registration Number", "registrationNumber", FieldType.STRING, "E-01-23"))
@@ -89,7 +87,6 @@ class SelfSignedViewModel(val app: Application) :
 
         // Pre fill default values for MICOV document
         id = 1
-        fieldsMicov.add(Field(id++, "Document Name", "document_name", FieldType.STRING, "Vaccination Document"))
         fieldsMicov.add(Field(id++, "Family name initial", "fni", FieldType.STRING, "M"))
         fieldsMicov.add(Field(id++, "Family name", "fn", FieldType.STRING, "Mustermann"))
         fieldsMicov.add(Field(id++, "Given name initial", "gni", FieldType.STRING, "E"))

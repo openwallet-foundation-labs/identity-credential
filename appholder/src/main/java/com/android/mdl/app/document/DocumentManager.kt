@@ -3,20 +3,12 @@ package com.android.mdl.app.document
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.security.keystore.KeyProperties
-import android.util.Log
 import androidx.preference.PreferenceManager
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.*
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
-import com.android.mdl.app.R
-import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.DocumentData
-import com.android.mdl.app.util.DocumentData.DUMMY_CREDENTIAL_NAME
-import com.android.mdl.app.util.DocumentData.DUMMY_MICOV_CREDENTIAL_NAME
-import com.android.mdl.app.util.DocumentData.DUMMY_MVR_CREDENTIAL_NAME
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
@@ -26,23 +18,8 @@ import com.android.mdl.app.util.PreferencesHelper
 import com.android.mdl.app.util.PreferencesHelper.HARDWARE_BACKED_PREFERENCE
 import com.android.mdl.app.util.SelfSignedDocumentData
 import kotlinx.coroutines.runBlocking
-import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
-import org.bouncycastle.operator.ContentSigner
-import org.bouncycastle.operator.OperatorCreationException
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.math.BigInteger
-import java.security.InvalidAlgorithmParameterException
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.NoSuchAlgorithmException
-import java.security.cert.CertificateException
-import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.security.spec.ECGenParameterSpec
 import java.util.*
 
 
@@ -63,77 +40,12 @@ class DocumentManager private constructor(private val context: Context) {
             }
     }
 
-    // Ideally we'd set the timeout to 0 which means "auth on every use" but this only works
-    // if the user has a biometric enrolled and also won't allow using the LSKF to unlock the
-    // key. The latter is of course is something we want b/c biometrics are prone to stop working
-    // without any warning - for example, the user could have done manual labor so their
-    // fingerprints no longer work or they could have gotten a new haircut so face authentication
-    // no longer works etc. etc.
-    //
-    // Instead we'd just set the timeout to some low duration, just low enough that the key
-    // is unlocked until we use it. Something like a second or so... except that won't work
-    // because of a peculiarity when using face authentication.
-    //
-    // In this case, the countdown to when the key is no longer considered unlocked starts
-    // at the moment the face is authenticated, NOT when the user hits the "Confirm" button.
-    // As such, if the user is a bit slow (for example if they don't realize they need to press
-    // the "Confirm" button) we'll end up timing out.
-    //
-    // So, 30 seconds it is.
-    //
-    // Note that we do handle this case in TransferDocumentFragment and we show a Toast
-    // saying "Auth took too long, try again" when this happens.
-    //
-    private val id = AccessControlProfileId(0)
-    private val profile = AccessControlProfile.Builder(id)
-        .setUserAuthenticationRequired(true)
-        .setUserAuthenticationTimeout(30 * 1000)
-        .build()
-
-    private var ids: Collection<AccessControlProfileId> = listOf(id)
-
-//    private val store = if (PreferencesHelper.hasHardwareBackedPreference(context)) {
-//        if (PreferencesHelper.isHardwareBacked(context)) {
-//            IdentityCredentialStore.getHardwareInstance(context)!!
-//        } else {
-//            IdentityCredentialStore.getKeystoreInstance(context,
-//                PreferencesHelper.getKeystoreBackedStorageLocation(context))
-//        }
-//    } else {
-//        // No preference for which store to use ... first try with the HW-backed implementation
-//        // and use it only if it reports a sufficiently new version.
-//        val hwStore = IdentityCredentialStore.getHardwareInstance(context)
-//        if (hwStore != null) {
-//            Log.i(LOG_TAG, "Found HW-backed store with version ${hwStore.featureVersion}")
-//        }
-//        if (hwStore != null && hwStore.featureVersion >= FEATURE_VERSION_202201) {
-//            Log.i(LOG_TAG, "Using HW-backed store with version ${hwStore.featureVersion}")
-//            PreferencesHelper.setHardwareBacked(context, true)
-//            hwStore
-//        } else {
-//            // Nope, fall back to Keystore implementation
-//            PreferencesHelper.setHardwareBacked(context, false)
-//            val ksStore = IdentityCredentialStore.getKeystoreInstance(context,
-//                PreferencesHelper.getKeystoreBackedStorageLocation(context))
-//            Log.i(LOG_TAG, "Using KS-backed store with version ${ksStore.featureVersion}")
-//            ksStore
-//        }
-//    }
-
-    // There is some issue using hardware backed impl with Pixel 6a Android 13, we are hardcoding
-    // to use keystore implementation for now.
-    private val store = IdentityCredentialStore.getKeystoreInstance(
-        context, PreferencesHelper.getKeystoreBackedStorageLocation(context)
-    )
-
-
     // Database to store document information
     private val documentRepository = DocumentRepository.getInstance(
         DocumentDatabase.getInstance(context).credentialDao()
     )
 
     init {
-
         PreferencesHelper.setHardwareBacked(context, false)
 
         // We always use the same implementation once the app is installed
@@ -144,487 +56,8 @@ class DocumentManager private constructor(private val context: Context) {
                 true
             ).apply()
         }
-        runBlocking {
-            // Load created documents from local database
-            val documents = documentRepository.getAll()
-
-            if (documents.isEmpty()) {
-                try {
-                    // Create the dummy credential...
-                    documentRepository.insert(createDummyCredential(store))
-                    // Create dummy mVR document...
-                    documentRepository.insert(createDummyMvrDocument(store))
-                    // Create dummy micov document...
-                    documentRepository.insert(createDummyMicovDocument(store))
-                } catch (e: RuntimeException) {
-                    Log.e(
-                        LOG_TAG,
-                        "Ignoring error while creating default credentials ${e.message}",
-                        e
-                    )
-                }
-            }
-        }
     }
 
-    private fun createDummyMicovDocument(store: IdentityCredentialStore): Document {
-        try {
-            provisionMicovDocument()
-            return Document(
-                MICOV_DOCTYPE,
-                DUMMY_MICOV_CREDENTIAL_NAME,
-                DocumentData.MicovStaticData.VISIBLE_NAME.value,
-                BitmapFactory.decodeResource(
-                    context.resources,
-                    R.drawable.driving_license_bg
-                ),
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
-                selfSigned = true,
-                userAuthentication = true,
-                KEY_COUNT,
-                MAX_USES_PER_KEY
-            )
-        } catch (e: IdentityCredentialException) {
-            throw IllegalStateException("Error creating dummy credential", e)
-        }
-    }
-
-    fun provisionMicovDocument() {
-
-        val iaSelfSignedCert = KeysAndCertificates.getMicovDsCertificate(context)
-
-        ids = getAccessProfileIds()
-
-        // org.micov.vtr.1
-        val dob = UnicodeString("1964-08-12")
-        dob.setTag(1004)
-        val ra011dt = UnicodeString("2021-04-08")
-        ra011dt.setTag(1004)
-        val ra011nx = UnicodeString("2021-05-20")
-        ra011nx.setTag(1004)
-        val ra012dt = UnicodeString("2021-05-18")
-        ra011dt.setTag(1004)
-        val vRA011 = CborBuilder().addMap()
-            .put("tg", "840539006")
-            .put("vp", "1119349007")
-            .put("mp", "EU/1/20/1528")
-            .put("ma", "ORG-100030215")
-            .put("bn", "B12345/67")
-            .put("dn", "1")
-            .put("sd", "2")
-            .put(UnicodeString("dt"), ra011dt)
-            .put("co", "UT")
-            .put("ao", "RHI")
-            .put(UnicodeString("nx"), ra011nx)
-            .put("is", "SC17")
-            .put("ci", "URN:UVCI:01:UT:187/37512422923")
-            .end()
-            .build()[0]
-        val vRA012 = CborBuilder().addMap()
-            .put("tg", "840539006")
-            .put("vp", "1119349007")
-            .put("mp", "EU/1/20/1528")
-            .put("ma", "ORG-100030215")
-            .put("bn", "B67890/12")
-            .put("dn", "2")
-            .put("sd", "2")
-            .put(UnicodeString("dt"), ra012dt)
-            .put("co", "UT")
-            .put("ao", "RHI")
-            .put("is", "SC17")
-            .put("ci", "URN:UVCI:01:UT:187/37512533044")
-            .end()
-            .build()[0]
-        val pidPPN = CborBuilder().addMap()
-            .put("pty", "PPN")
-            .put("pnr", "476284728")
-            .put("pic", "UT")
-            .end()
-            .build()[0]
-        val pidDL = CborBuilder().addMap()
-            .put("pty", "DL")
-            .put("pnr", "987654321")
-            .put("pic", "UT")
-            .end()
-            .build()[0]
-
-        // org.micov.attestation.1
-        val timeOfTest = UnicodeString("2021-10-12T19:00:00Z")
-        timeOfTest.setTag(0)
-        val seCondExpiry = UnicodeString("2021-10-13T19:00:00Z")
-        seCondExpiry.setTag(0)
-        val ra01Test = CborBuilder().addMap()
-            .put("Result", "260415000")
-            .put("TypeOfTest", "LP6464-4")
-            .put(UnicodeString("TimeOfTest"), timeOfTest)
-            .end()
-            .build()[0]
-        val safeEntryLeisure = CborBuilder().addMap()
-            .put("SeCondFulfilled", 1)
-            .put("SeCondType", "leisure")
-            .put(UnicodeString("SeCondExpiry"), seCondExpiry)
-            .end()
-            .build()[0]
-        val bitmap = BitmapFactory.decodeResource(
-            context.resources,
-            R.drawable.img_erika_portrait
-        )
-        val baos = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
-        val portrait: ByteArray = baos.toByteArray()
-        val personalizationData = PersonalizationData.Builder()
-            .putEntryString(DocumentData.MICOV_VTR_NAMESPACE, "fn", ids, "Mustermann")
-            .putEntryString(DocumentData.MICOV_VTR_NAMESPACE, "gn", ids, "Erika")
-            .putEntry(DocumentData.MICOV_VTR_NAMESPACE, "dob", ids, FormatUtil.cborEncode(dob))
-            .putEntryInteger(DocumentData.MICOV_VTR_NAMESPACE, "sex", ids, 2)
-            .putEntry(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "v_RA01_1",
-                ids,
-                FormatUtil.cborEncode(vRA011)
-            )
-            .putEntry(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "v_RA01_2",
-                ids,
-                FormatUtil.cborEncode(vRA012)
-            )
-            .putEntry(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "pid_PPN",
-                ids,
-                FormatUtil.cborEncode(pidPPN)
-            )
-            .putEntry(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "pid_DL",
-                ids,
-                FormatUtil.cborEncode(pidDL)
-            )
-            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "1D47_vaccinated", ids, 2)
-            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "RA01_vaccinated", ids, 2)
-            .putEntry(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "RA01_test",
-                ids,
-                FormatUtil.cborEncode(ra01Test)
-            )
-            .putEntry(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "safeEntry_Leisure",
-                ids,
-                FormatUtil.cborEncode(safeEntryLeisure)
-            )
-            .putEntryBytestring(DocumentData.MICOV_ATT_NAMESPACE, "fac", ids, portrait)
-            .putEntryString(DocumentData.MICOV_ATT_NAMESPACE, "fni", ids, "M")
-            .putEntryString(DocumentData.MICOV_ATT_NAMESPACE, "gni", ids, "E")
-            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "by", ids, 1964)
-            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "bm", ids, 8)
-            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "bd", ids, 12)
-
-        // Add access control profile depending on the settings
-        setAccessControlProfile(personalizationData)
-
-        Utility.provisionSelfSignedCredential(
-            store,
-            DUMMY_MICOV_CREDENTIAL_NAME,
-            KeysAndCertificates.getMicovDsKeyPair(context).private,
-            iaSelfSignedCert,
-            MICOV_DOCTYPE,
-            personalizationData.build(),
-            KEY_COUNT,
-            MAX_USES_PER_KEY
-        )
-    }
-
-    // Access control profile based on settings
-    private fun getAccessProfileIds(): Collection<AccessControlProfileId> {
-        return listOf(id)
-    }
-
-    // Access control profile based on settings
-    private fun setAccessControlProfile(personalizationData: PersonalizationData.Builder) {
-        personalizationData.addAccessControlProfile(profile)
-    }
-
-    private fun createDummyMvrDocument(store: IdentityCredentialStore): Document {
-        try {
-            provisionMvrDocument()
-
-            return Document(
-                MVR_DOCTYPE,
-                DUMMY_MVR_CREDENTIAL_NAME,
-                DocumentData.MekbStaticData.VISIBLE_NAME.value,
-                BitmapFactory.decodeResource(
-                    context.resources,
-                    R.drawable.driving_license_bg
-                ),
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
-                selfSigned = true,
-                userAuthentication = true,
-                KEY_COUNT,
-                MAX_USES_PER_KEY
-            )
-        } catch (e: IdentityCredentialException) {
-            throw IllegalStateException("Error creating dummy credential", e)
-        }
-    }
-
-    fun provisionMvrDocument() {
-        val iaSelfSignedCert = KeysAndCertificates.getMekbDsCertificate(context)
-        ids = getAccessProfileIds()
-
-        val validFrom = UnicodeString("2021-04-19T22:00:00Z")
-        validFrom.setTag(0)
-        val validUntil = UnicodeString("2023-04-20T22:00:00Z")
-        validUntil.setTag(0)
-        val registrationInfo = CborBuilder().addMap()
-            .put("issuingCountry", "UT")
-            .put("competentAuthority", "RDW")
-            .put("registrationNumber", "E-01-23")
-            .put(UnicodeString("validFrom"), validFrom)
-            .put(UnicodeString("validUntil"), validFrom)
-            .end()
-            .build()[0]
-        val issueDate = UnicodeString("2021-04-18")
-        issueDate.setTag(1004)
-        val registrationHolderAddress = CborBuilder().addMap()
-            .put("streetName", "teststraat")
-            .put("houseNumber", 86)
-            .put("postalCode", "1234 AA")
-            .put("placeOfResidence", "Samplecity")
-            .end()
-            .build()[0]
-        val registrationHolderHolderInfo = CborBuilder().addMap()
-            .put("name", "Sample Name")
-            .put(UnicodeString("address"), registrationHolderAddress)
-            .end()
-            .build()[0]
-        val registrationHolder = CborBuilder().addMap()
-            .put(UnicodeString("holderInfo"), registrationHolderHolderInfo)
-            .put("ownershipStatus", 2)
-            .end()
-            .build()[0]
-        val basicVehicleInfo = CborBuilder().addMap()
-            .put(
-                UnicodeString("vehicle"), CborBuilder().addMap()
-                    .put("make", "Dummymobile")
-                    .end()
-                    .build()[0]
-            )
-            .end()
-            .build()[0]
-
-        val personalizationData = PersonalizationData.Builder()
-            .putEntry(
-                MVR_NAMESPACE,
-                "registration_info",
-                ids,
-                FormatUtil.cborEncode(registrationInfo)
-            )
-            .putEntry(MVR_NAMESPACE, "issue_date", ids, FormatUtil.cborEncode(issueDate))
-            .putEntry(
-                MVR_NAMESPACE,
-                "registration_holder",
-                ids,
-                FormatUtil.cborEncode(registrationHolder)
-            )
-            .putEntry(
-                MVR_NAMESPACE,
-                "basic_vehicle_info",
-                ids,
-                FormatUtil.cborEncode(basicVehicleInfo)
-            )
-            .putEntryString(MVR_NAMESPACE, "vin", ids, "1M8GDM9AXKP042788")
-
-        setAccessControlProfile(personalizationData)
-
-        Utility.provisionSelfSignedCredential(
-            store,
-            DUMMY_MVR_CREDENTIAL_NAME,
-            KeysAndCertificates.getMekbDsKeyPair(context).private,
-            iaSelfSignedCert,
-            MVR_DOCTYPE,
-            personalizationData.build(),
-            KEY_COUNT,
-            MAX_USES_PER_KEY
-        )
-    }
-
-    private fun createDummyCredential(store: IdentityCredentialStore): Document {
-        try {
-            provisionMdlDocument()
-            return Document(
-                MDL_DOCTYPE,
-                DUMMY_CREDENTIAL_NAME,
-                DocumentData.ErikaStaticData.VISIBLE_NAME.value,
-                BitmapFactory.decodeResource(
-                    context.resources,
-                    R.drawable.driving_license_bg
-                ),
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
-                selfSigned = true,
-                userAuthentication = true,
-                KEY_COUNT,
-                MAX_USES_PER_KEY
-            )
-        } catch (e: IdentityCredentialException) {
-            throw IllegalStateException("Error creating dummy credential", e)
-        }
-    }
-
-    fun provisionMdlDocument() {
-        val iaSelfSignedCert = KeysAndCertificates.getMdlDsCertificate(context)
-        val bitmap = BitmapFactory.decodeResource(
-            context.resources,
-            R.drawable.img_erika_portrait
-        )
-        val baos = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
-        val portrait: ByteArray = baos.toByteArray()
-        val bitmapSignature = BitmapFactory.decodeResource(
-            context.resources,
-            R.drawable.img_erika_signature
-        )
-        baos.reset()
-        bitmapSignature.compress(Bitmap.CompressFormat.JPEG, 50, baos)
-        val signature: ByteArray = baos.toByteArray()
-        ids = getAccessProfileIds()
-
-        val birthDate = UnicodeString("1971-09-01")
-        birthDate.setTag(1004)
-        val issueDate = UnicodeString("2021-04-18")
-        issueDate.setTag(1004)
-        val expiryDate = UnicodeString("2026-08-31")
-        expiryDate.setTag(1004)
-        val issueDateCatA = UnicodeString("2018-08-09")
-        issueDateCatA.setTag(1004)
-        val expiryDateCatA = UnicodeString("2024-10-20")
-        expiryDateCatA.setTag(1004)
-        val issueDateCatB = UnicodeString("2017-02-23")
-        issueDateCatB.setTag(1004)
-        val expiryDateCatB = UnicodeString("2024-10-20")
-        expiryDateCatB.setTag(1004)
-        val drivingPrivileges = CborBuilder().addArray()
-            .addMap()
-            .put("vehicle_category_code", "A")
-            .put(UnicodeString("issue_date"), issueDateCatA)
-            .put(UnicodeString("expiry_date"), expiryDateCatA)
-            .end()
-            .addMap()
-            .put("vehicle_category_code", "B")
-            .put(UnicodeString("issue_date"), issueDateCatB)
-            .put(UnicodeString("expiry_date"), expiryDateCatB)
-            .end()
-            .end()
-            .build()[0]
-        val personalizationData = PersonalizationData.Builder()
-            .putEntryString(DocumentData.MDL_NAMESPACE, "given_name", ids, "Erika")
-            .putEntryString(DocumentData.MDL_NAMESPACE, "family_name", ids, "Mustermann")
-            .putEntry(
-                DocumentData.MDL_NAMESPACE,
-                "birth_date",
-                ids,
-                FormatUtil.cborEncode(birthDate)
-            )
-            .putEntryBytestring(DocumentData.MDL_NAMESPACE, "portrait", ids, portrait)
-            .putEntry(
-                DocumentData.MDL_NAMESPACE,
-                "issue_date",
-                ids,
-                FormatUtil.cborEncode(issueDate)
-            )
-            .putEntry(
-                DocumentData.MDL_NAMESPACE,
-                "expiry_date",
-                ids,
-                FormatUtil.cborEncode(expiryDate)
-            )
-            .putEntryString(DocumentData.MDL_NAMESPACE, "issuing_country", ids, "UT")
-            .putEntryString(DocumentData.MDL_NAMESPACE, "issuing_authority", ids, "Google")
-            .putEntryString(DocumentData.MDL_NAMESPACE, "document_number", ids, "987654321")
-            .putEntry(
-                DocumentData.MDL_NAMESPACE,
-                "driving_privileges",
-                ids,
-                FormatUtil.cborEncode(drivingPrivileges)
-            )
-            .putEntryString(DocumentData.MDL_NAMESPACE, "un_distinguishing_sign", ids, "UT")
-            .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_18", ids, true)
-            .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_21", ids, true)
-            .putEntryBytestring(DocumentData.MDL_NAMESPACE, "signature_usual_mark", ids, signature)
-            .putEntryBoolean(DocumentData.AAMVA_NAMESPACE, "real_id", ids, true)
-
-        setAccessControlProfile(personalizationData)
-
-        Utility.provisionSelfSignedCredential(
-            store,
-            DUMMY_CREDENTIAL_NAME,
-            KeysAndCertificates.getMdlDsKeyPair(context).private,
-            iaSelfSignedCert,
-            MDL_DOCTYPE,
-            personalizationData.build(),
-            KEY_COUNT,
-            MAX_USES_PER_KEY
-        )
-    }
-
-
-    private fun getSelfSignedIssuerAuthorityCertificate(keyPair: KeyPair): X509Certificate {
-        val issuer = X500Name("CN=State Of Utopia")
-        val subject = X500Name("CN=State Of Utopia Issuing Authority Signing Key")
-
-        // Valid from now to five years from now.
-        val now = Date()
-        val kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000
-        val expirationDate = Date(now.time + 5 * kMilliSecsInOneYear)
-        val serial = BigInteger("42")
-        val builder = JcaX509v3CertificateBuilder(
-            issuer,
-            serial,
-            now,
-            expirationDate,
-            subject,
-            keyPair.public
-        )
-        return try {
-            val signer: ContentSigner = JcaContentSignerBuilder("SHA256withECDSA")
-                .build(keyPair.private)
-            val encodedCert: ByteArray = builder.build(signer).encoded
-            val cf: CertificateFactory = CertificateFactory.getInstance("X.509")
-            val bais = ByteArrayInputStream(encodedCert)
-            cf.generateCertificate(bais) as X509Certificate
-        } catch (e: OperatorCreationException) {
-            throw RuntimeException(
-                "Error generating self-signed issuer authority certificate",
-                e
-            )
-        } catch (e: CertificateException) {
-            throw RuntimeException(
-                "Error generating self-signed issuer authority certificate",
-                e
-            )
-        } catch (e: IOException) {
-            throw RuntimeException(
-                "Error generating self-signed issuer authority certificate",
-                e
-            )
-        }
-    }
-
-    private fun createIssuingAuthorityKeyPair(): KeyPair? {
-        try {
-            val kpg: KeyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC)
-            val ecSpec = ECGenParameterSpec("prime256v1")
-            kpg.initialize(ecSpec)
-            return kpg.generateKeyPair()
-        } catch (e: NoSuchAlgorithmException) {
-            e.printStackTrace()
-        } catch (e: InvalidAlgorithmParameterException) {
-            e.printStackTrace()
-        }
-        return null
-    }
 
     fun getDocuments(): Collection<Document> = runBlocking {
         documentRepository.getAll()
@@ -642,7 +75,7 @@ class DocumentManager private constructor(private val context: Context) {
             identityCredentialName,
             userVisibleName,
             null,
-            store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
+            PreferencesHelper.isHardwareBacked(context),
             selfSigned = false,
             userAuthentication = true,
             KEY_COUNT,
@@ -656,19 +89,30 @@ class DocumentManager private constructor(private val context: Context) {
         return document
     }
 
-    fun createCredential(credentialName: String, docType: String): WritableIdentityCredential {
-        return store.createCredential(credentialName, docType)
-    }
-
-    fun deleteCredential(document: Document, credential: IdentityCredential): ByteArray? {
+    fun createCredential(
+        document: Document?,
+        credentialName: String,
+        docType: String
+    ): WritableIdentityCredential {
+        if (document == null) {
+            throw IllegalArgumentException("Document is null")
+        }
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getKeystoreInstance(context,
-                    PreferencesHelper.getKeystoreBackedStorageLocation(context))
+                ?: IdentityCredentialStore.getKeystoreInstance(
+                    context,
+                    PreferencesHelper.getKeystoreBackedStorageLocation(context)
+                )
         else
-            IdentityCredentialStore.getKeystoreInstance(context,
-                PreferencesHelper.getKeystoreBackedStorageLocation(context))
+            IdentityCredentialStore.getKeystoreInstance(
+                context,
+                PreferencesHelper.getKeystoreBackedStorageLocation(context)
+            )
 
+        return mStore.createCredential(credentialName, docType)
+    }
+
+    fun deleteCredential(document: Document, credential: IdentityCredential): ByteArray {
         // Delete data from local storage
         runBlocking {
             documentRepository.delete(document)
@@ -724,93 +168,6 @@ class DocumentManager private constructor(private val context: Context) {
         )
     }
 
-    fun refreshAuthKeysNeedingCert() {
-        getDocuments().forEach { document ->
-            if (document.serverUrl?.isNotEmpty() == true) {
-                getCredential(document)?.let { credential ->
-                    // Will only call the server if necessary
-                    refreshAuthKeysNeedingCertFromServer(credential, document.serverUrl)
-                }
-            }
-        }
-    }
-
-    private fun refreshAuthKeysNeedingCertFromServer(
-        credential: IdentityCredential,
-        serverUrl: String
-    ) {
-        val dynAuthKeyCerts = credential.authKeysNeedingCertification
-        val credentialCertificateChain = credential.credentialKeyCertificateChain
-
-        // Start refresh auth key flow
-        val refreshAuthKeyFlow =
-            RefreshAuthenticationKeyFlow.getInstance(context, serverUrl)
-        refreshAuthKeyFlow.setListener(object : RefreshAuthenticationKeyFlow.Listener {
-            override fun onMessageSessionEnd(reason: String) {
-
-                //Check if provisioning was successful
-                if (reason == "Success") {
-                    Log.d(LOG_TAG, "refreshAuthKeysNeedingCertFromServer: Done")
-                }
-            }
-
-            override fun sendMessageRequestEnd(reason: String) {
-                Log.d(LOG_TAG, "\n- sendMessageRequestEnd: $reason\n")
-            }
-
-            override fun onError(error: String) {
-                Log.d(LOG_TAG, "\n- onError: $error\n")
-            }
-
-            override fun onMessageProveOwnership(challenge: ByteArray) {
-                Log.d(
-                    LOG_TAG,
-                    "\n- onMessageProveOwnership: ${FormatUtil.encodeToString(challenge)}\n"
-                )
-                val proveOwnership = credential.proveOwnership(challenge)
-
-                refreshAuthKeyFlow.sendMessageProveOwnership(proveOwnership)
-            }
-
-            override fun onMessageCertifyAuthKeysReady() {
-                Log.d(LOG_TAG, "\n- onMessageCertifyAuthKeysReady")
-                val builderArray = CborBuilder()
-                    .addArray()
-                dynAuthKeyCerts.forEach { cert ->
-                    builderArray.add(cert.encoded)
-                }
-                val authKeyCerts = FormatUtil.cborEncode(builderArray.end().build()[0])
-                refreshAuthKeyFlow.sendMessageAuthKeyNeedingCertification(authKeyCerts)
-            }
-
-            override fun onMessageStaticAuthData(staticAuthDataList: MutableList<ByteArray>) {
-                Log.d(LOG_TAG, "\n- onMessageStaticAuthData ${staticAuthDataList.size} ")
-
-                dynAuthKeyCerts.forEachIndexed { i, cert ->
-                    Log.d(
-                        LOG_TAG,
-                        "Provisioned Issuer Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
-                                "for Device Key ${FormatUtil.encodeToString(cert.publicKey.encoded)}"
-                    )
-                    credential.storeStaticAuthenticationData(cert, staticAuthDataList[i])
-                }
-                refreshAuthKeyFlow.sendMessageRequestEndSession()
-
-            }
-        })
-
-        if (dynAuthKeyCerts.isNotEmpty()) {
-            Log.d(LOG_TAG, "Device Keys needing certification ${dynAuthKeyCerts.size}")
-            // returns the Cose_Sign1 Obj with the MSO in the payload
-            credentialCertificateChain.first()?.publicKey?.let { publicKey ->
-                val cborCoseKey = FormatUtil.cborBuildCoseKey(publicKey)
-                refreshAuthKeyFlow.sendMessageCertifyAuthKeys(FormatUtil.cborEncode(cborCoseKey))
-            }
-        } else {
-            Log.d(LOG_TAG, "No Device Keys Needing Certification for now")
-        }
-    }
-
     fun updateDocument(document: Document) {
         runBlocking {
             documentRepository.insert(document)
@@ -818,41 +175,48 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun createSelfSignedCredential(dData: SelfSignedDocumentData) {
-        return if (MDL_DOCTYPE == dData.provisionInfo.docType) {
-            createSelfSignedMdl(dData)
-        } else if (MVR_DOCTYPE == dData.provisionInfo.docType) {
-            createSelfSignedMvr(dData)
-        } else if (MICOV_DOCTYPE == dData.provisionInfo.docType) {
-            createSelfSignedMicov(dData)
-        } else {
-            throw IllegalArgumentException("Invalid docType to create self signed document ${dData.provisionInfo.docType}")
-        }
-    }
+        runBlocking {
 
-    private fun createSelfSignedMdl(dData: SelfSignedDocumentData) {
-        deleteCredentialByName(DUMMY_CREDENTIAL_NAME)
-        try {
-            provisionSelfSignedMdl(dData)
-            val document = Document(
-                dData.provisionInfo.docType,
-                DUMMY_CREDENTIAL_NAME,
-                dData.getValueString("document_name"),
-                null,
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
-                selfSigned = true,
-                userAuthentication = dData.provisionInfo.userAuthentication,
-                KEY_COUNT,
-                MAX_USES_PER_KEY
-            )
-            runBlocking {
+            val docName = getUniqueDocumentName(dData.provisionInfo.docName, 1)
+            dData.provisionInfo.docName = docName
+
+            try {
+                if (MDL_DOCTYPE == dData.provisionInfo.docType) {
+                    provisionSelfSignedMdl(dData)
+                } else if (MVR_DOCTYPE == dData.provisionInfo.docType) {
+                    provisionSelfSignedMvr(dData)
+                } else if (MICOV_DOCTYPE == dData.provisionInfo.docType) {
+                    provisionSelfSignedMicov(dData)
+                } else {
+                    throw IllegalArgumentException("Invalid docType to create self signed document ${dData.provisionInfo.docType}")
+                }
+                val document = Document(
+                    dData.provisionInfo.docType,
+                    "${dData.provisionInfo.docType}-$docName",
+                    docName,
+                    null,
+                    dData.provisionInfo.storageImplementationType == IMPLEMENTATION_TYPE_HARDWARE,
+                    selfSigned = true,
+                    userAuthentication = dData.provisionInfo.userAuthentication,
+                    dData.provisionInfo.numberMso,
+                    dData.provisionInfo.maxUseMso
+                )
                 // Insert new document in our local database
                 documentRepository.insert(document)
+            } catch (e: IdentityCredentialException) {
+                throw IllegalStateException("Error creating self signed credential", e)
             }
-        } catch (e: IdentityCredentialException) {
-            throw IllegalStateException("Error creating self signed credential", e)
         }
     }
 
+    private suspend fun getUniqueDocumentName(docName: String, count: Int): String {
+        documentRepository.getAll().forEach { doc ->
+            if (doc.userVisibleName == docName) {
+                return getUniqueDocumentName("$docName ($count)", count + 1)
+            }
+        }
+        return docName
+    }
 
     private fun provisionSelfSignedMdl(dData: SelfSignedDocumentData) {
 
@@ -955,50 +319,30 @@ class DocumentManager private constructor(private val context: Context) {
                 idsSelf,
                 dData.getValueString("un_distinguishing_sign")
             )
-            .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_18", idsSelf, dData.getValueBoolean("age_over_18"))
-            .putEntryBoolean(DocumentData.MDL_NAMESPACE, "age_over_21", idsSelf, dData.getValueBoolean("age_over_21"))
-            .putEntryBytestring(DocumentData.MDL_NAMESPACE, "signature_usual_mark", ids, signature)
+            .putEntryBoolean(
+                DocumentData.MDL_NAMESPACE,
+                "age_over_18",
+                idsSelf,
+                dData.getValueBoolean("age_over_18")
+            )
+            .putEntryBoolean(
+                DocumentData.MDL_NAMESPACE,
+                "age_over_21",
+                idsSelf,
+                dData.getValueBoolean("age_over_21")
+            )
+            .putEntryBytestring(
+                DocumentData.MDL_NAMESPACE,
+                "signature_usual_mark",
+                idsSelf,
+                signature
+            )
             .putEntryBoolean(DocumentData.AAMVA_NAMESPACE, "real_id", idsSelf, dData.getValueBoolean("real_id"))
 
         personalizationData.addAccessControlProfile(profileSelf)
 
-        Utility.provisionSelfSignedCredential(
-            store,
-            DUMMY_CREDENTIAL_NAME,
-            KeysAndCertificates.getMdlDsKeyPair(context).private,
-            iaSelfSignedCert,
-            dData.provisionInfo.docType,
-            personalizationData.build(),
-            dData.provisionInfo.numberMso,
-            dData.provisionInfo.maxUseMso
-        )
+        provisionSelfSigned(dData, iaSelfSignedCert, personalizationData.build())
     }
-
-
-    private fun createSelfSignedMvr(dData: SelfSignedDocumentData) {
-        deleteCredentialByName(DUMMY_MVR_CREDENTIAL_NAME)
-        try {
-            provisionSelfSignedMvr(dData)
-            val document = Document(
-                dData.provisionInfo.docType,
-                DUMMY_MVR_CREDENTIAL_NAME,
-                dData.getValueString("document_name"),
-                null,
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
-                selfSigned = true,
-                userAuthentication = dData.provisionInfo.userAuthentication,
-                KEY_COUNT,
-                MAX_USES_PER_KEY
-            )
-            runBlocking {
-                // Insert new document in our local database
-                documentRepository.insert(document)
-            }
-        } catch (e: IdentityCredentialException) {
-            throw IllegalStateException("Error creating self signed credential", e)
-        }
-    }
-
 
     private fun provisionSelfSignedMvr(dData: SelfSignedDocumentData) {
 
@@ -1077,42 +421,8 @@ class DocumentManager private constructor(private val context: Context) {
 
         personalizationData.addAccessControlProfile(profileSelf)
 
-        Utility.provisionSelfSignedCredential(
-            store,
-            DUMMY_MVR_CREDENTIAL_NAME,
-            KeysAndCertificates.getMekbDsKeyPair(context).private,
-            iaSelfSignedCert,
-            dData.provisionInfo.docType,
-            personalizationData.build(),
-            dData.provisionInfo.numberMso,
-            dData.provisionInfo.maxUseMso
-        )
+        provisionSelfSigned(dData, iaSelfSignedCert, personalizationData.build())
     }
-
-    private fun createSelfSignedMicov(dData: SelfSignedDocumentData) {
-        deleteCredentialByName(DUMMY_MICOV_CREDENTIAL_NAME)
-        try {
-            provisionSelfSignedMicov(dData)
-            val document = Document(
-                dData.provisionInfo.docType,
-                DUMMY_MICOV_CREDENTIAL_NAME,
-                dData.getValueString("document_name"),
-                null,
-                store.implementationType == IMPLEMENTATION_TYPE_HARDWARE,
-                selfSigned = true,
-                userAuthentication = dData.provisionInfo.userAuthentication,
-                KEY_COUNT,
-                MAX_USES_PER_KEY
-            )
-            runBlocking {
-                // Insert new document in our local database
-                documentRepository.insert(document)
-            }
-        } catch (e: IdentityCredentialException) {
-            throw IllegalStateException("Error creating self signed credential", e)
-        }
-    }
-
 
     private fun provisionSelfSignedMicov(dData: SelfSignedDocumentData) {
 
@@ -1246,21 +556,72 @@ class DocumentManager private constructor(private val context: Context) {
             )
             .putEntryBytestring(DocumentData.MICOV_ATT_NAMESPACE, "fac", idsSelf, portrait)
             .putEntryString(DocumentData.MICOV_ATT_NAMESPACE, "fni", idsSelf, dData.getValueString("fni"))
-            .putEntryString(DocumentData.MICOV_ATT_NAMESPACE, "gni", idsSelf, dData.getValueString("gni"))
-            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "by", idsSelf, dData.getValueLong("by"))
-            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "bm", idsSelf, dData.getValueLong("bm"))
-            .putEntryInteger(DocumentData.MICOV_ATT_NAMESPACE, "bd", idsSelf, dData.getValueLong("bd"))
+            .putEntryString(
+                DocumentData.MICOV_ATT_NAMESPACE,
+                "gni",
+                idsSelf,
+                dData.getValueString("gni")
+            )
+            .putEntryInteger(
+                DocumentData.MICOV_ATT_NAMESPACE,
+                "by",
+                idsSelf,
+                dData.getValueLong("by")
+            )
+            .putEntryInteger(
+                DocumentData.MICOV_ATT_NAMESPACE,
+                "bm",
+                idsSelf,
+                dData.getValueLong("bm")
+            )
+            .putEntryInteger(
+                DocumentData.MICOV_ATT_NAMESPACE,
+                "bd",
+                idsSelf,
+                dData.getValueLong("bd")
+            )
 
 
         personalizationData.addAccessControlProfile(profileSelf)
 
+        provisionSelfSigned(dData, iaSelfSignedCert, personalizationData.build())
+    }
+
+    private fun provisionSelfSigned(
+        dData: SelfSignedDocumentData,
+        iaSelfSignedCert: X509Certificate,
+        personalizationData: PersonalizationData
+    ) {
+        val mStore =
+            if (dData.provisionInfo.storageImplementationType == IMPLEMENTATION_TYPE_HARDWARE)
+                IdentityCredentialStore.getHardwareInstance(context)
+                    ?: IdentityCredentialStore.getKeystoreInstance(
+                        context,
+                        PreferencesHelper.getKeystoreBackedStorageLocation(context)
+                    )
+            else
+                IdentityCredentialStore.getKeystoreInstance(
+                    context,
+                    PreferencesHelper.getKeystoreBackedStorageLocation(context)
+                )
+
+        val dsPrivateKey = if (MDL_DOCTYPE == dData.provisionInfo.docType) {
+            KeysAndCertificates.getMdlDsKeyPair(context).private
+        } else if (MVR_DOCTYPE == dData.provisionInfo.docType) {
+            KeysAndCertificates.getMekbDsKeyPair(context).private
+        } else if (MICOV_DOCTYPE == dData.provisionInfo.docType) {
+            KeysAndCertificates.getMicovDsKeyPair(context).private
+        } else {
+            throw IllegalArgumentException("DS key pair not found to docType: ${dData.provisionInfo.docType}")
+        }
+
         Utility.provisionSelfSignedCredential(
-            store,
-            DUMMY_MICOV_CREDENTIAL_NAME,
-            KeysAndCertificates.getMicovDsKeyPair(context).private,
+            mStore,
+            "${dData.provisionInfo.docType}-${dData.provisionInfo.docName}",
+            dsPrivateKey,
             iaSelfSignedCert,
             dData.provisionInfo.docType,
-            personalizationData.build(),
+            personalizationData,
             dData.provisionInfo.numberMso,
             dData.provisionInfo.maxUseMso
         )

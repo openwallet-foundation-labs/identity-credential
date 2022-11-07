@@ -1,9 +1,6 @@
 package com.android.mdl.app.util
 
 object DocumentData {
-    const val DUMMY_CREDENTIAL_NAME = "dummyCredential"
-    const val DUMMY_MVR_CREDENTIAL_NAME = "dummyCredentialMVR"
-    const val DUMMY_MICOV_CREDENTIAL_NAME = "dummyCredentialMICOV"
     const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
     const val MDL_NAMESPACE = "org.iso.18013.5.1"
     const val MVR_DOCTYPE = "nl.rdw.mekb.1"

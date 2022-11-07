@@ -8,19 +8,16 @@ import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
 import com.android.identity.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.DeviceRequestParser
 import com.android.identity.DeviceResponseGenerator
 import com.android.mdl.app.R
 import com.android.mdl.app.authconfirmation.RequestedDocumentData
 import com.android.mdl.app.authconfirmation.SignedPropertiesCollection
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
@@ -33,6 +30,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     private val signedProperties = SignedPropertiesCollection()
     private val requestedProperties = mutableListOf<RequestedDocumentData>()
     private val closeConnectionMutableLiveData = MutableLiveData<Boolean>()
+    private val selectedDocuments = mutableListOf<Document>()
 
     var inProgress = ObservableInt(View.GONE)
     var documentsSent = ObservableField<String>()
@@ -44,6 +42,8 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         transferManager.getDeviceRequest().documentRequests
 
     fun getDocuments() = documentManager.getDocuments()
+
+    fun getSelectedDocuments() = selectedDocuments
 
     fun getCryptoObject() = transferManager.getCryptoObject()
 
@@ -63,7 +63,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     }
 
     fun createSelectedItemsList() {
-        val ownDocuments = getDocuments()
+        val ownDocuments = getSelectedDocuments()
         val requestedDocuments = getRequestedDocuments()
         val result = mutableListOf<RequestedDocumentData>()
         requestedDocuments.forEach { requestedDocument ->
@@ -141,5 +141,6 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     private fun cleanUp() {
         requestedProperties.clear()
         signedProperties.clear()
+        selectedDocuments.clear()
     }
 }
