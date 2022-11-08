@@ -513,12 +513,6 @@ class TransferManager private constructor(private val context: Context) {
                 .setIssuerSignedEntriesToRequest(entriesToRequest)
                 .build()
 
-            try {
-                mSession.setSessionTranscript(byteArrayOf(0))
-            } catch (e: IllegalStateException) {
-                Log.i(LOG_TAG, "Ignoring session transcript already set ${e.message}")
-            }
-
             // It can display data if user consent is not required
             val credentialData =
                 mSession.getCredentialData(document.identityCredentialName, credentialRequest)

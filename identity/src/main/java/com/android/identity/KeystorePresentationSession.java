@@ -127,7 +127,9 @@ class KeystorePresentationSession extends PresentationSession {
                 credential.setAllowUsingExhaustedKeys(request.isAllowUsingExhaustedKeys());
                 credential.setAllowUsingExpiredKeys(request.isAllowUsingExpiredKeys());
                 credential.setIncrementKeyUsageCount(request.isIncrementUseCount());
-                credential.setSessionTranscript(mSessionTranscript);
+                if (mSessionTranscript != null) {
+                    credential.setSessionTranscript(mSessionTranscript);
+                }
             }
 
             ResultData deviceSignedResult = credential.getEntries(
