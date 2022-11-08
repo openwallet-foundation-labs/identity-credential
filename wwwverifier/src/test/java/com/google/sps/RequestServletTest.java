@@ -112,7 +112,7 @@ public class RequestServletTest {
     public void checkSessionCreation() throws IOException {
         setUpWriter();
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
-        doReturn("/create-new-session").when(request).getPathInfo();
+        doReturn("/" + ServletConsts.NEW_SESSION_URL).when(request).getPathInfo();
         servlet.doGet(request, response);
         String[] response = stringWriter.toString().split(",");
 
@@ -136,7 +136,7 @@ public class RequestServletTest {
         setUpWriter();
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
         String dataKeyStr = RequestServlet.createNewSession().split(",")[1];
-        doReturn("/" + ServletConsts.GET_PARAM_RESPONSE + "/" + dataKeyStr).when(request).getPathInfo();
+        doReturn("/" + ServletConsts.RESPONSE_URL + "/" + dataKeyStr).when(request).getPathInfo();
         servlet.doGet(request, response);
         String responseStr = stringWriter.toString().trim();
         Assert.assertEquals(responseStr, "");
@@ -155,7 +155,7 @@ public class RequestServletTest {
         entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(correctMessage));
         datastore.put(entity);
   
-        doReturn("/" + ServletConsts.GET_PARAM_RESPONSE + "/" + dataKeyStr).when(request).getPathInfo();
+        doReturn("/" + ServletConsts.RESPONSE_URL + "/" + dataKeyStr).when(request).getPathInfo();
         servlet.doGet(request, response);
         String responseStr = stringWriter.toString().trim();
         Assert.assertEquals(responseStr, correctMessage);
