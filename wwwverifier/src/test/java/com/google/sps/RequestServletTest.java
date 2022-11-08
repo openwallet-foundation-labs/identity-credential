@@ -48,6 +48,7 @@ import java.util.List;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
+import com.google.appengine.api.datastore.Key;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 import com.google.appengine.api.datastore.Text;
@@ -106,24 +107,21 @@ public class RequestServletTest {
         PrintWriter writer = new PrintWriter(stringWriter);
         Mockito.when(response.getWriter()).thenReturn(writer);
     }
-    
+
     @Test
-    public void checkURIPrefix() throws IOException {
+    public void checkSessionCreation() throws IOException {
         setUpWriter();
-        doReturn(ServletConsts.GET_PARAM_URI).when(request).getParameter(ServletConsts.GET_PARAM);
+        DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+        doReturn("/create-new-session").when(request).getPathInfo();
         servlet.doGet(request, response);
-        String generatedURI = stringWriter.toString();
+        String[] response = stringWriter.toString().split(",");
+
+        Assert.assertTrue(response[1].length() > 0);
+        Key dataKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(response[1]);
+        String generatedURI = response[0];
         Assert.assertEquals(generatedURI.substring(0,ServletConsts.MDOC_URI_PREFIX.length()), ServletConsts.MDOC_URI_PREFIX);
-    }
 
-    @Test
-    public void checkReaderEngagementContents() throws IOException {
-        setUpWriter();
-        doReturn(ServletConsts.GET_PARAM_URI).when(request).getParameter(ServletConsts.GET_PARAM);
-        servlet.doGet(request, response);
-        String generatedURI = stringWriter.toString();
         String readerEngagement = generatedURI.substring(ServletConsts.MDOC_URI_PREFIX.length());
-
         String readerEngagementEdited = readerEngagement.replace("\n","");
 
         EngagementParser parser = new EngagementParser(Base64.getUrlDecoder().decode(readerEngagementEdited));
@@ -131,32 +129,38 @@ public class RequestServletTest {
   
         Assert.assertEquals(engagement.getVersion(), "1.1");
         Assert.assertEquals(engagement.getConnectionMethods().size(), 1);
-    } 
+    }
 
     @Test
     public void checkDefaultDeviceResponseMessage() throws IOException {
         setUpWriter();
-        doReturn(ServletConsts.GET_PARAM_RESPONSE).when(request).getParameter(ServletConsts.GET_PARAM);
+        DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+        String dataKeyStr = RequestServlet.createNewSession().split(",")[1];
+        doReturn("/" + ServletConsts.GET_PARAM_RESPONSE + "/" + dataKeyStr).when(request).getPathInfo();
         servlet.doGet(request, response);
         String responseStr = stringWriter.toString().trim();
         Assert.assertEquals(responseStr, "");
-    } 
+    }
+
 
     @Test
     public void checkNonEmptyDeviceResponseMessage() throws IOException {
         setUpWriter();
-
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
-        Entity entity = RequestServlet.getEntity();
+        String dataKeyStr = RequestServlet.createNewSession().split(",")[1];
+        Key dataKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dataKeyStr);
+
+        Entity entity = RequestServlet.getEntity(dataKey);
         String correctMessage = "Sample Device Response";
         entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(correctMessage));
         datastore.put(entity);
   
-        doReturn(ServletConsts.GET_PARAM_RESPONSE).when(request).getParameter(ServletConsts.GET_PARAM);
+        doReturn("/" + ServletConsts.GET_PARAM_RESPONSE + "/" + dataKeyStr).when(request).getPathInfo();
         servlet.doGet(request, response);
         String responseStr = stringWriter.toString().trim();
         Assert.assertEquals(responseStr, correctMessage);
     }
+
 
     @Test
     public void checkDeviceRequestGenerationWithTestVector() throws IOException {
@@ -164,7 +168,10 @@ public class RequestServletTest {
         ServletOutputStream os = createMockOutputStream(baos);
         Mockito.when(response.getOutputStream()).thenReturn(os);
 
-        fillDatastoreForDeviceRequestGeneration();
+        String dataKeyStr = RequestServlet.createNewSession().split(",")[1];
+        Key dataKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dataKeyStr);
+
+        fillDatastoreForDeviceRequestGeneration(dataKey);
 
         // construct messageData (containing Device Engagement)
         DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
@@ -174,12 +181,13 @@ public class RequestServletTest {
         // POST request
         doReturn(messageDataBytes.length).when(request).getContentLength();
         doReturn(sis).when(request).getInputStream();
+        doReturn("/" + dataKeyStr).when(request).getPathInfo();
         servlet.doPost(request, response);
 
         byte[] sessionData = baos.toByteArray();
 
         // parse sessionData to extract DeviceRequest
-        byte[] generatedSessionTranscript = RequestServlet.getDatastoreProp(ServletConsts.SESSION_TRANS_PROP);
+        byte[] generatedSessionTranscript = RequestServlet.getDatastoreProp(ServletConsts.SESSION_TRANS_PROP, dataKey);
         SessionEncryptionDevice sed = new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedSessionTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
             .setDeviceRequest(sed.decryptMessageFromReader(sessionData))
@@ -193,7 +201,9 @@ public class RequestServletTest {
     @Test
     public void checkDeviceResponseParsingWithTestVector() throws IOException {
         setUpWriter();
-        fillDatastoreForDeviceResponseParsing();
+        String dataKeyStr = RequestServlet.createNewSession().split(",")[1];
+        Key dataKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dataKeyStr);
+        fillDatastoreForDeviceResponseParsing(dataKey);
 
         byte[] sessionData = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA);
         
@@ -201,6 +211,7 @@ public class RequestServletTest {
 
         doReturn(sessionData.length).when(request).getContentLength();
         doReturn(sis).when(request).getInputStream();
+        doReturn("/" + dataKeyStr).when(request).getPathInfo();
         servlet.doPost(request, response);
 
         // get back response (parsed DeviceResponse documents)
@@ -208,14 +219,14 @@ public class RequestServletTest {
         Assert.assertTrue(documentsJSON.length() > 0);
     }
 
-    public void fillDatastoreForDeviceRequestGeneration() {
+    public void fillDatastoreForDeviceRequestGeneration(Key datastoreKey) {
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
-        byte[] readerEngagement = RequestServlet.generateReaderEngagement(eReaderKeyPublic);
+        byte[] readerEngagement = RequestServlet.generateReaderEngagement(eReaderKeyPublic, datastoreKey);
 
-        RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
-        RequestServlet.setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded());
-        RequestServlet.setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
+        RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement, datastoreKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded(), datastoreKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded(), datastoreKey);
     }
 
     public byte[] createMockMessageData(String name, byte[] data) {
@@ -226,14 +237,14 @@ public class RequestServletTest {
         return Util.cborEncode(builder.build().get(0));
     }
 
-    public void fillDatastoreForDeviceResponseParsing() {
+    public void fillDatastoreForDeviceResponseParsing(Key datastoreKey) {
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 
-        RequestServlet.setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded());
-        RequestServlet.setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded());
-        RequestServlet.setDatastoreProp(ServletConsts.DEVICE_KEY_PROP, eDeviceKeyPublic.getEncoded());
-        RequestServlet.setDatastoreProp(ServletConsts.SESSION_TRANS_PROP, Util.cborEncode(sessionTranscript));
-        RequestServlet.numPostRequests = 1;
+        RequestServlet.setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, eReaderKeyPublic.getEncoded(), datastoreKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, eReaderKeyPrivate.getEncoded(), datastoreKey);
+        RequestServlet.setDatastoreProp(ServletConsts.DEVICE_KEY_PROP, eDeviceKeyPublic.getEncoded(), datastoreKey);
+        RequestServlet.setDatastoreProp(ServletConsts.SESSION_TRANS_PROP, Util.cborEncode(sessionTranscript), datastoreKey);
+        RequestServlet.setNumPostRequests(1, datastoreKey);
     }
 
     public ServletInputStream createMockInputStream(ByteArrayInputStream bais) {

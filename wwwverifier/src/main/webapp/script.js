@@ -1,18 +1,24 @@
-const GET_URL = '/request-mdl?request-type=';
-const GET_URL_CREATE = 'create-uri';
-const GET_URL_DISPLAY = 'display-response';
-const GET_URL_RESET = 'reset';
+const GET_URL = '/request-mdl';
+const CREATE_SESSION_URL = '/create-new-session';
+const DISPLAY_RESPONSE_URL = '/display-response';
 
 const QRCODE_ID = 'request-qrcode';
 const QRCODE_TEXT_ID = 'request-confirmation-text'
 const RESPONSE_ID = 'response-confirmation';
-const RESET_ID = 'reset-confirmation';
 
-function requestMDL() {
-    fetch(GET_URL + GET_URL_CREATE).then(response => response.text()).then((responseText) => {
+var sessionID = '';
+
+window.onload = onLoad;
+window.setInterval(getDeviceResponse, 5000);
+
+function onLoad() {
+    fetch(GET_URL + CREATE_SESSION_URL).then(response => response.text()).then((responseText) => {
+        var responseArr = responseText.split(',');
+        var mdocURL = responseArr[0];
+        sessionID = responseArr[1];
         var a = document.createElement('a');
-        a.href = responseText;
-        a.innerHTML = responseText;
+        a.href = mdocURL;
+        a.innerHTML = mdocURL;
         document.getElementById(QRCODE_TEXT_ID).appendChild(a);
         new QRious({
             element: document.getElementById(QRCODE_ID),
@@ -23,16 +29,16 @@ function requestMDL() {
             level: 'H',
             padding: 0,
             size: 300,
-            value: String(responseText)
+            value: String(mdocURL)
         });
     });
- }
+}
 
-window.setInterval(getDeviceResponse, 5000);
-  
 function getDeviceResponse() {
+    if (sessionID.length == 0) return;
+
     document.getElementById(RESPONSE_ID).innerHTML = "";
-    fetch(GET_URL + GET_URL_DISPLAY).then(response => response.text()).then((responseText) => {
+    fetch(GET_URL + DISPLAY_RESPONSE_URL + '/' + String(sessionID)).then(response => response.text()).then((responseText) => {
         if (responseText.length != 0) {
             var table = document.createElement("table");
             var textArr = responseText.substring(1, responseText.length - 1).split(",");
@@ -46,24 +52,5 @@ function getDeviceResponse() {
             }
             document.getElementById(RESPONSE_ID).append(table);
         }
-    });
-} 
-
-function resetServlet() {
-    fetch(GET_URL + GET_URL_RESET).then(response => response.text()).then((responseText) => {
-        document.getElementById(RESPONSE_ID).innerText = "";
-        document.getElementById(QRCODE_TEXT_ID).innerText = "";
-        new QRious({
-            element: document.getElementById(QRCODE_ID),
-            background: '#ffffff',
-            backgroundAlpha: 1,
-            foreground: '#ffffff',
-            foregroundAlpha: 1,
-            level: 'H',
-            padding: 0,
-            size: 300,
-            value: ""
-        });
-        document.getElementById(RESET_ID).innerText = responseText;
     });
 }

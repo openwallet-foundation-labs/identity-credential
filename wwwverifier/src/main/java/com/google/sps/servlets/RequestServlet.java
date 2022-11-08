@@ -47,28 +47,14 @@ import com.google.appengine.api.datastore.Text;
  * (3) Parses a POST request containing a DeviceResponse CBOR message, and sends back a JSON
  * containing data extracted from the message.
  */
-@WebServlet("/request-mdl")
+@WebServlet("/request-mdl/*")
 public class RequestServlet extends HttpServlet {
 
     public static DatastoreService datastore;
-    public static Key datastoreKey;
-    public static int numPostRequests;
 
-    /**
-     * Initializes Datastore, and creates an entity within it that will store various
-     * pieces of data (ephemeral keys, ReaderEngagement, etc.) in the future.
-     */
     @Override
     public void init() {
         datastore = DatastoreServiceFactory.getDatastoreService();
-        createEntityAndSetKey();
-    }
-
-    public void createEntityAndSetKey() {
-        Entity entity = new Entity(ServletConsts.ENTITY_NAME);
-        datastore.put(entity);
-        datastoreKey = entity.getKey();
-        numPostRequests = 0;
     }
 
    /**
@@ -79,23 +65,26 @@ public class RequestServlet extends HttpServlet {
     */
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String requestType = request.getParameter(ServletConsts.GET_PARAM);
         response.setContentType("text/html;");
-        if (requestType.equals(ServletConsts.GET_PARAM_URI)) {
-            response.getWriter().println(createMdocUri());
-        } else if (requestType.equals(ServletConsts.GET_PARAM_RESPONSE)) {
-            response.getWriter().println(getDeviceResponse());
-        } else if (requestType.equals(ServletConsts.GET_PARAM_RESET)) {
-            response.getWriter().println(resetServletState());
-        } else {
-            response.getWriter().println("Invalid GET request");
+        String pathInfo = request.getPathInfo().substring(1);
+        String[] pathArr = pathInfo.split("/");
+        if (pathInfo.equals(ServletConsts.NEW_SESSION_URL)) {
+            response.getWriter().println(createNewSession());
+        } else if (pathArr[0].equals(ServletConsts.RESPONSE_URL)) {
+            Key datastoreKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathArr[1]);
+            response.getWriter().println(getDeviceResponse(datastoreKey));
         }
     }
 
-    public String resetServletState() {
-        datastore.delete(datastoreKey);
-        createEntityAndSetKey();
-        return ServletConsts.RESET_MSSG;
+    public static String createNewSession() {
+        Entity entity = new Entity(ServletConsts.ENTITY_NAME);
+        entity.setProperty(ServletConsts.TIMESTAMP_PROP,
+            new java.sql.Timestamp(System.currentTimeMillis()).toString());
+        datastore.put(entity);
+        Key datastoreKey = entity.getKey();
+        setNumPostRequests(0, datastoreKey);
+        String datastoreKeyStr = com.google.appengine.api.datastore.KeyFactory.keyToString(datastoreKey);
+        return createMdocUri(datastoreKey) + "," + datastoreKeyStr;
     }
 
     /**
@@ -103,14 +92,14 @@ public class RequestServlet extends HttpServlet {
     *
     * @return Generated mdoc:// URI
     */
-    public String createMdocUri() {
+    public static String createMdocUri(Key datastoreKey) {
         KeyPair keyPair = generateKeyPair();
-        byte[] readerEngagement = generateReaderEngagement(keyPair.getPublic());
+        byte[] readerEngagement = generateReaderEngagement(keyPair.getPublic(), datastoreKey);
   
         // put ReaderEngagement and generated ephemeral keys into Datastore
-        setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement);
-        setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, keyPair.getPublic().getEncoded());
-        setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, keyPair.getPrivate().getEncoded());
+        setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, readerEngagement, datastoreKey);
+        setDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, keyPair.getPublic().getEncoded(), datastoreKey);
+        setDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, keyPair.getPrivate().getEncoded(), datastoreKey);
 
         String readerEngagementStr = Base64.getUrlEncoder().withoutPadding().encodeToString(readerEngagement);
         String readerEngagementStrEdited = readerEngagementStr.replace("\n","");
@@ -123,8 +112,8 @@ public class RequestServlet extends HttpServlet {
      * 
      * @return String containing DeviceResponse message, or default message if it does not exist
      */
-    public String getDeviceResponse() {
-        Entity entity = getEntity();
+    public static String getDeviceResponse(Key datastoreKey) {
+        Entity entity = getEntity(datastoreKey);
         if (entity.hasProperty(ServletConsts.DEVICE_RESPONSE_PROP)) {
             Text deviceResponse = (Text) entity.getProperty(ServletConsts.DEVICE_RESPONSE_PROP);
             return deviceResponse.getValue();
@@ -144,17 +133,19 @@ public class RequestServlet extends HttpServlet {
      */
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        if (numPostRequests == 0) {
-            byte[] sessionData = createDeviceRequest(getBytesFromRequest(request));
-            numPostRequests += 1;
+        String pathInfo = request.getPathInfo().substring(1);
+        Key datastoreKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathInfo);
+        if (getNumPostRequests(datastoreKey) == 0) {
+            byte[] sessionData = createDeviceRequest(getBytesFromRequest(request), datastoreKey);
+            setNumPostRequests(1, datastoreKey);
             response.getOutputStream().write(sessionData);
-        } else if (numPostRequests == 1) {
-            String json = parseDeviceResponse(getBytesFromRequest(request));
-            Entity entity = getEntity();
+        } else if (getNumPostRequests(datastoreKey) == 1) {
+            String json = parseDeviceResponse(getBytesFromRequest(request), datastoreKey);
+            Entity entity = getEntity(datastoreKey);
             entity.setProperty(ServletConsts.DEVICE_RESPONSE_PROP, new Text(json));
             datastore.put(entity);
 
-            numPostRequests += 1;
+            setNumPostRequests(2, datastoreKey);
 
             response.setContentType("application/json;");
             response.getWriter().println(json);
@@ -168,14 +159,14 @@ public class RequestServlet extends HttpServlet {
       * @param messageData CBOR message extracted from POST request
       * @return SessionData CBOR message containing DeviceRequest
       */
-    public byte[] createDeviceRequest(byte[] messageData) {
+    public static byte[] createDeviceRequest(byte[] messageData, Key datastoreKey) {
         byte[] encodedDeviceEngagement = Util.cborMapExtractByteString(Util.cborDecode(messageData), ServletConsts.DEVICE_ENGAGEMENT_KEY);
-        PublicKey eReaderKeyPublic = getDecodedPublicKey(getDatastoreProp(ServletConsts.PUBLIC_KEY_PROP));
-        PrivateKey eReaderKeyPrivate = getDecodedPrivateKey(getDatastoreProp(ServletConsts.PRIVATE_KEY_PROP));
-        byte[] readerEngagementBytes = getDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP);
+        PublicKey eReaderKeyPublic = getDecodedPublicKey(getDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, datastoreKey));
+        PrivateKey eReaderKeyPrivate = getDecodedPrivateKey(getDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, datastoreKey));
+        byte[] readerEngagementBytes = getDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, datastoreKey);
 
         PublicKey eDeviceKeyPublic = new EngagementParser(encodedDeviceEngagement).parse().getESenderKey();
-        setDatastoreProp(ServletConsts.DEVICE_KEY_PROP, eDeviceKeyPublic.getEncoded());
+        setDatastoreProp(ServletConsts.DEVICE_KEY_PROP, eDeviceKeyPublic.getEncoded(), datastoreKey);
 
         byte[] sessionTranscript = Util.cborEncode(new CborBuilder()
             .addArray()
@@ -183,7 +174,7 @@ public class RequestServlet extends HttpServlet {
                 .add(Util.cborBuildTaggedByteString(Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPublic))))
                 .add(Util.cborBuildTaggedByteString(readerEngagementBytes))
             .end().build().get(0));
-        setDatastoreProp(ServletConsts.SESSION_TRANS_PROP, sessionTranscript);
+        setDatastoreProp(ServletConsts.SESSION_TRANS_PROP, sessionTranscript, datastoreKey);
 
         SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
         byte[] dr = new DeviceRequestGenerator()
@@ -196,7 +187,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return Map of items to request from the mDL app
      */
-    public Map<String, Map<String, Boolean>> createMdlItemsToRequest() {
+    public static Map<String, Map<String, Boolean>> createMdlItemsToRequest() {
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
         Map<String, Boolean> mdlNsItems = new HashMap<>();
         mdlNsItems.put("family_name", true);
@@ -211,9 +202,10 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return generated readerEngagement CBOR message, using EngagementGenerator
      */
-    public static byte[] generateReaderEngagement(PublicKey publicKey) {
+    public static byte[] generateReaderEngagement(PublicKey publicKey, Key datastoreKey) {
         EngagementGenerator eg = new EngagementGenerator(publicKey, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.WEBSITE_URL));
+        String datastoreKeyStr = com.google.appengine.api.datastore.KeyFactory.keyToString(datastoreKey);
+        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.WEBSITE_URL + "/" + datastoreKeyStr));
         return eg.generate();
     }
 
@@ -236,7 +228,7 @@ public class RequestServlet extends HttpServlet {
      * @param request HTTP POST request
      * @return byte array with data extracted from {@ request}
      */
-    public byte[] getBytesFromRequest(HttpServletRequest request) {
+    public static byte[] getBytesFromRequest(HttpServletRequest request) {
         int length = request.getContentLength();
         byte[] arr = new byte[length];
         try {
@@ -254,11 +246,11 @@ public class RequestServlet extends HttpServlet {
      * @param request POST request containing DeviceResponse
      * @return JSON string containing Documents contained within DeviceResponse
      */
-    public String parseDeviceResponse(byte[] messageData) {
-        PublicKey eReaderKeyPublic = getDecodedPublicKey(getDatastoreProp(ServletConsts.PUBLIC_KEY_PROP));
-        PrivateKey eReaderKeyPrivate = getDecodedPrivateKey(getDatastoreProp(ServletConsts.PRIVATE_KEY_PROP));
-        PublicKey eDeviceKeyPublic = getDecodedPublicKey(getDatastoreProp(ServletConsts.DEVICE_KEY_PROP));
-        byte[] sessionTranscript = getDatastoreProp(ServletConsts.SESSION_TRANS_PROP);
+    public static String parseDeviceResponse(byte[] messageData, Key datastoreKey) {
+        PublicKey eReaderKeyPublic = getDecodedPublicKey(getDatastoreProp(ServletConsts.PUBLIC_KEY_PROP, datastoreKey));
+        PrivateKey eReaderKeyPrivate = getDecodedPrivateKey(getDatastoreProp(ServletConsts.PRIVATE_KEY_PROP, datastoreKey));
+        PublicKey eDeviceKeyPublic = getDecodedPublicKey(getDatastoreProp(ServletConsts.DEVICE_KEY_PROP, datastoreKey));
+        byte[] sessionTranscript = getDatastoreProp(ServletConsts.SESSION_TRANS_PROP, datastoreKey);
 
         SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate, eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
         
@@ -270,7 +262,7 @@ public class RequestServlet extends HttpServlet {
         return new Gson().toJson(buildJson(dr.getDocuments()));
     }
 
-    public ArrayList<String> buildJson(List<DeviceResponseParser.Document> docs) {
+    public static ArrayList<String> buildJson(List<DeviceResponseParser.Document> docs) {
         ArrayList<String> arr = new ArrayList<String>();
         arr.add("Number of documents returned: " + docs.size());
         for (DeviceResponseParser.Document doc : docs) {
@@ -323,7 +315,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return Datastore entity linked to the key created in the init() function.
      */
-    public static Entity getEntity() {
+    public static Entity getEntity(Key datastoreKey) {
         try {
             return datastore.get(datastoreKey);
         } catch (EntityNotFoundException e) {
@@ -361,8 +353,8 @@ public class RequestServlet extends HttpServlet {
      * @param propName Name of the property that should be inserted into Datastore
      * @param arr data that should be inserted into Datastore
      */
-    public static void setDatastoreProp(String propName, byte[] arr) {
-        Entity entity = getEntity();
+    public static void setDatastoreProp(String propName, byte[] arr, Key datastoreKey) {
+        Entity entity = getEntity(datastoreKey);
         entity.setProperty(propName, new Blob(arr));
         datastore.put(entity);
     }
@@ -373,7 +365,17 @@ public class RequestServlet extends HttpServlet {
      * @param propName Name of the property that should be retrieved from Datastore
      * @return byte array that corresponds to {@ propName}
      */
-    public static byte[] getDatastoreProp(String propName) {
-        return ((Blob) getEntity().getProperty(propName)).getBytes();
+    public static byte[] getDatastoreProp(String propName, Key datastoreKey) {
+        return ((Blob) getEntity(datastoreKey).getProperty(propName)).getBytes();
+    }
+
+    public static void setNumPostRequests(int num, Key datastoreKey) {
+        Entity entity = getEntity(datastoreKey);
+        entity.setProperty(ServletConsts.NUM_REQUESTS_PROP, num);
+        datastore.put(entity);
+    }
+
+    public static int getNumPostRequests(Key datastoreKey) {
+        return ((Long) getEntity(datastoreKey).getProperty(ServletConsts.NUM_REQUESTS_PROP)).intValue();
     }
 }
