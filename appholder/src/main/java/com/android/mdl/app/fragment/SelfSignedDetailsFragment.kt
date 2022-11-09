@@ -1,5 +1,6 @@
 package com.android.mdl.app.fragment
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -21,6 +22,7 @@ import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.core.content.FileProvider
 import androidx.exifinterface.media.ExifInterface
@@ -293,11 +295,20 @@ class SelfSignedDetailsFragment : Fragment() {
             setPic(rotation)
         }
     }
+    private val cameraLauncher = registerForActivityResult(RequestPermission()) { granted ->
+        if (granted) {
+            proceedTakingPhoto()
+        }
+    }
 
     private fun dispatchTakePictureIntent(viewId: Int) {
         imageViewId = viewId
         if (!hasCameraAvailable()) return
         if (!canTakePhoto()) return
+        cameraLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    private fun proceedTakingPhoto() {
         try {
             val imageFile = createImageFile()
             photoUri = getUriForFile(imageFile)
