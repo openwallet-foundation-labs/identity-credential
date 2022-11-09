@@ -38,6 +38,11 @@ android {
     buildFeatures {
         dataBinding true
         viewBinding true
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion libs.versions.kotlin.compiler.extension.get()
     }
 
     lintOptions {
@@ -58,12 +63,14 @@ dependencies {
     // Uses module as identity credential api
     implementation project(':identity')
 
+    implementation platform(libs.compose.bom)
     implementation libs.bundles.androidx.core
     implementation libs.bundles.androidx.lifecycle
     implementation libs.bundles.androidx.navigation
     implementation libs.bundles.androidx.room
     implementation libs.bundles.androidx.crypto
     implementation libs.bundles.bouncy.castle
+    implementation libs.bundles.compose
     implementation libs.volley
     implementation libs.cbor
     implementation libs.exifinterface
