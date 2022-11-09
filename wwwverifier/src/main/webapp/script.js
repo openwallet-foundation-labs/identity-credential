@@ -20,6 +20,7 @@ function onLoad() {
         sessionID = responseArr[1];
         var a = document.createElement('a');
         a.href = mdocURL;
+        a.referrerpolicy = 'unsafe-url';
         a.innerHTML = mdocURL;
         document.getElementById(QRCODE_TEXT_ID).appendChild(a);
         new QRious({
