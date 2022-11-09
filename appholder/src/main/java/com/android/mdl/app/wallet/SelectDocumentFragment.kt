@@ -12,9 +12,11 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
+import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
 import com.google.android.material.tabs.TabLayoutMediator
@@ -80,7 +82,7 @@ class SelectDocumentFragment : Fragment() {
             sendSessionTerminationMessage = true,
             useTransportSpecificSessionTermination = false
         )
-        adapter.submitList(documentManager.getDocuments().toMutableList())
+        setupScreen(binding, adapter, documentManager.getDocuments().toMutableList())
 
         val permissionsNeeded = appPermissions.filter { permission ->
             ContextCompat.checkSelfPermission(
@@ -107,6 +109,37 @@ class SelectDocumentFragment : Fragment() {
             R.dimen.viewpager_current_item_horizontal_margin
         )
         binding.vpDocuments.addItemDecoration(itemDecoration)
+    }
+
+    private fun setupScreen(
+        binding: FragmentSelectDocumentBinding,
+        adapter: DocumentAdapter,
+        documentsList: MutableList<Document>
+    ) {
+        if (documentsList.isEmpty()) {
+            showEmptyView(binding)
+        } else {
+            adapter.submitList(documentsList)
+            showDocumentsPager(binding)
+        }
+    }
+
+    private fun showEmptyView(binding: FragmentSelectDocumentBinding) {
+        binding.vpDocuments.visibility = View.GONE
+        binding.cvEmptyView.visibility = View.VISIBLE
+        binding.btShowQr.visibility = View.GONE
+        binding.btAddDocument.setOnClickListener { openAddDocument() }
+    }
+
+    private fun showDocumentsPager(binding: FragmentSelectDocumentBinding) {
+        binding.vpDocuments.visibility = View.VISIBLE
+        binding.cvEmptyView.visibility = View.GONE
+        binding.btShowQr.visibility = View.VISIBLE
+    }
+
+    private fun openAddDocument() {
+        val destination = SelectDocumentFragmentDirections.toAddSelfSigned()
+        findNavController().navigate(destination)
     }
 
     private val permissionsLauncher =

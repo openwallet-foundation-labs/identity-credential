@@ -28,6 +28,10 @@
         <action
             android:id="@+id/toDocumentDetail"
             app:destination="@id/documentDetailFragment" />
+        <action
+            android:id="@+id/toAddSelfSigned"
+            app:popUpTo="@id/wallet"
+            app:destination="@id/addSelfSignedDocument"/>
     </fragment>
     <fragment
         android:id="@+id/add"
