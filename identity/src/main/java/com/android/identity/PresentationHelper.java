@@ -173,6 +173,9 @@ public class PresentationHelper {
                     mapBuilder.end();
                     byte[] messageData = Util.cborEncode(builder.build().get(0));
 
+                    if (Logger.isDebugEnabled()) {
+                        Util.dumpHex(TAG, "DeviceEngagement for reverse engagement", messageData);
+                    }
                     mTransport.sendMessage(messageData);
                 } else {
                     throw new IllegalStateException("Unexpected onConnected callback");
@@ -256,11 +259,10 @@ public class PresentationHelper {
     }
 
     private void processMessageReceived(@NonNull byte[] data) {
-        ensureSessionEncryption(data);
-
         if (Logger.isDebugEnabled()) {
             Util.dumpHex(TAG, "SessionData", data);
         }
+        ensureSessionEncryption(data);
         Pair<byte[], OptionalLong> decryptedMessage = null;
         try {
             decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
