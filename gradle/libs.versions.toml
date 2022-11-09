@@ -10,6 +10,8 @@
     lifecycle = "2.2.0"
     lifecycle-ktx = "2.5.1"
     fragment = "1.5.3"
+    compose-bom = "2022.10.00"
+    kotlin-compiler-extension = "1.3.0"
     legacy-support-v4 = "1.0.0"
     androidx-preference = "1.2.0"
     androidx-annotation = "1.3.0"
@@ -46,6 +48,14 @@
     androidx-navigation-ktx = { module = "androidx.navigation:navigation-fragment-ktx", version.ref = "navigation" }
     androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "navigation" }
 
+    compose-bom = { module = "androidx.compose:compose-bom", version.ref="compose-bom" }
+    compose-ui = { module = "androidx.compose.ui:ui" }
+    compose-foundation = { module = "androidx.compose.foundation:foundation" }
+    compose-material = { module = "androidx.compose.material3:material3" }
+    compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling-preview" }
+    compose-preview = { module = "androidx.compose.material:material-icons-extended" }
+    compose-icons = { module = "androidx.compose.ui:ui-tooling" }
+
     volley = { module = "com.android.volley:volley", version.ref = "volley" }
 
     androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
@@ -77,6 +87,7 @@
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx"]
     androidx-lifecycle = ["androidx-lifecycle-extensions", "androidx-lifecycle-livedata", "androidx-lifecycle-viewmodel"]
     androidx-navigation = ["androidx-navigation-ktx", "androidx-navigation-ui-ktx"]
+    compose = ["compose-ui", "compose-foundation", "compose-material", "compose-ui-tooling", "compose-preview", "compose-icons"]
     androidx-room = ["androidx-room-runtime", "androidx-room-ktx"]
     androidx-crypto = ["androidx-biometrics", "androidx-zxing-core"]
     bouncy-castle = ["bouncy-castle-bcprov", "bouncy-castle-bcpkix"]
