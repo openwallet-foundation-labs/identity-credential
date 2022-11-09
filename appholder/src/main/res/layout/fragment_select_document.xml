@@ -26,6 +26,17 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/tv_nfc_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+            android:text="@string/tap_to_scan_nfc"
+            app:layout_constraintTop_toBottomOf="@id/iv_nfc"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/vp_documents"
             android:layout_width="match_parent"
@@ -33,7 +44,7 @@
             android:layout_marginTop="24dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/iv_nfc" />
+            app:layout_constraintTop_toBottomOf="@+id/tv_nfc_label" />
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tl_page_indicator"
