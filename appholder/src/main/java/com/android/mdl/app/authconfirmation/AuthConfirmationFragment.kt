@@ -1,6 +1,5 @@
 package com.android.mdl.app.authconfirmation
 
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -8,102 +7,81 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.Space
-import android.widget.TextView
 import android.widget.Toast
-import androidx.core.view.setPadding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
-import com.android.mdl.app.databinding.FragmentAuthConfirmationBinding
+import com.android.mdl.app.theme.HolderAppTheme
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.switchmaterial.SwitchMaterial
 
 class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
-    private var _binding: FragmentAuthConfirmationBinding? = null
-    private val binding get() = _binding!!
     private val viewModel: TransferDocumentViewModel by activityViewModels()
     private val arguments by navArgs<AuthConfirmationFragmentArgs>()
+    private var isSendingInProgress = mutableStateOf(false)
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentAuthConfirmationBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.tvTitle.text = getSubtitle()
         val propertiesToSign = viewModel.requestedProperties()
-        propertiesToSign.forEach { documentData ->
-            binding.llPropertiesContainer.addView(documentNameFor(documentData))
-            documentData.requestedProperties.forEach { property ->
-                binding.llPropertiesContainer.addView(switchFor(documentData.namespace, property))
+        val sheetData = mapToConfirmationSheetData(propertiesToSign)
+        return ComposeView(requireContext()).apply {
+            setViewCompositionStrategy(DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                HolderAppTheme {
+                    ConfirmationSheet(
+                        modifier = Modifier.fillMaxWidth(),
+                        title = getSubtitle(),
+                        isTrustedReader = arguments.readerIsTrusted,
+                        isSendingInProgress = isSendingInProgress.value,
+                        sheetData = sheetData,
+                        onPropertyToggled = { namespace, property ->
+                            viewModel.toggleSignedProperty(namespace, property)
+                        },
+                        onConfirm = { sendResponse() },
+                        onCancel = { dismiss() }
+                    )
+                }
             }
-            binding.llPropertiesContainer.addView(spacer())
         }
-        binding.llPropertiesContainer.addView(confirmationButton())
     }
 
-    private fun confirmationButton(): View {
-        val button = MaterialButton(requireContext()).apply {
-            text = getString(R.string.btn_send_data)
-            setPadding(16)
+    private fun mapToConfirmationSheetData(
+        propertiesToSign: List<RequestedDocumentData>
+    ): List<ConfirmationSheetData> {
+        return propertiesToSign.map { documentData ->
+            viewModel.addDocumentForSigning(documentData)
+            val properties = documentData.requestedProperties.map { property ->
+                viewModel.toggleSignedProperty(documentData.namespace, property)
+                val displayName = stringValueFor(property)
+                ConfirmationSheetData.DocumentProperty(displayName, property)
+            }
+            ConfirmationSheetData(documentData.nameTypeTitle(), documentData.namespace, properties)
         }
-        button.setOnClickListener { sendResponse() }
-        return button
+    }
+
+    private fun stringValueFor(property: String): String {
+        val identifier = resources.getIdentifier(property, "string", requireContext().packageName)
+        return if (identifier != 0) getString(identifier) else property
     }
 
     private fun sendResponse() {
-        binding.loadingProgress.visibility = View.VISIBLE
-        binding.llPropertiesContainer.visibility = View.GONE
+        isSendingInProgress.value = true
         // Will return false if authentication is needed
         if (!viewModel.sendResponseForSelection()) {
             requestUserAuth(false)
         } else {
             findNavController().navigateUp()
-        }
-    }
-
-    private fun documentNameFor(document: RequestedDocumentData): View {
-        viewModel.addDocumentForSigning(document)
-        return TextView(requireContext()).apply {
-            text = document.nameTypeTitle()
-            textSize = 16f
-        }
-    }
-
-    @SuppressLint("DiscouragedApi")
-    private fun switchFor(namespace: String, property: String): View {
-        viewModel.toggleSignedProperty(namespace, property)
-        val switch = SwitchMaterial(requireContext()).apply {
-            val identifier = resources.getIdentifier(property, "string", context.packageName)
-            text = if (identifier != 0) getString(identifier) else property
-            isChecked = true
-            setPadding(24, 0, 24, 0)
-        }
-        switch.setOnCheckedChangeListener { _, _ ->
-            viewModel.toggleSignedProperty(namespace, property)
-        }
-        return switch
-    }
-
-    private fun spacer(): View {
-        return Space(requireContext()).apply {
-            layoutParams = LinearLayout.LayoutParams(0, 24)
         }
     }
 
