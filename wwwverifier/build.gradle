@@ -31,7 +31,7 @@ apply plugin: 'war'
 apply plugin: 'com.google.cloud.tools.appengine'
 
 dependencies {
-  implementation project(path: ':identity', configuration:'default')
+  //implementation project(path: ':identity', configuration:'default')
   implementation 'com.google.appengine:appengine-api-1.0-sdk:1.9.59'
   implementation 'com.google.code.gson:gson:2.9.0'
   implementation 'co.nstant.in:cbor:0.9'

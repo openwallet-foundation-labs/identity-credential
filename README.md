@@ -64,7 +64,7 @@ To deploy the website on a live server, execute the command:
 gradle appengineDeploy
 ```
 
-This command will create a link to a live website. Navigate to the file identity-credential/wwwverifier/src/main/java/com/google/sps/servlet/ServletConsts.java, and replace the the field WEBSITE_URL with your website URL.
+This command will create a link to a live website. Navigate to the file identity-credential/wwwverifier/src/main/java/com/google/sps/servlet/ServletConsts.java, and replace the field WEBSITE_URL with your website URL.
 
 ## Reference Applications
 
