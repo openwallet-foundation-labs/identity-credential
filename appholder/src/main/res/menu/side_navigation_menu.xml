@@ -12,15 +12,22 @@
         android:id="@+id/add"
         android:enabled="true"
         android:checkable="true"
-        android:icon="@drawable/ic_add_document"
+        android:icon="@drawable/ic_add_http"
         android:title="@string/menu_add_document" />
 
     <item
-        android:id="@+id/present"
+        android:id="@+id/addSelfSignedDocument"
+        android:enabled="true"
+        android:checkable="true"
+        android:icon="@drawable/ic_add_document"
+        android:title="@string/menu_add_self_signed" />
+
+    <item
+        android:id="@+id/reverseEngagement"
         android:enabled="true"
         android:checkable="true"
         android:icon="@drawable/ic_present_document"
-        android:title="@string/menu_present_document" />
+        android:title="@string/menu_reverse_engagement" />
 
     <item
         android:id="@+id/settings"
