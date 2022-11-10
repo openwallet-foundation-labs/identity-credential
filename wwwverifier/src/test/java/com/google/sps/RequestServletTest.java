@@ -61,6 +61,8 @@ import com.google.sps.servlets.ConnectionMethodHttp;
 import com.google.sps.servlets.DeviceRequestParser;
 import com.google.sps.servlets.EngagementGenerator;
 import com.google.sps.servlets.EngagementParser;
+import com.google.sps.servlets.OriginInfo;
+import com.google.sps.servlets.OriginInfoWebsite;
 import com.google.sps.servlets.SessionEncryptionDevice;
 import com.google.sps.servlets.TestVectors;
 import com.google.sps.servlets.Util;
@@ -168,6 +170,82 @@ public class RequestServletTest {
         servlet.doGet(request, response);
         String responseStr = stringWriter.toString().trim();
         Assert.assertEquals(responseStr, deviceResponseMessage);
+    }
+
+    @Test
+    public void checkDeviceRequestGenerationWithWrongOriginInfo() throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ServletOutputStream os = createMockOutputStream(baos);
+        Mockito.when(response.getOutputStream()).thenReturn(os);
+        String dKeyStr = RequestServlet.createNewSession().split(",")[1];
+        Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
+
+        byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, re, dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
+
+        // construct messageData (containing Device Engagement)
+        EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
+        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "https://fake-mdoc-reader.appspot.com/"));
+        byte[] encodedDeviceEngagement = eg.generate();
+        byte[] messageDataBytes = createMockMessageData(ServletConsts.DEV_ENGAGEMENT_KEY, encodedDeviceEngagement);
+        ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(messageDataBytes));
+
+        // POST request
+        doReturn(messageDataBytes.length).when(request).getContentLength();
+        doReturn(sis).when(request).getInputStream();
+        doReturn("/" + dKeyStr).when(request).getPathInfo();
+        servlet.doPost(request, response);
+
+        byte[] responseMessage = baos.toByteArray();
+        Assert.assertTrue(responseMessage.length == 0);
+    }
+
+    @Test
+    public void checkDeviceRequestGenerationWithCorrectOriginInfo() throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ServletOutputStream os = createMockOutputStream(baos);
+        Mockito.when(response.getOutputStream()).thenReturn(os);
+        String dKeyStr = RequestServlet.createNewSession().split(",")[1];
+        Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
+
+        byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, re, dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
+
+        // construct messageData (containing Device Engagement)
+        EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
+        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.BASE_URL));
+        byte[] encodedDeviceEngagement = eg.generate();
+        byte[] messageDataBytes = createMockMessageData(ServletConsts.DEV_ENGAGEMENT_KEY, encodedDeviceEngagement);
+        ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(messageDataBytes));
+
+        // POST request
+        doReturn(messageDataBytes.length).when(request).getContentLength();
+        doReturn(sis).when(request).getInputStream();
+        doReturn("/" + dKeyStr).when(request).getPathInfo();
+        servlet.doPost(request, response);
+
+        byte[] sessionData = baos.toByteArray();
+
+        // parse sessionData to extract DeviceRequest
+        byte[] generatedTranscript = RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
+        SessionEncryptionDevice sed =
+            new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
+        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
+            .setDeviceRequest(sed.decryptMessageFromReader(sessionData).getKey())
+            .setSessionTranscript(generatedTranscript)
+            .parse();
+
+        Assert.assertEquals("1.0", dr.getVersion());
+        List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
+        Assert.assertEquals(docRequestsList.size(), 1);
+        DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
+        Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
     }
 
     @Test
