@@ -26,6 +26,7 @@ import androidx.annotation.Nullable;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.concurrent.Executor;
@@ -90,6 +91,7 @@ public class PresentationHelper {
     private boolean mSendSessionTerminationMessage;
     private byte[] mReverseEngagementReaderEngagement;
     private List<OriginInfo> mReverseEngagementOriginInfos;
+    private byte[] mReverseEngagementEncodedEReaderKey;
 
     PresentationHelper() {}
 
@@ -214,6 +216,11 @@ public class PresentationHelper {
         }
 
         if (mReverseEngagementReaderEngagement != null) {
+            // Get EReaderKey
+            EngagementParser parser = new EngagementParser(mReverseEngagementReaderEngagement);
+            EngagementParser.Engagement readerEngagement = parser.parse();
+            mReverseEngagementEncodedEReaderKey = Util.cborExtractTaggedCbor(readerEngagement.getESenderKeyBytes());
+
             // This is reverse engagement, we actually haven't connected yet...
             byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
                     Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()))));
@@ -228,15 +235,27 @@ public class PresentationHelper {
             return;
         }
 
-        // This is the first message. Extract eReaderKey to set up session encryption...
-        DataItem decodedData = Util.cborDecode(data);
-        byte[] eReaderKeyBytes = Util.cborMapExtractByteString(decodedData, "eReaderKey");
-        mEReaderKey = Util.coseKeyDecode(Util.cborDecode(eReaderKeyBytes));
+        // For reverse engagement, we get EReaderKeyBytes via Reverse Engagement...
+        byte[] encodedEReaderKey = null;
+        if (mReverseEngagementEncodedEReaderKey != null) {
+            encodedEReaderKey = mReverseEngagementEncodedEReaderKey;
+            // This is unnecessary but a nice warning regardless...
+            DataItem decodedData = Util.cborDecode(data);
+            if (Util.cborMapHasKey(decodedData, "eReaderKey")) {
+                Logger.w(TAG, "Ignoring eReaderKey in SessionEstablishment since we "
+                        + "already got this get in ReaderEngagement");
+            }
+        } else {
+            // This is the first message. Extract eReaderKey to set up session encryption...
+            DataItem decodedData = Util.cborDecode(data);
+            encodedEReaderKey = Util.cborMapExtractByteString(decodedData, "eReaderKey");
+        }
+        mEReaderKey = Util.coseKeyDecode(Util.cborDecode(encodedEReaderKey));
 
         mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(Util.cborBuildTaggedByteString(mDeviceEngagement))
-                .add(Util.cborBuildTaggedByteString(eReaderKeyBytes))
+                .add(Util.cborBuildTaggedByteString(encodedEReaderKey))
                 .add(Util.cborDecode(mHandover))
                 .end()
                 .build().get(0));
@@ -248,7 +267,7 @@ public class PresentationHelper {
             mEncodedAlternateSessionTranscript = Util.cborEncode(new CborBuilder()
                     .addArray()
                     .add(Util.cborBuildTaggedByteString(mAlternateDeviceEngagement))
-                    .add(Util.cborBuildTaggedByteString(eReaderKeyBytes))
+                    .add(Util.cborBuildTaggedByteString(encodedEReaderKey))
                     .add(Util.cborDecode(mAlternateHandover))
                     .end()
                     .build().get(0));
