@@ -12,6 +12,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.adapter.DocumentAdapter
@@ -19,6 +20,8 @@ import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
+import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.google.android.material.tabs.TabLayoutMediator
 
 class SelectDocumentFragment : Fragment() {
@@ -26,6 +29,10 @@ class SelectDocumentFragment : Fragment() {
         private const val LOG_TAG = "SelectDocumentFragment"
     }
 
+    private var _binding: FragmentSelectDocumentBinding? = null
+    private val binding get() = _binding!!
+
+    private val viewModel: ShareDocumentViewModel by viewModels()
     private val timeInterval = 2000 // # milliseconds passed between two back presses
     private var mBackPressed: Long = 0
 
@@ -69,7 +76,7 @@ class SelectDocumentFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val binding = FragmentSelectDocumentBinding.inflate(inflater)
+        _binding = FragmentSelectDocumentBinding.inflate(inflater)
         val adapter = DocumentAdapter()
         binding.vpDocuments.adapter = adapter
         binding.fragment = this
@@ -100,6 +107,32 @@ class SelectDocumentFragment : Fragment() {
         return binding.root
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        viewModel.getTransferStatus().observe(viewLifecycleOwner) {
+            when (it) {
+                TransferStatus.CONNECTED -> {
+                    openTransferScreen()
+                }
+
+                TransferStatus.ERROR -> {
+                    binding.tvNfcLabel.text = "Error on presentation!"
+                }
+                //Shall we update the top label of the screen for each state?
+                else -> {}
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.startPresentation()
+    }
+
     private fun setupDocumentsPager(binding: FragmentSelectDocumentBinding) {
         TabLayoutMediator(binding.tlPageIndicator, binding.vpDocuments) { _, _ -> }.attach()
         binding.vpDocuments.offscreenPageLimit = 1
@@ -124,6 +157,11 @@ class SelectDocumentFragment : Fragment() {
         }
     }
 
+    private fun openTransferScreen() {
+        val destination = SelectDocumentFragmentDirections.toTransferDocument()
+        findNavController().navigate(destination)
+    }
+
     private fun showEmptyView(binding: FragmentSelectDocumentBinding) {
         binding.vpDocuments.visibility = View.GONE
         binding.cvEmptyView.visibility = View.VISIBLE
@@ -135,6 +173,12 @@ class SelectDocumentFragment : Fragment() {
         binding.vpDocuments.visibility = View.VISIBLE
         binding.cvEmptyView.visibility = View.GONE
         binding.btShowQr.visibility = View.VISIBLE
+        binding.btShowQr.setOnClickListener { displayQRCode() }
+    }
+
+    private fun displayQRCode() {
+        val destination = SelectDocumentFragmentDirections.toShowQR()
+        findNavController().navigate(destination)
     }
 
     private fun openAddDocument() {
