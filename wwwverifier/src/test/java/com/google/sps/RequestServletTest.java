@@ -138,7 +138,7 @@ public class RequestServletTest {
         ConnectionMethodHttp connectionMethod = (ConnectionMethodHttp) connectionMethods.get(0);
         String generatedUriWebsite = connectionMethod.getUriWebsite();
         Assert.assertEquals(generatedUriWebsite.trim(),
-            ServletConsts.WEBSITE_URL + "/" + generatedKeyString.trim());
+            ServletConsts.ABSOLUTE_URL + "/" + generatedKeyString.trim());
     }
 
     @Test

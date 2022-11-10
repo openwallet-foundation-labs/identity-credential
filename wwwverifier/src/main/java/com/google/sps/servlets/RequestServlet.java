@@ -151,7 +151,11 @@ public class RequestServlet extends HttpServlet {
         if (getNumPostRequests(dKey) == 0) {
             byte[] sessionData = createDeviceRequest(getBytesFromRequest(request), dKey);
             setNumPostRequests(1, dKey);
-            response.getOutputStream().write(sessionData);
+            if (sessionData == null) {
+                response.sendError(403);
+            } else {
+                response.getOutputStream().write(sessionData);
+            }
         } else if (getNumPostRequests(dKey) == 1) {
             String json = parseDeviceResponse(getBytesFromRequest(request), dKey);
             Entity entity = getEntity(dKey);
@@ -182,8 +186,15 @@ public class RequestServlet extends HttpServlet {
         byte[] readerEngagementBytes =
             getDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, dKey);
 
-        PublicKey eDeviceKeyPublic =
-            new EngagementParser(encodedDeviceEngagement).parse().getESenderKey();
+        EngagementParser.Engagement de = new EngagementParser(encodedDeviceEngagement).parse();
+        PublicKey eDeviceKeyPublic = de.getESenderKey();
+        List<OriginInfo> oiList = de.getOriginInfos();
+        if (oiList.size() > 0) {
+            OriginInfoWebsite oi = (OriginInfoWebsite) oiList.get(0);
+            if (!oi.getBaseUrl().equals(ServletConsts.BASE_URL)) {
+                return null;
+            }
+        }
         setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), dKey);
 
         byte[] sessionTranscript = Util.cborEncode(new CborBuilder()
@@ -225,7 +236,7 @@ public class RequestServlet extends HttpServlet {
         EngagementGenerator eg = new EngagementGenerator(publicKey,
             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         String dKeyStr = com.google.appengine.api.datastore.KeyFactory.keyToString(dKey);
-        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.WEBSITE_URL + "/" + dKeyStr));
+        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
         return eg.generate();
     }
 

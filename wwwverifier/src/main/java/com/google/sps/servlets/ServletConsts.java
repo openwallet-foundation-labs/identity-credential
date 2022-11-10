@@ -19,7 +19,8 @@ public class ServletConsts {
 
     // website URL constants
     public static final String MDOC_PREFIX = "mdoc://";
-    public static final String WEBSITE_URL = "https://mdoc-reader-external.uc.r.appspot.com/request-mdl";
+    public static final String BASE_URL = "https://mdoc-reader-external.uc.r.appspot.com/";
+    public static final String ABSOLUTE_URL = "https://mdoc-reader-external.uc.r.appspot.com/request-mdl";
 
     // key generation constants
     public static final String KEYGEN_CURVE = "secp256r1";
