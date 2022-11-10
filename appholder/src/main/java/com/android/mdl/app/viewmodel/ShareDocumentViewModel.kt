@@ -2,7 +2,6 @@ package com.android.mdl.app.viewmodel
 
 import android.app.Application
 import android.view.View
-import android.widget.Button
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
@@ -53,7 +52,7 @@ class ShareDocumentViewModel(val app: Application) :
         deviceEngagementQr.set(transferManager.getDeviceEngagementQrCode())
     }
 
-    fun onShowQrCodeClicked() {
+    fun triggerQrEngagement() {
         transferManager.startQrEngagement()
     }
 }

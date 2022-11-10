@@ -34,22 +34,18 @@ class ShareDocumentFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel.startPresentation()
-
         viewModel.message.set("NFC tap with mdoc verifier device")
-
         viewModel.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.QR_ENGAGEMENT_READY -> {
-                    viewModel.message.set("Scan QR code or NFC tap with mdoc verifier device")
+                    viewModel.message.set("Scan QR code with mdoc verifier device")
                     viewModel.showQrCode()
                 }
 
                 TransferStatus.CONNECTED -> {
                     viewModel.message.set("Connected!")
-                    findNavController().navigate(
-                        ShareDocumentFragmentDirections.actionShareDocumentFragmentToTransferDocumentFragment()
-                    )
+                    val destination = ShareDocumentFragmentDirections.toTransferDocumentFragment()
+                    findNavController().navigate(destination)
                 }
 
                 TransferStatus.REQUEST -> {
@@ -58,9 +54,7 @@ class ShareDocumentFragment : Fragment() {
 
                 TransferStatus.DISCONNECTED -> {
                     viewModel.message.set("Disconnected!")
-                    findNavController().navigate(
-                        ShareDocumentFragmentDirections.actionShareDocumentFragmentToSelectDocumentFragment()
-                    )
+                    findNavController().navigateUp()
                 }
 
                 TransferStatus.ERROR -> {
@@ -80,6 +74,17 @@ class ShareDocumentFragment : Fragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        try {
+            viewModel.startPresentation()
+            viewModel.triggerQrEngagement()
+        } catch (nullPointer: NullPointerException) {
+            //Session was terminated
+            findNavController().navigateUp()
+        }
+    }
+
     // This callback will only be called when MyFragment is at least Started.
     var callback = object : OnBackPressedCallback(true /* enabled by default */) {
         override fun handleOnBackPressed() {
@@ -89,13 +94,6 @@ class ShareDocumentFragment : Fragment() {
 
     fun onCancel() {
         viewModel.cancelPresentation()
-        findNavController().navigate(
-            ShareDocumentFragmentDirections.actionShareDocumentFragmentToSelectDocumentFragment()
-        )
-    }
-
-    fun onShowQrCodeClicked() {
-        binding.btShowQr.isEnabled = false
-        viewModel.onShowQrCodeClicked()
+        findNavController().navigateUp()
     }
 }

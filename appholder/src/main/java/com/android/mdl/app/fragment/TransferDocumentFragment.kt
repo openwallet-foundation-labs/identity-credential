@@ -187,8 +187,6 @@ class TransferDocumentFragment : Fragment() {
     }
 
     fun onDone() {
-        val destination = TransferDocumentFragmentDirections
-            .actionTransferDocumentFragmentToSelectDocumentFragment()
-        findNavController().navigate(destination)
+        findNavController().navigateUp()
     }
 }
