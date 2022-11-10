@@ -141,8 +141,8 @@ public class RequestServlet extends HttpServlet {
      * 
      * @param request Either (1) MessageData, containing DeviceEngagement or (2) DeviceResponse,
      * both in the form of byte arrays
-     * @return (1) response, containing a DeviceRequest message as an encoded byte array; 
-     * (2) response, containing parsed data from DeviceResponse as a JSON String
+     * @return (1) response, containing a DeviceRequest message as an encoded byte array (or a 403 error); 
+     * (2) response, containing a termination message with status code 20
      */
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -157,13 +157,9 @@ public class RequestServlet extends HttpServlet {
                 response.getOutputStream().write(sessionData);
             }
         } else if (getNumPostRequests(dKey) == 1) {
-            String json = parseDeviceResponse(getBytesFromRequest(request), dKey);
-            Entity entity = getEntity(dKey);
-            entity.setProperty(ServletConsts.DEV_RESPONSE_PROP, new Text(json));
-            ds.put(entity);
+            byte[] terminationMessage = parseDeviceResponse(getBytesFromRequest(request), dKey);
             setNumPostRequests(2, dKey);
-            response.setContentType("application/json;");
-            response.getWriter().println(json);
+            response.getOutputStream().write(terminationMessage);
         }
     }
 
@@ -273,10 +269,13 @@ public class RequestServlet extends HttpServlet {
     /**
      * Parses DeviceResponse CBOR message and converts its contents into a JSON string.
      * 
-     * @param request POST request containing DeviceResponse
-     * @return JSON string that contains parsed data from DeviceResponse
+     * @param messageData CBOR message containing DeviceResponse to be decoded and parsed
+     * @param dKey Unique key of the entity in Datastore that corresponds to the current
+     * session
+     * 
+     * @return byte array containing a termination message
      */
-    public static String parseDeviceResponse(byte[] messageData, Key dKey) {
+    public static byte[] parseDeviceResponse(byte[] messageData, Key dKey) {
         PublicKey eReaderKeyPublic =
             getDecodedPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, dKey));
         PrivateKey eReaderKeyPrivate =
@@ -293,7 +292,13 @@ public class RequestServlet extends HttpServlet {
             .setSessionTranscript(sessionTranscript)
             .setEphemeralReaderKey(eReaderKeyPrivate)
             .parse();
-        return new Gson().toJson(buildJson(dr.getDocuments()));
+        String json = new Gson().toJson(buildJson(dr.getDocuments()));
+
+        Entity entity = getEntity(dKey);
+        entity.setProperty(ServletConsts.DEV_RESPONSE_PROP, new Text(json));
+        ds.put(entity);
+
+        return ser.encryptMessageToDevice(null, OptionalInt.of(20));
     }
 
     /**

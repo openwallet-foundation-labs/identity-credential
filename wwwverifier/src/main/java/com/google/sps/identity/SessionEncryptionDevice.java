@@ -19,6 +19,7 @@ package com.google.sps.servlets;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 //import androidx.core.util.Pair;
+import java.util.HashMap;
 
 //import androidx.annotation.NonNull;
 //import androidx.annotation.Nullable;
@@ -171,7 +172,7 @@ public final class SessionEncryptionDevice {
      *         status, as described above.
      * @exception IllegalArgumentException if the passed in data does not conform to the CDDL.
      */
-    public byte[] decryptMessageFromReader(byte[] messageData) {
+    public java.util.Map.Entry<byte[], OptionalLong> decryptMessageFromReader(byte[] messageData) {
         ByteArrayInputStream bais = new ByteArrayInputStream(messageData);
         List<DataItem> dataItems = null;
         try {
@@ -223,8 +224,9 @@ public final class SessionEncryptionDevice {
             }
             mSKReaderCounter += 1;
         }
-
-        return plainText;
+        HashMap<byte[], OptionalLong> hashMap = new HashMap<byte[], OptionalLong>();
+        hashMap.put(plainText, status);
+        return hashMap.entrySet().iterator().next();
     }
 
     /**

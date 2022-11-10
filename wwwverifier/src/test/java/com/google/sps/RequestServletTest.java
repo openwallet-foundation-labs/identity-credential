@@ -43,6 +43,8 @@ import org.mockito.MockitoAnnotations;
 import java.math.BigInteger;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.OptionalLong;
 
 // imports from Datastore
 import com.google.appengine.api.datastore.DatastoreService;
@@ -201,7 +203,7 @@ public class RequestServletTest {
         SessionEncryptionDevice sed =
             new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
-            .setDeviceRequest(sed.decryptMessageFromReader(sessionData))
+            .setDeviceRequest(sed.decryptMessageFromReader(sessionData).getKey())
             .setSessionTranscript(generatedTranscript)
             .parse();
 
@@ -214,25 +216,37 @@ public class RequestServletTest {
 
     @Test
     public void checkDeviceResponseParsingWithTestVector() throws IOException {
-        setUpWriter();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ServletOutputStream os = createMockOutputStream(baos);
+        Mockito.when(response.getOutputStream()).thenReturn(os);
         String dKeyStr = RequestServlet.createNewSession().split(",")[1];
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
+        
+        // put items in Datastore
         RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP,
             Util.cborEncode(sessionTranscript), dKey);
         RequestServlet.setNumPostRequests(1, dKey);
+        
+        // send POST request
         byte[] sessionData = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA);
         ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(sessionData));
         doReturn(sessionData.length).when(request).getContentLength();
         doReturn(sis).when(request).getInputStream();
         doReturn("/" + dKeyStr).when(request).getPathInfo();
-
         servlet.doPost(request, response);
 
-        String documentsJSON = stringWriter.toString();
-        Assert.assertTrue(documentsJSON.length() > 0);
+        // process response
+        byte[] responseMessage = baos.toByteArray();
+        SessionEncryptionDevice sed =
+            new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, Util.cborEncode(sessionTranscript));
+        Map.Entry<byte[], OptionalLong> responseMessageDecrypted = sed.decryptMessageFromReader(responseMessage);
+        Assert.assertEquals(responseMessageDecrypted.getKey(), null);
+        Assert.assertEquals(responseMessageDecrypted.getValue(), OptionalLong.of(20));
+        String devResponseJSON = RequestServlet.getDeviceResponse(dKey);
+        Assert.assertTrue(devResponseJSON.length() > 0);
     }
 
     public byte[] createMockMessageData(String name, byte[] data) {

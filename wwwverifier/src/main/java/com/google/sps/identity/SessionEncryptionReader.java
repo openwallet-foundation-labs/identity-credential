@@ -158,9 +158,9 @@ public final class SessionEncryptionReader {
             DataItem eReaderKeyBytes = Util.cborBuildTaggedByteString(
                     Util.cborEncode(eReaderKey));
             mapBuilder.put(new UnicodeString("eReaderKey"), eReaderKeyBytes);
-            if (messageCiphertext == null) {
-                throw new IllegalStateException("Data cannot be empty in initial message");
-            }
+            //if (messageCiphertext == null) {
+            //    throw new IllegalStateException("Data cannot be empty in initial message");
+            //}
         }
         if (messageCiphertext != null) {
             mapBuilder.put("data", messageCiphertext);
