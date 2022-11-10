@@ -433,6 +433,10 @@ public class VerificationHelper {
                 mEphemeralKeyPair.getPublic(),
                 eDeviceKey,
                 mEncodedSessionTranscript);
+        if (mReaderEngagement != null) {
+            // No need to include EReaderKey in first message...
+            mSessionEncryptionReader.setSendSessionEstablishment(false);
+        }
     }
 
     /**
