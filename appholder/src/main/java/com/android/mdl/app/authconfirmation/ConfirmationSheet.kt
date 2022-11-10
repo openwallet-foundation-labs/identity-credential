@@ -3,11 +3,13 @@ package com.android.mdl.app.authconfirmation
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -77,7 +79,11 @@ fun ConfirmationSheet(
             style = MaterialTheme.typography.titleMedium
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.4f)
+        ) {
             DocumentProperties(sheetData, onPropertyToggled)
             if (isSendingInProgress) {
                 LoadingIndicator(
@@ -141,12 +147,18 @@ private fun DocumentTitle(
     modifier: Modifier = Modifier,
     document: ConfirmationSheetData
 ) {
-    Text(
+    Row(
         modifier = modifier,
-        text = document.documentName,
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    )
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            textAlign = TextAlign.Center,
+            text = document.documentName,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+        )
+    }
 }
 
 @Composable
@@ -215,13 +227,16 @@ private fun DocumentProperties(
     sheetData: List<ConfirmationSheetData>,
     onPropertyToggled: (namespace: String, property: String) -> Unit
 ) {
-    LazyColumn {
+    LazyColumn(modifier = Modifier.focusGroup()) {
         sheetData.forEach { document ->
             stickyHeader {
                 DocumentTitle(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .height(42.dp)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     document = document
                 )
             }
@@ -318,7 +333,7 @@ private fun PreviewConfirmationSheetTrustedReader() {
 }
 
 @Composable
-@Preview(name = "Document With Trusted Reader", showBackground = true)
+@Preview(name = "Document With Trusted Reader", showBackground = true, backgroundColor = 0xFFFFFFFF)
 private fun PreviewConfirmationSheetWithDocumentAndTrustedReader() {
     HolderAppTheme {
         ConfirmationSheet(

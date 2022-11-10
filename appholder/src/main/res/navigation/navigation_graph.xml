@@ -178,8 +178,7 @@
     <dialog
         android:id="@+id/authConfirmation"
         android:name="com.android.mdl.app.authconfirmation.AuthConfirmationFragment"
-        android:label="Confirmation"
-        tools:layout="@layout/fragment_auth_confirmation">
+        android:label="Confirmation">
 
         <argument
             android:name="readerCommonName"
