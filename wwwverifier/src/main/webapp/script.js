@@ -2,8 +2,7 @@ const GET_URL = '/request-mdl';
 const CREATE_SESSION_URL = '/create-new-session';
 const DISPLAY_RESPONSE_URL = '/display-response';
 
-const QRCODE_ID = 'qrcode';
-const QRCODE_TEXT_ID = 'qrcode-text'
+const MDOC_URI_ID = 'mdoc-uri-text'
 const RESPONSE_ID = 'response-display';
 
 const INTERVAL_MS = 5000; // 5 seconds
@@ -22,18 +21,7 @@ function onLoad() {
         a.href = mdocURL;
         a.referrerPolicy = 'unsafe-url';
         a.innerHTML = mdocURL;
-        document.getElementById(QRCODE_TEXT_ID).appendChild(a);
-        new QRious({
-            element: document.getElementById(QRCODE_ID),
-            background: '#ffffff',
-            backgroundAlpha: 1,
-            foreground: '#000000',
-            foregroundAlpha: 1,
-            level: 'H',
-            padding: 0,
-            size: 300,
-            value: String(mdocURL)
-        });
+        document.getElementById(MDOC_URI_ID).appendChild(a);
     });
 }
 
