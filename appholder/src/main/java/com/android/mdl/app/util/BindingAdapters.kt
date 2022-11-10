@@ -1,8 +1,10 @@
 package com.android.mdl.app.util
 
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.databinding.BindingAdapter
+
 
 object BindingAdapters {
     /**
@@ -13,6 +15,7 @@ object BindingAdapters {
     @JvmStatic
     fun engagementView(view: LinearLayout, viewEngagement: View?) {
         viewEngagement?.let {
+            (viewEngagement.parent as? ViewGroup)?.removeView(viewEngagement)
             view.addView(it)
         }
     }
