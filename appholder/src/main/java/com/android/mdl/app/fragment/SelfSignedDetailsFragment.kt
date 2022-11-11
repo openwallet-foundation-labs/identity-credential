@@ -25,11 +25,12 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.core.content.FileProvider
+import androidx.core.widget.addTextChangedListener
 import androidx.exifinterface.media.ExifInterface
 import androidx.exifinterface.media.ExifInterface.ORIENTATION_UNDEFINED
 import androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.databinding.FragmentSelfSignedDetailsBinding
@@ -53,17 +54,19 @@ class SelfSignedDetailsFragment : Fragment() {
         private const val LOG_TAG = "SelfSignedDetailsFragment"
     }
 
-    private lateinit var vm: SelfSignedViewModel
-
+    private val vm: SelfSignedViewModel by viewModels()
     private val args: SelfSignedDetailsFragmentArgs by navArgs()
-    private var _binding: FragmentSelfSignedDetailsBinding? = null
+    private val nameLabels = listOf("Given Name", "Registration Holder Name")
 
+    private var _binding: FragmentSelfSignedDetailsBinding? = null
     private val binding get() = _binding!!
+
     private lateinit var provisionInfo: ProvisionInfo
+    private lateinit var documentNameEditText: EditText
+    private lateinit var holderNameEditText: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         provisionInfo = args.provisionInfo
     }
 
@@ -71,20 +74,24 @@ class SelfSignedDetailsFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        vm = ViewModelProvider(this)[SelfSignedViewModel::class.java]
         _binding = FragmentSelfSignedDetailsBinding.inflate(inflater)
         binding.fragment = this
-
         bindUI()
-
         return binding.root
     }
 
     private fun bindUI() {
         // Create all fields in the screen
+        val documentName = getDocumentNameValue()
+        addField(Field(0, "Document Name", provisionInfo.docName, FieldType.STRING, documentName))
+        documentNameEditText = binding.layoutSelfSignedDetails.findViewById(0)
         vm.getFields(provisionInfo.docType).forEach { field ->
             addField(field)
+            if (field.label in nameLabels) {
+                holderNameEditText = binding.layoutSelfSignedDetails.findViewById(field.id)
+            }
         }
+        setupTextChangeListener()
 
         vm.loading.observe(viewLifecycleOwner) {
             binding.loadingProgress.visibility = it
@@ -99,7 +106,19 @@ class SelfSignedDetailsFragment : Fragment() {
                 SelfSignedDetailsFragmentDirections.actionSelfSignedDetailsToSelectDocumentFragment()
             )
         }
+    }
 
+    private fun getDocumentNameValue(): String {
+        val value = vm.getFields(provisionInfo.docType).find { it.label in nameLabels }?.value
+        val name = value?.toString() ?: ""
+        val docName = provisionInfo.docName
+        return if (name.isBlank()) docName else "$name's $docName"
+    }
+
+    private fun setupTextChangeListener() {
+        holderNameEditText.addTextChangedListener { newValue ->
+            documentNameEditText.setText("$newValue's ${provisionInfo.docName}")
+        }
     }
 
     override fun onDestroyView() {
@@ -108,6 +127,7 @@ class SelfSignedDetailsFragment : Fragment() {
     }
 
     private fun updateList() {
+        provisionInfo.docName = documentNameEditText.text.toString()
         vm.getFields(provisionInfo.docType).forEachIndexed { index, field ->
             vm.getFields(provisionInfo.docType)[index] = getField(field)
         }
