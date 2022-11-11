@@ -6,7 +6,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.parcelize.Parcelize
-import java.util.*
+import java.util.Calendar
 
 @Parcelize
 @Entity(tableName = "document")
@@ -25,5 +25,5 @@ data class Document(
     @ColumnInfo(name = "date_provisioned") val dateProvisioned: Calendar = Calendar.getInstance(),
     @ColumnInfo(name = "date_check_for_update") var dateCheckForUpdate: Calendar? = null,
     @ColumnInfo(name = "date_refresh_auth_keys") var dateRefreshAuthKeys: Calendar? = null,
-    @ColumnInfo(name = "cardArt") var cardArt: Int = 0
-    ) : Parcelable
+    @ColumnInfo(name = "card_art") var cardArt: Int = 0
+) : Parcelable
