@@ -43,9 +43,9 @@
 
         <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_gravity="center_horizontal"
-            android:gravity="center_horizontal"
+            android:gravity="center"
             android:orientation="vertical">
 
             <TextView
@@ -55,7 +55,7 @@
                 android:textAlignment="center"
                 android:padding="16dp"
                 android:text="@{document.userVisibleName}"
-                android:textAppearance="?attr/textAppearanceDisplayMedium"
+                android:textAppearance="?attr/textAppearanceDisplaySmall"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -69,7 +69,7 @@
                 android:padding="16dp"
                 android:textAlignment="center"
                 android:text="@{document.docType}"
-                android:textAppearance="?attr/textAppearanceHeadlineMedium"
+                android:textAppearance="?attr/textAppearanceHeadlineSmall"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
