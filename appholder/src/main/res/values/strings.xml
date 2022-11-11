@@ -130,4 +130,5 @@
     <string name="tap_to_scan_nfc">NFC tap with mdoc reader</string>
     <string name="documents_pager_empty_view_title">No Documents</string>
     <string name="documents_pager_empty_view_message">Start by adding new one</string>
+    <string name="txt_card_art">Card art</string>
 </resources>
