@@ -11,6 +11,7 @@ public class ServletConsts {
     public static final String DEVKEY_PROP = "Device Key";
     public static final String TIMESTAMP_PROP = "Time Created";
     public static final String NUM_POSTS_PROP = "Number of POST requests";
+    public static final String OI_PROP = "Origin Info Status";
 
     // HTTP request constants
     public static final String SESSION_URL = "create-new-session";
@@ -28,6 +29,14 @@ public class ServletConsts {
 
     // other constants
     public static final String SESSION_SEPARATOR = ",";
+    public static final String CHECKMARK_PLACEHOLDER = "* ";
+    public static final String CROSS_PLACEHOLDER = "+ ";
+
+    // Origin Info messages
+    public static final String OI_SUCCESS = CHECKMARK_PLACEHOLDER + "OriginInfo: Referrer info matches website";
+    public static final String OI_QRCODE = CROSS_PLACEHOLDER + "OriginInfo: QR code (possible relay attack)";
+    public static final String OI_FAILURE_START = CROSS_PLACEHOLDER + "OriginInfo: Referrer ";
+    public static final String OI_FAILURE_END = " doesn't match website (possible relay attack)";
 
     // constants for device request generation
     public static String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";

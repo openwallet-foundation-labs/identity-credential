@@ -141,7 +141,7 @@ public class RequestServlet extends HttpServlet {
      * 
      * @param request Either (1) MessageData, containing DeviceEngagement or (2) DeviceResponse,
      * both in the form of byte arrays
-     * @return (1) response, containing a DeviceRequest message as an encoded byte array (or a 403 error); 
+     * @return (1) response, containing a DeviceRequest message as an encoded byte array; 
      * (2) response, containing a termination message with status code 20
      */
     @Override
@@ -151,16 +151,34 @@ public class RequestServlet extends HttpServlet {
         if (getNumPostRequests(dKey) == 0) {
             byte[] sessionData = createDeviceRequest(getBytesFromRequest(request), dKey);
             setNumPostRequests(1, dKey);
-            if (sessionData == null) {
-                response.sendError(403);
-            } else {
-                response.getOutputStream().write(sessionData);
-            }
+            response.getOutputStream().write(sessionData);
         } else if (getNumPostRequests(dKey) == 1) {
             byte[] terminationMessage = parseDeviceResponse(getBytesFromRequest(request), dKey);
             setNumPostRequests(2, dKey);
             response.getOutputStream().write(terminationMessage);
         }
+    }
+
+    /**
+     * Sets property in Datastore indicating whether the OriginInfo base URL from the
+     * DeviceEngagement message received from the app matches the website's base URL.
+     * 
+     * @param status String message to be stored in Datastore
+     * @param dKey Key corresponding to an entity in Datastore assigned to the current session
+     */
+    public static void setOriginInfoStatus(String status, Key dKey) {
+        Entity entity = getEntity(dKey);
+        entity.setProperty(ServletConsts.OI_PROP, status);
+        ds.put(entity);
+    }
+
+    /**
+     * @param dKey Key corresponding to an entity in Datastore assigned to the current session
+     * @return String message indicating whether the OriginInfo base URL from the app
+     * matches the website's base URL
+     */
+    public static String getOriginInfoStatus(Key dKey) {
+        return (String) getEntity(dKey).getProperty(ServletConsts.OI_PROP);
     }
 
      /**
@@ -188,8 +206,13 @@ public class RequestServlet extends HttpServlet {
         if (oiList.size() > 0) {
             OriginInfoWebsite oi = (OriginInfoWebsite) oiList.get(0);
             if (!oi.getBaseUrl().equals(ServletConsts.BASE_URL)) {
-                return null;
+                setOriginInfoStatus(ServletConsts.OI_FAILURE_START + oi.getBaseUrl() 
+                    + ServletConsts.OI_FAILURE_END, dKey);
+            } else {
+                setOriginInfoStatus(ServletConsts.OI_SUCCESS, dKey);
             }
+        } else {
+            setOriginInfoStatus(ServletConsts.OI_QRCODE, dKey);
         }
         setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), dKey);
 
@@ -294,7 +317,7 @@ public class RequestServlet extends HttpServlet {
             .setSessionTranscript(sessionTranscript)
             .setEphemeralReaderKey(eReaderKeyPrivate)
             .parse();
-        String json = new Gson().toJson(buildJson(dr.getDocuments()));
+        String json = new Gson().toJson(buildArrayFromDocuments(dr.getDocuments(), dKey));
 
         Entity entity = getEntity(dKey);
         entity.setProperty(ServletConsts.DEV_RESPONSE_PROP, new Text(json));
@@ -310,24 +333,29 @@ public class RequestServlet extends HttpServlet {
      * from the app in an earlier POST request
      * @return ArrayList of String data extracted from {@ docs} that will be displayed on the website
      */
-    public static ArrayList<String> buildJson(List<DeviceResponseParser.Document> docs) {
+    public static ArrayList<String> buildArrayFromDocuments(List<DeviceResponseParser.Document> docs, Key dKey) {
         ArrayList<String> arr = new ArrayList<String>();
+        arr.add(getOriginInfoStatus(dKey));
         arr.add("Number of documents returned: " + docs.size());
         for (DeviceResponseParser.Document doc : docs) {
             arr.add("Doctype: " + doc.getDocType());
             if (doc.getIssuerSignedAuthenticated()) {
-                arr.add("Issuer Signed Authenticated");
+                arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Issuer Signed Authenticated");
             }
             if (doc.getDeviceSignedAuthenticatedViaSignature()) {
-                arr.add("Device Signed Authenticated (ECDSA)");
+                arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Device Signed Authenticated (ECDSA)");
             } else if (doc.getDeviceSignedAuthenticated()) {
-                arr.add("Device Signed Authenticated");
+                arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Device Signed Authenticated");
             }
             arr.add("MSO");
-            arr.add("Signed: " + doc.getValidityInfoSigned().toString());
-            arr.add("Valid From: " + doc.getValidityInfoValidFrom().toString());
-            arr.add("Valid Until: " + doc.getValidityInfoValidUntil().toString());
-            arr.add("DeviceKey: " + Base64.getEncoder().encodeToString(doc.getDeviceKey().getEncoded()));
+            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Signed: "
+                + doc.getValidityInfoSigned().toString());
+            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Valid From: "
+                + doc.getValidityInfoValidFrom().toString());
+            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Valid Until: "
+                + doc.getValidityInfoValidUntil().toString());
+            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "DeviceKey: "
+                + Base64.getEncoder().encodeToString(doc.getDeviceKey().getEncoded()));
             List<String> issuerNamespaces = doc.getIssuerNamespaces();
             for (String namespace : issuerNamespaces) {
                 arr.add("Namespace: " + namespace);
@@ -353,7 +381,7 @@ public class RequestServlet extends HttpServlet {
                         default:
                             nameVal = Base64.getEncoder().encodeToString(doc.getIssuerEntryData(namespace, name));
                     }
-                    arr.add(name + ": " + nameVal);
+                    arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + name + ": " + nameVal);
                 }
             }
         }

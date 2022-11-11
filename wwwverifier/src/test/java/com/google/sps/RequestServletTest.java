@@ -188,7 +188,8 @@ public class RequestServletTest {
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
-        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "https://fake-mdoc-reader.appspot.com/"));
+        String fakeBaseUrl = "https://fake-mdoc-reader.appspot.com/";
+        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, fakeBaseUrl));
         byte[] encodedDeviceEngagement = eg.generate();
         byte[] messageDataBytes = createMockMessageData(ServletConsts.DEV_ENGAGEMENT_KEY, encodedDeviceEngagement);
         ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(messageDataBytes));
@@ -199,8 +200,25 @@ public class RequestServletTest {
         doReturn("/" + dKeyStr).when(request).getPathInfo();
         servlet.doPost(request, response);
 
-        byte[] responseMessage = baos.toByteArray();
-        Assert.assertTrue(responseMessage.length == 0);
+        byte[] sessionData = baos.toByteArray();
+
+        // parse sessionData to extract DeviceRequest
+        byte[] generatedTranscript = RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
+        SessionEncryptionDevice sed =
+            new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
+        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
+            .setDeviceRequest(sed.decryptMessageFromReader(sessionData).getKey())
+            .setSessionTranscript(generatedTranscript)
+            .parse();
+
+        Assert.assertEquals("1.0", dr.getVersion());
+        List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
+        Assert.assertEquals(docRequestsList.size(), 1);
+        DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
+        Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
+
+        Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey),
+            ServletConsts.OI_FAILURE_START + fakeBaseUrl + ServletConsts.OI_FAILURE_END);
     }
 
     @Test
@@ -246,6 +264,7 @@ public class RequestServletTest {
         Assert.assertEquals(docRequestsList.size(), 1);
         DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
         Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
+        Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey), ServletConsts.OI_SUCCESS);
     }
 
     @Test
@@ -290,6 +309,7 @@ public class RequestServletTest {
         Assert.assertEquals(docRequestsList.size(), 1);
         DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
         Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
+        Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey), ServletConsts.OI_QRCODE);
     }
 
     @Test
@@ -306,6 +326,7 @@ public class RequestServletTest {
         RequestServlet.setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP,
             Util.cborEncode(sessionTranscript), dKey);
+        RequestServlet.setOriginInfoStatus(ServletConsts.OI_QRCODE, dKey);
         RequestServlet.setNumPostRequests(1, dKey);
         
         // send POST request

@@ -7,16 +7,28 @@ const RESPONSE_ID = 'response-display';
 
 const INTERVAL_MS = 5000; // 5 seconds
 
+const CHECKMARK_PLACEHOLDER = '*';
+const CHECKMARK_UNICODE = '\u2705';
+const CROSS_PLACEHOLDER = '+';
+const CROSS_UNICODE = '\u274c';
+
 var sessionID = '';
 
 window.onload = onLoad;
-window.setInterval(getDeviceResponse, INTERVAL_MS);
+var devResponseInterval = window.setInterval(getDeviceResponse, INTERVAL_MS);
 
 function onLoad() {
     fetch(GET_URL + CREATE_SESSION_URL).then(response => response.text()).then((responseText) => {
         var responseArr = responseText.split(',');
         var mdocURL = responseArr[0];
         sessionID = responseArr[1];
+
+        // create text instruction
+        var uri_instruction = document.createElement('div');
+        uri_instruction.innerHTML = 'Click on the following link to proceed to the MDoc application:';
+        document.getElementById(MDOC_URI_ID).appendChild(uri_instruction);
+        
+        // create link
         var a = document.createElement('a');
         a.href = mdocURL;
         a.referrerPolicy = 'unsafe-url';
@@ -30,18 +42,25 @@ function getDeviceResponse() {
 
     document.getElementById(RESPONSE_ID).innerHTML = '';
     fetch(GET_URL + DISPLAY_RESPONSE_URL + '/' + String(sessionID)).then(response => response.text()).then((responseText) => {
-        if (responseText.length != 0) {
+        if (responseText.length > 1) {
             var table = document.createElement('table');
-            var textArr = responseText.substring(1, responseText.length - 1).split(',');
+            var textArr = responseText.substring(1, responseText.length - 2).split(',');
             for (var i = 0; i < textArr.length; i++) {
                 var row = table.insertRow(i);
                 var rowText = textArr[i].substring(1, textArr[i].length - 1).split(':');
-                row.insertCell(0).innerHTML = rowText[0];
+                var rowKey = rowText[0];
+                if (rowKey.charAt(0) == CHECKMARK_PLACEHOLDER) {
+                    rowKey = CHECKMARK_UNICODE + rowKey.substring(1);
+                } else if (rowKey.charAt(0) == CROSS_PLACEHOLDER) {
+                    rowKey = CROSS_UNICODE + rowKey.substring(1);                    
+                }
+                row.insertCell(0).innerHTML = rowKey;
                 if (rowText.length == 2) {
                     row.insertCell(1).innerHTML = rowText[1];
                 }
             }
             document.getElementById(RESPONSE_ID).append(table);
+            window.clearInterval(devResponseInterval);
         }
     });
 }
