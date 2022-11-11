@@ -73,6 +73,7 @@ public final class SessionEncryptionReader {
     private SecretKeySpec mSKReader;
     private int mSKDeviceCounter = 1;
     private int mSKReaderCounter = 1;
+    private boolean mSendSessionEstablishment = true;
  
     /**
      * Creates a new {@link SessionEncryptionReader} object.
@@ -111,6 +112,22 @@ public final class SessionEncryptionReader {
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new IllegalStateException("Error deriving keys", e);
         }
+    }
+
+    /**
+     * Configure whether to send <code>SessionEstablishment</code> as the first message.
+     *
+     * <p>If set to <code>false</code> the first message to the mdoc will <em>not</em>
+     * contain <code>eReaderKey</code>. This is useful for situations where this key has
+     * already been conveyed out-of-band, for example via reverse engagement.
+     *
+     * <p>The default value for this is <code>true</code>.
+     *
+     * @param sendSessionEstablishment whether to send <code>SessionEstablishment</code>
+     *                                 as the first message.
+     */
+    void setSendSessionEstablishment(boolean sendSessionEstablishment) {
+        mSendSessionEstablishment = sendSessionEstablishment;
     }
  
     /**
@@ -153,14 +170,14 @@ public final class SessionEncryptionReader {
 
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> mapBuilder = builder.addMap();
-        if (!mSessionEstablishmentSent) {
+        if (!mSessionEstablishmentSent && mSendSessionEstablishment) {
             DataItem eReaderKey = Util.cborBuildCoseKey(mEReaderKeyPublic);
             DataItem eReaderKeyBytes = Util.cborBuildTaggedByteString(
                     Util.cborEncode(eReaderKey));
             mapBuilder.put(new UnicodeString("eReaderKey"), eReaderKeyBytes);
-            //if (messageCiphertext == null) {
-            //    throw new IllegalStateException("Data cannot be empty in initial message");
-            //}
+            if (messageCiphertext == null) {
+                throw new IllegalStateException("Data cannot be empty in initial message");
+            }
         }
         if (messageCiphertext != null) {
             mapBuilder.put("data", messageCiphertext);

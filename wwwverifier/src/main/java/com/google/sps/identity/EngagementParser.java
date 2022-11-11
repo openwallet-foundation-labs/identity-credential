@@ -60,6 +60,7 @@ public class EngagementParser {
         private static final String TAG = "Engagement";
         private String mVersion;
         private PublicKey mESenderKey;
+        private byte[] mESenderKeyBytes;
         private List<ConnectionMethod> mConnectionMethods = new ArrayList<>();
         private List<OriginInfo> mOriginInfos = new ArrayList<>();
 
@@ -83,6 +84,21 @@ public class EngagementParser {
          */
         public PublicKey getESenderKey() {
             return mESenderKey;
+        }
+
+        /**
+         * Gets the encoding of the key that was sent from the other side.
+         *
+         * <p>The returned data are the bytes of <code>ESenderKeyBytes</code> which is defined
+         * as <code>#6.24(bstr .cbor ESenderKey)</code> where <code>ESenderKey</code> is a
+         * <code>COSE_Key</code>.
+         *
+         * @return The encoding of the ephemeral reader key that was sent from the mdoc
+         *     (when parsing <code>DeviceEngagement</code>) or the mdoc reader (when
+         *     generating <code>ReaderEngagement</code>).
+         */
+        public byte[] getESenderKeyBytes() {
+            return mESenderKeyBytes;
         }
 
         /**
@@ -126,9 +142,10 @@ public class EngagementParser {
                     securityItems.get(1).getTag().getValue() != 24) {
                 throw new IllegalArgumentException("Second item in Security array is not a tagged bstr");
             }
-            byte[] encodedCoseKey = ((ByteString) securityItems.get(1)).getBytes();
-            DataItem coseKey = Util.cborDecode(encodedCoseKey);
+            ByteString eSenderKeyBytes = ((ByteString) securityItems.get(1));
+            DataItem coseKey = Util.cborDecode(eSenderKeyBytes.getBytes());
             mESenderKey = Util.coseKeyDecode(coseKey);
+            mESenderKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(eSenderKeyBytes.getBytes()));
 
             if (Util.cborMapHasKey(map, 2)) {
                 List<DataItem> connectionMethodItems = Util.cborMapExtractArray(map, 2);

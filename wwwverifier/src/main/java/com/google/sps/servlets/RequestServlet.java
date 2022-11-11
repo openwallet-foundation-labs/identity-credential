@@ -203,6 +203,7 @@ public class RequestServlet extends HttpServlet {
 
         SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate,
             eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
+        ser.setSendSessionEstablishment(false);
         byte[] dr = new DeviceRequestGenerator()
             .setSessionTranscript(sessionTranscript)
             .addDocumentRequest(ServletConsts.MDL_DOCTYPE, createMdlItemsToRequest(), null, null, null)
@@ -286,6 +287,7 @@ public class RequestServlet extends HttpServlet {
 
         SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate,
             eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
+        ser.setSendSessionEstablishment(false);
         
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
             .setDeviceResponse(ser.decryptMessageFromDevice(messageData))
