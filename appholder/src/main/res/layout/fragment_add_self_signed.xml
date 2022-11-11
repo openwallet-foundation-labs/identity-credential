@@ -30,6 +30,21 @@
             android:layout_marginHorizontal="16dp" />
 
         <TextView
+            android:id="@+id/tv_document_color"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:layout_marginTop="16dp"
+            android:labelFor="@id/sp_document_type"
+            android:text="@string/txt_document_type" />
+
+        <Spinner
+            android:id="@+id/sp_document_color"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp" />
+
+        <TextView
             android:id="@+id/tv_document_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

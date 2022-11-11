@@ -199,7 +199,8 @@ class DocumentManager private constructor(private val context: Context) {
                     selfSigned = true,
                     userAuthentication = dData.provisionInfo.userAuthentication,
                     dData.provisionInfo.numberMso,
-                    dData.provisionInfo.maxUseMso
+                    dData.provisionInfo.maxUseMso,
+                    cardArt = dData.provisionInfo.docColor
                 )
                 // Insert new document in our local database
                 documentRepository.insert(document)
