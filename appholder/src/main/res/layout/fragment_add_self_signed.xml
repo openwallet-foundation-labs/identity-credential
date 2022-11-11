@@ -36,7 +36,7 @@
             android:layout_margin="16dp"
             android:layout_marginTop="16dp"
             android:labelFor="@id/sp_document_type"
-            android:text="@string/txt_document_type" />
+            android:text="@string/txt_card_art" />
 
         <Spinner
             android:id="@+id/sp_document_color"
