@@ -22,11 +22,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [Document::class], version = 1)
+@Database(
+    version = 2,
+    entities = [Document::class]
+)
 @TypeConverters(Converters::class)
 abstract class DocumentDatabase : RoomDatabase() {
-    abstract fun credentialDao(): DocumentDao
 
+    abstract fun credentialDao(): DocumentDao
 
     companion object {
 
@@ -47,9 +50,9 @@ abstract class DocumentDatabase : RoomDatabase() {
         //   that since all of these documents will reference HW-backed keys that are not backed
         //   up and restored.
         private fun buildDatabase(context: Context): DocumentDatabase {
-            return Room.databaseBuilder(
-                context, DocumentDatabase::class.java, DATABASE_NAME
-            ).build()
+            return Room.databaseBuilder(context, DocumentDatabase::class.java, DATABASE_NAME)
+                .addMigrations(MigrationV1ToV2)
+                .build()
         }
     }
 }
