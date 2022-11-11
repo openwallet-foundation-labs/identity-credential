@@ -33,6 +33,7 @@ data class SelfSignedDocumentData(
 data class ProvisionInfo(
     val docType: String,
     var docName: String,
+    var docColor: Int,
     val storageImplementationType: String,
     val userAuthentication: Boolean,
     val numberMso: Int,

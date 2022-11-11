@@ -5,6 +5,11 @@
         <item>mVR</item>
         <item>micov</item>
     </string-array>
+    <string-array name="document_color">
+        <item>Green</item>
+        <item>Yellow</item>
+        <item>Blue</item>
+    </string-array>
     <string-array name="storage_implementation">
         <item>Keystore-backed</item>
         <item>Hardware-backed</item>

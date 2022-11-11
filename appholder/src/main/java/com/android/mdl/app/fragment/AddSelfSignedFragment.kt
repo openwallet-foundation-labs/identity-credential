@@ -13,6 +13,7 @@ import androidx.navigation.fragment.findNavController
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_KEYSTORE
 import com.android.mdl.app.R
+import com.android.mdl.app.adapter.ColorAdapter
 import com.android.mdl.app.databinding.FragmentAddSelfSignedBinding
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
@@ -21,12 +22,9 @@ import com.android.mdl.app.util.ProvisionInfo
 
 class AddSelfSignedFragment : Fragment() {
 
-
     private var _binding: FragmentAddSelfSignedBinding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
     private val binding get() = _binding!!
+    private lateinit var colorAdapter: ColorAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -34,9 +32,8 @@ class AddSelfSignedFragment : Fragment() {
     ): View {
         _binding = FragmentAddSelfSignedBinding.inflate(inflater)
         binding.fragment = this
-
+        colorAdapter = ColorAdapter(requireContext())
         bindUI()
-
         return binding.root
     }
 
@@ -51,6 +48,7 @@ class AddSelfSignedFragment : Fragment() {
             // Apply the adapter to the spinner
             binding.spDocumentType.adapter = adapter
         }
+        binding.spDocumentColor.adapter = colorAdapter
         ArrayAdapter.createFromResource(
             requireContext(),
             R.array.storage_implementation,
@@ -84,12 +82,15 @@ class AddSelfSignedFragment : Fragment() {
             0 -> {
                 "Driving License"
             }
+
             1 -> {
                 "Vehicle Registration"
             }
+
             2 -> {
                 "Vaccination Document"
             }
+
             else -> {
                 "New Document"
             }
@@ -104,11 +105,11 @@ class AddSelfSignedFragment : Fragment() {
         val provisionInfo = ProvisionInfo(
             getSelectedDocType(),
             binding.edDocumentName.text.toString(),
+            binding.spDocumentColor.selectedItemPosition,
             getStorageImplementation(),
             binding.scUserAuthentication.isChecked,
             binding.totalMso.text.toString().toInt(),
             binding.totalUse.text.toString().toInt()
-
         )
         findNavController().navigate(
             AddSelfSignedFragmentDirections.actionAddSelfSignedToSelfSignedDetails(provisionInfo)
@@ -152,12 +153,15 @@ class AddSelfSignedFragment : Fragment() {
             resources.getStringArray(R.array.document_type)[0] -> {
                 MDL_DOCTYPE
             }
+
             resources.getStringArray(R.array.document_type)[1] -> {
                 MVR_DOCTYPE
             }
+
             resources.getStringArray(R.array.document_type)[2] -> {
                 MICOV_DOCTYPE
             }
+
             else -> {
                 MDL_DOCTYPE
             }
@@ -171,9 +175,11 @@ class AddSelfSignedFragment : Fragment() {
             resources.getStringArray(R.array.storage_implementation)[0] -> {
                 IMPLEMENTATION_TYPE_KEYSTORE
             }
+
             resources.getStringArray(R.array.storage_implementation)[1] -> {
                 IMPLEMENTATION_TYPE_HARDWARE
             }
+
             else -> {
                 IMPLEMENTATION_TYPE_KEYSTORE
             }
