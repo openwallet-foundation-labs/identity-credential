@@ -61,8 +61,17 @@ public abstract class ConnectionMethod {
         return null;
     }
 
-    abstract @NonNull
-    Pair<NdefRecord, byte[]> toNdefRecord();
+    /**
+     * Creates Carrier Reference and Auxiliary Data Reference records.
+     *
+     * <p>If this is to be included in a Handover Select method, pass <code>{"mdoc"}</code>
+     * for <code>auxilliaryReferences</code>.
+     *
+     * @param auxiliaryReferences A list of references to include in the Alternative Carrier Record
+     * @return
+     */
+    abstract @Nullable
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences);
 
     static @Nullable
     ConnectionMethod fromNdefRecord(@NonNull NdefRecord record) {

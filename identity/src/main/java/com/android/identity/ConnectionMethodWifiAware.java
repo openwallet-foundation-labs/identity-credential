@@ -252,9 +252,8 @@ public class ConnectionMethodWifiAware extends ConnectionMethod {
                 .build().get(0);
     }
 
-    @Override
-    @NonNull
-    Pair<NdefRecord, byte[]> toNdefRecord() {
+    @Override @Nullable
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences) {
         // The NdefRecord and its OOB data is defined in "Wi-Fi Aware Specification", table 142.
         //
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -331,10 +330,13 @@ public class ConnectionMethodWifiAware extends ConnectionMethod {
         baos.write(0x01); // CPS: active
         baos.write(0x01); // Length of carrier data reference ("0")
         baos.write('W');  // Carrier data reference
-        baos.write(0x01); // Number of auxiliary references
-        byte[] auxReference = "mdoc".getBytes(UTF_8);
-        baos.write(auxReference.length);
-        baos.write(auxReference, 0, auxReference.length);
+        for (String auxRef : auxiliaryReferences) {
+            // Each auxiliary reference consists of a single byte for the length and then as
+            // many bytes for the reference itself.
+            byte[] auxRefUtf8 = auxRef.getBytes(UTF_8);
+            baos.write(auxRefUtf8.length);
+            baos.write(auxRefUtf8, 0, auxRefUtf8.length);
+        }
         byte[] acRecordPayload = baos.toByteArray();
 
         return new Pair<>(record, acRecordPayload);

@@ -248,8 +248,8 @@ public class ConnectionMethodBle extends ConnectionMethod {
         // central client mode is used!
         return new ConnectionMethodBle(peripheral,
                 centralClient,
-                uuid,
-                uuid);
+                peripheral ? uuid : null,
+                centralClient ? uuid : null);
     }
 
     @NonNull
@@ -274,8 +274,8 @@ public class ConnectionMethodBle extends ConnectionMethod {
                 .build().get(0);
     }
 
-    @Override @NonNull
-    Pair<NdefRecord, byte[]> toNdefRecord() {
+    @Override @Nullable
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences) {
         // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
         //
         // See section 1.17.2 for values
@@ -338,12 +338,14 @@ public class ConnectionMethodBle extends ConnectionMethod {
         baos.write(0x01); // CPS: active
         baos.write(0x01); // Length of carrier data reference ("0")
         baos.write('0');  // Carrier data reference
-        baos.write(0x01); // Number of auxiliary references
-        // Each auxiliary reference consists of a single byte for the length and then as
-        // many bytes for the reference itself.
-        byte[] auxReference = "mdoc".getBytes(UTF_8);
-        baos.write(auxReference.length);
-        baos.write(auxReference, 0, auxReference.length);
+        baos.write(auxiliaryReferences.size()); // Number of auxiliary references
+        for (String auxRef : auxiliaryReferences) {
+            // Each auxiliary reference consists of a single byte for the length and then as
+            // many bytes for the reference itself.
+            byte[] auxRefUtf8 = auxRef.getBytes(UTF_8);
+            baos.write(auxRefUtf8.length);
+            baos.write(auxRefUtf8, 0, auxRefUtf8.length);
+        }
         byte[] acRecordPayload = baos.toByteArray();
 
         return new Pair<>(record, acRecordPayload);

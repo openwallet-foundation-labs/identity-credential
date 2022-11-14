@@ -18,7 +18,6 @@ package com.android.identity;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
 import android.nfc.NdefMessage;
@@ -26,27 +25,29 @@ import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
-import android.nfc.tech.Ndef;
-import android.os.Bundle;
 import android.util.Base64;
 import android.util.Log;
+
+import androidx.annotation.Nullable;
 import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.OptionalInt;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.SimpleValue;
 
 /**
@@ -238,19 +239,10 @@ public class VerificationHelper {
     public void
     nfcProcessOnTagDiscovered(@NonNull Tag tag) {
         Logger.d(TAG, "Tag discovered!");
-        for (String tech : tag.getTechList()) {
-            Logger.d(TAG, "tech: " + tech);
-            if (tech.equals(Ndef.class.getName())) {
-                Logger.d(TAG, "Found ndef tech!");
-                if (mDeviceEngagement != null) {
-                    Logger.d(TAG, "Already have device engagement "
-                            + "so not inspecting what was received via "
-                            + "NFC");
-                } else {
-                    setNdefDeviceEngagement(Ndef.get(tag));
-                }
 
-            } else if (tech.equals(IsoDep.class.getName())) {
+        // Find IsoDep since we're skipping NDEF checks and doing everything ourselves via APDUs
+        for (String tech : tag.getTechList()) {
+            if (tech.equals(IsoDep.class.getName())) {
                 mNfcIsoDep = IsoDep.get(tag);
                 // If we're doing QR code engagement _and_ NFC data transfer
                 // it's possible that we're now in a state where we're
@@ -265,6 +257,29 @@ public class VerificationHelper {
                 }
             }
         }
+
+        if (mNfcIsoDep == null) {
+            Logger.d(TAG, "no IsoDep technology found");
+            return;
+        }
+
+        startNfcHandover();
+
+        /*
+        // Look for Ndef
+        for (String tech : tag.getTechList()) {
+            if (tech.equals(Ndef.class.getName())) {
+                Logger.d(TAG, "Found ndef tech!");
+                if (mDeviceEngagement != null) {
+                    Logger.d(TAG, "Already have device engagement "
+                            + "so not inspecting what was received via "
+                            + "NFC");
+                } else {
+                    processInitialNdefMessage(Ndef.get(tag));
+                }
+            }
+        }
+         */
     }
 
     /**
@@ -319,95 +334,327 @@ public class VerificationHelper {
                 "Invalid QR Code device engagement text: " + qrDeviceEngagement));
     }
 
-    void setNdefDeviceEngagement(@NonNull Ndef ndef) {
-        byte[] handoverSelectMessage;
-        byte[] encodedDeviceEngagement = null;
-        boolean validHandoverSelectMessage = false;
+    static byte[] buildApduReadBinary(int offset, int length) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(0x00);
+        baos.write(0xb0);
+        baos.write(offset / 0x100);
+        baos.write(offset & 0xff);
+        baos.write(0x00);
+        baos.write(length / 0x100);
+        baos.write(length & 0xff);
+        return baos.toByteArray();
+    }
 
-        NdefMessage m = ndef.getCachedNdefMessage();
-
-        handoverSelectMessage = m.toByteArray();
-        if (Logger.isDebugEnabled()) {
-            Logger.d(TAG, 
-                    "In decodeNdefTag, handoverSelectMessage: " + Util.toHex(m.toByteArray()));
-        }
-
-        List<ConnectionMethod> parsedConnectionMethodsFromNfc = new ArrayList<>();
-        for (NdefRecord r : m.getRecords()) {
-            if (Logger.isDebugEnabled()) {
-                Logger.d(TAG, "record: " + Util.toHex(r.getPayload()));
-            }
-
-            // Handle Handover Select record for NFC Forum Connection Handover specification
-            // version 1.5 (encoded as 0x15 below).
-            //
-            if (r.getTnf() == NdefRecord.TNF_WELL_KNOWN
-                    && Arrays.equals(r.getType(), "Hs".getBytes(UTF_8))) {
-                byte[] payload = r.getPayload();
-                if (payload.length >= 1 && payload[0] == 0x15) {
-                    // The NDEF payload of the Handover Select Record SHALL consist of a single
-                    // octet that contains the MAJOR_VERSION and MINOR_VERSION numbers,
-                    // optionally followed by an embedded NDEF message.
-                    //
-                    // If present, the NDEF message SHALL consist of one of the following options:
-                    // - One or more ALTERNATIVE_CARRIER_RECORDs
-                    // - One or more ALTERNATIVE_CARRIER_RECORDs followed by an ERROR_RECORD
-                    // - An ERROR_RECORD.
-                    //
-                    Logger.d(TAG, "Processing Handover Select message");
-                    //byte[] ndefMessage = Arrays.copyOfRange(payload, 1, payload.length);
-                    // TODO: check that the ALTERNATIVE_CARRIER_RECORD matches
-                    //   the ALTERNATIVE_CARRIER_CONFIGURATION record retrieved below.
-                    validHandoverSelectMessage = true;
-                }
-            }
-
-            // DeviceEngagement record
-            //
-            if (r.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE
-                    && Arrays.equals(r.getType(),
-                    "iso.org:18013:deviceengagement".getBytes(UTF_8))
-                    && Arrays.equals(r.getId(), "mdoc".getBytes(UTF_8))) {
-                encodedDeviceEngagement = r.getPayload();
-                if (Logger.isDebugEnabled()) {
-                    Logger.d(TAG, 
-                            "Device Engagement from NFC: " + Util.toHex(encodedDeviceEngagement));
-                }
-            }
-
-            // This parses the various carrier specific NDEF records, see
-            // DataTransport.parseNdefRecord() for details.
-            //
-            if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
-                ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r);
-                if (cm != null) {
-                    parsedConnectionMethodsFromNfc.add(cm);
-                }
-            }
-
-        }
-
-        if (Logger.isDebugEnabled()) {
-            for (ConnectionMethod cm : parsedConnectionMethodsFromNfc) {
-                Logger.d(TAG, "Have connection method " + cm);
-            }
-        }
-
-        if (validHandoverSelectMessage && !parsedConnectionMethodsFromNfc.isEmpty()) {
-            Logger.d(TAG, "Reporting Device Engagement through NFC");
-            DataItem readerHandover = new CborBuilder()
-                    .addArray()
-                    .add(handoverSelectMessage)    // Handover Select message
-                    .add(SimpleValue.NULL)         // Handover Request message
-                    .end()
-                    .build().get(0);
-            setDeviceEngagement(encodedDeviceEngagement, readerHandover);
-
-            reportDeviceEngagementReceived(parsedConnectionMethodsFromNfc);
+    static private
+    byte[] buildApdu(int cla, int ins, int p1, int p2, @Nullable byte[] data, int le) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(cla);
+        baos.write(ins);
+        baos.write(p1);
+        baos.write(p2);
+        boolean hasExtendedLc = false;
+        if (data == null) {
+            baos.write(0);
+        } else if (data.length < 256) {
+            baos.write(data.length);
         } else {
-            reportError(new IllegalArgumentException(
-                    "Invalid Handover Select message: " + Util.toHex(m.toByteArray())));
+            hasExtendedLc = true;
+            baos.write(0x00);
+            baos.write(data.length / 0x100);
+            baos.write(data.length & 0xff);
         }
+        if (data != null && data.length > 0) {
+            try {
+                baos.write(data);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        if (le > 0) {
+            if (le == 256) {
+                baos.write(0x00);
+            } else if (le < 256) {
+                baos.write(le);
+            } else {
+                if (!hasExtendedLc) {
+                    baos.write(0x00);
+                }
+                if (le == 65536) {
+                    baos.write(0x00);
+                    baos.write(0x00);
+                } else {
+                    baos.write(le / 0x100);
+                    baos.write(le & 0xff);
+                }
+            }
+        }
+
+        return baos.toByteArray();
+    }
+
+    private byte[] readBinary(@NonNull IsoDep isoDep, int offset, int size)
+            throws IOException {
+        byte[] apdu;
+        byte[] ret;
+
+        apdu = buildApduReadBinary(offset, size);
+        ret = isoDep.transceive(apdu);
+        if (ret.length < 2 || ret[ret.length - 2] != ((byte) 0x90) || ret[ret.length - 1] != ((byte) 0x00)) {
+            Logger.e(TAG, "Error sending READ_BINARY command: " + Util.toHex(ret));
+            return null;
+        }
+        return Arrays.copyOfRange(ret, 0, ret.length - 2);
+    }
+
+    private byte[] ndefReadMessage(@NonNull IsoDep isoDep)
+            throws IOException {
+        byte[] apdu;
+        byte[] ret;
+
+        apdu = buildApduReadBinary(0x0000, 2);
+        ret = isoDep.transceive(apdu);
+        if (ret.length != 4 || ret[2] != ((byte) 0x90) || ret[3] != ((byte) 0x00)) {
+            Logger.e(TAG, "Error sending second READ_BINARY command for length: " + Util.toHex(ret));
+            return null;
+        }
+        int replyLen = ((int) ret[0] & 0xff) * 256 + ((int) ret[1] & 0xff);
+
+        apdu = buildApduReadBinary(0x0002, replyLen);
+        ret = isoDep.transceive(apdu);
+        if (ret.length != replyLen + 2 || ret[replyLen] != ((byte) 0x90) || ret[replyLen + 1] != ((byte) 0x00)) {
+            Logger.e(TAG, "Error sending second READ_BINARY command for payload: " + Util.toHex(ret));
+            return null;
+        }
+        return Arrays.copyOfRange(ret, 0, ret.length - 2);
+    }
+
+    private byte[] ndefTransact(@NonNull IsoDep isoDep, @NonNull byte[] ndefMessage)
+            throws IOException {
+        byte[] apdu;
+        byte[] ret;
+
+        // See Type 4 Tag Technical Specification Version 1.2 section 7.5.5 NDEF Write Procedure
+        // for how this is done.
+
+        // TODO: Optimize by merging these three write operations into one. This is permissible
+        // as per this text from the standard:
+        //
+        //   If the entire NDEF Message can be written with a single UPDATE_BINARY
+        //   Command, the Reader/Writer MAY write NLEN and ENLEN (Symbol 6), as
+        //   well as the entire NDEF Message (Symbol 5) using a single
+        //   UPDATE_BINARY Command. In this case the Reader/Writer SHALL
+        //   proceed to Symbol 5 and merge Symbols 5 and 6 operations into a single
+        //   UPDATE_BINARY Command.
+        //
+
+        // TODO: need to implement looping if NDEF message is >= 256 bytes.
+        if (ndefMessage.length >= 256) {
+            throw new IllegalStateException("TODO: need to handle NDEF messages >= 256 bytes");
+        }
+
+        // First command is UPDATE_BINARY to reset length
+        apdu = buildApdu(0x00, 0xd6, 0x00, 0x00, new byte[] {0x00, 0x00}, 0);
+        ret = isoDep.transceive(apdu);
+        if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+            Logger.e(TAG, "Error sending initial UPDATE_BINARY command: " + Util.toHex(ret));
+            return null;
+        }
+
+        // Second command is UPDATE_BINARY with payload, starting at offset 2.
+        apdu = buildApdu(0x00, 0xd6, 0x00, 0x02, ndefMessage, 0);
+        ret = isoDep.transceive(apdu);
+        if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+            Logger.e(TAG, "Error sending second UPDATE_BINARY command: " + Util.toHex(ret));
+            return null;
+        }
+
+        // Third command is UPDATE_BINARY to write the length
+        byte[] encodedLength = new byte[] {
+                (byte) ((ndefMessage.length / 0x100) & 0xff),
+                (byte) (ndefMessage.length & 0xff)};
+        apdu = buildApdu(0x00, 0xd6, 0x00, 0x00, encodedLength, 0);
+        ret = isoDep.transceive(apdu);
+        if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+            Logger.e(TAG, "Error sending third UPDATE_BINARY command: " + Util.toHex(ret));
+            return null;
+        }
+
+        // Read NDEF file...
+        //
+        return ndefReadMessage(isoDep);
+    }
+
+
+    private void startNfcHandover() {
+        Logger.d(TAG, "Starting NFC handover thread");
+
+        long timeMillisBegin = System.currentTimeMillis();
+
+        // TODO: need settings UI where the user can specify which methods to offer when
+        //   using NFC negotiated handover.
+        List<ConnectionMethod> connectionMethods = new ArrayList<>();
+        connectionMethods.add(new ConnectionMethodBle(
+                false,
+                true,
+                null,
+                UUID.randomUUID()));
+
+        // TODO: also start these connection methods early...
+
+        final IsoDep isoDep = mNfcIsoDep;
+        Thread transceiverThread = new Thread() {
+            @Override
+            public void run() {
+                byte[] ret;
+                try {
+                    isoDep.connect();
+                    isoDep.setTimeout(20 * 1000);  // 20 seconds
+
+                    byte[] selectCommand = buildApdu(0x00, 0xa4, 0x04, 0x00,
+                            Util.fromHex("D2760000850101"), 0);
+                    ret = isoDep.transceive(selectCommand);
+                    if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+                        throw new IllegalStateException("NDEF application selection failed, ret: " + Util.toHex(ret));
+                    }
+
+                    ret = isoDep.transceive(NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID));
+                    if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+                        throw new IllegalStateException("Error selecting capability file, ret: " + Util.toHex(ret));
+                    }
+
+                    byte[] ccFileInitial = readBinary(isoDep, 0, 2);
+                    if (ccFileInitial == null || ccFileInitial.length != 2) {
+                        throw new IllegalStateException("Error reading CC file length");
+                    }
+
+                    int ccFileLength = ((int) ccFileInitial[0] & 0xff) * 256 + ((int) ccFileInitial[1] & 0xff);
+                    byte[] ccFile = readBinary(isoDep, 0, ccFileLength);
+                    if (ccFile == null) {
+                        throw new IllegalStateException("Error reading CC file");
+                    }
+
+                    // TODO: look at mapping version in ccFile
+
+                    int ndefFileId = ((int) ccFile[9] & 0xff) * 256 + ((int) ccFile[10] & 0xff);
+                    Logger.d(TAG, String.format(Locale.US, "NDEF file id: 0x%04x", ndefFileId));
+
+                    ret = isoDep.transceive(NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID));
+                    if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
+                        throw new IllegalStateException("Error selecting NDEF file, ret: " + Util.toHex(ret));
+                    }
+
+                    // First see if we should use negotiated handover..
+                    byte[] initialNdefMessage = ndefReadMessage(isoDep);
+                    if (!NfcUtil.ndefMessageContainsServiceParameterRecord(initialNdefMessage,
+                            "urn:nfc:sn:handover")) {
+
+                        long elapsedTime = System.currentTimeMillis() - timeMillisBegin;
+                        Logger.d(TAG, String.format(Locale.US,
+                                "Time spent in NFC static handover: %d ms", elapsedTime));
+
+                        Logger.d(TAG, "No urn:nfc:sn:handover record found - assuming NFC static handover");
+                        NfcUtil.ParsedHandoverSelectMessage hs = NfcUtil.parseHandoverSelectMessage(initialNdefMessage);
+                        if (hs == null) {
+                            throw new IllegalStateException("Error parsing Handover Select message");
+                        }
+
+                        if (hs.connectionMethods.isEmpty()) {
+                            throw new IllegalStateException("No connection methods in Handover Select");
+                        }
+
+                        if (Logger.isDebugEnabled()) {
+                            for (ConnectionMethod cm : hs.connectionMethods) {
+                                Logger.d(TAG, "Connection method from static handover: " + cm);
+                            }
+                        }
+
+                        Logger.d(TAG, "Reporting Device Engagement through NFC");
+                        DataItem readerHandover = new CborBuilder()
+                                .addArray()
+                                .add(initialNdefMessage)   // Handover Select message
+                                .add(SimpleValue.NULL)     // Handover Request message
+                                .end()
+                                .build().get(0);
+                        setDeviceEngagement(hs.encodedDeviceEngagement, readerHandover);
+                        reportDeviceEngagementReceived(hs.connectionMethods);
+                        return;
+                    }
+
+                    Logger.d(TAG, "Service Parameter for urn:nfc:sn:handover found - negotiated handover");
+                    // TODO: Look at other fields in Service Parameter Record payload including
+                    //   minimum waiting time, max NDEF message size, and others.
+
+                    // Select the service, the resulting NDEF message is specified in
+                    // in Tag NDEF Exchange Protocol Technical Specification Version 1.0
+                    // section 4.3 TNEP Status Message
+                    ret = ndefTransact(isoDep, NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"));
+                    if (ret == null || !Arrays.equals(ret, Util.fromHex("d10201546500"))) {
+                        throw new IllegalStateException("Service selection failed");
+                    }
+
+                    // Now send Handover Request, the resulting NDEF message is Handover Response..
+                    byte[] hrMessage = NfcUtil.createNdefMessageHandoverRequest(
+                            connectionMethods,
+                            null); // TODO: pass ReaderEngagement message
+                    Logger.d(TAG, "Handover Request sent: " + Util.toHex(hrMessage));
+                    byte[] hsMessage = ndefTransact(isoDep, hrMessage);
+                    if (ret == null) {
+                        throw new IllegalStateException("Handover Request failed");
+                    }
+                    Logger.d(TAG, "Handover Select received: " + Util.toHex(hsMessage));
+
+                    long elapsedTime = System.currentTimeMillis() - timeMillisBegin;
+                    Logger.d(TAG, String.format(Locale.US,
+                            "Time spent in NFC negotiated handover: %d ms", elapsedTime));
+
+                    byte[] encodedDeviceEngagement = null;
+                    List<ConnectionMethod> parsedCms = new ArrayList<>();
+                    NdefMessage ndefHsMessage = new NdefMessage(hsMessage);
+                    for (NdefRecord r : ndefHsMessage.getRecords()) {
+                        // DeviceEngagement record
+                        //
+                        if (r.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE
+                                && Arrays.equals(r.getType(),
+                                "iso.org:18013:deviceengagement".getBytes(UTF_8))
+                                && Arrays.equals(r.getId(), "mdoc".getBytes(UTF_8))) {
+                            encodedDeviceEngagement = r.getPayload();
+                            if (Logger.isDebugEnabled()) {
+                                Logger.d(TAG, "Device Engagement from NFC negotiated handover: "
+                                        + Util.toHex(encodedDeviceEngagement));
+                            }
+                        } else if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
+                            ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r);
+                            if (cm != null) {
+                                parsedCms.add(cm);
+                                Logger.d(TAG, "CM: " + cm);
+                            }
+                        }
+                    }
+                    if (encodedDeviceEngagement == null) {
+                        throw new IllegalStateException("Device Engagement not found in HS message");
+                    }
+                    if (parsedCms.size() != 1) {
+                        throw new IllegalStateException("Expected only one Alternative Carrier, found "
+                                + parsedCms.size());
+                    }
+
+                    DataItem handover = new CborBuilder()
+                            .addArray()
+                            .add(hsMessage)   // Handover Select message
+                            .add(hrMessage)   // Handover Request message
+                            .end()
+                            .build().get(0);
+                    setDeviceEngagement(encodedDeviceEngagement, handover);
+
+                    reportDeviceEngagementReceived(parsedCms);
+
+                } catch (Throwable t) {
+                    reportError(t);
+                }
+            }
+        };
+        transceiverThread.start();
     }
 
     private void setDeviceEngagement(@NonNull byte[] deviceEngagement, @NonNull DataItem handover) {
