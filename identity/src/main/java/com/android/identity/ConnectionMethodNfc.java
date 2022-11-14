@@ -195,8 +195,8 @@ public class ConnectionMethodNfc extends ConnectionMethod {
         }
     }
 
-    @Override @NonNull
-    Pair<NdefRecord, byte[]> toNdefRecord() {
+    @Override @Nullable
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences) {
         byte[] carrierDataReference = "nfc".getBytes(UTF_8);
 
         // This is defined by ISO 18013-5 8.2.2.2 Alternative Carrier Record for device
@@ -223,10 +223,14 @@ public class ConnectionMethodNfc extends ConnectionMethod {
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
-        baos.write(0x01); // Number of auxiliary references
-        byte[] auxReference = "mdoc".getBytes(UTF_8);
-        baos.write(auxReference.length);  // Length of auxiliary reference 0 data
-        baos.write(auxReference, 0, auxReference.length);
+        baos.write(auxiliaryReferences.size()); // Number of auxiliary references
+        for (String auxRef : auxiliaryReferences) {
+            // Each auxiliary reference consists of a single byte for the length and then as
+            // many bytes for the reference itself.
+            byte[] auxRefUtf8 = auxRef.getBytes(UTF_8);
+            baos.write(auxRefUtf8.length);
+            baos.write(auxRefUtf8, 0, auxRefUtf8.length);
+        }
         byte[] acRecordPayload = baos.toByteArray();
 
         return new Pair<>(record, acRecordPayload);

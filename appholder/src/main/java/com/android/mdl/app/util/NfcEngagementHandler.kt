@@ -119,21 +119,23 @@ class NfcEngagementHandler : HostApduService() {
     }
 
     override fun onCreate() {
+        log("onCreate:")
         super.onCreate()
         session = SessionSetup(CredentialStore(applicationContext)).createSession()
         communication = Communication.getInstance(applicationContext)
         transferManager = TransferManager.getInstance(applicationContext)
         transferManager.setCommunication(session, communication)
         val connectionSetup = ConnectionSetup(applicationContext)
-        engagementHelper = NfcEngagementHelper(
+        val builder = NfcEngagementHelper.Builder(
             applicationContext,
             session,
-            connectionSetup.getConnectionMethods(),
             connectionSetup.getConnectionOptions(),
             nfcApduRouter,
             nfcEngagementListener,
-            applicationContext.mainExecutor()
-        )
+            applicationContext.mainExecutor())
+        builder.useStaticHandover(connectionSetup.getConnectionMethods())
+        //builder.useNegotiatedHandover()
+        engagementHelper = builder.build()
     }
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
