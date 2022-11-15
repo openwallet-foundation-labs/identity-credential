@@ -11,6 +11,7 @@ import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.databinding.FragmentShareDocumentBinding
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
+import java.lang.IllegalStateException
 
 class ShareDocumentFragment : Fragment() {
 
@@ -78,11 +79,13 @@ class ShareDocumentFragment : Fragment() {
         super.onResume()
         try {
             viewModel.startPresentation()
-            viewModel.triggerQrEngagement()
         } catch (nullPointer: NullPointerException) {
             //Session was terminated
             findNavController().navigateUp()
+        } catch (transferStarted: IllegalStateException) {
+            //The transfer is started, proceed
         }
+        viewModel.triggerQrEngagement()
     }
 
     // This callback will only be called when MyFragment is at least Started.

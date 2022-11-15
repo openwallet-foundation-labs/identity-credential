@@ -16,9 +16,11 @@
 
 package com.android.mdl.app.util
 
+import android.content.Intent
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.util.Log
+import com.android.mdl.app.MainActivity
 import com.android.mdl.app.transfer.TransferManager
 
 class NfcEngagementHandler : HostApduService() {
@@ -26,22 +28,28 @@ class NfcEngagementHandler : HostApduService() {
     companion object {
         private const val LOG_TAG = "NfcEngagementHandler"
 
-        private val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION : ByteArray = byteArrayOf(
+        private val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION: ByteArray = byteArrayOf(
             0xD2.toByte(),
             0x76.toByte(),
             0x00.toByte(),
             0x00.toByte(),
             0x85.toByte(),
             0x01.toByte(),
-            0x01.toByte())
+            0x01.toByte()
+        )
     }
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
         Log.d(LOG_TAG, "processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
-
-        TransferManager.getInstance(applicationContext)
-            .nfcProcessCommandApdu(this, AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, commandApdu)
-
+        val intent = Intent(applicationContext, MainActivity::class.java)
+        intent.putExtra("nfcEngagement", true)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+        TransferManager.getInstance(applicationContext).nfcProcessCommandApdu(
+            this,
+            AID_FOR_TYPE_4_TAG_NDEF_APPLICATION,
+            commandApdu
+        )
         return null
     }
 

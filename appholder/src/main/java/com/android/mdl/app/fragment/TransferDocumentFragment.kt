@@ -18,6 +18,7 @@ import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.readerauth.SimpleReaderTrustStore
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 
 class TransferDocumentFragment : Fragment() {
@@ -30,6 +31,7 @@ class TransferDocumentFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: TransferDocumentViewModel by activityViewModels()
+    private val shareDocumentViewModel: ShareDocumentViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -187,6 +189,7 @@ class TransferDocumentFragment : Fragment() {
     }
 
     fun onDone() {
+        shareDocumentViewModel.onSharingEnded()
         findNavController().navigateUp()
     }
 }
