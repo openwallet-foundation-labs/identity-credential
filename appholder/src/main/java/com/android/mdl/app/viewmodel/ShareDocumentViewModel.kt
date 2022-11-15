@@ -5,6 +5,7 @@ import android.view.View
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.android.identity.OriginInfo
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
@@ -22,6 +23,17 @@ class ShareDocumentViewModel(val app: Application) :
     private var hasStarted = false
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
+
+    private val mutableEngagementStatus = MutableLiveData<EngagementStatus>()
+    val engagementStatus: LiveData<EngagementStatus> = mutableEngagementStatus
+
+    fun onNfcEngagementReceived() {
+        mutableEngagementStatus.value = Engaged
+    }
+
+    fun onSharingEnded() {
+        mutableEngagementStatus.value = Completed
+    }
 
     fun startPresentation() {
         // No need to call more than once
@@ -46,6 +58,7 @@ class ShareDocumentViewModel(val app: Application) :
         )
         hasStarted = false
         message.set("Presentation canceled")
+        onSharingEnded()
     }
 
     fun showQrCode() {

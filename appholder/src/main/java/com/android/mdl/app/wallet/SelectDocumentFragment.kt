@@ -12,15 +12,15 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
-import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.viewmodel.Engaged
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.google.android.material.tabs.TabLayoutMediator
 
@@ -32,7 +32,7 @@ class SelectDocumentFragment : Fragment() {
     private var _binding: FragmentSelectDocumentBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: ShareDocumentViewModel by viewModels()
+    private val viewModel: ShareDocumentViewModel by activityViewModels()
     private val timeInterval = 2000 // # milliseconds passed between two back presses
     private var mBackPressed: Long = 0
 
@@ -83,12 +83,6 @@ class SelectDocumentFragment : Fragment() {
         setupDocumentsPager(binding)
 
         val documentManager = DocumentManager.getInstance(requireContext())
-        // Call stop presentation to finish all presentation that could be running
-        val transferManager = TransferManager.getInstance(requireContext())
-        transferManager.stopPresentation(
-            sendSessionTerminationMessage = true,
-            useTransportSpecificSessionTermination = false
-        )
         setupScreen(binding, adapter, documentManager.getDocuments().toMutableList())
 
         val permissionsNeeded = appPermissions.filter { permission ->
@@ -108,6 +102,11 @@ class SelectDocumentFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        viewModel.engagementStatus.observe(viewLifecycleOwner) { status ->
+            if (status is Engaged) {
+                openTransferScreen()
+            }
+        }
         viewModel.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.CONNECTED -> {
@@ -126,11 +125,6 @@ class SelectDocumentFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-
-    override fun onResume() {
-        super.onResume()
-        viewModel.startPresentation()
     }
 
     private fun setupDocumentsPager(binding: FragmentSelectDocumentBinding) {

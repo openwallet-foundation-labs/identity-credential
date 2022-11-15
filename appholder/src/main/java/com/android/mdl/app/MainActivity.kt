@@ -6,8 +6,10 @@ import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
@@ -26,6 +28,7 @@ class MainActivity : AppCompatActivity() {
         private const val LOG_TAG = "MainActivity"
     }
 
+    private val viewModel: ShareDocumentViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
     private lateinit var pendingIntent: PendingIntent
     private var nfcAdapter: NfcAdapter? = null
@@ -76,7 +79,16 @@ class MainActivity : AppCompatActivity() {
         Log.d(LOG_TAG, "New intent on Activity $intent")
 
         if (intent == null) {
-            return;
+            return
+        }
+
+        if (intent.getBooleanExtra("nfcEngagement", false)) {
+            Log.d(LOG_TAG, "NFC Engagement Started")
+            if (navController.currentDestination?.id != R.id.transferDocumentFragment) {
+                viewModel.cancelPresentation()
+                viewModel.startPresentation()
+                viewModel.onNfcEngagementReceived()
+            }
         }
 
         var mdocUri: String? = null
@@ -102,8 +114,7 @@ class MainActivity : AppCompatActivity() {
 
         val originInfos = ArrayList<OriginInfo>()
         originInfos.add(OriginInfoWebsite(1, mdocReferrerUri))
-        val vm = ViewModelProvider(this).get(ShareDocumentViewModel::class.java)
-        vm.startPresentationReverseEngagement(mdocUri, originInfos)
+        viewModel.startPresentationReverseEngagement(mdocUri, originInfos)
         val navController = findNavController(R.id.nav_host_fragment)
         navController.navigate(R.id.transferDocumentFragment)
     }
