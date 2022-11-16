@@ -83,6 +83,7 @@ class UserAuthPromptBuilder private constructor(private val fragment: Fragment) 
             .setTitle(title)
             .setSubtitle(subtitle)
             .setDescription(description)
+            .setConfirmationRequired(false)
 
         if (forceLskf) {
             // TODO: this works only on Android 11 or later but for now this is fine
