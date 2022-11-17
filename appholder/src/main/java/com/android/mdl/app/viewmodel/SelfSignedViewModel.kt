@@ -58,6 +58,7 @@ class SelfSignedViewModel(val app: Application) :
         fieldsMdl.add(Field(id++, "UN Distinguishing Sign", "un_distinguishing_sign", FieldType.STRING, "UT"))
         fieldsMdl.add(Field(id++, "Age Over 18", "age_over_18", FieldType.BOOLEAN, "true"))
         fieldsMdl.add(Field(id++, "Age Over 21", "age_over_21", FieldType.BOOLEAN, "true"))
+        fieldsMdl.add(Field(id++, "Sex", "sex", FieldType.STRING, "2"))
         // TODO: Add driving_privileges dynamically
         fieldsMdl.add(Field(id++, "vehicle Category Code 1", "vehicle_category_code_1", FieldType.STRING, "A"))
         fieldsMdl.add(Field(id++, "Issue Date 1", "issue_date_1", FieldType.DATE, "2018-08-09"))
@@ -65,7 +66,12 @@ class SelfSignedViewModel(val app: Application) :
         fieldsMdl.add(Field(id++, "vehicle Category Code 2", "vehicle_category_code_2", FieldType.STRING, "B"))
         fieldsMdl.add(Field(id++, "Issue Date 2", "issue_date_2", FieldType.DATE, "2017-02-23"))
         fieldsMdl.add(Field(id++, "Expiry Date 2", "expiry_date_2", FieldType.DATE, "2024-10-20"))
-        fieldsMdl.add(Field(id, "Real Id", "real_id", FieldType.BOOLEAN, "true"))
+        fieldsMdl.add(Field(id++, "AAMVA version", "aamva_version", FieldType.STRING, "2"))
+        fieldsMdl.add(Field(id++, "AAMVA DHS Compliance (Real ID)", "aamva_DHS_compliance", FieldType.STRING, "F"))
+        fieldsMdl.add(Field(id++, "AAMVA EDL Credential", "aamva_EDL_credential", FieldType.STRING, "1"))
+        fieldsMdl.add(Field(id++, "AAMVA Given Name Truncation", "aamva_given_name_truncation", FieldType.STRING, "N"))
+        fieldsMdl.add(Field(id++, "AAMVA Family Name Truncation", "aamva_family_name_truncation", FieldType.STRING, "N"))
+        fieldsMdl.add(Field(id++, "AAMVA Sex", "aamva_sex", FieldType.STRING, "2"))
 
         // Pre fill default values for MRV document
         id = 1

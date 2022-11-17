@@ -52,6 +52,7 @@ class RequestOptionsFragment : Fragment() {
             binding.cbRequestMdlOlder21.isEnabled = binding.cbRequestMdl.isChecked
             binding.cbRequestMdlMandatory.isEnabled = binding.cbRequestMdl.isChecked
             binding.cbRequestMdlFull.isEnabled = binding.cbRequestMdl.isChecked
+            binding.cbRequestMdlUsTransportation.isEnabled =  binding.cbRequestMdl.isChecked
             binding.cbRequestMdlCustom.isEnabled = binding.cbRequestMdl.isChecked
         }
 
@@ -60,6 +61,7 @@ class RequestOptionsFragment : Fragment() {
             binding.cbRequestMdlOlder21.isChecked = false
             binding.cbRequestMdlMandatory.isChecked = false
             binding.cbRequestMdlFull.isChecked = false
+            binding.cbRequestMdlUsTransportation.isChecked = false
             binding.cbRequestMdlCustom.isChecked = false
         }
         binding.cbRequestMdlOlder21.setOnClickListener {
@@ -67,6 +69,7 @@ class RequestOptionsFragment : Fragment() {
             binding.cbRequestMdlOlder21.isChecked = true
             binding.cbRequestMdlMandatory.isChecked = false
             binding.cbRequestMdlFull.isChecked = false
+            binding.cbRequestMdlUsTransportation.isChecked = false
             binding.cbRequestMdlCustom.isChecked = false
         }
         binding.cbRequestMdlMandatory.setOnClickListener {
@@ -74,6 +77,7 @@ class RequestOptionsFragment : Fragment() {
             binding.cbRequestMdlOlder21.isChecked = false
             binding.cbRequestMdlMandatory.isChecked = true
             binding.cbRequestMdlFull.isChecked = false
+            binding.cbRequestMdlUsTransportation.isChecked = false
             binding.cbRequestMdlCustom.isChecked = false
         }
         binding.cbRequestMdlFull.setOnClickListener {
@@ -81,14 +85,23 @@ class RequestOptionsFragment : Fragment() {
             binding.cbRequestMdlOlder21.isChecked = false
             binding.cbRequestMdlMandatory.isChecked = false
             binding.cbRequestMdlFull.isChecked = true
+            binding.cbRequestMdlUsTransportation.isChecked = false
             binding.cbRequestMdlCustom.isChecked = false
-
+        }
+        binding.cbRequestMdlUsTransportation.setOnClickListener {
+            binding.cbRequestMdlOlder18.isChecked = false
+            binding.cbRequestMdlOlder21.isChecked = false
+            binding.cbRequestMdlMandatory.isChecked = false
+            binding.cbRequestMdlFull.isChecked = false
+            binding.cbRequestMdlUsTransportation.isChecked = true
+            binding.cbRequestMdlCustom.isChecked = false
         }
         binding.cbRequestMdlCustom.setOnClickListener {
             binding.cbRequestMdlOlder18.isChecked = false
             binding.cbRequestMdlOlder21.isChecked = false
             binding.cbRequestMdlMandatory.isChecked = false
             binding.cbRequestMdlFull.isChecked = false
+            binding.cbRequestMdlUsTransportation.isChecked = false
             binding.cbRequestMdlCustom.isChecked = true
         }
 
@@ -134,18 +147,22 @@ class RequestOptionsFragment : Fragment() {
 
         val requestDocumentList = RequestDocumentList()
         if (binding.cbRequestMdl.isChecked) {
-            val mdl = RequestMdl
-            when {
-                binding.cbRequestMdlOlder18.isChecked ->
-                    mdl.setSelectedDataItems(getSelectRequestMdlOlder18(intentToRetain))
-                binding.cbRequestMdlOlder21.isChecked ->
-                    mdl.setSelectedDataItems(getSelectRequestMdlOlder21(intentToRetain))
-                binding.cbRequestMdlMandatory.isChecked ->
-                    mdl.setSelectedDataItems(getSelectRequestMdlMandatory(intentToRetain))
-                binding.cbRequestMdlFull.isChecked ->
-                    mdl.setSelectedDataItems(getSelectRequestFull(mdl, intentToRetain))
+            if (binding.cbRequestMdlUsTransportation.isChecked) {
+                requestDocumentList.addRequestDocument(RequestMdlUsTransportation)
+            } else {
+                val mdl = RequestMdl
+                when {
+                    binding.cbRequestMdlOlder18.isChecked ->
+                        mdl.setSelectedDataItems(getSelectRequestMdlOlder18(intentToRetain))
+                    binding.cbRequestMdlOlder21.isChecked ->
+                        mdl.setSelectedDataItems(getSelectRequestMdlOlder21(intentToRetain))
+                    binding.cbRequestMdlMandatory.isChecked ->
+                        mdl.setSelectedDataItems(getSelectRequestMdlMandatory(intentToRetain))
+                    binding.cbRequestMdlFull.isChecked ->
+                        mdl.setSelectedDataItems(getSelectRequestFull(mdl, intentToRetain))
+                }
+                requestDocumentList.addRequestDocument(mdl)
             }
-            requestDocumentList.addRequestDocument(mdl)
         }
         if (binding.cbRequestMvr.isChecked) {
             val doc = RequestMvr

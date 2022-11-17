@@ -64,13 +64,22 @@
         app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_mandatory" />
 
     <CheckBox
+        android:id="@+id/cb_request_mdl_us_transportation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="56dp"
+        android:text="mDL for US transportation"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_full" />
+
+    <CheckBox
         android:id="@+id/cb_request_mdl_custom"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="56dp"
         android:text="Custom..."
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_full" />
+        app:layout_constraintTop_toBottomOf="@+id/cb_request_mdl_us_transportation" />
 
 
     <CheckBox

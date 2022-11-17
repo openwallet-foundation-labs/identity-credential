@@ -8,7 +8,7 @@ object DocumentData {
     const val MICOV_DOCTYPE = "org.micov.1"
     const val MICOV_VTR_NAMESPACE = "org.micov.vtr.1"
     const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
-    const val AAMVA_NAMESPACE = "org.aamva.18013.5.1"
+    const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
 
     enum class ErikaStaticData(val identifier: String, val value: String) {
         VISIBLE_NAME("visible_name", "Driving License"),
