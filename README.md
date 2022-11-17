@@ -31,40 +31,48 @@ TODO: Write me.
 
 ### Running the MDL Reader Website
 
-To run the MDL reader website (located at identity-credential/wwwverifier), a project must be created at console.cloud.google.com with some project ID <YOUR_PROJECT_ID>.
+To run the MDL reader website (located at identity-credential/wwwverifier), a project must first be created at console.cloud.google.com. Afterwards, navigate to Cloud Shell (shell.cloud.google.com), and clone the Identity Credential Library repository:
 
-Afterwards, navigate to Cloud Shell (shell.cloud.google.com), and clone the Identity Credential Library repository:
 ```
 git clone https://github.com/google/identity-credential.git
 ```
 
-Open the file identity-credential/wwwverifier/build.gradle, and set the projectID property to the project ID that you used to create your project:
+Open the file identity-credential/wwwverifier/build.gradle, and set the property ```projectId``` to the project ID that you used to create your Cloud project:
 
 ```
 appengine {
     deploy {   // deploy configuration
       version = 'v1'
       projectId = '<YOUR_PROJECT_ID>'
+      ...
     }
 }
 ```
 
 Then, navigate to wwwverifier:
+
 ```
 cd ~/identity-credential/wwwverifier
 ```
 
 To run the website locally, execute the command:
+
 ```
 gradle appengineRun
 ```
 
 To deploy the website on a live server, execute the command:
+
 ```
 gradle appengineDeploy
 ```
 
-This command will create a link to a live website. Navigate to the file identity-credential/wwwverifier/src/main/java/com/google/sps/servlet/ServletConsts.java, and replace the field WEBSITE_URL with your website URL.
+The above command will create a link to a live website. Then, navigate to the file identity-credential/wwwverifier/src/main/java/com/google/sps/servlet/ServletConsts.java, and replace the following fields with your website URL:
+
+```
+    public static final String BASE_URL = "<YOUR_WEBSITE_URL>";
+    public static final String ABSOLUTE_URL = "<YOUR_WEBSITE_URL>/request-mdl";
+```
 
 ## Reference Applications
 
