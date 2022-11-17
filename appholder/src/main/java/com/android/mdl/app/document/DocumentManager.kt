@@ -338,7 +338,13 @@ class DocumentManager private constructor(private val context: Context) {
                 idsSelf,
                 signature
             )
-            .putEntryBoolean(DocumentData.AAMVA_NAMESPACE, "real_id", idsSelf, dData.getValueBoolean("real_id"))
+            .putEntryInteger(DocumentData.MDL_NAMESPACE, "sex", idsSelf, dData.getValueString("sex").toLong())
+            .putEntryString(DocumentData.AAMVA_NAMESPACE, "aamva_version", idsSelf, dData.getValueString("aamva_version"))
+            .putEntryString(DocumentData.AAMVA_NAMESPACE, "EDL_credential", idsSelf, dData.getValueString("aamva_EDL_credential"))
+            .putEntryString(DocumentData.AAMVA_NAMESPACE, "DHS_compliance", idsSelf, dData.getValueString("aamva_DHS_compliance"))
+            .putEntryString(DocumentData.AAMVA_NAMESPACE, "given_name_truncation", idsSelf, dData.getValueString("aamva_given_name_truncation"))
+            .putEntryString(DocumentData.AAMVA_NAMESPACE, "family_name_truncation", idsSelf, dData.getValueString("aamva_family_name_truncation"))
+            .putEntryInteger(DocumentData.AAMVA_NAMESPACE, "sex", idsSelf, dData.getValueString("aamva_sex").toLong())
 
         personalizationData.addAccessControlProfile(profileSelf)
 
