@@ -59,7 +59,7 @@ class KeystoreIdentityCredentialStore extends IdentityCredentialStore {
     @Override
     public int getFeatureVersion() {
         // We implement the latest feature version.
-        return FEATURE_VERSION_202201;
+        return FEATURE_VERSION_202301;
     }
 
     @Override

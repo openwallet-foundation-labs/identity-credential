@@ -116,6 +116,7 @@ class CredentialData {
 
     private int mAuthKeyCount = 0;
     private int mAuthMaxUsesPerKey = 1;
+    private long mAuthKeyMinValidTimeMillis = 0;
 
     // The alias for the key that must be unlocked by user auth for every reader session.
     //
@@ -851,6 +852,7 @@ class CredentialData {
         map.put("proofOfProvisioningSha256", mProofOfProvisioningSha256);
         map.put("authKeyCount", mAuthKeyCount);
         map.put("authKeyMaxUses", mAuthMaxUsesPerKey);
+        map.put("authKeyMinValidTimeMillis", mAuthKeyMinValidTimeMillis);
     }
 
     private boolean loadFromDisk(String dataKeyAlias) {
@@ -1038,8 +1040,15 @@ class CredentialData {
 
         mAuthKeyCount = ((Number) map.get(
                 new UnicodeString("authKeyCount"))).getValue().intValue();
+
         mAuthMaxUsesPerKey = ((Number) map.get(
                 new UnicodeString("authKeyMaxUses"))).getValue().intValue();
+
+        mAuthKeyMinValidTimeMillis = 0;
+        if (Util.cborMapHasKey(map, "authKeyMinValidTimeMillis")) {
+            mAuthKeyMinValidTimeMillis = ((Number) map.get(
+                    new UnicodeString("authKeyMinValidTimeMillis"))).getValue().intValue();
+        }
 
         DataItem authKeyDatas = map.get(new UnicodeString("authKeyDatas"));
         if (!(authKeyDatas instanceof Array)) {
@@ -1172,6 +1181,10 @@ class CredentialData {
         return mAuthMaxUsesPerKey;
     }
 
+    long getAuthKeyMinValidTimeMillis() {
+        return mAuthKeyMinValidTimeMillis;
+    }
+
     int[] getAuthKeyUseCounts() {
         int[] result = new int[mAuthKeyCount];
         int n = 0;
@@ -1181,10 +1194,19 @@ class CredentialData {
         return result;
     }
 
-    void setAvailableAuthenticationKeys(int keyCount, int maxUsesPerKey) {
+    List<Calendar> getAuthKeyExpirations() {
+        List<Calendar> ret = new ArrayList<>();
+        for (AuthKeyData data : mAuthKeyDatas) {
+            ret.add(data.mExpirationDate);
+        }
+        return ret;
+    }
+
+    void setAvailableAuthenticationKeys(int keyCount, int maxUsesPerKey, long minValidTimeMillis) {
         int prevAuthKeyCount = mAuthKeyCount;
         mAuthKeyCount = keyCount;
         mAuthMaxUsesPerKey = maxUsesPerKey;
+        mAuthKeyMinValidTimeMillis = minValidTimeMillis;
 
         if (prevAuthKeyCount < mAuthKeyCount) {
             // Added non-zero number of auth keys...
@@ -1260,7 +1282,11 @@ class CredentialData {
             boolean keyExceededUseCount = (data.mUseCount >= mAuthMaxUsesPerKey);
             boolean keyBeyondExpirationDate = false;
             if (data.mExpirationDate != null) {
-                keyBeyondExpirationDate = now.after(data.mExpirationDate);
+                // Adjust expiration date for the minimum amount of time required in order
+                // for an auth key to be considered valid.
+                Calendar expirationDateAdjusted = (Calendar) data.mExpirationDate.clone();
+                expirationDateAdjusted.add(Calendar.MILLISECOND, (int) -mAuthKeyMinValidTimeMillis);
+                keyBeyondExpirationDate = now.after(expirationDateAdjusted);
             }
             boolean newKeyNeeded =
                     data.mAlias.isEmpty() || keyExceededUseCount || keyBeyondExpirationDate;
