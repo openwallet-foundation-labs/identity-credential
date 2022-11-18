@@ -341,11 +341,11 @@ class GattServer extends BluetoothGattServerCallback {
                 mIncomingMessage.reset();
                 reportMessageReceived(entireMessage);
             } else if (value[0] == 0x01) {
-                if (value.length != mNegotiatedMtu - 3) {
+                if (value.length != getMaxChunkSize() - 3) {
                     reportError(new Error(String.format(Locale.US,
                             "Invalid size %d of data written Client2Server characteristic, "
                             + "expected size %d",
-                            value.length, mNegotiatedMtu - 3)));
+                            value.length, getMaxChunkSize() - 3)));
                     return;
                 }
             } else {
@@ -418,6 +418,31 @@ class GattServer extends BluetoothGattServerCallback {
         Logger.d(TAG, "Negotiated MTU " + mtu + " for " + device.getAddress() + " ");
     }
 
+    private int mMaxChunkSize = 0;
+
+    private int
+    getMaxChunkSize() {
+        if (mMaxChunkSize > 0) {
+            return mMaxChunkSize;
+        }
+
+        int mtuSize = mNegotiatedMtu;
+        if (mtuSize == 0) {
+            Logger.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
+            mtuSize = 23;
+        }
+
+        if (mtuSize > 515) {
+            Logger.w(TAG, String.format(Locale.US, "MTU size is %d, assuming 515 for maxChunkSize", mtuSize));
+            mMaxChunkSize = 515;
+        } else {
+            Logger.w(TAG, String.format(Locale.US, "MTU size is %d, using this as maxChunkSize", mtuSize));
+            mMaxChunkSize = mtuSize;
+        }
+
+        return mMaxChunkSize;
+    }
+
     void drainWritingQueue() {
         Logger.d(TAG, "drainWritingQueue " + writeIsOutstanding);
         if (writeIsOutstanding) {
@@ -479,14 +504,9 @@ class GattServer extends BluetoothGattServerCallback {
             return;
         }
 
-        if (mNegotiatedMtu == 0) {
-            Logger.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
-            mNegotiatedMtu = 23;
-        }
-
         // Three less the MTU but we also need room for the leading 0x00 or 0x01.
         //
-        int maxChunkSize = mNegotiatedMtu - 4;
+        int maxChunkSize = getMaxChunkSize() - 4;
 
         int offset = 0;
         do {

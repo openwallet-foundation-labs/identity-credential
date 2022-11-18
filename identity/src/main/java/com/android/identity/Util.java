@@ -1860,4 +1860,25 @@ class Util {
         return new UUID(data.getLong(0), data.getLong(8));
     }
 
+    /**
+     * Version comparison method for mdoc versions.
+     *
+     * <p>This compares mdoc version strings and returns a negative number if the first version
+     * is considered less than the second version, 0 if they are considered equal, and positive
+     * otherwise.
+     *
+     * <p>For example, called with <code>mdocVersionCompare("1.0", "1.1")</code> will return
+     * a negative number.
+     *
+     * @param a a version string, for example "1.0"
+     * @param b another version string, for example "1.1"
+     * @return a positive number, negative number, or 0.
+     */
+    static int
+    mdocVersionCompare(@NonNull String a, @NonNull String b) {
+        // TODO: this just lexicographically compares the strings as ISO 18013-5 doesn't currently
+        //   define how to compare version strings.
+        return a.compareTo(b);
+    }
+
 }
