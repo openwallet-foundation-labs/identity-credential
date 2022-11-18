@@ -947,4 +947,11 @@ public class UtilTest {
         assertArrayEquals(data2, firstDataItemBytes);
         assertArrayEquals(incompleteCbor, baos.toByteArray());
     }
+
+    @Test
+    public void testMdocVersionCompare() {
+        assertTrue(Util.mdocVersionCompare("1.0", "1.0") == 0);
+        assertTrue(Util.mdocVersionCompare("1.0", "1.1") < 0);
+        assertTrue(Util.mdocVersionCompare("1.1", "1.0") > 0);
+    }
 }

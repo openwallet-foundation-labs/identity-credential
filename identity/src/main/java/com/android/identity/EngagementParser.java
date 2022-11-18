@@ -162,13 +162,24 @@ public class EngagementParser {
                 }
             }
 
-            if (Util.cborMapHasKey(map, 5)) {
-                List<DataItem> originInfoItems = Util.cborMapExtractArray(map, 5);
-                for (DataItem oiDataItem : originInfoItems) {
-                    OriginInfo originInfo = OriginInfo.decode(oiDataItem);
-                    if (originInfo != null) {
-                        mOriginInfos.add(originInfo);
+            if (Util.mdocVersionCompare(mVersion, "1.1") >= 0) {
+                // 18013-7 defines key 5 as having origin info
+                if (Util.cborMapHasKey(map, 5)) {
+                    List<DataItem> originInfoItems = Util.cborMapExtractArray(map, 5);
+                    for (DataItem oiDataItem : originInfoItems) {
+                        OriginInfo originInfo = OriginInfo.decode(oiDataItem);
+                        if (originInfo != null) {
+                            mOriginInfos.add(originInfo);
+                        }
                     }
+                }
+            } else {
+                if (Util.cborMapHasKey(map, 5)) {
+                    Logger.w(TAG,
+                            String.format("Ignoring key 5 in Engagement as version is set to %s. "
+                                    + "The mdoc application producing this DeviceEngagement is "
+                                    + "not compliant to ISO/IEC 18013-5:2021.",
+                                    mVersion));
                 }
             }
         }
