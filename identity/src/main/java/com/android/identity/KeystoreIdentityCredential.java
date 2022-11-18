@@ -727,7 +727,7 @@ class KeystoreIdentityCredential extends IdentityCredential {
 
     @Override
     public void setAvailableAuthenticationKeys(int keyCount, int maxUsesPerKey) {
-        mData.setAvailableAuthenticationKeys(keyCount, maxUsesPerKey);
+        setAvailableAuthenticationKeys(keyCount, maxUsesPerKey, 0);
     }
 
     @Override
@@ -767,6 +767,7 @@ class KeystoreIdentityCredential extends IdentityCredential {
             PrivateKey credentialKey = mData.getCredentialKeyPrivate();
             int authKeyCount = mData.getAuthKeyCount();
             int authMaxUsesPerKey = mData.getAuthMaxUsesPerKey();
+            long minValidTimeMillis = mData.getAuthKeyMinValidTimeMillis();
 
             DataItem signature =
                     KeystoreWritableIdentityCredential.buildProofOfProvisioningWithSignature(
@@ -794,13 +795,25 @@ class KeystoreIdentityCredential extends IdentityCredential {
                     true);
             // Configure with same settings as old object.
             //
-            mData.setAvailableAuthenticationKeys(authKeyCount, authMaxUsesPerKey);
+            mData.setAvailableAuthenticationKeys(authKeyCount, authMaxUsesPerKey, minValidTimeMillis);
 
             return Util.cborEncode(signature);
 
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("Error digesting ProofOfProvisioning", e);
         }
+    }
+
+    @Override
+    public void
+    setAvailableAuthenticationKeys(int keyCount, int maxUsesPerKey, long minValidTimeMillis) {
+        mData.setAvailableAuthenticationKeys(keyCount, maxUsesPerKey, minValidTimeMillis);
+    }
+
+    @Override
+    public @NonNull
+    List<Calendar> getAuthenticationDataExpirations() {
+        return mData.getAuthKeyExpirations();
     }
 
 }

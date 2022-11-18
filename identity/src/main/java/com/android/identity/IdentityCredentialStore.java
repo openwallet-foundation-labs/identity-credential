@@ -136,7 +136,17 @@ public abstract class IdentityCredentialStore {
      * {@link IdentityCredential#setIncrementKeyUsageCount(boolean)}.
      */
     public static final int FEATURE_VERSION_202201 = 202201;
-    
+
+    /**
+     * The feature version corresponding to features included in the Identity Credential API
+     * shipped in Android 14.
+     *
+     * <p>This feature version adds support for
+     * {@link IdentityCredential#setAvailableAuthenticationKeys(int, int, long)} and
+     * {@link IdentityCredential#getAuthenticationDataExpirations()}.
+     */
+    public static final int FEATURE_VERSION_202301 = 202301;
+
     /**
      * Specifies that the cipher suite that will be used to secure communications between the
      * reader and the prover is using the following primitives
