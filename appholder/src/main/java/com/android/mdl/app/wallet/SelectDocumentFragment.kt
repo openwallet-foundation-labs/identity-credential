@@ -20,7 +20,6 @@ import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.util.TransferStatus
-import com.android.mdl.app.viewmodel.Engaged
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.google.android.material.tabs.TabLayoutMediator
 
@@ -102,11 +101,6 @@ class SelectDocumentFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        viewModel.engagementStatus.observe(viewLifecycleOwner) { status ->
-            if (status is Engaged) {
-                openTransferScreen()
-            }
-        }
         viewModel.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.CONNECTED -> {

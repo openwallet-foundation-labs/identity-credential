@@ -7,14 +7,10 @@ import android.nfc.NfcAdapter
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.WindowManager
-import android.view.WindowManager.LayoutParams
 import android.view.WindowManager.LayoutParams.*
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
-import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
 import androidx.navigation.ui.NavigationUI
@@ -94,15 +90,6 @@ class MainActivity : AppCompatActivity() {
 
         if (intent == null) {
             return
-        }
-
-        if (intent.getBooleanExtra("nfcEngagement", false)) {
-            Log.d(LOG_TAG, "NFC Engagement Started")
-            if (navController.currentDestination?.id != R.id.transferDocumentFragment) {
-                viewModel.cancelPresentation()
-                viewModel.startPresentation()
-                viewModel.onNfcEngagementReceived()
-            }
         }
 
         var mdocUri: String? = null

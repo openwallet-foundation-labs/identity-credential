@@ -7,12 +7,12 @@ import com.android.identity.PresentationHelper
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
 
-class NfcCommunication private constructor(
+class Communication private constructor(
     private val context: Context,
 ) {
 
     private var request: DeviceRequest? = null
-    private lateinit var presentation: PresentationHelper
+    private var presentation: PresentationHelper? = null
 
     fun setupPresentation(presentationHelper: PresentationHelper) {
         this.presentation = presentationHelper
@@ -24,10 +24,12 @@ class NfcCommunication private constructor(
 
     fun getDeviceRequest(): DeviceRequestParser.DeviceRequest {
         request?.let { requestBytes ->
-            val parser = DeviceRequestParser()
-            parser.setSessionTranscript(presentation.sessionTranscript)
-            parser.setDeviceRequest(requestBytes.value)
-            return parser.parse()
+            presentation?.let { presentation ->
+                val parser = DeviceRequestParser()
+                parser.setSessionTranscript(presentation.sessionTranscript)
+                parser.setDeviceRequest(requestBytes.value)
+                return parser.parse()
+            } ?: throw IllegalStateException("Presentation not set")
         } ?: throw IllegalStateException("Request not received")
     }
 
@@ -38,17 +40,17 @@ class NfcCommunication private constructor(
                 log("Completed...")
             }
         }
-        presentation.sendDeviceResponse(deviceResponse, progressListener, context.mainExecutor())
+        presentation?.sendDeviceResponse(deviceResponse, progressListener, context.mainExecutor())
     }
 
     fun stopPresentation(
         sendSessionTerminationMessage: Boolean,
         useTransportSpecificSessionTermination: Boolean
     ) {
-        presentation.setSendSessionTerminationMessage(sendSessionTerminationMessage)
+        presentation?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
         try {
-            if (presentation.isTransportSpecificTerminationSupported && useTransportSpecificSessionTermination) {
-                presentation.setUseTransportSpecificSessionTermination(true)
+            if (presentation?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
+                presentation?.setUseTransportSpecificSessionTermination(true)
             }
         } catch (e: IllegalStateException) {
             log("Error ignored.", e)
@@ -58,18 +60,22 @@ class NfcCommunication private constructor(
 
     fun disconnect() {
         request = null
-        presentation.disconnect()
+        try {
+            presentation?.disconnect()
+        } catch (e: RuntimeException) {
+            log("Error ignored closing presentation", e)
+        }
     }
 
     companion object {
 
         @SuppressLint("StaticFieldLeak")
         @Volatile
-        private var instance: NfcCommunication? = null
+        private var instance: Communication? = null
 
-        fun getInstance(context: Context): NfcCommunication {
+        fun getInstance(context: Context): Communication {
             return instance ?: synchronized(this) {
-                instance ?: NfcCommunication(context).also { instance = it }
+                instance ?: Communication(context).also { instance = it }
             }
         }
     }

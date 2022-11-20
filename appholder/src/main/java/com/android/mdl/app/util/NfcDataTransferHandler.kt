@@ -18,36 +18,37 @@ package com.android.mdl.app.util
 
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
-import android.util.Log
 import com.android.mdl.app.transfer.TransferManager
 
 class NfcDataTransferHandler : HostApduService() {
 
-    companion object {
-        private const val LOG_TAG = "NfcDataTransferHandler"
+    private lateinit var transferManager: TransferManager
 
-        private val AID_FOR_MDL_DATA_TRANSFER : ByteArray = byteArrayOf(
+    override fun onCreate() {
+        super.onCreate()
+        transferManager = TransferManager.getInstance(applicationContext)
+    }
+
+    override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
+        log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
+        transferManager.nfcProcessCommandApdu(this, AID_FOR_MDL_DATA_TRANSFER, commandApdu)
+        return null
+    }
+
+    override fun onDeactivated(reason: Int) {
+        log("onDeactivated: reason-> $reason")
+        transferManager.nfcOnDeactivated(AID_FOR_MDL_DATA_TRANSFER, reason)
+    }
+
+    companion object {
+        private val AID_FOR_MDL_DATA_TRANSFER: ByteArray = byteArrayOf(
             0xA0.toByte(),
             0x00.toByte(),
             0x00.toByte(),
             0x02.toByte(),
             0x48.toByte(),
             0x04.toByte(),
-            0x00.toByte())
-    }
-
-    override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
-        Log.d(LOG_TAG, "processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
-
-        TransferManager.getInstance(applicationContext)
-            .nfcProcessCommandApdu(this, AID_FOR_MDL_DATA_TRANSFER, commandApdu)
-
-        return null
-    }
-
-    override fun onDeactivated(reason: Int) {
-        Log.d(LOG_TAG, "onDeactivated: reason-> $reason")
-        TransferManager.getInstance(applicationContext)
-            .nfcOnDeactivated(this, AID_FOR_MDL_DATA_TRANSFER, reason)
+            0x00.toByte()
+        )
     }
 }
