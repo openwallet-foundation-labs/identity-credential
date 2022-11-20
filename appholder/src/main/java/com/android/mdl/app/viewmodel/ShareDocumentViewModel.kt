@@ -5,17 +5,11 @@ import android.view.View
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import com.android.identity.OriginInfo
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 
-class ShareDocumentViewModel(val app: Application) :
-    AndroidViewModel(app) {
-
-    companion object {
-        private const val LOG_TAG = "ShareDocumentViewModel"
-    }
+class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     private val transferManager = TransferManager.getInstance(app.applicationContext)
     var deviceEngagementQr = ObservableField<View>()
@@ -24,27 +18,10 @@ class ShareDocumentViewModel(val app: Application) :
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
 
-    private val mutableEngagementStatus = MutableLiveData<EngagementStatus>()
-    val engagementStatus: LiveData<EngagementStatus> = mutableEngagementStatus
-
-    fun onNfcEngagementReceived() {
-        mutableEngagementStatus.value = Engaged
-    }
-
-    fun onSharingEnded() {
-        mutableEngagementStatus.value = Completed
-    }
-
-    fun startPresentation() {
-        // No need to call more than once
-        if (!hasStarted) {
-            transferManager.startPresentation()
-            hasStarted = true
-        }
-    }
-
-    fun startPresentationReverseEngagement(reverseEngagementUri: String,
-                                           originInfos : List<OriginInfo>) {
+    fun startPresentationReverseEngagement(
+        reverseEngagementUri: String,
+        originInfos: List<OriginInfo>
+    ) {
         if (!hasStarted) {
             transferManager.startPresentationReverseEngagement(reverseEngagementUri, originInfos)
             hasStarted = true
@@ -58,7 +35,6 @@ class ShareDocumentViewModel(val app: Application) :
         )
         hasStarted = false
         message.set("Presentation canceled")
-        onSharingEnded()
     }
 
     fun showQrCode() {

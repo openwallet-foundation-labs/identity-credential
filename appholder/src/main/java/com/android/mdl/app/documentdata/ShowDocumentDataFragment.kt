@@ -25,7 +25,6 @@ class ShowDocumentDataFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         transferManager = TransferManager.getInstance(requireContext())
-        transferManager.initiate()
     }
 
     override fun onDestroy() {

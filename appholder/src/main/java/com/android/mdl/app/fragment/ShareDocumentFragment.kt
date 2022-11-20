@@ -11,15 +11,12 @@ import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.databinding.FragmentShareDocumentBinding
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
-import java.lang.IllegalStateException
 
 class ShareDocumentFragment : Fragment() {
 
     private val viewModel: ShareDocumentViewModel by viewModels()
 
     private var _binding: FragmentShareDocumentBinding? = null
-
-    // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
     override fun onCreateView(
@@ -29,7 +26,7 @@ class ShareDocumentFragment : Fragment() {
         _binding = FragmentShareDocumentBinding.inflate(inflater)
         binding.vm = viewModel
         binding.fragment = this
-        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, onBackCallback)
         return binding.root
     }
 
@@ -77,19 +74,10 @@ class ShareDocumentFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        try {
-            viewModel.startPresentation()
-        } catch (nullPointer: NullPointerException) {
-            //Session was terminated
-            findNavController().navigateUp()
-        } catch (transferStarted: IllegalStateException) {
-            //The transfer is started, proceed
-        }
         viewModel.triggerQrEngagement()
     }
 
-    // This callback will only be called when MyFragment is at least Started.
-    var callback = object : OnBackPressedCallback(true /* enabled by default */) {
+    private val onBackCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
             onCancel()
         }

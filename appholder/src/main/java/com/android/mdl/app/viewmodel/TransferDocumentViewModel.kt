@@ -36,10 +36,11 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     var documentsSent = ObservableField<String>()
     val connectionClosedLiveData: LiveData<Boolean> = closeConnectionMutableLiveData
 
-    fun getTransferStatus(): LiveData<TransferStatus> = transferManager.getTransferStatus()
+    fun getTransferStatus(): LiveData<TransferStatus> =
+        transferManager.getTransferStatus()
 
     fun getRequestedDocuments(): Collection<DeviceRequestParser.DocumentRequest> =
-        transferManager.getDeviceRequest().documentRequests
+        transferManager.documentRequests()
 
     fun getDocuments() = documentManager.getDocuments()
 
@@ -121,10 +122,12 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     fun cancelPresentation(
         sendSessionTerminationMessage: Boolean,
         useTransportSpecificSessionTermination: Boolean
-    ) = transferManager.stopPresentation(
-        sendSessionTerminationMessage,
-        useTransportSpecificSessionTermination
-    )
+    ) {
+        transferManager.stopPresentation(
+            sendSessionTerminationMessage,
+            useTransportSpecificSessionTermination
+        )
+    }
 
     private fun requestedPropertiesFrom(
         requestedDocument: DeviceRequestParser.DocumentRequest

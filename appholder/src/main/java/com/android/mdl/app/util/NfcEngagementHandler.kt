@@ -16,33 +16,26 @@
 
 package com.android.mdl.app.util
 
-import android.content.Intent
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import androidx.navigation.NavDeepLinkBuilder
-import com.android.identity.ConnectionMethod
-import com.android.identity.ConnectionMethodBle
-import com.android.identity.ConnectionMethodNfc
-import com.android.identity.ConnectionMethodWifiAware
 import com.android.identity.DataTransport
-import com.android.identity.DataTransportOptions
-import com.android.identity.IdentityCredentialStore
-import com.android.identity.IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
 import com.android.identity.NfcApduRouter
 import com.android.identity.NfcEngagementHelper
 import com.android.identity.PresentationHelper
 import com.android.identity.PresentationSession
 import com.android.mdl.app.R
-import com.android.mdl.app.transfer.NfcCommunication
+import com.android.mdl.app.transfer.Communication
+import com.android.mdl.app.transfer.ConnectionSetup
+import com.android.mdl.app.transfer.CredentialStore
+import com.android.mdl.app.transfer.SessionSetup
 import com.android.mdl.app.transfer.TransferManager
-import java.util.OptionalLong
-import java.util.UUID
 
 class NfcEngagementHandler : HostApduService() {
 
     private lateinit var engagementHelper: NfcEngagementHelper
     private lateinit var session: PresentationSession
-    private lateinit var nfcCommunication: NfcCommunication
+    private lateinit var communication: Communication
     private lateinit var transferManager: TransferManager
     private var presentation: PresentationHelper? = null
 
@@ -55,7 +48,13 @@ class NfcEngagementHandler : HostApduService() {
     private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
 
         override fun onDeviceConnecting() {
-            log("Engagement Listener: Device Connecting")
+            log("Engagement Listener: Device Connecting. Launching Transfer Screen")
+            val pendingIntent = NavDeepLinkBuilder(applicationContext)
+                .setGraph(R.navigation.navigation_graph)
+                .setDestination(R.id.transferDocumentFragment)
+                .createPendingIntent()
+            pendingIntent.send(applicationContext, 0, null)
+            transferManager.updateStatus(TransferStatus.CONNECTING)
         }
 
         override fun onDeviceConnected(transport: DataTransport) {
@@ -78,12 +77,14 @@ class NfcEngagementHandler : HostApduService() {
             )
             presentation = builder.build()
             presentation?.setSendSessionTerminationMessage(true)
-            nfcCommunication.setupPresentation(presentation!!)
+            communication.setupPresentation(presentation!!)
             engagementHelper.close()
+            transferManager.updateStatus(TransferStatus.CONNECTED)
         }
 
         override fun onError(error: Throwable) {
             log("Engagement Listener: onError -> ${error.message}")
+            transferManager.updateStatus(TransferStatus.ERROR)
         }
     }
 
@@ -91,78 +92,37 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             log("Presentation Listener: OnDeviceRequest")
-            nfcCommunication.setDeviceRequest(deviceRequestBytes)
-            log("Presentation Listener: Launching Transfer Screen")
-            val pendingIntent = NavDeepLinkBuilder(applicationContext)
-                .setGraph(R.navigation.navigation_graph)
-                .setDestination(R.id.transferDocumentFragment)
-                .createPendingIntent()
-            pendingIntent.send(applicationContext, 0, Intent())
+            communication.setDeviceRequest(deviceRequestBytes)
+            transferManager.updateStatus(TransferStatus.REQUEST)
         }
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
             log("Presentation Listener: onDeviceDisconnected")
+            transferManager.updateStatus(TransferStatus.DISCONNECTED)
         }
 
         override fun onError(error: Throwable) {
             log("Presentation Listener: onError -> ${error.message}")
+            transferManager.updateStatus(TransferStatus.ERROR)
         }
     }
 
     override fun onCreate() {
         super.onCreate()
-        val store = createIdentityCredentialStore()
-        session = store.createPresentationSession(CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256)
-        nfcCommunication = NfcCommunication.getInstance(applicationContext)
+        session = SessionSetup(CredentialStore(applicationContext)).createSession()
+        communication = Communication.getInstance(applicationContext)
         transferManager = TransferManager.getInstance(applicationContext)
-        transferManager.setSession(session)
+        transferManager.setCommunication(session, communication)
+        val connectionSetup = ConnectionSetup(applicationContext)
         engagementHelper = NfcEngagementHelper(
             applicationContext,
             session,
-            getConnectionMethods(),
-            getConnectionOptions(),
+            connectionSetup.getConnectionMethods(),
+            connectionSetup.getConnectionOptions(),
             nfcApduRouter,
             nfcEngagementListener,
             applicationContext.mainExecutor()
         )
-    }
-
-    private fun createIdentityCredentialStore(): IdentityCredentialStore {
-        return if (PreferencesHelper.isHardwareBacked(applicationContext))
-            IdentityCredentialStore.getHardwareInstance(applicationContext)
-                ?: createKeystoreBackedStore() else createKeystoreBackedStore()
-    }
-
-    private fun createKeystoreBackedStore(): IdentityCredentialStore {
-        val keystoreBackedStorageLocation = PreferencesHelper
-            .getKeystoreBackedStorageLocation(applicationContext)
-        return IdentityCredentialStore
-            .getKeystoreInstance(applicationContext, keystoreBackedStorageLocation)
-    }
-
-    private fun getConnectionMethods(): List<ConnectionMethod> {
-        val connectionMethods = ArrayList<ConnectionMethod>()
-        if (PreferencesHelper.isBleDataRetrievalEnabled(applicationContext)) {
-            connectionMethods.add(ConnectionMethodBle(false, true, null, UUID.randomUUID()))
-        }
-        if (PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled(applicationContext)) {
-            connectionMethods.add(ConnectionMethodBle(true, false, UUID.randomUUID(), null))
-        }
-        if (PreferencesHelper.isWifiDataRetrievalEnabled(applicationContext)) {
-            val empty = OptionalLong.empty()
-            connectionMethods.add(ConnectionMethodWifiAware(null, empty, empty, null))
-        }
-        if (PreferencesHelper.isNfcDataRetrievalEnabled(applicationContext)) {
-            connectionMethods.add(ConnectionMethodNfc(0xffff, 0x10000))
-        }
-        return connectionMethods
-    }
-
-    private fun getConnectionOptions(): DataTransportOptions {
-        val builder = DataTransportOptions.Builder()
-            .setBleUseL2CAP(PreferencesHelper.isBleL2capEnabled(applicationContext))
-            .setBleClearCache(PreferencesHelper.isBleClearCacheEnabled(applicationContext))
-        return builder.build()
     }
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {

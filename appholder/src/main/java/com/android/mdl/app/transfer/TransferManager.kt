@@ -5,22 +5,16 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color.BLACK
 import android.graphics.Color.WHITE
-import android.net.Uri
 import android.nfc.cardemulation.HostApduService
-import android.os.Build
 import android.util.Log
-import android.util.Base64
 import android.view.View
 import android.widget.ImageView
 import androidx.biometric.BiometricPrompt
-import androidx.core.content.ContextCompat
 import androidx.core.util.component1
 import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
-import com.android.identity.DataTransport.ROLE_MDOC
-import com.android.identity.DeviceRequestParser.DeviceRequest
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.documentdata.RequestMdl
 import com.android.mdl.app.documentdata.RequestMicovAtt
@@ -30,14 +24,12 @@ import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.FormatUtil
 import com.android.mdl.app.util.PreferencesHelper
 import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.util.log
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 import java.util.*
-import java.util.concurrent.Executor
-import kotlin.collections.ArrayList
-
 
 class TransferManager private constructor(private val context: Context) {
 
@@ -54,260 +46,98 @@ class TransferManager private constructor(private val context: Context) {
             }
     }
 
-    private var store: IdentityCredentialStore? = null
+    private var reversedQrCommunicationSetup: ReverseQrCommunicationSetup? = null
+    private var qrCommunicationSetup: QrCommunicationSetup? = null
+    private var hostApduService: HostApduService? = null
     private var session: PresentationSession? = null
-    private var qrEngagement: QrEngagementHelper? = null
-    private var nfcEngagement: NfcEngagementHelper? = null
-    private var presentation: PresentationHelper? = null
     private var hasStarted = false
 
-    private var hostApduService : HostApduService? = null
+    private lateinit var communication: Communication
 
-    private val nfcApduRouter : NfcApduRouter = object :
-        NfcApduRouter() {
+    private var transferStatusLd = MutableLiveData<TransferStatus>()
+
+    private val nfcApduRouter: NfcApduRouter = object : NfcApduRouter() {
         override fun sendResponseApdu(responseApdu: ByteArray) {
             hostApduService!!.sendResponseApdu(responseApdu)
         }
     }
 
-
-    var requestBytes: ByteArray? = null
-        private set
-    private var transferStatusLd = MutableLiveData<TransferStatus>()
+    fun setCommunication(session: PresentationSession, communication: Communication) {
+        this.session = session
+        this.communication = communication
+    }
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
-    fun initiate() {
-
-        // Create identity credential store from hardware or software implementation depending on
-        // what was used to store the first document on this device.
-        store = if (PreferencesHelper.isHardwareBacked(context))
-            IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getKeystoreInstance(context,
-                    PreferencesHelper.getKeystoreBackedStorageLocation(context))
-        else
-            IdentityCredentialStore.getKeystoreInstance(context,
-                PreferencesHelper.getKeystoreBackedStorageLocation(context))
-
-        session = store?.createPresentationSession(
-            IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256)
+    fun updateStatus(status: TransferStatus) {
+        transferStatusLd.value = status
     }
 
-    @Throws(IllegalStateException::class)
-    fun startPresentation() {
-        if (hasStarted)
-            throw IllegalStateException("Transfer has already started.")
-
-        // Get an instance of the presentation based on the document
-        initiate()
-
-        nfcEngagement = NfcEngagementHelper(context,
-            session!!,
-            getConnectionMethods(),
-            getConnectionOptions(),
-            nfcApduRouter,
-            nfcEngagementListener, context.mainExecutor())
+    fun documentRequests(): Collection<DeviceRequestParser.DocumentRequest> {
+        return communication.getDeviceRequest().documentRequests
     }
 
-    fun startPresentationReverseEngagement(reverseEngagementUri: String,
-                                           originInfos : List<OriginInfo>) {
+    fun startPresentationReverseEngagement(
+        reverseEngagementUri: String,
+        origins: List<OriginInfo>
+    ) {
         if (hasStarted) {
             throw IllegalStateException("Transfer has already started.")
         }
-
-        initiate()
-
-        val uri = Uri.parse(reverseEngagementUri)
-        if (!uri.scheme.equals("mdoc")) {
-            throw IllegalStateException("Only supports mdoc URIs")
+        communication = Communication.getInstance(context)
+        reversedQrCommunicationSetup = ReverseQrCommunicationSetup(
+            context = context,
+            onPresentationReady = { session, presentation ->
+                this.session = session
+                communication.setupPresentation(presentation)
+            },
+            onNewRequest = { request ->
+                communication.setDeviceRequest(request)
+                transferStatusLd.value = TransferStatus.REQUEST
+            },
+            onDisconnected = { transferStatusLd.value = TransferStatus.DISCONNECTED },
+            onCommunicationError = { error ->
+                log("onError: ${error.message}")
+                transferStatusLd.value = TransferStatus.ERROR
+            }
+        ).apply {
+            configure(reverseEngagementUri, origins)
         }
-        val encodedReaderEngagement = Base64.decode(uri.encodedSchemeSpecificPart,
-            Base64.URL_SAFE or Base64.NO_PADDING)
-        val engagement = EngagementParser(encodedReaderEngagement).parse()
-        if (engagement.connectionMethods.size == 0) {
-            throw IllegalStateException("No connection methods in engagement")
-        }
-
-        // For now, just pick the first transport
-        val connectionMethod = engagement.connectionMethods[0]
-        Log.d(LOG_TAG, "Using connection method " + connectionMethod)
-
-        val transport = connectionMethod.createDataTransport(context,
-            ROLE_MDOC,
-            getConnectionOptions())
-
-        val builder = PresentationHelper.Builder(context,
-            presentationListener,
-            context.mainExecutor(),
-            session!!)
-            .useReverseEngagement(transport, encodedReaderEngagement, originInfos)
-        presentation = builder.build()
-        presentation?.setSendSessionTerminationMessage(true)
         hasStarted = true
-
     }
 
     fun startQrEngagement() {
-        qrEngagement = QrEngagementHelper(context,
-            session!!,
-            getConnectionMethods(),
-            getConnectionOptions(),
-            nfcApduRouter,
-            qrEngagementListener, context.mainExecutor())
-    }
-
-    private fun getConnectionOptions(): DataTransportOptions {
-        val builder = DataTransportOptions.Builder()
-            .setBleUseL2CAP(PreferencesHelper.isBleL2capEnabled(context))
-            .setBleClearCache(PreferencesHelper.isBleClearCacheEnabled(context))
-        return builder.build()
-    }
-
-    private fun getConnectionMethods(): List<ConnectionMethod> {
-        var connectionMethods = ArrayList<ConnectionMethod>()
-        if (PreferencesHelper.isBleDataRetrievalEnabled(context)) {
-            connectionMethods.add(ConnectionMethodBle(
-                false,
-                true,
-                null,
-                UUID.randomUUID()))
+        if (hasStarted) {
+            throw IllegalStateException("Transfer has already started.")
         }
-        if (PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled(context)) {
-            connectionMethods.add(ConnectionMethodBle(
-                true,
-                false,
-                UUID.randomUUID(),
-                null))
-        }
-        if (PreferencesHelper.isWifiDataRetrievalEnabled(context)) {
-            connectionMethods.add(ConnectionMethodWifiAware(
-                null,
-                OptionalLong.empty(),
-                OptionalLong.empty(),
-                null))
-        }
-        if (PreferencesHelper.isNfcDataRetrievalEnabled(context)) {
-            // TODO: Add API to ConnectionMethodNfc to get sizes appropriate for the device
-            connectionMethods.add(ConnectionMethodNfc(
-                0xffff,
-                0x10000));
-        }
-        return connectionMethods
-    }
-
-    private val qrEngagementListener: QrEngagementHelper.Listener = object :
-        QrEngagementHelper.Listener {
-
-        override fun onDeviceEngagementReady() {
-            transferStatusLd.value = TransferStatus.QR_ENGAGEMENT_READY
-        }
-
-        override fun onDeviceConnecting() {
-            transferStatusLd.value = TransferStatus.CONNECTING
-        }
-
-        override fun onDeviceConnected(transport: DataTransport) {
-            if (presentation != null) {
-                Log.i(LOG_TAG, "OnDeviceConnected for QR engagement: ignoring since we already have a presentation")
-                return
+        communication = Communication.getInstance(context)
+        qrCommunicationSetup = QrCommunicationSetup(
+            context = context,
+            onConnecting = { transferStatusLd.value = TransferStatus.CONNECTING },
+            onQrEngagementReady = { transferStatusLd.value = TransferStatus.QR_ENGAGEMENT_READY },
+            onPresentationReady = { session, presentation ->
+                this.session = session
+                communication.setupPresentation(presentation)
+                transferStatusLd.value = TransferStatus.CONNECTED
+            },
+            onNewDeviceRequest = { deviceRequest ->
+                communication.setDeviceRequest(deviceRequest)
+                transferStatusLd.value = TransferStatus.REQUEST
+            },
+            onSendResponseApdu = { responseApdu -> hostApduService?.sendResponseApdu(responseApdu) },
+            onDisconnected = { transferStatusLd.value = TransferStatus.DISCONNECTED },
+            onCommunicationError = { error ->
+                log("onError: ${error.message}")
+                transferStatusLd.value = TransferStatus.ERROR
             }
-
-            // OK, we got a connection via a QR transport, fire up PresentationHelper!
-            Log.d(LOG_TAG, "onDeviceConnected via QR: nfcEngagement=${nfcEngagement} qrEngagement=${qrEngagement}")
-            val builder = PresentationHelper.Builder(context,
-                presentationListener,
-                context.mainExecutor(),
-                session!!)
-            builder.useForwardEngagement(transport, qrEngagement!!.deviceEngagement, qrEngagement!!.handover)
-            presentation = builder.build()
-            presentation?.setSendSessionTerminationMessage(true)
-            hasStarted = true
-
-            // Shut down all engagement
-            qrEngagement?.close()
-            qrEngagement = null
-            nfcEngagement?.close()
-            nfcEngagement = null
-
-            transferStatusLd.value = TransferStatus.CONNECTED
+        ).apply {
+            configure()
         }
-
-        override fun onError(error: Throwable) {
-            Log.e(LOG_TAG, "QR onError: ${error.message}")
-            transferStatusLd.value = TransferStatus.ERROR
-        }
-    }
-
-    private val nfcEngagementListener: NfcEngagementHelper.Listener = object :
-        NfcEngagementHelper.Listener {
-
-        override fun onDeviceConnecting() {
-            transferStatusLd.value = TransferStatus.CONNECTING
-        }
-
-        override fun onDeviceConnected(transport: DataTransport) {
-            if (presentation != null) {
-                Log.i(LOG_TAG, "OnDeviceConnected for NFC engagement: ignoring since we already have a presentation")
-                return
-            }
-
-            // OK, we got a connection via a NFC transport, fire up PresentationHelper!
-            Log.d(LOG_TAG, "onDeviceConnected via NFC: nfcEngagement=${nfcEngagement} qrEngagement=${qrEngagement}")
-            val builder = PresentationHelper.Builder(context,
-                presentationListener,
-                context.mainExecutor(),
-                session!!)
-            builder.useForwardEngagement(transport, nfcEngagement!!.deviceEngagement, nfcEngagement!!.handover)
-            // This _could_ be NFC data retrieval using QR code engagement, so also pass QR
-            // engagement as an alternative way to engage.
-            builder.addAlternateForwardEngagement(qrEngagement?.deviceEngagement, qrEngagement?.handover)
-            presentation = builder.build()
-            presentation?.setSendSessionTerminationMessage(true)
-            hasStarted = true
-
-            // Shut down all engagement
-            qrEngagement?.close()
-            qrEngagement = null
-            nfcEngagement?.close()
-            nfcEngagement = null
-
-            transferStatusLd.value = TransferStatus.CONNECTED
-        }
-
-        override fun onError(error: Throwable) {
-            Log.e(LOG_TAG, "NFC onError: ${error.message}")
-            transferStatusLd.value = TransferStatus.ERROR
-        }
-    }
-
-    private val presentationListener: PresentationHelper.Listener = object :
-        PresentationHelper.Listener {
-
-        override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-            requestBytes = deviceRequestBytes
-            transferStatusLd.value = TransferStatus.REQUEST
-        }
-
-        override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-            transferStatusLd.value = TransferStatus.DISCONNECTED
-        }
-
-        override fun onError(error: Throwable) {
-            Log.e(LOG_TAG, "onError: ${error.message}")
-            transferStatusLd.value = TransferStatus.ERROR
-        }
-    }
-
-    private fun Context.mainExecutor(): Executor {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            mainExecutor
-        } else {
-            ContextCompat.getMainExecutor(context)
-        }
+        hasStarted = true
     }
 
     fun getDeviceEngagementQrCode(): View {
-        val deviceEngagementForQrCode = qrEngagement!!.deviceEngagementUriEncoded
+        val deviceEngagementForQrCode = qrCommunicationSetup!!.deviceEngagementUriEncoded
         val qrCodeBitmap = encodeQRCodeAsBitmap(deviceEngagementForQrCode)
         val qrCodeView = ImageView(context)
         qrCodeView.setImageBitmap(qrCodeBitmap)
@@ -344,7 +174,7 @@ class TransferManager private constructor(private val context: Context) {
         nfcApduRouter.addReceivedApdu(aid, commandApdu)
     }
 
-    fun nfcOnDeactivated(service: HostApduService, aid: ByteArray, reason: Int) {
+    fun nfcOnDeactivated(aid: ByteArray, reason: Int) {
         nfcApduRouter.addDeactivated(aid, reason)
     }
 
@@ -402,49 +232,29 @@ class TransferManager private constructor(private val context: Context) {
         return false
     }
 
-    fun destroy() {
-        requestBytes = null
-        store = null
-        qrEngagement = null
-        nfcEngagement = null
-        presentation = null
-        session = null
-    }
-
     fun stopPresentation(
         sendSessionTerminationMessage: Boolean,
         useTransportSpecificSessionTermination: Boolean
     ) {
-        presentation?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
-        try {
-            if (presentation?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
-                presentation?.setUseTransportSpecificSessionTermination(true)
-            }
-        } catch (e: IllegalStateException) {
-            Log.e(LOG_TAG, "Error ignored.", e)
-        }
+        communication.stopPresentation(
+            sendSessionTerminationMessage,
+            useTransportSpecificSessionTermination
+        )
         disconnect()
     }
 
     fun disconnect() {
-        try {
-            qrEngagement?.close()
-        } catch (e: RuntimeException) {
-            Log.e(LOG_TAG, "Error ignored closing qrEngagement", e)
-        }
-        try {
-            nfcEngagement?.close()
-        } catch (e: RuntimeException) {
-            Log.e(LOG_TAG, "Error ignored closing nfcEngagement", e)
-        }
-        try {
-            presentation?.disconnect()
-        } catch (e: RuntimeException) {
-            Log.e(LOG_TAG, "Error ignored closing presentation", e)
-        }
+        communication.disconnect()
+        qrCommunicationSetup?.close()
         transferStatusLd = MutableLiveData<TransferStatus>()
         destroy()
         hasStarted = false
+    }
+
+    fun destroy() {
+        qrCommunicationSetup = null
+        reversedQrCommunicationSetup = null
+        session = null
     }
 
     fun getCryptoObject(): BiometricPrompt.CryptoObject? {
@@ -458,27 +268,7 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun sendResponse(deviceResponse: ByteArray) {
-        val progressListener: (Long, Long) -> Unit = { progress, max ->
-            Log.d(LOG_TAG, "Progress: $progress of $max")
-            if (progress == max) {
-                Log.d(LOG_TAG, "Completed...")
-                // We could for example force a disconnect here
-                //presentation?.setSendSessionTerminationMessage(true)
-                //presentation?.disconnect()
-            }
-        }
-        presentation?.sendDeviceResponse(deviceResponse, progressListener, context.mainExecutor())
-    }
-
-    fun getDeviceRequest(): DeviceRequest {
-        requestBytes?.let { rb ->
-            presentation?.let { p ->
-                val parser = DeviceRequestParser()
-                parser.setSessionTranscript(p.sessionTranscript)
-                parser.setDeviceRequest(rb)
-                return parser.parse()
-            } ?: throw IllegalStateException("Presentation is null")
-        } ?: throw IllegalStateException("Request not received")
+        communication.sendResponse(deviceResponse)
     }
 
     fun readDocumentEntries(document: Document): CredentialDataResult.Entries? {
@@ -497,11 +287,15 @@ class TransferManager private constructor(private val context: Context) {
         // what was used on each document provisioned
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getKeystoreInstance(context,
-                    PreferencesHelper.getKeystoreBackedStorageLocation(context))
+                ?: IdentityCredentialStore.getKeystoreInstance(
+                    context,
+                    PreferencesHelper.getKeystoreBackedStorageLocation(context)
+                )
         else
-            IdentityCredentialStore.getKeystoreInstance(context,
-                PreferencesHelper.getKeystoreBackedStorageLocation(context))
+            IdentityCredentialStore.getKeystoreInstance(
+                context,
+                PreferencesHelper.getKeystoreBackedStorageLocation(context)
+            )
 
         try {
             val mSession = mStore.createPresentationSession(
