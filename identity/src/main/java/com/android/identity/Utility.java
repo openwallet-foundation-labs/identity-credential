@@ -253,9 +253,11 @@ public class Utility {
      * @param personalizationData         the data to put in the document, organized by namespace.
      * @param numAuthKeys                 number of authentication keys to create.
      * @param maxUsesPerKey               number of uses for each authentication key.
+     * @return bytes of a COSE_Sign1 for proof of provisioning
      */
     @SuppressWarnings("deprecation")
-    public static void provisionSelfSignedCredential(
+    public static
+    @NonNull byte[] provisionSelfSignedCredential(
             @NonNull IdentityCredentialStore store,
             @NonNull String credentialName,
             @NonNull PrivateKey issuingAuthorityKey,
@@ -282,7 +284,7 @@ public class Utility {
                 e.printStackTrace();
             }
         }
-        wc.personalize(personalizationData);
+        byte[] signedPop = wc.personalize(personalizationData);
 
         IdentityCredential c = store.getCredentialByName(credentialName,
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
@@ -411,6 +413,7 @@ public class Utility {
 
         } // for each authkey
 
+        return signedPop;
     }
 
 

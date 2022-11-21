@@ -190,7 +190,7 @@ class KeystoreWritableIdentityCredential extends WritableIdentityCredential {
         DataItem signature;
         try {
             ByteArrayOutputStream dtsBaos = new ByteArrayOutputStream();
-            CborEncoder dtsEncoder = new CborEncoder(dtsBaos);
+            CborEncoder dtsEncoder = new CborEncoder(dtsBaos).nonCanonical();
             dtsEncoder.encode(signedDataBuilder.build().get(0));
             byte[] dataToSign = dtsBaos.toByteArray();
 

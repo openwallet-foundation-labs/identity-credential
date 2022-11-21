@@ -204,6 +204,6 @@ public final class DeviceResponseGenerator {
         mapBuilder.put("status", mStatusCode);
         mapBuilder.end();
 
-        return Util.cborEncode(deviceResponseBuilder.build().get(0));
+        return Util.cborEncodeWithoutCanonicalizing(deviceResponseBuilder.build().get(0));
     }
 }

@@ -46,6 +46,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import co.nstant.in.cbor.CborBuilder;
+
 // TODO: Move to non-Android tests - can't do that right now b/c it's used IdentityCredentialStore
 //   to generate DeviceNameSpaces and DeviceAuth.
 public class DeviceResponseGeneratorTest {
@@ -107,12 +109,46 @@ public class DeviceResponseGeneratorTest {
         final Collection<AccessControlProfileId> idsNoAuth =
                 Arrays.asList(new AccessControlProfileId(0));
 
+        // Also put in some complicated CBOR to check that we don't accidentally
+        // canonicalize this, leading to digest mismatches on the reader side.
+        byte[] rawCbor1 = Util.cborEncodeWithoutCanonicalizing(
+                new CborBuilder()
+                        .addMap()
+                        .put("a", "foo")
+                        .put("b", "bar")
+                        .put("c", "baz")
+                        .end()
+                        .build().get(0));
+        Assert.assertEquals(
+                "{\n" +
+                "  'a' : 'foo',\n" +
+                "  'b' : 'bar',\n" +
+                "  'c' : 'baz'\n" +
+                "}", Util.cborPrettyPrint(rawCbor1));
+
+        byte[] rawCbor2 = Util.cborEncodeWithoutCanonicalizing(
+                new CborBuilder()
+                        .addMap()
+                        .put("c", "baz")
+                        .put("b", "bar")
+                        .put("a", "foo")
+                        .end()
+                        .build().get(0));
+        Assert.assertEquals(
+                "{\n" +
+                        "  'c' : 'baz',\n" +
+                        "  'b' : 'bar',\n" +
+                        "  'a' : 'foo'\n" +
+                        "}", Util.cborPrettyPrint(rawCbor2));
+
         PersonalizationData personalizationData =
                 new PersonalizationData.Builder()
                         .addAccessControlProfile(noAuthProfile)
                         .putEntryString(MDL_NAMESPACE, "given_name", idsNoAuth, "Erika")
                         .putEntryString(MDL_NAMESPACE, "family_name", idsNoAuth, "Mustermann")
                         .putEntryInteger(MDL_NAMESPACE, "some_number", idsNoAuth, 42)
+                        .putEntry(MDL_NAMESPACE, "raw_cbor_1", idsNoAuth, rawCbor1)
+                        .putEntry(MDL_NAMESPACE, "raw_cbor_2", idsNoAuth, rawCbor2)
                         .putEntryBoolean(AAMVA_NAMESPACE, "real_id", idsNoAuth, true)
                         .build();
 
@@ -121,7 +157,7 @@ public class DeviceResponseGeneratorTest {
         X509Certificate issuerAuthorityCertificate =
                 getSelfSignedIssuerAuthorityCertificate(issuerAuthorityKeyPair);
 
-        Utility.provisionSelfSignedCredential(store,
+        byte[] signedPop = Utility.provisionSelfSignedCredential(store,
                 "test",
                 issuerAuthorityKeyPair.getPrivate(),
                 issuerAuthorityCertificate,
@@ -130,9 +166,69 @@ public class DeviceResponseGeneratorTest {
                 1,
                 2);
 
+        // Check that the Proof Of Provisioning contains raw_cbor_1 and raw_cbor_2 in
+        // without any reordering...
+        byte[] proofOfProvisioning = Util.coseSign1GetData(Util.cborDecode(signedPop));
+        Assert.assertEquals(
+                "[\n" +
+                        "  'ProofOfProvisioning',\n" +
+                        "  'org.iso.18013.5.1.mDL',\n" +
+                        "  [\n" +
+                        "    {\n" +
+                        "      'id' : 0\n" +
+                        "    }\n" +
+                        "  ],\n" +
+                        "  {\n" +
+                        "    'org.iso.18013.5.1' : [\n" +
+                        "      {\n" +
+                        "        'name' : 'given_name',\n" +
+                        "        'value' : 'Erika',\n" +
+                        "        'accessControlProfiles' : [0]\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        'name' : 'family_name',\n" +
+                        "        'value' : 'Mustermann',\n" +
+                        "        'accessControlProfiles' : [0]\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        'name' : 'some_number',\n" +
+                        "        'value' : 42,\n" +
+                        "        'accessControlProfiles' : [0]\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        'name' : 'raw_cbor_1',\n" +
+                        "        'value' : {\n" +
+                        "          'a' : 'foo',\n" +
+                        "          'b' : 'bar',\n" +
+                        "          'c' : 'baz'\n" +
+                        "        },\n" +
+                        "        'accessControlProfiles' : [0]\n" +
+                        "      },\n" +
+                        "      {\n" +
+                        "        'name' : 'raw_cbor_2',\n" +
+                        "        'value' : {\n" +
+                        "          'c' : 'baz',\n" +
+                        "          'b' : 'bar',\n" +
+                        "          'a' : 'foo'\n" +
+                        "        },\n" +
+                        "        'accessControlProfiles' : [0]\n" +
+                        "      }\n" +
+                        "    ],\n" +
+                        "    'org.aamva.18013.5.1' : [\n" +
+                        "      {\n" +
+                        "        'name' : 'real_id',\n" +
+                        "        'value' : true,\n" +
+                        "        'accessControlProfiles' : [0]\n" +
+                        "      }\n" +
+                        "    ]\n" +
+                        "  },\n" +
+                        "  false\n" +
+                        "]",
+                Util.cborPrettyPrint(proofOfProvisioning));
+
         Map<String, Collection<String>> issuerSignedEntriesToRequest = new HashMap<>();
         issuerSignedEntriesToRequest.put(MDL_NAMESPACE,
-                Arrays.asList("given_name", "family_name", "some_number"));
+                Arrays.asList("given_name", "family_name", "some_number", "raw_cbor_1", "raw_cbor_2"));
         issuerSignedEntriesToRequest.put(AAMVA_NAMESPACE, Arrays.asList("real_id"));
 
         KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair();
@@ -149,6 +245,10 @@ public class DeviceResponseGeneratorTest {
                         .setIssuerSignedEntriesToRequest(issuerSignedEntriesToRequest)
                         // TODO: also request some deviceSigned values and check below...
                         .build());
+
+        // Check that credential storage didn't accidentally canonicalize data element values.
+        Assert.assertArrayEquals(rawCbor1, result.getIssuerSignedEntries().getEntry(MDL_NAMESPACE, "raw_cbor_1"));
+        Assert.assertArrayEquals(rawCbor2, result.getIssuerSignedEntries().getEntry(MDL_NAMESPACE, "raw_cbor_2"));
 
         byte[] encodedDeviceNamespaces = result.getDeviceNameSpaces();
         byte[] encodedDeviceSignedSignature = result.getDeviceSignature();
@@ -190,12 +290,15 @@ public class DeviceResponseGeneratorTest {
         Assert.assertEquals(MDL_DOCTYPE, d.getDocType());
         Assert.assertEquals(0, d.getDeviceNamespaces().size());
         Assert.assertEquals(2, d.getIssuerNamespaces().size());
-        Assert.assertEquals(3, d.getIssuerEntryNames(MDL_NAMESPACE).size());
+        Assert.assertEquals(5, d.getIssuerEntryNames(MDL_NAMESPACE).size());
         Assert.assertEquals("Erika", d.getIssuerEntryString(MDL_NAMESPACE, "given_name"));
         Assert.assertEquals("Mustermann", d.getIssuerEntryString(MDL_NAMESPACE, "family_name"));
         Assert.assertEquals(42, d.getIssuerEntryNumber(MDL_NAMESPACE, "some_number"));
         Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size());
         Assert.assertEquals(true, d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"));
+        // Check that response encoding/decoding didn't accidentally canonicalize data element values.
+        Assert.assertArrayEquals(rawCbor1, d.getIssuerEntryData(MDL_NAMESPACE, "raw_cbor_1"));
+        Assert.assertArrayEquals(rawCbor2, d.getIssuerEntryData(MDL_NAMESPACE, "raw_cbor_2"));
     }
 
 }
