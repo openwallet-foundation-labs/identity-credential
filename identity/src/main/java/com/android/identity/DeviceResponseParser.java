@@ -265,7 +265,8 @@ public final class DeviceResponseParser {
                                 + digestId + " in namespace " + nameSpace);
                     }
                     boolean digestMatch = Arrays.equals(expectedDigest, digest);
-                    builder.addIssuerEntry(nameSpace, elementName, Util.cborEncode(elementValue),
+                    builder.addIssuerEntry(nameSpace, elementName,
+                            Util.cborEncodeWithoutCanonicalizing(elementValue),
                             digestMatch);
                 }
             }

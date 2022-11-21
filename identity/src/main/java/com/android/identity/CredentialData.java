@@ -155,9 +155,9 @@ class CredentialData {
 
             MapBuilder<ArrayBuilder<CborBuilder>> entryMapBuilder = entryArrayBuilder.addMap();
             entryMapBuilder.put("name", entryName);
+            entryMapBuilder.put(new UnicodeString("value"), Util.cborDecode(entryValue));
             entryMapBuilder.put(new UnicodeString("accessControlProfiles"),
                     accessControlProfileIdsBuilder.build().get(0));
-            entryMapBuilder.put(new UnicodeString("value"), Util.cborDecode(entryValue));
         }
         return entryBuilder.build().get(0);
     }
@@ -189,7 +189,7 @@ class CredentialData {
             }
 
             DataItem cborValue = map.get(new UnicodeString("value"));
-            byte[] data = Util.cborEncode(cborValue);
+            byte[] data = Util.cborEncodeWithoutCanonicalizing(cborValue);
             builder.putEntry(namespaceName, name, accessControlProfileIds, data);
         }
 
@@ -709,7 +709,7 @@ class CredentialData {
 
     private byte[] saveToDiskEncode(CborBuilder map) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        CborEncoder encoder = new CborEncoder(baos);
+        CborEncoder encoder = new CborEncoder(baos).nonCanonical();
         try {
             encoder.encode(map.build());
         } catch (CborException e) {

@@ -107,14 +107,14 @@ public class DeviceResponseParserTest {
                         "expiry_date")));
         Assert.assertEquals("[\n"
                         + "  {\n"
+                        + "    'vehicle_category_code' : 'A',\n"
                         + "    'issue_date' : tag 1004 '2018-08-09',\n"
-                        + "    'expiry_date' : tag 1004 '2024-10-20',\n"
-                        + "    'vehicle_category_code' : 'A'\n"
+                        + "    'expiry_date' : tag 1004 '2024-10-20'\n"
                         + "  },\n"
                         + "  {\n"
+                        + "    'vehicle_category_code' : 'B',\n"
                         + "    'issue_date' : tag 1004 '2017-02-23',\n"
-                        + "    'expiry_date' : tag 1004 '2024-10-20',\n"
-                        + "    'vehicle_category_code' : 'B'\n"
+                        + "    'expiry_date' : tag 1004 '2024-10-20'\n"
                         + "  }\n"
                         + "]",
                 Util.cborPrettyPrint(d.getIssuerEntryData(MDL_NAMESPACE,
