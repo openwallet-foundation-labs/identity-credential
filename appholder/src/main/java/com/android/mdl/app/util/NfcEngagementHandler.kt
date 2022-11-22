@@ -16,6 +16,7 @@
 
 package com.android.mdl.app.util
 
+import android.content.Intent
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import androidx.navigation.NavDeepLinkBuilder
@@ -24,12 +25,14 @@ import com.android.identity.NfcApduRouter
 import com.android.identity.NfcEngagementHelper
 import com.android.identity.PresentationHelper
 import com.android.identity.PresentationSession
+import com.android.mdl.app.MainActivity
 import com.android.mdl.app.R
 import com.android.mdl.app.transfer.Communication
 import com.android.mdl.app.transfer.ConnectionSetup
 import com.android.mdl.app.transfer.CredentialStore
 import com.android.mdl.app.transfer.SessionSetup
 import com.android.mdl.app.transfer.TransferManager
+
 
 class NfcEngagementHandler : HostApduService() {
 
@@ -49,9 +52,14 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onDeviceConnecting() {
             log("Engagement Listener: Device Connecting. Launching Transfer Screen")
+            val launchAppIntent = Intent(applicationContext, MainActivity::class.java)
+            launchAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            applicationContext.startActivity(launchAppIntent)
+
             val pendingIntent = NavDeepLinkBuilder(applicationContext)
                 .setGraph(R.navigation.navigation_graph)
                 .setDestination(R.id.transferDocumentFragment)
+                .setComponentName(MainActivity::class.java)
                 .createPendingIntent()
             pendingIntent.send(applicationContext, 0, null)
             transferManager.updateStatus(TransferStatus.CONNECTING)
