@@ -36,6 +36,17 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     var documentsSent = ObservableField<String>()
     val connectionClosedLiveData: LiveData<Boolean> = closeConnectionMutableLiveData
 
+    private val mutableConfirmationState = MutableLiveData<Boolean?>()
+    val authConfirmationState: LiveData<Boolean?> = mutableConfirmationState
+
+    fun onAuthenticationCancelled() {
+        mutableConfirmationState.value = true
+    }
+
+    fun onAuthenticationCancellationConsumed() {
+        mutableConfirmationState.value = null
+    }
+
     fun getTransferStatus(): LiveData<TransferStatus> =
         transferManager.getTransferStatus()
 

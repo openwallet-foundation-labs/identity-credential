@@ -1,5 +1,6 @@
 package com.android.mdl.app.authconfirmation
 
+import android.content.DialogInterface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -49,11 +50,22 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                             viewModel.toggleSignedProperty(namespace, property)
                         },
                         onConfirm = { sendResponse() },
-                        onCancel = { dismiss() }
+                        onCancel = {
+                            dismiss()
+                            cancelAuthorization()
+                        }
                     )
                 }
             }
         }
+    }
+
+    override fun onCancel(dialog: DialogInterface) {
+        cancelAuthorization()
+    }
+
+    private fun cancelAuthorization() {
+        viewModel.onAuthenticationCancelled()
     }
 
     private fun mapToConfirmationSheetData(

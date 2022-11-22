@@ -1,5 +1,6 @@
 package com.android.mdl.app.fragment
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -31,6 +32,16 @@ class TransferDocumentFragment : Fragment() {
 
     private val viewModel: TransferDocumentViewModel by activityViewModels()
 
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        val backPressedCallback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                onDone()
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(this, backPressedCallback)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -38,10 +49,6 @@ class TransferDocumentFragment : Fragment() {
         _binding = FragmentTransferDocumentBinding.inflate(inflater)
         binding.fragment = this
         binding.vm = viewModel
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            onBackPressedCallback
-        )
         return binding.root
     }
 
@@ -62,6 +69,13 @@ class TransferDocumentFragment : Fragment() {
                 sendSessionTerminationMessage = true,
                 useTransportSpecificSessionTermination = false
             )
+        }
+        viewModel.authConfirmationState.observe(viewLifecycleOwner) { cancelled ->
+            if (cancelled == true) {
+                viewModel.onAuthenticationCancellationConsumed()
+                onDone()
+                findNavController().navigateUp()
+            }
         }
     }
 
@@ -167,12 +181,6 @@ class TransferDocumentFragment : Fragment() {
         binding.btCloseTerminationMessage.visibility = View.GONE
         binding.btCloseTransportSpecific.visibility = View.GONE
         binding.btOk.visibility = View.VISIBLE
-    }
-
-    private var onBackPressedCallback = object : OnBackPressedCallback(true) {
-        override fun handleOnBackPressed() {
-            onDone()
-        }
     }
 
     fun onCloseConnection(
