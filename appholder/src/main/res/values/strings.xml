@@ -74,6 +74,9 @@
     <string name="family_name_national_character">Family name in national characters</string>
     <string name="given_name_national_character">Given name in national characters</string>
     <string name="signature_usual_mark">Signature / usual mark</string>
+    <string name="aamva_sex">AAMVA Sex</string>
+    <string name="EDL_credential">EDL Credential</string>
+    <string name="DHS_compliance">DHS Compliance</string>
 
     <!-- mVR strings -->
     <string name="registration_info">Vehicle Registration Information</string>
