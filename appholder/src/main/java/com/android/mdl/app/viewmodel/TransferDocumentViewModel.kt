@@ -13,7 +13,8 @@ import com.android.identity.DeviceRequestParser
 import com.android.identity.DeviceResponseGenerator
 import com.android.mdl.app.R
 import com.android.mdl.app.authconfirmation.RequestedDocumentData
-import com.android.mdl.app.authconfirmation.SignedPropertiesCollection
+import com.android.mdl.app.authconfirmation.RequestedElement
+import com.android.mdl.app.authconfirmation.SignedElementsCollection
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
@@ -27,8 +28,8 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     private val transferManager = TransferManager.getInstance(app.applicationContext)
     private val documentManager = DocumentManager.getInstance(app.applicationContext)
-    private val signedProperties = SignedPropertiesCollection()
-    private val requestedProperties = mutableListOf<RequestedDocumentData>()
+    private val signedElements = SignedElementsCollection()
+    private val requestedElements = mutableListOf<RequestedDocumentData>()
     private val closeConnectionMutableLiveData = MutableLiveData<Boolean>()
     private val selectedDocuments = mutableListOf<Document>()
 
@@ -59,7 +60,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun getCryptoObject() = transferManager.getCryptoObject()
 
-    fun requestedProperties() = requestedProperties
+    fun requestedElements() = requestedElements
 
     fun closeConnection() {
         cleanUp()
@@ -67,11 +68,11 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     }
 
     fun addDocumentForSigning(document: RequestedDocumentData) {
-        signedProperties.addNamespace(document)
+        signedElements.addNamespace(document)
     }
 
-    fun toggleSignedProperty(namespace: String, property: String) {
-        signedProperties.toggleProperty(namespace, property)
+    fun toggleSignedElement(element: RequestedElement) {
+        signedElements.toggleProperty(element)
     }
 
     fun createSelectedItemsList() {
@@ -81,32 +82,29 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         requestedDocuments.forEach { requestedDocument ->
             try {
                 val ownDocument = ownDocuments.first { it.docType == requestedDocument.docType }
-                val issuerSignedEntriesToRequest = requestedPropertiesFrom(requestedDocument)
-                result.addAll(issuerSignedEntriesToRequest.map {
+                val issuerSignedEntriesToRequest = requestedElementsFrom(requestedDocument)
+                result.add(
                     RequestedDocumentData(
                         ownDocument.userVisibleName,
-                        it.key,
                         ownDocument.identityCredentialName,
                         false,
-                        it.value,
+                        issuerSignedEntriesToRequest,
                         requestedDocument
                     )
-                })
+                )
             } catch (e: NoSuchElementException) {
                 Log.w(LOG_TAG, "No document for docType " + requestedDocument.docType)
             }
         }
-        requestedProperties.addAll(result)
+        requestedElements.addAll(result)
     }
 
     fun sendResponseForSelection(): Boolean {
-        val propertiesToSend = signedProperties.collect()
+        val elementsToSend = signedElements.collect()
         val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
-        propertiesToSend.forEach { signedDocument ->
+        elementsToSend.forEach { signedDocument ->
             try {
-                val issuerSignedEntries = with(signedDocument) {
-                    mutableMapOf(namespace to signedProperties)
-                }
+                val issuerSignedEntries = signedDocument.issuerSignedEntries()
                 val authNeeded = transferManager.addDocumentToResponse(
                     signedDocument.identityCredentialName,
                     signedDocument.documentType,
@@ -124,7 +122,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         }
         transferManager.sendResponse(response.generate())
         transferManager.setResponseServed()
-        val documentsCount = propertiesToSend.count()
+        val documentsCount = elementsToSend.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
         cleanUp()
         return true
@@ -140,21 +138,22 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         )
     }
 
-    private fun requestedPropertiesFrom(
+    private fun requestedElementsFrom(
         requestedDocument: DeviceRequestParser.DocumentRequest
-    ): MutableMap<String, Collection<String>> {
-        val result = mutableMapOf<String, Collection<String>>()
+    ): ArrayList<RequestedElement> {
+        val result = arrayListOf<RequestedElement>()
         requestedDocument.namespaces.forEach { namespace ->
-            val list = result.getOrDefault(namespace, ArrayList())
-            (list as ArrayList).addAll(requestedDocument.getEntryNames(namespace))
-            result[namespace] = list
+            val elements = requestedDocument.getEntryNames(namespace).map { element ->
+                RequestedElement(namespace, element)
+            }
+            result.addAll(elements)
         }
         return result
     }
 
     private fun cleanUp() {
-        requestedProperties.clear()
-        signedProperties.clear()
+        requestedElements.clear()
+        signedElements.clear()
         selectedDocuments.clear()
     }
 }

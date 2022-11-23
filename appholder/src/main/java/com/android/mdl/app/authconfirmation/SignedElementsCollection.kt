@@ -1,29 +1,25 @@
 package com.android.mdl.app.authconfirmation
 
-class SignedPropertiesCollection {
+class SignedElementsCollection {
 
     private val requestedDocuments = mutableMapOf<String, RequestedDocumentData>()
-    private val signedProperties = mutableMapOf<String, ArrayList<String>>()
+    private val signedElements = mutableListOf<RequestedElement>()
 
     fun addNamespace(requestedData: RequestedDocumentData) {
-        this.requestedDocuments[requestedData.namespace] = requestedData
-        signedProperties[requestedData.namespace] = ArrayList()
+        this.requestedDocuments[requestedData.identityCredentialName] = requestedData
     }
 
-    fun toggleProperty(namespace: String, property: String) {
-        val propertiesForNamespace = signedProperties.getOrDefault(namespace, ArrayList())
-        if (!propertiesForNamespace.remove(property)) {
-            propertiesForNamespace.add(property)
+    fun toggleProperty(element: RequestedElement) {
+        if (!signedElements.remove(element)) {
+            signedElements.add(element)
         }
-        signedProperties[namespace] = propertiesForNamespace
     }
 
     fun collect(): List<SignedDocumentData> {
         return requestedDocuments.keys.map { namespace ->
             val document = requestedDocuments.getValue(namespace)
             SignedDocumentData(
-                namespace,
-                signedProperties[namespace] as Collection<String>,
+                signedElements,
                 document.identityCredentialName,
                 document.requestedDocument.docType,
                 document.requestedDocument.readerAuth,
@@ -34,6 +30,6 @@ class SignedPropertiesCollection {
 
     fun clear() {
         requestedDocuments.clear()
-        signedProperties.clear()
+        signedElements.clear()
     }
 }
