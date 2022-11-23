@@ -34,8 +34,8 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val propertiesToSign = viewModel.requestedProperties()
-        val sheetData = mapToConfirmationSheetData(propertiesToSign)
+        val elementsToSign = viewModel.requestedElements()
+        val sheetData = mapToConfirmationSheetData(elementsToSign)
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(DisposeOnViewTreeLifecycleDestroyed)
             setContent {
@@ -46,9 +46,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                         isTrustedReader = arguments.readerIsTrusted,
                         isSendingInProgress = isSendingInProgress.value,
                         sheetData = sheetData,
-                        onPropertyToggled = { namespace, property ->
-                            viewModel.toggleSignedProperty(namespace, property)
-                        },
+                        onElementToggled = { element -> viewModel.toggleSignedElement(element) },
                         onConfirm = { sendResponse() },
                         onCancel = {
                             dismiss()
@@ -69,22 +67,22 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun mapToConfirmationSheetData(
-        propertiesToSign: List<RequestedDocumentData>
+        elementsToSign: List<RequestedDocumentData>
     ): List<ConfirmationSheetData> {
-        return propertiesToSign.map { documentData ->
+        return elementsToSign.map { documentData ->
             viewModel.addDocumentForSigning(documentData)
-            val properties = documentData.requestedProperties.map { property ->
-                viewModel.toggleSignedProperty(documentData.namespace, property)
-                val displayName = stringValueFor(property)
-                ConfirmationSheetData.DocumentProperty(displayName, property)
+            val elements = documentData.requestedElements.map { element ->
+                viewModel.toggleSignedElement(element)
+                val displayName = stringValueFor(element.value)
+                ConfirmationSheetData.DocumentElement(displayName, element)
             }
-            ConfirmationSheetData(documentData.nameTypeTitle(), documentData.namespace, properties)
+            ConfirmationSheetData(documentData.userReadableName, elements)
         }
     }
 
-    private fun stringValueFor(property: String): String {
-        val identifier = resources.getIdentifier(property, "string", requireContext().packageName)
-        return if (identifier != 0) getString(identifier) else property
+    private fun stringValueFor(element: String): String {
+        val identifier = resources.getIdentifier(element, "string", requireContext().packageName)
+        return if (identifier != 0) getString(identifier) else element
     }
 
     private fun sendResponse() {
