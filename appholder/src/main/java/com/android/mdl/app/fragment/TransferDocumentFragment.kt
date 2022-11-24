@@ -24,6 +24,7 @@ import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 class TransferDocumentFragment : Fragment() {
 
     companion object {
+        const val CLOSE_AFTER_SERVING_KEY = "closeAfterServing"
         private const val LOG_TAG = "TransferDocumentFragment"
     }
 
@@ -31,6 +32,7 @@ class TransferDocumentFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: TransferDocumentViewModel by activityViewModels()
+    private val closeAfterServing by lazy { arguments?.getBoolean("closeAfterServing", false) ?: false }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -167,6 +169,9 @@ class TransferDocumentFragment : Fragment() {
         Log.d(LOG_TAG, "Disconnected")
         hideButtons()
         TransferManager.getInstance(requireContext()).disconnect()
+        if (closeAfterServing) {
+            requireActivity().finish()
+        }
     }
 
     private fun onTransferError() {
