@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.WindowManager.LayoutParams.*
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.os.bundleOf
 import androidx.core.view.GravityCompat
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
@@ -19,6 +20,8 @@ import androidx.navigation.ui.setupWithNavController
 import com.android.identity.OriginInfo
 import com.android.identity.OriginInfoWebsite
 import com.android.mdl.app.databinding.ActivityMainBinding
+import com.android.mdl.app.fragment.TransferDocumentFragment
+import com.android.mdl.app.util.log
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.google.android.material.elevation.SurfaceColors
 
@@ -47,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         setupDrawerLayout()
         setupNfc()
+        onNewIntent(intent)
     }
 
     private fun setupNfc() {
@@ -117,7 +121,10 @@ class MainActivity : AppCompatActivity() {
         originInfos.add(OriginInfoWebsite(1, mdocReferrerUri))
         viewModel.startPresentationReverseEngagement(mdocUri, originInfos)
         val navController = findNavController(R.id.nav_host_fragment)
-        navController.navigate(R.id.transferDocumentFragment)
+        navController.navigate(
+            R.id.transferDocumentFragment,
+            bundleOf(TransferDocumentFragment.CLOSE_AFTER_SERVING_KEY to true)
+        )
     }
 
     override fun onSupportNavigateUp(): Boolean {

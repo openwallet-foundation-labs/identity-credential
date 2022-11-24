@@ -53,7 +53,10 @@ class NfcEngagementHandler : HostApduService() {
         override fun onDeviceConnecting() {
             log("Engagement Listener: Device Connecting. Launching Transfer Screen")
             val launchAppIntent = Intent(applicationContext, MainActivity::class.java)
+            launchAppIntent.action = Intent.ACTION_VIEW
             launchAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            launchAppIntent.addCategory(Intent.CATEGORY_DEFAULT)
+            launchAppIntent.addCategory(Intent.CATEGORY_BROWSABLE)
             applicationContext.startActivity(launchAppIntent)
 
             val pendingIntent = NavDeepLinkBuilder(applicationContext)
