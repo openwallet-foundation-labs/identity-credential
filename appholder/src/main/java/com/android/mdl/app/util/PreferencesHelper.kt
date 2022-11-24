@@ -1,45 +1,47 @@
 package com.android.mdl.app.util
 
 import android.content.Context
+import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.preference.PreferenceManager
-import com.android.identity.Constants
 import java.io.File
 
 object PreferencesHelper {
-    const val HARDWARE_BACKED_PREFERENCE = "com.android.mdl.app.HARDWARE_BACKED"
-    const val BLE_DATA_RETRIEVAL = "ble_transport"
-    const val BLE_DATA_RETRIEVAL_PERIPHERAL_MODE = "ble_transport_peripheral_mode"
-    const val BLE_DATA_L2CAP = "ble_l2cap"
-    const val BLE_CLEAR_CACHE = "ble_clear_cache"
-    const val WIFI_DATA_RETRIEVAL = "wifi_transport"
-    const val NFC_DATA_RETRIEVAL = "nfc_transport"
-    private const val LOG_INFO = "log_info"
-    private const val LOG_DEVICE_ENGAGEMENT = "log_device_engagement"
-    private const val LOG_SESSION_MESSAGES = "log_session_messages"
-    private const val LOG_TRANSPORT = "log_transport"
-    private const val LOG_TRANSPORT_VERBOSE = "log_transport_verbose"
+    private const val HARDWARE_BACKED_PREFERENCE = "com.android.mdl.app.HARDWARE_BACKED"
+    private const val BLE_DATA_RETRIEVAL = "ble_transport"
+    private const val BLE_DATA_RETRIEVAL_PERIPHERAL_MODE = "ble_transport_peripheral_mode"
+    private const val BLE_DATA_L2CAP = "ble_l2cap"
+    private const val BLE_CLEAR_CACHE = "ble_clear_cache"
+    private const val WIFI_DATA_RETRIEVAL = "wifi_transport"
+    private const val NFC_DATA_RETRIEVAL = "nfc_transport"
+    private const val DEBUG_LOG = "debug_log"
+    private const val CONNECTION_AUTO_CLOSE = "connection_auto_close"
+    private const val STATIC_HANDOVER = "static_handover"
 //    const val USE_READER_AUTH = "use_reader_authentication"
 
-    fun setHardwareBacked(context: Context, isHardwareBacked: Boolean) {
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        if (!hasHardwareBackedPreference(context)) {
-            sharedPreferences.edit().putBoolean(
-                HARDWARE_BACKED_PREFERENCE,
-                isHardwareBacked
-            ).apply()
+    private lateinit var sharedPreferences: SharedPreferences
+
+    fun initialize(context: Context) {
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+    }
+
+    fun setHardwareBacked(isHardwareBacked: Boolean) {
+        if (!hasHardwareBackedPreference()) {
+            sharedPreferences.edit {
+                putBoolean(HARDWARE_BACKED_PREFERENCE, isHardwareBacked)
+            }
         }
     }
 
-    fun hasHardwareBackedPreference(context: Context) =
-        PreferenceManager.getDefaultSharedPreferences(context).contains(HARDWARE_BACKED_PREFERENCE)
+    fun hasHardwareBackedPreference(): Boolean {
+        return sharedPreferences.contains(HARDWARE_BACKED_PREFERENCE)
+    }
 
-    fun isHardwareBacked(context: Context): Boolean {
-        if (!hasHardwareBackedPreference(context)) {
+    fun isHardwareBacked(): Boolean {
+        if (!hasHardwareBackedPreference()) {
             throw IllegalStateException("No preference set for used implementation.")
         }
-        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            HARDWARE_BACKED_PREFERENCE, false
-        )
+        return sharedPreferences.getBoolean(HARDWARE_BACKED_PREFERENCE, false)
     }
 
     fun getKeystoreBackedStorageLocation(context: Context): File {
@@ -49,47 +51,80 @@ object PreferencesHelper {
         return context.noBackupFilesDir
     }
 
-    // Default value for BLE data retrieval is true
-    fun isBleDataRetrievalEnabled(context: Context): Boolean {
-        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            BLE_DATA_RETRIEVAL, true
-        )
+    fun isBleDataRetrievalEnabled(): Boolean {
+        return sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL, true)
     }
 
-    fun isBleDataRetrievalPeripheralModeEnabled(context: Context): Boolean {
-        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, false
-        )
+    fun setBleDataRetrievalEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(BLE_DATA_RETRIEVAL, enabled) }
     }
 
-    fun isBleL2capEnabled(context: Context): Boolean {
-        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            BLE_DATA_L2CAP, false
-        )
+    fun isBleDataRetrievalPeripheralModeEnabled(): Boolean {
+        return sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, false)
     }
 
-    fun isBleClearCacheEnabled(context: Context): Boolean {
-        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            BLE_CLEAR_CACHE, false
-        )
+    fun setBlePeripheralDataRetrievalMode(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, enabled) }
     }
 
-    fun isWifiDataRetrievalEnabled(context: Context): Boolean {
-        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            WIFI_DATA_RETRIEVAL, false
-        )
+    fun isBleL2capEnabled(): Boolean {
+        return sharedPreferences.getBoolean(BLE_DATA_L2CAP, false)
     }
 
-    fun isNfcDataRetrievalEnabled(context: Context): Boolean {
-        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-            NFC_DATA_RETRIEVAL, false
-        )
+    fun setBleL2CAPEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(BLE_DATA_L2CAP, enabled) }
+    }
+
+    fun isBleClearCacheEnabled(): Boolean {
+        return sharedPreferences.getBoolean(BLE_CLEAR_CACHE, false)
+    }
+
+    fun setBleClearCacheEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(BLE_CLEAR_CACHE, enabled) }
+    }
+
+    fun isWifiDataRetrievalEnabled(): Boolean {
+        return sharedPreferences.getBoolean(WIFI_DATA_RETRIEVAL, false)
+    }
+
+    fun setWifiDataRetrievalEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(WIFI_DATA_RETRIEVAL, enabled) }
+    }
+
+    fun isNfcDataRetrievalEnabled(): Boolean {
+        return sharedPreferences.getBoolean(NFC_DATA_RETRIEVAL, false)
+    }
+
+    fun setNfcDataRetrievalEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(NFC_DATA_RETRIEVAL, enabled) }
+    }
+
+    fun isConnectionAutoCloseEnabled(): Boolean {
+        return sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, true)
+    }
+
+    fun setConnectionAutoCloseEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(CONNECTION_AUTO_CLOSE, enabled) }
+    }
+
+    fun shouldUseStaticHandover(): Boolean {
+        return sharedPreferences.getBoolean(STATIC_HANDOVER, true)
+    }
+
+    fun setUseStaticHandover(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(STATIC_HANDOVER, enabled) }
+    }
+
+    fun isDebugLoggingEnabled(): Boolean {
+        return sharedPreferences.getBoolean(DEBUG_LOG, true)
+    }
+
+    fun setDebugLoggingEnabled(enabled: Boolean) {
+        sharedPreferences.edit { putBoolean(DEBUG_LOG, enabled) }
     }
 
     fun isReaderAuthenticationEnabled(context: Context): Boolean {
-//        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
-//            USE_READER_AUTH, false
-//        )
+        // return sharedPreferences.getBoolean(USE_READER_AUTH, false)
         // Just returning false now as we are not using ACP to control the reader authentication
         return false
     }

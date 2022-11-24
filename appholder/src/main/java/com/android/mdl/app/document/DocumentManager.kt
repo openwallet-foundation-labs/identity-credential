@@ -3,7 +3,6 @@ package com.android.mdl.app.document
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
-import androidx.preference.PreferenceManager
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.*
@@ -15,18 +14,15 @@ import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_NAMESPACE
 import com.android.mdl.app.util.FormatUtil
 import com.android.mdl.app.util.PreferencesHelper
-import com.android.mdl.app.util.PreferencesHelper.HARDWARE_BACKED_PREFERENCE
 import com.android.mdl.app.util.SelfSignedDocumentData
 import kotlinx.coroutines.runBlocking
 import java.io.ByteArrayOutputStream
 import java.security.cert.X509Certificate
 import java.util.*
 
-
 class DocumentManager private constructor(private val context: Context) {
 
     companion object {
-        private const val LOG_TAG = "DocumentManager"
         private const val MAX_USES_PER_KEY = 1
         private const val KEY_COUNT = 1
 
@@ -46,18 +42,8 @@ class DocumentManager private constructor(private val context: Context) {
     )
 
     init {
-        PreferencesHelper.setHardwareBacked(context, false)
-
-        // We always use the same implementation once the app is installed
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        if (!sharedPreferences.contains(HARDWARE_BACKED_PREFERENCE)) {
-            sharedPreferences.edit().putBoolean(
-                HARDWARE_BACKED_PREFERENCE,
-                true
-            ).apply()
-        }
+        PreferencesHelper.setHardwareBacked(true)
     }
-
 
     fun getDocuments(): Collection<Document> = runBlocking {
         documentRepository.getAll()
@@ -75,7 +61,7 @@ class DocumentManager private constructor(private val context: Context) {
             identityCredentialName,
             userVisibleName,
             null,
-            PreferencesHelper.isHardwareBacked(context),
+            PreferencesHelper.isHardwareBacked(),
             selfSigned = false,
             userAuthentication = true,
             KEY_COUNT,

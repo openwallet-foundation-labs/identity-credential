@@ -17,24 +17,24 @@ class ConnectionSetup(
 
     fun getConnectionOptions(): DataTransportOptions {
         val builder = DataTransportOptions.Builder()
-            .setBleUseL2CAP(PreferencesHelper.isBleL2capEnabled(context))
-            .setBleClearCache(PreferencesHelper.isBleClearCacheEnabled(context))
+            .setBleUseL2CAP(PreferencesHelper.isBleL2capEnabled())
+            .setBleClearCache(PreferencesHelper.isBleClearCacheEnabled())
         return builder.build()
     }
 
     fun getConnectionMethods(): List<ConnectionMethod> {
         val connectionMethods = ArrayList<ConnectionMethod>()
-        if (PreferencesHelper.isBleDataRetrievalEnabled(context)) {
+        if (PreferencesHelper.isBleDataRetrievalEnabled()) {
             connectionMethods.add(ConnectionMethodBle(false, true, null, UUID.randomUUID()))
         }
-        if (PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled(context)) {
+        if (PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled()) {
             connectionMethods.add(ConnectionMethodBle(true, false, UUID.randomUUID(), null))
         }
-        if (PreferencesHelper.isWifiDataRetrievalEnabled(context)) {
+        if (PreferencesHelper.isWifiDataRetrievalEnabled()) {
             val empty = OptionalLong.empty()
             connectionMethods.add(ConnectionMethodWifiAware(null, empty, empty, null))
         }
-        if (PreferencesHelper.isNfcDataRetrievalEnabled(context)) {
+        if (PreferencesHelper.isNfcDataRetrievalEnabled()) {
             // TODO: Add API to ConnectionMethodNfc to get sizes appropriate for the device
             connectionMethods.add(ConnectionMethodNfc(0xffff, 0x10000))
         }

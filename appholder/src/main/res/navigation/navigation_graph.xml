@@ -75,7 +75,7 @@
     </fragment>
     <fragment
         android:id="@+id/settings"
-        android:name="com.android.mdl.app.fragment.SettingsFragment"
+        android:name="com.android.mdl.app.settings.SettingsFragment"
         android:label="Settings">
         <action
             android:id="@+id/action_settingsFragment_to_selectDocumentFragment"
