@@ -9,7 +9,7 @@ class CredentialStore(
 ) {
 
     fun createIdentityCredentialStore(): IdentityCredentialStore {
-        return if (PreferencesHelper.isHardwareBacked(context))
+        return if (PreferencesHelper.isHardwareBacked())
             IdentityCredentialStore.getHardwareInstance(context)
                 ?: createKeystoreBackedStore() else createKeystoreBackedStore()
     }
