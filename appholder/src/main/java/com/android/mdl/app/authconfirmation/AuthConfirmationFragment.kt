@@ -4,7 +4,6 @@ import android.content.DialogInterface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +19,7 @@ import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
 import com.android.mdl.app.theme.HolderAppTheme
+import com.android.mdl.app.util.log
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
@@ -128,7 +128,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
             findNavController().navigateUp()
         } catch (e: Exception) {
             val message = "Send response error: ${e.message}"
-            Log.e(LOG_TAG, message, e)
+            log(message, e)
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
     }
@@ -141,9 +141,5 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private fun authenticationFailed() {
         viewModel.closeConnection()
-    }
-
-    private companion object {
-        private const val LOG_TAG = "AuthConfirmationFragment"
     }
 }

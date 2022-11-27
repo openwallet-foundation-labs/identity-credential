@@ -1,6 +1,6 @@
 package com.android.mdl.app.provisioning;
 
-import android.util.Log;
+import static com.android.mdl.app.util.LogginExtensionsKt.logError;
 
 import androidx.annotation.NonNull;
 
@@ -19,14 +19,14 @@ abstract class BaseFlow {
                 return true;
             }
             String message = "Response error eSessionId expected found '" + newSessionId + "'";
-            Log.e(TAG, message);
+            logError(this, message);
             listener.onError(message);
             return false;
         }
         sessionId = ((UnicodeString) response.get(new UnicodeString("eSessionId"))).getString();
         if (sessionId == null || sessionId.isEmpty()) {
             String message = "Response error eSessionId expected found null or empty";
-            Log.e(TAG, message);
+            logError(this, message);
             listener.onError(message);
             return false;
         }
@@ -44,7 +44,7 @@ abstract class BaseFlow {
             }
         }
         String message = "Response error MessageType '" + expectedMessageType + "' expected found '" + messageType + "'";
-        Log.e(TAG, message);
+        logError(this, message);
         listener.onError(message);
         return false;
     }

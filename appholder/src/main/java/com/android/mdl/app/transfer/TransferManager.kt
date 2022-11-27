@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.Color.BLACK
 import android.graphics.Color.WHITE
 import android.nfc.cardemulation.HostApduService
-import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import androidx.biometric.BiometricPrompt
@@ -34,8 +33,6 @@ import java.util.*
 class TransferManager private constructor(private val context: Context) {
 
     companion object {
-        private const val LOG_TAG = "TransferManager"
-
         @SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: TransferManager? = null
@@ -209,7 +206,7 @@ class TransferManager private constructor(private val context: Context) {
                     val staticAuthData: ByteArray = c.staticAuthenticationData
                     val (first1, second1) = Utility.decodeStaticAuthData(staticAuthData)
 
-                    Log.d(LOG_TAG, "StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
+                    log("StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
                     response.addDocument(
                         docType,
                         c,
@@ -262,7 +259,7 @@ class TransferManager private constructor(private val context: Context) {
             return session?.cryptoObject
         } catch (e: RuntimeException) {
             // Error when device doesn't have secure unlock
-            Log.e(LOG_TAG, "getCryptoObject: ${e.message}")
+            log("getCryptoObject: ${e.message}", e)
         }
         return null
     }
@@ -312,7 +309,7 @@ class TransferManager private constructor(private val context: Context) {
                 mSession.getCredentialData(document.identityCredentialName, credentialRequest)
             return credentialData?.issuerSignedEntries
         } catch (e: UnsupportedOperationException) {
-            Log.e(LOG_TAG, "Presentation session not supported in this device - ${e.message}", e)
+            log("Presentation session not supported in this device - ${e.message}", e)
             return null
         }
     }

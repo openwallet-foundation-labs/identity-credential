@@ -3,7 +3,6 @@ package com.android.mdl.app.wallet
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,13 +19,11 @@ import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.util.log
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.google.android.material.tabs.TabLayoutMediator
 
 class SelectDocumentFragment : Fragment() {
-    companion object {
-        private const val LOG_TAG = "SelectDocumentFragment"
-    }
 
     private var _binding: FragmentSelectDocumentBinding? = null
     private val binding get() = _binding!!
@@ -177,8 +174,7 @@ class SelectDocumentFragment : Fragment() {
     private val permissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             permissions.entries.forEach {
-                Log.d(LOG_TAG, "permissionsLauncher ${it.key} = ${it.value}")
-
+                log("permissionsLauncher ${it.key} = ${it.value}")
                 if (!it.value) {
                     Toast.makeText(
                         activity,

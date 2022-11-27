@@ -6,7 +6,6 @@ import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.WindowManager.LayoutParams.*
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -22,14 +21,13 @@ import com.android.identity.OriginInfoWebsite
 import com.android.mdl.app.databinding.ActivityMainBinding
 import com.android.mdl.app.fragment.TransferDocumentFragment
 import com.android.mdl.app.util.log
+import com.android.mdl.app.util.logError
+import com.android.mdl.app.util.logInfo
+import com.android.mdl.app.util.logWarning
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.google.android.material.elevation.SurfaceColors
 
 class MainActivity : AppCompatActivity() {
-
-    companion object {
-        private const val LOG_TAG = "MainActivity"
-    }
 
     private val viewModel: ShareDocumentViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
@@ -90,7 +88,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        Log.d(LOG_TAG, "New intent on Activity $intent")
+        log("New intent on Activity $intent")
 
         if (intent == null) {
             return
@@ -106,17 +104,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (mdocUri == null) {
-            Log.e(LOG_TAG, "No mdoc:// URI")
+            logError("No mdoc:// URI")
             return
         }
-        Log.i(LOG_TAG, "uri: $mdocUri")
+        logInfo("uri: $mdocUri")
 
         val originInfos = ArrayList<OriginInfo>()
         if (mdocReferrerUri == null) {
-            Log.w(LOG_TAG, "No referrer URI")
+            logWarning("No referrer URI")
             // TODO: maybe bail in the future if this isn't set.
         } else {
-            Log.i(LOG_TAG, "referrer: $mdocReferrerUri")
+            logInfo("referrer: $mdocReferrerUri")
             originInfos.add(OriginInfoWebsite(1, mdocReferrerUri))
         }
 

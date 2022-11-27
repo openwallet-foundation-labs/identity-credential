@@ -1,7 +1,6 @@
 package com.android.mdl.app.fragment
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,12 +12,9 @@ import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.provisioning.DeleteFlow
 import com.android.mdl.app.util.FormatUtil
-
+import com.android.mdl.app.util.log
 
 class DeleteDocumentFragment : Fragment() {
-    companion object {
-        private const val LOG_TAG = "DeleteDocumentFragment"
-    }
 
     private val args: UpdateCheckFragmentArgs by navArgs()
     private var serverUrl: String? = null
@@ -113,11 +109,11 @@ class DeleteDocumentFragment : Fragment() {
                 val proofOfDeletion = documentManager.deleteCredential(document, credential)
 
                 // For now send an empty byte array if poofOfDeletion is null
-                deleteFlow.sendMessageDeleted(proofOfDeletion ?: byteArrayOf())
+                deleteFlow.sendMessageDeleted(proofOfDeletion)
             }
         })
 
-        Log.d(LOG_TAG, "Delete document: ${document.userVisibleName}")
+        log("Delete document: ${document.userVisibleName}")
         binding.tvStatusDelete.append("\n- Delete document: ${document.userVisibleName}")
         val credentialCertificateChain = credential.credentialKeyCertificateChain
         // returns the Cose_Sign1 Obj with the MSO in the payload

@@ -1,7 +1,6 @@
 package com.android.mdl.app.fragment
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,13 +13,10 @@ import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.provisioning.UpdateCheckFlow
 import com.android.mdl.app.util.FormatUtil
+import com.android.mdl.app.util.log
 import java.util.*
 
-
 class UpdateCheckFragment : Fragment() {
-    companion object {
-        private const val LOG_TAG = "UpdateCheckFragment"
-    }
 
     private val args: UpdateCheckFragmentArgs by navArgs()
     private var serverUrl: String? = null
@@ -144,9 +140,9 @@ class UpdateCheckFragment : Fragment() {
                         document.dateCheckForUpdate = Calendar.getInstance()
                         documentManager.updateDocument(document)
                     }
-                    Log.d(LOG_TAG, "proofOfProvisioning:")
+                    log("proofOfProvisioning:")
                     proofOfProvisioning.let {
-                        FormatUtil.debugPrintEncodeToString(LOG_TAG, it)
+                        FormatUtil.debugPrintEncodeToString(it)
                     }
                     updateCheckFlow.sendMessageProofOfProvisioning(proofOfProvisioning)
                 } catch (e: RuntimeException) {
@@ -155,7 +151,7 @@ class UpdateCheckFragment : Fragment() {
             }
         })
 
-        Log.d(LOG_TAG, "Checking update for ${document.userVisibleName}")
+        log("Checking update for ${document.userVisibleName}")
         binding.tvStatusUpdating.append("\n- Checking update for ${document.userVisibleName}")
         val credentialCertificateChain = credential.credentialKeyCertificateChain
         // returns the Cose_Sign1 Obj with the MSO in the payload

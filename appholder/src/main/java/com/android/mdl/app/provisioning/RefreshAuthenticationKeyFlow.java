@@ -1,7 +1,9 @@
 package com.android.mdl.app.provisioning;
 
+import static com.android.mdl.app.util.LogginExtensionsKt.log;
+import static com.android.mdl.app.util.LogginExtensionsKt.logError;
+
 import android.content.Context;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -19,7 +21,6 @@ import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.UnicodeString;
 
 public class RefreshAuthenticationKeyFlow extends BaseFlow {
-    private static final String TAG = "RefreshAuthenticationKeyFlow";
     private final Context context;
     private final String serverUrl;
 
@@ -59,7 +60,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
                     byte[] challenge = ((ByteString) ((Map) response).get(new UnicodeString("challenge"))).getBytes();
                     if (challenge == null || challenge.length == 0) {
                         String message = "Response error challenge expected found null or empty";
-                        Log.e(TAG, message);
+                        logError(this, message);
                         getListener().onError(message);
                         return;
                     }
@@ -79,7 +80,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];
@@ -121,7 +122,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];
@@ -150,7 +151,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
                     List<DataItem> staticAuthDataCborList = ((Array) ((Map) response).get(new UnicodeString("staticAuthDatas"))).getDataItems();
                     if (staticAuthDataCborList == null || staticAuthDataCborList.isEmpty()) {
                         String message = "Response error staticAuthDatas expected found null or empty";
-                        Log.e(TAG, message);
+                        logError(this, message);
                         getListener().onError(message);
                         return;
                     }
@@ -177,7 +178,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];
@@ -222,7 +223,7 @@ public class RefreshAuthenticationKeyFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];

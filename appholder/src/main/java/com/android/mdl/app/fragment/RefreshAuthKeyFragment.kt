@@ -1,7 +1,6 @@
 package com.android.mdl.app.fragment
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,13 +13,10 @@ import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.provisioning.RefreshAuthenticationKeyFlow
 import com.android.mdl.app.util.FormatUtil
+import com.android.mdl.app.util.log
 import java.util.*
 
-
 class RefreshAuthKeyFragment : Fragment() {
-    companion object {
-        private const val LOG_TAG = "RefreshAuthKeyFragment"
-    }
 
     private val args: RefreshAuthKeyFragmentArgs by navArgs()
     private lateinit var serverUrl: String
@@ -121,9 +117,7 @@ class RefreshAuthKeyFragment : Fragment() {
                 binding.tvStatusRefreshing.append("\n- onMessageStaticAuthData ${staticAuthDataList.size} ")
 
                 dynAuthKeyCerts.forEachIndexed { i, cert ->
-                    Log.d(
-                        LOG_TAG,
-                        "Provisioned Issuer Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
+                    log("Provisioned Issuer Auth ${FormatUtil.encodeToString(staticAuthDataList[i])} " +
                                 "for Device Key ${FormatUtil.encodeToString(cert.publicKey.encoded)}"
                     )
                     credential.storeStaticAuthenticationData(cert, staticAuthDataList[i])
@@ -140,7 +134,7 @@ class RefreshAuthKeyFragment : Fragment() {
         if (dynAuthKeyCerts.isNotEmpty()) {
             //credential.proveOwnership(challenge)
 
-            Log.d(LOG_TAG, "Device Keys needing certification ${dynAuthKeyCerts.size}")
+            log("Device Keys needing certification ${dynAuthKeyCerts.size}")
             binding.tvStatusRefreshing.append("\n- Device Keys needing certification ${dynAuthKeyCerts.size}")
             // returns the Cose_Sign1 Obj with the MSO in the payload
             credentialCertificateChain.first()?.publicKey?.let { publicKey ->
@@ -148,7 +142,7 @@ class RefreshAuthKeyFragment : Fragment() {
                 refreshAuthKeyFlow.sendMessageCertifyAuthKeys(FormatUtil.cborEncode(cborCoseKey))
             }
         } else {
-            Log.d(LOG_TAG, "No Device Keys Needing Certification for now")
+            log("No Device Keys Needing Certification for now")
 
             binding.tvStatusRefreshing.append("\n- No Device Keys Needing Certification for now")
 

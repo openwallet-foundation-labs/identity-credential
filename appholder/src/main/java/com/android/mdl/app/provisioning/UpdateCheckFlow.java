@@ -1,7 +1,8 @@
 package com.android.mdl.app.provisioning;
 
+import static com.android.mdl.app.util.LogginExtensionsKt.log;
+import static com.android.mdl.app.util.LogginExtensionsKt.logError;
 import android.content.Context;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import com.android.identity.AccessControlProfile;
@@ -25,7 +26,6 @@ import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
 
 public class UpdateCheckFlow extends BaseFlow {
-    private static final String TAG = "UpdateCheckFlow";
     private final Context context;
     private final String serverUrl;
 
@@ -65,7 +65,7 @@ public class UpdateCheckFlow extends BaseFlow {
                     byte[] challenge = ((ByteString) ((Map) response).get(new UnicodeString("challenge"))).getBytes();
                     if (challenge == null || challenge.length == 0) {
                         String message = "Response error challenge expected found null or empty";
-                        Log.e(TAG, message);
+                        logError(this, message);
                         getListener().onError(message);
                         return;
                     }
@@ -85,7 +85,7 @@ public class UpdateCheckFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];
@@ -131,7 +131,7 @@ public class UpdateCheckFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];
@@ -160,14 +160,14 @@ public class UpdateCheckFlow extends BaseFlow {
                     List<DataItem> accessControlProfiles = ((Array) ((Map) response).get(new UnicodeString("accessControlProfiles"))).getDataItems();
                     if (accessControlProfiles == null || accessControlProfiles.isEmpty()) {
                         String message = "Response error accessControlProfiles expected found null or empty";
-                        Log.e(TAG, message);
+                        logError(this, message);
                         getListener().onError(message);
                         return;
                     }
                     Map nameSpaces = (Map) ((Map) response).get(new UnicodeString("nameSpaces"));
                     if (nameSpaces == null || nameSpaces.getKeys().isEmpty()) {
                         String message = "Response error nameSpaces expected found null or empty";
-                        Log.e(TAG, message);
+                        logError(this, message);
                         getListener().onError(message);
                         return;
                     }
@@ -256,7 +256,7 @@ public class UpdateCheckFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];
@@ -270,7 +270,7 @@ public class UpdateCheckFlow extends BaseFlow {
     public void sendMessageProofOfProvisioning(byte[] proofOfProvisioning) {
         if (this.serverUrl == null) {
             String message = "sendMessageProofOfProvisioning serverUrl is null";
-            Log.e(TAG, message);
+            logError(this, message);
             getListener().onError(message);
             return;
         }
@@ -308,7 +308,7 @@ public class UpdateCheckFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];
@@ -353,7 +353,7 @@ public class UpdateCheckFlow extends BaseFlow {
                     return CborHelper.encode(map);
                 } catch (IllegalArgumentException e) {
                     String message = "Error sending body request, error: " + e.getMessage();
-                    Log.e(TAG, message, e.fillInStackTrace());
+                    log(this, message, e.fillInStackTrace());
                     getListener().onError(message);
                 }
                 return new byte[0];
