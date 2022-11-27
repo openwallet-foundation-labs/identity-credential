@@ -1,6 +1,7 @@
 package com.android.mdl.app.provisioning;
 
-import android.util.Log;
+import static com.android.mdl.app.util.LogginExtensionsKt.log;
+import static com.android.mdl.app.util.LogginExtensionsKt.logError;
 
 import androidx.annotation.Nullable;
 
@@ -22,7 +23,6 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.MajorType;
 
 class CborRequest extends Request<DataItem> {
-    private static final String TAG = "CborRequest";
     private final Listener<DataItem> listener;
 
     /**
@@ -49,20 +49,20 @@ class CborRequest extends Request<DataItem> {
 
     @Override
     protected Response<DataItem> parseNetworkResponse(NetworkResponse response) {
-        Log.d(TAG, "response.data");
-        FormatUtil.INSTANCE.debugPrintEncodeToString(TAG, response.data);
+        log(this, "response.data", null);
+        FormatUtil.INSTANCE.debugPrintEncodeToString(response.data);
         ByteArrayInputStream inputStream = new ByteArrayInputStream(response.data);
         try {
             List<DataItem> dataItems = new CborDecoder(inputStream).decode();
             if (dataItems.size() != 1) {
                 String message = "Cbor decode error expected 1 found " + dataItems.size();
-                Log.e(TAG, message);
+                logError(this, message);
                 throw new CborException(message);
             }
             DataItem dataItem = dataItems.get(0);
             if (dataItem.getMajorType() != MajorType.MAP) {
                 String message = "Cbor decode error Map expected found " + dataItem.getMajorType();
-                Log.e(TAG, message);
+                logError(this, message);
                 throw new CborException(message);
             }
 
@@ -71,7 +71,7 @@ class CborRequest extends Request<DataItem> {
         } catch (CborException e) {
             // This should never happen so just adding to Log.
             String message = "Error decoding CBOR " + e.getMessage() + " response " + response;
-            Log.e(TAG, message, e.fillInStackTrace());
+            log(this, message, e.fillInStackTrace());
             return Response.error(new ParseError(e));
         }
     }

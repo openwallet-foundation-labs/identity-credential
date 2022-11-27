@@ -1,6 +1,5 @@
 package com.android.mdl.app.authprompt
 
-import android.util.Log
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
@@ -8,6 +7,7 @@ import androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.android.mdl.app.util.log
 
 class UserAuthPromptBuilder private constructor(private val fragment: Fragment) {
 
@@ -28,20 +28,20 @@ class UserAuthPromptBuilder private constructor(private val fragment: Fragment) 
             if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
                 onCancelled.invoke()
             } else {
-                Log.d(LOG_TAG, "User authentication failed $errorCode - $errString")
+                log("User authentication failed $errorCode - $errString")
                 onFailure.invoke()
             }
         }
 
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
             super.onAuthenticationSucceeded(result)
-            Log.d(LOG_TAG, "User authentication succeeded")
+            log("User authentication succeeded")
             onSuccess.invoke()
         }
 
         override fun onAuthenticationFailed() {
             super.onAuthenticationFailed()
-            Log.d(LOG_TAG, "User authentication failed")
+            log("User authentication failed")
             onFailure.invoke()
         }
     }
@@ -110,8 +110,6 @@ class UserAuthPromptBuilder private constructor(private val fragment: Fragment) 
     }
 
     companion object {
-        private const val LOG_TAG = "Holder-UserAuthPrompt"
-
         fun requestUserAuth(fragment: Fragment): UserAuthPromptBuilder {
             return UserAuthPromptBuilder(fragment)
         }

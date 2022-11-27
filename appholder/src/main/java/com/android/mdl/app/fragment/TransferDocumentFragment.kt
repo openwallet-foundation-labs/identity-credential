@@ -2,7 +2,6 @@ package com.android.mdl.app.fragment
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,13 +18,13 @@ import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.readerauth.SimpleReaderTrustStore
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.util.log
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 
 class TransferDocumentFragment : Fragment() {
 
     companion object {
         const val CLOSE_AFTER_SERVING_KEY = "closeAfterServing"
-        private const val LOG_TAG = "TransferDocumentFragment"
     }
 
     private var _binding: FragmentTransferDocumentBinding? = null
@@ -57,10 +56,10 @@ class TransferDocumentFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         viewModel.getTransferStatus().observe(viewLifecycleOwner) { transferStatus ->
             when (transferStatus) {
-                TransferStatus.QR_ENGAGEMENT_READY -> Log.d(LOG_TAG, "Engagement Ready")
-                TransferStatus.CONNECTED -> Log.d(LOG_TAG, "Connected")
+                TransferStatus.QR_ENGAGEMENT_READY -> log("Engagement Ready")
+                TransferStatus.CONNECTED -> log( "Connected")
                 TransferStatus.REQUEST -> onTransferRequested()
-                TransferStatus.REQUEST_SERVED -> Log.d(LOG_TAG, "Request Served")
+                TransferStatus.REQUEST_SERVED -> log("Request Served")
                 TransferStatus.DISCONNECTED -> onTransferDisconnected()
                 TransferStatus.ERROR -> onTransferError()
                 else -> {}
@@ -82,7 +81,7 @@ class TransferDocumentFragment : Fragment() {
     }
 
     private fun onTransferRequested() {
-        Log.d(LOG_TAG, "Request")
+        log("Request")
 
         try {
             val trustStore = SimpleReaderTrustStore(
@@ -146,7 +145,7 @@ class TransferDocumentFragment : Fragment() {
             }
         } catch (e: Exception) {
             val message = "On request received error: ${e.message}"
-            Log.e(LOG_TAG, message, e)
+            log(message, e)
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             binding.txtConnectionStatus.append("\n$message")
         }
@@ -166,7 +165,7 @@ class TransferDocumentFragment : Fragment() {
     }
 
     private fun onTransferDisconnected() {
-        Log.d(LOG_TAG, "Disconnected")
+        log("Disconnected")
         hideButtons()
         TransferManager.getInstance(requireContext()).disconnect()
         if (closeAfterServing) {

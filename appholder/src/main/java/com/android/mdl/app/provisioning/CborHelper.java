@@ -1,6 +1,7 @@
 package com.android.mdl.app.provisioning;
 
-import android.util.Log;
+import static com.android.mdl.app.util.LogginExtensionsKt.log;
+import static com.android.mdl.app.util.LogginExtensionsKt.logError;
 
 import androidx.annotation.NonNull;
 
@@ -24,7 +25,7 @@ class CborHelper {
             new CborEncoder(outputStream).encode(dataitem);
         } catch (CborException e) {
             String message = "CborEncode Exception: " + e.getMessage();
-            Log.e(TAG, message, e.fillInStackTrace());
+            log(TAG, message, e.fillInStackTrace());
             throw new IllegalArgumentException(message, e);
         }
         return outputStream.toByteArray();
@@ -38,19 +39,19 @@ class CborHelper {
             dataItems = new CborDecoder(inputStream).decode();
         } catch (CborException e) {
             String message = "CborDecode Exception: " + e.getMessage();
-            Log.e(TAG, message, e.fillInStackTrace());
+            log(TAG, message, e.fillInStackTrace());
             throw new IllegalArgumentException(message, e);
         }
         if (dataItems == null) {
             String message = "Error decoding " + encodeToString(encodedBytes) + " result"
                     + " in a null list";
-            Log.e(TAG, message);
+            logError(TAG, message);
             throw new IllegalArgumentException(message);
         }
         if (dataItems.size() != 1) {
             String message = "Unexpected number of items, expected 1 got "
                     + dataItems.size();
-            Log.e(TAG, message);
+            logError(TAG, message);
             throw new IllegalArgumentException(message);
         }
         return dataItems.get(0);

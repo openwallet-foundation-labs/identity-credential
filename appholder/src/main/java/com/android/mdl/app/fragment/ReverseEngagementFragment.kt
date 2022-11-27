@@ -6,54 +6,40 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.android.identity.OriginInfo
 import com.android.identity.OriginInfoQr
 import com.android.mdl.app.databinding.FragmentReverseEngagementBinding
+import com.android.mdl.app.util.log
+import com.android.mdl.app.util.logWarning
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.budiyev.android.codescanner.CodeScanner
 import com.budiyev.android.codescanner.DecodeCallback
 
-
 class ReverseEngagementFragment : Fragment() {
-    companion object {
-        private const val LOG_TAG = "ReverseEngagementFragment"
-    }
 
     private var _binding: FragmentReverseEngagementBinding? = null
-    private lateinit var vm: ShareDocumentViewModel
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
-    private val binding get() = _binding!!
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
-
     private var codeScanner: CodeScanner? = null
+
+    private val binding get() = _binding!!
+    private val vm: ShareDocumentViewModel by viewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentReverseEngagementBinding.inflate(inflater)
-        vm = ViewModelProvider(this).get(ShareDocumentViewModel::class.java)
-
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
         binding.btCancel.setOnClickListener {
             findNavController().navigate(
                 ReverseEngagementFragmentDirections.actionReverseEngagementFragmentToSelectDocumentFragment()
@@ -64,7 +50,7 @@ class ReverseEngagementFragment : Fragment() {
         codeScanner?.decodeCallback = DecodeCallback { result ->
             requireActivity().runOnUiThread {
                 val qrText = result.text
-                Log.d(LOG_TAG, "qrText: $qrText")
+                log("qrText: $qrText")
                 val uri = Uri.parse(qrText)
                 if (uri.scheme.equals("mdoc")) {
                     val originInfos = ArrayList<OriginInfo>()
@@ -74,7 +60,7 @@ class ReverseEngagementFragment : Fragment() {
                         ReverseEngagementFragmentDirections.actionReverseEngagementFragmentToTransferDocumentFragment()
                     )
                 } else {
-                    Log.w(LOG_TAG, "Ignoring QR code with scheme " + uri.scheme)
+                    logWarning("Ignoring QR code with scheme " + uri.scheme)
                 }
             }
         }
@@ -103,12 +89,8 @@ class ReverseEngagementFragment : Fragment() {
         codeScanner?.releaseResources()
     }
 
-    private val appPermissions:List<String> get() {
-        var permissions = mutableListOf(
-            Manifest.permission.CAMERA,
-        )
-        return permissions
-    }
+    private val appPermissions: List<String>
+        get() = mutableListOf(Manifest.permission.CAMERA)
 
     private fun shouldRequestPermission() {
         val permissionsNeeded = appPermissions.filter { permission ->
@@ -138,8 +120,7 @@ class ReverseEngagementFragment : Fragment() {
     private val permissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             permissions.entries.forEach {
-                Log.d(LOG_TAG, "permissionsLauncher ${it.key} = ${it.value}")
-
+                log("permissionsLauncher ${it.key} = ${it.value}")
                 // Open settings if user denied any required permission
                 if (!it.value && !shouldShowRequestPermissionRationale(it.key)) {
                     openSettings()
@@ -159,5 +140,4 @@ class ReverseEngagementFragment : Fragment() {
         super.onDestroyView()
         _binding = null
     }
-
 }

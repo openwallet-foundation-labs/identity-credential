@@ -2,7 +2,6 @@ package com.android.mdl.app.util
 
 import android.icu.text.SimpleDateFormat
 import android.icu.util.TimeZone
-import android.util.Log
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.CborException
@@ -25,21 +24,18 @@ object FormatUtil {
         return sb.toString()
     }
 
-
     private const val CHUNK_SIZE = 2048
 
-    /* Debug print */
-    fun debugPrint(tag: String, message: String) {
-        var i = 0
-        while (i < message.length) {
-            Log.d(tag, message.substring(i, min(message.length, i + CHUNK_SIZE)))
-            i += CHUNK_SIZE
+    private fun debugPrint(message: String) {
+        var index = 0
+        while (index < message.length) {
+            log(message.substring(index, min(message.length, index + CHUNK_SIZE)))
+            index += CHUNK_SIZE
         }
     }
 
-    /* Debug print */
-    fun debugPrintEncodeToString(tag: String, bytes: ByteArray) {
-        debugPrint(tag, encodeToString(bytes))
+    fun debugPrintEncodeToString(bytes: ByteArray) {
+        debugPrint(encodeToString(bytes))
     }
 
     private const val COSE_KEY_KTY = 1

@@ -14,7 +14,6 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.InputType
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.NOT_FOCUSABLE
@@ -40,6 +39,8 @@ import com.android.mdl.app.util.FormatUtil.fullDateStringToMilliseconds
 import com.android.mdl.app.util.FormatUtil.millisecondsToFullDateString
 import com.android.mdl.app.util.ProvisionInfo
 import com.android.mdl.app.util.SelfSignedDocumentData
+import com.android.mdl.app.util.log
+import com.android.mdl.app.util.logError
 import com.android.mdl.app.viewmodel.SelfSignedViewModel
 import com.google.android.material.datepicker.MaterialDatePicker
 import java.io.File
@@ -49,10 +50,6 @@ import kotlin.math.max
 import kotlin.math.min
 
 class SelfSignedDetailsFragment : Fragment() {
-
-    companion object {
-        private const val LOG_TAG = "SelfSignedDetailsFragment"
-    }
 
     private val vm: SelfSignedViewModel by viewModels()
     private val args: SelfSignedDetailsFragmentArgs by navArgs()
@@ -292,14 +289,14 @@ class SelfSignedDetailsFragment : Fragment() {
     private fun picker(id: Int, idLabel: Int) = View.OnClickListener {
         val titleText = getViewValue(idLabel)
         val dateText = getViewValue(id)
-        Log.d(LOG_TAG, "$dateText - ${fullDateStringToMilliseconds(dateText)}")
+        log("$dateText - ${fullDateStringToMilliseconds(dateText)}")
         val datePicker =
             MaterialDatePicker.Builder.datePicker()
                 .setTitleText(titleText)
                 .setSelection(fullDateStringToMilliseconds(dateText))
                 .build()
         datePicker.addOnPositiveButtonClickListener {
-            Log.d(LOG_TAG, "$it - ${millisecondsToFullDateString(it)}")
+            log("$it - ${millisecondsToFullDateString(it)}")
             setViewValue(id, millisecondsToFullDateString(it))
         }
         datePicker.show(parentFragmentManager, view?.tag?.toString())
@@ -334,7 +331,7 @@ class SelfSignedDetailsFragment : Fragment() {
             photoUri = getUriForFile(imageFile)
             takePicture.launch(photoUri)
         } catch (exception: IOException) {
-            Log.e(LOG_TAG, "Error capturing image", exception)
+            log("Error capturing image", exception)
         }
     }
 
@@ -394,7 +391,7 @@ class SelfSignedDetailsFragment : Fragment() {
     private fun setPic(rotation: Float) {
         val id = imageViewId
         if (id == null) {
-            Log.e(LOG_TAG, "No image view id, impossible to set picture")
+            logError("No image view id, impossible to set picture")
             return
         }
 

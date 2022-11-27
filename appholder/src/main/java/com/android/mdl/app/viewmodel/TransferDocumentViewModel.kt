@@ -1,7 +1,6 @@
 package com.android.mdl.app.viewmodel
 
 import android.app.Application
-import android.util.Log
 import android.view.View
 import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
@@ -19,12 +18,9 @@ import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
+import com.android.mdl.app.util.logWarning
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
-
-    companion object {
-        private const val LOG_TAG = "TransferDocumentViewModel"
-    }
 
     private val transferManager = TransferManager.getInstance(app.applicationContext)
     private val documentManager = DocumentManager.getInstance(app.applicationContext)
@@ -93,7 +89,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                     )
                 )
             } catch (e: NoSuchElementException) {
-                Log.w(LOG_TAG, "No document for docType " + requestedDocument.docType)
+                logWarning("No document for docType " + requestedDocument.docType)
             }
         }
         requestedElements.addAll(result)
@@ -117,7 +113,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                     return false
                 }
             } catch (e: NoSuchElementException) {
-                Log.w(LOG_TAG, "No requestedDocument for " + signedDocument.documentType)
+                logWarning("No requestedDocument for " + signedDocument.documentType)
             }
         }
         transferManager.sendResponse(response.generate())

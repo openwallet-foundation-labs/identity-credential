@@ -1,7 +1,6 @@
 package com.android.mdl.app.fragment
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,12 +15,10 @@ import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.provisioning.ProvisioningFlow
 import com.android.mdl.app.util.FormatUtil
+import com.android.mdl.app.util.log
+import com.android.mdl.app.util.logInfo
 
 class ProvisioningFragment : Fragment() {
-
-    companion object {
-        private const val LOG_TAG = "ProvisioningFragment"
-    }
 
     private var _binding: FragmentProvisioningBinding? = null
 
@@ -49,10 +46,7 @@ class ProvisioningFragment : Fragment() {
 
         // Check if the parameters are valid
         if (serverUrl.isBlank() || provisioningCode.isBlank()) {
-            Log.i(
-                LOG_TAG,
-                "ServerUrl: '$serverUrl' or ProvisioningCode: '$provisioningCode' is invalid"
-            )
+            logInfo("ServerUrl: '$serverUrl' or ProvisioningCode: '$provisioningCode' is invalid")
             Toast.makeText(
                 requireContext(), "Server URL and provisioning code cannot be blank.",
                 Toast.LENGTH_SHORT
@@ -108,7 +102,7 @@ class ProvisioningFragment : Fragment() {
             }
 
             override fun onMessageProvisioningResponse(docType: String, challenge: ByteArray) {
-                Log.d(LOG_TAG, "onMessageProvisioningResponse")
+                log("onMessageProvisioningResponse")
                 binding.tvStatusProvisioning.append(
                     "\n- onMessageProvisioningResponse: $${FormatUtil.encodeToString(challenge)}\n"
                 )
@@ -117,16 +111,16 @@ class ProvisioningFragment : Fragment() {
                     wc = documentManager.createCredential(document, credentialName, docType)
                     val certificateChain =
                         wc?.getCredentialKeyCertificateChain(challenge)
-                    Log.d(LOG_TAG, "sendMessageSetCertificateChain")
+                    log("sendMessageSetCertificateChain")
                     var certificateChainEncoded = byteArrayOf()
                     certificateChain?.forEach { cer ->
                         certificateChainEncoded += cer.encoded
                     }
-                    FormatUtil.debugPrintEncodeToString(LOG_TAG, certificateChainEncoded)
+                    FormatUtil.debugPrintEncodeToString(certificateChainEncoded)
 
                     provisioningFlow.sendMessageSetCertificateChain(certificateChainEncoded)
                 } catch (ex: CipherSuiteNotSupportedException) {
-                    Log.e(LOG_TAG, ex.message, ex)
+                    log(ex.message ?: "", ex)
                 }
             }
 
@@ -138,9 +132,9 @@ class ProvisioningFragment : Fragment() {
                 mUserVisibleName = visibleName
                 try {
                     proofOfProvisioning = wc?.personalize(personalizationData)
-                    Log.d(LOG_TAG, "proofOfProvisioning:")
+                    log("proofOfProvisioning:")
                     proofOfProvisioning?.let {
-                        FormatUtil.debugPrintEncodeToString(LOG_TAG, it)
+                        FormatUtil.debugPrintEncodeToString(it)
                     }
                     provisioningFlow.sendMessageProofOfProvisioning(proofOfProvisioning)
                 } catch (e: RuntimeException) {
