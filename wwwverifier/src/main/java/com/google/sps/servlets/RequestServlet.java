@@ -240,11 +240,18 @@ public class RequestServlet extends HttpServlet {
     public static Map<String, Map<String, Boolean>> createMdlItemsToRequest() {
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
         Map<String, Boolean> mdlNsItems = new HashMap<>();
-        mdlNsItems.put("family_name", true);
+        mdlNsItems.put("sex", false);
         mdlNsItems.put("portrait", false);
+        mdlNsItems.put("given_name", false);
+        mdlNsItems.put("issue_date", false);
+        mdlNsItems.put("expiry_date", false);
+        mdlNsItems.put("family_name", false);
+        mdlNsItems.put("document_number", false);
+        mdlNsItems.put("issuing_authority", false);
         mdlItemsToRequest.put(ServletConsts.MDL_NAMESPACE, mdlNsItems);
         Map<String, Boolean> aamvaNsItems = new HashMap<>();
-        aamvaNsItems.put("real_id", false);
+        aamvaNsItems.put("DHS_compliance", false);
+        aamvaNsItems.put("EDL_credential", false);
         mdlItemsToRequest.put(ServletConsts.AAMVA_NAMESPACE, aamvaNsItems);
         return mdlItemsToRequest;
     }
@@ -369,6 +376,12 @@ public class RequestServlet extends HttpServlet {
                         case "family_name":
                             nameVal = doc.getIssuerEntryString(namespace, name);
                             break;
+                        case "given_name":
+                            nameVal = doc.getIssuerEntryString(namespace, name);
+                            break;
+                        case "issuing_authority":
+                            nameVal = doc.getIssuerEntryString(namespace, name);
+                            break;
                         case "issue_date":
                             nameVal = doc.getIssuerEntryString(namespace, name);
                             break;
@@ -377,6 +390,9 @@ public class RequestServlet extends HttpServlet {
                             break;
                         case "document_number":
                             nameVal = doc.getIssuerEntryString(namespace, name);
+                            break;
+                        case "sex":
+                            nameVal = Long.toString(doc.getIssuerEntryNumber(namespace, name));
                             break;
                         default:
                             nameVal = Base64.getEncoder().encodeToString(doc.getIssuerEntryData(namespace, name));
