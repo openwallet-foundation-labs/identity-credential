@@ -309,7 +309,7 @@ public class RequestServletTest {
         Assert.assertEquals(docRequestsList.size(), 1);
         DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
         Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
-        Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey), ServletConsts.OI_QRCODE);
+        Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey), ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim());
     }
 
     @Test
@@ -326,7 +326,7 @@ public class RequestServletTest {
         RequestServlet.setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP,
             Util.cborEncode(sessionTranscript), dKey);
-        RequestServlet.setOriginInfoStatus(ServletConsts.OI_QRCODE, dKey);
+        RequestServlet.setOriginInfoStatus(ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim(), dKey);
         RequestServlet.setNumPostRequests(1, dKey);
         
         // send POST request

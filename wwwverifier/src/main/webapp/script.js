@@ -11,6 +11,7 @@ const CHECKMARK_PLACEHOLDER = '*';
 const CHECKMARK_UNICODE = '\u2705';
 const CROSS_PLACEHOLDER = '+';
 const CROSS_UNICODE = '\u274c';
+const BOLD_PLACEHOLDER = '#';
 
 var sessionID = '';
 
@@ -54,9 +55,16 @@ function getDeviceResponse() {
                 } else if (rowKey.charAt(0) == CROSS_PLACEHOLDER) {
                     rowKey = CROSS_UNICODE + rowKey.substring(1);                    
                 }
+                if (rowKey.charAt(0) == BOLD_PLACEHOLDER) {
+                    rowKey = rowKey.substring(1).bold();
+                }
                 row.insertCell(0).innerHTML = rowKey;
                 if (rowText.length == 2) {
-                    row.insertCell(1).innerHTML = rowText[1];
+                    var rowVal = rowText[1].trim();
+                    if (rowVal.charAt(0) == BOLD_PLACEHOLDER) {
+                        rowVal = rowVal.substring(1).bold();
+                    }
+                    row.insertCell(1).innerHTML = rowVal;
                 }
             }
             document.getElementById(RESPONSE_ID).append(table);

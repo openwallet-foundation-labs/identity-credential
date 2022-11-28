@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 
 // imports for key generation
 import java.security.InvalidAlgorithmParameterException;
@@ -212,7 +215,7 @@ public class RequestServlet extends HttpServlet {
                 setOriginInfoStatus(ServletConsts.OI_SUCCESS, dKey);
             }
         } else {
-            setOriginInfoStatus(ServletConsts.OI_QRCODE, dKey);
+            setOriginInfoStatus(ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim(), dKey);
         }
         setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), dKey);
 
@@ -355,23 +358,24 @@ public class RequestServlet extends HttpServlet {
                 arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Device Signed Authenticated");
             }
             arr.add("MSO");
+            DateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy");
             arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Signed: "
-                + doc.getValidityInfoSigned().toString());
+                + dateFormat.format(new Date(doc.getValidityInfoSigned().toEpochMilli())));
             arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Valid From: "
-                + doc.getValidityInfoValidFrom().toString());
+                + dateFormat.format(new Date(doc.getValidityInfoValidFrom().toEpochMilli())));
             arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Valid Until: "
-                + doc.getValidityInfoValidUntil().toString());
-            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "DeviceKey: "
-                + Base64.getEncoder().encodeToString(doc.getDeviceKey().getEncoded()));
+                + dateFormat.format(new Date(doc.getValidityInfoValidUntil().toEpochMilli())));
+            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "DeviceKey: ("
+                + Integer.toString(doc.getDeviceKey().getEncoded().length) + " bytes)");
             List<String> issuerNamespaces = doc.getIssuerNamespaces();
             for (String namespace : issuerNamespaces) {
-                arr.add("Namespace: " + namespace);
+                arr.add(ServletConsts.BOLD_PLACEHOLDER + "Namespace: " + ServletConsts.BOLD_PLACEHOLDER + namespace);
                 List<String> entryNames = doc.getIssuerEntryNames(namespace);
                 for (String name : entryNames) {
                     String nameVal = "";
                     switch (name) {
                         case "portrait":
-                            nameVal = Base64.getEncoder().encodeToString(doc.getIssuerEntryByteString(namespace, name));
+                            nameVal = "(" + Integer.toString(doc.getIssuerEntryByteString(namespace, name).length) + " bytes)";
                             break;
                         case "family_name":
                             nameVal = doc.getIssuerEntryString(namespace, name);
@@ -393,6 +397,12 @@ public class RequestServlet extends HttpServlet {
                             break;
                         case "sex":
                             nameVal = Long.toString(doc.getIssuerEntryNumber(namespace, name));
+                            break;
+                        case "DHS_compliance":
+                            nameVal = doc.getIssuerEntryString(namespace, name);
+                            break;
+                        case "EDL_credential":
+                            nameVal = doc.getIssuerEntryString(namespace, name);
                             break;
                         default:
                             nameVal = Base64.getEncoder().encodeToString(doc.getIssuerEntryData(namespace, name));

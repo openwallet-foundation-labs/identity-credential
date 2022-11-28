@@ -31,10 +31,10 @@ public class ServletConsts {
     public static final String SESSION_SEPARATOR = ",";
     public static final String CHECKMARK_PLACEHOLDER = "* ";
     public static final String CROSS_PLACEHOLDER = "+ ";
+    public static final String BOLD_PLACEHOLDER = "#";
 
     // Origin Info messages
     public static final String OI_SUCCESS = CHECKMARK_PLACEHOLDER + "OriginInfo: Referrer info matches website";
-    public static final String OI_QRCODE = CROSS_PLACEHOLDER + "OriginInfo: QR code (possible relay attack)";
     public static final String OI_FAILURE_START = CROSS_PLACEHOLDER + "OriginInfo: Referrer ";
     public static final String OI_FAILURE_END = " doesn't match website (possible relay attack)";
 
