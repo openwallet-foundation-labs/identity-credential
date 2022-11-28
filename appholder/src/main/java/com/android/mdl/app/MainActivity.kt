@@ -109,16 +109,17 @@ class MainActivity : AppCompatActivity() {
             Log.e(LOG_TAG, "No mdoc:// URI")
             return
         }
-        if (mdocReferrerUri == null) {
-            Log.e(LOG_TAG, "No referrer URI")
-            return
-        }
-
         Log.i(LOG_TAG, "uri: $mdocUri")
-        Log.i(LOG_TAG, "referrer: $mdocReferrerUri")
 
         val originInfos = ArrayList<OriginInfo>()
-        originInfos.add(OriginInfoWebsite(1, mdocReferrerUri))
+        if (mdocReferrerUri == null) {
+            Log.w(LOG_TAG, "No referrer URI")
+            // TODO: maybe bail in the future if this isn't set.
+        } else {
+            Log.i(LOG_TAG, "referrer: $mdocReferrerUri")
+            originInfos.add(OriginInfoWebsite(1, mdocReferrerUri))
+        }
+
         viewModel.startPresentationReverseEngagement(mdocUri, originInfos)
         val navController = findNavController(R.id.nav_host_fragment)
         navController.navigate(

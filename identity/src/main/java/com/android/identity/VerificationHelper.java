@@ -85,6 +85,7 @@ public class VerificationHelper {
     private List<ConnectionMethod> mReverseEngagementConnectionMethods;
     private List<DataTransport> mReverseEngagementListeningTransports;
     private int mNumReverseEngagementTransportsStillSettingUp;
+    private List<ConnectionMethod> mConnectionMethodsForReaderEngagement;
     private EngagementGenerator mReaderEngagementGenerator;
     private byte[] mReaderEngagement;
 
@@ -129,6 +130,7 @@ public class VerificationHelper {
                 mEphemeralKeyPair.getPublic(),
                 EngagementGenerator.ENGAGEMENT_VERSION_1_1);
 
+        mConnectionMethodsForReaderEngagement = new ArrayList<>();
         synchronized (helper) {
             for (DataTransport transport : mReverseEngagementListeningTransports) {
                 transport.setListener(new DataTransport.Listener() {
@@ -136,8 +138,7 @@ public class VerificationHelper {
                     public void onConnectionMethodReady() {
                         Logger.d(TAG, "onConnectionMethodReady for " + transport);
                         synchronized (helper) {
-                            mReaderEngagementGenerator.addConnectionMethod(
-                                    transport.getConnectionMethod());
+                            mConnectionMethodsForReaderEngagement.add(transport.getConnectionMethod());
                             mNumReverseEngagementTransportsStillSettingUp -= 1;
                             if (mNumReverseEngagementTransportsStillSettingUp == 0) {
                                 allReverseEngagementTransportsAreSetup();
@@ -196,6 +197,7 @@ public class VerificationHelper {
     void allReverseEngagementTransportsAreSetup() {
         Logger.d(TAG, "All reverse engagement listening transports are now set up");
 
+        mReaderEngagementGenerator.setConnectionMethods(mConnectionMethodsForReaderEngagement);
         mReaderEngagement = mReaderEngagementGenerator.generate();
         mReaderEngagementGenerator = null;
 

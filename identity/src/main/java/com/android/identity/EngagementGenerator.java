@@ -22,6 +22,7 @@ import androidx.annotation.StringDef;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.security.PublicKey;
+import java.util.List;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.builder.ArrayBuilder;
@@ -35,11 +36,9 @@ import co.nstant.in.cbor.model.UnsignedInteger;
 public final class EngagementGenerator {
     private static final String TAG = "EngagementGenerator";
     private final String mVersion;
-    private PublicKey mESenderKey;
+    final private PublicKey mESenderKey;
     private ArrayBuilder<CborBuilder> mConnectionMethodsArrayBuilder;
     private ArrayBuilder<CborBuilder> mOriginInfoArrayBuilder;
-    private int mNumConnectionMethods = 0;
-    private int mNumOriginInfos = 0;
 
     public static final String ENGAGEMENT_VERSION_1_0 = "1.0";
     public static final String ENGAGEMENT_VERSION_1_1 = "1.1";
@@ -62,34 +61,35 @@ public final class EngagementGenerator {
                                @EngagementVersion @NonNull String version) {
         mESenderKey = ESenderKey;
         mVersion = version;
-
-        mConnectionMethodsArrayBuilder = new CborBuilder().addArray();
-        mOriginInfoArrayBuilder = new CborBuilder().addArray();
     }
 
     /**
      * Adds a connection method to the engagement.
      *
-     * @param connectionMethod An instance of a type derived from {@link ConnectionMethod}.
+     * @param connectionMethods A list with instances derived from {@link ConnectionMethod}.
      * @return the generator.
      */
     public @NonNull
-    EngagementGenerator addConnectionMethod(@NonNull ConnectionMethod connectionMethod) {
-        mConnectionMethodsArrayBuilder.add(connectionMethod.toDeviceEngagement());
-        mNumConnectionMethods++;
+    EngagementGenerator setConnectionMethods(@NonNull List<ConnectionMethod> connectionMethods) {
+        mConnectionMethodsArrayBuilder = new CborBuilder().addArray();
+        for (ConnectionMethod connectionMethod : connectionMethods) {
+            mConnectionMethodsArrayBuilder.add(connectionMethod.toDeviceEngagement());
+        }
         return this;
     }
 
     /**
-     * Adds origin info to the engagement.
+     * Adds origin infos to the engagement.
      *
-     * @param originInfo An instance of a type derived from {@link OriginInfo}.
+     * @param originInfos A list with instances derived from {@link OriginInfo}.
      * @return the generator.
      */
     public @NonNull
-    EngagementGenerator addOriginInfo(@NonNull OriginInfo originInfo) {
-        mOriginInfoArrayBuilder.add(originInfo.encode());
-        mNumOriginInfos++;
+    EngagementGenerator setOriginInfos(@NonNull List<OriginInfo> originInfos) {
+        mOriginInfoArrayBuilder = new CborBuilder().addArray();
+        for (OriginInfo originInfo : originInfos) {
+            mOriginInfoArrayBuilder.add(originInfo.encode());
+        }
         return this;
     }
 
@@ -112,13 +112,12 @@ public final class EngagementGenerator {
 
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
-        // TODO: support other versions...
         map.put(0, mVersion);
         map.put(new UnsignedInteger(1), securityDataItem);
-        if (mNumConnectionMethods > 0) {
+        if (mConnectionMethodsArrayBuilder != null) {
             map.put(new UnsignedInteger(2), mConnectionMethodsArrayBuilder.end().build().get(0));
         }
-        if (mNumOriginInfos > 0) {
+        if (mOriginInfoArrayBuilder != null) {
             map.put(new UnsignedInteger(5), mOriginInfoArrayBuilder.end().build().get(0));
         }
         map.end();
