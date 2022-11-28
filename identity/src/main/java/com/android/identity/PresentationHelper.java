@@ -158,9 +158,7 @@ public class PresentationHelper {
                     EngagementGenerator generator = new EngagementGenerator(
                             mEphemeralKeyPair.getPublic(),
                             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-                    for (OriginInfo originInfo : mReverseEngagementOriginInfos) {
-                        generator.addOriginInfo(originInfo);
-                    }
+                    generator.setOriginInfos(mReverseEngagementOriginInfos);
                     mDeviceEngagement = generator.generate();
 
                     // 18013-7 says to use ReaderEngagementBytes for Handover when ReaderEngagement
@@ -176,7 +174,7 @@ public class PresentationHelper {
                     byte[] messageData = Util.cborEncode(builder.build().get(0));
 
                     if (Logger.isDebugEnabled()) {
-                        Util.dumpHex(TAG, "DeviceEngagement for reverse engagement", messageData);
+                        Util.dumpHex(TAG, "MessageData for reverse engagement", messageData);
                     }
                     mTransport.sendMessage(messageData);
                 } else {

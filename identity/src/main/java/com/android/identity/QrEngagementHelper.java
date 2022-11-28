@@ -235,9 +235,7 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
         EngagementGenerator engagementGenerator =
                 new EngagementGenerator(mEphemeralKeyPair.getPublic(),
                         EngagementGenerator.ENGAGEMENT_VERSION_1_0);
-        for (ConnectionMethod cm : mConnectionMethods) {
-            engagementGenerator.addConnectionMethod(cm);
-        }
+        engagementGenerator.setConnectionMethods(mConnectionMethods);
         mEncodedDeviceEngagement = engagementGenerator.generate();
         mEncodedHandover = Util.cborEncode(SimpleValue.NULL);
         if (Logger.isDebugEnabled()) {

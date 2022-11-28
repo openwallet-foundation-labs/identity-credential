@@ -29,6 +29,8 @@ import org.junit.Test;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.spec.ECGenParameterSpec;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class EngagementGeneratorTest {
@@ -64,8 +66,12 @@ public class EngagementGeneratorTest {
 
         EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
                 ENGAGEMENT_VERSION_1_1);
-        eg.addConnectionMethod(new ConnectionMethodHttp("http://www.example.com/verifier/123"));
-        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "http://www.example.com/verifier"));
+        List<ConnectionMethod> connectionMethods = new ArrayList<>();
+        connectionMethods.add(new ConnectionMethodHttp("http://www.example.com/verifier/123"));
+        eg.setConnectionMethods(connectionMethods);
+        List<OriginInfo> originInfos = new ArrayList<>();
+        originInfos.add(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "http://www.example.com/verifier"));
+        eg.setOriginInfos(originInfos);
         byte[] encodedEngagement = eg.generate();
 
         EngagementParser parser = new EngagementParser(encodedEngagement);
@@ -92,11 +98,13 @@ public class EngagementGeneratorTest {
         UUID uuid = UUID.randomUUID();
         EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
                 ENGAGEMENT_VERSION_1_0);
-        eg.addConnectionMethod(new ConnectionMethodBle(
+        List<ConnectionMethod> connectionMethods = new ArrayList<>();
+        connectionMethods.add(new ConnectionMethodBle(
                 false,
                 true,
                 null,
                 uuid));
+        eg.setConnectionMethods(connectionMethods);
         byte[] encodedEngagement = eg.generate();
 
         EngagementParser parser = new EngagementParser(encodedEngagement);
