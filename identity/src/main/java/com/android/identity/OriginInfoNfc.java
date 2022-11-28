@@ -29,6 +29,7 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Number;
 import co.nstant.in.cbor.model.SimpleValue;
 import co.nstant.in.cbor.model.SimpleValueType;
+import co.nstant.in.cbor.model.UnicodeString;
 
 public class OriginInfoNfc extends OriginInfo {
     private static final String TAG = "OriginInfoNfc";
@@ -55,32 +56,21 @@ public class OriginInfoNfc extends OriginInfo {
     @Override
     DataItem encode() {
         return new CborBuilder()
-                .addArray()
-                .add(mCat)
-                .add(TYPE)
-                .add(SimpleValue.NULL)
+                .addMap()
+                .put("cat", mCat)
+                .put("type", TYPE)
+                .put(new UnicodeString("Details"), SimpleValue.NULL)
                 .end()
                 .build().get(0);
     }
 
     @Nullable
     static OriginInfoNfc decode(@NonNull DataItem oiDataItem) {
-        if (!(oiDataItem instanceof co.nstant.in.cbor.model.Array)) {
-            throw new IllegalArgumentException("Top-level CBOR is not an array");
+        if (!(oiDataItem instanceof co.nstant.in.cbor.model.Map)) {
+            throw new IllegalArgumentException("Top-level CBOR is not an map");
         }
-        List<DataItem> items = ((Array) oiDataItem).getDataItems();
-        if (items.size() != 3) {
-            throw new IllegalArgumentException("Expected array with 3 elements, got " + items.size());
-        }
-        if (!(items.get(0) instanceof Number) || !(items.get(1) instanceof Number)) {
-            throw new IllegalArgumentException("First two items are not numbers");
-        }
-        if (!(items.get(2) instanceof SimpleValue) ||
-                ((SimpleValue) items.get(2)).getSimpleValueType() != SimpleValueType.NULL) {
-            throw new IllegalArgumentException("Details is not a NULL value");
-        }
-        long cat = ((Number) items.get(0)).getValue().longValue();
-        long type = ((Number) items.get(1)).getValue().longValue();
+        long cat = Util.cborMapExtractNumber(oiDataItem, "cat");
+        long type = Util.cborMapExtractNumber(oiDataItem, "type");
         if (type != TYPE) {
             Log.w(TAG, "Unexpected type " + type);
             return null;

@@ -28,7 +28,11 @@ public class OriginInfoTest {
         OriginInfoQr info = new OriginInfoQr(OriginInfo.CAT_RECEIVE);
         OriginInfoQr decoded = info.decode(info.encode());
         Assert.assertEquals(OriginInfo.CAT_RECEIVE, decoded.getCat());
-        Assert.assertEquals("[1, 2, null]", Util.cborPrettyPrint(info.encode()));
+        Assert.assertEquals("{\n" +
+                "  'cat' : 1,\n" +
+                "  'type' : 2,\n" +
+                "  'Details' : null\n" +
+                "}", Util.cborPrettyPrint(info.encode()));
     }
 
     @Test
@@ -37,7 +41,11 @@ public class OriginInfoTest {
         OriginInfoQr info = new OriginInfoQr(OriginInfo.CAT_DELIVERY);
         OriginInfoQr decoded = info.decode(info.encode());
         Assert.assertEquals(OriginInfo.CAT_DELIVERY, decoded.getCat());
-        Assert.assertEquals("[0, 2, null]", Util.cborPrettyPrint(info.encode()));
+        Assert.assertEquals("{\n" +
+                "  'cat' : 0,\n" +
+                "  'type' : 2,\n" +
+                "  'Details' : null\n" +
+                "}", Util.cborPrettyPrint(info.encode()));
     }
 
     @Test
@@ -46,7 +54,11 @@ public class OriginInfoTest {
         OriginInfoNfc info = new OriginInfoNfc(OriginInfo.CAT_RECEIVE);
         OriginInfoNfc decoded = info.decode(info.encode());
         Assert.assertEquals(OriginInfo.CAT_RECEIVE, decoded.getCat());
-        Assert.assertEquals("[1, 3, null]", Util.cborPrettyPrint(info.encode()));
+        Assert.assertEquals("{\n" +
+                "  'cat' : 1,\n" +
+                "  'type' : 3,\n" +
+                "  'Details' : null\n" +
+                "}", Util.cborPrettyPrint(info.encode()));
     }
 
     @Test
@@ -55,39 +67,42 @@ public class OriginInfoTest {
         OriginInfoNfc info = new OriginInfoNfc(OriginInfo.CAT_DELIVERY);
         OriginInfoNfc decoded = info.decode(info.encode());
         Assert.assertEquals(OriginInfo.CAT_DELIVERY, decoded.getCat());
-        Assert.assertEquals("[0, 3, null]", Util.cborPrettyPrint(info.encode()));
+        Assert.assertEquals("{\n" +
+                "  'cat' : 0,\n" +
+                "  'type' : 3,\n" +
+                "  'Details' : null\n" +
+                "}", Util.cborPrettyPrint(info.encode()));
     }
 
     @Test
     @SmallTest
     public void testOriginInfoWebsite() {
-        OriginInfoWebsite info = new OriginInfoWebsite(OriginInfo.CAT_RECEIVE, "foo.com/bar");
+        OriginInfoWebsite info = new OriginInfoWebsite(OriginInfo.CAT_RECEIVE, "https://foo.com/bar");
         OriginInfoWebsite decoded = info.decode(info.encode());
         Assert.assertEquals(OriginInfo.CAT_RECEIVE, decoded.getCat());
-        Assert.assertEquals("foo.com/bar", decoded.getBaseUrl());
-        Assert.assertEquals("[\n" +
-                "  1,\n" +
-                "  1,\n" +
-                "  {\n" +
-                "    'baseUrl' : 'foo.com/bar'\n" +
+        Assert.assertEquals("https://foo.com/bar", decoded.getBaseUrl());
+        Assert.assertEquals("{\n" +
+                "  'cat' : 1,\n" +
+                "  'type' : 1,\n" +
+                "  'Details' : {\n" +
+                "    'baseUrl' : 'https://foo.com/bar'\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(info.encode()));
+                "}", Util.cborPrettyPrint(info.encode()));
     }
 
     @Test
     @SmallTest
     public void testOriginInfoWebsiteDelivery() {
-        OriginInfoWebsite info = new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "foo.com/baz");
+        OriginInfoWebsite info = new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "https://foo.com/baz");
         OriginInfoWebsite decoded = info.decode(info.encode());
         Assert.assertEquals(OriginInfo.CAT_DELIVERY, decoded.getCat());
-        Assert.assertEquals("foo.com/baz", decoded.getBaseUrl());
-        Assert.assertEquals("[\n" +
-                "  0,\n" +
-                "  1,\n" +
-                "  {\n" +
-                "    'baseUrl' : 'foo.com/baz'\n" +
+        Assert.assertEquals("{\n" +
+                "  'cat' : 0,\n" +
+                "  'type' : 1,\n" +
+                "  'Details' : {\n" +
+                "    'baseUrl' : 'https://foo.com/baz'\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(info.encode()));
+                "}", Util.cborPrettyPrint(info.encode()));
     }
 
 }
