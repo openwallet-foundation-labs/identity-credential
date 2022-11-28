@@ -244,7 +244,7 @@ public class DataTransportHttp extends DataTransport {
         CborRequest request = new CborRequest(Request.Method.POST,
                 mConnectionMethod.getUri(),
                 data,
-                "application/CBOR",
+                "application/cbor",
                 new Response.Listener<byte[]>() {
                     @Override
                     public void onResponse(byte[] response) {
@@ -310,13 +310,13 @@ public class DataTransportHttp extends DataTransport {
                         if (isListener) {
                             os.write(("HTTP/1.1 200 OK\r\n"
                                     + "Content-Length: " + messageToSend.length + "\r\n"
-                                    + "Content-Type: application/CBOR\r\n"
+                                    + "Content-Type: application/cbor\r\n"
                                     + "\r\n").getBytes(UTF_8));
                         } else {
                             os.write(("POST " + mPath + " HTTP/1.1\r\n"
                                     + "Host: " + mHost + "\r\n"
                                     + "Content-Length: " + messageToSend.length + "\r\n"
-                                    + "Content-Type: application/CBOR\r\n"
+                                    + "Content-Type: application/cbor\r\n"
                                     + "\r\n").getBytes(UTF_8));
                         }
                         os.write(messageToSend);

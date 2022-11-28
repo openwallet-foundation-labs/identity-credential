@@ -60,10 +60,10 @@ public class OriginInfoWebsite extends OriginInfo {
     @Override
     DataItem encode() {
         return new CborBuilder()
-                .addArray()
-                .add(mCat)
-                .add(TYPE)
                 .addMap()
+                .put("cat", mCat)
+                .put("type", TYPE)
+                .putMap("Details")
                 .put("baseUrl", mBaseUrl)
                 .end()
                 .end()
@@ -72,22 +72,15 @@ public class OriginInfoWebsite extends OriginInfo {
 
     @Nullable
     static OriginInfoWebsite decode(@NonNull DataItem oiDataItem) {
-        if (!(oiDataItem instanceof co.nstant.in.cbor.model.Array)) {
-            throw new IllegalArgumentException("Top-level CBOR is not an array");
+        if (!(oiDataItem instanceof Map)) {
+            throw new IllegalArgumentException("Top-level CBOR is not an map");
         }
-        List<DataItem> items = ((Array) oiDataItem).getDataItems();
-        if (items.size() != 3) {
-            throw new IllegalArgumentException("Expected array with 3 elements, got " + items.size());
-        }
-        if (!(items.get(0) instanceof Number) || !(items.get(1) instanceof Number)) {
-            throw new IllegalArgumentException("First two items are not numbers");
-        }
-        if (!(items.get(2) instanceof Map)) {
+        long cat = Util.cborMapExtractNumber(oiDataItem, "cat");
+        long type = Util.cborMapExtractNumber(oiDataItem, "type");
+        DataItem details = Util.cborMapExtractMap(oiDataItem, "Details");
+        if (!(details instanceof Map)) {
             throw new IllegalArgumentException("Details is not a map");
         }
-        Map details = (Map) items.get(2);
-        long cat = ((Number) items.get(0)).getValue().longValue();
-        long type = ((Number) items.get(1)).getValue().longValue();
         String baseUrl = Util.cborMapExtractString(details, "baseUrl");
         if (type != TYPE) {
             Log.w(TAG, "Unexpected type " + type);

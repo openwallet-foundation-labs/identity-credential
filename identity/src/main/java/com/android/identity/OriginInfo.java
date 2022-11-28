@@ -56,18 +56,10 @@ public abstract class OriginInfo {
 
     static @Nullable
     OriginInfo decode(@NonNull DataItem oiDataItem) {
-        if (!(oiDataItem instanceof co.nstant.in.cbor.model.Array)) {
-            throw new IllegalArgumentException("Top-level CBOR is not an array");
+        if (!(oiDataItem instanceof co.nstant.in.cbor.model.Map)) {
+            throw new IllegalArgumentException("Top-level CBOR is not a Map");
         }
-        List<DataItem> items = ((Array) oiDataItem).getDataItems();
-        if (items.size() != 3) {
-            throw new IllegalArgumentException("Expected array with 3 elements, got " + items.size());
-        }
-        if (!(items.get(0) instanceof Number) || !(items.get(1) instanceof Number)) {
-            throw new IllegalArgumentException("First two items are not numbers");
-        }
-        long cat = ((Number) items.get(0)).getValue().longValue();
-        long type = ((Number) items.get(1)).getValue().longValue();
+        long type = Util.cborMapExtractNumber(oiDataItem, "type");
         switch ((int) type) {
             case OriginInfoQr.TYPE:
                 return OriginInfoQr.decode(oiDataItem);
