@@ -41,5 +41,5 @@ public class ServletConsts {
     // constants for device request generation
     public static String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
     public static String MDL_NAMESPACE = "org.iso.18013.5.1";
-    public static String AAMVA_NAMESPACE = "org.aamva.18013.5.1";
+    public static String AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva";
 }
