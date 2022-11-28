@@ -17,6 +17,7 @@ import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.readerauth.SimpleReaderTrustStore
 import com.android.mdl.app.transfer.TransferManager
+import com.android.mdl.app.util.PreferencesHelper
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.util.log
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
@@ -31,7 +32,9 @@ class TransferDocumentFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: TransferDocumentViewModel by activityViewModels()
-    private val closeAfterServing by lazy { arguments?.getBoolean("closeAfterServing", false) ?: false }
+    private val closeAfterServing by lazy {
+        arguments?.getBoolean("closeAfterServing", false) ?: false
+    }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -57,9 +60,9 @@ class TransferDocumentFragment : Fragment() {
         viewModel.getTransferStatus().observe(viewLifecycleOwner) { transferStatus ->
             when (transferStatus) {
                 TransferStatus.QR_ENGAGEMENT_READY -> log("Engagement Ready")
-                TransferStatus.CONNECTED -> log( "Connected")
+                TransferStatus.CONNECTED -> log("Connected")
                 TransferStatus.REQUEST -> onTransferRequested()
-                TransferStatus.REQUEST_SERVED -> log("Request Served")
+                TransferStatus.REQUEST_SERVED -> onRequestServed()
                 TransferStatus.DISCONNECTED -> onTransferDisconnected()
                 TransferStatus.ERROR -> onTransferError()
                 else -> {}
@@ -77,6 +80,16 @@ class TransferDocumentFragment : Fragment() {
                 onDone()
                 findNavController().navigateUp()
             }
+        }
+    }
+
+    private fun onRequestServed() {
+        log("Request Served")
+        if (PreferencesHelper.isConnectionAutoCloseEnabled()) {
+            onCloseConnection(
+                sendSessionTerminationMessage = true,
+                useTransportSpecificSessionTermination = false
+            )
         }
     }
 
