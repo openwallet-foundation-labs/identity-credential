@@ -132,8 +132,11 @@ class NfcEngagementHandler : HostApduService() {
             nfcApduRouter,
             nfcEngagementListener,
             applicationContext.mainExecutor())
-        builder.useStaticHandover(connectionSetup.getConnectionMethods())
-        //builder.useNegotiatedHandover()
+        if (PreferencesHelper.shouldUseStaticHandover()) {
+            builder.useStaticHandover(connectionSetup.getConnectionMethods())
+        } else {
+            builder.useNegotiatedHandover()
+        }
         engagementHelper = builder.build()
     }
 
