@@ -65,10 +65,11 @@ public abstract class ConnectionMethod {
      * Creates Carrier Reference and Auxiliary Data Reference records.
      *
      * <p>If this is to be included in a Handover Select method, pass <code>{"mdoc"}</code>
-     * for <code>auxilliaryReferences</code>.
+     * for <code>auxiliaryReferences</code>.
      *
      * @param auxiliaryReferences A list of references to include in the Alternative Carrier Record
-     * @return
+     * @return <code>null</code> if the connection method doesn't support NFC handover, otherwise
+     *         the NDEF record and the Alternative Carrier record.
      */
     abstract @Nullable
     Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences);
