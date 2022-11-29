@@ -132,7 +132,8 @@ public class RequestServlet extends HttpServlet {
         Entity entity = getEntity(dKey);
         if (entity.hasProperty(ServletConsts.DEV_RESPONSE_PROP)) {
             Text deviceResponse = (Text) entity.getProperty(ServletConsts.DEV_RESPONSE_PROP);
-            return deviceResponse.getValue();
+            String responseText = deviceResponse.getValue();
+            return responseText.replaceAll("\\\\u0027", "'"); // render apostrophe
         }
         return new String();
     } 
