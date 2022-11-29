@@ -100,7 +100,7 @@ object PreferencesHelper {
     }
 
     fun isConnectionAutoCloseEnabled(): Boolean {
-        return sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, true)
+        return sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, false)
     }
 
     fun setConnectionAutoCloseEnabled(enabled: Boolean) {

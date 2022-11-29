@@ -42,7 +42,7 @@ class DocumentManager private constructor(private val context: Context) {
     )
 
     init {
-        PreferencesHelper.setHardwareBacked(true)
+        PreferencesHelper.setHardwareBacked(false)
     }
 
     fun getDocuments(): Collection<Document> = runBlocking {
