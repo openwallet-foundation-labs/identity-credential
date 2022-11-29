@@ -119,7 +119,6 @@ class NfcEngagementHandler : HostApduService() {
     }
 
     override fun onCreate() {
-        log("onCreate:")
         super.onCreate()
         session = SessionSetup(CredentialStore(applicationContext)).createSession()
         communication = Communication.getInstance(applicationContext)
