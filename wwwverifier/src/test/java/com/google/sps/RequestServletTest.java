@@ -4,8 +4,6 @@ import static org.mockito.Mockito.doReturn;
 
 // imports for CBOR encoding/decoding
 import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.CborDecoder;
-import co.nstant.in.cbor.CborException;
 import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
@@ -78,6 +76,7 @@ public class RequestServletTest {
 
     private RequestServlet servlet;
     private StringWriter stringWriter;
+    private ByteArrayOutputStream byteWriter;
 
     private final LocalServiceTestHelper helper =
         new LocalServiceTestHelper(new LocalDatastoreServiceTestConfig());
@@ -110,18 +109,10 @@ public class RequestServletTest {
         helper.tearDown();
     }
 
-    public void setUpWriter() throws IOException {
-        stringWriter = new StringWriter();
-        PrintWriter writer = new PrintWriter(stringWriter);
-        Mockito.when(response.getWriter()).thenReturn(writer);
-    }
-
     @Test
     public void checkSessionCreation() throws IOException {
-        setUpWriter();
-        doReturn("/" + ServletConsts.SESSION_URL).when(request).getPathInfo();
-
-        servlet.doGet(request, response);
+        setUpStringWriter();
+        sendGetNewSessionRequest();
 
         String[] response = stringWriter.toString().split(ServletConsts.SESSION_SEPARATOR);
         Assert.assertTrue(response.length == 2);
@@ -133,9 +124,8 @@ public class RequestServletTest {
             ServletConsts.MDOC_PREFIX);
         String readerEngagement = generatedMdocUri.substring(ServletConsts.MDOC_PREFIX.length());
         String readerEngagementEdited = readerEngagement.replace("\n","");
-        EngagementParser parser =
-            new EngagementParser(Base64.getUrlDecoder().decode(readerEngagementEdited));
-        EngagementParser.Engagement engagement = parser.parse();
+        EngagementParser.Engagement engagement =
+            new EngagementParser(Base64.getUrlDecoder().decode(readerEngagementEdited)).parse();
         Assert.assertEquals(engagement.getVersion(), EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         List<ConnectionMethod> connectionMethods = engagement.getConnectionMethods();
         Assert.assertEquals(connectionMethods.size(), 1);
@@ -147,37 +137,33 @@ public class RequestServletTest {
 
     @Test
     public void checkEmptyDeviceResponseMessage() throws IOException {
-        setUpWriter();
-        String dKeyStr = RequestServlet.createNewSession().split(",")[1];
-        doReturn("/" + ServletConsts.RESPONSE_URL + "/" + dKeyStr).when(request).getPathInfo();
-        servlet.doGet(request, response);
+        setUpStringWriter();
+        String dKeyStr = createSessionKey();
+        sendGetDeviceResponseRequest(dKeyStr);
         String responseStr = stringWriter.toString().trim();
         Assert.assertTrue(responseStr.isEmpty());
     }
 
     @Test
     public void checkNonEmptyDeviceResponseMessage() throws IOException {
-        setUpWriter();
+        setUpStringWriter();
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
-        String dKeyStr = RequestServlet.createNewSession().split(",")[1];
+        String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
         Entity entity = RequestServlet.getEntity(dKey);
         String deviceResponseMessage = "Sample Device Response";
         entity.setProperty(ServletConsts.DEV_RESPONSE_PROP, new Text(deviceResponseMessage));
         datastore.put(entity);
   
-        doReturn("/" + ServletConsts.RESPONSE_URL + "/" + dKeyStr).when(request).getPathInfo();
-        servlet.doGet(request, response);
+        sendGetDeviceResponseRequest(dKeyStr);
         String responseStr = stringWriter.toString().trim();
         Assert.assertEquals(responseStr, deviceResponseMessage);
     }
 
     @Test
     public void checkDeviceRequestGenerationWithWrongOriginInfo() throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ServletOutputStream os = createMockOutputStream(baos);
-        Mockito.when(response.getOutputStream()).thenReturn(os);
-        String dKeyStr = RequestServlet.createNewSession().split(",")[1];
+        setUpByteWriter();
+        String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
@@ -191,16 +177,11 @@ public class RequestServletTest {
         String fakeBaseUrl = "https://fake-mdoc-reader.appspot.com/";
         eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, fakeBaseUrl));
         byte[] encodedDeviceEngagement = eg.generate();
-        byte[] messageDataBytes = createMockMessageData(ServletConsts.DEV_ENGAGEMENT_KEY, encodedDeviceEngagement);
-        ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(messageDataBytes));
+        byte[] messageDataBytes = createMockMessageData(encodedDeviceEngagement);
 
-        // POST request
-        doReturn(messageDataBytes.length).when(request).getContentLength();
-        doReturn(sis).when(request).getInputStream();
-        doReturn("/" + dKeyStr).when(request).getPathInfo();
-        servlet.doPost(request, response);
+        sendPostRequest(messageDataBytes, dKeyStr);
 
-        byte[] sessionData = baos.toByteArray();
+        byte[] sessionData = byteWriter.toByteArray();
 
         // parse sessionData to extract DeviceRequest
         byte[] generatedTranscript = RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
@@ -223,10 +204,8 @@ public class RequestServletTest {
 
     @Test
     public void checkDeviceRequestGenerationWithCorrectOriginInfo() throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ServletOutputStream os = createMockOutputStream(baos);
-        Mockito.when(response.getOutputStream()).thenReturn(os);
-        String dKeyStr = RequestServlet.createNewSession().split(",")[1];
+        setUpByteWriter();
+        String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
@@ -239,16 +218,11 @@ public class RequestServletTest {
         eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
         eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.BASE_URL));
         byte[] encodedDeviceEngagement = eg.generate();
-        byte[] messageDataBytes = createMockMessageData(ServletConsts.DEV_ENGAGEMENT_KEY, encodedDeviceEngagement);
-        ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(messageDataBytes));
+        byte[] messageDataBytes = createMockMessageData(encodedDeviceEngagement);
 
-        // POST request
-        doReturn(messageDataBytes.length).when(request).getContentLength();
-        doReturn(sis).when(request).getInputStream();
-        doReturn("/" + dKeyStr).when(request).getPathInfo();
-        servlet.doPost(request, response);
+        sendPostRequest(messageDataBytes, dKeyStr);
 
-        byte[] sessionData = baos.toByteArray();
+        byte[] sessionData = byteWriter.toByteArray();
 
         // parse sessionData to extract DeviceRequest
         byte[] generatedTranscript = RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
@@ -269,10 +243,8 @@ public class RequestServletTest {
 
     @Test
     public void checkDeviceRequestGenerationWithTestVector() throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ServletOutputStream os = createMockOutputStream(baos);
-        Mockito.when(response.getOutputStream()).thenReturn(os);
-        String dKeyStr = RequestServlet.createNewSession().split(",")[1];
+        setUpByteWriter();
+        String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
@@ -282,18 +254,11 @@ public class RequestServletTest {
 
         // construct messageData (containing Device Engagement)
         DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
-        byte[] messageDataBytes =
-            createMockMessageData(ServletConsts.DEV_ENGAGEMENT_KEY,
-                ((ByteString) deviceEngagementBytes).getBytes());
-        ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(messageDataBytes));
+        byte[] messageDataBytes = createMockMessageData(((ByteString) deviceEngagementBytes).getBytes());
 
-        // POST request
-        doReturn(messageDataBytes.length).when(request).getContentLength();
-        doReturn(sis).when(request).getInputStream();
-        doReturn("/" + dKeyStr).when(request).getPathInfo();
-        servlet.doPost(request, response);
+        sendPostRequest(messageDataBytes, dKeyStr);
 
-        byte[] sessionData = baos.toByteArray();
+        byte[] sessionData = byteWriter.toByteArray();
 
         // parse sessionData to extract DeviceRequest
         byte[] generatedTranscript = RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
@@ -314,31 +279,23 @@ public class RequestServletTest {
 
     @Test
     public void checkDeviceResponseParsingWithTestVector() throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ServletOutputStream os = createMockOutputStream(baos);
-        Mockito.when(response.getOutputStream()).thenReturn(os);
-        String dKeyStr = RequestServlet.createNewSession().split(",")[1];
+        setUpByteWriter();
+        String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
         
         // put items in Datastore
         RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP,
-            Util.cborEncode(sessionTranscript), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP, Util.cborEncode(sessionTranscript), dKey);
         RequestServlet.setOriginInfoStatus(ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim(), dKey);
         RequestServlet.setNumPostRequests(1, dKey);
         
-        // send POST request
         byte[] sessionData = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA);
-        ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(sessionData));
-        doReturn(sessionData.length).when(request).getContentLength();
-        doReturn(sis).when(request).getInputStream();
-        doReturn("/" + dKeyStr).when(request).getPathInfo();
-        servlet.doPost(request, response);
+        sendPostRequest(sessionData, dKeyStr);
 
         // process response
-        byte[] responseMessage = baos.toByteArray();
+        byte[] responseMessage = byteWriter.toByteArray();
         SessionEncryptionDevice sed =
             new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, Util.cborEncode(sessionTranscript));
         Map.Entry<byte[], OptionalLong> responseMessageDecrypted = sed.decryptMessageFromReader(responseMessage);
@@ -348,15 +305,81 @@ public class RequestServletTest {
         Assert.assertTrue(devResponseJSON.length() > 0);
     }
 
-    public byte[] createMockMessageData(String name, byte[] data) {
+    /**
+     * @param deviceEngagementBytes CBOR encoded Device Engagement data
+     * @return CBOR encoded MessageData message, containing Device Engagement
+     */
+    private byte[] createMockMessageData(byte[] deviceEngagementBytes) {
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
-        map.put(name, data);
+        map.put(ServletConsts.DEV_ENGAGEMENT_KEY, deviceEngagementBytes);
         map.end();
         return Util.cborEncode(builder.build().get(0));
     }
 
-    public ServletInputStream createMockInputStream(ByteArrayInputStream bais) {
+    /**
+     * Sends a mock POST request, containing either a MessageData message or
+     * a DeviceResponse message
+     * 
+     * @param data Data that should be sent through the request as a stream of bytes
+     * @param sessionKey Unique identifier corresponding to the current session
+     */
+    private void sendPostRequest(byte[] data, String sessionKey) throws IOException {
+        ServletInputStream sis = createMockInputStream(new ByteArrayInputStream(data));
+        doReturn(data.length).when(request).getContentLength();
+        doReturn(sis).when(request).getInputStream();
+        doReturn("/" + sessionKey).when(request).getPathInfo();
+        servlet.doPost(request, response);
+    }
+
+    /**
+     * Sends a mock GET request to obtain the parsed DeviceResponse message tied to
+     * {@ sessionKey}, if it exists
+     * 
+     * @param sessionKey Unique identifier corresponding to the current session
+     */
+    private void sendGetDeviceResponseRequest(String sessionKey) throws IOException {
+        doReturn("/" + ServletConsts.RESPONSE_URL + "/" + sessionKey).when(request).getPathInfo();
+        servlet.doGet(request, response);
+    }
+
+    /**
+     * Sends a mock GET request to create a new session
+     */
+    private void sendGetNewSessionRequest() throws IOException {
+        doReturn("/" + ServletConsts.SESSION_URL).when(request).getPathInfo();
+        servlet.doGet(request, response);
+    }
+
+    /**
+     * Creates a new session, and returns a unique identifier associated with it
+     */
+    private String createSessionKey() {
+        return RequestServlet.createNewSession().split(",")[1];
+    }
+
+    /**
+     * Sets up an output stream of bytes to be written into via {@ response}
+     */
+    private void setUpByteWriter() throws IOException {
+        byteWriter = new ByteArrayOutputStream();
+        ServletOutputStream os = createMockOutputStream(byteWriter);
+        Mockito.when(response.getOutputStream()).thenReturn(os);
+    }
+
+    /**
+     * Sets up a character stream to be written into via {@ response}
+     */
+    private void setUpStringWriter() throws IOException {
+        stringWriter = new StringWriter();
+        PrintWriter writer = new PrintWriter(stringWriter);
+        Mockito.when(response.getWriter()).thenReturn(writer);
+    }
+
+    /**
+     * Helper method that converts a ByteArrayInputStream object to a ServletInputStream object
+     */
+    private ServletInputStream createMockInputStream(ByteArrayInputStream bais) {
         return new ServletInputStream() {
             private ReadListener readListener = null;
     
@@ -382,7 +405,10 @@ public class RequestServletTest {
         };
     }
 
-    public ServletOutputStream createMockOutputStream(ByteArrayOutputStream baos) {
+    /**
+     * Helper method that converts a ByteArrayOutputStream object to a ServletOutputStream object
+     */
+    private ServletOutputStream createMockOutputStream(ByteArrayOutputStream baos) {
         return new ServletOutputStream() {
             private WriteListener writeListener = null;
 
