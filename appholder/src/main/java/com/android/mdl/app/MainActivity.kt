@@ -4,9 +4,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
 import android.nfc.NfcAdapter
-import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager.LayoutParams.*
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.os.bundleOf
@@ -39,7 +37,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        showWhenLockedAndTurnScreenOn()
         super.onCreate(savedInstanceState)
         val color = SurfaceColors.SURFACE_2.getColor(this)
         window.statusBarColor = color
@@ -65,15 +62,6 @@ class MainActivity : AppCompatActivity() {
     private fun setupDrawerLayout() {
         binding.nvSideDrawer.setupWithNavController(navController)
         setupActionBarWithNavController(this, navController, binding.dlMainDrawer)
-    }
-
-    private fun showWhenLockedAndTurnScreenOn() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        } else {
-            window.addFlags(FLAG_SHOW_WHEN_LOCKED or FLAG_TURN_SCREEN_ON)
-        }
     }
 
     override fun onResume() {
