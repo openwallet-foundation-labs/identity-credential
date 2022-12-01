@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.Color.BLACK
 import android.graphics.Color.WHITE
 import android.nfc.cardemulation.HostApduService
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import androidx.biometric.BiometricPrompt
@@ -19,11 +20,7 @@ import com.android.mdl.app.documentdata.RequestMdl
 import com.android.mdl.app.documentdata.RequestMicovAtt
 import com.android.mdl.app.documentdata.RequestMicovVtr
 import com.android.mdl.app.documentdata.RequestMvr
-import com.android.mdl.app.util.DocumentData
-import com.android.mdl.app.util.FormatUtil
-import com.android.mdl.app.util.PreferencesHelper
-import com.android.mdl.app.util.TransferStatus
-import com.android.mdl.app.util.log
+import com.android.mdl.app.util.*
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.WriterException
@@ -33,6 +30,8 @@ import java.util.*
 class TransferManager private constructor(private val context: Context) {
 
     companion object {
+        private const val LOG_TAG = "TransferManager"
+
         @SuppressLint("StaticFieldLeak")
         @Volatile
         private var instance: TransferManager? = null
@@ -193,37 +192,42 @@ class TransferManager private constructor(private val context: Context) {
                 credentialDataRequestBuilder.setReaderSignature(readerAuth)
                 credentialDataRequestBuilder.setRequestMessage(requestMessage)
             }
-            it.getCredentialData(
-                credentialName,
-                credentialDataRequestBuilder.build()
-            )?.let { c ->
-                try {
-                    if (c.deviceSignedEntries.isUserAuthenticationNeeded ||
-                        c.issuerSignedEntries.isUserAuthenticationNeeded
-                    ) {
-                        return true
-                    }
-                    val staticAuthData: ByteArray = c.staticAuthenticationData
-                    val (first1, second1) = Utility.decodeStaticAuthData(staticAuthData)
+            try {
+                it.getCredentialData(
+                    credentialName,
+                    credentialDataRequestBuilder.build()
+                )?.let { c ->
+                    try {
+                        if (c.deviceSignedEntries.isUserAuthenticationNeeded ||
+                            c.issuerSignedEntries.isUserAuthenticationNeeded
+                        ) {
+                            return true
+                        }
+                        val staticAuthData: ByteArray = c.staticAuthenticationData
+                        val (first1, second1) = Utility.decodeStaticAuthData(staticAuthData)
 
-                    log("StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
-                    response.addDocument(
-                        docType,
-                        c,
-                        first1,
-                        second1
-                    )
-                } catch (e: IllegalArgumentException) {
-                    e.printStackTrace()
-                } catch (e: NoAuthenticationKeyAvailableException) {
-                    e.printStackTrace()
-                } catch (e: InvalidReaderSignatureException) {
-                    e.printStackTrace()
-                } catch (e: EphemeralPublicKeyNotFoundException) {
-                    e.printStackTrace()
-                } catch (e: InvalidRequestMessageException) {
-                    e.printStackTrace()
+                        log("StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
+                        response.addDocument(
+                            docType,
+                            c,
+                            first1,
+                            second1
+                        )
+                    } catch (e: IllegalArgumentException) {
+                        e.printStackTrace()
+                    } catch (e: NoAuthenticationKeyAvailableException) {
+                        e.printStackTrace()
+                    } catch (e: InvalidReaderSignatureException) {
+                        e.printStackTrace()
+                    } catch (e: EphemeralPublicKeyNotFoundException) {
+                        e.printStackTrace()
+                    } catch (e: InvalidRequestMessageException) {
+                        e.printStackTrace()
+                    }
                 }
+            } catch (e: NullPointerException) {
+                Log.e(LOG_TAG, "Error to get credential from session", e)
+                throw NoSuchElementException("Error to get credential from session - ${e.message}")
             }
         }
         return false
@@ -245,13 +249,13 @@ class TransferManager private constructor(private val context: Context) {
         qrCommunicationSetup?.close()
         transferStatusLd = MutableLiveData<TransferStatus>()
         destroy()
-        hasStarted = false
     }
 
     fun destroy() {
         qrCommunicationSetup = null
         reversedQrCommunicationSetup = null
         session = null
+        hasStarted = false
     }
 
     fun getCryptoObject(): BiometricPrompt.CryptoObject? {

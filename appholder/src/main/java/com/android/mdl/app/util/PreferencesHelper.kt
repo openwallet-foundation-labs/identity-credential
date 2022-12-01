@@ -26,10 +26,8 @@ object PreferencesHelper {
     }
 
     fun setHardwareBacked(isHardwareBacked: Boolean) {
-        if (!hasHardwareBackedPreference()) {
-            sharedPreferences.edit {
-                putBoolean(HARDWARE_BACKED_PREFERENCE, isHardwareBacked)
-            }
+        sharedPreferences.edit {
+            putBoolean(HARDWARE_BACKED_PREFERENCE, isHardwareBacked)
         }
     }
 
