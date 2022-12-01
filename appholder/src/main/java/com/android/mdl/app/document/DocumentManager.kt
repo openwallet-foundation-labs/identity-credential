@@ -41,10 +41,6 @@ class DocumentManager private constructor(private val context: Context) {
         DocumentDatabase.getInstance(context).credentialDao()
     )
 
-    init {
-        PreferencesHelper.setHardwareBacked(false)
-    }
-
     fun getDocuments(): Collection<Document> = runBlocking {
         documentRepository.getAll()
     }
@@ -69,10 +65,18 @@ class DocumentManager private constructor(private val context: Context) {
             provisioningCode,
             serverUrl
         )
+        insertDocument(document)
+        return document
+    }
+
+    private fun insertDocument(document: Document) {
+        // Set preferences if we don't have it or it will be the first document
+        if (!PreferencesHelper.hasHardwareBackedPreference() || getDocuments().isEmpty()) {
+            PreferencesHelper.setHardwareBacked(document.hardwareBacked)
+        }
         runBlocking {
             documentRepository.insert(document)
         }
-        return document
     }
 
     fun createCredential(
@@ -126,13 +130,23 @@ class DocumentManager private constructor(private val context: Context) {
             IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
         )
 
+        deleteDocument(document)
+
+        // Delete credential provisioned on IC API
+        credential?.delete(byteArrayOf())
+    }
+
+    private fun deleteDocument(document: Document) {
         // Delete data from local storage
         runBlocking {
             documentRepository.delete(document)
         }
 
-        // Delete credential provisioned on IC API
-        credential?.delete(byteArrayOf())
+        // Reset storage preference implementation with first document available
+        val documents = getDocuments()
+        if (documents.isNotEmpty()) {
+            PreferencesHelper.setHardwareBacked(documents.first().hardwareBacked)
+        }
     }
 
     fun setAvailableAuthKeys(credential: IdentityCredential) {
@@ -142,8 +156,10 @@ class DocumentManager private constructor(private val context: Context) {
     fun getCredential(document: Document): IdentityCredential? {
         val mStore = if (document.hardwareBacked)
             IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getKeystoreInstance(context,
-                    PreferencesHelper.getKeystoreBackedStorageLocation(context))
+                ?: IdentityCredentialStore.getKeystoreInstance(
+                    context,
+                    PreferencesHelper.getKeystoreBackedStorageLocation(context)
+                )
         else
             IdentityCredentialStore.getKeystoreInstance(context,
                 PreferencesHelper.getKeystoreBackedStorageLocation(context))
@@ -189,7 +205,7 @@ class DocumentManager private constructor(private val context: Context) {
                     cardArt = dData.provisionInfo.docColor
                 )
                 // Insert new document in our local database
-                documentRepository.insert(document)
+                insertDocument(document)
             } catch (e: IdentityCredentialException) {
                 throw IllegalStateException("Error creating self signed credential", e)
             }
