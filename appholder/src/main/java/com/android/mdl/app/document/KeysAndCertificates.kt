@@ -75,18 +75,29 @@ object KeysAndCertificates {
 
     fun getTrustedReaderCertificates(context: Context) =
         listOf(
+            getCertificate(context, R.raw.bdr_iaca_cert),
+            getCertificate(context, R.raw.bdr_reader_ca_cert),
+            getCertificate(context, R.raw.credenceid_mdl_reader_cert),
+            getCertificate(context, R.raw.fast_reader_auth_cer),
             getCertificate(context, R.raw.google_reader_ca),
-            getCertificate(context, R.raw.nist_readerauth_rootcert),
+            getCertificate(context, R.raw.hid_test_reader_ca_mdl_cert),
             getCertificate(context, R.raw.hidtestiacamdl_cert),
             getCertificate(context, R.raw.iaca_zetes),
-            getCertificate(context, R.raw.idemia_lahague_interop_readerauthca),
+            getCertificate(context, R.raw.idemia_brisbane_interop_readerauthca),
             getCertificate(context, R.raw.louisiana_department_of_motor_vehicles_cert),
+            getCertificate(context, R.raw.nist_reader_ca_cer),
+            getCertificate(context, R.raw.reader_ca_nec_reader_ca_cer),
+            getCertificate(context, R.raw.samsung_mdl_reader_cert256_cer),
             getCertificate(context, R.raw.scytales_root_ca),
+            getCertificate(context, R.raw.spruce_iaca_cert),
             getCertificate(context, R.raw.ul_cert_ca_01),
+            getCertificate(context, R.raw.ul_cert_ca_01_cer),
             getCertificate(context, R.raw.ul_cert_ca_02),
-            getCertificate(context, R.raw.hid_test_reader_ca_mdl_cert),
+            getCertificate(context, R.raw.ul_cert_ca_02_cer),
             getCertificate(context, R.raw.utms_reader_ca),
+            getCertificate(context, R.raw.utms_reader_ca_cer),
             getCertificate(context, R.raw.zetes_reader_ca),
+            getCertificate(context, R.raw.zetes_reader_ca_cer),
         )
 
 }
