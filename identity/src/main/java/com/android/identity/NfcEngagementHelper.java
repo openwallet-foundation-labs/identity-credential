@@ -162,6 +162,12 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
             transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
             mTransports.add(transport);
             Logger.d(TAG, "Added transport for " + cm);
+
+            if (transport instanceof DataTransportNfc) {
+                Logger.d(TAG, "Associating APDU router with NFC transport");
+                DataTransportNfc dataTransportNfc = (DataTransportNfc) transport;
+                dataTransportNfc.setNfcApduRouter(mNfcApduRouter, mExecutor);
+            }
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen
@@ -327,7 +333,7 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
         }
     }
 
-    private @NonNull
+    private @Nullable
     byte[] handleSelectByAid(@NonNull byte[] apdu) {
         if (apdu.length < 12) {
             Logger.w(TAG, "handleSelectByAid: unexpected APDU length " + apdu.length);
@@ -337,18 +343,8 @@ public class NfcEngagementHelper implements NfcApduRouter.Listener {
             Logger.d(TAG, "handleSelectByAid: NFC engagement AID selected");
             return NfcUtil.STATUS_WORD_OK;
         } else if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER)) {
-            for (DataTransport t : mTransports) {
-                if (t instanceof DataTransportNfc) {
-                    Logger.d(TAG, "handleSelectByAid: NFC data transfer AID selected");
-                    DataTransportNfc dataTransportNfc = (DataTransportNfc) t;
-                    // Hand over the APDU router to the NFC data transport
-                    mNfcApduRouter.removeListener(this, mExecutor);
-                    dataTransportNfc.setNfcApduRouter(mNfcApduRouter, mExecutor);
-                    return NfcUtil.STATUS_WORD_OK;
-                }
-            }
-            Logger.d(TAG, "handleSelectByAid: Rejecting NFC data transfer since it's not set up");
-            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+            Logger.d(TAG, "handleSelectByAid: Ignoring select for NFC data transfer");
+            return null;
         } else {
             Logger.d(TAG, "handleSelectByAid: Unexpected AID selected in APDU " + Util.toHex(apdu));
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;

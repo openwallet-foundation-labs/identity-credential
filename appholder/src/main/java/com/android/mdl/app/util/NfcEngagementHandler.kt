@@ -19,9 +19,10 @@ package com.android.mdl.app.util
 import android.content.Intent
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.navigation.NavDeepLinkBuilder
 import com.android.identity.DataTransport
-import com.android.identity.NfcApduRouter
 import com.android.identity.NfcEngagementHelper
 import com.android.identity.PresentationHelper
 import com.android.identity.PresentationSession
@@ -36,17 +37,11 @@ import com.android.mdl.app.transfer.TransferManager
 
 class NfcEngagementHandler : HostApduService() {
 
-    private lateinit var engagementHelper: NfcEngagementHelper
+    private var engagementHelper: NfcEngagementHelper? = null
     private lateinit var session: PresentationSession
     private lateinit var communication: Communication
     private lateinit var transferManager: TransferManager
     private var presentation: PresentationHelper? = null
-
-    private val nfcApduRouter: NfcApduRouter = object : NfcApduRouter() {
-        override fun sendResponseApdu(responseApdu: ByteArray) {
-            this@NfcEngagementHandler.sendResponseApdu(responseApdu)
-        }
-    }
 
     private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
 
@@ -73,6 +68,10 @@ class NfcEngagementHandler : HostApduService() {
                 log("Engagement Listener: Device Connected -> ignored due to active presentation")
                 return
             }
+            if (engagementHelper == null) {
+                log("Engagement Listener: Device Connected -> ignored due to engagementHelper being null")
+                return
+            }
 
             log("Engagement Listener: Device Connected via NFC")
             val builder = PresentationHelper.Builder(
@@ -83,19 +82,22 @@ class NfcEngagementHandler : HostApduService() {
             )
             builder.useForwardEngagement(
                 transport,
-                engagementHelper.deviceEngagement,
-                engagementHelper.handover
+                engagementHelper!!.deviceEngagement,
+                engagementHelper!!.handover
             )
             presentation = builder.build()
             presentation?.setSendSessionTerminationMessage(true)
             communication.setupPresentation(presentation!!)
-            engagementHelper.close()
+            engagementHelper?.close()
+            engagementHelper = null
             transferManager.updateStatus(TransferStatus.CONNECTED)
         }
 
         override fun onError(error: Throwable) {
             log("Engagement Listener: onError -> ${error.message}")
             transferManager.updateStatus(TransferStatus.ERROR)
+            engagementHelper?.close()
+            engagementHelper = null
         }
     }
 
@@ -120,6 +122,7 @@ class NfcEngagementHandler : HostApduService() {
 
     override fun onCreate() {
         super.onCreate()
+        log("onCreate")
         session = SessionSetup(CredentialStore(applicationContext)).createSession()
         communication = Communication.getInstance(applicationContext)
         transferManager = TransferManager.getInstance(applicationContext)
@@ -129,7 +132,7 @@ class NfcEngagementHandler : HostApduService() {
             applicationContext,
             session,
             connectionSetup.getConnectionOptions(),
-            nfcApduRouter,
+            transferManager.nfcApduRouter,
             nfcEngagementListener,
             applicationContext.mainExecutor())
         if (PreferencesHelper.shouldUseStaticHandover()) {
@@ -142,13 +145,38 @@ class NfcEngagementHandler : HostApduService() {
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
         log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
-        nfcApduRouter.addReceivedApdu(AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, commandApdu)
+        transferManager.nfcProcessCommandApdu(this, AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, commandApdu)
         return null
     }
 
     override fun onDeactivated(reason: Int) {
         log("onDeactivated: reason-> $reason")
-        nfcApduRouter.addDeactivated(AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, reason)
+        transferManager.nfcOnDeactivated(AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, reason)
+
+        if (engagementHelper != null) {
+            // We need to close the NfcEngagementHelper but if we're doing it as the reader moves
+            // out of the field, it's too soon as it may take a couple of seconds to establish
+            // the connection, triggering onDeviceConnected() callback above.
+            //
+            // In fact, the reader _could_ actually take a while to establish the connection...
+            // for example the UI in the mdoc doc reader might have the operator pick the
+            // transport if more than one is offered. In fact this is exactly what we do in
+            // our mdoc reader.
+            //
+            // So we give the reader 30 seconds to do this.
+            //
+            // In a future change we should go to another screen as soon as the HandoverSelect
+            // has been sent and then the user can close the connection from there if the reader
+            // doesn't connect.
+            //
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (engagementHelper != null) {
+                    logWarning("reader didn't connect after 30 seconds, closing down engagement helper")
+                    engagementHelper?.close()
+                    engagementHelper = null
+                }
+            }, 30*1000)
+        }
     }
 
     companion object {

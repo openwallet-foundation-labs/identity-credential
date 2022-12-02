@@ -2,7 +2,6 @@ package com.android.mdl.app.transfer
 
 import android.content.Context
 import com.android.identity.DataTransport
-import com.android.identity.NfcApduRouter
 import com.android.identity.PresentationHelper
 import com.android.identity.PresentationSession
 import com.android.identity.QrEngagementHelper
@@ -22,11 +21,6 @@ class QrCommunicationSetup(
 
     private val session = SessionSetup(CredentialStore(context)).createSession()
     private val connectionSetup = ConnectionSetup(context)
-    private val nfcApduRouter: NfcApduRouter = object : NfcApduRouter() {
-        override fun sendResponseApdu(responseApdu: ByteArray) {
-            onSendResponseApdu(responseApdu)
-        }
-    }
 
     private val qrEngagementListener = object : QrEngagementHelper.Listener {
 
@@ -99,7 +93,7 @@ class QrCommunicationSetup(
             session,
             connectionSetup.getConnectionMethods(),
             connectionSetup.getConnectionOptions(),
-            nfcApduRouter,
+            TransferManager.getInstance(context).nfcApduRouter,
             qrEngagementListener,
             context.mainExecutor()
         )

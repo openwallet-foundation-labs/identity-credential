@@ -52,7 +52,7 @@ class TransferManager private constructor(private val context: Context) {
 
     private var transferStatusLd = MutableLiveData<TransferStatus>()
 
-    private val nfcApduRouter: NfcApduRouter = object : NfcApduRouter() {
+    val nfcApduRouter: NfcApduRouter = object : NfcApduRouter() {
         override fun sendResponseApdu(responseApdu: ByteArray) {
             hostApduService!!.sendResponseApdu(responseApdu)
         }

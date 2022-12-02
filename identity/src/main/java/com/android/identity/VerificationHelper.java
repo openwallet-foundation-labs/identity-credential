@@ -251,9 +251,11 @@ public class VerificationHelper {
                 if (mDataTransport instanceof DataTransportNfc) {
                     Logger.d(TAG, "NFC data transfer + QR engagement, "
                             + "reader is now in field");
-                    mListenerExecutor.execute(
-                            () -> connectWithDataTransport(mDataTransport)
-                    );
+
+                    startNfcDataTransport();
+
+                    // At this point we're done, don't start NFC handover.
+                    return;
                 }
             }
         }
@@ -264,22 +266,25 @@ public class VerificationHelper {
         }
 
         startNfcHandover();
+    }
 
-        /*
-        // Look for Ndef
-        for (String tech : tag.getTechList()) {
-            if (tech.equals(Ndef.class.getName())) {
-                Logger.d(TAG, "Found ndef tech!");
-                if (mDeviceEngagement != null) {
-                    Logger.d(TAG, "Already have device engagement "
-                            + "so not inspecting what was received via "
-                            + "NFC");
-                } else {
-                    processInitialNdefMessage(Ndef.get(tag));
+    private void startNfcDataTransport() {
+        // connect() may block, run in thread
+        Thread connectThread = new Thread() {
+            @Override
+            public void run() {
+                try {
+                    mNfcIsoDep.connect();
+                    mNfcIsoDep.setTimeout(20 * 1000);  // 20 seconds
+                } catch (IOException e) {
+                    reportError(e);
+                    return;
                 }
+                mListenerExecutor.execute(
+                        () -> connectWithDataTransport(mDataTransport));
             }
-        }
-         */
+        };
+        connectThread.start();
     }
 
     /**
@@ -512,7 +517,7 @@ public class VerificationHelper {
                     isoDep.setTimeout(20 * 1000);  // 20 seconds
 
                     byte[] selectCommand = buildApdu(0x00, 0xa4, 0x04, 0x00,
-                            Util.fromHex("D2760000850101"), 0);
+                            NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, 0);
                     ret = isoDep.transceive(selectCommand);
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                         throw new IllegalStateException("NDEF application selection failed, ret: " + Util.toHex(ret));

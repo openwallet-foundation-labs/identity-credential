@@ -24,7 +24,7 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
 import co.nstant.in.cbor.model.UnsignedInteger;
 
-public class QrEngagementHelper implements NfcApduRouter.Listener {
+public class QrEngagementHelper {
     private static final String TAG = "QrEngagementHelper";
 
     private final PresentationSession mPresentationSession;
@@ -56,9 +56,6 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
         mListener = listener;
         mExecutor = executor;
         mNfcApduRouter = nfcApduRouter;
-        if (mNfcApduRouter != null) {
-            mNfcApduRouter.addListener(this, executor);
-        }
         mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
         mConnectionMethods = connectionMethods;
         mOptions = options;
@@ -66,68 +63,12 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
     }
 
     public void close() {
-        if (mNfcApduRouter != null) {
-            mNfcApduRouter.removeListener(this, mExecutor);
-        }
         mInhibitCallbacks = true;
         if (mTransports != null) {
             for (DataTransport transport : mTransports) {
                 transport.close();
             }
             mTransports = null;
-        }
-    }
-
-    @Override
-    public void onApduReceived(@NonNull byte[] aid, @NonNull byte[] apdu) {
-        Logger.d(TAG, String.format(Locale.US, "onApduReceived aid=%s apdu=%s",
-                Util.toHex(aid), Util.toHex(apdu)));
-        if (Arrays.equals(aid, NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)) {
-            mNumEngagementApdusReceived += 1;
-        } else if (Arrays.equals(aid, NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER)) {
-            mNumDataTransferApdusReceived += 1;
-        }
-
-        Logger.d(TAG, String.format(Locale.US,
-                        "mNumEngagementApdusReceived=%d mNumDataTransferApdusReceived=%d",
-                        mNumEngagementApdusReceived, mNumDataTransferApdusReceived));
-
-        /*
-        // This is for the case of QR engagement to NFC data transfer... we have to be
-        // careful and only react on the SELECT APPLICATION command if we received no
-        // previous APDUs for the engagement service.
-        //
-        if (mNumEngagementApdusReceived == 0 && mNumDataTransferApdusReceived == 1) {
-            switch (NfcUtil.nfcGetCommandType(apdu)) {
-                case NfcUtil.COMMAND_TYPE_SELECT_BY_AID:
-                    if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12),
-                            NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER)) {
-                        for (DataTransport t : mTransports) {
-                            if (t instanceof DataTransportNfc) {
-                                Logger.d(TAG, "NFC data transfer AID selected");
-                                DataTransportNfc dataTransportNfc = (DataTransportNfc) t;
-                                // Hand over the APDU router to the NFC data transport
-                                mNfcApduRouter.removeListener(this, mExecutor);
-                                dataTransportNfc.setNfcApduRouter(mNfcApduRouter, mExecutor);
-                                mNfcApduRouter.sendResponseApdu(NfcUtil.STATUS_WORD_OK);
-                            }
-                        }
-                    }
-                    break;
-            }
-        }
-
-         */
-    }
-
-    @Override
-    public void onDeactivated(@NonNull byte[] aid, int reason) {
-        Logger.d(TAG, String.format(Locale.US, "onDeactivated aid=%s reason=%d",
-                Util.toHex(aid), reason));
-        if (Arrays.equals(aid, NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)) {
-            mNumEngagementApdusReceived = 0;
-        } else if (Arrays.equals(aid, NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER)) {
-            mNumDataTransferApdusReceived = 0;
         }
     }
 
@@ -153,6 +94,17 @@ public class QrEngagementHelper implements NfcApduRouter.Listener {
             transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
             mTransports.add(transport);
             Logger.d(TAG, "Added transport for " + cm);
+
+            if (transport instanceof DataTransportNfc) {
+                if (mNfcApduRouter == null) {
+                    Logger.w(TAG, "Using NFC data transport with QR engagement but "
+                            + "no APDU router has been set");
+                } else {
+                    Logger.d(TAG, "Associating APDU router with NFC transport");
+                    DataTransportNfc dataTransportNfc = (DataTransportNfc) transport;
+                    dataTransportNfc.setNfcApduRouter(mNfcApduRouter, mExecutor);
+                }
+            }
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen
