@@ -26,6 +26,7 @@ class NfcDataTransferHandler : HostApduService() {
 
     override fun onCreate() {
         super.onCreate()
+        log("onCreate")
         transferManager = TransferManager.getInstance(applicationContext)
     }
 

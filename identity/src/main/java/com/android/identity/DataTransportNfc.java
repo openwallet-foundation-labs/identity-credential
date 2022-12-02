@@ -36,14 +36,7 @@ import java.util.concurrent.TimeUnit;
  * NFC data transport
  */
 class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
-    public static final int DEVICE_RETRIEVAL_METHOD_TYPE = 1;
-    public static final int DEVICE_RETRIEVAL_METHOD_VERSION = 1;
-    public static final int RETRIEVAL_OPTION_KEY_COMMAND_DATA_FIELD_MAX_LENGTH = 0;
-    public static final int RETRIEVAL_OPTION_KEY_RESPONSE_DATA_FIELD_MAX_LENGTH = 1;
     private static final String TAG = "DataTransportNfc";
-    private static final byte[] STATUS_WORD_OK = {(byte) 0x90, (byte) 0x00};
-    private static final byte[] STATUS_WORD_WRONG_LENGTH = {(byte) 0x67, (byte) 0x00};
-    private static final byte[] STATUS_WORD_FILE_NOT_FOUND = {(byte) 0x6a, (byte) 0x82};
     private final ConnectionMethodNfc mConnectionMethod;
     IsoDep mIsoDep;
     ArrayList<byte[]> mListenerRemainingChunks;
@@ -56,6 +49,8 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     int numChunksReceived = 0;
     private NfcApduRouter mNfcApduRouter;
+    private Executor mNfcApduRouterExecutor;
+    private boolean mDataTransferAidSelected;
 
     public DataTransportNfc(@NonNull Context context,
                             @Role int role,
@@ -165,11 +160,11 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         mNfcApduRouter.sendResponseApdu(apdu);
     }
 
-    public void setNfcApduRouter(NfcApduRouter nfcApduRouter, Executor executor) {
+    public void setNfcApduRouter(@NonNull NfcApduRouter nfcApduRouter,
+                                 @NonNull Executor executor) {
         mNfcApduRouter = nfcApduRouter;
-        mNfcApduRouter.addListener(this, executor);
-
-        reportConnected();
+        mNfcApduRouterExecutor = executor;
+        mNfcApduRouter.addListener(this, mNfcApduRouterExecutor);
     }
 
     @Override
@@ -179,16 +174,25 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         Logger.d(TAG, String.format(Locale.US, "onApduReceived aid=%s apdu=%s",
                 Util.toHex(aid), Util.toHex(apdu)));
 
-        switch (NfcUtil.nfcGetCommandType(apdu)) {
-            case NfcUtil.COMMAND_TYPE_ENVELOPE:
-                ret = handleEnvelope(apdu);
-                break;
-            case NfcUtil.COMMAND_TYPE_RESPONSE:
-                ret = handleResponse(apdu);
-                break;
-            default:
-                ret = NfcUtil.STATUS_WORD_INSTRUCTION_NOT_SUPPORTED;
-                break;
+        int commandType = NfcUtil.nfcGetCommandType(apdu);
+        if (!mDataTransferAidSelected) {
+            if (commandType == NfcUtil.COMMAND_TYPE_SELECT_BY_AID) {
+                ret = handleSelectByAid(apdu);
+            }
+        } else {
+            switch (commandType) {
+                case NfcUtil.COMMAND_TYPE_ENVELOPE:
+                    ret = handleEnvelope(apdu);
+                    break;
+                case NfcUtil.COMMAND_TYPE_RESPONSE:
+                    ret = handleResponse(apdu);
+                    break;
+                default:
+                    Logger.w(TAG, String.format(Locale.US,
+                            "Unexpected APDU with commandType 0x%04x", commandType));
+                    ret = NfcUtil.STATUS_WORD_INSTRUCTION_NOT_SUPPORTED;
+                    break;
+            }
         }
 
         if (ret != null) {
@@ -201,9 +205,35 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
 
     @Override
     public void onDeactivated(@NonNull byte[] aid, int reason) {
-        Logger.d(TAG, String.format(Locale.US, 
+        Logger.d(TAG, String.format(Locale.US,
                 "onDeactivated aid=%s reason=%d", Util.toHex(aid), reason));
-        reportDisconnected();
+        if (Arrays.equals(aid, NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER) && mDataTransferAidSelected) {
+            Logger.d(TAG, "Acting on onDeactivated");
+            mDataTransferAidSelected = false;
+            reportDisconnected();
+        } else {
+            Logger.d(TAG, "Ignoring onDeactivated");
+        }
+    }
+
+    private @NonNull
+    byte[] handleSelectByAid(@NonNull byte[] apdu) {
+        if (apdu.length < 12) {
+            Logger.w(TAG, "handleSelectByAid: unexpected APDU length " + apdu.length);
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+        }
+        if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)) {
+            Logger.w(TAG, "handleSelectByAid: NFC engagement AID selected (unexpected)");
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+        } else if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER)) {
+            Logger.d(TAG, "handleSelectByAid: NFC data transfer AID selected");
+            mDataTransferAidSelected = true;
+            reportConnected();
+            return NfcUtil.STATUS_WORD_OK;
+        } else {
+            Logger.w(TAG, "handleSelectByAid: Unexpected AID selected in APDU " + Util.toHex(apdu));
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+        }
     }
 
     void sendNextChunk(boolean isForGetResponse) {
@@ -252,7 +282,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         Logger.d(TAG, "in handleEnvelope");
 
         if (apdu.length < 7) {
-            return STATUS_WORD_WRONG_LENGTH;
+            return NfcUtil.STATUS_WORD_WRONG_LENGTH;
         }
 
         boolean moreChunksComing = false;
@@ -261,17 +291,18 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         if (cla == 0x10) {
             moreChunksComing = true;
         } else if (cla != 0x00) {
-            reportError(new Error(String.format("Unexpected value 0x%02x in CLA of APDU", cla)));
-            return STATUS_WORD_FILE_NOT_FOUND;
+            reportError(new Error(String.format(Locale.US,
+                    "Unexpected value 0x%02x in CLA of APDU", cla)));
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
         byte[] data = apduGetData(apdu);
         if (data == null) {
             reportError(new Error("Malformed APDU"));
-            return STATUS_WORD_FILE_NOT_FOUND;
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
         if (data.length == 0) {
             reportError(new Error("Received ENVELOPE with no data"));
-            return STATUS_WORD_FILE_NOT_FOUND;
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
         int le = apduGetLe(apdu);
 
@@ -280,7 +311,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
             numChunksReceived += 1;
         } catch (IOException e) {
             reportError(e);
-            return STATUS_WORD_FILE_NOT_FOUND;
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
 
         if (moreChunksComing) {
@@ -289,9 +320,9 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
              */
             if (le != 0) {
                 reportError(new Error("More chunks are coming but LE is not zero"));
-                return STATUS_WORD_FILE_NOT_FOUND;
+                return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
             }
-            return STATUS_WORD_OK;
+            return NfcUtil.STATUS_WORD_OK;
         }
 
         /* For the last ENVELOPE command in a chain, Le shall be set to the maximum length
@@ -305,17 +336,17 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         }
 
         byte[] encapsulatedMessage = mIncomingMessage.toByteArray();
-        Logger.d(TAG, String.format("Received %d bytes in %d chunk(s)",
+        Logger.d(TAG, String.format(Locale.US, "Received %d bytes in %d chunk(s)",
                 encapsulatedMessage.length, numChunksReceived));
         mIncomingMessage.reset();
         numChunksReceived = 0;
         byte[] message = extractFromDo53(encapsulatedMessage);
         if (message == null) {
             reportError(new Error("Error extracting message from DO53 encoding"));
-            return STATUS_WORD_FILE_NOT_FOUND;
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
 
-        Logger.d(TAG, String.format("reportMessage %d bytes", message.length));
+        Logger.d(TAG, String.format(Locale.US, "reportMessage %d bytes", message.length));
         reportMessageReceived(message);
         // Defer response...
         return null;
@@ -378,7 +409,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
             le += apdu[leOffset + 2] & 0xff;
             return le;
         }
-        Logger.w(TAG, String.format("leNumBytes is %d bytes which is unsupported", leNumBytes));
+        Logger.w(TAG, String.format(Locale.US, "leNumBytes is %d bytes which is unsupported", leNumBytes));
         return 0;
     }
 
@@ -478,18 +509,18 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
 
     byte[] extractFromDo53(byte[] encapsulatedData) {
         if (encapsulatedData.length < 2) {
-            Logger.w(TAG, String.format("DO53 length %d, expected at least 2",
+            Logger.w(TAG, String.format(Locale.US, "DO53 length %d, expected at least 2",
                     encapsulatedData.length));
             return null;
         }
         int tag = encapsulatedData[0] & 0xff;
         if (tag != 0x53) {
-            Logger.w(TAG, String.format("DO53 first byte is 0x%02x, expected 0x53", tag));
+            Logger.w(TAG, String.format(Locale.US, "DO53 first byte is 0x%02x, expected 0x53", tag));
             return null;
         }
         int length = encapsulatedData[1] & 0xff;
         if (length > 0x83) {
-            Logger.w(TAG, String.format("DO53 first byte of length is 0x%02x", length));
+            Logger.w(TAG, String.format(Locale.US, "DO53 first byte of length is 0x%02x", length));
             return null;
         }
         int offset = 2;
@@ -510,7 +541,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
             offset = 5;
         }
         if (encapsulatedData.length != offset + length) {
-            Logger.w(TAG, String.format("Malformed BER-TLV encoding, %d %d %d",
+            Logger.w(TAG, String.format(Locale.US, "Malformed BER-TLV encoding, %d %d %d",
                     encapsulatedData.length, offset, length));
             return null;
         }
@@ -542,20 +573,17 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
             @Override
             public void run() {
                 try {
-                    mIsoDep.connect();
-                    mIsoDep.setTimeout(20 * 1000);  // 20 seconds
+                    // The passed in mIsoDep is supposed to already be connected, so we can start
+                    // sending APDUs right away...
 
-                    // We're up and running...
-                    //
                     reportConnected();
 
-                    byte[] selectCommand = buildApdu(0x00, 0xa4, 0x04, 0x0c,
-                            new byte[]{(byte) 0xa0, (byte) 0x00, (byte) 0x00, (byte) 0x02,
-                                    (byte) 0x48, (byte) 0x04, (byte) 0x00}, 0);
+                    byte[] selectCommand = buildApdu(0x00, 0xa4, 0x04, 0x00,
+                            NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER, 0);
                     Logger.d(TAG, "selectCommand: " + Util.toHex(selectCommand));
                     byte[] selectResponse = mIsoDep.transceive(selectCommand);
                     Logger.d(TAG, "selectResponse: " + Util.toHex(selectResponse));
-                    if (!Arrays.equals(selectResponse, new byte[]{(byte) 0x90, (byte) 0x00})) {
+                    if (!Arrays.equals(selectResponse, NfcUtil.STATUS_WORD_OK)) {
                         reportError(new Error("Unexpected response to AID SELECT"));
                         return;
                     }
@@ -737,15 +765,15 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                                     leForGetResponse = grrStatus & 0xff;
                                 } else {
                                     reportError(new Error(
-                                            String.format("Expecteded GetResponse APDU status "
-                                                            + "0x%04x",
+                                            String.format(Locale.US,
+                                                    "Expected GetResponse APDU status 0x%04x",
                                                     status)));
                                 }
                             }
                             encapsulatedMessage = baos.toByteArray();
                         } else {
                             reportError(new Error(
-                                    String.format("Expecteded APDU status 0x%04x", status)));
+                                    String.format(Locale.US, "Expected APDU status 0x%04x", status)));
                             return;
                         }
 
@@ -759,14 +787,11 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
 
                     }
 
-
-                    // TODO: report disconnect
+                    reportDisconnected();
 
                 } catch (IOException e) {
                     reportError(e);
                 }
-
-                reportDisconnected();
 
                 Logger.d(TAG, "Ending transceiver thread");
                 mIsoDep = null;
@@ -782,6 +807,9 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         inhibitCallbacks();
         mEndTransceiverThread = true;
         mListenerStillActive = false;
+        if (mNfcApduRouter != null) {
+            mNfcApduRouter.removeListener(this, mNfcApduRouterExecutor);
+        }
     }
 
     @Override

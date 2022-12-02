@@ -6,6 +6,7 @@ import androidx.core.util.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.concurrent.Executor;
 
 /**
@@ -15,6 +16,7 @@ import java.util.concurrent.Executor;
  * it to its internal APDU routing system.
  */
 public abstract class NfcApduRouter {
+    private static final String TAG = "NfcApduRouter";
 
     // Defined by NFC Forum
     public static final byte[] AID_FOR_TYPE_4_TAG_NDEF_APPLICATION = Util.fromHex("D2760000850101");
@@ -60,6 +62,15 @@ public abstract class NfcApduRouter {
      * @param receivedApdu an APDU received
      */
     public void addReceivedApdu(@NonNull byte[] aid, @NonNull byte[] receivedApdu) {
+        if (Logger.isDebugEnabled()) {
+            StringBuilder sb = new StringBuilder();
+            for (Pair<Listener, Executor> listenerPair : Collections.synchronizedList(mListeners)) {
+                sb.append(' ');
+                sb.append(listenerPair.first.toString());
+            }
+            Logger.d(TAG, String.format(Locale.US, "Distributing APDU %s to %d listeners:%s",
+                    Util.toHex(receivedApdu), mListeners.size(), sb));
+        }
         for (Pair<Listener, Executor> listenerPair : Collections.synchronizedList(mListeners)) {
             Listener listener = listenerPair.first;
             Executor executor = listenerPair.second;
