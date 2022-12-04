@@ -52,7 +52,7 @@ class RequestOptionsFragment : Fragment() {
             binding.cbRequestMdlOlder21.isEnabled = binding.cbRequestMdl.isChecked
             binding.cbRequestMdlMandatory.isEnabled = binding.cbRequestMdl.isChecked
             binding.cbRequestMdlFull.isEnabled = binding.cbRequestMdl.isChecked
-            binding.cbRequestMdlUsTransportation.isEnabled =  binding.cbRequestMdl.isChecked
+            binding.cbRequestMdlUsTransportation.isEnabled = binding.cbRequestMdl.isChecked
             binding.cbRequestMdlCustom.isEnabled = binding.cbRequestMdl.isChecked
         }
 
@@ -176,6 +176,11 @@ class RequestOptionsFragment : Fragment() {
             val doc2 = RequestMicovVtr
             doc2.setSelectedDataItems(getSelectRequestFull(doc2, intentToRetain))
             requestDocumentList.addRequestDocument(doc2)
+        }
+        if (binding.cbRequestEuPid.isChecked) {
+            val doc = RequestEuPid
+            doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
+            requestDocumentList.addRequestDocument(doc)
         }
         if (binding.cbRequestMulti003.isChecked) {
             val doc = RequestMdl
