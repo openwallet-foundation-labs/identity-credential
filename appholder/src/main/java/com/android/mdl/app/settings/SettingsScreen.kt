@@ -123,7 +123,8 @@ private fun SettingSectionTitle(
         Text(
             modifier = Modifier.fillMaxWidth(),
             text = title,
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -140,9 +141,17 @@ private fun SettingToggle(
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             val subtitle = if (isChecked) subtitleOn else subtitleOff
-            Text(subtitle, style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
         Switch(
             checked = isChecked,
