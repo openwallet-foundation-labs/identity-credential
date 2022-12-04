@@ -40,9 +40,11 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -595,6 +597,29 @@ public class UtilTest {
                 + "0xd8, 0x86, 0x5c, 0x28, 0x2c, 0xd5, 0xa5, 0x13, 0xff, 0x3b, 0xd1, 0xde, 0x70, "
                 + "0x5e, 0xbb, 0xe2, 0x2d, 0x42, 0xbe, 0x53]\n"
                 + "]", Util.cborPrettyPrint(mac));
+    }
+
+    @Test
+    public void coseKeyEncoding() throws Exception {
+        // This checks the encoding of X and Y are encoded as specified in
+        // Section 2.3.5 Field-Element-to-Octet-String Conversion of
+        // SEC 1: Elliptic Curve Cryptography (https://www.secg.org/sec1-v2.pdf).
+        assertEquals("{\n" +
+                        "  1 : 2,\n" +
+                        "  -1 : 1,\n" +
+                        "  -2 : [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, " +
+                                "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, " +
+                                "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, " +
+                                "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01],\n" +
+                        "  -3 : [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, " +
+                                "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, " +
+                                "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, " +
+                                "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02]\n" +
+                        "}",
+                Util.cborPrettyPrint(Util.cborBuildCoseKey(
+                        Util.getPublicKeyFromIntegers(
+                                BigInteger.valueOf(1),
+                                BigInteger.valueOf(2)))));
     }
 
     @Test
