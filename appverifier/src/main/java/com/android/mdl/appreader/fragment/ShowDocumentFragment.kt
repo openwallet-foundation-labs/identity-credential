@@ -1,3 +1,4 @@
+
 package com.android.mdl.appreader.fragment
 
 import android.content.res.Resources
@@ -38,6 +39,8 @@ class ShowDocumentFragment : Fragment() {
         private const val MICOV_DOCTYPE = "org.micov.1"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
         private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
+        private const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid"
+        private const val EU_PID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
     }
 
     private var _binding: FragmentShowDocumentBinding? = null
@@ -231,7 +234,7 @@ class ShowDocumentFragment : Fragment() {
                 for (elem in doc.getIssuerEntryNames(ns)) {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
-                    if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "portrait") {
+                    if (isPortraitElement(doc.docType, ns, elem)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = doc.getIssuerEntryByteString(ns, elem)
                     } else if (doc.docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && elem == "fac") {
@@ -251,6 +254,16 @@ class ShowDocumentFragment : Fragment() {
             }
         }
         return sb.toString()
+    }
+
+    private fun isPortraitElement(
+        docType: String,
+        namespace: String?,
+        entryName: String?
+    ): Boolean {
+        val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
+        val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
+        return hasPortrait && namespaceContainsPortrait && entryName == "portrait"
     }
 
     private fun Resources.Theme.attr(@AttrRes attribute: Int): TypedValue {
