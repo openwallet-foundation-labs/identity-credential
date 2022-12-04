@@ -8,6 +8,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.android.mdl.app.R
 import com.android.mdl.app.document.DocumentManager
+import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
@@ -31,6 +32,7 @@ class SelfSignedViewModel(val app: Application) :
     private val fieldsMdl = mutableListOf<Field>()
     private val fieldsMvr = mutableListOf<Field>()
     private val fieldsMicov = mutableListOf<Field>()
+    private val fieldsEuPid = mutableListOf<Field>()
 
     init {
         loading.value = View.GONE
@@ -149,6 +151,39 @@ class SelfSignedViewModel(val app: Application) :
         fieldsMicov.add(Field(id++, "SafeEntry", "SeCondFulfilled", FieldType.STRING, "1"))
         fieldsMicov.add(Field(id++, "SafeEntry type", "SeCondType", FieldType.STRING, "leisure"))
         fieldsMicov.add(Field(id, "SafeEntry expiry", "SeCondExpiry", FieldType.DATE, "2021-10-13"))
+
+        // Pre fill default values for EU PID document
+        id = 1
+        fieldsEuPid.add(Field(id++, "Family Name", "family_name", FieldType.STRING, "Mustermann"))
+        fieldsEuPid.add(Field(id++, "Family Name (National Characters)", "family_name_national_characters", FieldType.STRING, "Бабіак"))
+        fieldsEuPid.add(Field(id++, "First Name", "given_name", FieldType.STRING, "Erika"))
+        fieldsEuPid.add(Field(id++, "First Name (National Characters)", "given_name_national_characters", FieldType.STRING, "Ерика"))
+        fieldsEuPid.add(Field(id++, "Date of Birth", "birth_date", FieldType.DATE, "1986-03-14"))
+        fieldsEuPid.add(Field(id++, "Unique Identifier", "persistent_id", FieldType.STRING, "0128196532"))
+        fieldsEuPid.add(Field(id++, "Family Name at Birth", "family_name_birth", FieldType.STRING, "Mustermann"))
+        fieldsEuPid.add(Field(id++, "Family Name at Birth (National Characters)", "family_name_birth_national_characters", FieldType.STRING, "Бабіак"))
+        fieldsEuPid.add(Field(id++, "First Name at Birth", "given_name_birth", FieldType.STRING, "Erika"))
+        fieldsEuPid.add(Field(id++, "First Name at Birth (National Characters)", "given_name_birth_national_characters", FieldType.STRING, "Ерика"))
+        fieldsEuPid.add(Field(id++, "Place of Birth", "birth_place", FieldType.STRING, "Place of birth"))
+        fieldsEuPid.add(Field(id++, "Resident Address", "resident_address", FieldType.STRING, "Address"))
+        fieldsEuPid.add(Field(id++, "Resident City", "resident_city", FieldType.STRING, "City"))
+        fieldsEuPid.add(Field(id++, "Resident Postal Code", "resident_postal_code", FieldType.STRING, "Postcode"))
+        fieldsEuPid.add(Field(id++, "Resident State", "resident_state", FieldType.STRING, "State"))
+        fieldsEuPid.add(Field(id++, "Resident Country", "resident_country", FieldType.STRING, "Country"))
+        fieldsEuPid.add(Field(id++, "Gender", "gender", FieldType.STRING, "female"))
+        fieldsEuPid.add(Field(id++, "Nationality/Citizenship", "nationality", FieldType.STRING, "NL"))
+        fieldsEuPid.add(Field(id++, "Portrait", "portrait", FieldType.BITMAP, bitmap))
+        fieldsEuPid.add(Field(id++, "Portrait Taken At", "portrait_capture_date", FieldType.DATE, "2022-11-14"))
+        fieldsEuPid.add(Field(id++, "Fingerprints", "biometric_template_finger", FieldType.STRING, "yes"))
+        fieldsEuPid.add(Field(id++, "Age Over 13", "age_over_13", FieldType.BOOLEAN, "true"))
+        fieldsEuPid.add(Field(id++, "Age Over 16", "age_over_16", FieldType.BOOLEAN, "true"))
+        fieldsEuPid.add(Field(id++, "Age Over 18", "age_over_18", FieldType.BOOLEAN, "true"))
+        fieldsEuPid.add(Field(id++, "Age Over 21", "age_over_21", FieldType.BOOLEAN, "true"))
+        fieldsEuPid.add(Field(id++, "Age Over 60", "age_over_60", FieldType.BOOLEAN, "false"))
+        fieldsEuPid.add(Field(id++, "Age Over 65", "age_over_65", FieldType.BOOLEAN, "false"))
+        fieldsEuPid.add(Field(id++, "Age Over 68", "age_over_68", FieldType.BOOLEAN, "false"))
+        fieldsEuPid.add(Field(id++, "Age (Years)", "age_in_years", FieldType.STRING, "36"))
+        fieldsEuPid.add(Field(id++, "Year of Birth", "age_birth_year", FieldType.STRING, "1986"))
     }
 
     fun getFields(docType: String): MutableList<Field> {
@@ -158,6 +193,8 @@ class SelfSignedViewModel(val app: Application) :
             fieldsMvr
         } else if (MICOV_DOCTYPE == docType) {
             fieldsMicov
+        } else if (EU_PID_DOCTYPE == docType) {
+            fieldsEuPid
         } else {
             throw IllegalArgumentException("No field list valid for $docType")
         }

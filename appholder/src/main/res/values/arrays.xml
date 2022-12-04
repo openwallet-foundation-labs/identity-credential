@@ -4,6 +4,7 @@
         <item>mDL</item>
         <item>mVR</item>
         <item>micov</item>
+        <item>euPid</item>
     </string-array>
     <string-array name="document_color">
         <item>Green</item>

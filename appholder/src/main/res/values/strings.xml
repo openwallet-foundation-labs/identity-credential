@@ -134,4 +134,18 @@
     <string name="documents_pager_empty_view_title">No Documents</string>
     <string name="documents_pager_empty_view_message">Start by adding new one</string>
     <string name="txt_card_art">Card art</string>
+
+    <!-- EU PID -->
+    <string name="unique_identifier">Unique Identifier</string>
+    <string name="birth_family_name">Family Name at Birth</string>
+    <string name="birth_family_name_national_characters">Family Name at Birth in national characters</string>
+    <string name="first_name_at_birth">First Name at Birth</string>
+    <string name="first_name_at_birth_national_characters">First Name at Birth in national characters</string>
+    <string name="gender">Gender</string>
+    <string name="facial_portrait">FacialImage/Portrait</string>
+    <string name="age_over_13">Age over 13?</string>
+    <string name="age_over_16">Age over 16?</string>
+    <string name="age_over_60">Age over 60?</string>
+    <string name="age_over_65">Age over 65?</string>
+    <string name="age_over_68">Age pver 68?</string>
 </resources>

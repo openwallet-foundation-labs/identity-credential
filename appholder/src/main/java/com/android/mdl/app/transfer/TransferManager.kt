@@ -16,6 +16,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
 import com.android.mdl.app.document.Document
+import com.android.mdl.app.documentdata.RequestEuPid
 import com.android.mdl.app.documentdata.RequestMdl
 import com.android.mdl.app.documentdata.RequestMicovAtt
 import com.android.mdl.app.documentdata.RequestMicovVtr
@@ -280,6 +281,8 @@ class TransferManager private constructor(private val context: Context) {
             RequestMvr.getFullItemsToRequest()
         } else if (DocumentData.MICOV_DOCTYPE == document.docType) {
             RequestMicovAtt.getFullItemsToRequest().plus(RequestMicovVtr.getFullItemsToRequest())
+        } else if (DocumentData.EU_PID_DOCTYPE == document.docType) {
+            RequestEuPid.getFullItemsToRequest()
         } else {
             throw IllegalArgumentException("Invalid docType to create request details ${document.docType}")
         }

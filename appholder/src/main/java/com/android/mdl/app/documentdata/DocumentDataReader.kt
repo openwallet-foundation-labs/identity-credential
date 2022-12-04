@@ -18,6 +18,8 @@ import co.nstant.`in`.cbor.model.UnsignedInteger
 import com.android.identity.CredentialDataResult
 import com.android.identity.CredentialDataResult.Entries.STATUS_USER_AUTHENTICATION_FAILED
 import com.android.mdl.app.document.Document
+import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
+import com.android.mdl.app.util.DocumentData.EU_PID_NAMESPACE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_NAMESPACE
 import com.android.mdl.app.util.DocumentData.MICOV_ATT_NAMESPACE
@@ -52,7 +54,7 @@ class DocumentDataReader(private val entries: CredentialDataResult.Entries) {
                 val byteArray: ByteArray? = entries.getEntry(ns, entryName)
                 byteArray?.let { value ->
                     val valueStr: String
-                    if (docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && entryName == "portrait") {
+                    if (isPortraitElement(docType, ns, entryName)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = entries.getEntryBytestring(ns, entryName)
                     } else if (docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && entryName == "fac") {
@@ -78,6 +80,16 @@ class DocumentDataReader(private val entries: CredentialDataResult.Entries) {
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         }
         return DocumentElements(builder.toString(), portrait = portrait, signature = signature)
+    }
+
+    private fun isPortraitElement(
+        docType: String,
+        namespace: String?,
+        entryName: String?
+    ): Boolean {
+        val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
+        val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
+        return hasPortrait && namespaceContainsPortrait && entryName == "portrait"
     }
 
     private fun cborPrettyPrint(encodedBytes: ByteArray): String {
