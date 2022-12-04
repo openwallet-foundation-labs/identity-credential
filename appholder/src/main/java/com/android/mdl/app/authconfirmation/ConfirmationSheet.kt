@@ -1,5 +1,6 @@
 package com.android.mdl.app.authconfirmation
 
+import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -76,7 +77,8 @@ fun ConfirmationSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(16.dp))
         Box(
@@ -136,7 +138,7 @@ private fun TrustedReaderCheck(
                 modifier = Modifier.size(24.dp),
                 imageVector = Icons.Default.Check,
                 contentDescription = "",
-                tint = MaterialTheme.colorScheme.onPrimary
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -306,6 +308,7 @@ private fun SheetActions(
 
 @Composable
 @Preview(name = "Default", showBackground = true)
+@Preview(name = "Default", showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 private fun PreviewConfirmationSheet() {
     HolderAppTheme {
         ConfirmationSheet(
@@ -317,6 +320,7 @@ private fun PreviewConfirmationSheet() {
 
 @Composable
 @Preview(name = "Default With Trusted Reader", showBackground = true)
+@Preview(name = "Default With Trusted Reader", showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 private fun PreviewConfirmationSheetTrustedReader() {
     HolderAppTheme {
         ConfirmationSheet(
@@ -328,7 +332,8 @@ private fun PreviewConfirmationSheetTrustedReader() {
 }
 
 @Composable
-@Preview(name = "Document With Trusted Reader", showBackground = true, backgroundColor = 0xFFFFFFFF)
+@Preview(name = "Document With Trusted Reader", showBackground = true)
+@Preview(name = "Document With Trusted Reader", showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 private fun PreviewConfirmationSheetWithDocumentAndTrustedReader() {
     HolderAppTheme {
         ConfirmationSheet(
@@ -347,6 +352,7 @@ private fun PreviewConfirmationSheetWithDocumentAndTrustedReader() {
 
 @Composable
 @Preview(name = "Sending progress", showBackground = true)
+@Preview(name = "Sending progress", showBackground = true, uiMode = UI_MODE_NIGHT_YES)
 private fun PreviewConfirmationSendingProgress() {
     HolderAppTheme {
         ConfirmationSheet(
