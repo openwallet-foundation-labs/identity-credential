@@ -8,6 +8,7 @@ import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.*
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
 import com.android.mdl.app.util.DocumentData
+import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
@@ -189,6 +190,8 @@ class DocumentManager private constructor(private val context: Context) {
                     provisionSelfSignedMvr(dData)
                 } else if (MICOV_DOCTYPE == dData.provisionInfo.docType) {
                     provisionSelfSignedMicov(dData)
+                } else if (EU_PID_DOCTYPE == dData.provisionInfo.docType) {
+                    provisionSelfSignedEuPid(dData)
                 } else {
                     throw IllegalArgumentException("Invalid docType to create self signed document ${dData.provisionInfo.docType}")
                 }
@@ -596,6 +599,65 @@ class DocumentManager private constructor(private val context: Context) {
         provisionSelfSigned(dData, iaSelfSignedCert, personalizationData.build())
     }
 
+    private fun provisionSelfSignedEuPid(dData: SelfSignedDocumentData) {
+        val idSelf = AccessControlProfileId(0)
+        val profileSelfBuilder = AccessControlProfile.Builder(idSelf)
+            .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
+        if (dData.provisionInfo.userAuthentication) {
+            profileSelfBuilder.setUserAuthenticationTimeout(30 * 1000)
+        }
+        val profileSelf = profileSelfBuilder.build()
+        val idsSelf = listOf(idSelf)
+
+        val iaSelfSignedCert = KeysAndCertificates.getMdlDsCertificate(context)
+        val bitmap = dData.getValueBitmap("portrait")
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream)
+        val portrait: ByteArray = outputStream.toByteArray()
+        val birthDate = unicodeStringFrom { dData.getValueString("birth_date") }
+        val portraitTakenDate = unicodeStringFrom { dData.getValueString("portrait_capture_date") }
+        //todo add "biometric_template_finger"
+
+        val personalizationData = PersonalizationData.Builder()
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "family_name", idsSelf, dData.getValueString("family_name"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "family_name_national_characters", idsSelf, dData.getValueString("family_name_national_characters"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "given_name", idsSelf, dData.getValueString("given_name"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "given_name_national_characters", idsSelf, dData.getValueString("given_name_national_characters"))
+            .putEntry(DocumentData.EU_PID_NAMESPACE, "birth_date", idsSelf, FormatUtil.cborEncode(birthDate))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "persistent_id", idsSelf, dData.getValueString("persistent_id"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "family_name_birth", idsSelf, dData.getValueString("family_name_birth"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "family_name_birth_national_characters", idsSelf, dData.getValueString("family_name_birth_national_characters"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "given_name_birth", idsSelf, dData.getValueString("given_name_birth"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "given_name_birth_national_characters", idsSelf, dData.getValueString("given_name_birth_national_characters"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "birth_place", idsSelf, dData.getValueString("birth_place"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "resident_address", idsSelf, dData.getValueString("resident_address"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "resident_city", idsSelf, dData.getValueString("resident_city"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "resident_postal_code", idsSelf, dData.getValueString("resident_postal_code"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "resident_state", idsSelf, dData.getValueString("resident_state"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "resident_country", idsSelf, dData.getValueString("resident_country"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "gender", idsSelf, dData.getValueString("gender"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "nationality", idsSelf, dData.getValueString("nationality"))
+            .putEntryBytestring(DocumentData.EU_PID_NAMESPACE, "portrait", idsSelf, portrait)
+            .putEntry(DocumentData.EU_PID_NAMESPACE, "portrait_capture_date", idsSelf, FormatUtil.cborEncode(portraitTakenDate))
+            .putEntryBoolean(DocumentData.EU_PID_NAMESPACE, "age_over_13", idsSelf, dData.getValueBoolean("age_over_18"))
+            .putEntryBoolean(DocumentData.EU_PID_NAMESPACE, "age_over_16", idsSelf, dData.getValueBoolean("age_over_18"))
+            .putEntryBoolean(DocumentData.EU_PID_NAMESPACE, "age_over_18", idsSelf, dData.getValueBoolean("age_over_18"))
+            .putEntryBoolean(DocumentData.EU_PID_NAMESPACE, "age_over_21", idsSelf, dData.getValueBoolean("age_over_21"))
+            .putEntryBoolean(DocumentData.EU_PID_NAMESPACE, "age_over_60", idsSelf, dData.getValueBoolean("age_over_21"))
+            .putEntryBoolean(DocumentData.EU_PID_NAMESPACE, "age_over_65", idsSelf, dData.getValueBoolean("age_over_21"))
+            .putEntryBoolean(DocumentData.EU_PID_NAMESPACE, "age_over_68", idsSelf, dData.getValueBoolean("age_over_21"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "age_in_years", idsSelf, dData.getValueString("age_in_years"))
+            .putEntryString(DocumentData.EU_PID_NAMESPACE, "age_birth_year", idsSelf, dData.getValueString("age_birth_year"))
+        personalizationData.addAccessControlProfile(profileSelf)
+        provisionSelfSigned(dData, iaSelfSignedCert, personalizationData.build())
+    }
+
+    private inline fun unicodeStringFrom(tag: Long = 1004, value: () -> String): UnicodeString {
+        val result = UnicodeString(value())
+        result.setTag(tag)
+        return result
+    }
+
     private fun provisionSelfSigned(
         dData: SelfSignedDocumentData,
         iaSelfSignedCert: X509Certificate,
@@ -620,6 +682,8 @@ class DocumentManager private constructor(private val context: Context) {
             KeysAndCertificates.getMekbDsKeyPair(context).private
         } else if (MICOV_DOCTYPE == dData.provisionInfo.docType) {
             KeysAndCertificates.getMicovDsKeyPair(context).private
+        } else if (EU_PID_DOCTYPE == dData.provisionInfo.docType) {
+            KeysAndCertificates.getMdlDsKeyPair(context).private
         } else {
             throw IllegalArgumentException("DS key pair not found to docType: ${dData.provisionInfo.docType}")
         }

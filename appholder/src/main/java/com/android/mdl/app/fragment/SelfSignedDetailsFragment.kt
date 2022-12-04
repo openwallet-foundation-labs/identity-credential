@@ -53,7 +53,7 @@ class SelfSignedDetailsFragment : Fragment() {
 
     private val vm: SelfSignedViewModel by viewModels()
     private val args: SelfSignedDetailsFragmentArgs by navArgs()
-    private val nameLabels = listOf("Given Name", "Registration Holder Name")
+    private val nameLabels = listOf("Given Name", "Registration Holder Name", "First Name")
 
     private var _binding: FragmentSelfSignedDetailsBinding? = null
     private val binding get() = _binding!!

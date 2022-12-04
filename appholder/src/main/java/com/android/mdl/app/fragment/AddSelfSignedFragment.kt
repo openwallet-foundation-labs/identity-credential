@@ -15,6 +15,7 @@ import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_KEYSTORE
 import com.android.mdl.app.R
 import com.android.mdl.app.adapter.ColorAdapter
 import com.android.mdl.app.databinding.FragmentAddSelfSignedBinding
+import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
@@ -73,27 +74,16 @@ class AddSelfSignedFragment : Fragment() {
             override fun onNothingSelected(parent: AdapterView<*>?) {
 
             }
-
         }
     }
 
     private fun setDocumentNameByType(position: Int) {
         val value = when (position) {
-            0 -> {
-                "Driving License"
-            }
-
-            1 -> {
-                "Vehicle Registration"
-            }
-
-            2 -> {
-                "Vaccination Document"
-            }
-
-            else -> {
-                "New Document"
-            }
+            0 -> "Driving License"
+            1 -> "Vehicle Registration"
+            2 -> "Vaccination Document"
+            3 -> "EU Personal ID"
+            else -> "New Document"
         }
         binding.edDocumentName.text = Editable.Factory.getInstance().newEditable(value)
     }
@@ -149,6 +139,7 @@ class AddSelfSignedFragment : Fragment() {
         // 0 mDL
         // 1 mVR
         // 2 micov
+        // 3 eu pid
         return when (binding.spDocumentType.selectedItem) {
             resources.getStringArray(R.array.document_type)[0] -> {
                 MDL_DOCTYPE
@@ -162,9 +153,11 @@ class AddSelfSignedFragment : Fragment() {
                 MICOV_DOCTYPE
             }
 
-            else -> {
-                MDL_DOCTYPE
+            resources.getStringArray(R.array.document_type)[3] -> {
+                EU_PID_DOCTYPE
             }
+
+            else -> MDL_DOCTYPE
         }
     }
 
