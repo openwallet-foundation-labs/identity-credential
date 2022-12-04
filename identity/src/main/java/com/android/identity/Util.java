@@ -31,6 +31,7 @@ import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERSequenceGenerator;
+import org.bouncycastle.util.BigIntegers;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -966,14 +967,20 @@ class Util {
         return ret;
     }
 
+    /* Encodes an integer according to Section 2.3.5 Field-Element-to-Octet-String Conversion
+     * of SEC 1: Elliptic Curve Cryptography (https://www.secg.org/sec1-v2.pdf).
+     */
+    static @NonNull
+    byte[] sec1EncodeFieldElementAsOctetString(int octetStringSize, BigInteger fieldValue) {
+        return BigIntegers.asUnsignedByteArray(octetStringSize, fieldValue);
+    }
+
     static @NonNull
     DataItem cborBuildCoseKey(@NonNull PublicKey key) {
         ECPublicKey ecKey = (ECPublicKey) key;
         ECPoint w = ecKey.getW();
-        // X and Y are always positive so for interop we remove any leading zeroes
-        // inserted by the BigInteger encoder.
-        byte[] x = stripLeadingZeroes(w.getAffineX().toByteArray());
-        byte[] y = stripLeadingZeroes(w.getAffineY().toByteArray());
+        byte[] x = sec1EncodeFieldElementAsOctetString(32, w.getAffineX());
+        byte[] y = sec1EncodeFieldElementAsOctetString(32, w.getAffineY());
         DataItem item = new CborBuilder()
                 .addMap()
                 .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
@@ -1113,6 +1120,13 @@ class Util {
         }
         byte[] encodedX = cborMapExtractByteString(coseKey, COSE_KEY_EC2_X);
         byte[] encodedY = cborMapExtractByteString(coseKey, COSE_KEY_EC2_Y);
+
+        if (encodedX.length != 32) {
+            Logger.w(TAG, "Expected 32 bytes for X in COSE_Key, found " + encodedX.length);
+        }
+        if (encodedY.length != 32) {
+            Logger.w(TAG, "Expected 32 bytes for Y in COSE_Key, found " + encodedY.length);
+        }
 
         BigInteger x = new BigInteger(1, encodedX);
         BigInteger y = new BigInteger(1, encodedY);
