@@ -282,6 +282,22 @@ class GattClient extends BluetoothGattCallback {
         }
     }
 
+    private int mCharacteristicValueSize = 0;
+
+    private int
+    getCharacteristicValueSize() {
+        if (mCharacteristicValueSize > 0) {
+            return mCharacteristicValueSize;
+        }
+        int mtuSize = mNegotiatedMtu;
+        if (mtuSize == 0) {
+            Logger.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
+            mtuSize = 23;
+        }
+        mCharacteristicValueSize = Util.bleCalculateAttributeValueSize(mtuSize);
+        return mCharacteristicValueSize;
+    }
+
     @SuppressLint("NewApi")
     @Override
     public void onCharacteristicRead(@NonNull BluetoothGatt gatt,
@@ -491,18 +507,13 @@ class GattClient extends BluetoothGattCallback {
                 mIncomingMessage.reset();
                 reportMessageReceived(entireMessage);
             } else if (data[0] == 0x01) {
-                if (data.length != mNegotiatedMtu - 3) {
-                    reportError(new Error(String.format(Locale.US,
-                            "Invalid size %d of data written Server2Client characteristic, "
-                                    + "expected size %d",
-                            data.length, mNegotiatedMtu - 3)));
-                    return;
-                }
+                Logger.w(TAG, String.format(Locale.US,
+                        "Server2Client received %d bytes which is less than the expected %d bytes",
+                        data.length, getCharacteristicValueSize()));
             } else {
                 reportError(new Error(String.format(Locale.US,
                         "Invalid first byte %d in Server2Client data chunk, expected 0 or 1",
                         data[0])));
-                return;
             }
         } else if (characteristic.getUuid().equals(mCharacteristicStateUuid)) {
             byte[] data = characteristic.getValue();
@@ -561,25 +572,20 @@ class GattClient extends BluetoothGattCallback {
             return;
         }
 
-        if (mNegotiatedMtu == 0) {
-            Logger.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.");
-            mNegotiatedMtu = 23;
-        }
-
-        // Three less the MTU but we also need room for the leading 0x00 or 0x01.
+        // Also need room for the leading 0x00 or 0x01.
         //
-        int maxChunkSize = mNegotiatedMtu - 4;
+        int maxDataSize = getCharacteristicValueSize() - 1;
 
         int offset = 0;
         do {
-            boolean moreChunksComing = (offset + maxChunkSize < data.length);
+            boolean moreDataComing = (offset + maxDataSize < data.length);
             int size = data.length - offset;
-            if (size > maxChunkSize) {
-                size = maxChunkSize;
+            if (size > maxDataSize) {
+                size = maxDataSize;
             }
 
             byte[] chunk = new byte[size + 1];
-            chunk[0] = moreChunksComing ? (byte) 0x01 : (byte) 0x00;
+            chunk[0] = moreDataComing ? (byte) 0x01 : (byte) 0x00;
             System.arraycopy(data, offset, chunk, 1, size);
 
             mWritingQueue.add(chunk);
