@@ -343,7 +343,7 @@ class GattServer extends BluetoothGattServerCallback {
             } else if (value[0] == 0x01) {
                 if (value.length != getCharacteristicValueSize()) {
                     Logger.w(TAG, String.format(Locale.US,
-                            "Client2Server received %d bytes which is less than the expected %d bytes",
+                            "Client2Server received %d bytes which is not the expected %d bytes",
                             value.length, getCharacteristicValueSize()));
                     return;
                 }
