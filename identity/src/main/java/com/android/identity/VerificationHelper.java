@@ -339,71 +339,12 @@ public class VerificationHelper {
                 "Invalid QR Code device engagement text: " + qrDeviceEngagement));
     }
 
-    static byte[] buildApduReadBinary(int offset, int length) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(0x00);
-        baos.write(0xb0);
-        baos.write(offset / 0x100);
-        baos.write(offset & 0xff);
-        baos.write(0x00);
-        baos.write(length / 0x100);
-        baos.write(length & 0xff);
-        return baos.toByteArray();
-    }
-
-    static private
-    byte[] buildApdu(int cla, int ins, int p1, int p2, @Nullable byte[] data, int le) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(cla);
-        baos.write(ins);
-        baos.write(p1);
-        baos.write(p2);
-        boolean hasExtendedLc = false;
-        if (data == null) {
-            baos.write(0);
-        } else if (data.length < 256) {
-            baos.write(data.length);
-        } else {
-            hasExtendedLc = true;
-            baos.write(0x00);
-            baos.write(data.length / 0x100);
-            baos.write(data.length & 0xff);
-        }
-        if (data != null && data.length > 0) {
-            try {
-                baos.write(data);
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-        if (le > 0) {
-            if (le == 256) {
-                baos.write(0x00);
-            } else if (le < 256) {
-                baos.write(le);
-            } else {
-                if (!hasExtendedLc) {
-                    baos.write(0x00);
-                }
-                if (le == 65536) {
-                    baos.write(0x00);
-                    baos.write(0x00);
-                } else {
-                    baos.write(le / 0x100);
-                    baos.write(le & 0xff);
-                }
-            }
-        }
-
-        return baos.toByteArray();
-    }
-
     private byte[] readBinary(@NonNull IsoDep isoDep, int offset, int size)
             throws IOException {
         byte[] apdu;
         byte[] ret;
 
-        apdu = buildApduReadBinary(offset, size);
+        apdu = NfcUtil.createApduReadBinary(offset, size);
         ret = isoDep.transceive(apdu);
         if (ret.length < 2 || ret[ret.length - 2] != ((byte) 0x90) || ret[ret.length - 1] != ((byte) 0x00)) {
             Logger.e(TAG, "Error sending READ_BINARY command: " + Util.toHex(ret));
@@ -417,7 +358,7 @@ public class VerificationHelper {
         byte[] apdu;
         byte[] ret;
 
-        apdu = buildApduReadBinary(0x0000, 2);
+        apdu = NfcUtil.createApduReadBinary(0x0000, 2);
         ret = isoDep.transceive(apdu);
         if (ret.length != 4 || ret[2] != ((byte) 0x90) || ret[3] != ((byte) 0x00)) {
             Logger.e(TAG, "Error sending second READ_BINARY command for length: " + Util.toHex(ret));
@@ -425,7 +366,7 @@ public class VerificationHelper {
         }
         int replyLen = ((int) ret[0] & 0xff) * 256 + ((int) ret[1] & 0xff);
 
-        apdu = buildApduReadBinary(0x0002, replyLen);
+        apdu = NfcUtil.createApduReadBinary(0x0002, replyLen);
         ret = isoDep.transceive(apdu);
         if (ret.length != replyLen + 2 || ret[replyLen] != ((byte) 0x90) || ret[replyLen + 1] != ((byte) 0x00)) {
             Logger.e(TAG, "Error sending second READ_BINARY command for payload: " + Util.toHex(ret));
@@ -459,7 +400,7 @@ public class VerificationHelper {
         }
 
         // First command is UPDATE_BINARY to reset length
-        apdu = buildApdu(0x00, 0xd6, 0x00, 0x00, new byte[] {0x00, 0x00}, 0);
+        apdu = NfcUtil.createApduUpdateBinary(0x0000, new byte[] {0x00, 0x00});
         ret = isoDep.transceive(apdu);
         if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
             Logger.e(TAG, "Error sending initial UPDATE_BINARY command: " + Util.toHex(ret));
@@ -467,7 +408,7 @@ public class VerificationHelper {
         }
 
         // Second command is UPDATE_BINARY with payload, starting at offset 2.
-        apdu = buildApdu(0x00, 0xd6, 0x00, 0x02, ndefMessage, 0);
+        apdu = NfcUtil.createApduUpdateBinary(0x0002, ndefMessage);
         ret = isoDep.transceive(apdu);
         if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
             Logger.e(TAG, "Error sending second UPDATE_BINARY command: " + Util.toHex(ret));
@@ -478,7 +419,7 @@ public class VerificationHelper {
         byte[] encodedLength = new byte[] {
                 (byte) ((ndefMessage.length / 0x100) & 0xff),
                 (byte) (ndefMessage.length & 0xff)};
-        apdu = buildApdu(0x00, 0xd6, 0x00, 0x00, encodedLength, 0);
+        apdu = NfcUtil.createApduUpdateBinary(0x0000, encodedLength);
         ret = isoDep.transceive(apdu);
         if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
             Logger.e(TAG, "Error sending third UPDATE_BINARY command: " + Util.toHex(ret));
@@ -516,8 +457,8 @@ public class VerificationHelper {
                     isoDep.connect();
                     isoDep.setTimeout(20 * 1000);  // 20 seconds
 
-                    byte[] selectCommand = buildApdu(0x00, 0xa4, 0x04, 0x00,
-                            NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, 0);
+                    byte[] selectCommand = NfcUtil.createApduApplicationSelect(
+                            NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION);
                     ret = isoDep.transceive(selectCommand);
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                         throw new IllegalStateException("NDEF application selection failed, ret: " + Util.toHex(ret));
@@ -528,15 +469,14 @@ public class VerificationHelper {
                         throw new IllegalStateException("Error selecting capability file, ret: " + Util.toHex(ret));
                     }
 
-                    byte[] ccFileInitial = readBinary(isoDep, 0, 2);
-                    if (ccFileInitial == null || ccFileInitial.length != 2) {
-                        throw new IllegalStateException("Error reading CC file length");
-                    }
-
-                    int ccFileLength = ((int) ccFileInitial[0] & 0xff) * 256 + ((int) ccFileInitial[1] & 0xff);
-                    byte[] ccFile = readBinary(isoDep, 0, ccFileLength);
+                    // CC file is 15 bytes long
+                    byte[] ccFile = readBinary(isoDep, 0, 15);
                     if (ccFile == null) {
                         throw new IllegalStateException("Error reading CC file");
+                    }
+                    if (ccFile.length < 15) {
+                        throw new IllegalStateException(
+                                String.format(Locale.US, "CC file is %d bytes, expected 15"));
                     }
 
                     // TODO: look at mapping version in ccFile

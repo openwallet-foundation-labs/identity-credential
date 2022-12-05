@@ -127,13 +127,6 @@ public class NfcEnagementHelperTest {
         Assert.assertNotNull(responseApdu);
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
-        // Get length of CC file
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(0, 2));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
-        Assert.assertNotNull(responseApdu);
-        // The response contains the length as 2 bytes followed by STATUS_WORD_OK
-        Assert.assertArrayEquals(Util.fromHex("000f9000"), responseApdu);
-
         // Get CC file
         apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(0, 15));
         responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
