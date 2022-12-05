@@ -302,6 +302,7 @@ public class RequestServletTest {
         Assert.assertEquals(responseMessageDecrypted.getKey(), null);
         Assert.assertEquals(responseMessageDecrypted.getValue(), OptionalLong.of(20));
         String devResponseJSON = RequestServlet.getDeviceResponse(dKey);
+        System.out.println(devResponseJSON);
         Assert.assertTrue(devResponseJSON.length() > 0);
     }
 
