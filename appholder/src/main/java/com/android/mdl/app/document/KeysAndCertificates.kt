@@ -93,6 +93,7 @@ object KeysAndCertificates {
             getCertificate(context, R.raw.ul_cert_ca_01),
             getCertificate(context, R.raw.ul_cert_ca_01_cer),
             getCertificate(context, R.raw.ul_cert_ca_02),
+            getCertificate(context, R.raw.ul_cert_ca_03_cer),
             getCertificate(context, R.raw.ul_cert_ca_02_cer),
             getCertificate(context, R.raw.utms_reader_ca),
             getCertificate(context, R.raw.utms_reader_ca_cer),
