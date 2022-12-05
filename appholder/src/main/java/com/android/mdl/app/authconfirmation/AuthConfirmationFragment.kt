@@ -19,6 +19,7 @@ import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
 import com.android.mdl.app.theme.HolderAppTheme
+import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.log
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -73,16 +74,21 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
             viewModel.addDocumentForSigning(documentData)
             val elements = documentData.requestedElements.map { element ->
                 viewModel.toggleSignedElement(element)
-                val displayName = stringValueFor(element.value)
+                val displayName = stringValueFor(element.namespace, element.value)
                 ConfirmationSheetData.DocumentElement(displayName, element)
             }
             ConfirmationSheetData(documentData.userReadableName, elements)
         }
     }
 
-    private fun stringValueFor(element: String): String {
-        val identifier = resources.getIdentifier(element, "string", requireContext().packageName)
+    private fun stringValueFor(namespace: String, element: String): String {
+        val requested = if (element == "portrait") portraitFor(namespace) else element
+        val identifier = resources.getIdentifier(requested, "string", requireContext().packageName)
         return if (identifier != 0) getString(identifier) else element
+    }
+
+    private fun portraitFor(namespace: String): String {
+        return if (namespace == DocumentData.EU_PID_NAMESPACE) "facial_portrait" else "portrait"
     }
 
     private fun sendResponse() {
