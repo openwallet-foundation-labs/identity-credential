@@ -1895,4 +1895,25 @@ class Util {
         return a.compareTo(b);
     }
 
+    // Returns how many bytes should be used for values in the Server2Client and
+    // Client2Server characteristics.
+    static int
+    bleCalculateAttributeValueSize(int mtuSize) {
+        int characteristicValueSize;
+        if (mtuSize > 515) {
+            // Bluetooth Core specification Part F section 3.2.9 says "The maximum length of
+            // an attribute value shall be 512 octets". ... this is enforced in Android as
+            // of Android 13 with the effect being that the application only sees the first
+            // 512 bytes.
+            Logger.w(TAG, String.format(Locale.US, "MTU size is %d, using 512 as "
+                    + "characteristic value size", mtuSize));
+            characteristicValueSize = 512;
+        } else {
+            characteristicValueSize = mtuSize - 3;
+            Logger.w(TAG, String.format(Locale.US, "MTU size is %d, using %d as "
+                    + "characteristic value size", mtuSize, characteristicValueSize));
+        }
+        return characteristicValueSize;
+    }
+
 }
