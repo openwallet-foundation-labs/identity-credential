@@ -226,18 +226,18 @@ public class TestVectors {
            + "46feb839a35f658401f3400069063c189138bdcd2f631427c589424113fc9ec26cebcacacfcdb9695"
            + "d28e99953becabc4e30ab4efacc839a81f9159933d192527ee91b449bb7f80bf";
  
-   static public final String ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X =
+   public static final String ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X =
            "60e3392385041f51403051f2415531cb56dd3f999c71687013aac6768bc8187e";
-   static public final String ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y =
+   public static final String ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y =
            "e58deb8fdbe907f7dd5368245551a34796f7d2215c440c339bb0f7b67beccdfa";
-   static public final String ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D =
+   public static final String ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D =
            "de3b4b9e5f72dd9b58406ae3091434da48a6f9fd010d88fcb0958e2cebec947c";
  
-   static public final String ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X =
+   public static final String ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X =
            "5a88d182bce5f42efa59943f33359d2e8a968ff289d93e5fa444b624343167fe";
-   static public final String ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y =
+   public static final String ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y =
            "b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32fc67";
-   static public final String ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D =
+   public static final String ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D =
            "c1917a1579949a042f1ba9fc53a2df9b1bc47adf31c10f813ed75702d1c1f136";
  
    static final String ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X =
