@@ -4,7 +4,7 @@ import com.android.mdl.appreader.R
 
 object RequestEuPid: RequestDocument() {
 
-    override val docType = "eu.europa.ec.eudiw.pid"
+    override val docType = "eu.europa.ec.eudiw.pid.1"
     override val nameSpace = "eu.europa.ec.eudiw.pid.1"
     override val dataItems = DataItems.values().asList()
 

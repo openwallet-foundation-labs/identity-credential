@@ -39,7 +39,7 @@ class ShowDocumentFragment : Fragment() {
         private const val MICOV_DOCTYPE = "org.micov.1"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
         private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
-        private const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid"
+        private const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
         private const val EU_PID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
     }
 

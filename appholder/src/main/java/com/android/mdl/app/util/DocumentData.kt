@@ -9,7 +9,7 @@ object DocumentData {
     const val MICOV_VTR_NAMESPACE = "org.micov.vtr.1"
     const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
     const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
-    const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid"
+    const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
     const val EU_PID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
 
     enum class ErikaStaticData(val identifier: String, val value: String) {
