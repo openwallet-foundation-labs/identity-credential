@@ -245,6 +245,8 @@ class ShowDocumentFragment : Fragment() {
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "signature_usual_mark") {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
                         signatureBytes = doc.getIssuerEntryByteString(ns, elem)
+                    } else if (doc.docType == EU_PID_DOCTYPE && ns == EU_PID_NAMESPACE && elem == "biometric_template_finger") {
+                        valueStr = String.format("%d bytes", value.size)
                     } else {
                         valueStr = FormatUtil.cborPrettyPrint(value)
                     }

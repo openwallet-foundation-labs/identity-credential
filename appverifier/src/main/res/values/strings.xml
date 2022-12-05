@@ -84,6 +84,7 @@
     <string name="first_name_at_birth_national_characters">First Name at Birth in national characters</string>
     <string name="gender">Gender</string>
     <string name="facial_portrait">FacialImage/Portrait</string>
+    <string name="biometric_template_finger">Fingerprint</string>
     <string name="age_over_13">Age over 13?</string>
     <string name="age_over_16">Age over 16?</string>
     <string name="age_over_60">Age over 60?</string>
