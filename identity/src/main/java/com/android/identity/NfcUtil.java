@@ -92,7 +92,9 @@ class NfcUtil {
         baos.write(0xb0);
         baos.write(offset / 0x100);
         baos.write(offset & 0xff);
-        if (length < 0x100) {
+        if (length == 0) {
+            throw new IllegalArgumentException("Length cannot be zero");
+        } else if (length < 0x100) {
             baos.write(length & 0xff);
         } else {
             baos.write(0x00);
