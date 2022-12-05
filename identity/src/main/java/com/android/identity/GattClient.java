@@ -507,9 +507,11 @@ class GattClient extends BluetoothGattCallback {
                 mIncomingMessage.reset();
                 reportMessageReceived(entireMessage);
             } else if (data[0] == 0x01) {
-                Logger.w(TAG, String.format(Locale.US,
-                        "Server2Client received %d bytes which is less than the expected %d bytes",
-                        data.length, getCharacteristicValueSize()));
+                if (data.length != getCharacteristicValueSize()) {
+                    Logger.w(TAG, String.format(Locale.US,
+                            "Server2Client received %d bytes which is not the expected %d bytes",
+                            data.length, getCharacteristicValueSize()));
+                }
             } else {
                 reportError(new Error(String.format(Locale.US,
                         "Invalid first byte %d in Server2Client data chunk, expected 0 or 1",
