@@ -32,6 +32,7 @@ object RequestEuPid: RequestDocument() {
         NATIONALITY("nationality", R.string.nationality),
         PORTRAIT("portrait", R.string.facial_portrait),
         PORTRAIT_CAPTURE_DATE("portrait_capture_date", R.string.portrait_capture_date),
+        BIOMETRIC_TEMPLATE_FINGER("biometric_template_finger", R.string.biometric_template_finger),
         AGE_OVER_13("age_over_13", R.string.age_over_13),
         AGE_OVER_16("age_over_16", R.string.age_over_16),
         AGE_OVER_18("age_over_18", R.string.age_over_18),
