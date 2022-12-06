@@ -52,12 +52,7 @@ import com.google.appengine.api.datastore.Text;
 @WebServlet("/request-mdl/*")
 public class RequestServlet extends HttpServlet {
 
-    public static DatastoreService ds;
-
-    @Override
-    public void init() {
-        ds = DatastoreServiceFactory.getDatastoreService();
-    }
+    public static final DatastoreService ds = DatastoreServiceFactory.getDatastoreService();
 
    /**
     * Handles two types of HTTP GET requests:
@@ -103,12 +98,12 @@ public class RequestServlet extends HttpServlet {
     * @param key Unique key tied to an existing entity in Datastore
     * @return Generated mdoc:// URI
     */
-    public static String createMdocUri(Key key) {
+    private static String createMdocUri(Key key) {
         KeyPair keyPair = generateKeyPair();
         byte[] re = generateReaderEngagement(keyPair.getPublic(), key);
   
         // put ReaderEngagement and generated ephemeral keys into Datastore
-        setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, re, key);
+        setDatastoreProp(ServletConsts.RE_PROP, re, key);
         setDatastoreProp(ServletConsts.PUBKEY_PROP, keyPair.getPublic().getEncoded(), key);
         setDatastoreProp(ServletConsts.PRIVKEY_PROP, keyPair.getPrivate().getEncoded(), key);
 
@@ -165,16 +160,14 @@ public class RequestServlet extends HttpServlet {
       * @param key Key corresponding to an entity in Datastore
       * @return SessionData CBOR message containing DeviceRequest
       */
-    public static byte[] createDeviceRequest(byte[] messageData, Key key) {
+    private static byte[] createDeviceRequest(byte[] messageData, Key key) {
         byte[] encodedDeviceEngagement =
-            Util.cborMapExtractByteString(Util.cborDecode(messageData),
-                ServletConsts.DEV_ENGAGEMENT_KEY);
+            Util.cborMapExtractByteString(Util.cborDecode(messageData), ServletConsts.DE_KEY);
         PublicKey eReaderKeyPublic =
             getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
         PrivateKey eReaderKeyPrivate =
             getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
-        byte[] readerEngagementBytes =
-            getDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, key);
+        byte[] readerEngagementBytes = getDatastoreProp(ServletConsts.RE_PROP, key);
 
         EngagementParser.Engagement de = new EngagementParser(encodedDeviceEngagement).parse();
         PublicKey eDeviceKeyPublic = de.getESenderKey();
@@ -204,7 +197,7 @@ public class RequestServlet extends HttpServlet {
      * the base URL of the website (ServletConsts.BASE_URL).
      * @param key Unique identifier corresponding to the current session
      */
-    public static void verifyOriginInfo(List<OriginInfo> oiList, Key key) {
+    private static void verifyOriginInfo(List<OriginInfo> oiList, Key key) {
         if (oiList.size() > 0) {
             OriginInfoWebsite oi = (OriginInfoWebsite) oiList.get(0);
             if (!oi.getBaseUrl().equals(ServletConsts.BASE_URL)) {
@@ -243,7 +236,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return Map of items to request from the mDL app
      */
-    public static Map<String, Map<String, Boolean>> createMdlItemsToRequest() {
+    private static Map<String, Map<String, Boolean>> createMdlItemsToRequest() {
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
         Map<String, Boolean> mdlNsItems = new HashMap<>();
         mdlNsItems.put("sex", false);
@@ -276,7 +269,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return generated ephemeral reader key pair (containing a PublicKey and a PrivateKey)
      */
-    public static KeyPair generateKeyPair() {
+    private static KeyPair generateKeyPair() {
         try {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance(ServletConsts.KEYGEN_INSTANCE);
             ECGenParameterSpec ecSpec = new ECGenParameterSpec(ServletConsts.KEYGEN_CURVE);
@@ -291,7 +284,7 @@ public class RequestServlet extends HttpServlet {
      * @param request HTTP POST request
      * @return byte array with data extracted from @param request
      */
-    public static byte[] getBytesFromRequest(HttpServletRequest request) {
+    private static byte[] getBytesFromRequest(HttpServletRequest request) {
         byte[] arr = new byte[request.getContentLength()];
         try {
             request.getInputStream().read(arr);
@@ -310,7 +303,7 @@ public class RequestServlet extends HttpServlet {
      * 
      * @return byte array containing a termination message
      */
-    public static byte[] parseDeviceResponse(byte[] messageData, Key key) {
+    private static byte[] parseDeviceResponse(byte[] messageData, Key key) {
         PublicKey eReaderKeyPublic =
             getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
         PrivateKey eReaderKeyPrivate =
@@ -342,33 +335,32 @@ public class RequestServlet extends HttpServlet {
      * @param key Unique identifier that corresponds to the current session
      * @return ArrayList of String data extracted from @param docs that will be displayed on the website
      */
-    public static ArrayList<String> buildArrayFromDocuments(List<DeviceResponseParser.Document> docs, Key key) {
+    private static ArrayList<String> buildArrayFromDocuments(List<DeviceResponseParser.Document> docs, Key key) {
         ArrayList<String> arr = new ArrayList<String>();
         arr.add(getOriginInfoStatus(key));
         arr.add("Number of documents returned: " + docs.size());
         for (DeviceResponseParser.Document doc : docs) {
             arr.add("Doctype: " + doc.getDocType());
             if (doc.getIssuerSignedAuthenticated()) {
-                arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Issuer Signed Authenticated");
+                arr.add(ServletConsts.CHECKMARK + "Issuer Signed Authenticated");
             }
             if (doc.getDeviceSignedAuthenticatedViaSignature()) {
-                arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Device Signed Authenticated (ECDSA)");
+                arr.add(ServletConsts.CHECKMARK + "Device Signed Authenticated (ECDSA)");
             } else if (doc.getDeviceSignedAuthenticated()) {
-                arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Device Signed Authenticated");
+                arr.add(ServletConsts.CHECKMARK + "Device Signed Authenticated");
             }
             arr.add("MSO");
-            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Signed: "
+            arr.add(ServletConsts.CHECKMARK + "Signed: "
                 + timestampToString(doc.getValidityInfoSigned()));
-            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Signed: "
+            arr.add(ServletConsts.CHECKMARK + "Signed: "
                 + timestampToString(doc.getValidityInfoValidFrom()));
-            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "Signed: "
+            arr.add(ServletConsts.CHECKMARK + "Signed: "
                 + timestampToString(doc.getValidityInfoValidUntil()));
-            arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + "DeviceKey: ("
+            arr.add(ServletConsts.CHECKMARK + "DeviceKey: ("
                 + Integer.toString(doc.getDeviceKey().getEncoded().length) + " bytes)");
             List<String> issuerNamespaces = doc.getIssuerNamespaces();
             for (String namespace : issuerNamespaces) {
-                arr.add(ServletConsts.BOLD_PLACEHOLDER + "Namespace: "
-                    + ServletConsts.BOLD_PLACEHOLDER + namespace);
+                arr.add(ServletConsts.BOLD + "Namespace: " + ServletConsts.BOLD + namespace);
                 List<String> entryNames = doc.getIssuerEntryNames(namespace);
                 for (String name : entryNames) {
                     String nameVal = "";
@@ -392,7 +384,7 @@ public class RequestServlet extends HttpServlet {
                         default:
                             nameVal = Base64.getEncoder().encodeToString(doc.getIssuerEntryData(namespace, name));
                     }
-                    arr.add(ServletConsts.CHECKMARK_PLACEHOLDER + name + ": " + nameVal);
+                    arr.add(ServletConsts.CHECKMARK + name + ": " + nameVal);
                 }
             }
         }
@@ -403,7 +395,7 @@ public class RequestServlet extends HttpServlet {
      * @return Datastore entity linked to the key @param key created at the start
      * of the session
      */
-    public static Entity getEntity(Key key) {
+    private static Entity getEntity(Key key) {
         try {
             return ds.get(key);
         } catch (EntityNotFoundException e) {
@@ -414,7 +406,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return String converted from a Timestamp object @param ts
      */
-    public static String timestampToString(com.google.sps.servlets.Timestamp ts) {
+    private static String timestampToString(com.google.sps.servlets.Timestamp ts) {
         DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
         return df.format(new Date(ts.toEpochMilli()));
     }
@@ -422,7 +414,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return PublicKey, converted from a byte array @param arr
      */
-    public static PublicKey getPublicKey(byte[] arr) {
+    private static PublicKey getPublicKey(byte[] arr) {
         try {
             KeyFactory kf = KeyFactory.getInstance(ServletConsts.KEYGEN_INSTANCE);
             return kf.generatePublic(new X509EncodedKeySpec(arr));
@@ -434,7 +426,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return PrivateKey, converted from a byte array @param arr
      */
-    public static PrivateKey getPrivateKey(byte[] arr) {
+    private static PrivateKey getPrivateKey(byte[] arr) {
         try {
             KeyFactory kf = KeyFactory.getInstance(ServletConsts.KEYGEN_INSTANCE);
             return kf.generatePrivate(new PKCS8EncodedKeySpec(arr));
@@ -480,7 +472,7 @@ public class RequestServlet extends HttpServlet {
      * @param key Unique identifier that corresponds to the current session
      * @return (as int) number of POST requests that have been sent to the current session so far
      */
-    public static int getNumPostRequests(Key key) {
+    private static int getNumPostRequests(Key key) {
         return ((Long) getEntity(key).getProperty(ServletConsts.NUM_POSTS_PROP)).intValue();
     }
 

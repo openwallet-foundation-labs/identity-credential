@@ -101,7 +101,6 @@ public class RequestServletTest {
         MockitoAnnotations.initMocks(this);
         servlet = new RequestServlet();
         helper.setUp();
-        servlet.init();
     }
 
     @After
@@ -150,11 +149,8 @@ public class RequestServletTest {
         DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
         String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
-        Entity entity = RequestServlet.getEntity(dKey);
         String deviceResponseMessage = "Sample Device Response";
-        entity.setProperty(ServletConsts.DEV_RESPONSE_PROP, new Text(deviceResponseMessage));
-        datastore.put(entity);
-  
+        RequestServlet.setDevResponse(deviceResponseMessage, dKey);
         sendGetDeviceResponseRequest(dKeyStr);
         String responseStr = stringWriter.toString().trim();
         Assert.assertEquals(responseStr, deviceResponseMessage);
@@ -167,7 +163,7 @@ public class RequestServletTest {
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, re, dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
 
@@ -209,7 +205,7 @@ public class RequestServletTest {
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, re, dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
 
@@ -248,7 +244,7 @@ public class RequestServletTest {
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.READER_ENGAGEMENT_PROP, re, dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
 
@@ -312,7 +308,7 @@ public class RequestServletTest {
     private byte[] createMockMessageData(byte[] deviceEngagementBytes) {
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
-        map.put(ServletConsts.DEV_ENGAGEMENT_KEY, deviceEngagementBytes);
+        map.put(ServletConsts.DE_KEY, deviceEngagementBytes);
         map.end();
         return Util.cborEncode(builder.build().get(0));
     }
