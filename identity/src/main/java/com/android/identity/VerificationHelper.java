@@ -458,7 +458,7 @@ public class VerificationHelper {
                     isoDep.setTimeout(20 * 1000);  // 20 seconds
 
                     byte[] selectCommand = NfcUtil.createApduApplicationSelect(
-                            NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION);
+                            NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION);
                     ret = isoDep.transceive(selectCommand);
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                         throw new IllegalStateException("NDEF application selection failed, ret: " + Util.toHex(ret));

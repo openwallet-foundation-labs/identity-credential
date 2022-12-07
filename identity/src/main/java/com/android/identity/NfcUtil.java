@@ -19,6 +19,12 @@ import java.util.List;
 class NfcUtil {
     private static final String TAG = "NfcUtil";
 
+    // Defined by NFC Forum
+    public static final byte[] AID_FOR_TYPE_4_TAG_NDEF_APPLICATION = Util.fromHex("D2760000850101");
+
+    // Defined by 18013-5 Section 8.3.3.1.2 Data retrieval using near field communication (NFC)
+    public static final byte[] AID_FOR_MDL_DATA_TRANSFER = Util.fromHex("A0000002480400");
+
     static final int COMMAND_TYPE_OTHER = 0;
     static final int COMMAND_TYPE_SELECT_BY_AID = 1;
     static final int COMMAND_TYPE_SELECT_FILE = 2;

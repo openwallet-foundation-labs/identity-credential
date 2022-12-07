@@ -17,6 +17,7 @@
 package com.android.identity;
 
 import android.content.Context;
+import android.nfc.cardemulation.HostApduService;
 import android.nfc.tech.IsoDep;
 
 import androidx.annotation.NonNull;
@@ -24,8 +25,10 @@ import androidx.annotation.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
@@ -35,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * NFC data transport
  */
-class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
+public class DataTransportNfc extends DataTransport {
     private static final String TAG = "DataTransportNfc";
     private final ConnectionMethodNfc mConnectionMethod;
     IsoDep mIsoDep;
@@ -48,9 +51,9 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     boolean mListenerStillActive;
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     int numChunksReceived = 0;
-    private NfcApduRouter mNfcApduRouter;
-    private Executor mNfcApduRouterExecutor;
     private boolean mDataTransferAidSelected;
+    private HostApduService mHostApduService;
+    private boolean mConnectedAsMdoc;
 
     public DataTransportNfc(@NonNull Context context,
                             @Role int role,
@@ -75,6 +78,8 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
 
         mListenerStillActive = true;
         setupListenerWritingThread();
+        addActiveConnection(this);
+        mConnectedAsMdoc = true;
     }
 
     void setupListenerWritingThread() {
@@ -82,7 +87,6 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
             @Override
             public void run() {
                 while (mListenerStillActive) {
-                    //Logger.d(TAG, "Waiting for message to send");
                     byte[] messageToSend = null;
                     try {
                         messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
@@ -120,7 +124,6 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                     } while (offset < data.length);
 
                     Logger.d(TAG, "Have " + chunks.size() + " chunks..");
-
                     mListenerRemainingChunks = chunks;
                     mListenerRemainingBytesAvailable = data.length;
                     mListenerTotalChunks = chunks.size();
@@ -141,9 +144,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         }
         baos.write(sw1);
         baos.write(sw2);
-        byte[] ret = baos.toByteArray();
-        //Logger.d(TAG, "buildApduResponse: " + SUtil.toHex(ret));
-        return ret;
+        return baos.toByteArray();
     }
 
     /**
@@ -156,23 +157,45 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     }
     
     private void listenerSendResponse(@NonNull byte[] apdu) {
-        //Logger.d(TAG, "listenerSendResponse: APDU: " + SUtil.toHex(apdu));
-        mNfcApduRouter.sendResponseApdu(apdu);
+        mHostApduService.sendResponseApdu(apdu);
     }
 
-    public void setNfcApduRouter(@NonNull NfcApduRouter nfcApduRouter,
-                                 @NonNull Executor executor) {
-        mNfcApduRouter = nfcApduRouter;
-        mNfcApduRouterExecutor = executor;
-        mNfcApduRouter.addListener(this, mNfcApduRouterExecutor);
+    private static List<DataTransportNfc> mActiveTransports = new ArrayList<>();
+
+    private static void addActiveConnection(DataTransportNfc transport) {
+        mActiveTransports.add(transport);
     }
 
-    @Override
-    public void onApduReceived(@NonNull byte[] aid, @NonNull byte[] apdu) {
+    private static void removeActiveConnection(DataTransportNfc transport) {
+        mActiveTransports.remove(transport);
+    }
+
+    public static @Nullable byte[] processCommandApdu(@NonNull HostApduService hostApduService,
+                                                      @NonNull byte[] apdu) {
+        if (mActiveTransports.size() == 0) {
+            Logger.w(TAG, "processCommandApdu: No active DataTransportNfc");
+            return null;
+        }
+        DataTransportNfc transport = mActiveTransports.get(0);
+        return transport.nfcDataTransferProcessCommandApdu(hostApduService, apdu);
+    }
+
+    public static void onDeactivated(int reason) {
+        if (mActiveTransports.size() == 0) {
+            Logger.w(TAG, "processCommandApdu: No active DataTransportNfc");
+            return;
+        }
+        DataTransportNfc transport = mActiveTransports.get(0);
+        transport.nfcDataTransferOnDeactivated(reason);
+    }
+
+    private @Nullable
+    byte[] nfcDataTransferProcessCommandApdu(@NonNull HostApduService hostApduService,
+                                             @NonNull byte[] apdu) {
         byte[] ret = null;
+        mHostApduService = hostApduService;
 
-        Logger.d(TAG, String.format(Locale.US, "onApduReceived aid=%s apdu=%s",
-                Util.toHex(aid), Util.toHex(apdu)));
+        Logger.d(TAG, "nfcDataTransferProcessCommandApdu apdu " + Util.toHex(apdu));
 
         int commandType = NfcUtil.nfcGetCommandType(apdu);
         if (!mDataTransferAidSelected) {
@@ -194,20 +217,12 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                     break;
             }
         }
-
-        if (ret != null) {
-            if (Logger.isDebugEnabled()) {
-                Logger.d(TAG, "APDU response: " + Util.toHex(ret));
-            }
-            mNfcApduRouter.sendResponseApdu(ret);
-        }
+        return ret;
     }
 
-    @Override
-    public void onDeactivated(@NonNull byte[] aid, int reason) {
-        Logger.d(TAG, String.format(Locale.US,
-                "onDeactivated aid=%s reason=%d", Util.toHex(aid), reason));
-        if (Arrays.equals(aid, NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER) && mDataTransferAidSelected) {
+    private void nfcDataTransferOnDeactivated(int reason) {
+        Logger.d(TAG, "nfcDataTransferOnDeactivated reason " + reason);
+        if (mDataTransferAidSelected) {
             Logger.d(TAG, "Acting on onDeactivated");
             mDataTransferAidSelected = false;
             reportDisconnected();
@@ -222,18 +237,14 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
             Logger.w(TAG, "handleSelectByAid: unexpected APDU length " + apdu.length);
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
-        if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)) {
-            Logger.w(TAG, "handleSelectByAid: NFC engagement AID selected (unexpected)");
-            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
-        } else if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER)) {
+        if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), NfcUtil.AID_FOR_MDL_DATA_TRANSFER)) {
             Logger.d(TAG, "handleSelectByAid: NFC data transfer AID selected");
             mDataTransferAidSelected = true;
             reportConnected();
             return NfcUtil.STATUS_WORD_OK;
-        } else {
-            Logger.w(TAG, "handleSelectByAid: Unexpected AID selected in APDU " + Util.toHex(apdu));
-            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
+        Logger.w(TAG, "handleSelectByAid: Unexpected AID selected in APDU " + Util.toHex(apdu));
+        return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
     }
 
     void sendNextChunk(boolean isForGetResponse) {
@@ -241,15 +252,11 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         mListenerRemainingBytesAvailable -= chunk.length;
 
         boolean isLastChunk = (mListenerRemainingChunks.size() == 0);
-
-        Logger.d(TAG, String.format(Locale.US, "isForGetResponse=%b isLastChunk=%b chunk=%s",
-                isForGetResponse, isLastChunk, Util.toHex(chunk)));
-
         if (isLastChunk) {
             /* If Le ≥ the number of available bytes, the mdoc shall include all
              * available bytes in the response and set the status words to ’90 00’.
              */
-            mNfcApduRouter.sendResponseApdu(buildApduResponse(chunk, 0x90, 0x00));
+            mHostApduService.sendResponseApdu(buildApduResponse(chunk, 0x90, 0x00));
         } else {
             if (mListenerRemainingBytesAvailable <= mListenerLeReceived + 255) {
                 /* If Le < the number of available bytes ≤ Le + 255, the mdoc shall
@@ -259,7 +266,7 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                  * command where Le is set to XX.
                  */
                 int numBytesRemaining = mListenerRemainingBytesAvailable - mListenerLeReceived;
-                mNfcApduRouter.sendResponseApdu(
+                mHostApduService.sendResponseApdu(
                         buildApduResponse(chunk, 0x61, numBytesRemaining & 0xff));
             } else {
                 /* If the number of available bytes > Le + 255, the mdoc shall include
@@ -269,10 +276,9 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                  * response data field that is supported by both the mdoc and the mdoc
                  * reader.
                  */
-                mNfcApduRouter.sendResponseApdu(buildApduResponse(chunk, 0x61, 0x00));
+                mHostApduService.sendResponseApdu(buildApduResponse(chunk, 0x61, 0x00));
             }
         }
-
         reportMessageProgress(mListenerRemainingChunks.size(), mListenerTotalChunks);
     }
 
@@ -280,7 +286,6 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
     private @NonNull
     byte[] handleEnvelope(@NonNull byte[] apdu) {
         Logger.d(TAG, "in handleEnvelope");
-
         if (apdu.length < 7) {
             return NfcUtil.STATUS_WORD_WRONG_LENGTH;
         }
@@ -332,7 +337,6 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
          */
         if (mListenerLeReceived != 0) {
             mListenerLeReceived = le;
-            //Logger.d(TAG, "Received LE " + le);
         }
 
         byte[] encapsulatedMessage = mIncomingMessage.toByteArray();
@@ -352,20 +356,16 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         return null;
     }
 
-    private @NonNull
+    private @Nullable
     byte[] handleResponse(@NonNull byte[] apdu) {
         Logger.d(TAG, "in handleResponse");
-
         if (mListenerRemainingChunks == null || mListenerRemainingChunks.size() == 0) {
             reportError(new Error("GET RESPONSE but we have no outstanding chunks"));
             return null;
         }
-
         sendNextChunk(true);
-
         return null;
     }
-
 
     int apduGetLe(@NonNull byte[] apdu) {
         int dataLength = apduGetDataLength(apdu);
@@ -568,18 +568,16 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
         int maxTransceiveLength = mIsoDep.getMaxTransceiveLength();
         Logger.d(TAG, "maxTransceiveLength: " + maxTransceiveLength);
         Logger.d(TAG, "isExtendedLengthApduSupported: " + mIsoDep.isExtendedLengthApduSupported());
-
         Thread transceiverThread = new Thread() {
             @Override
             public void run() {
                 try {
                     // The passed in mIsoDep is supposed to already be connected, so we can start
                     // sending APDUs right away...
-
                     reportConnected();
 
                     byte[] selectCommand = buildApdu(0x00, 0xa4, 0x04, 0x00,
-                            NfcApduRouter.AID_FOR_MDL_DATA_TRANSFER, 0);
+                            NfcUtil.AID_FOR_MDL_DATA_TRANSFER, 0);
                     Logger.d(TAG, "selectCommand: " + Util.toHex(selectCommand));
                     byte[] selectResponse = mIsoDep.transceive(selectCommand);
                     Logger.d(TAG, "selectResponse: " + Util.toHex(selectResponse));
@@ -589,7 +587,6 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                     }
 
                     while (!mEndTransceiverThread && mIsoDep.isConnected()) {
-                        //Logger.d(TAG, "Waiting for message to send");
                         byte[] messageToSend = null;
                         try {
                             messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
@@ -599,7 +596,9 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                         } catch (InterruptedException e) {
                             continue;
                         }
-                        //Logger.d(TAG, "Sending message " + SUtil.toHex(messageToSend));
+                        if (Logger.isDebugEnabled()) {
+                            Logger.d(TAG, "Sending message " + Util.toHex(messageToSend));
+                        }
 
                         byte[] data = encapsulateInDo53(messageToSend);
 
@@ -623,31 +622,26 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                                 le = maxTransceiveLength;
                             }
 
-                            //Logger.d(TAG, String.format("chunk length 0x%04x : %s", size, SUtil
-                            // .toHex(chunk)));
-
                             byte[] envelopeCommand = buildApdu(moreChunksComing ? 0x10 : 0x00,
                                     0xc3, 0x00, 0x00, chunk, le);
 
-                            //Logger.d(TAG, "envCommand " + SUtil.toHex(envelopeCommand));
+                            if (Logger.isDebugEnabled()) {
+                                Logger.d(TAG, "envelopeCommand " + Util.toHex(envelopeCommand));
+                            }
 
+                            long t0 = System.currentTimeMillis();
                             byte[] envelopeResponse = mIsoDep.transceive(envelopeCommand);
-                            /*
-                            Instant t0 = Instant.now();
-                            byte[] envelopeResponse = mIsoDep.transceive(envelopeCommand);
-                            Instant t1 = Instant.now();
+                            long t1 = System.currentTimeMillis();
 
-                            double durationSec = (t1.toEpochMilli() - t0.toEpochMilli())/1000.0;
-                            int bitsPerSec = (int) ((envelopeCommand.length + envelopeResponse
-                            .length)
-                                                                * 8 / durationSec);
-                            Logger.d(TAG, String.format("transceive() took %.2f sec for %d + %d "
-                                    + " bytes => %d bits/sec",
+                            double durationSec = (t1 - t0)/1000.0;
+                            int bitsPerSec = (int) ((envelopeCommand.length + envelopeResponse.length)* 8/durationSec);
+                            Logger.d(TAG, String.format(
+                                    Locale.US,
+                                    "transceive() took %.2f sec for %d + %d bytes => %d bits/sec",
                                     durationSec,
                                     envelopeCommand.length,
                                     envelopeResponse.length,
                                     bitsPerSec));
-                             */
 
                             if (Logger.isDebugEnabled()) {
                                 Logger.d(TAG, "Received " + Util.toHex(envelopeResponse));
@@ -665,8 +659,6 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
 
                         } while (offset < data.length);
 
-                        //Logger.d(TAG,"envResponse (have all chunks) " + SUtil.toHex
-                        // (lastEnvelopeResponse));
                         int erl = lastEnvelopeResponse.length;
                         if (erl < 2) {
                             reportError(new Error("APDU response smaller than expected"));
@@ -696,71 +688,52 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                                 byte[] grCommand = buildApdu(0x00,
                                         0xc0, 0x00, 0x00, null, leForGetResponse);
 
-                                //Logger.d(TAG, "envCommand " + SUtil.toHex(envelopeCommand));
 
+                                long t0 = System.currentTimeMillis();
                                 byte[] grResponse = mIsoDep.transceive(grCommand);
-                                /*
-                                Instant t0 = Instant.now();
-                                byte[] grResponse = mIsoDep.transceive(grCommand);
-                                Instant t1 = Instant.now();
+                                long t1 = System.currentTimeMillis();
 
-                                double durationSec =
-                                        (t1.toEpochMilli() - t0.toEpochMilli()) / 1000.0;
-                                int bitsPerSec = (int) ((grCommand.length + grResponse.length)
-                                        * 8 / durationSec);
-                                Logger.d(TAG,
-                                        String.format("gr transceive() took %.2f sec for %d + %d "
-                                                        + " bytes => %d bits/sec",
-                                                durationSec,
-                                                grCommand.length,
-                                                grResponse.length,
-                                                bitsPerSec));
-                                 */
+                                double durationSec = (t1 - t0) / 1000.0;
+                                int bitsPerSec = (int) ((grCommand.length + grResponse.length)*8/durationSec);
+                                Logger.d(TAG, String.format(Locale.US,
+                                        "transceive() took %.2f sec for %d + %d bytes => %d bits/sec",
+                                        durationSec,
+                                        grCommand.length,
+                                        grResponse.length,
+                                        bitsPerSec));
 
                                 int grrl = grResponse.length;
                                 if (grrl < 2) {
-                                    reportError(new Error("GetResponse APDU response smaller than "
-                                            + "expected"));
+                                    reportError(new Error("GetResponse APDU response smaller than expected"));
                                     return;
                                 }
 
-                                int grrStatus = (grResponse[grrl - 2] & 0xff) * 0x100
-                                        + (grResponse[grrl - 1] & 0xff);
-
+                                int grrStatus = (grResponse[grrl - 2] & 0xff) * 0x100 + (grResponse[grrl - 1] & 0xff);
                                 baos.write(grResponse, 0, grrl - 2);
 
                                 // TODO: add runaway check
-
                                 if (grrStatus == 0x9000) {
-                                    /* If Le ≥ the number of available bytes, the mdoc shall
-                                    include all
-                                     * available bytes in the response and set the status words
-                                     to ’90 00’.
+                                    /* If Le ≥ the number of available bytes, the mdoc shall include
+                                     * all available bytes in the response and set the status words
+                                     * to ’90 00’.
                                      */
                                     break;
                                 } else if (grrStatus == 0x6100) {
-                                    /* If the number of available bytes > Le + 255, the mdoc
-                                    shall include
-                                     * as many bytes in the response as indicated by Le and shall
-                                      set the
-                                     * status words to ’61 00’. The mdoc readershall respond with
-                                      a GET
-                                     * RESPONSE command where Le is set to the maximum length of the
-                                     * response data field that is supported by both the mdoc and
-                                      the mdoc
-                                     * reader.
+                                    /* If the number of available bytes > Le + 255, the mdoc shall
+                                     * include as many bytes in the response as indicated by Le and
+                                     * shall set the status words to ’61 00’. The mdoc reader shall
+                                     * respond with a GET RESPONSE command where Le is set to the
+                                     * maximum length of the response data field that is supported
+                                     * by both the mdoc and the mdoc reader.
                                      */
                                     leForGetResponse = maxTransceiveLength - 10;
                                 } else if ((grrStatus & 0xff00) == 0x6100) {
-                                    /* If Le < the number of available bytes ≤ Le + 255, the mdoc
-                                     shall
-                                     * include as many bytes in the response as indicated by Le
-                                     and shall
-                                     * set the status words to ’61 XX’, where XX is the number of
-                                      available
-                                     * bytes remaining. The mdoc reader shall respond with a GET
-                                     RESPONSE
-                                     * command where Le is set to XX.
+                                    /* If Le < the number of available bytes ≤ Le + 255, the
+                                     * mdoc shall include as many bytes in the response as
+                                     * indicated by Le and shall set the status words to ’61 XX’,
+                                     * where XX is the number of available bytes remaining. The
+                                     * mdoc reader shall respond with a GET RESPONSE command where
+                                     * Le is set to XX.
                                      */
                                     leForGetResponse = grrStatus & 0xff;
                                 } else {
@@ -782,17 +755,13 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
                             reportError(new Error("Error extracting message from DO53 encoding"));
                             return;
                         }
-
                         reportMessageReceived(message);
-
                     }
 
                     reportDisconnected();
-
                 } catch (IOException e) {
                     reportError(e);
                 }
-
                 Logger.d(TAG, "Ending transceiver thread");
                 mIsoDep = null;
             }
@@ -803,13 +772,12 @@ class DataTransportNfc extends DataTransport implements NfcApduRouter.Listener {
 
     @Override
     public void close() {
-        Logger.d(TAG, "close called");
+        if (mConnectedAsMdoc) {
+            removeActiveConnection(this);
+        }
         inhibitCallbacks();
         mEndTransceiverThread = true;
         mListenerStillActive = false;
-        if (mNfcApduRouter != null) {
-            mNfcApduRouter.removeListener(this, mNfcApduRouterExecutor);
-        }
     }
 
     @Override

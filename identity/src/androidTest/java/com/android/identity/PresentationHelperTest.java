@@ -183,7 +183,6 @@ public class PresentationHelperTest {
                 session,
                 new ArrayList<>(),
                 new DataTransportOptions.Builder().build(),
-                null,
                 qrHelperListener,
                 executor);
         qrHelper.addDataTransport(proverTransport);  // internal helper
@@ -432,7 +431,6 @@ public class PresentationHelperTest {
                 session,
                 new ArrayList<>(),
                 new DataTransportOptions.Builder().build(),
-                null,
                 qrHelperListener,
                 executor);
         qrHelper.addDataTransport(proverTransport);  // internal helper

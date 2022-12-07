@@ -19,7 +19,6 @@ package com.android.identity;
 import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.test.InstrumentationRegistry;
@@ -35,11 +34,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.SimpleValue;
@@ -47,7 +43,7 @@ import co.nstant.in.cbor.model.SimpleValue;
 @SuppressWarnings("deprecation")
 @RunWith(AndroidJUnit4.class)
 public class NfcEnagementHelperTest {
-    private static final String TAG = "NfcEnagementHelperTest";
+    private static final String TAG = "NfcEngagementHelperTest";
 
     @Test
     @SmallTest
@@ -76,21 +72,11 @@ public class NfcEnagementHelperTest {
             }
         };
 
-        BlockingQueue<byte[]> apdusSentByHelper = new ArrayBlockingQueue<byte[]>(100);
-        NfcApduRouter apduRouter = new NfcApduRouter() {
-            @Override
-            public void sendResponseApdu(@NonNull byte[] responseApdu) {
-                Log.w(TAG, "apdu: " + Util.toHex(responseApdu));
-                apdusSentByHelper.add(responseApdu);
-            }
-        };
-
         Executor executor = Executors.newSingleThreadExecutor();
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
                 session,
                 new DataTransportOptions.Builder().build(),
-                apduRouter,
                 listener,
                 executor);
 
@@ -115,35 +101,35 @@ public class NfcEnagementHelperTest {
         helper.testingDoNotStartTransports();
 
         // Select Type 4 Tag NDEF app
-        byte[] ndefAppId = NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION;
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduApplicationSelect(ndefAppId));
-        byte[] responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        byte[] ndefAppId = NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION;
+        byte[] responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduApplicationSelect(ndefAppId));
         Assert.assertNotNull(responseApdu);
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
         // Select CC file
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID));
         Assert.assertNotNull(responseApdu);
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
         // Get CC file
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(0, 15));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(0, 15));
         Assert.assertNotNull(responseApdu);
         // The response is the CC file followed by STATUS_WORD_OK. Keep in sync with
         // NfcEngagementHelper.handleSelectFile() for the contents.
         Assert.assertEquals("000f207fff7fff0406e1047fff00ff9000", Util.toHex(responseApdu));
 
         // Select NDEF file
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID));
         Assert.assertNotNull(responseApdu);
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
         // Get length of Initial NDEF message
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(0, 2));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(0, 2));
         Assert.assertNotNull(responseApdu);
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
@@ -154,8 +140,8 @@ public class NfcEnagementHelperTest {
                 + (((int) responseApdu[1]) & 0xff);
 
         // Read Initial NDEF message
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(2, initialNdefMessageSize));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(2, initialNdefMessageSize));
         Assert.assertNotNull(responseApdu);
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
@@ -220,21 +206,11 @@ public class NfcEnagementHelperTest {
             }
         };
 
-        BlockingQueue<byte[]> apdusSentByHelper = new ArrayBlockingQueue<byte[]>(100);
-        NfcApduRouter apduRouter = new NfcApduRouter() {
-            @Override
-            public void sendResponseApdu(@NonNull byte[] responseApdu) {
-                Log.w(TAG, "apdu: " + Util.toHex(responseApdu));
-                apdusSentByHelper.add(responseApdu);
-            }
-        };
-
         Executor executor = Executors.newSingleThreadExecutor();
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
                 session,
                 new DataTransportOptions.Builder().build(),
-                apduRouter,
                 listener,
                 executor);
 
@@ -259,42 +235,35 @@ public class NfcEnagementHelperTest {
         helper.testingDoNotStartTransports();
 
         // Select Type 4 Tag NDEF app
-        byte[] ndefAppId = NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION;
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduApplicationSelect(ndefAppId));
-        byte[] responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        byte[] ndefAppId = NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION;
+        byte[] responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduApplicationSelect(ndefAppId));
         Assert.assertNotNull(responseApdu);
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
         // Select CC file
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID));
         Assert.assertNotNull(responseApdu);
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
-        // Get length of CC file
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(0, 2));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
-        Assert.assertNotNull(responseApdu);
-        // The response contains the length as 2 bytes followed by STATUS_WORD_OK
-        Assert.assertArrayEquals(Util.fromHex("000f9000"), responseApdu);
-
         // Get CC file
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(0, 15));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(0, 15));
         Assert.assertNotNull(responseApdu);
         // The response is the CC file followed by STATUS_WORD_OK. Keep in sync with
         // NfcEngagementHelper.handleSelectFile() for the contents.
         Assert.assertEquals("000f207fff7fff0406e1047fff00009000", Util.toHex(responseApdu));
 
         // Select NDEF file
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID));
         Assert.assertNotNull(responseApdu);
         Assert.assertArrayEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
         // Get length of Initial NDEF message
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(0, 2));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(0, 2));
         Assert.assertNotNull(responseApdu);
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
@@ -305,8 +274,8 @@ public class NfcEnagementHelperTest {
                 + (((int) responseApdu[1]) & 0xff);
 
         // Read Initial NDEF message
-        apduRouter.addReceivedApdu(ndefAppId, NfcUtil.createApduReadBinary(2, initialNdefMessageSize));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
+        responseApdu = helper.nfcProcessCommandApdu(
+                NfcUtil.createApduReadBinary(2, initialNdefMessageSize));
         Assert.assertNotNull(responseApdu);
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
@@ -325,7 +294,7 @@ public class NfcEnagementHelperTest {
         // Select the service, the resulting NDEF message is specified in
         // in Tag NDEF Exchange Protocol Technical Specification Version 1.0
         // section 4.3 TNEP Status Message
-        byte[] serviceSelectResponse = ndefTransact(apduRouter, apdusSentByHelper,
+        byte[] serviceSelectResponse = ndefTransact(helper,
                 NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"));
         Assert.assertEquals("d10201546500", Util.toHex(serviceSelectResponse));
 
@@ -333,7 +302,7 @@ public class NfcEnagementHelperTest {
         byte[] hrMessage = NfcUtil.createNdefMessageHandoverRequest(
                 connectionMethods,
                 null); // TODO: pass ReaderEngagement message
-        byte[] hsMessage = ndefTransact(apduRouter, apdusSentByHelper, hrMessage);
+        byte[] hsMessage = ndefTransact(helper, hrMessage);
 
         NfcUtil.ParsedHandoverSelectMessage hs = NfcUtil.parseHandoverSelectMessage(hsMessage);
         Assert.assertNotNull(hs);
@@ -368,22 +337,18 @@ public class NfcEnagementHelperTest {
         helper.close();
     }
 
-    static byte[] ndefTransact(NfcApduRouter apduRouter,
-                               BlockingQueue<byte[]> apdusSentByHelper,
-                               byte[] ndefMessage) throws InterruptedException {
+    static byte[] ndefTransact(NfcEngagementHelper helper, byte[] ndefMessage)  {
         byte[] responseApdu;
 
         // First command is UPDATE_BINARY to reset length
-        apduRouter.addReceivedApdu(NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION,
+        responseApdu = helper.nfcProcessCommandApdu(
                 NfcUtil.createApduUpdateBinary(0, new byte[] {0x00, 0x00}));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
         Assert.assertNotNull(responseApdu);
         Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
         // Second command is UPDATE_BINARY with payload, starting at offset 2.
-        apduRouter.addReceivedApdu(NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION,
+        responseApdu = helper.nfcProcessCommandApdu(
                 NfcUtil.createApduUpdateBinary(2, ndefMessage));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
         Assert.assertNotNull(responseApdu);
         Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
@@ -391,16 +356,14 @@ public class NfcEnagementHelperTest {
         byte[] encodedLength = new byte[] {
                 (byte) ((ndefMessage.length / 0x100) & 0xff),
                 (byte) (ndefMessage.length & 0xff)};
-        apduRouter.addReceivedApdu(NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION,
+        responseApdu = helper.nfcProcessCommandApdu(
                 NfcUtil.createApduUpdateBinary(0, encodedLength));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
         Assert.assertNotNull(responseApdu);
         Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
         // Finally, read the NDEF response message.. first get the length
-        apduRouter.addReceivedApdu(NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION,
+        responseApdu = helper.nfcProcessCommandApdu(
                 NfcUtil.createApduReadBinary(0, 2));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
         Assert.assertNotNull(responseApdu);
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.
@@ -411,9 +374,8 @@ public class NfcEnagementHelperTest {
                 + (((int) responseApdu[1]) & 0xff);
 
         // Read NDEF message
-        apduRouter.addReceivedApdu(NfcApduRouter.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION,
+        responseApdu = helper.nfcProcessCommandApdu(
                 NfcUtil.createApduReadBinary(2, ndefMessageSize));
-        responseApdu = apdusSentByHelper.poll(5000, TimeUnit.MILLISECONDS);
         Assert.assertNotNull(responseApdu);
         // The response contains the length as 2 bytes followed by STATUS_WORD_OK. Assume we
         // don't know the length.

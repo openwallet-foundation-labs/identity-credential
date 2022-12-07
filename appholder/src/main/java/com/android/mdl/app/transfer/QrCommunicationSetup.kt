@@ -93,7 +93,6 @@ class QrCommunicationSetup(
             session,
             connectionSetup.getConnectionMethods(),
             connectionSetup.getConnectionOptions(),
-            TransferManager.getInstance(context).nfcApduRouter,
             qrEngagementListener,
             context.mainExecutor()
         )

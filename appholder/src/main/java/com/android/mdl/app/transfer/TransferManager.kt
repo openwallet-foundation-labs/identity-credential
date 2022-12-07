@@ -53,12 +53,6 @@ class TransferManager private constructor(private val context: Context) {
 
     private var transferStatusLd = MutableLiveData<TransferStatus>()
 
-    val nfcApduRouter: NfcApduRouter = object : NfcApduRouter() {
-        override fun sendResponseApdu(responseApdu: ByteArray) {
-            hostApduService!!.sendResponseApdu(responseApdu)
-        }
-    }
-
     fun setCommunication(session: PresentationSession, communication: Communication) {
         this.session = session
         this.communication = communication
@@ -164,15 +158,6 @@ class TransferManager private constructor(private val context: Context) {
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         bitmap.setPixels(pixels, 0, width, 0, 0, w, h)
         return bitmap
-    }
-
-    fun nfcProcessCommandApdu(service: HostApduService, aid: ByteArray, commandApdu: ByteArray) {
-        hostApduService = service
-        nfcApduRouter.addReceivedApdu(aid, commandApdu)
-    }
-
-    fun nfcOnDeactivated(aid: ByteArray, reason: Int) {
-        nfcApduRouter.addDeactivated(aid, reason)
     }
 
     @Throws(IllegalStateException::class)
