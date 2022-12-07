@@ -37,7 +37,7 @@ import com.android.mdl.app.transfer.TransferManager
 
 class NfcEngagementHandler : HostApduService() {
 
-    private var engagementHelper: NfcEngagementHelper? = null
+    private lateinit var engagementHelper: NfcEngagementHelper
     private lateinit var session: PresentationSession
     private lateinit var communication: Communication
     private lateinit var transferManager: TransferManager
@@ -68,10 +68,6 @@ class NfcEngagementHandler : HostApduService() {
                 log("Engagement Listener: Device Connected -> ignored due to active presentation")
                 return
             }
-            if (engagementHelper == null) {
-                log("Engagement Listener: Device Connected -> ignored due to engagementHelper being null")
-                return
-            }
 
             log("Engagement Listener: Device Connected via NFC")
             val builder = PresentationHelper.Builder(
@@ -82,22 +78,20 @@ class NfcEngagementHandler : HostApduService() {
             )
             builder.useForwardEngagement(
                 transport,
-                engagementHelper!!.deviceEngagement,
-                engagementHelper!!.handover
+                engagementHelper.deviceEngagement,
+                engagementHelper.handover
             )
             presentation = builder.build()
             presentation?.setSendSessionTerminationMessage(true)
             communication.setupPresentation(presentation!!)
-            engagementHelper?.close()
-            engagementHelper = null
+            engagementHelper.close()
             transferManager.updateStatus(TransferStatus.CONNECTED)
         }
 
         override fun onError(error: Throwable) {
             log("Engagement Listener: onError -> ${error.message}")
             transferManager.updateStatus(TransferStatus.ERROR)
-            engagementHelper?.close()
-            engagementHelper = null
+            engagementHelper.close()
         }
     }
 
@@ -132,7 +126,6 @@ class NfcEngagementHandler : HostApduService() {
             applicationContext,
             session,
             connectionSetup.getConnectionOptions(),
-            transferManager.nfcApduRouter,
             nfcEngagementListener,
             applicationContext.mainExecutor())
         if (PreferencesHelper.shouldUseStaticHandover()) {
@@ -145,49 +138,30 @@ class NfcEngagementHandler : HostApduService() {
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
         log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
-        transferManager.nfcProcessCommandApdu(this, AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, commandApdu)
-        return null
+        return engagementHelper.nfcProcessCommandApdu(commandApdu)
     }
 
     override fun onDeactivated(reason: Int) {
         log("onDeactivated: reason-> $reason")
-        transferManager.nfcOnDeactivated(AID_FOR_TYPE_4_TAG_NDEF_APPLICATION, reason)
+        engagementHelper.nfcOnDeactivated(reason)
 
-        if (engagementHelper != null) {
-            // We need to close the NfcEngagementHelper but if we're doing it as the reader moves
-            // out of the field, it's too soon as it may take a couple of seconds to establish
-            // the connection, triggering onDeviceConnected() callback above.
-            //
-            // In fact, the reader _could_ actually take a while to establish the connection...
-            // for example the UI in the mdoc doc reader might have the operator pick the
-            // transport if more than one is offered. In fact this is exactly what we do in
-            // our mdoc reader.
-            //
-            // So we give the reader 30 seconds to do this.
-            //
-            // In a future change we should go to another screen as soon as the HandoverSelect
-            // has been sent and then the user can close the connection from there if the reader
-            // doesn't connect.
-            //
-            Handler(Looper.getMainLooper()).postDelayed({
-                if (engagementHelper != null) {
-                    logWarning("reader didn't connect after 30 seconds, closing down engagement helper")
-                    engagementHelper?.close()
-                    engagementHelper = null
-                }
-            }, 30*1000)
-        }
-    }
-
-    companion object {
-        private val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION: ByteArray = byteArrayOf(
-            0xD2.toByte(),
-            0x76.toByte(),
-            0x00.toByte(),
-            0x00.toByte(),
-            0x85.toByte(),
-            0x01.toByte(),
-            0x01.toByte()
-        )
+        // We need to close the NfcEngagementHelper but if we're doing it as the reader moves
+        // out of the field, it's too soon as it may take a couple of seconds to establish
+        // the connection, triggering onDeviceConnected() callback above.
+        //
+        // In fact, the reader _could_ actually take a while to establish the connection...
+        // for example the UI in the mdoc doc reader might have the operator pick the
+        // transport if more than one is offered. In fact this is exactly what we do in
+        // our mdoc reader.
+        //
+        // So we give the reader 15 seconds to do this...
+        //
+        val timeoutSeconds = 15
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (presentation == null) {
+                logWarning("reader didn't connect inside $timeoutSeconds seconds, closing")
+                engagementHelper.close()
+            }
+        }, timeoutSeconds*1000L)
     }
 }

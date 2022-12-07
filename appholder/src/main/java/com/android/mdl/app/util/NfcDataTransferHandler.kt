@@ -18,6 +18,7 @@ package com.android.mdl.app.util
 
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
+import com.android.identity.DataTransportNfc
 import com.android.mdl.app.transfer.TransferManager
 
 class NfcDataTransferHandler : HostApduService() {
@@ -32,24 +33,11 @@ class NfcDataTransferHandler : HostApduService() {
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
         log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
-        transferManager.nfcProcessCommandApdu(this, AID_FOR_MDL_DATA_TRANSFER, commandApdu)
-        return null
+        return DataTransportNfc.processCommandApdu(this, commandApdu)
     }
 
     override fun onDeactivated(reason: Int) {
         log("onDeactivated: reason-> $reason")
-        transferManager.nfcOnDeactivated(AID_FOR_MDL_DATA_TRANSFER, reason)
-    }
-
-    companion object {
-        private val AID_FOR_MDL_DATA_TRANSFER: ByteArray = byteArrayOf(
-            0xA0.toByte(),
-            0x00.toByte(),
-            0x00.toByte(),
-            0x02.toByte(),
-            0x48.toByte(),
-            0x04.toByte(),
-            0x00.toByte()
-        )
+        DataTransportNfc.onDeactivated(reason);
     }
 }

@@ -30,7 +30,6 @@ public class QrEngagementHelper {
     private final PresentationSession mPresentationSession;
     private final Context mContext;
     private final KeyPair mEphemeralKeyPair;
-    private final NfcApduRouter mNfcApduRouter;
     private final DataTransportOptions mOptions;
     private Listener mListener;
     private Executor mExecutor;
@@ -48,14 +47,12 @@ public class QrEngagementHelper {
                               @NonNull PresentationSession presentationSession,
                               @NonNull List<ConnectionMethod> connectionMethods,
                               @NonNull DataTransportOptions options,
-                              @Nullable NfcApduRouter nfcApduRouter,
                               @NonNull Listener listener,
                               @NonNull Executor executor) {
         mContext = context;
         mPresentationSession = presentationSession;
         mListener = listener;
         mExecutor = executor;
-        mNfcApduRouter = nfcApduRouter;
         mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
         mConnectionMethods = connectionMethods;
         mOptions = options;
@@ -94,17 +91,6 @@ public class QrEngagementHelper {
             transport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
             mTransports.add(transport);
             Logger.d(TAG, "Added transport for " + cm);
-
-            if (transport instanceof DataTransportNfc) {
-                if (mNfcApduRouter == null) {
-                    Logger.w(TAG, "Using NFC data transport with QR engagement but "
-                            + "no APDU router has been set");
-                } else {
-                    Logger.d(TAG, "Associating APDU router with NFC transport");
-                    DataTransportNfc dataTransportNfc = (DataTransportNfc) transport;
-                    dataTransportNfc.setNfcApduRouter(mNfcApduRouter, mExecutor);
-                }
-            }
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen

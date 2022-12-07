@@ -17,6 +17,7 @@
 package com.android.identity;
 
 import android.content.Context;
+import android.nfc.cardemulation.HostApduService;
 
 import androidx.core.util.Pair;
 
