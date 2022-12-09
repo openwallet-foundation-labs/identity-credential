@@ -1,6 +1,6 @@
 asn1crypto==1.4.0
 cbor==1.0.0
-certifi==2021.5.30
+certifi==2022.12.7
 cffi==1.14.5
 chardet==4.0.0
 cryptography==3.4.7
