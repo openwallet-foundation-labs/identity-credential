@@ -614,7 +614,7 @@ public class NfcEngagementHelper {
             // DataTransport.parseNdefRecord() for details.
             //
             if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
-                ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r);
+                ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r, false);
                 if (cm != null) {
                     Logger.d(TAG, "Found connectionMethod: " + cm);
                     parsedCms.add(cm);
@@ -704,15 +704,6 @@ public class NfcEngagementHelper {
 
     // Note: The report*() methods are safe to call from any thread.
 
-    void reportHandoverSelectSent() {
-        Logger.d(TAG, "reportHandoverSelectSent");
-        final Listener listener = mListener;
-        final Executor executor = mExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            //executor.execute(listener::onHandoverSelectSent);
-        }
-    }
-
     void reportDeviceConnecting() {
         Logger.d(TAG, "reportDeviceConnecting");
         final Listener listener = mListener;
@@ -741,7 +732,6 @@ public class NfcEngagementHelper {
     }
 
     public interface Listener {
-        //void onHandoverSelectSent();
         void onDeviceConnecting();
         void onDeviceConnected(DataTransport transport);
         void onError(@NonNull Throwable error);
@@ -762,7 +752,7 @@ public class NfcEngagementHelper {
         }
 
         public Builder useStaticHandover(@NonNull List<ConnectionMethod> connectionMethods) {
-            mHelper.mStaticHandoverConnectionMethods = connectionMethods;
+            mHelper.mStaticHandoverConnectionMethods = ConnectionMethod.combine(connectionMethods);
             return this;
         }
 

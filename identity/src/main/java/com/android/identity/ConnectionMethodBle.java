@@ -11,9 +11,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -187,7 +187,8 @@ public class ConnectionMethodBle extends ConnectionMethod {
     }
 
     static @Nullable
-    ConnectionMethod fromNdefRecord(@NonNull NdefRecord record) {
+    ConnectionMethodBle fromNdefRecord(@NonNull NdefRecord record,
+                                       boolean isForHandoverSelect) {
         boolean centralClient = false;
         boolean peripheral = false;
         UUID uuid = null;
@@ -198,17 +199,23 @@ public class ConnectionMethodBle extends ConnectionMethod {
         //
         ByteBuffer payload = ByteBuffer.wrap(record.getPayload()).order(ByteOrder.LITTLE_ENDIAN);
         while (payload.remaining() > 0) {
-            Log.d(TAG, "hasR: " + payload.hasRemaining() + " rem: " + payload.remaining());
             int len = payload.get();
             int type = payload.get();
-            Log.d(TAG, String.format(Locale.US, "type %d len %d", type, len));
             if (type == 0x1c && len == 2) {
                 gotLeRole = true;
                 int value = payload.get();
                 if (value == 0x00) {
-                    peripheral = true;
+                    if (isForHandoverSelect) {
+                        peripheral = true;
+                    } else {
+                        centralClient = true;
+                    }
                 } else if (value == 0x01) {
-                    centralClient = true;
+                    if (isForHandoverSelect) {
+                        centralClient = true;
+                    } else {
+                        peripheral = true;
+                    }
                 } else if (value == 0x02 || value == 0x03) {
                     centralClient = true;
                     peripheral = true;
@@ -239,10 +246,8 @@ public class ConnectionMethodBle extends ConnectionMethod {
             Log.w(TAG, "Did not find LE role");
             return null;
         }
-        if (!gotUuid) {
-            Log.w(TAG, "Did not find UUID");
-            return null;
-        }
+
+        // Note that UUID may _not_ be set.
 
         // Note that the UUID for both modes is the same if both peripheral and
         // central client mode is used!
@@ -275,7 +280,7 @@ public class ConnectionMethodBle extends ConnectionMethod {
     }
 
     @Override @Nullable
-    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences) {
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences, boolean isForHandoverSelect) {
         // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
         //
         // See section 1.17.2 for values
@@ -292,12 +297,22 @@ public class ConnectionMethodBle extends ConnectionMethod {
             }
             uuid = mCentralClientModeUuid;
         } else if (mSupportsCentralClientMode) {
-            // Only Central Role supported
-            leRole = 0x01;
+            if (isForHandoverSelect) {
+                // Only Central Role supported
+                leRole = 0x01;
+            } else {
+                // Only Peripheral Role supported
+                leRole = 0x00;
+            }
             uuid = mCentralClientModeUuid;
         } else if (mSupportsPeripheralServerMode) {
-            // Only Peripheral Role supported
-            leRole = 0x00;
+            if (isForHandoverSelect) {
+                // Only Peripheral Role supported
+                leRole = 0x00;
+            } else {
+                // Only Central Role supported
+                leRole = 0x01;
+            }
             uuid = mPeripheralServerModeUuid;
         } else {
             throw new IllegalStateException("At least one of the BLE modes must be set");
@@ -314,27 +329,31 @@ public class ConnectionMethodBle extends ConnectionMethod {
         // Looking that up it says it's just a sequence of {length, AD type, AD data} where each
         // AD is defined in the "Bluetooth Supplement to the Core Specification" document.
         //
-        byte[] oobData = new byte[]{
-                // LE Role
-                (byte) 0x02, (byte) 0x1c, (byte) leRole,
-                // Complete List of 128-bit Service UUID’s (0x07)
-                (byte) 0x11, (byte) 0x07,
-                // UUID will be copied here (offset 5)..
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        };
-        ByteBuffer uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
-        uuidBuf.putLong(0, uuid.getLeastSignificantBits());
-        uuidBuf.putLong(8, uuid.getMostSignificantBits());
-        System.arraycopy(uuidBuf.array(), 0, oobData, 5, 16);
-
-        NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(0x02);  // LE Role
+        baos.write(0x1c);
+        baos.write(leRole);
+        if (uuid != null) {
+            baos.write(0x11);  // Complete List of 128-bit Service UUID’s (0x07)
+            baos.write(0x07);
+            ByteBuffer uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN);
+            uuidBuf.putLong(0, uuid.getLeastSignificantBits());
+            uuidBuf.putLong(8, uuid.getMostSignificantBits());
+            try {
+                baos.write(uuidBuf.array());
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        byte[] oobData = baos.toByteArray();;
+        NdefRecord record = new NdefRecord(NdefRecord.TNF_MIME_MEDIA,
                 "application/vnd.bluetooth.le.oob".getBytes(UTF_8),
                 "0".getBytes(UTF_8),
                 oobData);
 
         // From 7.1 Alternative Carrier Record
         //
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos = new ByteArrayOutputStream();
         baos.write(0x01); // CPS: active
         baos.write(0x01); // Length of carrier data reference ("0")
         baos.write('0');  // Carrier data reference

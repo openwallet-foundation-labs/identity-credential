@@ -147,7 +147,7 @@ public class ConnectionMethodHttp extends ConnectionMethod {
     }
 
     @Override @Nullable
-    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences) {
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences, boolean isForHandoverSelect) {
         return null;
     }
 }

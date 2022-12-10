@@ -14,6 +14,7 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.DataItem;
@@ -68,21 +69,23 @@ public abstract class ConnectionMethod {
      * for <code>auxiliaryReferences</code>.
      *
      * @param auxiliaryReferences A list of references to include in the Alternative Carrier Record
+     * @param isForHandoverSelect Set to <code>true</code> if this is for a Handover Select method,
+     *                            and <code>false</code> if for Handover Request record.
      * @return <code>null</code> if the connection method doesn't support NFC handover, otherwise
      *         the NDEF record and the Alternative Carrier record.
      */
     abstract @Nullable
-    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences);
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences, boolean isForHandoverSelect);
 
     static @Nullable
-    ConnectionMethod fromNdefRecord(@NonNull NdefRecord record) {
+    ConnectionMethod fromNdefRecord(@NonNull NdefRecord record, boolean isForHandoverSelect) {
         // BLE Carrier Configuration record
         //
         if (record.getTnf() == 0x02
                 && Arrays.equals(record.getType(),
                 "application/vnd.bluetooth.le.oob".getBytes(UTF_8))
                 && Arrays.equals(record.getId(), "0".getBytes(UTF_8))) {
-            return ConnectionMethodBle.fromNdefRecord(record);
+            return ConnectionMethodBle.fromNdefRecord(record, isForHandoverSelect);
         }
 
         // Wifi Aware Carrier Configuration record
@@ -92,7 +95,7 @@ public abstract class ConnectionMethod {
                 "application/vnd.wfa.nan".getBytes(UTF_8))
                 && Arrays.equals(record.getId(), "W".getBytes(UTF_8))) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                return ConnectionMethodWifiAware.fromNdefRecord(record);
+                return ConnectionMethodWifiAware.fromNdefRecord(record, isForHandoverSelect);
             } else {
                 Log.i(TAG, "Ignoring Wifi Aware Carrier Configuration since Wifi Aware "
                         + "is not available on this API level");
@@ -106,21 +109,98 @@ public abstract class ConnectionMethod {
                 && Arrays.equals(record.getType(),
                 "iso.org:18013:nfc".getBytes(UTF_8))
                 && Arrays.equals(record.getId(), "nfc".getBytes(UTF_8))) {
-            return ConnectionMethodNfc.fromNdefRecord(record);
+            return ConnectionMethodNfc.fromNdefRecord(record, isForHandoverSelect);
         }
 
         Logger.d(TAG, "Unknown NDEF record " + record);
         return null;
     }
 
+    /**
+     * Combines connection methods.
+     *
+     * <p>Given a list of connection methods, produce a list where similar methods are combined
+     * into a single one. This is currently only applicable for BLE and one requirement is that
+     * all method instances share the same UUID. If this is not the case,
+     * {@link IllegalArgumentException} is thrown.
+     *
+     * <p>This is the reverse of {@link #disambiguate(List)}.
+     *
+     * @param connectionMethods a list of connection methods.
+     * @return the given list of connection methods where similar methods are combined into one.
+     * @throws IllegalArgumentException if some methods couldn't be combined
+     */
+    public static @NonNull
+    List<ConnectionMethod> combine(@NonNull List<ConnectionMethod> connectionMethods) {
+        List<ConnectionMethod> result = new ArrayList<>();
+
+        // Don't change the order if there is nothing to combine.
+        int numBleMethods = 0;
+        for (ConnectionMethod cm : connectionMethods) {
+            if (cm instanceof ConnectionMethodBle) {
+                numBleMethods += 1;
+            }
+        }
+        if (numBleMethods <= 1) {
+            result.addAll(connectionMethods);
+            return result;
+        }
+
+        List<ConnectionMethodBle> bleMethods = new ArrayList<>();
+        for (ConnectionMethod cm : connectionMethods) {
+            if (cm instanceof ConnectionMethodBle) {
+                bleMethods.add((ConnectionMethodBle) cm);
+            } else {
+                result.add(cm);
+            }
+        }
+
+        if (bleMethods.size() > 0) {
+            boolean supportsPeripheralServerMode = false;
+            boolean supportsCentralClientMode = false;
+            UUID uuid = null;
+            for (ConnectionMethodBle ble : bleMethods) {
+                if (ble.getSupportsPeripheralServerMode()) {
+                    supportsPeripheralServerMode = true;
+                }
+                if (ble.getSupportsCentralClientMode()) {
+                    supportsCentralClientMode = true;
+                }
+                UUID c = ble.getCentralClientModeUuid();
+                UUID p = ble.getPeripheralServerModeUuid();
+                if (uuid == null) {
+                    if (c != null) {
+                        uuid = c;
+                    } else if (p != null) {
+                        uuid = p;
+                    }
+                } else {
+                    if (c != null && !uuid.equals(c)) {
+                        throw new IllegalArgumentException("UUIDs for both BLE modes are not the same");
+                    }
+                    if (p != null && !uuid.equals(p)) {
+                        throw new IllegalArgumentException("UUIDs for both BLE modes are not the same");
+                    }
+                }
+            }
+            result.add(new ConnectionMethodBle(
+                    supportsPeripheralServerMode,
+                    supportsCentralClientMode,
+                    supportsPeripheralServerMode ? uuid : null,
+                    supportsCentralClientMode ? uuid : null));
+        }
+        return result;
+    }
 
     /**
      * Disambiguates a list of connection methods.
      *
-     * Given a list of connection methods, produce a list where each method represents exactly
+     * <p>Given a list of connection methods, produce a list where each method represents exactly
      * one connectable endpoint. For example, for BLE if both central client mode and peripheral
      * server mode is set, replaces this with two connection methods so it's clear which one is
      * which.
+     *
+     * <p>This is the reverse of {@link #combine(List)}.
      *
      * @param connectionMethods a list of connection methods.
      * @return the given list of connection methods where each instance is unambiguously refers

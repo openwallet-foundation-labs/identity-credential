@@ -28,12 +28,10 @@ import android.nfc.tech.IsoDep;
 import android.util.Base64;
 import android.util.Log;
 
-import androidx.annotation.Nullable;
 import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -570,7 +568,7 @@ public class VerificationHelper {
                                         + Util.toHex(encodedDeviceEngagement));
                             }
                         } else if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
-                            ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r);
+                            ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r, true);
                             if (cm != null) {
                                 parsedCms.add(cm);
                                 Logger.d(TAG, "CM: " + cm);
@@ -580,10 +578,16 @@ public class VerificationHelper {
                     if (encodedDeviceEngagement == null) {
                         throw new IllegalStateException("Device Engagement not found in HS message");
                     }
-                    if (parsedCms.size() != 1) {
-                        throw new IllegalStateException("Expected only one Alternative Carrier, found "
-                                + parsedCms.size());
+                    if (parsedCms.size() < 1) {
+                        throw new IllegalStateException("No Alternative Carriers in HS message");
                     }
+
+                    // TODO: use selected CMs to pick from the list we offered... why would we
+                    //  have to do this? Because some mDL / wallets don't return the UUID in
+                    //  the HS message.
+                    //  For now just assume we only offered a single CM and the other side accepted.
+                    //
+                    parsedCms = connectionMethods;
 
                     DataItem handover = new CborBuilder()
                             .addArray()
