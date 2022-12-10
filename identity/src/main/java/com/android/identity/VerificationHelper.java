@@ -476,7 +476,8 @@ public class VerificationHelper {
                     }
                     if (ccFile.length < 15) {
                         throw new IllegalStateException(
-                                String.format(Locale.US, "CC file is %d bytes, expected 15"));
+                                String.format(Locale.US, "CC file is %d bytes, expected 15",
+                                        ccFile.length));
                     }
 
                     // TODO: look at mapping version in ccFile
