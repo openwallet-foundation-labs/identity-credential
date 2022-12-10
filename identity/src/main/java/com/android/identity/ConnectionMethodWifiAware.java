@@ -16,7 +16,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.OptionalLong;
@@ -191,7 +190,8 @@ public class ConnectionMethodWifiAware extends ConnectionMethod {
     }
 
     static @Nullable
-    ConnectionMethod fromNdefRecord(@NonNull NdefRecord record) {
+    ConnectionMethodWifiAware fromNdefRecord(@NonNull NdefRecord record,
+                                             boolean isForHandoverSelect) {
         String passphraseInfoPassphrase = null;
         byte[] bandInfoSupportedBands = null;
         OptionalLong channelInfoChannelNumber = OptionalLong.empty();
@@ -253,7 +253,7 @@ public class ConnectionMethodWifiAware extends ConnectionMethod {
     }
 
     @Override @Nullable
-    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences) {
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull List<String> auxiliaryReferences, boolean isForHandoverSelect) {
         // The NdefRecord and its OOB data is defined in "Wi-Fi Aware Specification", table 142.
         //
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -319,7 +319,7 @@ public class ConnectionMethodWifiAware extends ConnectionMethod {
         }
         byte[] oobData = baos.toByteArray();
 
-        NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
+        NdefRecord record = new NdefRecord(NdefRecord.TNF_MIME_MEDIA,
                 "application/vnd.wfa.nan".getBytes(UTF_8),
                 "W".getBytes(UTF_8),
                 oobData);

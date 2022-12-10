@@ -2,27 +2,16 @@ package com.android.identity;
 
 import android.content.Context;
 import android.net.Uri;
-import android.os.Build;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import java.security.KeyPair;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
-import java.util.OptionalLong;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
-import co.nstant.in.cbor.model.UnsignedInteger;
 
 public class QrEngagementHelper {
     private static final String TAG = "QrEngagementHelper";
@@ -40,8 +29,6 @@ public class QrEngagementHelper {
     private byte[] mEncodedDeviceEngagement;
     private byte[] mEncodedHandover;
     private boolean mReportedDeviceConnecting;
-    private int mNumEngagementApdusReceived;
-    private int mNumDataTransferApdusReceived;
 
     public QrEngagementHelper(@NonNull Context context,
                               @NonNull PresentationSession presentationSession,
@@ -54,7 +41,7 @@ public class QrEngagementHelper {
         mListener = listener;
         mExecutor = executor;
         mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
-        mConnectionMethods = connectionMethods;
+        mConnectionMethods = ConnectionMethod.combine(connectionMethods);
         mOptions = options;
         startListening();
     }
@@ -183,7 +170,6 @@ public class QrEngagementHelper {
 
         reportDeviceEngagementReady();
     }
-
 
     public @NonNull
     String getDeviceEngagementUriEncoded() {

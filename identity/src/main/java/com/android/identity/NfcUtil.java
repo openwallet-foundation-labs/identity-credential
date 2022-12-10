@@ -192,7 +192,7 @@ class NfcUtil {
         // TODO: we actually need to do the reverse disambiguation to e.g. merge two
         //  disambiguated BLE ConnectionMethods...
         for (ConnectionMethod cm : methods) {
-            Pair<NdefRecord, byte[]> records = cm.toNdefRecord(auxiliaryReferences);
+            Pair<NdefRecord, byte[]> records = cm.toNdefRecord(auxiliaryReferences, isHandoverSelect);
             if (records != null) {
                 if (Logger.isDebugEnabled()) {
                     Logger.d(TAG, "ConnectionMethod " + cm + ": alternativeCarrierRecord: "
@@ -329,7 +329,7 @@ class NfcUtil {
             // DataTransport.parseNdefRecord() for details.
             //
             if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
-                ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r);
+                ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r, true);
                 if (cm != null) {
                     ret.connectionMethods.add(cm);
                 }
