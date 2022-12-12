@@ -259,7 +259,7 @@ public class NfcEngagementHelper {
         byte[] ret = null;
 
         if (Logger.isDebugEnabled()) {
-            Logger.d(TAG, "nfcProcessCommandApdu: apdu " + Util.toHex(apdu));
+            Logger.dHex(TAG, "nfcProcessCommandApdu: apdu", apdu);
         }
 
         int commandType = NfcUtil.nfcGetCommandType(apdu);
@@ -296,7 +296,7 @@ public class NfcEngagementHelper {
             Logger.d(TAG, "handleSelectByAid: NFC engagement AID selected");
             return NfcUtil.STATUS_WORD_OK;
         }
-        Logger.d(TAG, "handleSelectByAid: Unexpected AID selected in APDU " + Util.toHex(apdu));
+        Logger.dHex(TAG, "handleSelectByAid: Unexpected AID selected in APDU", apdu);
         return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
     }
 
@@ -371,11 +371,7 @@ public class NfcEngagementHelper {
             if (mUsingNegotiatedHandover) {
                 Logger.d(TAG, "handleSelectFile: NDEF file selected and using negotiated handover");
                 byte[] message = calculateNegotiatedHandoverInitialNdefMessage();
-                if (Logger.isDebugEnabled()) {
-                    Logger.d(TAG, String.format(Locale.US,
-                            "handleSelectFile: Negotiated Handover initial NDEF message is %d bytes: %s",
-                            message.length, Util.toHex(message)));
-                }
+                Logger.dHex(TAG, "handleSelectFile: Initial NDEF message", message);
                 byte[] fileContents = new byte[message.length + 2];
                 fileContents[0] = (byte) (message.length / 256);
                 fileContents[1] = (byte) (message.length & 0xff);
@@ -388,10 +384,7 @@ public class NfcEngagementHelper {
                 byte[] hsMessage = NfcUtil.createNdefMessageHandoverSelect(
                         mStaticHandoverConnectionMethods,
                         mEncodedDeviceEngagement);
-                if (Logger.isDebugEnabled()) {
-                    Logger.d(TAG, String.format(Locale.US, "handleSelectFile: HS is %d bytes: %s",
-                            hsMessage.length, Util.toHex(hsMessage)));
-                }
+                Logger.dHex(TAG, "handleSelectFile: Handover Select", hsMessage);
                 byte[] fileContents = new byte[hsMessage.length + 2];
                 fileContents[0] = (byte) (hsMessage.length / 256);
                 fileContents[1] = (byte) (hsMessage.length & 0xff);
@@ -405,10 +398,8 @@ public class NfcEngagementHelper {
                         .add(SimpleValue.NULL)  // Handover Request message
                         .end()
                         .build().get(0));
-                if (Logger.isDebugEnabled()) {
-                    Logger.d(TAG, "NFC static DeviceEngagement: " + Util.toHex(mEncodedDeviceEngagement));
-                    Logger.d(TAG, "NFC static Handover: " + Util.toHex(mEncodedHandover));
-                }
+                Logger.dCbor(TAG, "NFC static DeviceEngagement", mEncodedDeviceEngagement);
+                Logger.dCbor(TAG, "NFC static Handover", mEncodedHandover);
 
                 // Technically we should ensure the transports are up until sending the response...
                 setupTransports(mStaticHandoverConnectionMethods);
@@ -500,7 +491,7 @@ public class NfcEngagementHelper {
 
         byte[] payload = new byte[dataSize];
         System.arraycopy(apdu, dataBeginsAt, payload, 0, dataSize);
-        Logger.d(TAG, String.format(Locale.US, "handleUpdateBinary: payload: %s", Util.toHex(payload)));
+        Logger.dHex(TAG,"handleUpdateBinary: payload", payload);
 
         // TODO: properly implement state machine in:
         //  Type 4 Tag Technical Specification Version 1.2 section 7.5.5 NDEF Write Procedure
@@ -519,7 +510,7 @@ public class NfcEngagementHelper {
 
     private @NonNull
     byte[] handleServiceSelect(@NonNull byte[] ndefMessagePayload) {
-        Logger.d(TAG, "handleServiceSelect: payload " + Util.toHex(ndefMessagePayload));
+        Logger.dHex(TAG, "handleServiceSelect: payload", ndefMessagePayload);
         // NDEF message specified in NDEF Exchange Protocol 1.0: 4.2.2 Service Select Record
         NdefMessage message = null;
         try {
@@ -555,11 +546,7 @@ public class NfcEngagementHelper {
         // Service selection.
 
         byte[] statusMessage = calculateStatusMessage(0x00);
-        if (Logger.isDebugEnabled()) {
-            Logger.d(TAG, String.format(Locale.US,
-                    "handleServiceSelect: Status message is %d bytes: %s",
-                    statusMessage.length, Util.toHex(statusMessage)));
-        }
+        Logger.dHex(TAG, "handleServiceSelect: Status message", statusMessage);
         byte[] fileContents = new byte[statusMessage.length + 2];
         fileContents[0] = (byte) (statusMessage.length / 256);
         fileContents[1] = (byte) (statusMessage.length & 0xff);
@@ -571,7 +558,7 @@ public class NfcEngagementHelper {
 
     private @NonNull
     byte[] handleHandoverRequest(@NonNull byte[] ndefMessagePayload) {
-        Logger.d(TAG, "handleHandoverRequest: payload " + Util.toHex(ndefMessagePayload));
+        Logger.dHex(TAG, "handleHandoverRequest: payload", ndefMessagePayload);
         NdefMessage message = null;
         try {
             message = new NdefMessage(ndefMessagePayload);
@@ -656,10 +643,8 @@ public class NfcEngagementHelper {
                 .add(mHandoverRequestMessage)  // Handover Request message
                 .end()
                 .build().get(0));
-        if (Logger.isDebugEnabled()) {
-            Logger.d(TAG, "NFC negotiated DeviceEngagement: " + Util.toHex(mEncodedDeviceEngagement));
-            Logger.d(TAG, "NFC negotiated Handover: " + Util.toHex(mEncodedHandover));
-        }
+        Logger.dCbor(TAG, "NFC negotiated DeviceEngagement", mEncodedDeviceEngagement);
+        Logger.dCbor(TAG, "NFC negotiated Handover", mEncodedHandover);
 
         // Technically we should ensure the transports are up until sending the response...
         setupTransports(listWithSelectedConnectionMethod);

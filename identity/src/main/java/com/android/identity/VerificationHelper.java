@@ -311,10 +311,7 @@ public class VerificationHelper {
                     uri.getEncodedSchemeSpecificPart(),
                     Base64.URL_SAFE | Base64.NO_PADDING);
             if (encodedDeviceEngagement != null) {
-                if (Logger.isDebugEnabled()) {
-                    Logger.d(TAG, "Device Engagement from QR code: "
-                            + Util.toHex(encodedDeviceEngagement));
-                }
+                Logger.dCbor(TAG, "Device Engagement from QR code", encodedDeviceEngagement);
 
                 DataItem handover = SimpleValue.NULL;
                 setDeviceEngagement(encodedDeviceEngagement, handover);
@@ -345,7 +342,7 @@ public class VerificationHelper {
         apdu = NfcUtil.createApduReadBinary(offset, size);
         ret = isoDep.transceive(apdu);
         if (ret.length < 2 || ret[ret.length - 2] != ((byte) 0x90) || ret[ret.length - 1] != ((byte) 0x00)) {
-            Logger.e(TAG, "Error sending READ_BINARY command: " + Util.toHex(ret));
+            Logger.eHex(TAG, "Error sending READ_BINARY command, ret", ret);
             return null;
         }
         return Arrays.copyOfRange(ret, 0, ret.length - 2);
@@ -359,7 +356,7 @@ public class VerificationHelper {
         apdu = NfcUtil.createApduReadBinary(0x0000, 2);
         ret = isoDep.transceive(apdu);
         if (ret.length != 4 || ret[2] != ((byte) 0x90) || ret[3] != ((byte) 0x00)) {
-            Logger.e(TAG, "Error sending second READ_BINARY command for length: " + Util.toHex(ret));
+            Logger.eHex(TAG, "Error sending second READ_BINARY command for length, ret", ret);
             return null;
         }
         int replyLen = ((int) ret[0] & 0xff) * 256 + ((int) ret[1] & 0xff);
@@ -367,7 +364,7 @@ public class VerificationHelper {
         apdu = NfcUtil.createApduReadBinary(0x0002, replyLen);
         ret = isoDep.transceive(apdu);
         if (ret.length != replyLen + 2 || ret[replyLen] != ((byte) 0x90) || ret[replyLen + 1] != ((byte) 0x00)) {
-            Logger.e(TAG, "Error sending second READ_BINARY command for payload: " + Util.toHex(ret));
+            Logger.eHex(TAG, "Error sending second READ_BINARY command for payload, ret", ret);
             return null;
         }
         return Arrays.copyOfRange(ret, 0, ret.length - 2);
@@ -401,7 +398,7 @@ public class VerificationHelper {
         apdu = NfcUtil.createApduUpdateBinary(0x0000, new byte[] {0x00, 0x00});
         ret = isoDep.transceive(apdu);
         if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-            Logger.e(TAG, "Error sending initial UPDATE_BINARY command: " + Util.toHex(ret));
+            Logger.eHex(TAG, "Error sending initial UPDATE_BINARY command, ret", ret);
             return null;
         }
 
@@ -409,7 +406,7 @@ public class VerificationHelper {
         apdu = NfcUtil.createApduUpdateBinary(0x0002, ndefMessage);
         ret = isoDep.transceive(apdu);
         if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-            Logger.e(TAG, "Error sending second UPDATE_BINARY command: " + Util.toHex(ret));
+            Logger.eHex(TAG, "Error sending second UPDATE_BINARY command, ret", ret);
             return null;
         }
 
@@ -420,7 +417,7 @@ public class VerificationHelper {
         apdu = NfcUtil.createApduUpdateBinary(0x0000, encodedLength);
         ret = isoDep.transceive(apdu);
         if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-            Logger.e(TAG, "Error sending third UPDATE_BINARY command: " + Util.toHex(ret));
+            Logger.eHex(TAG, "Error sending third UPDATE_BINARY command, ret", ret);
             return null;
         }
 
@@ -459,12 +456,14 @@ public class VerificationHelper {
                             NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION);
                     ret = isoDep.transceive(selectCommand);
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-                        throw new IllegalStateException("NDEF application selection failed, ret: " + Util.toHex(ret));
+                        Logger.eHex(TAG, "NDEF application selection failed, ret", ret);
+                        throw new IllegalStateException("NDEF application selection failed");
                     }
 
                     ret = isoDep.transceive(NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID));
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-                        throw new IllegalStateException("Error selecting capability file, ret: " + Util.toHex(ret));
+                        Logger.eHex(TAG, "Error selecting capability file, ret", ret);
+                        throw new IllegalStateException("Error selecting capability file");
                     }
 
                     // CC file is 15 bytes long
@@ -485,7 +484,8 @@ public class VerificationHelper {
 
                     ret = isoDep.transceive(NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID));
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
-                        throw new IllegalStateException("Error selecting NDEF file, ret: " + Util.toHex(ret));
+                        Logger.eHex(TAG, "Error selecting NDEF file, ret", ret);
+                        throw new IllegalStateException("Error selecting NDEF file");
                     }
 
                     // First see if we should use negotiated handover..
@@ -541,12 +541,12 @@ public class VerificationHelper {
                     byte[] hrMessage = NfcUtil.createNdefMessageHandoverRequest(
                             connectionMethods,
                             null); // TODO: pass ReaderEngagement message
-                    Logger.d(TAG, "Handover Request sent: " + Util.toHex(hrMessage));
+                    Logger.dHex(TAG, "Handover Request sent", hrMessage);
                     byte[] hsMessage = ndefTransact(isoDep, hrMessage);
                     if (ret == null) {
                         throw new IllegalStateException("Handover Request failed");
                     }
-                    Logger.d(TAG, "Handover Select received: " + Util.toHex(hsMessage));
+                    Logger.dHex(TAG, "Handover Select received", hsMessage);
 
                     long elapsedTime = System.currentTimeMillis() - timeMillisBegin;
                     Logger.d(TAG, String.format(Locale.US,
@@ -563,10 +563,8 @@ public class VerificationHelper {
                                 "iso.org:18013:deviceengagement".getBytes(UTF_8))
                                 && Arrays.equals(r.getId(), "mdoc".getBytes(UTF_8))) {
                             encodedDeviceEngagement = r.getPayload();
-                            if (Logger.isDebugEnabled()) {
-                                Logger.d(TAG, "Device Engagement from NFC negotiated handover: "
-                                        + Util.toHex(encodedDeviceEngagement));
-                            }
+                            Logger.dCbor(TAG, "Device Engagement from NFC negotiated handover",
+                                    encodedDeviceEngagement);
                         } else if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
                             ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r, true);
                             if (cm != null) {
@@ -625,7 +623,7 @@ public class VerificationHelper {
                 .add(handover)
                 .end()
                 .build().get(0));
-        Logger.d(TAG, "SessionTranscript:\n" + Util.toHex(mEncodedSessionTranscript));
+        Logger.dCbor(TAG, "SessionTranscript", mEncodedSessionTranscript);
 
         mSessionEncryptionReader = new SessionEncryptionReader(
                 mEphemeralKeyPair.getPrivate(),
@@ -739,7 +737,7 @@ public class VerificationHelper {
     }
 
     private void handleReverseEngagementMessageData(@NonNull byte[] data) {
-        Logger.d(TAG, "MessageData = " + Util.toHex(data));
+        Logger.dCbor(TAG, "MessageData", data);
         byte[] encodedDeviceEngagement = null;
         DataItem handover = null;
         try {
@@ -751,7 +749,7 @@ public class VerificationHelper {
             return;
         }
 
-        Logger.d(TAG, "Extracted DeviceEngagement " + Util.toHex(encodedDeviceEngagement));
+        Logger.dCbor(TAG, "Extracted DeviceEngagement", encodedDeviceEngagement);
 
         // 18013-7 says to use ReaderEngagementBytes for Handover when ReaderEngagement
         // is available and neither QR or NFC is used.
@@ -795,11 +793,7 @@ public class VerificationHelper {
         // currently does not define other kinds of messages).
         //
         if (decryptedMessage.first != null) {
-            Logger.d(TAG, "SessionData with decrypted payload"
-                    + " (" + decryptedMessage.first.length + " bytes)");
-            if (Logger.isDebugEnabled()) {
-                Util.dumpHex(TAG, "Received DeviceResponse", decryptedMessage.first);
-            }
+            Logger.dCbor(TAG, "DeviceResponse received", decryptedMessage.first);
             reportResponseReceived(decryptedMessage.first);
         } else {
             // No data, so status must be set.
@@ -855,9 +849,7 @@ public class VerificationHelper {
     }
 
     void reportReaderEngagementReady(@NonNull byte[] readerEngagement) {
-        if (Logger.isDebugEnabled()) {
-            Logger.d(TAG, "reportReaderEngagementReady: " + Util.toHex(readerEngagement));
-        }
+        Logger.dCbor(TAG, "reportReaderEngagementReady", readerEngagement);
         if (mListener != null) {
             mListenerExecutor.execute(
                     () -> mListener.onReaderEngagementReady(readerEngagement));
@@ -960,13 +952,11 @@ public class VerificationHelper {
             throw new IllegalStateException("Not connected to a remote device");
         }
 
-        if (Logger.isDebugEnabled()) {
-            Util.dumpHex(TAG, "Sending DeviceRequest", deviceRequestBytes);
-        }
+        Logger.dCbor(TAG, "DeviceRequest to send", deviceRequestBytes);
 
         byte[] message = mSessionEncryptionReader.encryptMessageToDevice(
                 deviceRequestBytes, OptionalInt.empty());
-        Log.d(TAG, "sending: " + Util.toHex(message));
+        Logger.dCbor(TAG, "SessionData to send", message);
         mDataTransport.sendMessage(message);
     }
 

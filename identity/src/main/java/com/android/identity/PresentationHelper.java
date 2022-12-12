@@ -174,9 +174,7 @@ public class PresentationHelper {
                     mapBuilder.end();
                     byte[] messageData = Util.cborEncode(builder.build().get(0));
 
-                    if (Logger.isDebugEnabled()) {
-                        Util.dumpHex(TAG, "MessageData for reverse engagement", messageData);
-                    }
+                    Logger.dCbor(TAG, "MessageData for reverse engagement to send", messageData);
                     mTransport.sendMessage(messageData);
                 } else {
                     throw new IllegalStateException("Unexpected onConnected callback");
@@ -277,9 +275,7 @@ public class PresentationHelper {
     }
 
     private void processMessageReceived(@NonNull byte[] data) {
-        if (Logger.isDebugEnabled()) {
-            Util.dumpHex(TAG, "SessionData", data);
-        }
+        Logger.dCbor(TAG, "SessionData received", data);
         ensureSessionEncryption(data);
         Pair<byte[], OptionalLong> decryptedMessage = null;
         try {
@@ -325,9 +321,7 @@ public class PresentationHelper {
                 }
             }
 
-            if (Logger.isDebugEnabled()) {
-                Util.dumpHex(TAG, "Received DeviceRequest", decryptedMessage.first);
-            }
+            Logger.dCbor(TAG, "DeviceRequest received", decryptedMessage.first);
 
             reportDeviceRequest(decryptedMessage.first);
         } else {
@@ -413,9 +407,7 @@ public class PresentationHelper {
     public void sendDeviceResponse(@NonNull byte[] deviceResponseBytes,
         @Nullable TransmissionProgressListener progressListener,
         @Nullable Executor progressExecutor) {
-        if (Logger.isDebugEnabled()) {
-            Util.dumpHex(TAG, "Sending DeviceResponse", deviceResponseBytes);
-        }
+        Logger.dCbor(TAG, "DeviceResponse to send", deviceResponseBytes);
         byte[] encryptedData =
             mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalLong.empty());
         mTransport.sendMessage(encryptedData, progressListener, progressExecutor);

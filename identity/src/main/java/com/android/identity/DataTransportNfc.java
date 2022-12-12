@@ -96,7 +96,7 @@ public class DataTransportNfc extends DataTransport {
                     if (messageToSend == null) {
                         continue;
                     }
-                    Logger.d(TAG, "Sending message " + Util.toHex(messageToSend));
+                    Logger.dHex(TAG, "Sending message", messageToSend);
 
                     if (mListenerLeReceived == -1) {
                         reportError(new Error("ListenerLeReceived not set"));
@@ -195,7 +195,7 @@ public class DataTransportNfc extends DataTransport {
         byte[] ret = null;
         mHostApduService = hostApduService;
 
-        Logger.d(TAG, "nfcDataTransferProcessCommandApdu apdu " + Util.toHex(apdu));
+        Logger.dHex(TAG, "nfcDataTransferProcessCommandApdu apdu", apdu);
 
         int commandType = NfcUtil.nfcGetCommandType(apdu);
         if (!mDataTransferAidSelected) {
@@ -243,7 +243,7 @@ public class DataTransportNfc extends DataTransport {
             reportConnected();
             return NfcUtil.STATUS_WORD_OK;
         }
-        Logger.w(TAG, "handleSelectByAid: Unexpected AID selected in APDU " + Util.toHex(apdu));
+        Logger.wHex(TAG, "handleSelectByAid: Unexpected AID selected in APDU", apdu);
         return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
     }
 
@@ -578,9 +578,9 @@ public class DataTransportNfc extends DataTransport {
 
                     byte[] selectCommand = buildApdu(0x00, 0xa4, 0x04, 0x00,
                             NfcUtil.AID_FOR_MDL_DATA_TRANSFER, 0);
-                    Logger.d(TAG, "selectCommand: " + Util.toHex(selectCommand));
+                    Logger.dHex(TAG, "selectCommand", selectCommand);
                     byte[] selectResponse = mIsoDep.transceive(selectCommand);
-                    Logger.d(TAG, "selectResponse: " + Util.toHex(selectResponse));
+                    Logger.dHex(TAG, "selectResponse", selectResponse);
                     if (!Arrays.equals(selectResponse, NfcUtil.STATUS_WORD_OK)) {
                         reportError(new Error("Unexpected response to AID SELECT"));
                         return;
@@ -596,9 +596,7 @@ public class DataTransportNfc extends DataTransport {
                         } catch (InterruptedException e) {
                             continue;
                         }
-                        if (Logger.isDebugEnabled()) {
-                            Logger.d(TAG, "Sending message " + Util.toHex(messageToSend));
-                        }
+                        Logger.dHex(TAG, "Sending message", messageToSend);
 
                         byte[] data = encapsulateInDo53(messageToSend);
 
@@ -625,9 +623,7 @@ public class DataTransportNfc extends DataTransport {
                             byte[] envelopeCommand = buildApdu(moreChunksComing ? 0x10 : 0x00,
                                     0xc3, 0x00, 0x00, chunk, le);
 
-                            if (Logger.isDebugEnabled()) {
-                                Logger.d(TAG, "envelopeCommand " + Util.toHex(envelopeCommand));
-                            }
+                            Logger.dHex(TAG, "envelopeCommand", envelopeCommand);
 
                             long t0 = System.currentTimeMillis();
                             byte[] envelopeResponse = mIsoDep.transceive(envelopeCommand);
@@ -643,16 +639,14 @@ public class DataTransportNfc extends DataTransport {
                                     envelopeResponse.length,
                                     bitsPerSec));
 
-                            if (Logger.isDebugEnabled()) {
-                                Logger.d(TAG, "Received " + Util.toHex(envelopeResponse));
-                            }
+
+                            Logger.dHex(TAG, "Received", envelopeResponse);
 
                             offset += size;
 
                             if (moreChunksComing) {
                                 // Don't care about response.
-                                Logger.d(TAG, "envResponse (more chunks coming) " + Util.toHex(
-                                        envelopeResponse));
+                                Logger.dHex(TAG, "envResponse (more chunks coming)", envelopeResponse);
                             } else {
                                 lastEnvelopeResponse = envelopeResponse;
                             }
