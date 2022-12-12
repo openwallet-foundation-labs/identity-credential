@@ -173,16 +173,6 @@ class Util {
         return sb.toString();
     }
 
-    static void dumpHex(@NonNull String tag, @NonNull String message,
-            @NonNull byte[] bytes) {
-        Log.i(tag, message + " (" + bytes.length + " bytes)");
-        final int chunkSize = 1024;
-        for (int offset = 0; offset < bytes.length; offset += chunkSize) {
-            String s = toHex(bytes, offset, Math.min(bytes.length, offset + chunkSize));
-            Log.i(tag, "data: " + s);
-        }
-    }
-
     static @NonNull
     String base16(@NonNull byte[] bytes) {
         return toHex(bytes).toUpperCase(Locale.ROOT);

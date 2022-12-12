@@ -163,10 +163,8 @@ public class QrEngagementHelper {
         engagementGenerator.setConnectionMethods(mConnectionMethods);
         mEncodedDeviceEngagement = engagementGenerator.generate();
         mEncodedHandover = Util.cborEncode(SimpleValue.NULL);
-        if (Logger.isDebugEnabled()) {
-            Logger.d(TAG, "QR DE: " + Util.toHex(mEncodedDeviceEngagement));
-            Logger.d(TAG, "QR handover: " + Util.toHex(mEncodedHandover));
-        }
+        Logger.dCbor(TAG, "QR DE", mEncodedDeviceEngagement);
+        Logger.dCbor(TAG, "QR handover", mEncodedHandover);
 
         reportDeviceEngagementReady();
     }

@@ -564,9 +564,7 @@ class GattClient extends BluetoothGattCallback {
 
 
     void sendMessage(@NonNull byte[] data) {
-        if (Logger.isDebugEnabled()) {
-            Util.dumpHex(TAG, "sendMessage", data);
-        }
+        Logger.dHex(TAG, "sendMessage", data);
 
         // Use socket for L2CAP if applicable
         if (mL2CAPClient != null) {

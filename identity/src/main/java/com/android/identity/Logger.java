@@ -17,13 +17,15 @@
 package com.android.identity;
 
 import android.os.Build;
-import android.telecom.Call;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.concurrent.Callable;
+import java.util.Locale;
 
 /**
  * Class used for logging.
@@ -36,15 +38,74 @@ import java.util.concurrent.Callable;
  */
 public class Logger {
     private static final String TAG = "Logger";
-    private static boolean mDebugEnabled = true;   // TODO: make false by default
-
     private static final int LEVEL_D = 0;
-    private static final int LEVEL_W = 1;
-    private static final int LEVEL_E = 2;
+    private static final int LEVEL_I = 1;
+    private static final int LEVEL_W = 2;
+    private static final int LEVEL_E = 3;
+
+    private static boolean mDebugEnabled = true;   // TODO: make false by default
+    private static FileWriter mFileWriter = null;
+    private static String mFileWriterPath = null;
+
+    public static void startLoggingToFile(File logFile) throws IOException {
+        if (mFileWriter != null) {
+            Logger.w(TAG, "startLoggingToFile: Already logging to file " + mFileWriterPath);
+            mFileWriter.close();
+            mFileWriter = null;
+            mFileWriterPath = null;
+        }
+        mFileWriterPath = logFile.getAbsolutePath();
+        Logger.d(TAG, "Starting logging to file " + mFileWriterPath);
+        mFileWriter = new FileWriter(logFile, false);
+    }
+
+    public static void stopLoggingToFile() throws IOException {
+        if (mFileWriter == null) {
+            Logger.w(TAG, "startLoggingToFile: Not logging to file");
+            return;
+        }
+        mFileWriter.close();
+        mFileWriter = null;
+        Logger.d(TAG, "Stopped logging to file " + mFileWriterPath);
+        mFileWriterPath = null;
+    }
 
     // TODO: make it possible for application to supply its own logging method.
 
+    private static String prepareLine(int level, @NonNull String tag, @NonNull String msg, @Nullable Throwable throwable) {
+        StringBuilder sb = new StringBuilder();
+        String timeStamp = new SimpleDateFormat("yyyy-MM-dd HH.mm.ss.SSS", Locale.US)
+                .format(new java.util.Date());
+        sb.append(timeStamp);
+        sb.append(": ");
+        switch (level) {
+            case LEVEL_D:
+                sb.append("DEBUG");
+                break;
+            case LEVEL_I:
+                sb.append("INFO");
+                break;
+            case LEVEL_W:
+                sb.append("WARNING");
+                break;
+            case LEVEL_E:
+                sb.append("ERROR");
+                break;
+        }
+        sb.append(": ");
+        sb.append(tag);
+        sb.append(": ");
+        sb.append(msg);
+        if (throwable != null) {
+            sb.append("\nEXCEPTION: ");
+            sb.append(throwable.toString());
+        }
+        return sb.toString();
+    }
+
     private static void println(int level, @NonNull String tag, @NonNull String msg, @Nullable Throwable throwable) {
+        String logLine = null;
+
         if (Build.VERSION.SDK_INT > 0) {
             switch (level) {
                 case LEVEL_D:
@@ -52,6 +113,13 @@ public class Logger {
                         android.util.Log.d(tag, msg);
                     } else {
                         android.util.Log.d(tag, msg, throwable);
+                    }
+                    break;
+                case LEVEL_I:
+                    if (throwable != null) {
+                        android.util.Log.i(tag, msg);
+                    } else {
+                        android.util.Log.i(tag, msg, throwable);
                     }
                     break;
                 case LEVEL_W:
@@ -70,30 +138,25 @@ public class Logger {
                     break;
             }
         } else {
-            StringBuilder sb = new StringBuilder();
-            String timeStamp = new SimpleDateFormat("yyyy-MM-dd HH.mm.ss.SSS").format(new java.util.Date());
-            sb.append(timeStamp);
-            sb.append(": ");
-            switch (level) {
-                case LEVEL_D:
-                    sb.append("DEBUG");
-                    break;
-                case LEVEL_W:
-                    sb.append("WARNING");
-                    break;
-                case LEVEL_E:
-                    sb.append("ERROR");
-                    break;
+            logLine = prepareLine(level, tag, msg, throwable);
+            System.out.println(logLine);
+        }
+
+        if (mFileWriter != null) {
+            if (logLine == null) {
+                logLine = prepareLine(level, tag, msg, throwable);
             }
-            sb.append(": ");
-            sb.append(tag);
-            sb.append(": ");
-            sb.append(msg);
-            if (throwable != null) {
-                sb.append("\nEXCEPTION: ");
-                sb.append(throwable.toString());
+            try {
+                mFileWriter.write(logLine);
+                mFileWriter.write('\n');
+            } catch (IOException e) {
+                if (Build.VERSION.SDK_INT > 0) {
+                    android.util.Log.e(tag, "Error writing log message to file", e);
+                } else {
+                    System.out.println("Error writing log message to file: " + e);
+                }
+                e.printStackTrace();
             }
-            System.out.println(sb);
         }
     }
 
@@ -101,7 +164,7 @@ public class Logger {
         return mDebugEnabled;
     }
 
-    private static void setDebugEnabled(boolean enabled) {
+    public static void setDebugEnabled(boolean enabled) {
         mDebugEnabled = enabled;
     }
 
@@ -131,5 +194,61 @@ public class Logger {
 
     public static void e(@NonNull String tag, @NonNull String msg, @NonNull Throwable throwable) {
         println(LEVEL_E, tag, msg, throwable);
+    }
+
+    private static void hex(int level, @NonNull String tag, @NonNull String message, @NonNull byte[] data) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(message).append(String.format(Locale.US, ": %d bytes of data: ", data.length));
+        sb.append(Util.toHex(data));
+        println(level, tag, sb.toString(), null);
+    }
+
+    public static void dHex(@NonNull String tag, @NonNull String message, @NonNull byte[] data) {
+        if (isDebugEnabled()) {
+            hex(LEVEL_D, tag, message, data);
+        }
+    }
+
+    public static void iHex(@NonNull String tag, @NonNull String message, @NonNull byte[] data) {
+        if (isDebugEnabled()) {
+            hex(LEVEL_I, tag, message, data);
+        }
+    }
+
+    public static void wHex(@NonNull String tag, @NonNull String message, @NonNull byte[] data) {
+        hex(LEVEL_W, tag, message, data);
+    }
+
+    public static void eHex(@NonNull String tag, @NonNull String message, @NonNull byte[] data) {
+        hex(LEVEL_E, tag, message, data);
+    }
+
+    private static void cbor(int level, @NonNull String tag, @NonNull String message, @NonNull byte[] encodedCbor) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(message).append(String.format(Locale.US, ": %d bytes of CBOR: ", encodedCbor.length));
+        sb.append(Util.toHex(encodedCbor));
+        sb.append("\n");
+        sb.append("In diagnostic notation:\n");
+        sb.append(CborUtil.toDiagnostics(encodedCbor,
+                CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT | CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR));
+        println(level, tag, sb.toString(), null);
+    }
+
+    public static void dCbor(@NonNull String tag, @NonNull String message, @NonNull byte[] encodedCbor) {
+        if (isDebugEnabled()) {
+            cbor(LEVEL_D, tag, message, encodedCbor);
+        }
+    }
+
+    public static void iCbor(@NonNull String tag, @NonNull String message, @NonNull byte[] encodedCbor) {
+        cbor(LEVEL_I, tag, message, encodedCbor);
+    }
+
+    public static void wCbor(@NonNull String tag, @NonNull String message, @NonNull byte[] encodedCbor) {
+        cbor(LEVEL_W, tag, message, encodedCbor);
+    }
+
+    public static void eCbor(@NonNull String tag, @NonNull String message, @NonNull byte[] encodedCbor) {
+        cbor(LEVEL_E, tag, message, encodedCbor);
     }
 }
