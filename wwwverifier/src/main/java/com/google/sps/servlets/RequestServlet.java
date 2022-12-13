@@ -2,13 +2,13 @@ package com.google.sps.servlets;
 
 import co.nstant.in.cbor.CborBuilder;
 import com.google.gson.Gson;
-import java.util.Base64;
-import java.util.OptionalInt;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.OptionalInt;
+import java.util.List;
+import java.util.Map;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
@@ -65,14 +65,24 @@ public class RequestServlet extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("text/html;");
-        String pathInfo = request.getPathInfo().substring(1);
-        String[] pathArr = pathInfo.split("/");
-        if (pathInfo.equals(ServletConsts.SESSION_URL)) {
+        String[] pathArr = parsePathInfo(request);
+        if (pathArr[0].equals(ServletConsts.SESSION_URL)) {
             response.getWriter().println(createNewSession());
-        } else if (pathArr[0].equals(ServletConsts.RESPONSE_URL)) {
+        } else if (pathArr[0].equals(ServletConsts.RESPONSE_URL) && pathArr.length == 2) {
             Key key = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathArr[1]);
             response.getWriter().println(getDeviceResponse(key));
         }
+    }
+
+    /**
+     * @param request Either a GET or POST request
+     * @return a String array containing the parsed path information, which includes at least
+     * one of (1) a String specifying the type of GET request (2) a unique key that corresponds
+     * to a previously created session
+     */
+    public static String[] parsePathInfo(HttpServletRequest request) {
+        String pathInfo = request.getPathInfo().substring(1);
+        return pathInfo.split("/");
     }
 
     /**
@@ -113,34 +123,18 @@ public class RequestServlet extends HttpServlet {
     }
 
     /**
-     * Retrieves DeviceResponse message from Datastore.
-     * 
-     * @param key key corresponding to an entity in Datastore
-     * @return String containing DeviceResponse message, or an empty string if it does not exist
-     */
-    public static String getDeviceResponse(Key key) {
-        Entity entity = getEntity(key);
-        if (entity.hasProperty(ServletConsts.DEV_RESPONSE_PROP)) {
-            Text deviceResponse = (Text) entity.getProperty(ServletConsts.DEV_RESPONSE_PROP);
-            return deviceResponse.getValue().replaceAll("\\\\u0027", "'"); // render apostrophe
-        }
-        return new String();
-    } 
-
-    /**
      * Handles two distinct POST requests:
      * (1) The first POST request sent to the servlet, which contains a MessageData message
      * (2) The second POST request sent to the servlet, which contains a DeviceResponse message
      * 
-     * @param request Either (1) MessageData, containing DeviceEngagement or (2) DeviceResponse,
-     * both in the form of byte arrays
+     * @param request encoded CBOR message
      * @return (1) response, containing a DeviceRequest message as an encoded byte array; 
      * (2) response, containing a termination message with status code 20
      */
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String pathInfo = request.getPathInfo().substring(1);
-        Key key = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathInfo);
+        String[] pathArr = parsePathInfo(request);
+        Key key = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathArr[0]);
         if (getNumPostRequests(key) == 0) {
             byte[] sessionData = createDeviceRequest(getBytesFromRequest(request), key);
             setNumPostRequests(1, key);
@@ -161,25 +155,19 @@ public class RequestServlet extends HttpServlet {
       * @return SessionData CBOR message containing DeviceRequest
       */
     private static byte[] createDeviceRequest(byte[] messageData, Key key) {
-        byte[] encodedDeviceEngagement =
+        byte[] de =
             Util.cborMapExtractByteString(Util.cborDecode(messageData), ServletConsts.DE_KEY);
         PublicKey eReaderKeyPublic =
             getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
         PrivateKey eReaderKeyPrivate =
             getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
-        byte[] readerEngagementBytes = getDatastoreProp(ServletConsts.RE_PROP, key);
 
-        EngagementParser.Engagement de = new EngagementParser(encodedDeviceEngagement).parse();
-        PublicKey eDeviceKeyPublic = de.getESenderKey();
-        verifyOriginInfo(de.getOriginInfos(), key);
+        EngagementParser.Engagement parser = new EngagementParser(de).parse();
+        PublicKey eDeviceKeyPublic = parser.getESenderKey();
         setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), key);
+        verifyOriginInfo(parser.getOriginInfos(), key);
 
-        byte[] sessionTranscript = Util.cborEncode(new CborBuilder()
-            .addArray()
-                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
-                .add(Util.cborBuildTaggedByteString(Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPublic))))
-                .add(Util.cborBuildTaggedByteString(readerEngagementBytes))
-            .end().build().get(0));
+        byte[] sessionTranscript = buildSessionTranscript(de, eReaderKeyPublic, key);
         setDatastoreProp(ServletConsts.TRANSCRIPT_PROP, sessionTranscript, key);
 
         SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate,
@@ -193,44 +181,36 @@ public class RequestServlet extends HttpServlet {
     }
 
     /**
+     * Generates session transcript using the device engagement @param de , the
+     * reader key @param eReaderKeyPublic , and the reader engagement, which is accessed via
+     * the datastore key @param key .
+     */
+    public static byte[] buildSessionTranscript(byte[] de, PublicKey eReaderKeyPublic, Key key) {
+        byte[] re = getDatastoreProp(ServletConsts.RE_PROP, key);
+        return Util.cborEncode(new CborBuilder()
+            .addArray()
+                .add(Util.cborBuildTaggedByteString(de))
+                .add(Util.cborBuildTaggedByteString(Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPublic))))
+                .add(Util.cborBuildTaggedByteString(re))
+            .end().build().get(0));
+    }
+
+    /**
      * Verify that the base URL of the origin info found in @param oiList matches
      * the base URL of the website (ServletConsts.BASE_URL).
      * @param key Unique identifier corresponding to the current session
      */
     private static void verifyOriginInfo(List<OriginInfo> oiList, Key key) {
         if (oiList.size() > 0) {
-            OriginInfoWebsite oi = (OriginInfoWebsite) oiList.get(0);
-            if (!oi.getBaseUrl().equals(ServletConsts.BASE_URL)) {
-                setOriginInfoStatus(ServletConsts.OI_FAILURE_START + oi.getBaseUrl() 
-                    + ServletConsts.OI_FAILURE_END, key);
+            String oiUrl = ((OriginInfoWebsite) oiList.get(0)).getBaseUrl();
+            if (!oiUrl.equals(ServletConsts.BASE_URL)) {
+                setOriginInfoStatus(ServletConsts.OI_FAILURE_START + oiUrl + ServletConsts.OI_FAILURE_END, key);
             } else {
                 setOriginInfoStatus(ServletConsts.OI_SUCCESS, key);
             }
         } else {
             setOriginInfoStatus(ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim(), key);
         }
-    }
-
-        /**
-     * Sets property in Datastore indicating whether the OriginInfo base URL from the
-     * DeviceEngagement message received from the app matches the website's base URL.
-     * 
-     * @param status String message to be stored in Datastore
-     * @param key Key corresponding to an entity in Datastore assigned to the current session
-     */
-    public static void setOriginInfoStatus(String status, Key key) {
-        Entity entity = getEntity(key);
-        entity.setProperty(ServletConsts.OI_PROP, status);
-        ds.put(entity);
-    }
-
-    /**
-     * @param key Key corresponding to an entity in Datastore assigned to the current session
-     * @return String message indicating whether the OriginInfo base URL from the app
-     * matches the website's base URL
-     */
-    public static String getOriginInfoStatus(Key key) {
-        return (String) getEntity(key).getProperty(ServletConsts.OI_PROP);
     }
 
     /**
@@ -281,8 +261,7 @@ public class RequestServlet extends HttpServlet {
     }
 
     /**
-     * @param request HTTP POST request
-     * @return byte array with data extracted from @param request
+     * @return byte array with data extracted from HTTP POST request @param request
      */
     private static byte[] getBytesFromRequest(HttpServletRequest request) {
         byte[] arr = new byte[request.getContentLength()];
@@ -322,7 +301,7 @@ public class RequestServlet extends HttpServlet {
             .setEphemeralReaderKey(eReaderKeyPrivate)
             .parse();
         String json = new Gson().toJson(buildArrayFromDocuments(dr.getDocuments(), key));
-        setDevResponse(json, key);
+        setDeviceResponse(json, key);
 
         return ser.encryptMessageToDevice(null, OptionalInt.of(20));
     }
@@ -480,9 +459,46 @@ public class RequestServlet extends HttpServlet {
      * @param text Parsed Device Response message
      * @param key Unique identifier that corresponds to the current session
      */
-    public static void setDevResponse(String text, Key key) {
+    public static void setDeviceResponse(String text, Key key) {
         Entity entity = getEntity(key);
         entity.setProperty(ServletConsts.DEV_RESPONSE_PROP, new Text(text));
         ds.put(entity);
+    }
+
+    /**
+     * Retrieves DeviceResponse message from Datastore.
+     * 
+     * @param key key corresponding to an entity in Datastore
+     * @return String containing DeviceResponse message, or an empty string if it does not exist
+     */
+    public static String getDeviceResponse(Key key) {
+        Entity entity = getEntity(key);
+        if (entity.hasProperty(ServletConsts.DEV_RESPONSE_PROP)) {
+            Text deviceResponse = (Text) entity.getProperty(ServletConsts.DEV_RESPONSE_PROP);
+            return deviceResponse.getValue().replaceAll("\\\\u0027", "'"); // render apostrophe
+        }
+        return new String();
+    }
+
+    /**
+     * Sets property in Datastore indicating whether the OriginInfo base URL from the
+     * DeviceEngagement message received from the app matches the website's base URL.
+     * 
+     * @param status String message to be stored in Datastore
+     * @param key Key corresponding to an entity in Datastore assigned to the current session
+     */
+    public static void setOriginInfoStatus(String status, Key key) {
+        Entity entity = getEntity(key);
+        entity.setProperty(ServletConsts.OI_PROP, status);
+        ds.put(entity);
+    }
+
+    /**
+     * @param key Key corresponding to an entity in Datastore assigned to the current session
+     * @return String message indicating whether the OriginInfo base URL from the app
+     * matches the website's base URL
+     */
+    public static String getOriginInfoStatus(Key key) {
+        return (String) getEntity(key).getProperty(ServletConsts.OI_PROP);
     }
 }

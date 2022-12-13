@@ -1,16 +1,13 @@
 package com.google.sps;
 
-import static org.mockito.Mockito.doReturn;
-
 // imports for CBOR encoding/decoding
-import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.builder.MapBuilder;
+import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 
 // imports for HTTP requests
 import java.io.PrintWriter;
@@ -36,38 +33,25 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-
-// other imports
-import java.math.BigInteger;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.OptionalLong;
+import static org.mockito.Mockito.doReturn;
 
 // imports from Datastore
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
+import com.google.appengine.api.datastore.Text;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
-import com.google.appengine.api.datastore.Text;
 
-// imports from Identity Credential Library
-import com.google.sps.servlets.ConnectionMethod;
-import com.google.sps.servlets.ConnectionMethodHttp;
-import com.google.sps.servlets.DeviceRequestParser;
-import com.google.sps.servlets.EngagementGenerator;
-import com.google.sps.servlets.EngagementParser;
-import com.google.sps.servlets.OriginInfo;
-import com.google.sps.servlets.OriginInfoWebsite;
-import com.google.sps.servlets.SessionEncryptionDevice;
-import com.google.sps.servlets.TestVectors;
-import com.google.sps.servlets.Util;
-
-// imports from custom classes
-import com.google.sps.servlets.RequestServlet;
-import com.google.sps.servlets.ServletConsts;
+// other imports
+import com.google.sps.servlets.*;
+import java.math.BigInteger;
+import java.io.IOException;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.OptionalLong;
 
 @RunWith(JUnit4.class)
 public class RequestServletTest {
@@ -84,13 +68,13 @@ public class RequestServletTest {
     private PublicKey eReaderKeyPublic = Util.getPublicKeyFromIntegers(
         new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X, 16),
         new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y, 16));
-    private PrivateKey eReaderKeyPrivate = Util.getPrivateKeyFromInteger(new BigInteger(
-        TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
+    private PrivateKey eReaderKeyPrivate = Util.getPrivateKeyFromInteger(
+        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
     private PublicKey eDeviceKeyPublic = Util.getPublicKeyFromIntegers(
         new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X, 16),
         new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y, 16));
-    private PrivateKey eDeviceKeyPrivate = Util.getPrivateKeyFromInteger(new BigInteger(
-        TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D, 16));
+    private PrivateKey eDeviceKeyPrivate = Util.getPrivateKeyFromInteger(
+        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D, 16));
     private byte[] encodedSessionTranscriptBytes = Util.fromHex(
         TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
     private DataItem sessionTranscript = Util.cborExtractTaggedAndEncodedCbor(
@@ -146,11 +130,10 @@ public class RequestServletTest {
     @Test
     public void checkNonEmptyDeviceResponseMessage() throws IOException {
         setUpStringWriter();
-        DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
         String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
         String deviceResponseMessage = "Sample Device Response";
-        RequestServlet.setDevResponse(deviceResponseMessage, dKey);
+        RequestServlet.setDeviceResponse(deviceResponseMessage, dKey);
         sendGetDeviceResponseRequest(dKeyStr);
         String responseStr = stringWriter.toString().trim();
         Assert.assertEquals(responseStr, deviceResponseMessage);
