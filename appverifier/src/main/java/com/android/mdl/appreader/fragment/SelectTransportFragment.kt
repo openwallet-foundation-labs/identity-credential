@@ -2,7 +2,6 @@ package com.android.mdl.appreader.fragment
 
 import android.os.Bundle
 import android.text.Html
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,17 +12,12 @@ import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentSelectTransportBinding
 import com.android.mdl.appreader.transfer.TransferManager
-
+import com.android.mdl.appreader.util.logDebug
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class SelectTransportFragment : Fragment() {
-
-
-    companion object {
-        private const val LOG_TAG = "SelectTransportFragment"
-    }
 
     private val args: SelectTransportFragmentArgs by navArgs()
     private var _binding: FragmentSelectTransportBinding? = null
@@ -57,7 +51,7 @@ class SelectTransportFragment : Fragment() {
             val encodedDeviceRetrievalMethod = it
             button.isChecked = (it.toString() == transferManager.mdocConnectionMethod.toString())
             button.setOnClickListener {
-                Log.d(LOG_TAG, "optionsText '$buttonText' was selected")
+                logDebug("optionsText '$buttonText' was selected")
                 transferManager.setMdocConnectionMethod(encodedDeviceRetrievalMethod)
             }
             binding.rgTransferMethod.addView(button)

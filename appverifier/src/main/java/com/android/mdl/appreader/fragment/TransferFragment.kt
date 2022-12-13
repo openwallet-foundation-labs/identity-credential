@@ -1,7 +1,6 @@
 package com.android.mdl.appreader.fragment
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,16 +13,14 @@ import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentTransferBinding
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.util.TransferStatus
+import com.android.mdl.appreader.util.logDebug
+import com.android.mdl.appreader.util.logError
 import com.android.mdl.appreader.viewModel.TransferViewModel
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class TransferFragment : Fragment() {
-
-    companion object {
-        private const val LOG_TAG = "TransferFragment"
-    }
 
     private val args: TransferFragmentArgs by navArgs()
     private var _binding: FragmentTransferBinding? = null
@@ -60,14 +57,14 @@ class TransferFragment : Fragment() {
                 binding.tvStatus.text = "New request sent..."
             } else {
                 if (vm.isUsingReverseEngagement()) {
-                    Log.d(LOG_TAG, "Using reverse engagement")
+                    logDebug("Using reverse engagement")
                 } else {
                     binding.tvStatus.text = "Trying to connect to mDoc app..."
                     vm.connect()
                 }
             }
         } catch (e: RuntimeException) {
-            Log.e(LOG_TAG, "Error starting connection: ${e.message}", e)
+            logError("Error starting connection: ${e.message}", e)
             Toast.makeText(
                 requireContext(), "Error starting connection: ${e.message}",
                 Toast.LENGTH_SHORT
@@ -87,7 +84,7 @@ class TransferFragment : Fragment() {
                     vm.sendRequest(requestDocumentList)
                 }
                 TransferStatus.RESPONSE -> {
-                    Log.d(LOG_TAG, "Navigating to results")
+                    logDebug("Navigating to results")
                     findNavController().navigate(R.id.action_Transfer_to_ShowDocument)
                 }
                 TransferStatus.DISCONNECTED -> {

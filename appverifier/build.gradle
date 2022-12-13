@@ -38,6 +38,11 @@ android {
     buildFeatures {
         dataBinding true
         viewBinding true
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion libs.versions.kotlin.compiler.extension.get()
     }
 
 
@@ -59,10 +64,12 @@ dependencies {
     implementation project(':identity')
     implementation project(':identity-android')
 
+    implementation platform(libs.compose.bom)
     implementation libs.bundles.androidx.core
     implementation libs.bundles.androidx.lifecycle
     implementation libs.bundles.androidx.navigation
     implementation libs.bundles.bouncy.castle
+    implementation libs.bundles.compose
     implementation libs.cbor
     implementation libs.code.scanner
 

@@ -1,4 +1,3 @@
-
 package com.android.mdl.appreader.fragment
 
 import android.content.res.Resources
@@ -8,7 +7,6 @@ import android.icu.util.GregorianCalendar
 import android.icu.util.TimeZone
 import android.os.Bundle
 import android.text.Html
-import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -26,6 +24,7 @@ import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
+import com.android.mdl.appreader.util.logDebug
 import java.security.MessageDigest
 
 /**
@@ -34,7 +33,6 @@ import java.security.MessageDigest
 class ShowDocumentFragment : Fragment() {
 
     companion object {
-        private const val LOG_TAG = "ShowDocumentFragment"
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MICOV_DOCTYPE = "org.micov.1"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
@@ -73,7 +71,7 @@ class ShowDocumentFragment : Fragment() {
             Html.fromHtml(formatTextResult(documents), Html.FROM_HTML_MODE_COMPACT)
 
         portraitBytes?.let { pb ->
-            Log.d(LOG_TAG, "Showing portrait " + pb.size + " bytes")
+            logDebug("Showing portrait " + pb.size + " bytes")
             binding.ivPortrait.setImageBitmap(
                 BitmapFactory.decodeByteArray(portraitBytes, 0, pb.size)
             )
@@ -81,7 +79,7 @@ class ShowDocumentFragment : Fragment() {
         }
 
         signatureBytes?.let { signature ->
-            Log.d(LOG_TAG, "Showing signature " + signature.size + " bytes")
+            logDebug("Showing signature " + signature.size + " bytes")
             binding.ivSignature.setImageBitmap(
                 BitmapFactory.decodeByteArray(signatureBytes, 0, signature.size)
             )
@@ -120,19 +118,19 @@ class ShowDocumentFragment : Fragment() {
         transferManager.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.ENGAGED -> {
-                    Log.d(LOG_TAG, "Device engagement received.")
+                    logDebug("Device engagement received.")
                 }
 
                 TransferStatus.CONNECTED -> {
-                    Log.d(LOG_TAG, "Device connected received.")
+                    logDebug("Device connected received.")
                 }
 
                 TransferStatus.RESPONSE -> {
-                    Log.d(LOG_TAG, "Device response received.")
+                    logDebug("Device response received.")
                 }
 
                 TransferStatus.DISCONNECTED -> {
-                    Log.d(LOG_TAG, "Device disconnected received.")
+                    logDebug("Device disconnected received.")
                     hideButtons()
                 }
 

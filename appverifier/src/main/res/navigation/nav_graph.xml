@@ -33,7 +33,7 @@
     </fragment>
     <fragment
         android:id="@+id/settingsFragment"
-        android:name="com.android.mdl.appreader.fragment.SettingsFragment"
+        android:name="com.android.mdl.appreader.settings.SettingsFragment"
         android:label="Settings">
         <action
             android:id="@+id/action_settingsFragment_to_RequestOptions"
