@@ -7,7 +7,6 @@ import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -21,6 +20,7 @@ import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentDeviceEngagementBinding
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
+import com.android.mdl.appreader.util.logDebug
 import com.budiyev.android.codescanner.CodeScanner
 import com.budiyev.android.codescanner.DecodeCallback
 
@@ -29,14 +29,10 @@ import com.budiyev.android.codescanner.DecodeCallback
  */
 class DeviceEngagementFragment : Fragment() {
 
-    companion object {
-        private const val LOG_TAG = "DeviceEngagementFragment"
-    }
-
     private val args: DeviceEngagementFragmentArgs by navArgs()
 
     private val appPermissions:List<String> get() {
-        var permissions = mutableListOf(
+        val permissions = mutableListOf(
             Manifest.permission.CAMERA,
             Manifest.permission.ACCESS_FINE_LOCATION
         )
@@ -79,7 +75,7 @@ class DeviceEngagementFragment : Fragment() {
         mCodeScanner?.decodeCallback = DecodeCallback { result ->
             requireActivity().runOnUiThread {
                 val qrText = result.text
-                Log.d(LOG_TAG, "qrText: $qrText")
+                logDebug("qrText: $qrText")
                 transferManager.setQrDeviceEngagement(qrText)
             }
         }
@@ -89,12 +85,12 @@ class DeviceEngagementFragment : Fragment() {
         transferManager.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.ENGAGED -> {
-                    Log.d(LOG_TAG, "Device engagement received")
+                    logDebug("Device engagement received")
                     onDeviceEngagementReceived()
                 }
 
                 TransferStatus.CONNECTED -> {
-                    Log.d(LOG_TAG, "Device connected")
+                    logDebug("Device connected")
                     Toast.makeText(
                         requireContext(), "Error invalid callback connected",
                         Toast.LENGTH_SHORT
@@ -103,7 +99,7 @@ class DeviceEngagementFragment : Fragment() {
                 }
 
                 TransferStatus.RESPONSE -> {
-                    Log.d(LOG_TAG, "Device response received")
+                    logDebug("Device response received")
                     Toast.makeText(
                         requireContext(), "Error invalid callback response",
                         Toast.LENGTH_SHORT
@@ -112,7 +108,7 @@ class DeviceEngagementFragment : Fragment() {
                 }
 
                 TransferStatus.DISCONNECTED -> {
-                    Log.d(LOG_TAG, "Device disconnected")
+                    logDebug("Device disconnected")
                     Toast.makeText(
                         requireContext(), "Device disconnected",
                         Toast.LENGTH_SHORT
@@ -122,7 +118,7 @@ class DeviceEngagementFragment : Fragment() {
 
                 TransferStatus.ERROR -> {
                     // TODO: Pass and show the actual text of the exception here.
-                    Log.d(LOG_TAG, "Error received")
+                    logDebug("Error received")
                     Toast.makeText(
                         requireContext(), "Error connecting to holder",
                         Toast.LENGTH_SHORT
@@ -192,7 +188,7 @@ class DeviceEngagementFragment : Fragment() {
     private val permissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             permissions.entries.forEach {
-                Log.d(LOG_TAG, "permissionsLauncher ${it.key} = ${it.value}")
+                logDebug("permissionsLauncher ${it.key} = ${it.value}")
 
                 // Open settings if user denied any required permission
                 if (!it.value && !shouldShowRequestPermissionRationale(it.key)) {

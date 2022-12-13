@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,16 +16,13 @@ import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowQrBinding
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
+import com.android.mdl.appreader.util.logDebug
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 
 class ShowQrFragment : Fragment() {
-
-    companion object {
-        private const val LOG_TAG = "ShowQrFragment"
-    }
 
     private val args: ShowQrFragmentArgs by navArgs()
 
@@ -96,14 +92,14 @@ class ShowQrFragment : Fragment() {
         transferManager.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
                 TransferStatus.READER_ENGAGEMENT_READY -> {
-                    Log.d(LOG_TAG, "Reader engagement ready")
+                    logDebug("Reader engagement ready")
                     binding.layoutEngagement.addView(
                         getViewForReaderEngagementQrCode(transferManager.readerEngagement!!)
                     )
                 }
 
                 TransferStatus.CONNECTED -> {
-                    Log.d(LOG_TAG, "Connected")
+                    logDebug("Connected")
                     findNavController().navigate(
                         ShowQrFragmentDirections.actionShowQrToTransfer(
                             args.requestDocumentList
