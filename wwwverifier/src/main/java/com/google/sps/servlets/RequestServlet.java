@@ -155,19 +155,17 @@ public class RequestServlet extends HttpServlet {
       * @return SessionData CBOR message containing DeviceRequest
       */
     private static byte[] createDeviceRequest(byte[] messageData, Key key) {
-        byte[] de =
-            Util.cborMapExtractByteString(Util.cborDecode(messageData), ServletConsts.DE_KEY);
-        PublicKey eReaderKeyPublic =
-            getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
-        PrivateKey eReaderKeyPrivate =
-            getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
+        byte[] encodedEngagement = Util.cborMapExtractByteString(Util.cborDecode(messageData),
+            ServletConsts.DE_KEY);
+        PublicKey eReaderKeyPublic = getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
+        PrivateKey eReaderKeyPrivate = getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
 
-        EngagementParser.Engagement parser = new EngagementParser(de).parse();
-        PublicKey eDeviceKeyPublic = parser.getESenderKey();
+        EngagementParser.Engagement engagement = new EngagementParser(encodedEngagement).parse();
+        PublicKey eDeviceKeyPublic = engagement.getESenderKey();
         setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), key);
-        verifyOriginInfo(parser.getOriginInfos(), key);
+        verifyOriginInfo(engagement.getOriginInfos(), key);
 
-        byte[] sessionTranscript = buildSessionTranscript(de, eReaderKeyPublic, key);
+        byte[] sessionTranscript = buildSessionTranscript(encodedEngagement, eReaderKeyPublic, key);
         setDatastoreProp(ServletConsts.TRANSCRIPT_PROP, sessionTranscript, key);
 
         SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate,
@@ -204,12 +202,14 @@ public class RequestServlet extends HttpServlet {
         if (oiList.size() > 0) {
             String oiUrl = ((OriginInfoWebsite) oiList.get(0)).getBaseUrl();
             if (!oiUrl.equals(ServletConsts.BASE_URL)) {
-                setOriginInfoStatus(ServletConsts.OI_FAILURE_START + oiUrl + ServletConsts.OI_FAILURE_END, key);
+                setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
+                    oiUrl + ServletConsts.OI_FAILURE_END, key);
             } else {
                 setOriginInfoStatus(ServletConsts.OI_SUCCESS, key);
             }
         } else {
-            setOriginInfoStatus(ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim(), key);
+            setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
+                ServletConsts.OI_FAILURE_END.trim(), key);
         }
     }
 
@@ -267,10 +267,10 @@ public class RequestServlet extends HttpServlet {
         byte[] arr = new byte[request.getContentLength()];
         try {
             request.getInputStream().read(arr);
+            return arr;
         } catch (IOException e) {
             throw new IllegalStateException("Error reading request body", e);
         }
-        return arr;
     }
 
     /**
@@ -312,7 +312,8 @@ public class RequestServlet extends HttpServlet {
      * @param docs List of Document objects containing Mdoc information that had been requested
      * from the app in an earlier POST request
      * @param key Unique identifier that corresponds to the current session
-     * @return ArrayList of String data extracted from @param docs that will be displayed on the website
+     * @return ArrayList of String data extracted from @param docs that will be displayed
+     * on the website
      */
     private static ArrayList<String> buildArrayFromDocuments(List<DeviceResponseParser.Document> docs, Key key) {
         ArrayList<String> arr = new ArrayList<String>();
@@ -335,17 +336,17 @@ public class RequestServlet extends HttpServlet {
                 + timestampToString(doc.getValidityInfoValidFrom()));
             arr.add(ServletConsts.CHECKMARK + "Signed: "
                 + timestampToString(doc.getValidityInfoValidUntil()));
-            arr.add(ServletConsts.CHECKMARK + "DeviceKey: ("
-                + Integer.toString(doc.getDeviceKey().getEncoded().length) + " bytes)");
+            arr.add(ServletConsts.CHECKMARK + "DeviceKey: " +
+                numBytesAsString(doc.getDeviceKey().getEncoded()));
             List<String> issuerNamespaces = doc.getIssuerNamespaces();
             for (String namespace : issuerNamespaces) {
                 arr.add(ServletConsts.BOLD + "Namespace: " + ServletConsts.BOLD + namespace);
                 List<String> entryNames = doc.getIssuerEntryNames(namespace);
-                for (String name : entryNames) {
-                    String nameVal = "";
-                    switch (name) {
+                for (String entry : entryNames) {
+                    String val = "";
+                    switch (entry) {
                         case "portrait":
-                            nameVal = "(" + Integer.toString(doc.getIssuerEntryByteString(namespace, name).length) + " bytes)";
+                            val = numBytesAsString(doc.getIssuerEntryByteString(namespace, entry));
                             break;
                         case "family_name":
                         case "given_name":
@@ -355,19 +356,28 @@ public class RequestServlet extends HttpServlet {
                         case "DHS_compliance":
                         case "EDL_credential":
                         case "document_number":
-                            nameVal = doc.getIssuerEntryString(namespace, name);
+                            val = doc.getIssuerEntryString(namespace, entry);
                             break;
                         case "sex":
-                            nameVal = Long.toString(doc.getIssuerEntryNumber(namespace, name));
+                            val = Long.toString(doc.getIssuerEntryNumber(namespace, entry));
                             break;
                         default:
-                            nameVal = Base64.getEncoder().encodeToString(doc.getIssuerEntryData(namespace, name));
+                            val = Base64.getEncoder().encodeToString(
+                                doc.getIssuerEntryData(namespace, entry));
                     }
-                    arr.add(ServletConsts.CHECKMARK + name + ": " + nameVal);
+                    arr.add(ServletConsts.CHECKMARK + entry + ": " + val);
                 }
             }
         }
         return arr;
+    }
+
+    /**
+     * @return A String in the form of "(# bytes)", representing the number of bytes
+     * in @param arr
+     */
+    private static String numBytesAsString(byte[] arr) {
+        return "(" + Integer.toString(arr.length) + " bytes)";
     }
 
     /**

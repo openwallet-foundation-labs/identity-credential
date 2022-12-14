@@ -67,11 +67,10 @@ To deploy the website on a live server, execute the command:
 gradle appengineDeploy
 ```
 
-The above command will create a link to a live website. Then, navigate to the file identity-credential/wwwverifier/src/main/java/com/google/sps/servlet/ServletConsts.java, and replace the following fields with your website URL:
+The above command will create a link to a live website. Then, navigate to the file identity-credential/wwwverifier/src/main/java/com/google/sps/servlet/ServletConsts.java, and replace the following field with your website URL:
 
 ```
     public static final String BASE_URL = "<YOUR_WEBSITE_URL>";
-    public static final String ABSOLUTE_URL = "<YOUR_WEBSITE_URL>/request-mdl";
 ```
 
 ## Reference Applications

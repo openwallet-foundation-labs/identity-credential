@@ -147,23 +147,27 @@ public class RequestServletTest {
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP,
+            eReaderKeyPublic.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
+            eReaderKeyPrivate.getEncoded(), dKey);
 
         // construct messageData (containing Device Engagement)
-        EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+        EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
+            EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
         String fakeBaseUrl = "https://fake-mdoc-reader.appspot.com/";
         eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, fakeBaseUrl));
         byte[] encodedDeviceEngagement = eg.generate();
-        byte[] messageDataBytes = createMockMessageData(encodedDeviceEngagement);
+        byte[] messageDataBytes = createMessageData(encodedDeviceEngagement);
 
         sendPostRequest(messageDataBytes, dKeyStr);
 
         byte[] sessionData = byteWriter.toByteArray();
 
         // parse sessionData to extract DeviceRequest
-        byte[] generatedTranscript = RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
+        byte[] generatedTranscript =
+            RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryptionDevice sed =
             new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
@@ -171,7 +175,7 @@ public class RequestServletTest {
             .setSessionTranscript(generatedTranscript)
             .parse();
 
-        Assert.assertEquals("1.0", dr.getVersion());
+        Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
         List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
         Assert.assertEquals(docRequestsList.size(), 1);
         DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
@@ -189,22 +193,26 @@ public class RequestServletTest {
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP,
+            eReaderKeyPublic.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
+            eReaderKeyPrivate.getEncoded(), dKey);
 
         // construct messageData (containing Device Engagement)
-        EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic, EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+        EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
+            EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
         eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.BASE_URL));
         byte[] encodedDeviceEngagement = eg.generate();
-        byte[] messageDataBytes = createMockMessageData(encodedDeviceEngagement);
+        byte[] messageDataBytes = createMessageData(encodedDeviceEngagement);
 
         sendPostRequest(messageDataBytes, dKeyStr);
 
         byte[] sessionData = byteWriter.toByteArray();
 
         // parse sessionData to extract DeviceRequest
-        byte[] generatedTranscript = RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
+        byte[] generatedTranscript =
+            RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryptionDevice sed =
             new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
@@ -212,7 +220,7 @@ public class RequestServletTest {
             .setSessionTranscript(generatedTranscript)
             .parse();
 
-        Assert.assertEquals("1.0", dr.getVersion());
+        Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
         List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
         Assert.assertEquals(docRequestsList.size(), 1);
         DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
@@ -228,19 +236,22 @@ public class RequestServletTest {
 
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP,
+            eReaderKeyPublic.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
+            eReaderKeyPrivate.getEncoded(), dKey);
 
         // construct messageData (containing Device Engagement)
         DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
-        byte[] messageDataBytes = createMockMessageData(((ByteString) deviceEngagementBytes).getBytes());
+        byte[] messageDataBytes = createMessageData(((ByteString) deviceEngagementBytes).getBytes());
 
         sendPostRequest(messageDataBytes, dKeyStr);
 
         byte[] sessionData = byteWriter.toByteArray();
 
         // parse sessionData to extract DeviceRequest
-        byte[] generatedTranscript = RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
+        byte[] generatedTranscript =
+            RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryptionDevice sed =
             new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
@@ -248,12 +259,13 @@ public class RequestServletTest {
             .setSessionTranscript(generatedTranscript)
             .parse();
 
-        Assert.assertEquals("1.0", dr.getVersion());
+        Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
         List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
         Assert.assertEquals(docRequestsList.size(), 1);
         DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
         Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
-        Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey), ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim());
+        Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey),
+            ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim());
     }
 
     @Test
@@ -263,11 +275,16 @@ public class RequestServletTest {
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
         
         // put items in Datastore
-        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP, eReaderKeyPublic.getEncoded(), dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP, eReaderKeyPrivate.getEncoded(), dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP, Util.cborEncode(sessionTranscript), dKey);
-        RequestServlet.setOriginInfoStatus(ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP,
+            eReaderKeyPublic.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
+            eReaderKeyPrivate.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.DEVKEY_PROP,
+            eDeviceKeyPublic.getEncoded(), dKey);
+        RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP,
+            Util.cborEncode(sessionTranscript), dKey);
+        RequestServlet.setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
+            ServletConsts.OI_FAILURE_END.trim(), dKey);
         RequestServlet.setNumPostRequests(1, dKey);
         
         byte[] sessionData = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA);
@@ -275,9 +292,10 @@ public class RequestServletTest {
 
         // process response
         byte[] responseMessage = byteWriter.toByteArray();
-        SessionEncryptionDevice sed =
-            new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, Util.cborEncode(sessionTranscript));
-        Map.Entry<byte[], OptionalLong> responseMessageDecrypted = sed.decryptMessageFromReader(responseMessage);
+        SessionEncryptionDevice sed = new SessionEncryptionDevice(eDeviceKeyPrivate,
+            eReaderKeyPublic, Util.cborEncode(sessionTranscript));
+        Map.Entry<byte[], OptionalLong> responseMessageDecrypted =
+            sed.decryptMessageFromReader(responseMessage);
         Assert.assertEquals(responseMessageDecrypted.getKey(), null);
         Assert.assertEquals(responseMessageDecrypted.getValue(), OptionalLong.of(20));
         String devResponseJSON = RequestServlet.getDeviceResponse(dKey);
@@ -288,12 +306,11 @@ public class RequestServletTest {
      * @param deviceEngagementBytes CBOR encoded Device Engagement data
      * @return CBOR encoded MessageData message, containing Device Engagement
      */
-    private byte[] createMockMessageData(byte[] deviceEngagementBytes) {
-        CborBuilder builder = new CborBuilder();
-        MapBuilder<CborBuilder> map = builder.addMap();
-        map.put(ServletConsts.DE_KEY, deviceEngagementBytes);
-        map.end();
-        return Util.cborEncode(builder.build().get(0));
+    private byte[] createMessageData(byte[] deviceEngagementBytes) {
+        return Util.cborEncode(new CborBuilder()
+            .addMap()
+                .put(ServletConsts.DE_KEY, deviceEngagementBytes)
+            .end().build().get(0));
     }
 
     /**
