@@ -10,10 +10,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowQrBinding
+import com.android.mdl.appreader.home.CreateRequestViewModel
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
@@ -24,7 +25,7 @@ import com.google.zxing.common.BitMatrix
 
 class ShowQrFragment : Fragment() {
 
-    private val args: ShowQrFragmentArgs by navArgs()
+    private val createRequestViewModel: CreateRequestViewModel by activityViewModels()
 
     private var _binding: FragmentShowQrBinding? = null
 
@@ -100,10 +101,9 @@ class ShowQrFragment : Fragment() {
 
                 TransferStatus.CONNECTED -> {
                     logDebug("Connected")
+                    val requestedDocuments = createRequestViewModel.calculateRequestDocumentList(false)
                     findNavController().navigate(
-                        ShowQrFragmentDirections.actionShowQrToTransfer(
-                            args.requestDocumentList
-                        )
+                        ShowQrFragmentDirections.actionShowQrToTransfer(requestedDocuments)
                     )
                 }
                 else -> {}

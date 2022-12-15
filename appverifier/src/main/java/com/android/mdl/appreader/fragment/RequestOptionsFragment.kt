@@ -1,257 +1,202 @@
 package com.android.mdl.appreader.fragment
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.nfc.NfcAdapter
 import android.os.Bundle
-import android.view.*
+import android.provider.Settings
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.android.mdl.appreader.R
-import com.android.mdl.appreader.databinding.FragmentRequestOptionsBinding
-import com.android.mdl.appreader.document.*
+import com.android.mdl.appreader.document.RequestDocumentList
+import com.android.mdl.appreader.document.RequestMdl
+import com.android.mdl.appreader.home.HomeScreen
+import com.android.mdl.appreader.home.CreateRequestViewModel
+import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.transfer.TransferManager
+import com.android.mdl.appreader.util.TransferStatus
+import com.android.mdl.appreader.util.logDebug
 
-/**
- * A simple [Fragment] subclass as the default destination in the navigation.
- */
 class RequestOptionsFragment : Fragment() {
 
+    private val createRequestViewModel: CreateRequestViewModel by activityViewModels()
     private val args: RequestOptionsFragmentArgs by navArgs()
-    private var _binding: FragmentRequestOptionsBinding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
-    private val binding get() = _binding!!
-
-    private var keepConnection = false
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        keepConnection = args.keepConnection
+    private val appPermissions: List<String> get() {
+        val permissions = mutableListOf<String>()
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+        return permissions
     }
+
+    private val permissionsLauncher = registerForActivityResult(RequestMultiplePermissions()) { permissions ->
+        permissions.entries.forEach { permission ->
+            logDebug("permissionsLauncher ${permission.key} = ${permission.value}")
+            if (!permission.value && !shouldShowRequestPermissionRationale(permission.key)) {
+                openSettings()
+                return@registerForActivityResult
+            }
+        }
+    }
+
+    private lateinit var transferManager: TransferManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        setHasOptionsMenu(true)
-
-        _binding = FragmentRequestOptionsBinding.inflate(inflater, container, false)
-        return binding.root
+        return ComposeView(requireContext()).apply {
+            setContent {
+                ReaderAppTheme {
+                    val state by createRequestViewModel.state.collectAsState()
+                    HomeScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        state = state,
+                        onSelectionUpdated = createRequestViewModel::onRequestUpdate,
+                        onRequestConfirm = { onRequestConfirmed(it.isCustomMdlRequest) },
+                        onRequestQRCodePreview = { navigateToQRCodeScan(it.isCustomMdlRequest) }
+                    )
+                }
+            }
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        if (!keepConnection) {
+        transferManager = TransferManager.getInstance(requireContext())
+        if (!args.keepConnection) {
             // Always call to cancel any connection that could be on progress
-            TransferManager.getInstance(requireContext()).disconnect()
+            transferManager.disconnect()
         }
+        transferManager.initVerificationHelper()
+        observeTransferManager()
+    }
 
-        binding.cbRequestMdl.setOnClickListener {
-            binding.cbRequestMdlOlder18.isEnabled = binding.cbRequestMdl.isChecked
-            binding.cbRequestMdlOlder21.isEnabled = binding.cbRequestMdl.isChecked
-            binding.cbRequestMdlMandatory.isEnabled = binding.cbRequestMdl.isChecked
-            binding.cbRequestMdlFull.isEnabled = binding.cbRequestMdl.isChecked
-            binding.cbRequestMdlUsTransportation.isEnabled = binding.cbRequestMdl.isChecked
-            binding.cbRequestMdlCustom.isEnabled = binding.cbRequestMdl.isChecked
-        }
-
-        binding.cbRequestMdlOlder18.setOnClickListener {
-            binding.cbRequestMdlOlder18.isChecked = true
-            binding.cbRequestMdlOlder21.isChecked = false
-            binding.cbRequestMdlMandatory.isChecked = false
-            binding.cbRequestMdlFull.isChecked = false
-            binding.cbRequestMdlUsTransportation.isChecked = false
-            binding.cbRequestMdlCustom.isChecked = false
-        }
-        binding.cbRequestMdlOlder21.setOnClickListener {
-            binding.cbRequestMdlOlder18.isChecked = false
-            binding.cbRequestMdlOlder21.isChecked = true
-            binding.cbRequestMdlMandatory.isChecked = false
-            binding.cbRequestMdlFull.isChecked = false
-            binding.cbRequestMdlUsTransportation.isChecked = false
-            binding.cbRequestMdlCustom.isChecked = false
-        }
-        binding.cbRequestMdlMandatory.setOnClickListener {
-            binding.cbRequestMdlOlder18.isChecked = false
-            binding.cbRequestMdlOlder21.isChecked = false
-            binding.cbRequestMdlMandatory.isChecked = true
-            binding.cbRequestMdlFull.isChecked = false
-            binding.cbRequestMdlUsTransportation.isChecked = false
-            binding.cbRequestMdlCustom.isChecked = false
-        }
-        binding.cbRequestMdlFull.setOnClickListener {
-            binding.cbRequestMdlOlder18.isChecked = false
-            binding.cbRequestMdlOlder21.isChecked = false
-            binding.cbRequestMdlMandatory.isChecked = false
-            binding.cbRequestMdlFull.isChecked = true
-            binding.cbRequestMdlUsTransportation.isChecked = false
-            binding.cbRequestMdlCustom.isChecked = false
-        }
-        binding.cbRequestMdlUsTransportation.setOnClickListener {
-            binding.cbRequestMdlOlder18.isChecked = false
-            binding.cbRequestMdlOlder21.isChecked = false
-            binding.cbRequestMdlMandatory.isChecked = false
-            binding.cbRequestMdlFull.isChecked = false
-            binding.cbRequestMdlUsTransportation.isChecked = true
-            binding.cbRequestMdlCustom.isChecked = false
-        }
-        binding.cbRequestMdlCustom.setOnClickListener {
-            binding.cbRequestMdlOlder18.isChecked = false
-            binding.cbRequestMdlOlder21.isChecked = false
-            binding.cbRequestMdlMandatory.isChecked = false
-            binding.cbRequestMdlFull.isChecked = false
-            binding.cbRequestMdlUsTransportation.isChecked = false
-            binding.cbRequestMdlCustom.isChecked = true
-        }
-
-        binding.btShowQr.setOnClickListener {
-            findNavController().navigate(
-                RequestOptionsFragmentDirections.actionRequestOptionsToShowQr(calcRequestDocumentList())
-            )
-        }
-
-        binding.btNext.setOnClickListener {
-
-            if (binding.cbRequestMdl.isChecked && binding.cbRequestMdlCustom.isChecked) {
-                findNavController().navigate(
-                    RequestOptionsFragmentDirections.actionRequestOptionsToRequestCustom(
-                        RequestMdl,
-                        calcRequestDocumentList(),
-                        keepConnection
-                    )
-                )
-            } else {
-                //Navigate direct to transfer screnn
-                if (keepConnection) {
-                    findNavController().navigate(
-                        RequestOptionsFragmentDirections.actionRequestOptionsToTransfer(
-                            calcRequestDocumentList(),
-                            true
-                        )
-                    )
-                } else {
-                    findNavController().navigate(
-                        RequestOptionsFragmentDirections.actionRequestOptionsToScanDeviceEngagement(
-                            calcRequestDocumentList()
-                        )
-                    )
+    private fun observeTransferManager() {
+        transferManager.getTransferStatus().observe(viewLifecycleOwner) {
+            when (it) {
+                TransferStatus.ENGAGED -> {
+                    logDebug("Device engagement received")
+                    onDeviceEngagementReceived()
                 }
+
+                TransferStatus.CONNECTED -> {
+                    logDebug("Device connected")
+                    Toast.makeText(
+                        requireContext(), "Error invalid callback connected",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                TransferStatus.RESPONSE -> {
+                    logDebug("Device response received")
+                    Toast.makeText(
+                        requireContext(), "Error invalid callback response",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                TransferStatus.DISCONNECTED -> {
+                    logDebug("Device disconnected")
+                    Toast.makeText(
+                        requireContext(), "Device disconnected",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                TransferStatus.ERROR -> {
+                    logDebug("Error received")
+                    Toast.makeText(
+                        requireContext(), "Error connecting to holder",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                else -> {}
             }
         }
     }
 
-    private fun calcRequestDocumentList() : RequestDocumentList {
+    private fun onDeviceEngagementReceived() {
+        val requestedDocuments = calcRequestDocumentList()
+        val destination = if (transferManager.availableMdocConnectionMethods?.size == 1) {
+            RequestOptionsFragmentDirections.toTransfer(requestedDocuments)
+        } else {
+            RequestOptionsFragmentDirections.toSelectTransport(requestedDocuments)
+        }
+        findNavController().navigate(destination)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkRequiredPermissions()
+        transferManager.setNdefDeviceEngagement(
+            NfcAdapter.getDefaultAdapter(requireContext()),
+            requireActivity()
+        )
+    }
+
+    private fun checkRequiredPermissions() {
+        val permissionsNeeded = appPermissions.filter { permission ->
+            checkSelfPermission(requireContext(), permission) != PackageManager.PERMISSION_GRANTED
+        }
+        if (permissionsNeeded.isNotEmpty()) {
+            permissionsLauncher.launch(permissionsNeeded.toTypedArray())
+        }
+    }
+
+    private fun openSettings() {
+        val intent = Intent()
+        intent.action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+        intent.data = Uri.fromParts("package", requireContext().packageName, null)
+        startActivity(intent)
+    }
+
+    private fun onRequestConfirmed(isCustomMdlRequest: Boolean) {
+        if (isCustomMdlRequest) {
+            val destination = getCustomMdlDestination()
+            findNavController().navigate(destination)
+        }
+    }
+
+    private fun navigateToQRCodeScan(isCustomMdlRequest: Boolean) {
+        val documentList = calcRequestDocumentList()
+        val destination = if (isCustomMdlRequest) {
+            getCustomMdlDestination()
+        } else {
+            if (args.keepConnection) {
+                RequestOptionsFragmentDirections.toTransfer(documentList, true)
+            } else {
+                RequestOptionsFragmentDirections.toScanDeviceEngagement(documentList)
+            }
+        }
+        findNavController().navigate(destination)
+    }
+
+    private fun getCustomMdlDestination() = RequestOptionsFragmentDirections.toRequestCustom(
+        RequestMdl,
+        calcRequestDocumentList(),
+        args.keepConnection
+    )
+
+    private fun calcRequestDocumentList(): RequestDocumentList {
         // TODO: get intent to retain from user
         val intentToRetain = false
-
-        val requestDocumentList = RequestDocumentList()
-        if (binding.cbRequestMdl.isChecked) {
-            if (binding.cbRequestMdlUsTransportation.isChecked) {
-                requestDocumentList.addRequestDocument(RequestMdlUsTransportation)
-            } else {
-                val mdl = RequestMdl
-                when {
-                    binding.cbRequestMdlOlder18.isChecked ->
-                        mdl.setSelectedDataItems(getSelectRequestMdlOlder18(intentToRetain))
-                    binding.cbRequestMdlOlder21.isChecked ->
-                        mdl.setSelectedDataItems(getSelectRequestMdlOlder21(intentToRetain))
-                    binding.cbRequestMdlMandatory.isChecked ->
-                        mdl.setSelectedDataItems(getSelectRequestMdlMandatory(intentToRetain))
-                    binding.cbRequestMdlFull.isChecked ->
-                        mdl.setSelectedDataItems(getSelectRequestFull(mdl, intentToRetain))
-                }
-                requestDocumentList.addRequestDocument(mdl)
-            }
-        }
-        if (binding.cbRequestMvr.isChecked) {
-            val doc = RequestMvr
-            doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
-            requestDocumentList.addRequestDocument(doc)
-        }
-        if (binding.cbRequestMicov.isChecked) {
-            val doc = RequestMicovAtt
-            doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
-            requestDocumentList.addRequestDocument(doc)
-            val doc2 = RequestMicovVtr
-            doc2.setSelectedDataItems(getSelectRequestFull(doc2, intentToRetain))
-            requestDocumentList.addRequestDocument(doc2)
-        }
-        if (binding.cbRequestEuPid.isChecked) {
-            val doc = RequestEuPid
-            doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
-            requestDocumentList.addRequestDocument(doc)
-        }
-        if (binding.cbRequestMulti003.isChecked) {
-            val doc = RequestMdl
-            val selectMdl = mapOf(Pair("portrait", false), Pair("document_number", false))
-            doc.setSelectedDataItems(selectMdl)
-            requestDocumentList.addRequestDocument(doc)
-            val doc2 = RequestMulti003()
-            requestDocumentList.addRequestDocument(doc2)
-        }
-        return requestDocumentList
-    }
-
-
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        inflater.inflate(R.menu.main_menu, menu)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.item_settings -> {
-                findNavController().navigate(R.id.action_RequestOptions_to_settingsFragment)
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
-    private fun getSelectRequestMdlMandatory(intentToRetain: Boolean): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        map[RequestMdl.DataItems.FAMILY_NAME.identifier] = intentToRetain
-        map[RequestMdl.DataItems.GIVEN_NAMES.identifier] = intentToRetain
-        map[RequestMdl.DataItems.BIRTH_DATE.identifier] = intentToRetain
-        map[RequestMdl.DataItems.ISSUE_DATE.identifier] = intentToRetain
-        map[RequestMdl.DataItems.EXPIRY_DATE.identifier] = intentToRetain
-        map[RequestMdl.DataItems.ISSUING_COUNTRY.identifier] = intentToRetain
-        map[RequestMdl.DataItems.ISSUING_AUTHORITY.identifier] = intentToRetain
-        map[RequestMdl.DataItems.DOCUMENT_NUMBER.identifier] = intentToRetain
-        map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
-        map[RequestMdl.DataItems.DRIVING_PRIVILEGES.identifier] = intentToRetain
-        map[RequestMdl.DataItems.UN_DISTINGUISHING_SIGN.identifier] = intentToRetain
-        return map
-    }
-
-    private fun getSelectRequestMdlOlder21(intentToRetain: Boolean): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
-        map[RequestMdl.DataItems.AGE_OVER_21.identifier] = intentToRetain
-        return map
-    }
-
-    private fun getSelectRequestMdlOlder18(intentToRetain: Boolean): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
-        map[RequestMdl.DataItems.AGE_OVER_18.identifier] = intentToRetain
-        return map
-    }
-
-    private fun getSelectRequestFull(
-        requestDocument: RequestDocument,
-        intentToRetain: Boolean
-    ): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        requestDocument.dataItems.forEach {
-            map[it.identifier] = intentToRetain
-        }
-        return map
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+        return createRequestViewModel.calculateRequestDocumentList(intentToRetain)
     }
 }
