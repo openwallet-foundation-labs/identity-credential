@@ -63,9 +63,21 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     BluetoothLeScanner mScanner;
     byte[] mEncodedEDeviceKeyBytes;
     long mTimeScanningStartedMillis;
+
+    // a flag to prevent multiple GattClient connects which cause to multiple
+    // new GattClient instances and to crashes
+    // https://stackoverflow.com/a/38276808/4940838
+    boolean mIsConnecting = false;
+
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
+            // if we already scanned and connect to device we don't want to
+            // reconnect to another GattClient instance.
+            if (mIsConnecting) {
+                return;
+            }
+            mIsConnecting = true;
             UUID characteristicL2CAPUuid = null;
             if (mOptions.getBleUseL2CAP()) {
                 characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
@@ -123,14 +135,13 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
                 Logger.d(TAG, "Stopped scanning for UUID " + mServiceUuid);
                 try {
                     mScanner.stopScan(mScanCallback);
+
                 } catch (SecurityException e) {
                     reportError(e);
                     return;
                 }
                 mScanner = null;
             }
-            // TODO: Investigate. When testing with Reader C (which is on iOS) we get two callbacks
-            //  and thus a NullPointerException when calling stopScan().
         }
 
         @Override
@@ -298,6 +309,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
 
     @Override
     public void close() {
+        mIsConnecting = false;
         inhibitCallbacks();
         if (mBluetoothLeAdvertiser != null) {
             Logger.d(TAG, "Stopping advertising UUID " + mServiceUuid);
