@@ -80,6 +80,41 @@ public class Constants {
     public static final int BLE_DATA_RETRIEVAL_CLEAR_CACHE = (1 << 3);
 
     /**
+     * Error: session encryption. The session shall be terminated.
+     *
+     * <p>This value is defined in ISO/IEC 18013-5 Table 20.
+     */
+    public static final long SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION = 10;
+
+    /**
+     * Error: CBOR decoding. The session shall be terminated.
+     *
+     * <p>This value is defined in ISO/IEC 18013-5 Table 20.
+     */
+    public static final long SESSION_DATA_STATUS_ERROR_CBOR_DECODING = 11;
+
+    /**
+     * Session termination. The session shall be terminated.
+     *
+     * <p>This value is defined in ISO/IEC 18013-5 Table 20.
+     */
+    public static final long SESSION_DATA_STATUS_SESSION_TERMINATION = 20;
+
+    /**
+     * The status code used for session data exchange.
+     *
+     * These values are defined in ISO/IEC 18013-5 Table 20.
+     *
+     * @hidden
+     */
+    @Retention(SOURCE)
+    @LongDef({SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION,
+            SESSION_DATA_STATUS_ERROR_CBOR_DECODING,
+            SESSION_DATA_STATUS_SESSION_TERMINATION})
+    public @interface SessionDataStatus {
+    }
+
+    /**
      * The status code of the document response.
      *
      * These values are defined in ISO/IEC 18013-5 Table 8.
