@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 
 import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.model.DataItem;
 
 // TODO: Move to non-Android tests - can't do that right now b/c it's used IdentityCredentialStore
 //   to generate DeviceNameSpaces and DeviceAuth.
@@ -264,6 +265,15 @@ public class DeviceResponseGeneratorTest {
         Map<String, List<byte[]>> issuerSignedDataItemsWithValues =
                 Utility.mergeIssuerSigned(issuerSignedDataItems, result.getIssuerSignedEntries());
 
+        Map<String, Long> mdlNsErrors = new HashMap<>();
+        mdlNsErrors.put("element_with_error", 0L);
+        mdlNsErrors.put("another_element_with_error", (long) -42);
+        Map<String, Long> aamvaNsErrors = new HashMap<>();
+        aamvaNsErrors.put("yet_another_element_with_error", 1L);
+        Map<String, Map<String, Long>> errors = new HashMap<>();
+        errors.put(MDL_NAMESPACE, mdlNsErrors);
+        errors.put(AAMVA_NAMESPACE, aamvaNsErrors);
+
         // Generate DeviceResponse
         byte[] encodedDeviceResponse =
                 new DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
@@ -272,8 +282,24 @@ public class DeviceResponseGeneratorTest {
                                 encodedDeviceSignedSignature,
                                 encodedDeviceSignedMac,
                                 issuerSignedDataItemsWithValues,
+                                errors,
                                 encodedIssuerAuth)
                         .generate();
+
+        // Check that errors is set correctly.
+        DataItem drItem = Util.cborDecode(encodedDeviceResponse);
+        List<DataItem> docsItem = Util.cborMapExtractArray(drItem, "documents");
+        DataItem errorsItem = Util.cborMapExtract(docsItem.get(0), "errors");
+        Assert.assertEquals("{\n" +
+                        "  \"org.aamva.18013.5.1\": {\n" +
+                        "    \"yet_another_element_with_error\": 1\n" +
+                        "  },\n" +
+                        "  \"org.iso.18013.5.1\": {\n" +
+                        "    \"element_with_error\": 0,\n" +
+                        "    \"another_element_with_error\": -42\n" +
+                        "  }\n" +
+                        "}",
+                CborUtil.toDiagnostics(errorsItem, CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT));
 
         // Check that the parser picked up all the fields we were setting above...
         //
@@ -299,6 +325,8 @@ public class DeviceResponseGeneratorTest {
         // Check that response encoding/decoding didn't accidentally canonicalize data element values.
         Assert.assertArrayEquals(rawCbor1, d.getIssuerEntryData(MDL_NAMESPACE, "raw_cbor_1"));
         Assert.assertArrayEquals(rawCbor2, d.getIssuerEntryData(MDL_NAMESPACE, "raw_cbor_2"));
+
+        // TODO: also check |errors| when/if we get DeviceResponseParser API to read it.
     }
 
 }

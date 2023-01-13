@@ -345,6 +345,7 @@ public class PresentationHelperTest {
                             generator.addDocument(request.getDocType(),
                                     result,
                                     issuerSignedDataItemsWithValues,
+                                    null,
                                     encodedIssuerAuth);
                             presentation[0].sendDeviceResponse(generator.generate());
 

@@ -197,6 +197,7 @@ class TransferManager private constructor(private val context: Context) {
                             docType,
                             c,
                             first1,
+                            null,
                             second1
                         )
                     } catch (e: IllegalArgumentException) {

@@ -79,13 +79,18 @@ public final class DeviceResponseGenerator {
      * <em>mdoc authentication</em> should be set in <code>encodedDeviceSignature</code>
      * or <code>encodedDeviceMac</code> respectively. Values for all parameters can be
      * obtained from the <code>ResultData</code> class from either the Framework
-     * or Jetpack IdentityCredential implementation.
+     * or this library.
+     *
+     * <p>If present, the <code>errors</code> parameter is a map from namespaces where each
+     * value is a map from data elements in said namespace to an error code from
+     * ISO/IEC 18013-5:2021 Table 9.
      *
      * @param docType the document type, for example <code>org.iso.18013.5.1.mDL</code>.
      * @param encodedDeviceNamespaces bytes of the <code>DeviceNameSpaces</code> CBOR.
      * @param encodedDeviceSignature bytes of a COSE_Sign1 for authenticating the device data.
      * @param encodedDeviceMac bytes of a COSE_Mac0 for authenticating the device data.
      * @param issuerSignedData the map described above.
+     * @param errors a map with errors as described above.
      * @param encodedIssuerAuth the bytes of the <code>COSE_Sign1</code> described above.
      * @return the passed-in {@link DeviceResponseGenerator}.
      */
@@ -94,6 +99,7 @@ public final class DeviceResponseGenerator {
             @Nullable byte[] encodedDeviceSignature,
             @Nullable byte[] encodedDeviceMac,
             @NonNull Map<String, List<byte[]>> issuerSignedData,
+            @Nullable Map<String, Map<String, Long>> errors,
             @NonNull byte[] encodedIssuerAuth) {
 
         CborBuilder issuerNameSpacesBuilder = new CborBuilder();
@@ -139,18 +145,31 @@ public final class DeviceResponseGenerator {
                 .end()
                 .build().get(0);
 
-        mDocumentsBuilder.add(new CborBuilder()
-                .addMap()
-                .put("docType", docType)
-                .put(new UnicodeString("issuerSigned"), issuerSigned)
-                .put(new UnicodeString("deviceSigned"), deviceSigned)
-                .end()
-                .build().get(0));
+        CborBuilder builder = new CborBuilder();
+        MapBuilder<CborBuilder> mapBuilder = builder.addMap();
+        mapBuilder.put("docType", docType);
+        mapBuilder.put(new UnicodeString("issuerSigned"), issuerSigned);
+        mapBuilder.put(new UnicodeString("deviceSigned"), deviceSigned);
+        if (errors != null) {
+            CborBuilder errorsBuilder = new CborBuilder();
+            MapBuilder<CborBuilder> errorsOuterMapBuilder = errorsBuilder.addMap();
+            for (String namespaceName : errors.keySet()) {
+                MapBuilder<MapBuilder<CborBuilder>> errorsInnerMapBuilder =
+                        errorsOuterMapBuilder.putMap(namespaceName);
+                Map<String, Long> innerMap = errors.get(namespaceName);
+                for (String dataElementName : innerMap.keySet()) {
+                    long value = innerMap.get(dataElementName).longValue();
+                    errorsInnerMapBuilder.put(dataElementName, value);
+                }
+            }
+            mapBuilder.put(new UnicodeString("errors"), errorsBuilder.build().get(0));
+        }
+        mDocumentsBuilder.add(builder.build().get(0));
         return this;
     }
 
     /**
-     * Like {@link #addDocument(String, byte[], byte[], byte[], Map, byte[])} but takes a
+     * Like {@link #addDocument(String, byte[], byte[], byte[], Map, Map, byte[])} but takes a
      * {@link CredentialDataResult} instead and merges the results into the "elementValue"
      * entry of each IssuerSignedItem value.
      *
@@ -170,6 +189,7 @@ public final class DeviceResponseGenerator {
     public @NonNull DeviceResponseGenerator addDocument(@NonNull String docType,
             @NonNull CredentialDataResult credentialDataResult,
             @NonNull Map<String, List<byte[]>> issuerSignedMapping,
+            @Nullable Map<String, Map<String, Long>> errors,
             @NonNull byte[] encodedIssuerAuth) {
 
         Map<String, List<byte[]>> issuerSignedMappingWithData =
@@ -181,6 +201,7 @@ public final class DeviceResponseGenerator {
                 credentialDataResult.getDeviceSignature(),
                 credentialDataResult.getDeviceMac(),
                 issuerSignedMappingWithData,
+                errors,
                 encodedIssuerAuth);
 
         return this;
