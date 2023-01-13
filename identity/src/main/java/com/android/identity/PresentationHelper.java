@@ -281,6 +281,8 @@ public class PresentationHelper {
         try {
             decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
         } catch (RuntimeException e) {
+            mTransport.sendMessage(mSessionEncryption.encryptMessageToReader(
+                    null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
             mTransport.close();
             reportError(new Error("Error decrypting message from reader", e));
             return;
@@ -292,6 +294,8 @@ public class PresentationHelper {
             try {
                 decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
             } catch (RuntimeException e) {
+                mTransport.sendMessage(mSessionEncryption.encryptMessageToReader(
+                        null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
                 mTransport.close();
                 reportError(new Error("Error decrypting message from reader", e));
                 return;
@@ -299,6 +303,8 @@ public class PresentationHelper {
         }
         if (decryptedMessage == null) {
             Logger.d(TAG, "Decryption failed!");
+            mTransport.sendMessage(mSessionEncryption.encryptMessageToReader(
+                    null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
             mTransport.close();
             reportError(new Error("Error decrypting message from reader"));
             return;
@@ -334,7 +340,7 @@ public class PresentationHelper {
 
                 Logger.d(TAG, "Message received from reader with status: " + statusCode);
 
-                if (statusCode == 20) {
+                if (statusCode == Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
                     mReceivedSessionTerminated = true;
                     mTransport.close();
                     reportDeviceDisconnected(false);
@@ -438,7 +444,7 @@ public class PresentationHelper {
                 } else {
                     Logger.d(TAG, "Sending generic session termination message");
                     byte[] sessionTermination = mSessionEncryption.encryptMessageToReader(
-                            null, OptionalLong.of(20));
+                            null, OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION));
                     mTransport.sendMessage(sessionTermination);
                 }
             } else {

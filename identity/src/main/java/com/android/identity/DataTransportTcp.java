@@ -24,6 +24,7 @@ import android.text.format.Formatter;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,6 +53,7 @@ class DataTransportTcp extends DataTransport {
     Thread mSocketWriterThread;
     private String mHost;
     private int mPort;
+    private MessageRewriter mMessageRewriter;
 
     public DataTransportTcp(@NonNull Context context,
                             @Role int role,
@@ -147,7 +149,11 @@ class DataTransportTcp extends DataTransport {
                     errorToReport = new Error("End of stream, expected " + dataLen + " bytes");
                     break;
                 }
-                reportMessageReceived(data.array());
+                byte[] incomingMessage = data.array();
+                if (mMessageRewriter != null) {
+                    incomingMessage = mMessageRewriter.rewrite(incomingMessage);
+                }
+                reportMessageReceived(incomingMessage);
             }
         } catch (IOException e) {
             errorToReport = e;
@@ -290,5 +296,15 @@ class DataTransportTcp extends DataTransport {
     @Override
     public @NonNull ConnectionMethod getConnectionMethod() {
         return null;
+    }
+
+    // Function to rewrite incoming messages, used only for testing to inject errors
+    // which will cause decryption to fail.
+    void setMessageRewriter(@Nullable MessageRewriter rewriter) {
+        mMessageRewriter = rewriter;
+    }
+
+    interface MessageRewriter {
+        @NonNull byte[] rewrite(@NonNull byte[] message);
     }
 }

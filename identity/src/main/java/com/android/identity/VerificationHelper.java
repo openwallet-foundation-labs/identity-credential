@@ -40,7 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 
@@ -780,7 +780,7 @@ public class VerificationHelper {
             return;
         }
 
-        Pair<byte[], OptionalInt> decryptedMessage = null;
+        Pair<byte[], OptionalLong> decryptedMessage = null;
         try {
             decryptedMessage = mSessionEncryptionReader.decryptMessageFromDevice(data);
         } catch (Exception e) {
@@ -801,9 +801,9 @@ public class VerificationHelper {
                 mDataTransport.close();
                 reportError(new Error("No data and no status in SessionData"));
             } else {
-                int statusCode = decryptedMessage.second.getAsInt();
+                long statusCode = decryptedMessage.second.getAsLong();
                 Logger.d(TAG, "SessionData with status code " + statusCode);
-                if (statusCode == 20) {
+                if (statusCode == Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
                     mDataTransport.close();
                     reportDeviceDisconnected(false);
                 } else {
@@ -912,7 +912,7 @@ public class VerificationHelper {
                 } else {
                     Log.d(TAG, "Sending generic session termination message");
                     byte[] sessionTermination = mSessionEncryptionReader.encryptMessageToDevice(
-                            null, OptionalInt.of(20));
+                            null, OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION));
                     mDataTransport.sendMessage(sessionTermination);
                 }
             } else {
@@ -955,7 +955,7 @@ public class VerificationHelper {
         Logger.dCbor(TAG, "DeviceRequest to send", deviceRequestBytes);
 
         byte[] message = mSessionEncryptionReader.encryptMessageToDevice(
-                deviceRequestBytes, OptionalInt.empty());
+                deviceRequestBytes, OptionalLong.empty());
         Logger.dCbor(TAG, "SessionData to send", message);
         mDataTransport.sendMessage(message);
     }

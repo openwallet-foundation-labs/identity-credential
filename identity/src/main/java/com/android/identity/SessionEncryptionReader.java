@@ -32,7 +32,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.List;
-import java.util.OptionalInt;
+import java.util.OptionalLong;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -46,13 +46,11 @@ import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.CborDecoder;
 import co.nstant.in.cbor.CborException;
 import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 import co.nstant.in.cbor.model.Number;
 import co.nstant.in.cbor.model.UnicodeString;
-import co.nstant.in.cbor.model.UnsignedInteger;
 
 
 /**
@@ -144,7 +142,7 @@ final class SessionEncryptionReader {
      *     CBOR as described above.
      */
     public @NonNull byte[] encryptMessageToDevice(@Nullable byte[] messagePlaintext,
-            @NonNull OptionalInt statusCode) {
+            @NonNull OptionalLong statusCode) {
         byte[] messageCiphertext = null;
         if (messagePlaintext != null) {
             try {
@@ -183,7 +181,7 @@ final class SessionEncryptionReader {
             mapBuilder.put("data", messageCiphertext);
         }
         if (statusCode.isPresent()) {
-            mapBuilder.put("status", statusCode.getAsInt());
+            mapBuilder.put("status", statusCode.getAsLong());
         }
         mapBuilder.end();
         byte[] messageData = Util.cborEncode(builder.build().get(0));
@@ -207,7 +205,7 @@ final class SessionEncryptionReader {
      * @exception IllegalArgumentException if the passed in data does not conform to the CDDL.
      * @exception IllegalStateException if decryption fails.
      */
-    public @NonNull Pair<byte[], OptionalInt> decryptMessageFromDevice(
+    public @NonNull Pair<byte[], OptionalLong> decryptMessageFromDevice(
             @NonNull byte[] messageData) {
         ByteArrayInputStream bais = new ByteArrayInputStream(messageData);
         List<DataItem> dataItems;
@@ -233,13 +231,13 @@ final class SessionEncryptionReader {
             messageCiphertext = ((ByteString) dataItemData).getBytes();
         }
 
-        OptionalInt status = OptionalInt.empty();
+        OptionalLong status = OptionalLong.empty();
         DataItem dataItemStatus = map.get(new UnicodeString("status"));
         if (dataItemStatus != null) {
             if (!(dataItemStatus instanceof Number)) {
                 throw new IllegalArgumentException("status is not a number");
             }
-            status = OptionalInt.of(((Number) dataItemStatus).getValue().intValue());
+            status = OptionalLong.of(((Number) dataItemStatus).getValue().intValue());
         }
 
         byte[] plainText = null;
@@ -268,7 +266,7 @@ final class SessionEncryptionReader {
 
     /**
      * Gets the number of messages encrypted with
-     * {@link #encryptMessageToDevice(byte[], OptionalInt)}.
+     * {@link #encryptMessageToDevice(byte[], OptionalLong)}.
      *
      * @return Number of messages encrypted.
      */

@@ -78,7 +78,8 @@ public class SessionEncryptionDeviceTest {
         // Check that we parse status correctly.
         result = sessionEncryption.decryptMessageFromReader(
                 Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION));
-        Assert.assertEquals(20, result.second.getAsLong());
+        Assert.assertEquals(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
+                result.second.getAsLong());
         Assert.assertNull(result.first);
 
         // Check we can generate messages with status.
