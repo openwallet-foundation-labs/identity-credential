@@ -375,6 +375,8 @@ public class VerificationHelper {
         byte[] apdu;
         byte[] ret;
 
+        Logger.dHex(TAG, "ndefTransact: sending NDEF message", ndefMessage);
+
         // See Type 4 Tag Technical Specification Version 1.2 section 7.5.5 NDEF Write Procedure
         // for how this is done.
 
@@ -423,7 +425,9 @@ public class VerificationHelper {
 
         // Read NDEF file...
         //
-        return ndefReadMessage(isoDep);
+        byte[] receivedNdefMessage = ndefReadMessage(isoDep);
+        Logger.dHex(TAG, "ndefTransact: received NDEF message", receivedNdefMessage);
+        return receivedNdefMessage;
     }
 
 
