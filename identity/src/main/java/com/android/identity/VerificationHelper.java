@@ -119,7 +119,7 @@ public class VerificationHelper {
         // ThreadPoolExecutor.
         //
         // In particular, it means we need locking around `mNumTransportsStillSettingUp`. We'll
-        // use the monitor for the PresentationHelper object for to achieve that.
+        // use the monitor for the VerificationHelper object for to achieve that.
         //
         final VerificationHelper helper = this;
         mNumReverseEngagementTransportsStillSettingUp = 0;

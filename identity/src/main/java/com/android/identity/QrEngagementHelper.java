@@ -85,7 +85,7 @@ public class QrEngagementHelper {
         // ThreadPoolExecutor.
         //
         // In particular, it means we need locking around `mNumTransportsStillSettingUp`. We'll
-        // use the monitor for the PresentationHelper object for to achieve that.
+        // use the monitor for the DeviceRetrievalHelper object for to achieve that.
         //
         final QrEngagementHelper helper = this;
         mNumTransportsStillSettingUp = 0;
