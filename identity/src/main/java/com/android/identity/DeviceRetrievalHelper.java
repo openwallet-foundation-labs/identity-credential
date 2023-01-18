@@ -17,7 +17,6 @@
 package com.android.identity;
 
 import android.content.Context;
-import android.nfc.cardemulation.HostApduService;
 
 import androidx.core.util.Pair;
 
@@ -27,7 +26,6 @@ import androidx.annotation.Nullable;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.PublicKey;
-import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalLong;
 import java.util.concurrent.Executor;
@@ -63,8 +61,8 @@ import co.nstant.in.cbor.model.UnicodeString;
 // Suppress with NotCloseable since we actually don't hold any resources needing to be
 // cleaned up at object finalization time.
 @SuppressWarnings("NotCloseable")
-public class PresentationHelper {
-    private static final String TAG = "PresentationHelper";
+public class DeviceRetrievalHelper {
+    private static final String TAG = "DeviceRetrievalHelper";
 
     private KeyPair mEphemeralKeyPair;
     private Context mContext;
@@ -94,7 +92,7 @@ public class PresentationHelper {
     private List<OriginInfo> mReverseEngagementOriginInfos;
     private byte[] mReverseEngagementEncodedEReaderKey;
 
-    PresentationHelper() {}
+    DeviceRetrievalHelper() {}
 
     // Note: The report*() methods are safe to call from any thread.
 
@@ -555,13 +553,13 @@ public class PresentationHelper {
     }
 
     /**
-     * Builder for {@link PresentationHelper}.
+     * Builder for {@link DeviceRetrievalHelper}.
      */
     public static class Builder {
-        PresentationHelper mHelper;
+        DeviceRetrievalHelper mHelper;
 
         /**
-         * Create a new Builder for {@link PresentationHelper}.
+         * Create a new Builder for {@link DeviceRetrievalHelper}.
          *
          * <p>Use {@link #useForwardEngagement(DataTransport, byte[], byte[])} or
          * {@link #useReverseEngagement(DataTransport, byte[], List)} to specifiy which
@@ -579,7 +577,7 @@ public class PresentationHelper {
                        @Nullable Listener listener,
                        @Nullable Executor executor,
                        @NonNull PresentationSession session) {
-            mHelper = new PresentationHelper();
+            mHelper = new DeviceRetrievalHelper();
             mHelper.mContext = context;
             if (listener != null && executor == null) {
                 throw new IllegalStateException("Cannot have non-null listener with null executor");
@@ -652,11 +650,12 @@ public class PresentationHelper {
         }
 
         /**
-         * Builds the {@link PresentationHelper} and starts presentation.
+         * Builds the {@link DeviceRetrievalHelper} and starts presentation.
          *
          * @return the helper, ready to be used.
          */
-        public @NonNull PresentationHelper build() {
+        public @NonNull
+        DeviceRetrievalHelper build() {
             if (mHelper.mTransport == null) {
                 throw new IllegalStateException("Neither forward nor reverse engagement configured");
             }

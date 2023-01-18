@@ -6,14 +6,14 @@ import android.util.Base64
 import com.android.identity.DataTransport
 import com.android.identity.EngagementParser
 import com.android.identity.OriginInfo
-import com.android.identity.PresentationHelper
+import com.android.identity.DeviceRetrievalHelper
 import com.android.identity.PresentationSession
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
 
 class ReverseQrCommunicationSetup(
     private val context: Context,
-    private val onPresentationReady: (session: PresentationSession, presentation: PresentationHelper) -> Unit,
+    private val onPresentationReady: (session: PresentationSession, presentation: DeviceRetrievalHelper) -> Unit,
     private val onNewRequest: (request: ByteArray) -> Unit,
     private val onDisconnected: () -> Unit,
     private val onCommunicationError: (error: Throwable) -> Unit,
@@ -21,7 +21,7 @@ class ReverseQrCommunicationSetup(
 
     private val session = SessionSetup(CredentialStore(context)).createSession()
     private val connectionSetup = ConnectionSetup(context)
-    private val presentationListener = object : PresentationHelper.Listener {
+    private val presentationListener = object : DeviceRetrievalHelper.Listener {
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             onNewRequest(deviceRequestBytes)
@@ -36,7 +36,7 @@ class ReverseQrCommunicationSetup(
         }
     }
 
-    private var presentation: PresentationHelper? = null
+    private var presentation: DeviceRetrievalHelper? = null
 
     fun configure(
         reverseEngagementUri: String,
@@ -65,7 +65,7 @@ class ReverseQrCommunicationSetup(
             connectionSetup.getConnectionOptions()
         )
 
-        val builder = PresentationHelper.Builder(
+        val builder = DeviceRetrievalHelper.Builder(
             context,
             presentationListener,
             context.mainExecutor(),
