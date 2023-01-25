@@ -697,7 +697,6 @@ class CredentialData {
         try {
             outputStream = file.startWrite();
             outputStream.write(dataToSaveBytes);
-            outputStream.close();
             file.finishWrite(outputStream);
         } catch (IOException e) {
             if (outputStream != null) {
