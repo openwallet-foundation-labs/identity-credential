@@ -100,7 +100,6 @@ public class X509CertificateSigningTest {
             try {
                 outputStream = file.startWrite();
                 outputStream.write(cert.getEncoded());
-                outputStream.close();
                 file.finishWrite(outputStream);
             } catch (IOException e) {
                 if (outputStream != null) {
