@@ -282,7 +282,8 @@ public class RequestServlet extends HttpServlet {
      * @param key Unique key of the entity in Datastore that corresponds to the current
      * session
      * 
-     * @return byte array containing a termination message
+     * @return byte array containing an empty SessionData message with status code 20
+     * to indicate termination.
      */
     private static byte[] parseDeviceResponse(byte[] messageData, Key key) {
         PublicKey eReaderKeyPublic =

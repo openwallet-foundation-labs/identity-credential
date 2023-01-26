@@ -73,6 +73,8 @@ The above command will create a link to a live website. Then, navigate to the fi
     public static final String BASE_URL = "<YOUR_WEBSITE_URL>";
 ```
 
+There is currently a test instance of this application available at https://mdoc-reader-external.uc.r.appspot.com/.
+
 ## Reference Applications
 
 This repository also contains two applications to show how to use the library.
