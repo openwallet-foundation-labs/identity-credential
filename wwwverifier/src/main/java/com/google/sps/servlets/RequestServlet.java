@@ -1,4 +1,4 @@
-package com.google.sps.servlets;
+package com.android.identity.wwwreader;
 
 import co.nstant.in.cbor.CborBuilder;
 import com.google.gson.Gson;
@@ -395,7 +395,7 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return String converted from a Timestamp object @param ts
      */
-    private static String timestampToString(com.google.sps.servlets.Timestamp ts) {
+    private static String timestampToString(com.android.identity.wwwreader.Timestamp ts) {
         DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
         return df.format(new Date(ts.toEpochMilli()));
     }

@@ -1,4 +1,4 @@
-package com.google.sps;
+package com.android.identity.wwwreader;
 
 // imports for CBOR encoding/decoding
 import co.nstant.in.cbor.builder.MapBuilder;
@@ -45,7 +45,6 @@ import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestC
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 
 // other imports
-import com.google.sps.servlets.*;
 import java.math.BigInteger;
 import java.io.IOException;
 import java.util.Base64;

@@ -1,4 +1,4 @@
-package com.google.sps.servlets;
+package com.android.identity.wwwreader;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 

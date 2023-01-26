@@ -1,4 +1,4 @@
-package com.google.sps.servlets;
+package com.android.identity.wwwreader;
 
 public class ServletConsts {
     // Datastore constants
