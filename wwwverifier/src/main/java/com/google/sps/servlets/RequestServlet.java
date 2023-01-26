@@ -143,6 +143,8 @@ public class RequestServlet extends HttpServlet {
             byte[] terminationMessage = parseDeviceResponse(getBytesFromRequest(request), key);
             setNumPostRequests(2, key);
             response.getOutputStream().write(terminationMessage);
+        } else {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
         }
     }
 
