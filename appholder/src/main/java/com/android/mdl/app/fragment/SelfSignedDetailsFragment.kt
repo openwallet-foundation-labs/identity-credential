@@ -423,7 +423,6 @@ class SelfSignedDetailsFragment : Fragment() {
             matrix.postRotate(rotation)
             Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
         } else original
-        original.recycle()
         imageView.setImageBitmap(rotated)
     }
 }
