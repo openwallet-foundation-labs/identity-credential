@@ -2,7 +2,7 @@
     compile-sdk = "33"
     min-sdk = "26"
     kotlin = "1.7.10"
-    gradle-plugin = "7.3.1"
+    gradle-plugin = "7.4.0"
     core-ktx = "1.9.0"
     appcompat = "1.5.1"
     material = "1.6.1"
