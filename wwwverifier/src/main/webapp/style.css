@@ -1,0 +1,9 @@
+#content {
+  margin-left: auto;
+  margin-right: auto;
+  width: 650px;
+}
+
+#mdoc-uri-text, #response-display {
+  overflow-wrap:break-word;
+}
