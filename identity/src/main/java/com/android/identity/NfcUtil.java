@@ -117,7 +117,7 @@ class NfcUtil {
         baos.write(offset / 0x100);
         baos.write(offset & 0xff);
         if (data.length >= 0x100) {
-            throw new IllegalArgumentException("Data must be shorter than 0x010 bytes");
+            throw new IllegalArgumentException("Data must be shorter than 0x100 bytes");
         }
         baos.write(data.length & 0xff);
         try {
