@@ -293,7 +293,8 @@ public class NfcEngagementHelper {
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
         if (Arrays.equals(Arrays.copyOfRange(apdu, 5, 12), NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION)) {
-            Logger.d(TAG, "handleSelectByAid: NFC engagement AID selected");
+            Logger.d(TAG, "handleSelectByAid: NDEF application selected");
+            mUpdateBinaryData = null;
             return NfcUtil.STATUS_WORD_OK;
         }
         Logger.dHex(TAG, "handleSelectByAid: Unexpected AID selected in APDU", apdu);
@@ -457,6 +458,9 @@ public class NfcEngagementHelper {
         return response;
     }
 
+
+    private byte[] mUpdateBinaryData = null;
+
     private @NonNull
     byte[] handleUpdateBinary(@NonNull byte[] apdu) {
         if (apdu.length < 5) {
@@ -464,48 +468,102 @@ public class NfcEngagementHelper {
         }
         int offset = (apdu[2] & 0xff) * 256 + (apdu[3] & 0xff);
         int size = apdu[4] & 0xff;
-        int dataBeginsAt = 5;
-        if (size == 0) {
-            // Handle Extended Length encoding
-            if (apdu.length < 7) {
-                return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
-            }
-            size = (apdu[5] & 0xff) * 256;
-            size += apdu[6] & 0xff;
-            dataBeginsAt = 7;
-        }
         Logger.d(TAG, String.format(Locale.US,
                 "handleUpdateBinary: offset=%d size=%d apdu.length=%d",
                 offset, size, apdu.length));
 
-        int dataSize = apdu.length - dataBeginsAt;
-        //if (offset != 0) {
-        //    Log.e(TAG, String.format(Locale.US, "Expected offset to be 0 but found %d", offset));
-        //    return STATUS_WORD_FILE_NOT_FOUND;
-        //}
+        int dataSize = apdu.length - 5;
         if (dataSize != size) {
             Logger.e(TAG, String.format(Locale.US,
                     "Expected length embedded in APDU to be %d but found %d", dataSize, size));
             return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
         }
 
-        byte[] payload = new byte[dataSize];
-        System.arraycopy(apdu, dataBeginsAt, payload, 0, dataSize);
-        Logger.dHex(TAG,"handleUpdateBinary: payload", payload);
-
-        // TODO: properly implement state machine in:
+        // This code implements the procedure specified by
+        //
         //  Type 4 Tag Technical Specification Version 1.2 section 7.5.5 NDEF Write Procedure
-        if (payload.length > 2) {
-            if (mNegotiatedHandoverState == NEGOTIATED_HANDOVER_STATE_EXPECT_SERVICE_SELECT) {
-                return handleServiceSelect(payload);
-            } else if (mNegotiatedHandoverState == NEGOTIATED_HANDOVER_STATE_EXPECT_HANDOVER_REQUEST) {
-                return handleHandoverRequest(payload);
+
+        byte[] payload = new byte[dataSize];
+        System.arraycopy(apdu, 5, payload, 0, dataSize);
+        Logger.dHex(TAG,"handleUpdateBinary: payload", payload);
+        if (offset == 0) {
+            if (payload.length == 2) {
+                if (payload[0] == 0x00 && payload[1] == 0x00) {
+                    Logger.d(TAG, "handleUpdateBinary: Reset length message");
+                    if (mUpdateBinaryData != null) {
+                        Logger.w(TAG, "Got reset but we are already active");
+                        return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+                    }
+                    mUpdateBinaryData = new byte[0];
+                    return NfcUtil.STATUS_WORD_OK;
+                } else {
+                    int length = (apdu[5] & 0xff) * 256 + (apdu[6] & 0xff);
+                    Logger.d(TAG, String.format(Locale.US,
+                            "handleUpdateBinary: Update length message with length %d", length));
+
+                    if (mUpdateBinaryData == null) {
+                        Logger.w(TAG, "Got length but we are not active");
+                        return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+                    }
+
+                    if (length != mUpdateBinaryData.length) {
+                        Logger.w(TAG, String.format(Locale.US,
+                                "Length %d doesn't match received data of %d bytes",
+                                length, mUpdateBinaryData.length));
+                        return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+                    }
+
+                    // At this point we got the whole NDEF message that the reader wanted to send.
+                    byte[] ndefMessage = mUpdateBinaryData;
+                    mUpdateBinaryData = null;
+                    return handleUpdateBinaryNdefMessage(ndefMessage);
+                }
             } else {
-                Logger.w(TAG, "Unexpected state " + mNegotiatedHandoverState);
+                if (mUpdateBinaryData != null) {
+                    Logger.w(TAG, "Got data in single UPDATE_BINARY but we are already active");
+                    return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+                }
+
+                Logger.dHex(TAG, "handleUpdateBinary: single UPDATE_BINARY message with payload: ", payload);
+
+                byte[] ndefMessage = Arrays.copyOfRange(payload, 2, payload.length);
+                return handleUpdateBinaryNdefMessage(ndefMessage);
+            }
+        } else if (offset == 1) {
+            Logger.w(TAG, String.format(Locale.US, "Unexpected offset %d", offset));
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+        } else {
+            // offset >= 2
+
+            if (mUpdateBinaryData == null) {
+                Logger.w(TAG, "Got data but we are not active");
                 return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
             }
+
+            Logger.dHex(TAG, String.format(Locale.US,
+                    "handleUpdateBinary: Data message offset %d with payload: ", offset), payload);
+
+            int newLength = offset - 2 + payload.length;
+            if (mUpdateBinaryData.length < newLength) {
+                mUpdateBinaryData = Arrays.copyOf(mUpdateBinaryData, newLength);
+            }
+            System.arraycopy(payload, 0, mUpdateBinaryData, offset - 2, payload.length);
+
+            return NfcUtil.STATUS_WORD_OK;
         }
-        return NfcUtil.STATUS_WORD_OK;
+    }
+
+    private @NonNull
+    byte[] handleUpdateBinaryNdefMessage(@NonNull byte[] ndefMessage) {
+        // Falls through here only if we have a full NDEF message.
+        if (mNegotiatedHandoverState == NEGOTIATED_HANDOVER_STATE_EXPECT_SERVICE_SELECT) {
+            return handleServiceSelect(ndefMessage);
+        } else if (mNegotiatedHandoverState == NEGOTIATED_HANDOVER_STATE_EXPECT_HANDOVER_REQUEST) {
+            return handleHandoverRequest(ndefMessage);
+        } else {
+            Logger.w(TAG, "Unexpected state " + mNegotiatedHandoverState);
+            return NfcUtil.STATUS_WORD_FILE_NOT_FOUND;
+        }
     }
 
     private @NonNull

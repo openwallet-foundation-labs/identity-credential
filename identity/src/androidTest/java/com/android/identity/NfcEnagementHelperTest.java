@@ -38,6 +38,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.SimpleValue;
 
 @SuppressWarnings("deprecation")
@@ -180,9 +181,7 @@ public class NfcEnagementHelperTest {
         helper.close();
     }
 
-    @Test
-    @SmallTest
-    public void testNegotiatedHandover() throws Exception {
+    private void testNegotiatedHandoverHelper(boolean useLargeRequestMessage) throws Exception {
         NfcEngagementHelper helper = null;
         Context context = InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(context);
@@ -298,10 +297,24 @@ public class NfcEnagementHelperTest {
                 NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"));
         Assert.assertEquals("d10201546500", Util.toHex(serviceSelectResponse));
 
+        byte[] encodedReaderEngagement = null;
+        if (useLargeRequestMessage) {
+            encodedReaderEngagement = Util.cborEncode(
+                    new CborBuilder()
+                            .addMap()
+                            .put("stuff", new byte[512])
+                            .end()
+                            .build().get(0));
+        }
         // Now send Handover Request, the resulting NDEF message is Handover Response..
         byte[] hrMessage = NfcUtil.createNdefMessageHandoverRequest(
                 connectionMethods,
-                null); // TODO: pass ReaderEngagement message
+                encodedReaderEngagement);
+        if (useLargeRequestMessage) {
+            Assert.assertTrue(hrMessage.length >= 256 - 2);
+        } else {
+            Assert.assertTrue(hrMessage.length < 256 - 2);
+        }
         byte[] hsMessage = ndefTransact(helper, hrMessage);
 
         NfcUtil.ParsedHandoverSelectMessage hs = NfcUtil.parseHandoverSelectMessage(hsMessage);
@@ -337,29 +350,68 @@ public class NfcEnagementHelperTest {
         helper.close();
     }
 
+    // This tests the path where Handover Request is small enough to be sent using
+    // one UPDATE_BINARY message. This is permitted by [T4T] Section 7.5.5 NDEF Write
+    // Procedure.
+    @Test
+    @SmallTest
+    public void testNegotiatedHandover() throws Exception {
+        testNegotiatedHandoverHelper(false);
+    }
+
+    // This tests the path where Handover Request is larger than 255 bytes so at
+    // the usual [T4T] Section 7.5.5 NDEF Write Procedure w/ 3 or more UPDATE_BINARY
+    // messages are to be used.
+    @Test
+    @SmallTest
+    public void testNegotiatedHandoverWithLargeRequestMessage() throws Exception {
+        testNegotiatedHandoverHelper(true);
+    }
+
     static byte[] ndefTransact(NfcEngagementHelper helper, byte[] ndefMessage)  {
         byte[] responseApdu;
 
-        // First command is UPDATE_BINARY to reset length
-        responseApdu = helper.nfcProcessCommandApdu(
-                NfcUtil.createApduUpdateBinary(0, new byte[] {0x00, 0x00}));
-        Assert.assertNotNull(responseApdu);
-        Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
+        if (ndefMessage.length < 256 - 2) {
+            // Fits in a single UPDATE_BINARY command
+            byte[] data = new byte[ndefMessage.length + 2];
+            data[0] = (byte) ((ndefMessage.length / 0x100) & 0xff);
+            data[1] = (byte) (ndefMessage.length & 0xff);
+            System.arraycopy(ndefMessage, 0, data, 2, ndefMessage.length);
+            responseApdu = helper.nfcProcessCommandApdu(
+                    NfcUtil.createApduUpdateBinary(0, data));
+            Assert.assertNotNull(responseApdu);
+            Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
+        } else {
+            // First command is UPDATE_BINARY to reset length
+            responseApdu = helper.nfcProcessCommandApdu(
+                    NfcUtil.createApduUpdateBinary(0, new byte[]{0x00, 0x00}));
+            Assert.assertNotNull(responseApdu);
+            Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
 
-        // Second command is UPDATE_BINARY with payload, starting at offset 2.
-        responseApdu = helper.nfcProcessCommandApdu(
-                NfcUtil.createApduUpdateBinary(2, ndefMessage));
-        Assert.assertNotNull(responseApdu);
-        Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
+            // Subsequent commands are UPDATE_BINARY with payload, chopped into bits no longer
+            // than 255 bytes each
+            int offset = 0;
+            int remaining = ndefMessage.length;
+            while (remaining > 0) {
+                int numBytesToWrite = Math.min(remaining, 255);
+                byte[] bytesToWrite = Arrays.copyOfRange(ndefMessage, offset, offset + numBytesToWrite);
+                responseApdu = helper.nfcProcessCommandApdu(
+                        NfcUtil.createApduUpdateBinary(offset + 2, bytesToWrite));
+                Assert.assertNotNull(responseApdu);
+                Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
+                remaining -= numBytesToWrite;
+                offset += numBytesToWrite;
+            }
 
-        // Third command is UPDATE_BINARY to write the length
-        byte[] encodedLength = new byte[] {
-                (byte) ((ndefMessage.length / 0x100) & 0xff),
-                (byte) (ndefMessage.length & 0xff)};
-        responseApdu = helper.nfcProcessCommandApdu(
-                NfcUtil.createApduUpdateBinary(0, encodedLength));
-        Assert.assertNotNull(responseApdu);
-        Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
+            // Final command is UPDATE_BINARY to write the length
+            byte[] encodedLength = new byte[]{
+                    (byte) ((ndefMessage.length / 0x100) & 0xff),
+                    (byte) (ndefMessage.length & 0xff)};
+            responseApdu = helper.nfcProcessCommandApdu(
+                    NfcUtil.createApduUpdateBinary(0, encodedLength));
+            Assert.assertNotNull(responseApdu);
+            Assert.assertEquals(NfcUtil.STATUS_WORD_OK, responseApdu);
+        }
 
         // Finally, read the NDEF response message.. first get the length
         responseApdu = helper.nfcProcessCommandApdu(
