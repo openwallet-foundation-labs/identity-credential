@@ -40,9 +40,6 @@ android {
         viewBinding true
     }
 
-    lintOptions {
-        lintConfig file("lint.xml")
-    }
 
     testOptions.unitTests.all {
         useJUnitPlatform()
@@ -52,6 +49,9 @@ android {
     }
 
     namespace 'com.android.mdl.appreader'
+    lint {
+        lintConfig file('lint.xml')
+    }
 }
 
 dependencies {
