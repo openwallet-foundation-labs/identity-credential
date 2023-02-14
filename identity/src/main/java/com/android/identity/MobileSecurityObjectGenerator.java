@@ -167,6 +167,65 @@ public class MobileSecurityObjectGenerator {
         return this;
     }
 
+    @NonNull
+    private CborBuilder generateDeviceKeyBuilder() {
+        CborBuilder deviceKeyBuilder = new CborBuilder();
+        MapBuilder<CborBuilder> deviceKeyMapBuilder = deviceKeyBuilder.addMap();
+        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.getEncoded());
+
+        if (!mAuthorizedNameSpaces.isEmpty() | !mAuthorizedDataElements.isEmpty()) {
+            MapBuilder<MapBuilder<CborBuilder>> keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations");
+            if (!mAuthorizedNameSpaces.isEmpty()) {
+                ArrayBuilder<MapBuilder<MapBuilder<CborBuilder>>> authNameSpacesArrayBuilder =
+                        keyAuthMapBuilder.putArray("nameSpaces");
+                for (String namespace : mAuthorizedNameSpaces) {
+                    authNameSpacesArrayBuilder.add(namespace);
+                }
+                authNameSpacesArrayBuilder.end();
+            }
+
+            if (!mAuthorizedDataElements.isEmpty()) {
+                MapBuilder<MapBuilder<MapBuilder<CborBuilder>>> authDataElemOuter =
+                        keyAuthMapBuilder.putMap("dataElements");
+                for (String namespace : mAuthorizedDataElements.keySet()) {
+                    ArrayBuilder<MapBuilder<MapBuilder<MapBuilder<CborBuilder>>>> authDataElemInner =
+                            authDataElemOuter.putArray(namespace);
+                    for (String dataElemIdentifier : mAuthorizedDataElements.get(namespace)) {
+                        authDataElemInner.add(dataElemIdentifier);
+                    }
+                    authDataElemInner.end();
+                }
+                authDataElemOuter.end();
+            }
+            keyAuthMapBuilder.end();
+        }
+
+        if (!mKeyInfo.isEmpty()) {
+            MapBuilder<MapBuilder<CborBuilder>> keyInfoMapBuilder = deviceKeyMapBuilder.putMap("keyInfo");
+            for (Integer label : mKeyInfo.keySet()) {
+                keyInfoMapBuilder.put(label, mKeyInfo.get(label));
+            }
+            keyInfoMapBuilder.end();
+        }
+
+        deviceKeyMapBuilder.end();
+        return deviceKeyBuilder;
+    }
+
+    @NonNull
+    private CborBuilder generateValidityInfoBuilder() {
+        CborBuilder validityInfoBuilder = new CborBuilder();
+        MapBuilder<CborBuilder> validityMapBuilder = validityInfoBuilder.addMap();
+        validityMapBuilder.put("signed", mSigned.toEpochMilli());
+        validityMapBuilder.put("validFrom", mValidFrom.toEpochMilli());
+        validityMapBuilder.put("validUntil", mValidUntil.toEpochMilli());
+        if (mExpectedUpdate != null) {
+            validityMapBuilder.put("expectedUpdate", mExpectedUpdate.toEpochMilli());
+        }
+        validityMapBuilder.end();
+        return validityInfoBuilder;
+    }
+
     /**
      * Builds the <code>MobileSecurityObject</code> CBOR.
      *
@@ -187,61 +246,14 @@ public class MobileSecurityObjectGenerator {
             throw new IllegalStateException("Must call setValidityInfo before generating");
         }
 
-        CborBuilder deviceKeyBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> deviceKeyMapBuilder = deviceKeyBuilder.addMap();
-        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.getEncoded());
-        if (!mAuthorizedNameSpaces.isEmpty() | !mAuthorizedDataElements.isEmpty()) {
-            MapBuilder<MapBuilder<CborBuilder>> keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations");
-            if (!mAuthorizedNameSpaces.isEmpty()) {
-                ArrayBuilder<MapBuilder<MapBuilder<CborBuilder>>> authNameSpacesArrayBuilder =
-                        keyAuthMapBuilder.putArray("nameSpaces");
-                for (String namespace : mAuthorizedNameSpaces) {
-                    authNameSpacesArrayBuilder.add(namespace);
-                }
-                authNameSpacesArrayBuilder.end();
-            }
-            if (!mAuthorizedDataElements.isEmpty()) {
-                MapBuilder<MapBuilder<MapBuilder<CborBuilder>>> authDataElemOuter =
-                        keyAuthMapBuilder.putMap("dataElements");
-                for (String namespace : mAuthorizedDataElements.keySet()) {
-                    ArrayBuilder<MapBuilder<MapBuilder<MapBuilder<CborBuilder>>>> authDataElemInner =
-                            authDataElemOuter.putArray(namespace);
-                    for (String dataElemIdentifier : mAuthorizedDataElements.get(namespace)) {
-                        authDataElemInner.add(dataElemIdentifier);
-                    }
-                    authDataElemInner.end();
-                }
-                authDataElemOuter.end();
-            }
-            keyAuthMapBuilder.end();
-        }
-        if (!mKeyInfo.isEmpty()) {
-            MapBuilder<MapBuilder<CborBuilder>> keyInfoMapBuilder = deviceKeyMapBuilder.putMap("keyInfo");
-            for (Integer label : mKeyInfo.keySet()) {
-                keyInfoMapBuilder.put(label, mKeyInfo.get(label));
-            }
-            keyInfoMapBuilder.end();
-        }
-        deviceKeyMapBuilder.end();
-
-        CborBuilder validityInfoBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> validityMapBuilder = validityInfoBuilder.addMap();
-        validityMapBuilder.put("signed", mSigned.toEpochMilli());
-        validityMapBuilder.put("validFrom", mValidFrom.toEpochMilli());
-        validityMapBuilder.put("validUntil", mValidUntil.toEpochMilli());
-        if (mExpectedUpdate != null) {
-            validityMapBuilder.put("expectedUpdate", mExpectedUpdate.toEpochMilli());
-        }
-        validityMapBuilder.end();
-
         CborBuilder msoBuilder = new CborBuilder();
         MapBuilder<CborBuilder> msoMapBuilder = msoBuilder.addMap();
         msoMapBuilder.put("version", "1.0");
         msoMapBuilder.put("digestAlgorithm", mDigestAlgorithm);
         msoMapBuilder.put("docType", mDocType);
         msoMapBuilder.put(new UnicodeString("valueDigests"), mValueDigestsBuilder.build().get(0));
-        msoMapBuilder.put(new UnicodeString("deviceKeyInfo"), deviceKeyBuilder.build().get(0));
-        msoMapBuilder.put(new UnicodeString("validityInfo"), validityInfoBuilder.build().get(0));
+        msoMapBuilder.put(new UnicodeString("deviceKeyInfo"), generateDeviceKeyBuilder().build().get(0));
+        msoMapBuilder.put(new UnicodeString("validityInfo"), generateValidityInfoBuilder().build().get(0));
         msoMapBuilder.end();
 
         return Util.cborEncodeWithoutCanonicalizing(msoBuilder.build().get(0));
