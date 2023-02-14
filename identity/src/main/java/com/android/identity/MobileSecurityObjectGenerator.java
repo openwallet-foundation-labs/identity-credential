@@ -3,8 +3,13 @@ package com.android.identity;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import co.nstant.in.cbor.CborBuilder;
+import co.nstant.in.cbor.builder.ArrayBuilder;
+import co.nstant.in.cbor.builder.MapBuilder;
+import co.nstant.in.cbor.model.UnicodeString;
 import java.security.PublicKey;
-import java.security.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,13 +18,32 @@ public class MobileSecurityObjectGenerator {
     private final String mDigestAlgorithm;
     private final String mDocType;
 
+    private final CborBuilder mValueDigestsBuilder = new CborBuilder();
+    private final MapBuilder<CborBuilder> mValueDigestsOuter = mValueDigestsBuilder.addMap();
+    private Boolean digestEmpty = true;
+
+    private final List<String> mAuthorizedNameSpaces = new ArrayList<>();
+    private final Map<String, List<String>> mAuthorizedDataElements = new HashMap<>();
+    private final Map<Integer, byte[]> mKeyInfo = new HashMap<>();
+
+    private PublicKey mDeviceKey;
+    private Timestamp mSigned, mValidFrom, mValidUntil, mExpectedUpdate;
+
     /**
      * Constructs a new {@link MobileSecurityObjectGenerator}.
      *
      * @param digestAlgorithm The digest algorithm identifier. Must be one of {"SHA-256", "SHA-384", "SHA-512"}.
      * @param docType The document type.
+     * @exception IllegalArgumentException if the <code>digestAlgorithm</code> is not one of
+     *                                     {"SHA-256", "SHA-384", "SHA-512"}.
      */
     public MobileSecurityObjectGenerator(@NonNull String digestAlgorithm, @NonNull String docType) {
+        final List<String> allowableDigestAlgorithms = List.of("SHA-256", "SHA-384", "SHA-512");
+        if (!allowableDigestAlgorithms.contains(digestAlgorithm)) {
+            throw new IllegalArgumentException("digestAlgorithm must be one of " +
+                    allowableDigestAlgorithms);
+        }
+
         mDigestAlgorithm = digestAlgorithm;
         mDocType = docType;
     }
@@ -32,11 +56,23 @@ public class MobileSecurityObjectGenerator {
      * @param digestIDs A non-empty mapping between a <code>DigestID</code> and a
      *                  <code>Digest</code>.
      * @return The <code>MobileSecurityObjectGenerator</code>.
+     * @exception IllegalArgumentException if the <code>digestIDs</code> is empty.
      */
     @NonNull
     public MobileSecurityObjectGenerator addDigestIDs(@NonNull String nameSpace,
             @NonNull Map<Long, String> digestIDs) {
-        return null;
+
+        if (digestIDs.isEmpty()) {
+            throw new IllegalArgumentException("digestIDs must not be empty");
+        }
+        digestEmpty = false;
+
+        MapBuilder<MapBuilder<CborBuilder>> valueDigestsInner = mValueDigestsOuter.putMap(nameSpace);
+        for (Long digestID : digestIDs.keySet()) {
+            valueDigestsInner.put(digestID, digestIDs.get(digestID));
+        }
+        valueDigestsInner.end();
+        return this;
     }
 
     /**
@@ -49,8 +85,8 @@ public class MobileSecurityObjectGenerator {
      */
     @NonNull
     public MobileSecurityObjectGenerator setDeviceKey(@NonNull PublicKey deviceKey) {
-
-        return null;
+        mDeviceKey = deviceKey;
+        return this;
     }
 
     /**
@@ -60,14 +96,16 @@ public class MobileSecurityObjectGenerator {
      * namespace, that namespace shall not be included in 
      * {@link #setDeviceKeyAuthorizedDataElements(Map)}.
      *
-     * @param authorizedNameSpaces A non-empty list of namespaces which should be given authorization.
+     * @param authorizedNameSpaces A list of namespaces which should be given authorization.
      * @return The <code>MobileSecurityObjectGenerator</code>.
      */
     @NonNull
     public MobileSecurityObjectGenerator setDeviceKeyAuthorizedNameSpaces(
             @NonNull List<String> authorizedNameSpaces) {
 
-        return null;
+        mAuthorizedNameSpaces.clear();
+        mAuthorizedNameSpaces.addAll(authorizedNameSpaces);
+        return this;
     }
 
     /**
@@ -76,7 +114,7 @@ public class MobileSecurityObjectGenerator {
      * included in the <code>authorizedDataElements</code> mapping. If a namespace is included here,
      * then it should not be included in {@link #setDeviceKeyAuthorizedNameSpaces(List)}
      *
-     * @param authorizedDataElements A non-empty mapping from namespaces to a non-empty list of
+     * @param authorizedDataElements A mapping from namespaces to a list of
      *                               <code>DataElementIdentifier</code>
      * @return The <code>MobileSecurityObjectGenerator</code>.
      */
@@ -84,7 +122,9 @@ public class MobileSecurityObjectGenerator {
     public MobileSecurityObjectGenerator setDeviceKeyAuthorizedDataElements(
             @NonNull Map<String, List<String>> authorizedDataElements) {
 
-        return null;
+        mAuthorizedDataElements.clear();
+        mAuthorizedDataElements.putAll(authorizedDataElements);
+        return this;
     }
 
     /**
@@ -96,7 +136,9 @@ public class MobileSecurityObjectGenerator {
      */
     @NonNull
     public MobileSecurityObjectGenerator setDeviceKeyInfo(@NonNull Map<Integer, byte[]> keyInfo) {
-        return null;
+        mKeyInfo.clear();
+        mKeyInfo.putAll(keyInfo);
+        return this;
     }
 
     /**
@@ -118,7 +160,11 @@ public class MobileSecurityObjectGenerator {
             @NonNull Timestamp validFrom, @NonNull Timestamp validUntil,
             @Nullable Timestamp expectedUpdate) {
 
-        return null;
+        mSigned = signed;
+        mValidFrom = validFrom;
+        mValidUntil = validUntil;
+        mExpectedUpdate = expectedUpdate;
+        return this;
     }
 
     /**
@@ -133,8 +179,72 @@ public class MobileSecurityObjectGenerator {
      */
     @NonNull
     public byte[] generate() {
+        if (digestEmpty) {
+            throw new IllegalStateException("Must call addDigestIDs before generating");
+        } else if (mDeviceKey == null) {
+            throw new IllegalStateException("Must call setDeviceKey before generating");
+        } else if (mSigned == null) {
+            throw new IllegalStateException("Must call setValidityInfo before generating");
+        }
 
-        return new byte[0];
+        CborBuilder deviceKeyBuilder = new CborBuilder();
+        MapBuilder<CborBuilder> deviceKeyMapBuilder = deviceKeyBuilder.addMap();
+        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.getEncoded());
+        if (!mAuthorizedNameSpaces.isEmpty() | !mAuthorizedDataElements.isEmpty()) {
+            MapBuilder<MapBuilder<CborBuilder>> keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations");
+            if (!mAuthorizedNameSpaces.isEmpty()) {
+                ArrayBuilder<MapBuilder<MapBuilder<CborBuilder>>> authNameSpacesArrayBuilder =
+                        keyAuthMapBuilder.putArray("nameSpaces");
+                for (String namespace : mAuthorizedNameSpaces) {
+                    authNameSpacesArrayBuilder.add(namespace);
+                }
+                authNameSpacesArrayBuilder.end();
+            }
+            if (!mAuthorizedDataElements.isEmpty()) {
+                MapBuilder<MapBuilder<MapBuilder<CborBuilder>>> authDataElemOuter =
+                        keyAuthMapBuilder.putMap("dataElements");
+                for (String namespace : mAuthorizedDataElements.keySet()) {
+                    ArrayBuilder<MapBuilder<MapBuilder<MapBuilder<CborBuilder>>>> authDataElemInner =
+                            authDataElemOuter.putArray(namespace);
+                    for (String dataElemIdentifier : mAuthorizedDataElements.get(namespace)) {
+                        authDataElemInner.add(dataElemIdentifier);
+                    }
+                    authDataElemInner.end();
+                }
+                authDataElemOuter.end();
+            }
+            keyAuthMapBuilder.end();
+        }
+        if (!mKeyInfo.isEmpty()) {
+            MapBuilder<MapBuilder<CborBuilder>> keyInfoMapBuilder = deviceKeyMapBuilder.putMap("keyInfo");
+            for (Integer label : mKeyInfo.keySet()) {
+                keyInfoMapBuilder.put(label, mKeyInfo.get(label));
+            }
+            keyInfoMapBuilder.end();
+        }
+        deviceKeyMapBuilder.end();
+
+        CborBuilder validityInfoBuilder = new CborBuilder();
+        MapBuilder<CborBuilder> validityMapBuilder = validityInfoBuilder.addMap();
+        validityMapBuilder.put("signed", mSigned.toEpochMilli());
+        validityMapBuilder.put("validFrom", mValidFrom.toEpochMilli());
+        validityMapBuilder.put("validUntil", mValidUntil.toEpochMilli());
+        if (mExpectedUpdate != null) {
+            validityMapBuilder.put("expectedUpdate", mExpectedUpdate.toEpochMilli());
+        }
+        validityMapBuilder.end();
+
+        CborBuilder msoBuilder = new CborBuilder();
+        MapBuilder<CborBuilder> msoMapBuilder = msoBuilder.addMap();
+        msoMapBuilder.put("version", "1.0");
+        msoMapBuilder.put("digestAlgorithm", mDigestAlgorithm);
+        msoMapBuilder.put("docType", mDocType);
+        msoMapBuilder.put(new UnicodeString("valueDigests"), mValueDigestsBuilder.build().get(0));
+        msoMapBuilder.put(new UnicodeString("deviceKeyInfo"), deviceKeyBuilder.build().get(0));
+        msoMapBuilder.put(new UnicodeString("validityInfo"), validityInfoBuilder.build().get(0));
+        msoMapBuilder.end();
+
+        return Util.cborEncodeWithoutCanonicalizing(msoBuilder.build().get(0));
     }
 
 }
