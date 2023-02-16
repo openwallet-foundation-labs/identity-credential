@@ -6,12 +6,19 @@ import java.security.PublicKey;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Helper class for parsing the bytes of <code>DeviceResponse</code>
+ * <a href="http://cbor.io/">CBOR</a>
+ * as specified in <em>ISO/IEC 18013-5</em> section 9.1.2 <em>Issuer data authentication</em>.
+ */
 public class MobileSecurityObjectParser {
+    private byte[] mEncodedMobileSecurityObject;
 
     /**
      * Constructs a {@link MobileSecurityObjectParser}.
      */
-    public MobileSecurityObjectParser() {}
+    public MobileSecurityObjectParser() {
+    }
 
     /**
      * Sets the bytes of the <code>MobileSecurityObject</code> CBOR.
@@ -22,8 +29,8 @@ public class MobileSecurityObjectParser {
     @NonNull
     public MobileSecurityObjectParser setMobileSecurityObject(
             @NonNull byte[] encodedMobileSecurityObject) {
-
-        return null;
+        mEncodedMobileSecurityObject = encodedMobileSecurityObject;
+        return this;
     }
 
     /**
@@ -38,8 +45,12 @@ public class MobileSecurityObjectParser {
      * methods on this class.
      */
     public @NonNull MobileSecurityObject parse() {
-
-        return null;
+        if (mEncodedMobileSecurityObject == null) {
+            throw new IllegalStateException("mobileSecurityObject has not been set");
+        }
+        MobileSecurityObject mso = new MobileSecurityObject();
+        mso.parse(mEncodedMobileSecurityObject);
+        return mso;
     }
 
     /**
@@ -48,12 +59,18 @@ public class MobileSecurityObjectParser {
      * as specified in <em>ISO/IEC 18013-5</em> section 9.1.2 <em>Issuer data authentication</em>
      */
     public static class MobileSecurityObject {
+        private String mVersion;
+
         MobileSecurityObject() {}
 
+        /**
+         * Gets the version string set in the <code>MobileSecurityObject</code> CBOR.
+         *
+         * @return the version string e.g. "1.0".
+         */
         @NonNull
         public String getVersion() {
-
-            return null;
+            return mVersion;
         }
 
         @NonNull
