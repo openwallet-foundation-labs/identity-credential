@@ -140,9 +140,7 @@ public class MobileSecurityObjectParser {
          * @return The list of namespaces which should be given authorization.
          */
         @Nullable
-        public List<String> getDeviceKeyAuthorizedNameSpaces() {
-            return mAuthorizedNameSpaces;
-        }
+        public List<String> getDeviceKeyAuthorizedNameSpaces() { return mAuthorizedNameSpaces; }
 
         /**
          * Gets the <code>AuthorizedDataElements</code> portion of the <code>keyAuthorizations</code>
@@ -162,10 +160,7 @@ public class MobileSecurityObjectParser {
          * @return A mapping to represent additional key information.
          */
         @Nullable
-        public Map<Integer, byte[]> getDeviceKeyInfo() {
-
-            return null;
-        }
+        public Map<Integer, byte[]> getDeviceKeyInfo() { return mDeviceKeyInfo; }
 
         /**
          * Gets the timestamp at which the MSO signature was created, as set in the
