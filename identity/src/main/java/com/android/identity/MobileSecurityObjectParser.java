@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,6 +68,9 @@ public class MobileSecurityObjectParser {
         private String mDigestAlgorithm;
         private String mDocType;
         private Map<String, Map<Long, byte[]>> mValueDigests;
+        private PublicKey mDeviceKey;
+        private List<String> mAuthorizedNameSpaces;
+        private Map<String, List<String>> mAuthorizedDataElements;
         private Map<Integer, byte[]> mDeviceKeyInfo;
         private Timestamp mSigned, mValidFrom, mValidUntil, mExpectedUpdate;
 
@@ -75,7 +79,7 @@ public class MobileSecurityObjectParser {
         /**
          * Gets the version string set in the <code>MobileSecurityObject</code> CBOR.
          *
-         * @return the version string e.g. "1.0".
+         * @return The version string e.g. "1.0".
          */
         @NonNull
         public String getVersion() {
@@ -85,7 +89,7 @@ public class MobileSecurityObjectParser {
         /**
          * Gets the digest algorithm set in the <code>MobileSecurityObject</code> CBOR.
          *
-         * @return the digest algorithm e.g. "SHA-256".
+         * @return The digest algorithm e.g. "SHA-256".
          */
         @NonNull
         public String getDigestAlgorithm() { return mDigestAlgorithm; }
@@ -93,7 +97,7 @@ public class MobileSecurityObjectParser {
         /**
          * Gets the document type set in the <code>MobileSecurityObject</code> CBOR.
          *
-         * @return the document type e.g. "org.iso.18013.5.1.mDL".
+         * @return The document type e.g. "org.iso.18013.5.1.mDL".
          */
         @NonNull
         public String getDocType() { return mDocType; }
@@ -102,35 +106,61 @@ public class MobileSecurityObjectParser {
          * Gets the set of namespaces provided in the ValueDigests map within the
          * <code>MobileSecurityObject</code> CBOR.
          *
-         * @return the set of namespaces provided in the ValueDigests map.
+         * @return The set of namespaces provided in the ValueDigests map.
          */
         @Nullable
         public Set<String> getValueDigestNamespaces() { return mValueDigests.keySet(); }
 
-        @NonNull
-        public Map<Long, byte[]> getDigestIDs(@NonNull String Namespace) {
-
-            return null;
+        /**
+         * Gets a non-empty mapping between a <code>DigestID</code> and a <code>Digest</code> for a
+         * particular namespace, as set in the ValueDigests map within the
+         * <code>MobileSecurityObject</code> CBOR.
+         *
+         * @param namespace The namespace of interest.
+         * @return The mapping present for that namespace if it exists within the ValueDigests,
+         *         else null.
+         */
+        @Nullable
+        public Map<Long, byte[]> getDigestIDs(@NonNull String namespace) {
+            return mValueDigests.get(namespace);
         }
 
+        /**
+         * Gets the mdoc authentication public key set in the <code>MobileSecurityObject</code> CBOR.
+         *
+         * @return The public part of the key pair used for mdoc authentication.
+         */
         @NonNull
-        public PublicKey getDeviceKey() {
+        public PublicKey getDeviceKey() { return mDeviceKey; }
 
-            return null;
-        }
-
+        /**
+         * Gets the <code>AuthorizedNameSpaces</code> portion of the <code>keyAuthorizations</code>
+         * within <code>DeviceKeyInfo</code>.
+         *
+         * @return The list of namespaces which should be given authorization.
+         */
         @Nullable
         public List<String> getDeviceKeyAuthorizedNameSpaces() {
-
-            return null;
+            return mAuthorizedNameSpaces;
         }
 
+        /**
+         * Gets the <code>AuthorizedDataElements</code> portion of the <code>keyAuthorizations</code>
+         * within <code>DeviceKeyInfo</code>.
+         *
+         * @return A mapping from namespaces to a list of <code>DataElementIdentifier</code>.
+         */
         @Nullable
         public Map<String, List<String>> getDeviceKeyAuthorizedDataElements() {
-
-            return null;
+            return mAuthorizedDataElements;
         }
 
+        /**
+         * Gets extra info for the mdoc authentication public key as part of the
+         * <code>KeyInfo</code> portion of the <code>DeviceKeyInfo</code>.
+         *
+         * @return A mapping to represent additional key information.
+         */
         @Nullable
         public Map<Integer, byte[]> getDeviceKeyInfo() {
 
@@ -141,7 +171,7 @@ public class MobileSecurityObjectParser {
          * Gets the timestamp at which the MSO signature was created, as set in the
          * <code>MobileSecurityObject</code> CBOR.
          *
-         * @return the timestamp at which the MSO signature was created.
+         * @return The timestamp at which the MSO signature was created.
          */
         @NonNull
         public Timestamp getSigned() { return mSigned; }
@@ -150,7 +180,7 @@ public class MobileSecurityObjectParser {
          * Gets the timestamp before which the MSO is not yet valid, as set in the
          * <code>MobileSecurityObject</code> CBOR.
          *
-         * @return the timestamp before which the MSO is not yet valid.
+         * @return The timestamp before which the MSO is not yet valid.
          */
         @NonNull
         public Timestamp getValidFrom() { return mValidFrom; }
@@ -159,7 +189,7 @@ public class MobileSecurityObjectParser {
          * Gets the timestamp after which the MSO is no longer valid, as set in the
          * <code>MobileSecurityObject</code> CBOR.
          *
-         * @return the timestamp after which the MSO is no longer valid.
+         * @return The timestamp after which the MSO is no longer valid.
          */
         @NonNull
         public Timestamp getValidUntil() { return mValidUntil; }
@@ -168,14 +198,61 @@ public class MobileSecurityObjectParser {
          * Gets the timestamp at which the issuing authority infrastructure expects to re-sign the
          * MSO, if provided in the <code>MobileSecurityObject</code> CBOR, else null.
          *
-         * @return the timestamp at which the issuing authority infrastructure expects to re-sign
+         * @return The timestamp at which the issuing authority infrastructure expects to re-sign
          * the MSO.
          */
         @Nullable
         public Timestamp getExpectedUpdate() { return mExpectedUpdate; }
 
         private void parseValueDigests(DataItem valueDigests) {
+            mValueDigests = new HashMap<>();
+            for (String namespace : Util.cborMapExtractMapStringKeys(valueDigests)) {
+                DataItem digestIDsDataItem = Util.cborMapExtractMap(valueDigests, namespace);
 
+                Map<Long, byte[]> digestIDs = new HashMap<>();
+                for (Long digestID : Util.cborMapExtractMapNumberKeys(digestIDsDataItem)) {
+                    digestIDs.put(digestID, Util.cborMapExtractByteString(digestIDsDataItem, digestID));
+                }
+
+                mValueDigests.put(namespace, digestIDs);
+            }
+        }
+
+        private void parseDeviceKeyInfo(DataItem deviceKeyInfo) {
+            mDeviceKey = Util.coseKeyDecode(Util.cborMapExtract(deviceKeyInfo, "deviceKey"));
+
+            mAuthorizedNameSpaces = new ArrayList<>();
+            mAuthorizedDataElements = new HashMap<>();
+            if (Util.cborMapHasKey(deviceKeyInfo, "keyAuthorizations")) {
+                DataItem keyAuth = Util.cborMapExtractMap(deviceKeyInfo, "keyAuthorizations");
+                if (Util.cborMapHasKey(keyAuth, "nameSpaces")) {
+                    List<DataItem> nsDataItems = Util.cborMapExtractArray(keyAuth, "nameSpaces");
+                    for (DataItem nsDataItem : nsDataItems) {
+                        mAuthorizedNameSpaces.add(Util.checkedStringValue(nsDataItem));
+                    }
+                }
+
+                if (Util.cborMapHasKey(keyAuth, "dataElements")) {
+                    DataItem dataElements = Util.cborMapExtractMap(deviceKeyInfo, "dataElements");
+                    for (String namespace : Util.cborMapExtractMapStringKeys(dataElements)) {
+                        List<DataItem> dataElemDataItem = Util.cborMapExtractArray(keyAuth, namespace);
+                        List<String> dataElemArray = new ArrayList<>();
+                        for (DataItem dataElementIdentifier : dataElemDataItem) {
+                            dataElemArray.add(Util.checkedStringValue(dataElementIdentifier));
+                        }
+
+                        mAuthorizedDataElements.put(namespace, dataElemArray);
+                    }
+                }
+            }
+
+            mDeviceKeyInfo = new HashMap<>();
+            if (Util.cborMapHasKey(deviceKeyInfo, "keyInfo")) {
+                DataItem keyInfo = Util.cborMapExtractMap(deviceKeyInfo, "keyInfo");
+                for (Long keyInfoKey : Util.cborMapExtractMapNumberKeys(keyInfo)) {
+                    mDeviceKeyInfo.put(keyInfoKey.intValue(), Util.cborMapExtractByteString(keyInfo, keyInfoKey));
+                }
+            }
         }
 
         private void parseValidityInfo(DataItem validityInfo) {
@@ -187,7 +264,15 @@ public class MobileSecurityObjectParser {
             } else {
                 mExpectedUpdate = null;
             }
-            // TODO assert the relative times are as expected
+
+            if (mValidFrom.toEpochMilli() < mSigned.toEpochMilli()) {
+                throw new IllegalArgumentException("The validFrom timestamp should be equal or later " +
+                        "than the signed timestamp");
+            }
+            if (mValidUntil.toEpochMilli() <= mValidFrom.toEpochMilli()) {
+                throw new IllegalArgumentException("The validUntil timestamp should be later " +
+                        "than the validFrom timestamp");
+            }
         }
 
         void parse(byte[] encodedMobileSecurityObject) {
@@ -207,6 +292,7 @@ public class MobileSecurityObjectParser {
 
             mDocType = Util.cborMapExtractString(mso, "docType");
             parseValueDigests(Util.cborMapExtract(mso, "valueDigests"));
+            parseDeviceKeyInfo(Util.cborMapExtract(mso, "deviceKeyInfo"));
             parseValidityInfo(Util.cborMapExtract(mso, "validityInfo"));
         }
     }
