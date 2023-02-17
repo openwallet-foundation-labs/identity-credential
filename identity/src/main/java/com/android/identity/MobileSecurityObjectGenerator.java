@@ -153,13 +153,22 @@ public class MobileSecurityObjectGenerator {
      *                       later than the validFrom element.
      * @param expectedUpdate Optional: if provided, represents the timestamp at which the issuing
      *                       authority infrastructure expects to re-sign the MSO, else, null
-     * @return
+     * @return The <code>MobileSecurityObjectGenerator</code>.
+     * @exception IllegalArgumentException if the times are do not meet the constraints.
      */
     @NonNull
     public MobileSecurityObjectGenerator setValidityInfo(@NonNull Timestamp signed,
             @NonNull Timestamp validFrom, @NonNull Timestamp validUntil,
             @Nullable Timestamp expectedUpdate) {
 
+        if (validFrom.toEpochMilli() < signed.toEpochMilli()) {
+            throw new IllegalArgumentException("The validFrom timestamp should be equal or later " +
+                    "than the signed timestamp");
+        }
+        if (validUntil.toEpochMilli() <= validFrom.toEpochMilli()) {
+            throw new IllegalArgumentException("The validUntil timestamp should be later " +
+                    "than the validFrom timestamp");
+        }
         mSigned = signed;
         mValidFrom = validFrom;
         mValidUntil = validUntil;
@@ -171,7 +180,7 @@ public class MobileSecurityObjectGenerator {
     private CborBuilder generateDeviceKeyBuilder() {
         CborBuilder deviceKeyBuilder = new CborBuilder();
         MapBuilder<CborBuilder> deviceKeyMapBuilder = deviceKeyBuilder.addMap();
-        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.getEncoded());
+        deviceKeyMapBuilder.put(new UnicodeString("deviceKey"), Util.cborBuildCoseKey(mDeviceKey));
 
         if (!mAuthorizedNameSpaces.isEmpty() | !mAuthorizedDataElements.isEmpty()) {
             MapBuilder<MapBuilder<CborBuilder>> keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations");
@@ -216,11 +225,11 @@ public class MobileSecurityObjectGenerator {
     private CborBuilder generateValidityInfoBuilder() {
         CborBuilder validityInfoBuilder = new CborBuilder();
         MapBuilder<CborBuilder> validityMapBuilder = validityInfoBuilder.addMap();
-        validityMapBuilder.put("signed", mSigned.toEpochMilli());
-        validityMapBuilder.put("validFrom", mValidFrom.toEpochMilli());
-        validityMapBuilder.put("validUntil", mValidUntil.toEpochMilli());
+        validityMapBuilder.put("signed", Util.cborEncodeDateTime(mSigned));
+        validityMapBuilder.put("validFrom", Util.cborEncodeDateTime(mValidFrom));
+        validityMapBuilder.put("validUntil", Util.cborEncodeDateTime(mValidUntil));
         if (mExpectedUpdate != null) {
-            validityMapBuilder.put("expectedUpdate", mExpectedUpdate.toEpochMilli());
+            validityMapBuilder.put("expectedUpdate", Util.cborEncodeDateTime(mExpectedUpdate));
         }
         validityMapBuilder.end();
         return validityInfoBuilder;
