@@ -3,7 +3,7 @@ package com.android.mdl.app.transfer
 import android.annotation.SuppressLint
 import android.content.Context
 import com.android.identity.DeviceRequestParser
-import com.android.identity.PresentationHelper
+import com.android.identity.DeviceRetrievalHelper
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
 
@@ -12,10 +12,10 @@ class Communication private constructor(
 ) {
 
     private var request: DeviceRequest? = null
-    private var presentation: PresentationHelper? = null
+    private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
-    fun setupPresentation(presentationHelper: PresentationHelper) {
-        this.presentation = presentationHelper
+    fun setupPresentation(deviceRetrievalHelper: DeviceRetrievalHelper) {
+        this.deviceRetrievalHelper = deviceRetrievalHelper
     }
 
     fun setDeviceRequest(deviceRequest: ByteArray) {
@@ -24,7 +24,7 @@ class Communication private constructor(
 
     fun getDeviceRequest(): DeviceRequestParser.DeviceRequest {
         request?.let { requestBytes ->
-            presentation?.let { presentation ->
+            deviceRetrievalHelper?.let { presentation ->
                 val parser = DeviceRequestParser()
                 parser.setSessionTranscript(presentation.sessionTranscript)
                 parser.setDeviceRequest(requestBytes.value)
@@ -40,17 +40,17 @@ class Communication private constructor(
                 log("Completed...")
             }
         }
-        presentation?.sendDeviceResponse(deviceResponse, progressListener, context.mainExecutor())
+        deviceRetrievalHelper?.sendDeviceResponse(deviceResponse, progressListener, context.mainExecutor())
     }
 
     fun stopPresentation(
         sendSessionTerminationMessage: Boolean,
         useTransportSpecificSessionTermination: Boolean
     ) {
-        presentation?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
+        deviceRetrievalHelper?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
         try {
-            if (presentation?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
-                presentation?.setUseTransportSpecificSessionTermination(true)
+            if (deviceRetrievalHelper?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
+                deviceRetrievalHelper?.setUseTransportSpecificSessionTermination(true)
             }
         } catch (e: IllegalStateException) {
             log("Error ignored.", e)
@@ -61,7 +61,7 @@ class Communication private constructor(
     fun disconnect() {
         request = null
         try {
-            presentation?.disconnect()
+            deviceRetrievalHelper?.disconnect()
         } catch (e: RuntimeException) {
             log("Error ignored closing presentation", e)
         }

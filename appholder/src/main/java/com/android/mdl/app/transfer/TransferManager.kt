@@ -106,9 +106,9 @@ class TransferManager private constructor(private val context: Context) {
             context = context,
             onConnecting = { transferStatusLd.value = TransferStatus.CONNECTING },
             onQrEngagementReady = { transferStatusLd.value = TransferStatus.QR_ENGAGEMENT_READY },
-            onPresentationReady = { session, presentation ->
+            onDeviceRetrievalHelperReady = { session, deviceRetrievalHelper ->
                 this.session = session
-                communication.setupPresentation(presentation)
+                communication.setupPresentation(deviceRetrievalHelper)
                 transferStatusLd.value = TransferStatus.CONNECTED
             },
             onNewDeviceRequest = { deviceRequest ->

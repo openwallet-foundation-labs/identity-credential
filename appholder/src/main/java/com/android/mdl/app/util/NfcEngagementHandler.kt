@@ -24,7 +24,7 @@ import android.os.Looper
 import androidx.navigation.NavDeepLinkBuilder
 import com.android.identity.DataTransport
 import com.android.identity.NfcEngagementHelper
-import com.android.identity.PresentationHelper
+import com.android.identity.DeviceRetrievalHelper
 import com.android.identity.PresentationSession
 import com.android.mdl.app.MainActivity
 import com.android.mdl.app.R
@@ -41,7 +41,7 @@ class NfcEngagementHandler : HostApduService() {
     private lateinit var session: PresentationSession
     private lateinit var communication: Communication
     private lateinit var transferManager: TransferManager
-    private var presentation: PresentationHelper? = null
+    private var presentation: DeviceRetrievalHelper? = null
 
     private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
 
@@ -70,7 +70,7 @@ class NfcEngagementHandler : HostApduService() {
             }
 
             log("Engagement Listener: Device Connected via NFC")
-            val builder = PresentationHelper.Builder(
+            val builder = DeviceRetrievalHelper.Builder(
                 applicationContext,
                 presentationListener,
                 applicationContext.mainExecutor(),
@@ -95,7 +95,7 @@ class NfcEngagementHandler : HostApduService() {
         }
     }
 
-    private val presentationListener = object : PresentationHelper.Listener {
+    private val presentationListener = object : DeviceRetrievalHelper.Listener {
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             log("Presentation Listener: OnDeviceRequest")

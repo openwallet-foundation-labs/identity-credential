@@ -62,7 +62,7 @@ import co.nstant.in.cbor.model.UnicodeString;
 
 @SuppressWarnings("deprecation")
 @RunWith(AndroidJUnit4.class)
-public class PresentationHelperTest {
+public class DeviceRetrievalHelperTest {
 
     private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
@@ -287,9 +287,9 @@ public class PresentationHelperTest {
         verifierTransport.connect();
         Assert.assertTrue(condVarDeviceConnected.block(5000));
 
-        final PresentationHelper[] presentation = {null};
-        PresentationHelper.Listener listener =
-                new PresentationHelper.Listener() {
+        final DeviceRetrievalHelper[] presentation = {null};
+        DeviceRetrievalHelper.Listener listener =
+                new DeviceRetrievalHelper.Listener() {
 
                     @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
@@ -370,7 +370,7 @@ public class PresentationHelperTest {
                     }
 
                 };
-        presentation[0] = new PresentationHelper.Builder(
+        presentation[0] = new DeviceRetrievalHelper.Builder(
                 context,
                 listener,
                 context.getMainExecutor(),
@@ -537,9 +537,9 @@ public class PresentationHelperTest {
         verifierTransport.connect();
         Assert.assertTrue(condVarDeviceConnected.block(5000));
 
-        final PresentationHelper[] presentation = {null};
-        PresentationHelper.Listener listener =
-                new PresentationHelper.Listener() {
+        final DeviceRetrievalHelper[] presentation = {null};
+        DeviceRetrievalHelper.Listener listener =
+                new DeviceRetrievalHelper.Listener() {
 
                     @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
@@ -559,7 +559,7 @@ public class PresentationHelperTest {
                     }
 
                 };
-        presentation[0] = new PresentationHelper.Builder(
+        presentation[0] = new DeviceRetrievalHelper.Builder(
                 context,
                 listener,
                 context.getMainExecutor(),
@@ -692,8 +692,8 @@ public class PresentationHelperTest {
         verifierTransport.connect();
         Assert.assertTrue(condVarDeviceConnected.block(5000));
 
-        PresentationHelper.Listener listener =
-                new PresentationHelper.Listener() {
+        DeviceRetrievalHelper.Listener listener =
+                new DeviceRetrievalHelper.Listener() {
                     @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
                         // Don't respond yet.. simulate the holder taking infinity to respond.
@@ -712,7 +712,7 @@ public class PresentationHelperTest {
                     }
 
                 };
-        PresentationHelper presentation = new PresentationHelper.Builder(
+        DeviceRetrievalHelper presentation = new DeviceRetrievalHelper.Builder(
                 context,
                 listener,
                 context.getMainExecutor(),

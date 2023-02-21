@@ -2,7 +2,7 @@ package com.android.mdl.app.transfer
 
 import android.content.Context
 import com.android.identity.DataTransport
-import com.android.identity.PresentationHelper
+import com.android.identity.DeviceRetrievalHelper
 import com.android.identity.PresentationSession
 import com.android.identity.QrEngagementHelper
 import com.android.mdl.app.util.log
@@ -12,7 +12,7 @@ class QrCommunicationSetup(
     private val context: Context,
     private val onConnecting: () -> Unit,
     private val onQrEngagementReady: () -> Unit,
-    private val onPresentationReady: (session: PresentationSession, presentation: PresentationHelper) -> Unit,
+    private val onDeviceRetrievalHelperReady: (session: PresentationSession, deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit,
     private val onNewDeviceRequest: (request: ByteArray) -> Unit,
     private val onSendResponseApdu: (responseApdu: ByteArray) -> Unit,
     private val onDisconnected: (transportSpecificTermination: Boolean) -> Unit,
@@ -35,14 +35,14 @@ class QrCommunicationSetup(
         }
 
         override fun onDeviceConnected(transport: DataTransport) {
-            if (presentation != null) {
+            if (deviceRetrievalHelper != null) {
                 log("OnDeviceConnected for QR engagement -> ignoring due to active presentation")
                 return
             }
             log("OnDeviceConnected via QR: qrEngagement=$qrEngagement")
-            val builder = PresentationHelper.Builder(
+            val builder = DeviceRetrievalHelper.Builder(
                 context,
-                presentationListener,
+                deviceRetrievalHelperListener,
                 context.mainExecutor(),
                 session
             )
@@ -51,10 +51,10 @@ class QrCommunicationSetup(
                 qrEngagement.deviceEngagement,
                 qrEngagement.handover
             )
-            presentation = builder.build()
-            presentation?.setSendSessionTerminationMessage(true)
+            deviceRetrievalHelper = builder.build()
+            deviceRetrievalHelper?.setSendSessionTerminationMessage(true)
             qrEngagement.close()
-            onPresentationReady(session, presentation!!)
+            onDeviceRetrievalHelperReady(session, deviceRetrievalHelper!!)
         }
 
         override fun onError(error: Throwable) {
@@ -63,26 +63,26 @@ class QrCommunicationSetup(
         }
     }
 
-    private val presentationListener = object : PresentationHelper.Listener {
+    private val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
-            log("Presentation Listener (QR): OnDeviceRequest")
+            log("DeviceRetrievalHelper Listener (QR): OnDeviceRequest")
             onNewDeviceRequest(deviceRequestBytes)
         }
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
-            log("Presentation Listener (QR): onDeviceDisconnected")
+            log("DeviceRetrievalHelper Listener (QR): onDeviceDisconnected")
             onDisconnected(transportSpecificTermination)
         }
 
         override fun onError(error: Throwable) {
-            log("Presentation Listener (QR): onError -> ${error.message}")
+            log("DeviceRetrievalHelper Listener (QR): onError -> ${error.message}")
             onCommunicationError(error)
         }
     }
 
     private lateinit var qrEngagement: QrEngagementHelper
-    private var presentation: PresentationHelper? = null
+    private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
     val deviceEngagementUriEncoded: String
         get() = qrEngagement.deviceEngagementUriEncoded
