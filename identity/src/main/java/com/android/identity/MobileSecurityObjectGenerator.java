@@ -60,7 +60,7 @@ public class MobileSecurityObjectGenerator {
      */
     @NonNull
     public MobileSecurityObjectGenerator addDigestIDs(@NonNull String nameSpace,
-            @NonNull Map<Long, String> digestIDs) {
+            @NonNull Map<Long, byte[]> digestIDs) {
 
         if (digestIDs.isEmpty()) {
             throw new IllegalArgumentException("digestIDs must not be empty");
@@ -225,11 +225,12 @@ public class MobileSecurityObjectGenerator {
     private CborBuilder generateValidityInfoBuilder() {
         CborBuilder validityInfoBuilder = new CborBuilder();
         MapBuilder<CborBuilder> validityMapBuilder = validityInfoBuilder.addMap();
-        validityMapBuilder.put("signed", Util.cborEncodeDateTime(mSigned));
-        validityMapBuilder.put("validFrom", Util.cborEncodeDateTime(mValidFrom));
-        validityMapBuilder.put("validUntil", Util.cborEncodeDateTime(mValidUntil));
+        validityMapBuilder.put(new UnicodeString("signed"), Util.cborBuildDateTime(mSigned));
+        validityMapBuilder.put(new UnicodeString("validFrom"), Util.cborBuildDateTime(mValidFrom));
+        validityMapBuilder.put(new UnicodeString("validUntil"), Util.cborBuildDateTime(mValidUntil));
         if (mExpectedUpdate != null) {
-            validityMapBuilder.put("expectedUpdate", Util.cborEncodeDateTime(mExpectedUpdate));
+            validityMapBuilder.put(new UnicodeString("expectedUpdate"),
+                    Util.cborBuildDateTime(mExpectedUpdate));
         }
         validityMapBuilder.end();
         return validityInfoBuilder;

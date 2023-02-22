@@ -108,7 +108,7 @@ public class MobileSecurityObjectParser {
          *
          * @return The set of namespaces provided in the ValueDigests map.
          */
-        @Nullable
+        @NonNull
         public Set<String> getValueDigestNamespaces() { return mValueDigests.keySet(); }
 
         /**
@@ -137,7 +137,8 @@ public class MobileSecurityObjectParser {
          * Gets the <code>AuthorizedNameSpaces</code> portion of the <code>keyAuthorizations</code>
          * within <code>DeviceKeyInfo</code>.
          *
-         * @return The list of namespaces which should be given authorization.
+         * @return The list of namespaces which should be given authorization, null if it does not
+         *         exist in the MSO.
          */
         @Nullable
         public List<String> getDeviceKeyAuthorizedNameSpaces() { return mAuthorizedNameSpaces; }
@@ -146,7 +147,8 @@ public class MobileSecurityObjectParser {
          * Gets the <code>AuthorizedDataElements</code> portion of the <code>keyAuthorizations</code>
          * within <code>DeviceKeyInfo</code>.
          *
-         * @return A mapping from namespaces to a list of <code>DataElementIdentifier</code>.
+         * @return A mapping from namespaces to a list of <code>DataElementIdentifier</code>, null
+         *         if it does not exist in the MSO.
          */
         @Nullable
         public Map<String, List<String>> getDeviceKeyAuthorizedDataElements() {
@@ -157,7 +159,8 @@ public class MobileSecurityObjectParser {
          * Gets extra info for the mdoc authentication public key as part of the
          * <code>KeyInfo</code> portion of the <code>DeviceKeyInfo</code>.
          *
-         * @return A mapping to represent additional key information.
+         * @return A mapping to represent additional key information, null if it does not exist in
+         *         the MSO.
          */
         @Nullable
         public Map<Integer, byte[]> getDeviceKeyInfo() { return mDeviceKeyInfo; }
@@ -216,11 +219,12 @@ public class MobileSecurityObjectParser {
         private void parseDeviceKeyInfo(DataItem deviceKeyInfo) {
             mDeviceKey = Util.coseKeyDecode(Util.cborMapExtract(deviceKeyInfo, "deviceKey"));
 
-            mAuthorizedNameSpaces = new ArrayList<>();
-            mAuthorizedDataElements = new HashMap<>();
+            mAuthorizedNameSpaces = null;
+            mAuthorizedDataElements = null;
             if (Util.cborMapHasKey(deviceKeyInfo, "keyAuthorizations")) {
                 DataItem keyAuth = Util.cborMapExtractMap(deviceKeyInfo, "keyAuthorizations");
                 if (Util.cborMapHasKey(keyAuth, "nameSpaces")) {
+                    mAuthorizedNameSpaces = new ArrayList<>();
                     List<DataItem> nsDataItems = Util.cborMapExtractArray(keyAuth, "nameSpaces");
                     for (DataItem nsDataItem : nsDataItems) {
                         mAuthorizedNameSpaces.add(Util.checkedStringValue(nsDataItem));
@@ -228,9 +232,10 @@ public class MobileSecurityObjectParser {
                 }
 
                 if (Util.cborMapHasKey(keyAuth, "dataElements")) {
-                    DataItem dataElements = Util.cborMapExtractMap(deviceKeyInfo, "dataElements");
+                    mAuthorizedDataElements = new HashMap<>();
+                    DataItem dataElements = Util.cborMapExtractMap(keyAuth, "dataElements");
                     for (String namespace : Util.cborMapExtractMapStringKeys(dataElements)) {
-                        List<DataItem> dataElemDataItem = Util.cborMapExtractArray(keyAuth, namespace);
+                        List<DataItem> dataElemDataItem = Util.cborMapExtractArray(dataElements, namespace);
                         List<String> dataElemArray = new ArrayList<>();
                         for (DataItem dataElementIdentifier : dataElemDataItem) {
                             dataElemArray.add(Util.checkedStringValue(dataElementIdentifier));
@@ -241,8 +246,9 @@ public class MobileSecurityObjectParser {
                 }
             }
 
-            mDeviceKeyInfo = new HashMap<>();
+            mDeviceKeyInfo = null;
             if (Util.cborMapHasKey(deviceKeyInfo, "keyInfo")) {
+                mDeviceKeyInfo = new HashMap<>();
                 DataItem keyInfo = Util.cborMapExtractMap(deviceKeyInfo, "keyInfo");
                 for (Long keyInfoKey : Util.cborMapExtractMapNumberKeys(keyInfo)) {
                     mDeviceKeyInfo.put(keyInfoKey.intValue(), Util.cborMapExtractByteString(keyInfo, keyInfoKey));
