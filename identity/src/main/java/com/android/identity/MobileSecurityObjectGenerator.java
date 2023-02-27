@@ -26,23 +26,29 @@ import co.nstant.in.cbor.model.UnicodeString;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+/**
+ * Helper class for building <code>MobileSecurityObject</code> <a href="http://cbor.io/">CBOR</a>
+ * as specified <em>ISO/IEC 18013-5</em> section 9.1.2 <em>Issuer data authentication</em>.
+ */
 public class MobileSecurityObjectGenerator {
 
     private final String mDigestAlgorithm;
     private final String mDocType;
+    private final PublicKey mDeviceKey;
 
     private final CborBuilder mValueDigestsBuilder = new CborBuilder();
     private final MapBuilder<CborBuilder> mValueDigestsOuter = mValueDigestsBuilder.addMap();
-    private Boolean digestEmpty = true;
+    private boolean digestEmpty = true;
 
     private final List<String> mAuthorizedNameSpaces = new ArrayList<>();
     private final Map<String, List<String>> mAuthorizedDataElements = new HashMap<>();
     private final Map<Integer, byte[]> mKeyInfo = new HashMap<>();
 
-    private PublicKey mDeviceKey;
     private Timestamp mSigned, mValidFrom, mValidUntil, mExpectedUpdate;
 
     /**
@@ -50,10 +56,12 @@ public class MobileSecurityObjectGenerator {
      *
      * @param digestAlgorithm The digest algorithm identifier. Must be one of {"SHA-256", "SHA-384", "SHA-512"}.
      * @param docType The document type.
+     * @param deviceKey The public part of the key pair used for mdoc authentication.
      * @exception IllegalArgumentException if the <code>digestAlgorithm</code> is not one of
      *                                     {"SHA-256", "SHA-384", "SHA-512"}.
      */
-    public MobileSecurityObjectGenerator(@NonNull String digestAlgorithm, @NonNull String docType) {
+    public MobileSecurityObjectGenerator(@NonNull String digestAlgorithm, @NonNull String docType,
+                                         @NonNull PublicKey deviceKey) {
         final List<String> allowableDigestAlgorithms = List.of("SHA-256", "SHA-384", "SHA-512");
         if (!allowableDigestAlgorithms.contains(digestAlgorithm)) {
             throw new IllegalArgumentException("digestAlgorithm must be one of " +
@@ -62,6 +70,7 @@ public class MobileSecurityObjectGenerator {
 
         mDigestAlgorithm = digestAlgorithm;
         mDocType = docType;
+        mDeviceKey = deviceKey;
     }
 
     /**
@@ -92,20 +101,6 @@ public class MobileSecurityObjectGenerator {
     }
 
     /**
-     * Sets the mdoc authentication public key as part of <code>DeviceKeyInfo</code>. This must be
-     * called before generating since this a required component of the
-     * <code>MobileSecurityObject</code>.
-     *
-     * @param deviceKey The public part of the key pair used for mdoc authentication.
-     * @return The <code>MobileSecurityObjectGenerator</code>.
-     */
-    @NonNull
-    public MobileSecurityObjectGenerator setDeviceKey(@NonNull PublicKey deviceKey) {
-        mDeviceKey = deviceKey;
-        return this;
-    }
-
-    /**
      * Populates the <code>AuthorizedNameSpaces</code> portion of the <code>keyAuthorizations</code>
      * within <code>DeviceKeyInfo</code>. This gives authorizations to full namespaces
      * included in the <code>authorizedNameSpaces</code> array. If authorization is given for a full
@@ -114,10 +109,23 @@ public class MobileSecurityObjectGenerator {
      *
      * @param authorizedNameSpaces A list of namespaces which should be given authorization.
      * @return The <code>MobileSecurityObjectGenerator</code>.
+     * @throws IllegalArgumentException if the authorizedNameSpaces does not meet the constraints.
      */
     @NonNull
     public MobileSecurityObjectGenerator setDeviceKeyAuthorizedNameSpaces(
             @NonNull List<String> authorizedNameSpaces) {
+
+        Set<String> namespaceSet = new HashSet<>();
+        namespaceSet.addAll(mAuthorizedDataElements.keySet());
+        namespaceSet.retainAll(authorizedNameSpaces);
+
+        // 18013-5 Section 9.1.2.4 says "If authorization is given for a full namespace (by including
+        // the namespace in the AuthorizedNameSpaces array), that namespace shall not be included in
+        // the AuthorizedDataElements map.
+        if (!namespaceSet.isEmpty()){
+            throw new IllegalArgumentException("authorizedNameSpaces includes a namespace already " +
+                    "present in the mapping of authorized data elements provided.");
+        }
 
         mAuthorizedNameSpaces.clear();
         mAuthorizedNameSpaces.addAll(authorizedNameSpaces);
@@ -133,10 +141,23 @@ public class MobileSecurityObjectGenerator {
      * @param authorizedDataElements A mapping from namespaces to a list of
      *                               <code>DataElementIdentifier</code>
      * @return The <code>MobileSecurityObjectGenerator</code>.
+     * @throws IllegalArgumentException if authorizedDataElements does not meet the constraints.
      */
     @NonNull
     public MobileSecurityObjectGenerator setDeviceKeyAuthorizedDataElements(
             @NonNull Map<String, List<String>> authorizedDataElements) {
+
+        Set<String> namespaceSet = new HashSet<>();
+        namespaceSet.addAll(authorizedDataElements.keySet());
+        namespaceSet.retainAll(mAuthorizedNameSpaces);
+
+        // 18013-5 Section 9.1.2.4 says "If authorization is given for a full namespace (by including
+        // the namespace in the AuthorizedNameSpaces array), that namespace shall not be included in
+        // the AuthorizedDataElements map.
+        if (!namespaceSet.isEmpty()){
+            throw new IllegalArgumentException("authorizedDataElements includes a namespace already " +
+                    "present in the list of authorized name spaces provided.");
+        }
 
         mAuthorizedDataElements.clear();
         mAuthorizedDataElements.putAll(authorizedDataElements);
@@ -177,10 +198,15 @@ public class MobileSecurityObjectGenerator {
             @NonNull Timestamp validFrom, @NonNull Timestamp validUntil,
             @Nullable Timestamp expectedUpdate) {
 
+        // 18013-5 Section 9.1.2.4 says "The timestamp of validFrom shall be equal or later than
+        // the signed element."
         if (validFrom.toEpochMilli() < signed.toEpochMilli()) {
             throw new IllegalArgumentException("The validFrom timestamp should be equal or later " +
                     "than the signed timestamp");
         }
+
+        // 18013-5 Section 9.1.2.4 says "The validUntil element contains the timestamp after which the
+        // MSO is no longer valid. The value of the timestamp shall be later than the validFrom element."
         if (validUntil.toEpochMilli() <= validFrom.toEpochMilli()) {
             throw new IllegalArgumentException("The validUntil timestamp should be later " +
                     "than the validFrom timestamp");
@@ -255,7 +281,7 @@ public class MobileSecurityObjectGenerator {
     /**
      * Builds the <code>MobileSecurityObject</code> CBOR.
      *
-     * <p>It's mandatory to call {@link #addDigestIDs(String, Map)}, {@link #setDeviceKey(PublicKey)},
+     * <p>It's mandatory to call {@link #addDigestIDs(String, Map)} and
      * {@link #setValidityInfo(Timestamp, Timestamp, Timestamp, Timestamp)} before this call.
      *
      * @return the bytes of <code>MobileSecurityObject</code> CBOR.
@@ -266,8 +292,6 @@ public class MobileSecurityObjectGenerator {
     public byte[] generate() {
         if (digestEmpty) {
             throw new IllegalStateException("Must call addDigestIDs before generating");
-        } else if (mDeviceKey == null) {
-            throw new IllegalStateException("Must call setDeviceKey before generating");
         } else if (mSigned == null) {
             throw new IllegalStateException("Must call setValidityInfo before generating");
         }

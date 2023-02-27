@@ -28,7 +28,7 @@ import java.util.Set;
 import co.nstant.in.cbor.model.DataItem;
 
 /**
- * Helper class for parsing the bytes of <code>DeviceResponse</code>
+ * Helper class for parsing the bytes of <code>MobileSecurityObject</code>
  * <a href="http://cbor.io/">CBOR</a>
  * as specified in <em>ISO/IEC 18013-5</em> section 9.1.2 <em>Issuer data authentication</em>.
  */

@@ -49,6 +49,7 @@ public class MobileSecurityObjectGeneratorTest {
     }
 
     private Map<Long, byte[]> generateISODigest() {
+        // the following constants are from ISO 18013-5 D.4.1.2 mdoc response
         Map<Long, byte[]> isoDigestIDs = new HashMap<>();
         isoDigestIDs.put(0L,
                 Util.fromHex("75167333B47B6C2BFB86ECCC1F438CF57AF055371AC55E1E359E20F254ADCEBF"));
@@ -80,6 +81,7 @@ public class MobileSecurityObjectGeneratorTest {
     }
 
     private Map<Long, byte[]> generateISOUSDigest() {
+        // the following constants are from ISO 18013-5 D.4.1.2 mdoc response
         Map<Long, byte[]> isoUSDigestIDs = new HashMap<>();
         isoUSDigestIDs.put(0L,
                 Util.fromHex("D80B83D25173C484C5640610FF1A31C949C1D934BF4CF7F18D5223B15DD4F21C"));
@@ -141,16 +143,15 @@ public class MobileSecurityObjectGeneratorTest {
         PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
                 new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
                 new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        final Timestamp signedTimestamp = Timestamp.ofEpochMilli(1601559002000L);
+        final Timestamp validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L);
+        final Timestamp validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L);
 
-        byte[] encodedMSO = new MobileSecurityObjectGenerator("SHA-256", "org.iso.18013.5.1.mDL")
+        byte[] encodedMSO = new MobileSecurityObjectGenerator("SHA-256",
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector)
                 .addDigestIDs("org.iso.18013.5.1", generateISODigest())
                 .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
-                .setDeviceKey(deviceKeyFromVector)
-                .setValidityInfo(
-                        Timestamp.ofEpochMilli(1601559002000L),
-                        Timestamp.ofEpochMilli(1601559002000L),
-                        Timestamp.ofEpochMilli(1633095002000L),
-                        null)
+                .setValidityInfo(signedTimestamp, validFromTimestamp, validUntilTimestamp, null)
                 .generate();
 
         MobileSecurityObjectParser.MobileSecurityObject mso = new MobileSecurityObjectParser()
@@ -171,9 +172,9 @@ public class MobileSecurityObjectGeneratorTest {
         Assert.assertNull(mso.getDeviceKeyAuthorizedDataElements());
         Assert.assertNull(mso.getDeviceKeyInfo());
 
-        Assert.assertEquals(Timestamp.ofEpochMilli(1601559002000L), mso.getSigned());
-        Assert.assertEquals(Timestamp.ofEpochMilli(1601559002000L), mso.getValidFrom());
-        Assert.assertEquals(Timestamp.ofEpochMilli(1633095002000L), mso.getValidUntil());
+        Assert.assertEquals(signedTimestamp, mso.getSigned());
+        Assert.assertEquals(validFromTimestamp, mso.getValidFrom());
+        Assert.assertEquals(validUntilTimestamp, mso.getValidUntil());
         Assert.assertNull(mso.getExpectedUpdate());
     }
 
@@ -183,6 +184,10 @@ public class MobileSecurityObjectGeneratorTest {
         PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
                 new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
                 new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        final Timestamp signedTimestamp = Timestamp.ofEpochMilli(1601559002000L);
+        final Timestamp validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L);
+        final Timestamp validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L);
+        final Timestamp expectedTimestamp = Timestamp.ofEpochMilli(1611093002000L);
 
         Map<String, List<String>> deviceKeyAuthorizedDataElements = new HashMap<>();
         deviceKeyAuthorizedDataElements.put("a", List.of("1", "2", "f"));
@@ -191,18 +196,18 @@ public class MobileSecurityObjectGeneratorTest {
         Map<Integer, byte[]> keyInfo = new HashMap<>();
         keyInfo.put(10, Util.fromHex("C985"));
 
-        byte[] encodedMSO = new MobileSecurityObjectGenerator("SHA-256", "org.iso.18013.5.1.mDL")
+        byte[] encodedMSO = new MobileSecurityObjectGenerator("SHA-256",
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector)
                 .addDigestIDs("org.iso.18013.5.1", generateISODigest())
                 .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
-                .setDeviceKey(deviceKeyFromVector)
                 .setDeviceKeyAuthorizedNameSpaces(List.of("abc", "bcd"))
                 .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
                 .setDeviceKeyInfo(keyInfo)
                 .setValidityInfo(
-                        Timestamp.ofEpochMilli(1601559002000L),
-                        Timestamp.ofEpochMilli(1601559002000L),
-                        Timestamp.ofEpochMilli(1633095002000L),
-                        Timestamp.ofEpochMilli(1611093002000L))
+                        signedTimestamp,
+                        validFromTimestamp,
+                        validUntilTimestamp,
+                        expectedTimestamp)
                 .generate();
 
         MobileSecurityObjectParser.MobileSecurityObject mso = new MobileSecurityObjectParser()
@@ -224,21 +229,26 @@ public class MobileSecurityObjectGeneratorTest {
         Assert.assertEquals(keyInfo.keySet(), mso.getDeviceKeyInfo().keySet());
         Assert.assertEquals(Util.toHex(keyInfo.get(10)), Util.toHex(mso.getDeviceKeyInfo().get(10)));
 
-        Assert.assertEquals(Timestamp.ofEpochMilli(1601559002000L), mso.getSigned());
-        Assert.assertEquals(Timestamp.ofEpochMilli(1601559002000L), mso.getValidFrom());
-        Assert.assertEquals(Timestamp.ofEpochMilli(1633095002000L), mso.getValidUntil());
-        Assert.assertEquals(Timestamp.ofEpochMilli(1611093002000L), mso.getExpectedUpdate());
+        Assert.assertEquals(signedTimestamp, mso.getSigned());
+        Assert.assertEquals(validFromTimestamp, mso.getValidFrom());
+        Assert.assertEquals(validUntilTimestamp, mso.getValidUntil());
+        Assert.assertEquals(expectedTimestamp, mso.getExpectedUpdate());
     }
 
     @Test
     @SmallTest
     public void testMSOExceptions() {
+        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
+                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
+                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+
         Assert.assertThrows("expect exception for illegal digestAlgorithm",
                 IllegalArgumentException.class,
-                () -> new MobileSecurityObjectGenerator("SHA-257", "org.iso.18013.5.1.mDL"));
+                () -> new MobileSecurityObjectGenerator("SHA-257",
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector));
 
         MobileSecurityObjectGenerator msoGenerator = new MobileSecurityObjectGenerator("SHA-256",
-                "org.iso.18013.5.1.mDL");
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector);
 
         Assert.assertThrows("expect exception for empty digestIDs",
                 IllegalArgumentException.class,
@@ -260,33 +270,31 @@ public class MobileSecurityObjectGeneratorTest {
                         Timestamp.ofEpochMilli(1601559002000L),
                         Timestamp.ofEpochMilli(1611093002000L)));
 
+        Map<String, List<String>> deviceKeyAuthorizedDataElements = new HashMap<>();
+        deviceKeyAuthorizedDataElements.put("a", List.of("1", "2", "f"));
+        deviceKeyAuthorizedDataElements.put("b", List.of("4", "5", "k"));
+        Assert.assertThrows("expect exception for deviceKeyAuthorizedDataElements including " +
+                        "namespace in deviceKeyAuthorizedNameSpaces",
+                IllegalArgumentException.class,
+                () -> msoGenerator.setDeviceKeyAuthorizedNameSpaces(List.of("a", "bcd"))
+                        .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements));
+        Assert.assertThrows("expect exception for deviceKeyAuthorizedNameSpaces including " +
+                        "namespace in deviceKeyAuthorizedDataElements",
+                IllegalArgumentException.class,
+                () -> msoGenerator.setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
+                        .setDeviceKeyAuthorizedNameSpaces(List.of("a", "bcd")));
+
         Assert.assertThrows("expect exception for msoGenerator which has not had " +
-                        "addDigestIDs, setDeviceKey, and setValidityInfo called before generating",
+                        "addDigestIDs and setValidityInfo called before generating",
                 IllegalStateException.class,
                 msoGenerator::generate);
 
-        Assert.assertThrows("expect exception for msoGenerator which has not had " +
-                        "setDeviceKey called before generating",
-                IllegalStateException.class,
-                () -> {new MobileSecurityObjectGenerator("SHA-256", "org.iso.18013.5.1.mDL")
-                        .addDigestIDs("org.iso.18013.5.1", generateISODigest())
-                        .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
-                        .setValidityInfo(
-                                Timestamp.ofEpochMilli(1601559002000L),
-                                Timestamp.ofEpochMilli(1601559002000L),
-                                Timestamp.ofEpochMilli(1633095002000L),
-                                Timestamp.ofEpochMilli(1611093002000L))
-                        .generate();});
-
-        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
 
         Assert.assertThrows("expect exception for msoGenerator which has not had " +
                         "addDigestIDs called before generating",
                 IllegalStateException.class,
-                () -> {new MobileSecurityObjectGenerator("SHA-256", "org.iso.18013.5.1.mDL")
-                        .setDeviceKey(deviceKeyFromVector)
+                () -> {new MobileSecurityObjectGenerator("SHA-256",
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector)
                         .setValidityInfo(
                                 Timestamp.ofEpochMilli(1601559002000L),
                                 Timestamp.ofEpochMilli(1601559002000L),
@@ -297,10 +305,10 @@ public class MobileSecurityObjectGeneratorTest {
         Assert.assertThrows("expect exception for msoGenerator which has not had " +
                         "setValidityInfo called before generating",
                 IllegalStateException.class,
-                () -> {new MobileSecurityObjectGenerator("SHA-256", "org.iso.18013.5.1.mDL")
+                () -> {new MobileSecurityObjectGenerator("SHA-256",
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector)
                         .addDigestIDs("org.iso.18013.5.1", generateISODigest())
                         .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
-                        .setDeviceKey(deviceKeyFromVector)
                         .generate();});
 
     }

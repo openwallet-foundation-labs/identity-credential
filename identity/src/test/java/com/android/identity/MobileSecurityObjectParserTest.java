@@ -48,6 +48,8 @@ public class MobileSecurityObjectParserTest {
                 mobileSecurityObjectBytes);
         byte[] encodedMobileSecurityObject = Util.cborEncode(mobileSecurityObject);
 
+        // the response above and all the following constants are from ISO 18013-5 D.4.1.2 mdoc
+        // response - the goal is to check that the parser returns the expected values
         MobileSecurityObjectParser.MobileSecurityObject mso = new MobileSecurityObjectParser()
                 .setMobileSecurityObject(encodedMobileSecurityObject).parse();
         Assert.assertEquals("1.0", mso.getVersion());
