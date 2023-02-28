@@ -20,12 +20,15 @@ import android.security.keystore.KeyProperties;
 
 import androidx.test.filters.SmallTest;
 
+import java.security.Security;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -48,6 +51,16 @@ public class DeviceRequestParserTest {
 
     private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
+
+    @Before
+    public void setUp() {
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
+    @After
+    public void tearDown() {
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
+    }
 
     @Test
     @SmallTest
