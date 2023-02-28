@@ -706,11 +706,10 @@ class Util {
                 detachedContent);
 
         try {
-            // Use BouncyCastle provider for verification since it supports a lot more curves than
-            // the default provider, including the brainpool curves
-            //
-            Signature verifier = Signature.getInstance(signature,
-                    new org.bouncycastle.jce.provider.BouncyCastleProvider());
+            // Using the default provider here. If BounceyCastle is to be used it is up to client
+            // to register that provider before hand.
+            // https://docs.oracle.com/javase/7/docs/api/java/security/Security.html#addProvider(java.security.Provider)
+            Signature verifier = Signature.getInstance(signature);
             verifier.initVerify(publicKey);
             verifier.update(toBeSigned);
             return verifier.verify(derSignature);
