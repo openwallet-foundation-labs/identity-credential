@@ -180,15 +180,7 @@ class Util {
 
     static @NonNull
     byte[] cborEncode(@NonNull DataItem dataItem) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            new CborEncoder(baos).encode(dataItem);
-        } catch (CborException e) {
-            // This should never happen and we don't want cborEncode() to throw since that
-            // would complicate all callers. Log it instead.
-            throw new IllegalStateException("Unexpected failure encoding data", e);
-        }
-        return baos.toByteArray();
+        return cborEncodeWithoutCanonicalizing(dataItem);
     }
 
     static @NonNull
