@@ -83,6 +83,7 @@ public final class DeviceRequestParser {
      * but the signature check fails. The method {@link DocumentRequest#getReaderAuthenticated()}
      * can used to get additional information whether {@code ItemsRequest} was authenticated.
      *
+     * @param skipReaderAuthParseAndCheck - flag to skip force skip parsing the reader auth structre
      * @return a {@link DeviceRequestParser.DeviceRequest} with the parsed data.
      * @throws IllegalArgumentException if the given data isn't valid CBOR or not conforming
      *                                  to the CDDL for its type.
@@ -90,7 +91,7 @@ public final class DeviceRequestParser {
      *                                  methods on this class.
      */
     @NonNull
-    public DeviceRequest parse() {
+    public DeviceRequest parse(boolean skipReaderAuthParseAndCheck) {
         if (mEncodedDeviceRequest == null) {
             throw new IllegalStateException("deviceRequest has not been set");
         }
@@ -99,8 +100,17 @@ public final class DeviceRequestParser {
         }
         DataItem sessionTranscript = Util.cborDecode(mEncodedSessionTranscript);
         DeviceRequestParser.DeviceRequest request = new DeviceRequestParser.DeviceRequest();
-        request.parse(mEncodedDeviceRequest, sessionTranscript);
+        request.parse(mEncodedDeviceRequest, sessionTranscript, skipReaderAuthParseAndCheck);
         return request;
+    }
+
+    /**
+     * Helper method to call parse() with `skipReaderAuthParseAndCheck` value set to false
+     * @return return value of parse(boolean) above
+     */
+    @NonNull
+    public DeviceRequest parse() {
+        return parse(false);
     }
 
     /**
@@ -137,7 +147,7 @@ public final class DeviceRequestParser {
         }
 
         void parse(byte[] encodedDeviceRequest,
-                DataItem sessionTranscript) {
+                DataItem sessionTranscript, boolean skipReaderAuthParseAndCheck) {
 
             DataItem request = Util.cborDecode(encodedDeviceRequest);
             if (!(request instanceof Map)) {
@@ -173,7 +183,7 @@ public final class DeviceRequestParser {
                             "readerAuth"));
                     byte[] encodedReaderAuth = null;
                     boolean readerAuthenticated = false;
-                    if (readerAuth != null) {
+                    if (!skipReaderAuthParseAndCheck && readerAuth != null) {
                         encodedReaderAuth = Util.cborEncode(readerAuth);
 
                         readerCertChain = Util.coseSign1GetX5Chain(readerAuth);
