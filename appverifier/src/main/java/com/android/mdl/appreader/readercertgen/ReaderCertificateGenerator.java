@@ -82,12 +82,12 @@ public final class ReaderCertificateGenerator {
 
 			@Override
 			public Date startDate() {
-				return EncodingUtil.parseShortISODate("2021-09-07");
+				return EncodingUtil.parseShortISODate("2023-01-01");
 			}
 
 			@Override
 			public Date endDate() {
-				return EncodingUtil.parseShortISODate("2022-12-07");
+				return EncodingUtil.parseShortISODate("2024-01-01");
 			}
 
 			@Override
