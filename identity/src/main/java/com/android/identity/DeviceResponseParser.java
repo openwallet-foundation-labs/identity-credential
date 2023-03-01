@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.crypto.SecretKey;
 
@@ -147,35 +148,30 @@ public final class DeviceResponseParser {
         private @NonNull
         Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(DataItem mso,
                                                                  String expectedDoctype) {
+            byte[] encodedMSO = Util.cborEncode(mso);
+            MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
+                    .setMobileSecurityObject(encodedMSO).parse();
+
             /* don't care about version for now */
-            String digestAlgorithm = Util.cborMapExtractString(mso, "digestAlgorithm");
+            String digestAlgorithm = parsedMso.getDigestAlgorithm();
             if (!digestAlgorithm.equals("SHA-256")) {
                 throw new IllegalArgumentException("Unsupported digestAlgorithm '"
                         + digestAlgorithm + "' in MSO");
             }
-            String msoDocType = Util.cborMapExtractString(mso, "docType");
+
+            String msoDocType = parsedMso.getDocType();
             if (!msoDocType.equals(expectedDoctype)) {
                 throw new IllegalArgumentException("docType in MSO '" + msoDocType
                         + "' does not match docType from Document");
             }
-            DataItem valueDigests = Util.cborMapExtract(mso, "valueDigests");
-            Collection<String> nameSpaceNames = Util.cborMapExtractMapStringKeys(valueDigests);
+
+            Set<String> nameSpaceNames = parsedMso.getValueDigestNamespaces();
             Map<String, Map<Long, byte[]>> ret = new HashMap<>();
             for (String nameSpaceName : nameSpaceNames) {
-                DataItem elementMap = Util.cborMapExtract(valueDigests, nameSpaceName);
-                Collection<Long> elementDigestIDs = Util.cborMapExtractMapNumberKeys(elementMap);
-                Map<Long, byte[]> innerRet = new HashMap<>();
-                for (Long elementDigestID : elementDigestIDs) {
-                    byte[] digest = Util.cborMapExtractByteString(elementMap, elementDigestID);
-                    innerRet.put(elementDigestID, digest);
-                }
-                ret.put(nameSpaceName, innerRet);
+                ret.put(nameSpaceName, parsedMso.getDigestIDs(nameSpaceName));
             }
 
-            DataItem deviceKeyInfo = Util.cborMapExtractMap(mso, "deviceKeyInfo");
-            DataItem deviceKeyCoseKey = Util.cborMapExtract(deviceKeyInfo, "deviceKey");
-            PublicKey deviceKey = Util.coseKeyDecode(deviceKeyCoseKey);
-
+            PublicKey deviceKey = parsedMso.getDeviceKey();
             return Pair.create(deviceKey, ret);
         }
 

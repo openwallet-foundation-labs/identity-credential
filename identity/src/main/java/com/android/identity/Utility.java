@@ -301,6 +301,9 @@ public class Utility {
         for (X509Certificate authKeyCert : authKeysNeedCert) {
             PublicKey authKey = authKeyCert.getPublicKey();
 
+            MobileSecurityObjectGenerator msoGenerator = new MobileSecurityObjectGenerator("SHA-256",
+                    docType, authKey).setValidityInfo(signedDate, validFromDate, validToDate, null);
+
             Random r = new SecureRandom();
 
             // Count number of entries and generate digest ids
@@ -316,16 +319,13 @@ public class Utility {
 
             HashMap<String, List<byte[]>> issuerSignedMapping = new HashMap<>();
 
-            CborBuilder vdBuilder = new CborBuilder();
-            MapBuilder<CborBuilder> vdMapBuilder = vdBuilder.addMap();
-
             Iterator<Integer> digestIt = digestIds.iterator();
             for (PersonalizationData.NamespaceData nsd : personalizationData.getNamespaceDatas()) {
                 String ns = nsd.getNamespaceName();
 
                 List<byte[]> innerArray = new ArrayList<>();
 
-                MapBuilder<MapBuilder<CborBuilder>> vdInner = vdMapBuilder.putMap(ns);
+                Map<Long, byte[]> vdInner = new HashMap<>();
 
                 for (String entry : nsd.getEntryNames()) {
                     byte[] encodedValue = nsd.getEntryValue(entry);
@@ -362,31 +362,15 @@ public class Utility {
                             Util.issuerSignedItemClearValue(encodedIssuerSignedItem);
                     innerArray.add(encodedIssuerSignedItemCleared);
 
-                    vdInner.put(digestId, digest);
+                    vdInner.put((long) digestId, digest);
                 }
 
                 issuerSignedMapping.put(ns, innerArray);
 
-                vdInner.end();
+                msoGenerator.addDigestIDs(ns, vdInner);
             }
-            vdMapBuilder.end();
 
-            byte[] encodedMobileSecurityObject = Util.cborEncode(new CborBuilder()
-                    .addMap()
-                    .put("version", "1.0")
-                    .put("digestAlgorithm", "SHA-256")
-                    .put(new UnicodeString("valueDigests"), vdBuilder.build().get(0))
-                    .put("docType", docType)
-                    .putMap("validityInfo")
-                    .put(new UnicodeString("signed"), Util.cborBuildDateTime(signedDate))
-                    .put(new UnicodeString("validFrom"), Util.cborBuildDateTime(validFromDate))
-                    .put(new UnicodeString("validUntil"), Util.cborBuildDateTime(validToDate))
-                    .end()
-                    .putMap("deviceKeyInfo")
-                    .put(new UnicodeString("deviceKey"), Util.cborBuildCoseKey(authKey))
-                    .end()
-                    .end()
-                    .build().get(0));
+            byte[] encodedMobileSecurityObject = msoGenerator.generate();
 
             byte[] taggedEncodedMso = Util.cborEncode(
                     Util.cborBuildTaggedByteString(encodedMobileSecurityObject));
