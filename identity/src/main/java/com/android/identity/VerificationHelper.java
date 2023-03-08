@@ -20,6 +20,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.content.Context;
 import android.net.Uri;
+import android.nfc.FormatException;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -348,10 +349,12 @@ public class VerificationHelper {
         return Arrays.copyOfRange(ret, 0, ret.length - 2);
     }
 
-    private byte[] ndefReadMessage(@NonNull IsoDep isoDep)
+    private byte[] ndefReadMessage(@NonNull IsoDep isoDep, int nWait)
             throws IOException {
         byte[] apdu;
         byte[] ret;
+
+        // TODO: Allow up to nWait retries
 
         apdu = NfcUtil.createApduReadBinary(0x0000, 2);
         ret = isoDep.transceive(apdu);
@@ -370,27 +373,32 @@ public class VerificationHelper {
         return Arrays.copyOfRange(ret, 0, ret.length - 2);
     }
 
-    private byte[] ndefTransact(@NonNull IsoDep isoDep, @NonNull byte[] ndefMessage)
+    private byte[] ndefTransact(@NonNull IsoDep isoDep, @NonNull byte[] ndefMessage,
+                                double tWaitMillis, int nWait)
             throws IOException {
         byte[] apdu;
         byte[] ret;
 
-        Logger.dHex(TAG, "ndefTransact: sending NDEF message", ndefMessage);
+        Logger.dHex(TAG, "ndefTransact: writing NDEF message", ndefMessage);
 
         // See Type 4 Tag Technical Specification Version 1.2 section 7.5.5 NDEF Write Procedure
         // for how this is done.
 
-        // TODO: Optimize by merging these three write operations into one. This is permissible
-        // as per this text from the standard:
+        // Check to see if we can merge the three UPDATE_BINARY messages into a single message.
+        // This is allowed as per [T4T] 7.5.5 NDEF Write Procedure:
         //
-        // If the entire NDEF Message can be written with a single UPDATE_BINARY
-        // Command, the Reader/Writer MAY write NLEN and ENLEN (Symbol 6), as
-        // well as the entire NDEF Message (Symbol 5) using a single
-        // UPDATE_BINARY Command. In this case the Reader/Writer SHALL
-        // proceed to Symbol 5 and merge Symbols 5 and 6 operations into a single
-        // UPDATE_BINARY Command.
+        //   If the entire NDEF Message can be written with a single UPDATE_BINARY
+        //   Command, the Reader/Writer MAY write NLEN and ENLEN (Symbol 6), as
+        //   well as the entire NDEF Message (Symbol 5) using a single
+        //   UPDATE_BINARY Command. In this case the Reader/Writer SHALL
+        //   proceed to Symbol 5 and merge Symbols 5 and 6 operations into a single
+        //   UPDATE_BINARY Command.
         //
-        if (ndefMessage.length < 256 - 2) {
+        // For debugging, this optimization can be turned off by setting this to |true|:
+        final boolean bypassUpdateBinaryOptimization = false;
+
+        if (!bypassUpdateBinaryOptimization && ndefMessage.length < 256 - 2) {
+            Logger.d(TAG, "ndefTransact: using single UPDATE_BINARY command");
             byte[] data = new byte[ndefMessage.length + 2];
             data[0] = (byte) ((ndefMessage.length / 0x100) & 0xff);
             data[1] = (byte) (ndefMessage.length & 0xff);
@@ -402,6 +410,8 @@ public class VerificationHelper {
                 return null;
             }
         } else {
+            Logger.d(TAG, "ndefTransact: using 3+ UPDATE_BINARY commands");
+
             // First command is UPDATE_BINARY to reset length
             apdu = NfcUtil.createApduUpdateBinary(0x0000, new byte[]{0x00, 0x00});
             ret = isoDep.transceive(apdu);
@@ -439,10 +449,20 @@ public class VerificationHelper {
             }
         }
 
-        // Read NDEF file...
-        //
-        byte[] receivedNdefMessage = ndefReadMessage(isoDep);
-        Logger.dHex(TAG, "ndefTransact: received NDEF message", receivedNdefMessage);
+        try {
+            long waitMillis = (long) Math.ceil(tWaitMillis);  // Just round up to closest millisecond
+            Logger.d(TAG, String.format(Locale.US, "ndefTransact: Sleeping %d ms", waitMillis));
+            Thread.sleep(waitMillis);
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Unexpected interrupt", e);
+        }
+
+        // Now read NDEF file...
+        byte[] receivedNdefMessage = ndefReadMessage(isoDep, nWait);
+        if (receivedNdefMessage == null) {
+            return null;
+        }
+        Logger.dHex(TAG, "ndefTransact: read NDEF message", receivedNdefMessage);
         return receivedNdefMessage;
     }
 
@@ -511,10 +531,11 @@ public class VerificationHelper {
                     }
 
                     // First see if we should use negotiated handover..
-                    byte[] initialNdefMessage = ndefReadMessage(isoDep);
-                    if (!NfcUtil.ndefMessageContainsServiceParameterRecord(initialNdefMessage,
-                            "urn:nfc:sn:handover")) {
+                    byte[] initialNdefMessage = ndefReadMessage(isoDep, 0);
 
+                    NdefRecord handoverServiceRecord = NfcUtil.findServiceParameterRecordWithName(initialNdefMessage,
+                            "urn:nfc:sn:handover");
+                    if (handoverServiceRecord == null) {
                         long elapsedTime = System.currentTimeMillis() - timeMillisBegin;
                         Logger.d(TAG, String.format(Locale.US,
                                 "Time spent in NFC static handover: %d ms", elapsedTime));
@@ -548,15 +569,34 @@ public class VerificationHelper {
                     }
 
                     Logger.d(TAG, "Service Parameter for urn:nfc:sn:handover found - negotiated handover");
-                    // TODO: Look at other fields in Service Parameter Record payload including
-                    //   minimum waiting time, max NDEF message size, and others.
+
+                    NfcUtil.ParsedServiceParameterRecord spr = NfcUtil.parseServiceParameterRecord(handoverServiceRecord);
+
+                    Logger.d(TAG, String.format(Locale.US,
+                            "tWait is %.1f ms, nWait is %d, maxNdefSize is %d",
+                            spr.tWaitMillis, spr.nWait, spr.maxNdefSize));
 
                     // Select the service, the resulting NDEF message is specified in
                     // in Tag NDEF Exchange Protocol Technical Specification Version 1.0
                     // section 4.3 TNEP Status Message
-                    ret = ndefTransact(isoDep, NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"));
-                    if (ret == null || !Arrays.equals(ret, Util.fromHex("d10201546500"))) {
-                        throw new IllegalStateException("Service selection failed");
+                    ret = ndefTransact(isoDep,
+                            NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"),
+                            spr.tWaitMillis, spr.nWait);
+                    if (ret == null) {
+                        throw new IllegalStateException("Service selection: no response");
+                    }
+                    NdefRecord tnepStatusRecord = NfcUtil.findTnepStatusRecord(ret);
+                    if (tnepStatusRecord == null) {
+                        throw new IllegalArgumentException("Service selection: no TNEP status record");
+                    }
+                    byte[] tnepStatusPayload = tnepStatusRecord.getPayload();
+                    if (tnepStatusPayload == null || tnepStatusPayload.length != 1) {
+                        throw new IllegalArgumentException("Service selection: Malformed payload for TNEP status record");
+                    }
+                    int statusType = tnepStatusPayload[0] & 0x0ff;
+                    // Status type is defined in 4.3.3 Status Type
+                    if (statusType != 0x00) {
+                        throw new IllegalArgumentException("Service selection: Unexpected status type " + statusType);
                     }
 
                     // Now send Handover Request, the resulting NDEF message is Handover Response..
@@ -564,7 +604,7 @@ public class VerificationHelper {
                             connectionMethods,
                             null); // TODO: pass ReaderEngagement message
                     Logger.dHex(TAG, "Handover Request sent", hrMessage);
-                    byte[] hsMessage = ndefTransact(isoDep, hrMessage);
+                    byte[] hsMessage = ndefTransact(isoDep, hrMessage, spr.tWaitMillis, spr.nWait);
                     if (hsMessage == null) {
                         throw new IllegalStateException("Handover Request failed");
                     }
