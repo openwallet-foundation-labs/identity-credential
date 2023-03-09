@@ -137,6 +137,61 @@ public class MobileSecurityObjectGeneratorTest {
                 .toLowerCase(), Util.toHex(isoUSDigestIDs.get(3L)));
     }
 
+    public void testFullMSO(String digestAlgorithm) {
+        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
+                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
+                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        final Timestamp signedTimestamp = Timestamp.ofEpochMilli(1601559002000L);
+        final Timestamp validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L);
+        final Timestamp validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L);
+        final Timestamp expectedTimestamp = Timestamp.ofEpochMilli(1611093002000L);
+
+        Map<String, List<String>> deviceKeyAuthorizedDataElements = new HashMap<>();
+        deviceKeyAuthorizedDataElements.put("a", List.of("1", "2", "f"));
+        deviceKeyAuthorizedDataElements.put("b", List.of("4", "5", "k"));
+
+        Map<Integer, byte[]> keyInfo = new HashMap<>();
+        keyInfo.put(10, Util.fromHex("C985"));
+
+        byte[] encodedMSO = new MobileSecurityObjectGenerator(digestAlgorithm,
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector)
+                .addDigestIDs("org.iso.18013.5.1", generateISODigest())
+                .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
+                .setDeviceKeyAuthorizedNameSpaces(List.of("abc", "bcd"))
+                .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
+                .setDeviceKeyInfo(keyInfo)
+                .setValidityInfo(
+                        signedTimestamp,
+                        validFromTimestamp,
+                        validUntilTimestamp,
+                        expectedTimestamp)
+                .generate();
+
+        MobileSecurityObjectParser.MobileSecurityObject mso = new MobileSecurityObjectParser()
+                .setMobileSecurityObject(encodedMSO).parse();
+
+        Assert.assertEquals("1.0", mso.getVersion());
+        Assert.assertEquals(digestAlgorithm, mso.getDigestAlgorithm());
+        Assert.assertEquals("org.iso.18013.5.1.mDL", mso.getDocType());
+
+        Assert.assertEquals(Set.of("org.iso.18013.5.1", "org.iso.18013.5.1.US"),
+                mso.getValueDigestNamespaces());
+        Assert.assertNull(mso.getDigestIDs("abc"));
+        checkISODigest(mso.getDigestIDs("org.iso.18013.5.1"));
+        checkISOUSDigest(mso.getDigestIDs("org.iso.18013.5.1.US"));
+
+        Assert.assertEquals(deviceKeyFromVector, mso.getDeviceKey());
+        Assert.assertEquals(List.of("abc", "bcd"), mso.getDeviceKeyAuthorizedNameSpaces());
+        Assert.assertEquals(deviceKeyAuthorizedDataElements, mso.getDeviceKeyAuthorizedDataElements());
+        Assert.assertEquals(keyInfo.keySet(), mso.getDeviceKeyInfo().keySet());
+        Assert.assertEquals(Util.toHex(keyInfo.get(10)), Util.toHex(mso.getDeviceKeyInfo().get(10)));
+
+        Assert.assertEquals(signedTimestamp, mso.getSigned());
+        Assert.assertEquals(validFromTimestamp, mso.getValidFrom());
+        Assert.assertEquals(validUntilTimestamp, mso.getValidUntil());
+        Assert.assertEquals(expectedTimestamp, mso.getExpectedUpdate());
+    }
+
     @Test
     @SmallTest
     public void testBasicMSO() throws Exception {
@@ -180,59 +235,20 @@ public class MobileSecurityObjectGeneratorTest {
 
     @Test
     @SmallTest
-    public void testFullMSO() {
-        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
-        final Timestamp signedTimestamp = Timestamp.ofEpochMilli(1601559002000L);
-        final Timestamp validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L);
-        final Timestamp validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L);
-        final Timestamp expectedTimestamp = Timestamp.ofEpochMilli(1611093002000L);
+    public void testFullMSO_Sha256() {
+        testFullMSO("SHA-256");
+    }
 
-        Map<String, List<String>> deviceKeyAuthorizedDataElements = new HashMap<>();
-        deviceKeyAuthorizedDataElements.put("a", List.of("1", "2", "f"));
-        deviceKeyAuthorizedDataElements.put("b", List.of("4", "5", "k"));
+    @Test
+    @SmallTest
+    public void testFullMSO_Sha384() {
+        testFullMSO("SHA-384");
+    }
 
-        Map<Integer, byte[]> keyInfo = new HashMap<>();
-        keyInfo.put(10, Util.fromHex("C985"));
-
-        byte[] encodedMSO = new MobileSecurityObjectGenerator("SHA-256",
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector)
-                .addDigestIDs("org.iso.18013.5.1", generateISODigest())
-                .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
-                .setDeviceKeyAuthorizedNameSpaces(List.of("abc", "bcd"))
-                .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
-                .setDeviceKeyInfo(keyInfo)
-                .setValidityInfo(
-                        signedTimestamp,
-                        validFromTimestamp,
-                        validUntilTimestamp,
-                        expectedTimestamp)
-                .generate();
-
-        MobileSecurityObjectParser.MobileSecurityObject mso = new MobileSecurityObjectParser()
-                .setMobileSecurityObject(encodedMSO).parse();
-
-        Assert.assertEquals("1.0", mso.getVersion());
-        Assert.assertEquals("SHA-256", mso.getDigestAlgorithm());
-        Assert.assertEquals("org.iso.18013.5.1.mDL", mso.getDocType());
-
-        Assert.assertEquals(Set.of("org.iso.18013.5.1", "org.iso.18013.5.1.US"),
-                mso.getValueDigestNamespaces());
-        Assert.assertNull(mso.getDigestIDs("abc"));
-        checkISODigest(mso.getDigestIDs("org.iso.18013.5.1"));
-        checkISOUSDigest(mso.getDigestIDs("org.iso.18013.5.1.US"));
-
-        Assert.assertEquals(deviceKeyFromVector, mso.getDeviceKey());
-        Assert.assertEquals(List.of("abc", "bcd"), mso.getDeviceKeyAuthorizedNameSpaces());
-        Assert.assertEquals(deviceKeyAuthorizedDataElements, mso.getDeviceKeyAuthorizedDataElements());
-        Assert.assertEquals(keyInfo.keySet(), mso.getDeviceKeyInfo().keySet());
-        Assert.assertEquals(Util.toHex(keyInfo.get(10)), Util.toHex(mso.getDeviceKeyInfo().get(10)));
-
-        Assert.assertEquals(signedTimestamp, mso.getSigned());
-        Assert.assertEquals(validFromTimestamp, mso.getValidFrom());
-        Assert.assertEquals(validUntilTimestamp, mso.getValidUntil());
-        Assert.assertEquals(expectedTimestamp, mso.getExpectedUpdate());
+    @Test
+    @SmallTest
+    public void testFullMSO_Sha512() {
+        testFullMSO("SHA-512");
     }
 
     @Test
