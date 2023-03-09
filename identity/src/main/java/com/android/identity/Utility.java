@@ -311,15 +311,15 @@ public class Utility {
             for (PersonalizationData.NamespaceData nsd : personalizationData.getNamespaceDatas()) {
                 numEntries += nsd.getEntryNames().size();
             }
-            List<Integer> digestIds = new ArrayList<>();
-            for (int n = 0; n < numEntries; n++) {
+            List<Long> digestIds = new ArrayList<>();
+            for (Long n = 0L; n < numEntries; n++) {
                 digestIds.add(n);
             }
             Collections.shuffle(digestIds);
 
             HashMap<String, List<byte[]>> issuerSignedMapping = new HashMap<>();
 
-            Iterator<Integer> digestIt = digestIds.iterator();
+            Iterator<Long> digestIt = digestIds.iterator();
             for (PersonalizationData.NamespaceData nsd : personalizationData.getNamespaceDatas()) {
                 String ns = nsd.getNamespaceName();
 
@@ -329,7 +329,7 @@ public class Utility {
 
                 for (String entry : nsd.getEntryNames()) {
                     byte[] encodedValue = nsd.getEntryValue(entry);
-                    int digestId = digestIt.next();
+                    Long digestId = digestIt.next();
                     byte[] random = new byte[16];
                     r.nextBytes(random);
                     DataItem value = Util.cborDecode(encodedValue);
@@ -362,7 +362,7 @@ public class Utility {
                             Util.issuerSignedItemClearValue(encodedIssuerSignedItem);
                     innerArray.add(encodedIssuerSignedItemCleared);
 
-                    vdInner.put((long) digestId, digest);
+                    vdInner.put(digestId, digest);
                 }
 
                 issuerSignedMapping.put(ns, innerArray);
