@@ -1,7 +1,9 @@
 package com.android.mdl.appreader.issuerauth;
 
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
+import java.io.ByteArrayInputStream;
 import java.security.InvalidKeyException;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
@@ -9,6 +11,7 @@ import java.security.NoSuchProviderException;
 import java.security.SignatureException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -171,7 +174,19 @@ public class SimpleIssuerTrustStore implements IssuerTrustStore {
 			}
 
 			try {
-				prevCert.verify(caCert.getPublicKey());
+                try {
+                    prevCert.verify(caCert.getPublicKey());
+                } catch (InvalidKeyException e) {
+                    // Try to decode certificate using BouncyCastleProvider
+                    CertificateFactory factory = CertificateFactory.getInstance("X509", new BouncyCastleProvider());
+                    X509Certificate prevCertBC = (X509Certificate) factory.generateCertificate(
+                            new ByteArrayInputStream(prevCert.getEncoded()));
+
+                    X509Certificate caCertBC = (X509Certificate) factory.generateCertificate(
+                            new ByteArrayInputStream(caCert.getEncoded()));
+
+                    prevCertBC.verify(caCertBC.getPublicKey());
+                }
 			} catch (CertificateException | InvalidKeyException | NoSuchAlgorithmException | NoSuchProviderException | SignatureException e) {
 //				throw new CertificateException("Certificate chain verification failed at certificate index " + index,
 //						e);
