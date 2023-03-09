@@ -146,11 +146,10 @@ public final class DeviceResponseParser {
         // Returns deviceKey and digestIdMapping. The byte[] is the digest.
         //
         private @NonNull
-        Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(DataItem mso,
+        Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(byte[] encodedMobileSecurityObject,
                                                                  String expectedDoctype) {
-            byte[] encodedMSO = Util.cborEncode(mso);
             MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
-                    .setMobileSecurityObject(encodedMSO).parse();
+                    .setMobileSecurityObject(encodedMobileSecurityObject).parse();
 
             /* don't care about version for now */
             String digestAlgorithm = parsedMso.getDigestAlgorithm();
@@ -175,13 +174,14 @@ public final class DeviceResponseParser {
             return Pair.create(deviceKey, ret);
         }
 
-        private void parseValidityInfo(DataItem mso, Document.Builder builder) {
-            DataItem map = Util.cborMapExtractMap(mso, "validityInfo");
-            builder.setValidityInfoSigned(Util.cborMapExtractDateTime(map, "signed"));
-            builder.setValidityInfoValidFrom(Util.cborMapExtractDateTime(map, "validFrom"));
-            builder.setValidityInfoValidUntil(Util.cborMapExtractDateTime(map, "validUntil"));
-            if (Util.cborMapHasKey(map, "expectedUpdate")) {
-                builder.setValidityInfoExpectedUpdate(Util.cborMapExtractDateTime(map, "expectedUpdate"));
+        private void parseValidityInfo(byte[] encodedMobileSecurityObject, Document.Builder builder) {
+            MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
+                    .setMobileSecurityObject(encodedMobileSecurityObject).parse();
+            builder.setValidityInfoSigned(parsedMso.getSigned());
+            builder.setValidityInfoValidFrom(parsedMso.getValidFrom());
+            builder.setValidityInfoValidUntil(parsedMso.getValidUntil());
+            if (parsedMso.getExpectedUpdate() != null) {
+                builder.setValidityInfoExpectedUpdate(parsedMso.getExpectedUpdate());
             }
         }
 
@@ -220,13 +220,14 @@ public final class DeviceResponseParser {
                     Util.coseSign1GetData(issuerAuthDataItem));
             DataItem mobileSecurityObject = Util.cborExtractTaggedAndEncodedCbor(
                     mobileSecurityObjectBytes);
+            byte[] encodedMobileSecurityObject = Util.cborEncode(mobileSecurityObject);
 
             Pair<PublicKey, Map<String, Map<Long, byte[]>>> msoResult =
-                    parseMso(mobileSecurityObject, expectedDocType);
+                    parseMso(encodedMobileSecurityObject, expectedDocType);
             final PublicKey deviceKey = msoResult.first;
             Map<String, Map<Long, byte[]>> digestMapping = msoResult.second;
 
-            parseValidityInfo(mobileSecurityObject, builder);
+            parseValidityInfo(encodedMobileSecurityObject, builder);
 
             DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
             Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
