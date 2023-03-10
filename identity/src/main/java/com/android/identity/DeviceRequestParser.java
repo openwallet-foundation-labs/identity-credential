@@ -113,6 +113,9 @@ public final class DeviceRequestParser {
      *                                  to the CDDL for its type.
      * @throws IllegalStateException    if required data hasn't been set using the setter
      *                                  methods on this class.
+     * @throws GeneralSecurityException may be thrown if there issues within the default security
+     *                                  provider. Use <code>setSkipReaderAuthParseAndCheck</code> to
+     *                                  skip some usage of security provider in reader auth parsing.
      */
     @NonNull
     public DeviceRequest parse() {
