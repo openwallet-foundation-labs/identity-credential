@@ -306,7 +306,7 @@ public class MobileSecurityObjectGenerator {
         msoMapBuilder.put(new UnicodeString("validityInfo"), generateValidityInfoBuilder().build().get(0));
         msoMapBuilder.end();
 
-        return Util.cborEncodeWithoutCanonicalizing(msoBuilder.build().get(0));
+        return Util.cborEncode(msoBuilder.build().get(0));
     }
 
 }
