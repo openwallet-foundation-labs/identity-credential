@@ -320,13 +320,28 @@ public class NfcEngagementHelper {
         byte[] serviceNameUriUtf8 = "urn:nfc:sn:handover".getBytes(UTF_8);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
+            // t_wait = 2^(wt_int/4 - 1) milliseconds, where wt_int is six bits so
+            //
+            //     wt_int = 0   ->  t_wait = 2^(0/4 - 1) ms = 2^-1 ms = 0.50 ms
+            //     wt_int = 1   ->  t_wait = 2^(1/4 - 1) ms = 2^-0.75 ms = 0.59 ms
+            //     wt_int = 2   ->  t_wait = 2^(2/4 - 1) ms = 2^-0.50 ms = 0.71 ms
+            //     ..
+            //     wt_int = 8   ->  t_wait = 2^(8/4 - 1) ms = 2^1 ms = 2 ms
+            //     ..
+            //     wt_int = 32  ->  t_wait = 2^(32/4 - 1) ms = 2^7 ms = 128 ms
+            //     ..
+            //     wt_int = 48  ->  t_wait = 2^(48/4 - 1) ms = 2^11 ms = 2048 ms
+            //     ..
+            //     wt_int = 63  ->  t_wait = 2^(63/4 - 1) ms = 2^14.75 ms = 27554 ms
+            //
+            int wt_int = 0;
             // The payload of the record is defined in Tag NDEF Exchange Protocol 1.0 section 4.1.2:
             baos.write(0x10);   // TNEP version: 1.0
             baos.write(serviceNameUriUtf8.length);
             baos.write(serviceNameUriUtf8);
             baos.write(0x00);   // TNEP Communication Mode: Single Response communication mode
-            baos.write(0x00);   // Minimum Waiting Time
-            baos.write(0x0f);   // Maximum Number of Waiting Time Extensions
+            baos.write(wt_int);    // Minimum Waiting Time
+            baos.write(0x00);   // Maximum Number of Waiting Time Extensions
             baos.write(0xff);   // Maximum NDEF Message Size (upper 8 bits)
             baos.write(0xff);   // Maximum NDEF Message Size (lower 8 bits)
         } catch (IOException e) {

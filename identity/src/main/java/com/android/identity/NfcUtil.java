@@ -1,5 +1,6 @@
 package com.android.identity;
 
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.nfc.FormatException;
@@ -252,33 +253,6 @@ class NfcUtil {
         return createNdefMessageHandoverSelectOrRequest(methods, null, encodedReaderEngagement);
     }
 
-    // TODO: return other fields in Service Parameter record (e.g. minimum waiting time, etc)
-    static
-    boolean ndefMessageContainsServiceParameterRecord(@NonNull byte[] ndefMessage, @NonNull String serviceName) {
-        NdefMessage m = null;
-        try {
-            m = new NdefMessage(ndefMessage);
-        } catch (FormatException e) {
-            Logger.w(TAG, "Error parsing NDEF message", e);
-            return false;
-        }
-
-        for (NdefRecord r : m.getRecords()) {
-            byte[] p = r.getPayload();
-            byte[] snUtf8 = serviceName.getBytes(UTF_8);
-            if (r.getTnf() == NdefRecord.TNF_WELL_KNOWN
-                    && Arrays.equals("Tp".getBytes(UTF_8), r.getType())
-                    && p != null
-                    && p.length > snUtf8.length + 2
-                    && p[0] == 0x10
-                    && p[1] == snUtf8.length
-                    && Arrays.equals(snUtf8, Arrays.copyOfRange(p, 2, 2 + snUtf8.length))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     // Returns null if parsing fails, otherwise returns a ParsedHandoverSelectMessage instance
     static @Nullable ParsedHandoverSelectMessage
     parseHandoverSelectMessage(@NonNull byte[] ndefMessage) {
@@ -350,6 +324,91 @@ class NfcUtil {
     static class ParsedHandoverSelectMessage {
         @NonNull byte[] encodedDeviceEngagement = null;
         @NonNull List<ConnectionMethod> connectionMethods = new ArrayList<>();
+    }
+
+    static @Nullable
+    NdefRecord findServiceParameterRecordWithName(@NonNull byte[] ndefMessage, @NonNull String serviceName) {
+        NdefMessage m = null;
+        try {
+            m = new NdefMessage(ndefMessage);
+        } catch (FormatException e) {
+            throw new IllegalArgumentException("Error parsing NDEF message", e);
+        }
+
+        byte[] snUtf8 = serviceName.getBytes(UTF_8);
+        for (NdefRecord r : m.getRecords()) {
+            byte[] p = r.getPayload();
+            if (r.getTnf() == NdefRecord.TNF_WELL_KNOWN
+                    && Arrays.equals("Tp".getBytes(UTF_8), r.getType())
+                    && p != null
+                    && p.length > snUtf8.length + 2
+                    && p[0] == 0x10
+                    && p[1] == snUtf8.length
+                    && Arrays.equals(snUtf8, Arrays.copyOfRange(p, 2, 2 + snUtf8.length))) {
+                return r;
+            }
+        }
+        return null;
+    }
+
+
+    static @NonNull
+    ParsedServiceParameterRecord parseServiceParameterRecord(NdefRecord serviceParameterRecord) {
+        if (serviceParameterRecord.getTnf() != NdefRecord.TNF_WELL_KNOWN) {
+            throw new IllegalArgumentException("Record is not well known");
+        }
+        if (!Arrays.equals("Tp".getBytes(UTF_8), serviceParameterRecord.getType())) {
+            throw new IllegalArgumentException("Expected type Tp");
+        }
+
+        // See [TNEP] 4.1.2 Service Parameter Record for the payload
+        byte[] p = serviceParameterRecord.getPayload();
+        if (p.length < 1) {
+            throw new IllegalArgumentException("Unexpected length of Service Parameter Record");
+        }
+        int serviceNameLen = p[1];
+        if (p.length != serviceNameLen + 7) {
+            throw new IllegalArgumentException("Unexpected length of body in Service Parameter Record");
+        }
+
+        ParsedServiceParameterRecord ret = new ParsedServiceParameterRecord();
+        ret.tnepVersion = p[0]  & 0xff;
+        ret.serviceNameUri = new String(p, 2, serviceNameLen, US_ASCII);
+        ret.tnepCommunicationMode = p[2 + serviceNameLen]  & 0xff;
+        int wt_int = p[3 + serviceNameLen]  & 0xff;
+        ret.tWaitMillis = Math.pow(2, wt_int/4 - 1);
+        ret.nWait = p[4 + serviceNameLen] & 0xff;
+        ret.maxNdefSize = (p[5 + serviceNameLen] & 0xff)*0x100 + (p[6 + serviceNameLen]  & 0xff);
+
+        return ret;
+    }
+
+    static class ParsedServiceParameterRecord {
+        int tnepVersion;
+        @NonNull String serviceNameUri;
+        int tnepCommunicationMode;
+        double tWaitMillis;
+        int nWait;
+        int maxNdefSize;
+    }
+
+    static @Nullable
+    NdefRecord findTnepStatusRecord(@NonNull byte[] ndefMessage) {
+        NdefMessage m = null;
+        try {
+            m = new NdefMessage(ndefMessage);
+        } catch (FormatException e) {
+            throw new IllegalArgumentException("Error parsing NDEF message", e);
+        }
+
+        for (NdefRecord r : m.getRecords()) {
+            byte[] p = r.getPayload();
+            if (r.getTnf() == NdefRecord.TNF_WELL_KNOWN
+                    && Arrays.equals("Te".getBytes(UTF_8), r.getType())) {
+                return r;
+            }
+        }
+        return null;
     }
 
 }

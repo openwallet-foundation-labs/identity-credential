@@ -19,6 +19,7 @@ package com.android.identity;
 import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
+import android.nfc.NdefRecord;
 
 import androidx.annotation.NonNull;
 import androidx.test.InstrumentationRegistry;
@@ -284,9 +285,17 @@ public class NfcEnagementHelperTest {
         byte[] initialNdefMessage = Arrays.copyOf(responseApdu, responseApdu.length - 2);
 
         // The Initial NDEF message should contain a Service Parameter record for the
-        // urn:nfc:sn:handover service
-        Assert.assertTrue(NfcUtil.ndefMessageContainsServiceParameterRecord(initialNdefMessage,
-                "urn:nfc:sn:handover"));
+        // urn:nfc:sn:handover service.
+        NdefRecord handoverServiceRecord = NfcUtil.findServiceParameterRecordWithName(initialNdefMessage,
+                "urn:nfc:sn:handover");
+        Assert.assertNotNull(handoverServiceRecord);
+        NfcUtil.ParsedServiceParameterRecord spr = NfcUtil.parseServiceParameterRecord(
+                handoverServiceRecord);
+        Assert.assertEquals(0x10, spr.tnepVersion);
+        Assert.assertEquals("urn:nfc:sn:handover", spr.serviceNameUri);
+        Assert.assertEquals(0x00, spr.tnepCommunicationMode);
+        Assert.assertEquals(0.5, spr.tWaitMillis, 0.001);
+        Assert.assertEquals(0, spr.nWait);
 
         // Keep the following code in sync with verificationHelper.startNegotiatedHandover()
 
@@ -295,7 +304,12 @@ public class NfcEnagementHelperTest {
         // section 4.3 TNEP Status Message
         byte[] serviceSelectResponse = ndefTransact(helper,
                 NfcUtil.createNdefMessageServiceSelect("urn:nfc:sn:handover"));
-        Assert.assertEquals("d10201546500", Util.toHex(serviceSelectResponse));
+        NdefRecord tnepStatusRecord = NfcUtil.findTnepStatusRecord(serviceSelectResponse);
+        Assert.assertNotNull(tnepStatusRecord);
+        byte[] tnepStatusPayload = tnepStatusRecord.getPayload();
+        Assert.assertNotNull(tnepStatusPayload);
+        Assert.assertEquals(1, tnepStatusPayload.length);
+        Assert.assertEquals(0x00, tnepStatusPayload[0]);
 
         byte[] encodedReaderEngagement = null;
         if (useLargeRequestMessage) {
