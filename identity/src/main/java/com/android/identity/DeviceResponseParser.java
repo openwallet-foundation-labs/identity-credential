@@ -143,48 +143,6 @@ public final class DeviceResponseParser {
         List<Document> mResultDocuments = null;
         private String mVersion;
 
-        // Returns deviceKey and digestIdMapping. The byte[] is the digest.
-        //
-        private @NonNull
-        Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(byte[] encodedMobileSecurityObject,
-                                                                 String expectedDoctype) {
-            MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
-                    .setMobileSecurityObject(encodedMobileSecurityObject).parse();
-
-            /* don't care about version for now */
-            String digestAlgorithm = parsedMso.getDigestAlgorithm();
-            if (!digestAlgorithm.equals("SHA-256")) {
-                throw new IllegalArgumentException("Unsupported digestAlgorithm '"
-                        + digestAlgorithm + "' in MSO");
-            }
-
-            String msoDocType = parsedMso.getDocType();
-            if (!msoDocType.equals(expectedDoctype)) {
-                throw new IllegalArgumentException("docType in MSO '" + msoDocType
-                        + "' does not match docType from Document");
-            }
-
-            Set<String> nameSpaceNames = parsedMso.getValueDigestNamespaces();
-            Map<String, Map<Long, byte[]>> ret = new HashMap<>();
-            for (String nameSpaceName : nameSpaceNames) {
-                ret.put(nameSpaceName, parsedMso.getDigestIDs(nameSpaceName));
-            }
-
-            PublicKey deviceKey = parsedMso.getDeviceKey();
-            return Pair.create(deviceKey, ret);
-        }
-
-        private void parseValidityInfo(byte[] encodedMobileSecurityObject, Document.Builder builder) {
-            MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
-                    .setMobileSecurityObject(encodedMobileSecurityObject).parse();
-            builder.setValidityInfoSigned(parsedMso.getSigned());
-            builder.setValidityInfoValidFrom(parsedMso.getValidFrom());
-            builder.setValidityInfoValidUntil(parsedMso.getValidUntil());
-            if (parsedMso.getExpectedUpdate() != null) {
-                builder.setValidityInfoExpectedUpdate(parsedMso.getExpectedUpdate());
-            }
-        }
-
         // Returns the DeviceKey from the MSO
         //
         private @NonNull
@@ -221,13 +179,36 @@ public final class DeviceResponseParser {
             DataItem mobileSecurityObject = Util.cborExtractTaggedAndEncodedCbor(
                     mobileSecurityObjectBytes);
             byte[] encodedMobileSecurityObject = Util.cborEncode(mobileSecurityObject);
+            MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
+                    .setMobileSecurityObject(encodedMobileSecurityObject).parse();
 
-            Pair<PublicKey, Map<String, Map<Long, byte[]>>> msoResult =
-                    parseMso(encodedMobileSecurityObject, expectedDocType);
-            final PublicKey deviceKey = msoResult.first;
-            Map<String, Map<Long, byte[]>> digestMapping = msoResult.second;
+            builder.setValidityInfoSigned(parsedMso.getSigned());
+            builder.setValidityInfoValidFrom(parsedMso.getValidFrom());
+            builder.setValidityInfoValidUntil(parsedMso.getValidUntil());
+            if (parsedMso.getExpectedUpdate() != null) {
+                builder.setValidityInfoExpectedUpdate(parsedMso.getExpectedUpdate());
+            }
 
-            parseValidityInfo(encodedMobileSecurityObject, builder);
+            /* don't care about version for now */
+            String digestAlgorithm = parsedMso.getDigestAlgorithm();
+            if (!digestAlgorithm.equals("SHA-256")) {
+                throw new IllegalArgumentException("Unsupported digestAlgorithm '"
+                        + digestAlgorithm + "' in MSO");
+            }
+
+            String msoDocType = parsedMso.getDocType();
+            if (!msoDocType.equals(expectedDocType)) {
+                throw new IllegalArgumentException("docType in MSO '" + msoDocType
+                        + "' does not match docType from Document");
+            }
+
+            Set<String> nameSpaceNames = parsedMso.getValueDigestNamespaces();
+            Map<String, Map<Long, byte[]>> digestMapping = new HashMap<>();
+            for (String nameSpaceName : nameSpaceNames) {
+                digestMapping.put(nameSpaceName, parsedMso.getDigestIDs(nameSpaceName));
+            }
+
+            PublicKey deviceKey = parsedMso.getDeviceKey();
 
             DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
             Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
