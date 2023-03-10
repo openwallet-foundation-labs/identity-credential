@@ -189,7 +189,7 @@ class CredentialData {
             }
 
             DataItem cborValue = map.get(new UnicodeString("value"));
-            byte[] data = Util.cborEncodeWithoutCanonicalizing(cborValue);
+            byte[] data = Util.cborEncode(cborValue);
             builder.putEntry(namespaceName, name, accessControlProfileIds, data);
         }
 
@@ -784,7 +784,7 @@ class CredentialData {
                 | KeyStoreException e) {
             throw new RuntimeException("Error encrypting CBOR for saving to disk", e);
         }
-        return Util.cborEncodeWithoutCanonicalizing(builder.build().get(0));
+        return Util.cborEncode(builder.build().get(0));
     }
 
     private void saveToDiskAuthKeys(MapBuilder<CborBuilder> map) {

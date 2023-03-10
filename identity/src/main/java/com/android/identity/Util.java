@@ -18,7 +18,6 @@ package com.android.identity;
 
 import android.content.Context;
 import android.security.keystore.KeyProperties;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -78,7 +77,6 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Queue;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -180,11 +178,6 @@ class Util {
 
     static @NonNull
     byte[] cborEncode(@NonNull DataItem dataItem) {
-        return cborEncodeWithoutCanonicalizing(dataItem);
-    }
-
-    static @NonNull
-    byte[] cborEncodeWithoutCanonicalizing(@NonNull DataItem dataItem) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             new CborEncoder(baos).nonCanonical().encode(dataItem);
@@ -1515,7 +1508,7 @@ class Util {
         issuerSignedItem.put(new UnicodeString("elementValue"), elementValue);
 
         // By using the non-canonical encoder the order is preserved.
-        return Util.cborEncodeWithoutCanonicalizing(issuerSignedItem);
+        return Util.cborEncode(issuerSignedItem);
     }
 
     static @NonNull
@@ -1810,7 +1803,7 @@ class Util {
         if (dataItem == null) {
             return -1;
         }
-        return cborEncodeWithoutCanonicalizing(dataItem).length;
+        return cborEncode(dataItem).length;
     }
 
     /**
