@@ -108,10 +108,10 @@ public class StaticAuthDataTest {
         Assert.assertNotNull(list);
         Assert.assertEquals(2, list.size());
         Assert.assertEquals("{\n" +
-                "  'random' : [0x50, 0x51, 0x52],\n" +
                 "  'digestID' : 42,\n" +
-                "  'elementValue' : null,\n" +
-                "  'elementIdentifier' : 'dataElementName'\n" +
+                "  'random' : [0x50, 0x51, 0x52],\n" +
+                "  'elementIdentifier' : 'dataElementName',\n" +
+                "  'elementValue' : null\n" +
                 "}", Util.cborPrettyPrint(list.get(0)));
         Assert.assertEquals("{\n" +
                 "  'digestID' : 43,\n" +
