@@ -44,6 +44,7 @@ public final class DeviceRequestParser {
 
     private byte[] mEncodedDeviceRequest;
     private byte[] mEncodedSessionTranscript;
+    private boolean mSkipReaderAuthParseAndCheck = false;
 
     /**
      * Constructs a {@link DeviceRequestParser}.
@@ -77,20 +78,36 @@ public final class DeviceRequestParser {
     }
 
     /**
+     * Sets a flag to skip force skip parsing the reader auth structure.
+     *
+     * This flag is useful when the user knows that:
+     * <ul>
+     *   <li>they will ignore the reader auth result (optional in 18013-5)</li>
+     *   <li>and explicitly don't want to parse it</li>
+     * </ul>
+     * For example, if this code is to be used in production and there is uncertainty about which
+     * devices will have which security providers, and there is concern about running into parsing
+     * / validating issues.
+     *
+     * By default this value is set to false.
+     *
+     * @param skipReaderAuthParseAndCheck
+     * @return the <code>DeviceRequestParser</code>.
+     */
+    @NonNull
+    public DeviceRequestParser setSkipReaderAuthParseAndCheck(
+            boolean skipReaderAuthParseAndCheck) {
+        mSkipReaderAuthParseAndCheck = skipReaderAuthParseAndCheck;
+        return this;
+    }
+
+    /**
      * Parses the device request.
      *
      * <p>This parser will successfully parse requests where the request is signed by the reader
      * but the signature check fails. The method {@link DocumentRequest#getReaderAuthenticated()}
      * can used to get additional information whether {@code ItemsRequest} was authenticated.
      *
-     * @param skipReaderAuthParseAndCheck Flag to skip force skip parsing the reader auth structure.
-     *                                    This flag is useful when the user knows that:
-     *                                      - they will ignore the reader auth result (optional in 18013-5)
-     *                                      - and explicitly don't want to parse it
-     *                                    For example, if this code is to be used in production and
-     *                                    there is uncertainty about which devices will have which
-     *                                    security providers, and there is concern about running
-     *                                    into parsing / validating issues.
      * @return a {@link DeviceRequestParser.DeviceRequest} with the parsed data.
      * @throws IllegalArgumentException if the given data isn't valid CBOR or not conforming
      *                                  to the CDDL for its type.
@@ -98,7 +115,7 @@ public final class DeviceRequestParser {
      *                                  methods on this class.
      */
     @NonNull
-    public DeviceRequest parse(boolean skipReaderAuthParseAndCheck) {
+    public DeviceRequest parse() {
         if (mEncodedDeviceRequest == null) {
             throw new IllegalStateException("deviceRequest has not been set");
         }
@@ -107,17 +124,8 @@ public final class DeviceRequestParser {
         }
         DataItem sessionTranscript = Util.cborDecode(mEncodedSessionTranscript);
         DeviceRequestParser.DeviceRequest request = new DeviceRequestParser.DeviceRequest();
-        request.parse(mEncodedDeviceRequest, sessionTranscript, skipReaderAuthParseAndCheck);
+        request.parse(mEncodedDeviceRequest, sessionTranscript, mSkipReaderAuthParseAndCheck);
         return request;
-    }
-
-    /**
-     * Helper method to call parse() with `skipReaderAuthParseAndCheck` value set to false
-     * @return return value of parse(boolean) above
-     */
-    @NonNull
-    public DeviceRequest parse() {
-        return parse(false);
     }
 
     /**
