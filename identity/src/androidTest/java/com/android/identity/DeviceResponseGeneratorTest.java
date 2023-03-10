@@ -112,7 +112,7 @@ public class DeviceResponseGeneratorTest {
 
         // Also put in some complicated CBOR to check that we don't accidentally
         // canonicalize this, leading to digest mismatches on the reader side.
-        byte[] rawCbor1 = Util.cborEncodeWithoutCanonicalizing(
+        byte[] rawCbor1 = Util.cborEncode(
                 new CborBuilder()
                         .addMap()
                         .put("a", "foo")
@@ -127,7 +127,7 @@ public class DeviceResponseGeneratorTest {
                 "  'c' : 'baz'\n" +
                 "}", Util.cborPrettyPrint(rawCbor1));
 
-        byte[] rawCbor2 = Util.cborEncodeWithoutCanonicalizing(
+        byte[] rawCbor2 = Util.cborEncode(
                 new CborBuilder()
                         .addMap()
                         .put("c", "baz")

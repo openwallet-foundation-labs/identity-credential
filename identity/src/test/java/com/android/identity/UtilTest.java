@@ -40,11 +40,9 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
-import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -666,7 +664,7 @@ public class UtilTest {
                 .put("elementIdentifier", "foo")
                 .end()
                 .build().get(0);
-        encoded = Util.cborEncodeWithoutCanonicalizing(di);
+        encoded = Util.cborEncode(di);
         assertEquals("{\n" +
                 "  'random' : [0x01, 0x02, 0x03],\n" +
                 "  'digestID' : 42,\n" +
@@ -690,7 +688,7 @@ public class UtilTest {
                 .put(new UnicodeString("elementValue"), SimpleValue.NULL)
                 .end()
                 .build().get(0);
-        encoded = Util.cborEncodeWithoutCanonicalizing(di);
+        encoded = Util.cborEncode(di);
         assertEquals("{\n" +
                 "  'digestID' : 42,\n" +
                 "  'random' : [0x01, 0x02, 0x03],\n" +
