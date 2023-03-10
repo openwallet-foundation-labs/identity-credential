@@ -44,6 +44,7 @@ public final class DeviceRequestParser {
 
     private byte[] mEncodedDeviceRequest;
     private byte[] mEncodedSessionTranscript;
+    private boolean mSkipReaderAuthParseAndCheck = false;
 
     /**
      * Constructs a {@link DeviceRequestParser}.
@@ -77,6 +78,30 @@ public final class DeviceRequestParser {
     }
 
     /**
+     * Sets a flag to skip force skip parsing the reader auth structure.
+     *
+     * This flag is useful when the user knows that:
+     * <ul>
+     *   <li>they will ignore the reader auth result (optional in 18013-5)</li>
+     *   <li>and explicitly don't want to parse it</li>
+     * </ul>
+     * For example, if this code is to be used in production and there is uncertainty about which
+     * devices will have which security providers, and there is concern about running into parsing
+     * / validating issues.
+     *
+     * By default this value is set to false.
+     *
+     * @param skipReaderAuthParseAndCheck
+     * @return the <code>DeviceRequestParser</code>.
+     */
+    @NonNull
+    public DeviceRequestParser setSkipReaderAuthParseAndCheck(
+            boolean skipReaderAuthParseAndCheck) {
+        mSkipReaderAuthParseAndCheck = skipReaderAuthParseAndCheck;
+        return this;
+    }
+
+    /**
      * Parses the device request.
      *
      * <p>This parser will successfully parse requests where the request is signed by the reader
@@ -88,6 +113,9 @@ public final class DeviceRequestParser {
      *                                  to the CDDL for its type.
      * @throws IllegalStateException    if required data hasn't been set using the setter
      *                                  methods on this class.
+     * @throws GeneralSecurityException may be thrown if there issues within the default security
+     *                                  provider. Use <code>setSkipReaderAuthParseAndCheck</code> to
+     *                                  skip some usage of security provider in reader auth parsing.
      */
     @NonNull
     public DeviceRequest parse() {
@@ -99,7 +127,7 @@ public final class DeviceRequestParser {
         }
         DataItem sessionTranscript = Util.cborDecode(mEncodedSessionTranscript);
         DeviceRequestParser.DeviceRequest request = new DeviceRequestParser.DeviceRequest();
-        request.parse(mEncodedDeviceRequest, sessionTranscript);
+        request.parse(mEncodedDeviceRequest, sessionTranscript, mSkipReaderAuthParseAndCheck);
         return request;
     }
 
@@ -137,7 +165,7 @@ public final class DeviceRequestParser {
         }
 
         void parse(byte[] encodedDeviceRequest,
-                DataItem sessionTranscript) {
+                DataItem sessionTranscript, boolean skipReaderAuthParseAndCheck) {
 
             DataItem request = Util.cborDecode(encodedDeviceRequest);
             if (!(request instanceof Map)) {
@@ -173,7 +201,7 @@ public final class DeviceRequestParser {
                             "readerAuth"));
                     byte[] encodedReaderAuth = null;
                     boolean readerAuthenticated = false;
-                    if (readerAuth != null) {
+                    if (!skipReaderAuthParseAndCheck && readerAuth != null) {
                         encodedReaderAuth = Util.cborEncode(readerAuth);
 
                         readerCertChain = Util.coseSign1GetX5Chain(readerAuth);
