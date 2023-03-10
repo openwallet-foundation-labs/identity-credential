@@ -335,13 +335,21 @@ public class VerificationHelper {
                 "Invalid QR Code device engagement text: " + qrDeviceEngagement));
     }
 
+    private @NonNull byte[] transceive(@NonNull IsoDep isoDep, @NonNull byte[] apdu)
+            throws IOException {
+        Logger.dHex(TAG, "transceive: Sending APDU", apdu);
+        byte[] ret = isoDep.transceive(apdu);
+        Logger.dHex(TAG, "q: Received APDU", ret);
+        return ret;
+    }
+
     private byte[] readBinary(@NonNull IsoDep isoDep, int offset, int size)
             throws IOException {
         byte[] apdu;
         byte[] ret;
 
         apdu = NfcUtil.createApduReadBinary(offset, size);
-        ret = isoDep.transceive(apdu);
+        ret = transceive(isoDep, apdu);
         if (ret.length < 2 || ret[ret.length - 2] != ((byte) 0x90) || ret[ret.length - 1] != ((byte) 0x00)) {
             Logger.eHex(TAG, "Error sending READ_BINARY command, ret", ret);
             return null;
@@ -357,7 +365,7 @@ public class VerificationHelper {
         // TODO: Allow up to nWait retries
 
         apdu = NfcUtil.createApduReadBinary(0x0000, 2);
-        ret = isoDep.transceive(apdu);
+        ret = transceive(isoDep, apdu);
         if (ret.length != 4 || ret[2] != ((byte) 0x90) || ret[3] != ((byte) 0x00)) {
             Logger.eHex(TAG, "Error sending second READ_BINARY command for length, ret", ret);
             return null;
@@ -365,7 +373,7 @@ public class VerificationHelper {
         int replyLen = ((int) ret[0] & 0xff) * 256 + ((int) ret[1] & 0xff);
 
         apdu = NfcUtil.createApduReadBinary(0x0002, replyLen);
-        ret = isoDep.transceive(apdu);
+        ret = transceive(isoDep, apdu);
         if (ret.length != replyLen + 2 || ret[replyLen] != ((byte) 0x90) || ret[replyLen + 1] != ((byte) 0x00)) {
             Logger.eHex(TAG, "Error sending second READ_BINARY command for payload, ret", ret);
             return null;
@@ -404,7 +412,7 @@ public class VerificationHelper {
             data[1] = (byte) (ndefMessage.length & 0xff);
             System.arraycopy(ndefMessage, 0, data, 2, ndefMessage.length);
             apdu = NfcUtil.createApduUpdateBinary(0x0000, data);
-            ret = isoDep.transceive(apdu);
+            ret = transceive(isoDep, apdu);
             if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                 Logger.eHex(TAG, "Error sending combined UPDATE_BINARY command, ret", ret);
                 return null;
@@ -414,7 +422,7 @@ public class VerificationHelper {
 
             // First command is UPDATE_BINARY to reset length
             apdu = NfcUtil.createApduUpdateBinary(0x0000, new byte[]{0x00, 0x00});
-            ret = isoDep.transceive(apdu);
+            ret = transceive(isoDep, apdu);
             if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                 Logger.eHex(TAG, "Error sending initial UPDATE_BINARY command, ret", ret);
                 return null;
@@ -427,8 +435,8 @@ public class VerificationHelper {
             while (remaining > 0) {
                 int numBytesToWrite = Math.min(remaining, 255);
                 byte[] bytesToWrite = Arrays.copyOfRange(ndefMessage, offset, offset + numBytesToWrite);
-                ret = isoDep.transceive(
-                        NfcUtil.createApduUpdateBinary(offset + 2, bytesToWrite));
+                apdu = NfcUtil.createApduUpdateBinary(offset + 2, bytesToWrite);
+                ret = transceive(isoDep, apdu);
                 if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                     Logger.eHex(TAG, "Error sending UPDATE_BINARY command with payload, ret", ret);
                     return null;
@@ -442,7 +450,7 @@ public class VerificationHelper {
                     (byte) ((ndefMessage.length / 0x100) & 0xff),
                     (byte) (ndefMessage.length & 0xff)};
             apdu = NfcUtil.createApduUpdateBinary(0x0000, encodedLength);
-            ret = isoDep.transceive(apdu);
+            ret = transceive(isoDep, apdu);
             if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                 Logger.eHex(TAG, "Error sending final UPDATE_BINARY command, ret", ret);
                 return null;
@@ -488,21 +496,21 @@ public class VerificationHelper {
             @Override
             public void run() {
                 byte[] ret;
-                byte[] selectCommand;
+                byte[] apdu;
 
                 try {
                     isoDep.connect();
                     isoDep.setTimeout(20 * 1000);  // 20 seconds
 
-                    selectCommand = NfcUtil.createApduApplicationSelect(
-                            NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION);
-                    ret = isoDep.transceive(selectCommand);
+                    apdu = NfcUtil.createApduApplicationSelect(NfcUtil.AID_FOR_TYPE_4_TAG_NDEF_APPLICATION);
+                    ret = transceive(isoDep, apdu);
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                         Logger.eHex(TAG, "NDEF application selection failed, ret", ret);
                         throw new IllegalStateException("NDEF application selection failed");
                     }
 
-                    ret = isoDep.transceive(NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID));
+                    apdu = NfcUtil.createApduSelectFile(NfcUtil.CAPABILITY_CONTAINER_FILE_ID);
+                    ret = transceive(isoDep, apdu);
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                         Logger.eHex(TAG, "Error selecting capability file, ret", ret);
                         throw new IllegalStateException("Error selecting capability file");
@@ -524,7 +532,8 @@ public class VerificationHelper {
                     int ndefFileId = ((int) ccFile[9] & 0xff) * 256 + ((int) ccFile[10] & 0xff);
                     Logger.d(TAG, String.format(Locale.US, "NDEF file id: 0x%04x", ndefFileId));
 
-                    ret = isoDep.transceive(NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID));
+                    apdu = NfcUtil.createApduSelectFile(NfcUtil.NDEF_FILE_ID);
+                    ret = transceive(isoDep, apdu);
                     if (!Arrays.equals(ret, NfcUtil.STATUS_WORD_OK)) {
                         Logger.eHex(TAG, "Error selecting NDEF file, ret", ret);
                         throw new IllegalStateException("Error selecting NDEF file");
