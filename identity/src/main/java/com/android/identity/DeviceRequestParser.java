@@ -83,7 +83,14 @@ public final class DeviceRequestParser {
      * but the signature check fails. The method {@link DocumentRequest#getReaderAuthenticated()}
      * can used to get additional information whether {@code ItemsRequest} was authenticated.
      *
-     * @param skipReaderAuthParseAndCheck - flag to skip force skip parsing the reader auth structre
+     * @param skipReaderAuthParseAndCheck Flag to skip force skip parsing the reader auth structure.
+     *                                    This flag is useful when the user knows that:
+     *                                      - they will ignore the reader auth result (optional in 18013-5)
+     *                                      - and explicitly don't want to parse it
+     *                                    For example, if this code is to be used in production and
+     *                                    there is uncertainty about which devices will have which
+     *                                    security providers, and there is concern about running
+     *                                    into parsing / validating issues.
      * @return a {@link DeviceRequestParser.DeviceRequest} with the parsed data.
      * @throws IllegalArgumentException if the given data isn't valid CBOR or not conforming
      *                                  to the CDDL for its type.
