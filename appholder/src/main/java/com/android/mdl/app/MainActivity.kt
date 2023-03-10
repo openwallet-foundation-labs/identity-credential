@@ -24,6 +24,8 @@ import com.android.mdl.app.util.logInfo
 import com.android.mdl.app.util.logWarning
 import com.android.mdl.app.viewmodel.ShareDocumentViewModel
 import com.google.android.material.elevation.SurfaceColors
+import java.security.Security
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 class MainActivity : AppCompatActivity() {
 
@@ -46,6 +48,8 @@ class MainActivity : AppCompatActivity() {
         setupDrawerLayout()
         setupNfc()
         onNewIntent(intent)
+
+        Security.addProvider(BouncyCastleProvider())
     }
 
     private fun setupNfc() {

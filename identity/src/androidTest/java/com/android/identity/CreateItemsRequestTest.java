@@ -38,7 +38,7 @@ public class CreateItemsRequestTest {
     @Test
     public void basicRequest() throws CborException {
         Map<String, Collection<String>> entriesToRequest = new LinkedHashMap<>();
-        entriesToRequest.put("org.test.ns", Arrays.asList("xyz", "abc"));
+        entriesToRequest.put("org.test.ns", Arrays.asList("abc", "xyz"));
 
         String docType = "org.test.ns";
         assertEquals("{\n"
@@ -56,8 +56,8 @@ public class CreateItemsRequestTest {
     @Test
     public void multipleNamespaces() throws CborException {
         Map<String, Collection<String>> entriesToRequest = new LinkedHashMap<>();
-        entriesToRequest.put("org.test.ns1", Arrays.asList("foo", "bar"));
-        entriesToRequest.put("org.test.ns2", Arrays.asList("xyz", "abc"));
+        entriesToRequest.put("org.test.ns1", Arrays.asList("bar", "foo"));
+        entriesToRequest.put("org.test.ns2", Arrays.asList("abc", "xyz"));
         String docType = "org.test.ns";
         assertEquals("{\n"
                         + "  'docType' : 'org.test.ns',\n"
@@ -78,7 +78,7 @@ public class CreateItemsRequestTest {
     @Test
     public void noDocType() throws CborException {
         Map<String, Collection<String>> entriesToRequest = new LinkedHashMap<>();
-        entriesToRequest.put("org.test.ns1", Arrays.asList("foo", "bar"));
+        entriesToRequest.put("org.test.ns1", Arrays.asList("bar", "foo"));
         assertEquals("{\n"
                         + "  'nameSpaces' : {\n"
                         + "    'org.test.ns1' : {\n"

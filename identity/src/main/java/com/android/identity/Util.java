@@ -18,7 +18,6 @@ package com.android.identity;
 
 import android.content.Context;
 import android.security.keystore.KeyProperties;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -78,7 +77,6 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Queue;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -180,19 +178,6 @@ class Util {
 
     static @NonNull
     byte[] cborEncode(@NonNull DataItem dataItem) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try {
-            new CborEncoder(baos).encode(dataItem);
-        } catch (CborException e) {
-            // This should never happen and we don't want cborEncode() to throw since that
-            // would complicate all callers. Log it instead.
-            throw new IllegalStateException("Unexpected failure encoding data", e);
-        }
-        return baos.toByteArray();
-    }
-
-    static @NonNull
-    byte[] cborEncodeWithoutCanonicalizing(@NonNull DataItem dataItem) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             new CborEncoder(baos).nonCanonical().encode(dataItem);
@@ -714,11 +699,10 @@ class Util {
                 detachedContent);
 
         try {
-            // Use BouncyCastle provider for verification since it supports a lot more curves than
-            // the default provider, including the brainpool curves
-            //
-            Signature verifier = Signature.getInstance(signature,
-                    new org.bouncycastle.jce.provider.BouncyCastleProvider());
+            // Using the default provider here. If BounceyCastle is to be used it is up to client
+            // to register that provider before hand.
+            // https://docs.oracle.com/javase/7/docs/api/java/security/Security.html#addProvider(java.security.Provider)
+            Signature verifier = Signature.getInstance(signature);
             verifier.initVerify(publicKey);
             verifier.update(toBeSigned);
             return verifier.verify(derSignature);
@@ -1524,7 +1508,7 @@ class Util {
         issuerSignedItem.put(new UnicodeString("elementValue"), elementValue);
 
         // By using the non-canonical encoder the order is preserved.
-        return Util.cborEncodeWithoutCanonicalizing(issuerSignedItem);
+        return Util.cborEncode(issuerSignedItem);
     }
 
     static @NonNull
@@ -1819,7 +1803,7 @@ class Util {
         if (dataItem == null) {
             return -1;
         }
-        return cborEncodeWithoutCanonicalizing(dataItem).length;
+        return cborEncode(dataItem).length;
     }
 
     /**
