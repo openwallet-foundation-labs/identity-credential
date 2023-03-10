@@ -174,11 +174,12 @@ public final class DeviceResponseParser {
             builder.setIssuerSignedAuthenticated(issuerSignedAuthenticated);
             builder.setIssuerCertificateChain(issuerAuthorityCertChain);
 
-            DataItem mobileSecurityObjectBytes = Util.cborDecode(
-                    Util.coseSign1GetData(issuerAuthDataItem));
-            DataItem mobileSecurityObject = Util.cborExtractTaggedAndEncodedCbor(
-                    mobileSecurityObjectBytes);
-            byte[] encodedMobileSecurityObject = Util.cborEncode(mobileSecurityObject);
+//            DataItem mobileSecurityObjectBytes = Util.cborDecode(
+//                    Util.coseSign1GetData(issuerAuthDataItem));
+//            DataItem mobileSecurityObject = Util.cborExtractTaggedAndEncodedCbor(
+//                    mobileSecurityObjectBytes);
+//            byte[] encodedMobileSecurityObject = Util.cborEncode(mobileSecurityObject);
+            byte[] encodedMobileSecurityObject = Util.cborExtractTaggedCbor(Util.coseSign1GetData(issuerAuthDataItem));
             MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
                     .setMobileSecurityObject(encodedMobileSecurityObject).parse();
 
