@@ -40,6 +40,7 @@ public class MobileSecurityObjectGenerator {
     private final String mDigestAlgorithm;
     private final String mDocType;
     private final PublicKey mDeviceKey;
+    private final int mDigestSize;
 
     private final CborBuilder mValueDigestsBuilder = new CborBuilder();
     private final MapBuilder<CborBuilder> mValueDigestsOuter = mValueDigestsBuilder.addMap();
@@ -71,6 +72,12 @@ public class MobileSecurityObjectGenerator {
         mDigestAlgorithm = digestAlgorithm;
         mDocType = docType;
         mDeviceKey = deviceKey;
+        switch (digestAlgorithm) {
+            case "SHA-256": mDigestSize = 32; break;
+            case "SHA-384": mDigestSize = 48; break;
+            case "SHA-512": mDigestSize = 64; break;
+            default: mDigestSize = -1;
+        }
     }
 
     /**
@@ -94,7 +101,12 @@ public class MobileSecurityObjectGenerator {
 
         MapBuilder<MapBuilder<CborBuilder>> valueDigestsInner = mValueDigestsOuter.putMap(nameSpace);
         for (Long digestID : digestIDs.keySet()) {
-            valueDigestsInner.put(digestID, digestIDs.get(digestID));
+            byte[] digest = digestIDs.get(digestID);
+            if (digest.length != mDigestSize) {
+                throw new IllegalArgumentException("digest is unexpected length: expected " +
+                        mDigestSize + " , but got " + digest.length);
+            }
+            valueDigestsInner.put(digestID, digest);
         }
         valueDigestsInner.end();
         return this;
