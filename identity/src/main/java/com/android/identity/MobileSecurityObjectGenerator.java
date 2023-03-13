@@ -84,8 +84,8 @@ public class MobileSecurityObjectGenerator {
      * @exception IllegalArgumentException if the <code>digestIDs</code> is empty.
      */
     @NonNull
-    public MobileSecurityObjectGenerator addDigestIDs(@NonNull String nameSpace,
-            @NonNull Map<Long, byte[]> digestIDs) {
+    public MobileSecurityObjectGenerator digestIdToDigestMap(@NonNull String nameSpace,
+                                                             @NonNull Map<Long, byte[]> digestIDs) {
 
         if (digestIDs.isEmpty()) {
             throw new IllegalArgumentException("digestIDs must not be empty");
@@ -281,7 +281,7 @@ public class MobileSecurityObjectGenerator {
     /**
      * Builds the <code>MobileSecurityObject</code> CBOR.
      *
-     * <p>It's mandatory to call {@link #addDigestIDs(String, Map)} and
+     * <p>It's mandatory to call {@link #digestIdToDigestMap(String, Map)} and
      * {@link #setValidityInfo(Timestamp, Timestamp, Timestamp, Timestamp)} before this call.
      *
      * @return the bytes of <code>MobileSecurityObject</code> CBOR.
@@ -291,7 +291,7 @@ public class MobileSecurityObjectGenerator {
     @NonNull
     public byte[] generate() {
         if (digestEmpty) {
-            throw new IllegalStateException("Must call addDigestIDs before generating");
+            throw new IllegalStateException("Must call digestIdToDigestMap before generating");
         } else if (mSigned == null) {
             throw new IllegalStateException("Must call setValidityInfo before generating");
         }

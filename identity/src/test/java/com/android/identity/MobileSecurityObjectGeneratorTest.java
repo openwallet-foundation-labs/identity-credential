@@ -155,8 +155,8 @@ public class MobileSecurityObjectGeneratorTest {
 
         byte[] encodedMSO = new MobileSecurityObjectGenerator(digestAlgorithm,
                 "org.iso.18013.5.1.mDL", deviceKeyFromVector)
-                .addDigestIDs("org.iso.18013.5.1", generateISODigest())
-                .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
+                .digestIdToDigestMap("org.iso.18013.5.1", generateISODigest())
+                .digestIdToDigestMap("org.iso.18013.5.1.US", generateISOUSDigest())
                 .setDeviceKeyAuthorizedNameSpaces(List.of("abc", "bcd"))
                 .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
                 .setDeviceKeyInfo(keyInfo)
@@ -204,8 +204,8 @@ public class MobileSecurityObjectGeneratorTest {
 
         byte[] encodedMSO = new MobileSecurityObjectGenerator("SHA-256",
                 "org.iso.18013.5.1.mDL", deviceKeyFromVector)
-                .addDigestIDs("org.iso.18013.5.1", generateISODigest())
-                .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
+                .digestIdToDigestMap("org.iso.18013.5.1", generateISODigest())
+                .digestIdToDigestMap("org.iso.18013.5.1.US", generateISOUSDigest())
                 .setValidityInfo(signedTimestamp, validFromTimestamp, validUntilTimestamp, null)
                 .generate();
 
@@ -268,7 +268,7 @@ public class MobileSecurityObjectGeneratorTest {
 
         Assert.assertThrows("expect exception for empty digestIDs",
                 IllegalArgumentException.class,
-                () -> msoGenerator.addDigestIDs("org.iso.18013.5.1", new HashMap<>()));
+                () -> msoGenerator.digestIdToDigestMap("org.iso.18013.5.1", new HashMap<>()));
 
         Assert.assertThrows("expect exception for validFrom < signed",
                 IllegalArgumentException.class,
@@ -301,13 +301,13 @@ public class MobileSecurityObjectGeneratorTest {
                         .setDeviceKeyAuthorizedNameSpaces(List.of("a", "bcd")));
 
         Assert.assertThrows("expect exception for msoGenerator which has not had " +
-                        "addDigestIDs and setValidityInfo called before generating",
+                        "digestIdToDigestMap and setValidityInfo called before generating",
                 IllegalStateException.class,
                 msoGenerator::generate);
 
 
         Assert.assertThrows("expect exception for msoGenerator which has not had " +
-                        "addDigestIDs called before generating",
+                        "digestIdToDigestMap called before generating",
                 IllegalStateException.class,
                 () -> {new MobileSecurityObjectGenerator("SHA-256",
                         "org.iso.18013.5.1.mDL", deviceKeyFromVector)
@@ -323,8 +323,8 @@ public class MobileSecurityObjectGeneratorTest {
                 IllegalStateException.class,
                 () -> {new MobileSecurityObjectGenerator("SHA-256",
                         "org.iso.18013.5.1.mDL", deviceKeyFromVector)
-                        .addDigestIDs("org.iso.18013.5.1", generateISODigest())
-                        .addDigestIDs("org.iso.18013.5.1.US", generateISOUSDigest())
+                        .digestIdToDigestMap("org.iso.18013.5.1", generateISODigest())
+                        .digestIdToDigestMap("org.iso.18013.5.1.US", generateISOUSDigest())
                         .generate();});
 
     }

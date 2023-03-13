@@ -48,7 +48,6 @@ import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
 import co.nstant.in.cbor.model.SimpleValueType;
-import co.nstant.in.cbor.model.Tag;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
@@ -367,7 +366,7 @@ public class Utility {
 
                 issuerSignedMapping.put(ns, innerArray);
 
-                msoGenerator.addDigestIDs(ns, vdInner);
+                msoGenerator.digestIdToDigestMap(ns, vdInner);
             }
 
             byte[] encodedMobileSecurityObject = msoGenerator.generate();
