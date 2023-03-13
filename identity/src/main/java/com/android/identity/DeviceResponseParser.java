@@ -151,13 +151,6 @@ public final class DeviceResponseParser {
                 DataItem issuerSigned,
                 Document.Builder builder) {
 
-            MessageDigest digester;
-            try {
-                digester = MessageDigest.getInstance("SHA-256");
-            } catch (NoSuchAlgorithmException e) {
-                throw new IllegalStateException("Failed creating digester");
-            }
-
             DataItem issuerAuthDataItem = Util.cborMapExtract(issuerSigned, "issuerAuth");
 
             List<X509Certificate> issuerAuthorityCertChain = Util.coseSign1GetX5Chain(
@@ -187,9 +180,11 @@ public final class DeviceResponseParser {
 
             /* don't care about version for now */
             String digestAlgorithm = parsedMso.getDigestAlgorithm();
-            if (!digestAlgorithm.equals("SHA-256")) {
-                throw new IllegalArgumentException("Unsupported digestAlgorithm '"
-                        + digestAlgorithm + "' in MSO");
+            MessageDigest digester;
+            try {
+                digester = MessageDigest.getInstance(digestAlgorithm);
+            } catch (NoSuchAlgorithmException e) {
+                throw new IllegalStateException("Failed creating digester");
             }
 
             String msoDocType = parsedMso.getDocType();
