@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.crypto.SecretKey;
 
@@ -142,53 +143,6 @@ public final class DeviceResponseParser {
         List<Document> mResultDocuments = null;
         private String mVersion;
 
-        // Returns deviceKey and digestIdMapping. The byte[] is the digest.
-        //
-        private @NonNull
-        Pair<PublicKey, Map<String, Map<Long, byte[]>>> parseMso(DataItem mso,
-                                                                 String expectedDoctype) {
-            /* don't care about version for now */
-            String digestAlgorithm = Util.cborMapExtractString(mso, "digestAlgorithm");
-            if (!digestAlgorithm.equals("SHA-256")) {
-                throw new IllegalArgumentException("Unsupported digestAlgorithm '"
-                        + digestAlgorithm + "' in MSO");
-            }
-            String msoDocType = Util.cborMapExtractString(mso, "docType");
-            if (!msoDocType.equals(expectedDoctype)) {
-                throw new IllegalArgumentException("docType in MSO '" + msoDocType
-                        + "' does not match docType from Document");
-            }
-            DataItem valueDigests = Util.cborMapExtract(mso, "valueDigests");
-            Collection<String> nameSpaceNames = Util.cborMapExtractMapStringKeys(valueDigests);
-            Map<String, Map<Long, byte[]>> ret = new HashMap<>();
-            for (String nameSpaceName : nameSpaceNames) {
-                DataItem elementMap = Util.cborMapExtract(valueDigests, nameSpaceName);
-                Collection<Long> elementDigestIDs = Util.cborMapExtractMapNumberKeys(elementMap);
-                Map<Long, byte[]> innerRet = new HashMap<>();
-                for (Long elementDigestID : elementDigestIDs) {
-                    byte[] digest = Util.cborMapExtractByteString(elementMap, elementDigestID);
-                    innerRet.put(elementDigestID, digest);
-                }
-                ret.put(nameSpaceName, innerRet);
-            }
-
-            DataItem deviceKeyInfo = Util.cborMapExtractMap(mso, "deviceKeyInfo");
-            DataItem deviceKeyCoseKey = Util.cborMapExtract(deviceKeyInfo, "deviceKey");
-            PublicKey deviceKey = Util.coseKeyDecode(deviceKeyCoseKey);
-
-            return Pair.create(deviceKey, ret);
-        }
-
-        private void parseValidityInfo(DataItem mso, Document.Builder builder) {
-            DataItem map = Util.cborMapExtractMap(mso, "validityInfo");
-            builder.setValidityInfoSigned(Util.cborMapExtractDateTime(map, "signed"));
-            builder.setValidityInfoValidFrom(Util.cborMapExtractDateTime(map, "validFrom"));
-            builder.setValidityInfoValidUntil(Util.cborMapExtractDateTime(map, "validUntil"));
-            if (Util.cborMapHasKey(map, "expectedUpdate")) {
-                builder.setValidityInfoExpectedUpdate(Util.cborMapExtractDateTime(map, "expectedUpdate"));
-            }
-        }
-
         // Returns the DeviceKey from the MSO
         //
         private @NonNull
@@ -196,13 +150,6 @@ public final class DeviceResponseParser {
                 String expectedDocType,
                 DataItem issuerSigned,
                 Document.Builder builder) {
-
-            MessageDigest digester;
-            try {
-                digester = MessageDigest.getInstance("SHA-256");
-            } catch (NoSuchAlgorithmException e) {
-                throw new IllegalStateException("Failed creating digester");
-            }
 
             DataItem issuerAuthDataItem = Util.cborMapExtract(issuerSigned, "issuerAuth");
 
@@ -220,17 +167,39 @@ public final class DeviceResponseParser {
             builder.setIssuerSignedAuthenticated(issuerSignedAuthenticated);
             builder.setIssuerCertificateChain(issuerAuthorityCertChain);
 
-            DataItem mobileSecurityObjectBytes = Util.cborDecode(
-                    Util.coseSign1GetData(issuerAuthDataItem));
-            DataItem mobileSecurityObject = Util.cborExtractTaggedAndEncodedCbor(
-                    mobileSecurityObjectBytes);
+            byte[] encodedMobileSecurityObject = Util.cborExtractTaggedCbor(Util.coseSign1GetData(issuerAuthDataItem));
+            MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
+                    .setMobileSecurityObject(encodedMobileSecurityObject).parse();
 
-            Pair<PublicKey, Map<String, Map<Long, byte[]>>> msoResult =
-                    parseMso(mobileSecurityObject, expectedDocType);
-            final PublicKey deviceKey = msoResult.first;
-            Map<String, Map<Long, byte[]>> digestMapping = msoResult.second;
+            builder.setValidityInfoSigned(parsedMso.getSigned());
+            builder.setValidityInfoValidFrom(parsedMso.getValidFrom());
+            builder.setValidityInfoValidUntil(parsedMso.getValidUntil());
+            if (parsedMso.getExpectedUpdate() != null) {
+                builder.setValidityInfoExpectedUpdate(parsedMso.getExpectedUpdate());
+            }
 
-            parseValidityInfo(mobileSecurityObject, builder);
+            /* don't care about version for now */
+            String digestAlgorithm = parsedMso.getDigestAlgorithm();
+            MessageDigest digester;
+            try {
+                digester = MessageDigest.getInstance(digestAlgorithm);
+            } catch (NoSuchAlgorithmException e) {
+                throw new IllegalStateException("Failed creating digester");
+            }
+
+            String msoDocType = parsedMso.getDocType();
+            if (!msoDocType.equals(expectedDocType)) {
+                throw new IllegalArgumentException("docType in MSO '" + msoDocType
+                        + "' does not match docType from Document");
+            }
+
+            Set<String> nameSpaceNames = parsedMso.getValueDigestNamespaces();
+            Map<String, Map<Long, byte[]>> digestMapping = new HashMap<>();
+            for (String nameSpaceName : nameSpaceNames) {
+                digestMapping.put(nameSpaceName, parsedMso.getDigestIDs(nameSpaceName));
+            }
+
+            PublicKey deviceKey = parsedMso.getDeviceKey();
 
             DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
             Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
