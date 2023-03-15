@@ -140,13 +140,13 @@ public class MobileSecurityObjectGeneratorTest {
         deviceKeyAuthorizedDataElements.put("a", List.of("1", "2", "f"));
         deviceKeyAuthorizedDataElements.put("b", List.of("4", "5", "k"));
 
-        Map<Integer, byte[]> keyInfo = new HashMap<>();
-        keyInfo.put(10, Util.fromHex("C985"));
+        Map<Long, byte[]> keyInfo = new HashMap<>();
+        keyInfo.put(10L, Util.fromHex("C985"));
 
         byte[] encodedMSO = new MobileSecurityObjectGenerator(digestAlgorithm,
                 "org.iso.18013.5.1.mDL", deviceKeyFromVector)
-                .digestIdToDigestMap("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
-                .digestIdToDigestMap("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
+                .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
+                .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                 .setDeviceKeyAuthorizedNameSpaces(List.of("abc", "bcd"))
                 .setDeviceKeyAuthorizedDataElements(deviceKeyAuthorizedDataElements)
                 .setDeviceKeyInfo(keyInfo)
@@ -174,7 +174,7 @@ public class MobileSecurityObjectGeneratorTest {
         Assert.assertEquals(List.of("abc", "bcd"), mso.getDeviceKeyAuthorizedNameSpaces());
         Assert.assertEquals(deviceKeyAuthorizedDataElements, mso.getDeviceKeyAuthorizedDataElements());
         Assert.assertEquals(keyInfo.keySet(), mso.getDeviceKeyInfo().keySet());
-        Assert.assertEquals(Util.toHex(keyInfo.get(10)), Util.toHex(mso.getDeviceKeyInfo().get(10)));
+        Assert.assertEquals(Util.toHex(keyInfo.get(10L)), Util.toHex(mso.getDeviceKeyInfo().get(10L)));
 
         Assert.assertEquals(signedTimestamp, mso.getSigned());
         Assert.assertEquals(validFromTimestamp, mso.getValidFrom());
@@ -195,8 +195,8 @@ public class MobileSecurityObjectGeneratorTest {
 
         byte[] encodedMSO = new MobileSecurityObjectGenerator(digestAlgorithm,
                 "org.iso.18013.5.1.mDL", deviceKeyFromVector)
-                .digestIdToDigestMap("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
-                .digestIdToDigestMap("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
+                .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
+                .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                 .setValidityInfo(signedTimestamp, validFromTimestamp, validUntilTimestamp, null)
                 .generate();
 
@@ -260,7 +260,7 @@ public class MobileSecurityObjectGeneratorTest {
 
         Assert.assertThrows("expect exception for empty digestIDs",
                 IllegalArgumentException.class,
-                () -> msoGenerator.digestIdToDigestMap("org.iso.18013.5.1", new HashMap<>()));
+                () -> msoGenerator.addDigestIdsForNamespace("org.iso.18013.5.1", new HashMap<>()));
 
         Assert.assertThrows("expect exception for validFrom < signed",
                 IllegalArgumentException.class,
@@ -293,13 +293,13 @@ public class MobileSecurityObjectGeneratorTest {
                         .setDeviceKeyAuthorizedNameSpaces(List.of("a", "bcd")));
 
         Assert.assertThrows("expect exception for msoGenerator which has not had " +
-                        "digestIdToDigestMap and setValidityInfo called before generating",
+                        "addDigestIdsForNamespace and setValidityInfo called before generating",
                 IllegalStateException.class,
                 msoGenerator::generate);
 
 
         Assert.assertThrows("expect exception for msoGenerator which has not had " +
-                        "digestIdToDigestMap called before generating",
+                        "addDigestIdsForNamespace called before generating",
                 IllegalStateException.class,
                 () -> {new MobileSecurityObjectGenerator(digestAlgorithm,
                         "org.iso.18013.5.1.mDL", deviceKeyFromVector)
@@ -315,8 +315,8 @@ public class MobileSecurityObjectGeneratorTest {
                 IllegalStateException.class,
                 () -> {new MobileSecurityObjectGenerator(digestAlgorithm,
                         "org.iso.18013.5.1.mDL", deviceKeyFromVector)
-                        .digestIdToDigestMap("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
-                        .digestIdToDigestMap("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
+                        .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
+                        .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                         .generate();});
 
     }

@@ -87,7 +87,7 @@ public class MobileSecurityObjectParser {
         private PublicKey mDeviceKey;
         private List<String> mAuthorizedNameSpaces;
         private Map<String, List<String>> mAuthorizedDataElements;
-        private Map<Integer, byte[]> mDeviceKeyInfo;
+        private Map<Long, byte[]> mDeviceKeyInfo;
         private Timestamp mSigned, mValidFrom, mValidUntil, mExpectedUpdate;
 
         MobileSecurityObject() {}
@@ -179,7 +179,7 @@ public class MobileSecurityObjectParser {
          *         the MSO.
          */
         @Nullable
-        public Map<Integer, byte[]> getDeviceKeyInfo() { return mDeviceKeyInfo; }
+        public Map<Long, byte[]> getDeviceKeyInfo() { return mDeviceKeyInfo; }
 
         /**
          * Gets the timestamp at which the MSO signature was created, as set in the
@@ -267,7 +267,7 @@ public class MobileSecurityObjectParser {
                 mDeviceKeyInfo = new HashMap<>();
                 DataItem keyInfo = Util.cborMapExtractMap(deviceKeyInfo, "keyInfo");
                 for (Long keyInfoKey : Util.cborMapExtractMapNumberKeys(keyInfo)) {
-                    mDeviceKeyInfo.put(keyInfoKey.intValue(), Util.cborMapExtractByteString(keyInfo, keyInfoKey));
+                    mDeviceKeyInfo.put(keyInfoKey, Util.cborMapExtractByteString(keyInfo, keyInfoKey));
                 }
             }
         }

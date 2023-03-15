@@ -48,7 +48,7 @@ public class MobileSecurityObjectGenerator {
 
     private final List<String> mAuthorizedNameSpaces = new ArrayList<>();
     private final Map<String, List<String>> mAuthorizedDataElements = new HashMap<>();
-    private final Map<Integer, byte[]> mKeyInfo = new HashMap<>();
+    private final Map<Long, byte[]> mKeyInfo = new HashMap<>();
 
     private Timestamp mSigned, mValidFrom, mValidUntil, mExpectedUpdate;
 
@@ -91,8 +91,8 @@ public class MobileSecurityObjectGenerator {
      * @exception IllegalArgumentException if the <code>digestIDs</code> is empty.
      */
     @NonNull
-    public MobileSecurityObjectGenerator digestIdToDigestMap(@NonNull String nameSpace,
-                                                             @NonNull Map<Long, byte[]> digestIDs) {
+    public MobileSecurityObjectGenerator addDigestIdsForNamespace(@NonNull String nameSpace,
+                                                                  @NonNull Map<Long, byte[]> digestIDs) {
 
         if (digestIDs.isEmpty()) {
             throw new IllegalArgumentException("digestIDs must not be empty");
@@ -184,7 +184,7 @@ public class MobileSecurityObjectGenerator {
      * @return The <code>MobileSecurityObjectGenerator</code>.
      */
     @NonNull
-    public MobileSecurityObjectGenerator setDeviceKeyInfo(@NonNull Map<Integer, byte[]> keyInfo) {
+    public MobileSecurityObjectGenerator setDeviceKeyInfo(@NonNull Map<Long, byte[]> keyInfo) {
         mKeyInfo.clear();
         mKeyInfo.putAll(keyInfo);
         return this;
@@ -265,7 +265,7 @@ public class MobileSecurityObjectGenerator {
 
         if (!mKeyInfo.isEmpty()) {
             MapBuilder<MapBuilder<CborBuilder>> keyInfoMapBuilder = deviceKeyMapBuilder.putMap("keyInfo");
-            for (Integer label : mKeyInfo.keySet()) {
+            for (Long label : mKeyInfo.keySet()) {
                 keyInfoMapBuilder.put(label, mKeyInfo.get(label));
             }
             keyInfoMapBuilder.end();
@@ -293,7 +293,7 @@ public class MobileSecurityObjectGenerator {
     /**
      * Builds the <code>MobileSecurityObject</code> CBOR.
      *
-     * <p>It's mandatory to call {@link #digestIdToDigestMap(String, Map)} and
+     * <p>It's mandatory to call {@link #addDigestIdsForNamespace(String, Map)} and
      * {@link #setValidityInfo(Timestamp, Timestamp, Timestamp, Timestamp)} before this call.
      *
      * @return the bytes of <code>MobileSecurityObject</code> CBOR.
@@ -303,7 +303,7 @@ public class MobileSecurityObjectGenerator {
     @NonNull
     public byte[] generate() {
         if (digestEmpty) {
-            throw new IllegalStateException("Must call digestIdToDigestMap before generating");
+            throw new IllegalStateException("Must call addDigestIdsForNamespace before generating");
         } else if (mSigned == null) {
             throw new IllegalStateException("Must call setValidityInfo before generating");
         }

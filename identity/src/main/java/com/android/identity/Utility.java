@@ -366,7 +366,7 @@ public class Utility {
 
                 issuerSignedMapping.put(ns, innerArray);
 
-                msoGenerator.digestIdToDigestMap(ns, vdInner);
+                msoGenerator.addDigestIdsForNamespace(ns, vdInner);
             }
 
             byte[] encodedMobileSecurityObject = msoGenerator.generate();
