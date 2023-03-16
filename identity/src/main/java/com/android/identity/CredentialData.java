@@ -1472,8 +1472,12 @@ class CredentialData {
 
         // We've found the key with lowest use count... so if this is beyond maximum uses
         // so are all the other ones. So fail if we're not allowed to use exhausted keys.
-        if (candidate.mUseCount >= mAuthMaxUsesPerKey && !allowUsingExhaustedKeys) {
-            return null;
+        if (candidate.mUseCount >= mAuthMaxUsesPerKey) {
+            if (!allowUsingExhaustedKeys) {
+                return null;
+            } else {
+                Log.w(TAG, "Using exhausted key.");
+            }
         }
 
         KeyStore.Entry entry = null;
