@@ -177,7 +177,6 @@ class ShowDocumentFragment : Fragment() {
             val certPath =
                 simpleIssuerTrustStore.createCertificationTrustPath(doc.issuerCertificateChain.toList())
             val isDSTrusted = simpleIssuerTrustStore.validateCertificationTrustPath(certPath)
-            var commonName = ""
             // Use the issuer certificate chain if we could not build the certificate trust path
             val certChain = if (certPath?.isNotEmpty() == true) {
                 certPath
@@ -185,13 +184,25 @@ class ShowDocumentFragment : Fragment() {
                 doc.issuerCertificateChain.toList()
             }
 
-            certChain.last().issuerX500Principal.name.split(",").forEach { line ->
-                val (key, value) = line.split("=", limit = 2)
-                if (key == "CN") {
-                    commonName = "($value)"
+            val issuerItems = certChain.last().issuerX500Principal.name.split(",")
+            var cnFound = false
+            val commonName = StringBuffer()
+            for (issuerItem in issuerItems) {
+                when {
+                    issuerItem.contains("O=") -> {
+                        val (key, value) = issuerItem.split("=", limit = 2)
+                        commonName.append(value)
+                        cnFound = true
+                    }
+                    // Common Name value with ',' symbols would be treated as set of items
+                    // Append all parts of CN field if any before next issuer item
+                    cnFound && !issuerItem.contains("=") -> commonName.append(", $issuerItem")
+                    // Ignore any next issuer items only after we've collected required
+                    cnFound -> break
                 }
             }
-            sb.append("${getFormattedCheck(isDSTrusted)}Issuer’s DS Key Recognized: $commonName<br>")
+
+            sb.append("${getFormattedCheck(isDSTrusted)}Issuer’s DS Key Recognized: ($commonName)<br>")
             sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
             var macOrSignatureString = "MAC"
             if (doc.deviceSignedAuthenticatedViaSignature)
