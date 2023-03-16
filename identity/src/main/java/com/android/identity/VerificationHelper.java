@@ -636,7 +636,8 @@ public class VerificationHelper {
                             encodedDeviceEngagement = r.getPayload();
                             Logger.dCbor(TAG, "Device Engagement from NFC negotiated handover",
                                     encodedDeviceEngagement);
-                        } else if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
+                        } else if ((r.getTnf() == NdefRecord.TNF_MIME_MEDIA) ||
+                                (r.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE)) {
                             ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r, true);
                             if (cm != null) {
                                 parsedCms.add(cm);
