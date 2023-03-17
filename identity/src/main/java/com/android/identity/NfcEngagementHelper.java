@@ -226,19 +226,14 @@ public class NfcEngagementHelper {
                 .end()
                 .build().get(0);
 
-        DataItem deviceRetrievalMethodsDataItem = null;
         CborBuilder deviceRetrievalMethodsBuilder = new CborBuilder();
         ArrayBuilder<CborBuilder> arrayBuilder = deviceRetrievalMethodsBuilder.addArray();
         // This array is empty on NFC
         arrayBuilder.end();
-        deviceRetrievalMethodsDataItem = deviceRetrievalMethodsBuilder.build().get(0);
 
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
         map.put(0, "1.0").put(new UnsignedInteger(1), securityDataItem);
-        if (deviceRetrievalMethodsDataItem != null) {
-            map.put(new UnsignedInteger(2), deviceRetrievalMethodsDataItem);
-        }
         map.end();
         return Util.cborEncode(builder.build().get(0));
     }
