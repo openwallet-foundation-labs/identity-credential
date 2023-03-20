@@ -158,6 +158,7 @@ public abstract class PresentationSession {
      *                                                the signature failed to validate.
      * @throws EphemeralPublicKeyNotFoundException    if the ephemeral public key was not found in
      *                                                the session transcript.
+     * @throws CredentialInvalidatedException         if the credential has been invalidated
      */
     public abstract @Nullable CredentialDataResult getCredentialData(
             @NonNull String credentialName, @NonNull CredentialDataRequest request)

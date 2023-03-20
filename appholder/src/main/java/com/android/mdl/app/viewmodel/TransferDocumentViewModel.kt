@@ -1,13 +1,16 @@
 package com.android.mdl.app.viewmodel
 
 import android.app.Application
+import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.Constants.DEVICE_RESPONSE_STATUS_OK
+import com.android.identity.CredentialInvalidatedException
 import com.android.identity.DeviceRequestParser
 import com.android.identity.DeviceResponseGenerator
 import com.android.mdl.app.R
@@ -112,6 +115,12 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 if (authNeeded) {
                     return false
                 }
+            } catch (e: CredentialInvalidatedException) {
+                logWarning("Credential '${signedDocument.identityCredentialName}' is invalid. Deleting.")
+                documentManager.deleteCredentialByName(signedDocument.identityCredentialName)
+                Toast.makeText(app.applicationContext, "Deleting invalid credential "
+                    + signedDocument.identityCredentialName,
+                    Toast.LENGTH_SHORT).show()
             } catch (e: NoSuchElementException) {
                 logWarning("No requestedDocument for " + signedDocument.documentType)
             }
