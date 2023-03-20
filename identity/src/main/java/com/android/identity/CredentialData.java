@@ -1524,6 +1524,9 @@ class CredentialData {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
             ks.load(null);
             KeyStore.Entry entry = ks.getEntry(acpAlias, null);
+            if (entry == null) {
+                throw new CredentialInvalidatedException("Failed getting key used for credential");
+            }
             SecretKey secretKey = ((KeyStore.SecretKeyEntry) entry).getSecretKey();
 
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
