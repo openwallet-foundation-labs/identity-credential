@@ -1475,9 +1475,9 @@ class CredentialData {
         if (candidate.mUseCount >= mAuthMaxUsesPerKey) {
             if (!allowUsingExhaustedKeys) {
                 return null;
-            } else {
-                Log.w(TAG, "Using exhausted key.");
             }
+
+            Log.i(TAG, "Using exhausted key.");
         }
 
         KeyStore.Entry entry = null;
