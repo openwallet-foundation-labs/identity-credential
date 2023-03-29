@@ -158,6 +158,14 @@ final class SessionEncryptionDevice {
         return Util.cborEncode(builder.build().get(0));
     }
 
+    static public @NonNull byte[] encodeStatusToReader(long statusCode) {
+        CborBuilder builder = new CborBuilder();
+        MapBuilder<CborBuilder> mapBuilder = builder.addMap();
+        mapBuilder.put("status", statusCode);
+        mapBuilder.end();
+        return Util.cborEncode(builder.build().get(0));
+    }
+
     /**
      * Decrypts a message received from the remote mDL reader.
      *
