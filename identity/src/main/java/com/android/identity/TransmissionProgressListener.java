@@ -10,8 +10,8 @@ public interface TransmissionProgressListener {
    * depends on the transport implementation. Subscribers can expect that on successful
    * completion of a transmission a call to this function will fire with progress == max.
    *
-   * @param progress Progress value (<= max)
-   * @param max Maximum progress value (>= progress)
+   * @param progress Progress value (&lt;= max)
+   * @param max Maximum progress value (&gt;= progress)
    */
   void onProgressUpdate(long progress, long max);
 }

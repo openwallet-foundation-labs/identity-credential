@@ -38,6 +38,8 @@ public final class Timestamp {
     }
 
     /**
+     * @param epochMillis A time represented as the number of milliseconds since midnight,
+     *                    January 1, 1970 UTC
      * @return a {@code Timestamp} representing the given time
      */
     @NonNull

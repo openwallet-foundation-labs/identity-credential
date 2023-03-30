@@ -581,7 +581,7 @@ public class DeviceRetrievalHelper {
          * {@link #useReverseEngagement(DataTransport, byte[], List)} to specifiy which
          * kind of engagement will be used. At least one of these must be used.
          *
-         * @param context
+         * @param context The context.
          * @param listener the listener or <code>null</code> to stop listening.
          * @param executor a {@link Executor} to do the call in or <code>null</code> if
          *                 <code>listener</code> is <code>null</code>.
@@ -632,7 +632,7 @@ public class DeviceRetrievalHelper {
          *
          * @param deviceEngagement the bytes of the <code>DeviceEngagement</code> CBOR.
          * @param handover the bytes of the <code>Handover</code> CBOR.
-         * @return
+         * @return the builder
          */
         public @NonNull Builder addAlternateForwardEngagement(@Nullable byte[] deviceEngagement,
                                                               @Nullable byte[] handover) {

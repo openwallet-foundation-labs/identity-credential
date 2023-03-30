@@ -19,7 +19,7 @@ The other goal of the library is to provide high-level primitives that any *mdoc
 
 ### Versioning and releases
 
-TODO: Write me.
+We intend to release library artifacts to GMaven (available at maven.google.com) as needed and at least every two months if new changes have landed since the last release. Version numbers will be encoded as YYYYMMDD. With each release, we will also publish the Javadocs for that release on our Github Page (available at https://google.github.io/identity-credential/).
 
 ### API Stability
 

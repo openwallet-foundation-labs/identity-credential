@@ -1,5 +1,6 @@
 plugins {
     id("com.android.library")
+    id("maven-publish")
 }
 
 android {
@@ -22,6 +23,13 @@ android {
     lint {
         lintConfig file('lint.xml')
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
 }
 
 dependencies {
@@ -41,6 +49,8 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:3.4.0"
 }
 
+version = 'YYYYMMDD'
+
 task generateApiDoc(type: Javadoc) {
     source = android.sourceSets.main.java.srcDirs
 
@@ -51,7 +61,7 @@ task generateApiDoc(type: Javadoc) {
     options.links("http://docs.oracle.com/javase/7/docs/api/");
     options.links("http://d.android.com/reference/");
 
-    destinationDir = file("../docs/javadoc/")
+    destinationDir = file("../version-" + version + "/")
     failOnError false
 }
 
@@ -65,4 +75,23 @@ afterEvaluate {
     generateApiDoc.classpath += files(android.libraryVariants.collect { variant ->
         variant.javaCompileProvider.get().classpath.files
     })
+
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId 'com.android.identity'
+                artifactId 'identity-credential'
+
+                pom {
+                    licenses {
+                        license {
+                            name = 'Apache 2.0'
+                            url = 'https://opensource.org/licenses/Apache-2.0'
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

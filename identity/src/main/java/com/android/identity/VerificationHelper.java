@@ -1059,6 +1059,8 @@ public class VerificationHelper {
      *
      * <p>This is made available because it's needed for mdoc verification when using the MAC
      * mechanism.
+     *
+     * @return the ephemeral key used by the reader for session encryption.
      */
     public @NonNull
     PrivateKey getEphemeralReaderKey() {

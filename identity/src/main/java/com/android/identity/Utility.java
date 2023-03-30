@@ -253,6 +253,7 @@ public class Utility {
      * @param numAuthKeys                 number of authentication keys to create.
      * @param maxUsesPerKey               number of uses for each authentication key.
      * @return bytes of a COSE_Sign1 for proof of provisioning
+     * @throws IdentityCredentialException if the given data is not in the correct format
      */
     @SuppressWarnings("deprecation")
     public static
