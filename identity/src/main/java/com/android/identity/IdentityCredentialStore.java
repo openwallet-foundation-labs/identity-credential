@@ -282,6 +282,7 @@ public abstract class IdentityCredentialStore {
      * @param credentialName the name of the credential to retrieve.
      * @param cipherSuite    the cipher suite to use for communicating with the verifier.
      * @return The named credential, or null if not found.
+     * @throws CipherSuiteNotSupportedException if cipher suite is not supported.
      */
     public abstract @Nullable IdentityCredential getCredentialByName(@NonNull String credentialName,
             @Ciphersuite int cipherSuite)
@@ -339,7 +340,7 @@ public abstract class IdentityCredentialStore {
      * hardware-backed symmetric key.
      *
      * <p>The application should choose a path that is not subject to
-     * <a href="https://developer.android.com/guide/topics/data/autobackup">Backup & Restore</a>,
+     * <a href="https://developer.android.com/guide/topics/data/autobackup">Backup &amp; Restore</a>,
      * for example
      * <code><a href="https://developer.android.com/reference/android/content/Context#getNoBackupFilesDir()">getNoBackupFilesDir()</a></code>.
      *
@@ -363,6 +364,7 @@ public abstract class IdentityCredentialStore {
      * <p>This only works on devices running Android 11 or later and only if the device has
      * support for the Identity Credential HAL.
      *
+     * @param context The context.
      * @return an implementation of {@link IdentityCredentialStore} implemented in
      * secure hardware or {@code null} if the device doesn't support the Android Identity
      * Credential HAL.
@@ -387,6 +389,7 @@ public abstract class IdentityCredentialStore {
      *
      * @param cipherSuite    the cipher suite to use for communicating with the verifier.
      * @return The presentation session.
+     * @throws CipherSuiteNotSupportedException if the cipher suite is not supported.
      */
     public @NonNull PresentationSession createPresentationSession(@Ciphersuite int cipherSuite)
             throws CipherSuiteNotSupportedException {

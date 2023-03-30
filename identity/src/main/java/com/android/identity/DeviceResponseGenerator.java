@@ -178,6 +178,7 @@ public final class DeviceResponseGenerator {
      *
      * @param docType              The type of the document to send.
      * @param credentialDataResult The device- and issuer-signed data elements to include.
+     * @param errors               A map with errors as described in <code>addDocument</code>.
      * @param issuerSignedMapping A mapping from namespaces to an array of IssuerSignedItem
      *                            CBOR for the namespace. The "elementValue" value in each
      *                            IssuerSignedItem CBOR must be set to the NULL value.

@@ -219,7 +219,7 @@ public abstract class CredentialDataResult {
          * Gets the status of an entry.
          *
          * <p>This returns one of
-         * <p><ul>
+         * <ul>
          * <li>{@link #STATUS_OK} if the value was retrieved
          * <li>{@link #STATUS_NO_SUCH_ENTRY} if the given entry wasn't retrieved
          * <li>{@link #STATUS_NOT_REQUESTED} if it wasn't requested

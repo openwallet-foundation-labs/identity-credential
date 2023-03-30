@@ -154,6 +154,7 @@ final public class CredentialDataRequest {
          * Sets the device-signed entries to request.
          *
          * @param entriesToRequest the device-signed entries to request.
+         * @return the builder.
          */
         @NonNull
         public Builder setDeviceSignedEntriesToRequest(

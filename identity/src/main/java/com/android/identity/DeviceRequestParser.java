@@ -91,7 +91,7 @@ public final class DeviceRequestParser {
      *
      * By default this value is set to false.
      *
-     * @param skipReaderAuthParseAndCheck
+     * @param skipReaderAuthParseAndCheck a flag to skip force skip parsing the reader auth structure.
      * @return the <code>DeviceRequestParser</code>.
      */
     @NonNull
@@ -108,14 +108,15 @@ public final class DeviceRequestParser {
      * but the signature check fails. The method {@link DocumentRequest#getReaderAuthenticated()}
      * can used to get additional information whether {@code ItemsRequest} was authenticated.
      *
+     * A <code>GeneralSecurityException</code> may be thrown if there issues within the default
+     * security provider. Use <code>setSkipReaderAuthParseAndCheck</code> to skip some usage of
+     * security provider in reader auth parsing.
+     *
      * @return a {@link DeviceRequestParser.DeviceRequest} with the parsed data.
      * @throws IllegalArgumentException if the given data isn't valid CBOR or not conforming
      *                                  to the CDDL for its type.
      * @throws IllegalStateException    if required data hasn't been set using the setter
      *                                  methods on this class.
-     * @throws GeneralSecurityException may be thrown if there issues within the default security
-     *                                  provider. Use <code>setSkipReaderAuthParseAndCheck</code> to
-     *                                  skip some usage of security provider in reader auth parsing.
      */
     @NonNull
     public DeviceRequest parse() {
