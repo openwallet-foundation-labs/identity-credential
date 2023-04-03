@@ -85,6 +85,11 @@ public class NfcEngagementHelper {
         mExecutor = executor;
         mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
         mOptions = options;
+        mEncodedDeviceEngagement = new EngagementGenerator(
+                mEphemeralKeyPair.getPublic(),
+                EngagementGenerator.ENGAGEMENT_VERSION_1_0
+            ).generate();
+        Logger.dCbor(TAG, "NFC DeviceEngagement", mEncodedDeviceEngagement);
         Logger.d(TAG, "Starting");
     }
 
@@ -212,30 +217,6 @@ public class NfcEngagementHelper {
                 mNumTransportsStillSettingUp += 1;
             }
         }
-    }
-
-    private @NonNull
-    byte[] generateDeviceEngagement() {
-        DataItem eDeviceKeyBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic())));
-
-        DataItem securityDataItem = new CborBuilder()
-                .addArray()
-                .add(1) // cipher suite
-                .add(eDeviceKeyBytes)
-                .end()
-                .build().get(0);
-
-        CborBuilder deviceRetrievalMethodsBuilder = new CborBuilder();
-        ArrayBuilder<CborBuilder> arrayBuilder = deviceRetrievalMethodsBuilder.addArray();
-        // This array is empty on NFC
-        arrayBuilder.end();
-
-        CborBuilder builder = new CborBuilder();
-        MapBuilder<CborBuilder> map = builder.addMap();
-        map.put(0, "1.0").put(new UnsignedInteger(1), securityDataItem);
-        map.end();
-        return Util.cborEncode(builder.build().get(0));
     }
 
     // TODO: handle the case where a transport never calls onConnectionMethodReady... that
@@ -391,7 +372,6 @@ public class NfcEngagementHelper {
                 mNegotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_EXPECT_SERVICE_SELECT;
             } else {
                 Logger.d(TAG, "handleSelectFile: NDEF file selected and using static handover - calculating handover message");
-                mEncodedDeviceEngagement = generateDeviceEngagement();
                 byte[] hsMessage = NfcUtil.createNdefMessageHandoverSelect(
                         mStaticHandoverConnectionMethods,
                         mEncodedDeviceEngagement);
@@ -409,7 +389,6 @@ public class NfcEngagementHelper {
                         .add(SimpleValue.NULL)  // Handover Request message
                         .end()
                         .build().get(0));
-                Logger.dCbor(TAG, "NFC static DeviceEngagement", mEncodedDeviceEngagement);
                 Logger.dCbor(TAG, "NFC static Handover", mEncodedHandover);
 
                 // Technically we should ensure the transports are up until sending the response...
@@ -692,7 +671,6 @@ public class NfcEngagementHelper {
         List<ConnectionMethod> listWithSelectedConnectionMethod = new ArrayList<>();
         listWithSelectedConnectionMethod.add(method);
 
-        mEncodedDeviceEngagement = generateDeviceEngagement();
         byte[] hsMessage = NfcUtil.createNdefMessageHandoverSelect(
                 listWithSelectedConnectionMethod,
                 mEncodedDeviceEngagement);
@@ -711,7 +689,6 @@ public class NfcEngagementHelper {
                 .add(mHandoverRequestMessage)  // Handover Request message
                 .end()
                 .build().get(0));
-        Logger.dCbor(TAG, "NFC negotiated DeviceEngagement", mEncodedDeviceEngagement);
         Logger.dCbor(TAG, "NFC negotiated Handover", mEncodedHandover);
 
         // Technically we should ensure the transports are up until sending the response...
