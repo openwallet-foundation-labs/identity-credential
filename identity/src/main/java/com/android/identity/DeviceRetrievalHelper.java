@@ -225,6 +225,7 @@ public class DeviceRetrievalHelper {
 
     }
 
+    // Throws IllegalStateException if e.g. the EReaderKey isn't of the right form.
     private void ensureSessionEncryption(@NonNull byte[] data) {
         if (mSessionEncryption != null) {
             return;
@@ -274,7 +275,15 @@ public class DeviceRetrievalHelper {
 
     private void processMessageReceived(@NonNull byte[] data) {
         Logger.dCbor(TAG, "SessionData received", data);
-        ensureSessionEncryption(data);
+        try {
+            ensureSessionEncryption(data);
+        } catch (IllegalStateException e) {
+            mTransport.sendMessage(SessionEncryptionDevice.encodeStatusToReader(
+                    Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION));
+            mTransport.close();
+            reportError(new Error("Error decoding EReaderKey in SessionEstablishment", e));
+            return;
+        }
         Pair<byte[], OptionalLong> decryptedMessage = null;
         try {
             decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);

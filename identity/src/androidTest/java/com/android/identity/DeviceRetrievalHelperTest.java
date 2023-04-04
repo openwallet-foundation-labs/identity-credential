@@ -578,6 +578,182 @@ public class DeviceRetrievalHelperTest {
 
     @Test
     @SmallTest
+    public void testPresentationBadKeyFromReader() throws Exception {
+        Context context = InstrumentationRegistry.getTargetContext();
+        IdentityCredentialStore store = Util.getIdentityCredentialStore(context);
+        assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
+
+        PresentationSession session = store.createPresentationSession(
+                IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
+
+        ConditionVariable condVarDeviceConnected = new ConditionVariable();
+        ConditionVariable condVarDecryptionErrorReceived = new ConditionVariable();
+        ConditionVariable condVarReaderReceivedStatus10 = new ConditionVariable();
+        ConditionVariable condVarDeviceEngagementReady = new ConditionVariable();
+
+        // TODO: use loopback instead of TCP transport
+        DataTransportTcp proverTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC,
+                new DataTransportOptions.Builder().build());
+        DataTransportTcp verifierTransport = new DataTransportTcp(context,
+                DataTransport.ROLE_MDOC_READER,
+                new DataTransportOptions.Builder().build());
+
+        Executor executor = Executors.newSingleThreadExecutor();
+
+        QrEngagementHelper.Listener qrHelperListener =
+                new QrEngagementHelper.Listener() {
+                    @Override
+                    public void onDeviceEngagementReady() {
+                        condVarDeviceEngagementReady.open();
+                    }
+
+                    @Override
+                    public void onDeviceConnecting() {
+                    }
+
+                    @Override
+                    public void onDeviceConnected(DataTransport transport) {
+                        condVarDeviceConnected.open();
+                        Assert.assertEquals(proverTransport, transport);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable error) {
+                        throw new AssertionError(error);
+                    }
+                };
+        QrEngagementHelper qrHelper = new QrEngagementHelper(context,
+                session,
+                new ArrayList<>(),
+                new DataTransportOptions.Builder().build(),
+                qrHelperListener,
+                executor);
+        qrHelper.addDataTransport(proverTransport);  // internal helper
+        qrHelper.startListening();                   // internal helper
+        Assert.assertTrue(condVarDeviceEngagementReady.block(5000));
+        byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
+
+        DataItem handover = SimpleValue.NULL;
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair();
+        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
+                .addArray()
+                .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
+                .add(Util.cborBuildTaggedByteString(encodedEReaderKeyPub))
+                .add(handover)
+                .end()
+                .build().get(0));
+        SessionEncryptionReader seReader = new SessionEncryptionReader(
+                eReaderKeyPair.getPrivate(),
+                eReaderKeyPair.getPublic(),
+                session.getEphemeralKeyPair().getPublic(),
+                encodedSessionTranscript);
+
+        Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
+        Map<String, Boolean> mdlNsItems = new HashMap<>();
+        mdlNsItems.put("family_name", true);
+        mdlNsItems.put("portrait", false);
+        mdlItemsToRequest.put(MDL_NAMESPACE, mdlNsItems);
+        Map<String, Boolean> aamvaNsItems = new HashMap<>();
+        aamvaNsItems.put("real_id", false);
+        mdlItemsToRequest.put(AAMVA_NAMESPACE, aamvaNsItems);
+
+        byte[] encodedDeviceRequest = new DeviceRequestGenerator()
+                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
+                .generate();
+        // NOTE! This creates a SessionEstablishment where EReaderKey's Y coordinate is negated
+        // and thus the key is not valid. This is to check that DeviceRetrievalHelper correctly
+        // detects this condition.
+        byte[] sessionEstablishment = seReader.encryptMessageToDeviceWithInvalidEReaderKey(
+                encodedDeviceRequest,
+                OptionalLong.empty());
+
+        verifierTransport.setListener(new DataTransport.Listener() {
+            @Override
+            public void onConnectionMethodReady() {
+            }
+
+            @Override
+            public void onConnecting() {
+            }
+
+            @Override
+            public void onConnected() {
+            }
+
+            @Override
+            public void onDisconnected() {
+            }
+
+            @Override
+            public void onTransportSpecificSessionTermination() {
+                Assert.fail();
+            }
+
+            @Override
+            public void onError(@NonNull Throwable error) {
+                throw new AssertionError(error);
+            }
+
+            @Override
+            public void onMessageReceived() {
+                byte[] data = verifierTransport.getMessage();
+                Pair<byte[], OptionalLong> decryptedMessage =
+                        seReader.decryptMessageFromDevice(data);
+                Assert.assertNull(decryptedMessage.first);
+                Assert.assertTrue(decryptedMessage.second.isPresent());
+                long status = decryptedMessage.second.getAsLong();
+                Assert.assertEquals(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION, status);
+                condVarReaderReceivedStatus10.open();
+            }
+        }, executor);
+
+        verifierTransport.setHostAndPort(proverTransport.getHost(), proverTransport.getPort());
+        verifierTransport.connect();
+        Assert.assertTrue(condVarDeviceConnected.block(5000));
+
+        final DeviceRetrievalHelper[] presentation = {null};
+        DeviceRetrievalHelper.Listener listener =
+                new DeviceRetrievalHelper.Listener() {
+
+                    @Override
+                    public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
+                        Assert.fail("Should not be reached");
+                    }
+
+                    @Override
+                    public void onDeviceDisconnected(boolean transportSpecificTermination) {
+                        Assert.assertFalse(transportSpecificTermination);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable error) {
+                        Assert.assertEquals("Error decoding EReaderKey in SessionEstablishment",
+                                error.getMessage());
+                        condVarDecryptionErrorReceived.open();
+                    }
+
+                };
+        presentation[0] = new DeviceRetrievalHelper.Builder(
+                context,
+                listener,
+                context.getMainExecutor(),
+                session)
+                .useForwardEngagement(proverTransport,
+                        qrHelper.getDeviceEngagement(),
+                        qrHelper.getHandover())
+                .build();
+
+        verifierTransport.sendMessage(sessionEstablishment);
+        // Check the application was informed that we failed because of decryption error
+        Assert.assertTrue(condVarDecryptionErrorReceived.block(5000));
+        // Check the remote reader received a session termination message with status 10
+        Assert.assertTrue(condVarReaderReceivedStatus10.block(5000));
+    }
+
+    @Test
+    @SmallTest
     public void testPresentationVerifierDisconnects() throws Exception {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         IdentityCredentialStore store = Util.getIdentityCredentialStore(context);

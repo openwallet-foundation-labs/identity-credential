@@ -966,6 +966,25 @@ class Util {
         return item;
     }
 
+    // Used for testing only, to create an invalid COSE_Key
+    static @NonNull
+    DataItem cborBuildCoseKeyWithMalformedYPoint(@NonNull PublicKey key) {
+        ECPublicKey ecKey = (ECPublicKey) key;
+        ECPoint w = ecKey.getW();
+        BigInteger malformedY = BigInteger.valueOf(42);
+        byte[] x = sec1EncodeFieldElementAsOctetString(32, w.getAffineX());
+        byte[] y = sec1EncodeFieldElementAsOctetString(32, malformedY);
+        DataItem item = new CborBuilder()
+                .addMap()
+                .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
+                .put(COSE_KEY_EC2_CRV, COSE_KEY_EC2_CRV_P256)
+                .put(COSE_KEY_EC2_X, x)
+                .put(COSE_KEY_EC2_Y, y)
+                .end()
+                .build().get(0);
+        return item;
+    }
+
     static boolean cborMapHasKey(@NonNull DataItem map, @NonNull String key) {
         DataItem item = castTo(Map.class, map).get(new UnicodeString(key));
         return item != null;

@@ -128,21 +128,9 @@ final class SessionEncryptionReader {
         mSendSessionEstablishment = sendSessionEstablishment;
     }
 
-    /**
-     * Encrypts a message to the remote mDL prover.
-     *
-     * <p>This method returns <code>SessionEstablishment</code> CBOR for the first call and
-     * <code>SessionData</code> CBOR for subsequent calls. These CBOR data structures are
-     * defined in ISO 18013-5 9.1.1 Session encryption.
-     *
-     * @param messagePlaintext if not <code>null</code>, the message to encrypt and include
-     *                         in <code>SessionData</code>.
-     * @param statusCode if set, the status code to include in <code>SessionData</code>.
-     * @return the bytes of the <code>SessionEstablishment</code> or <code>SessionData</code>
-     *     CBOR as described above.
-     */
-    public @NonNull byte[] encryptMessageToDevice(@Nullable byte[] messagePlaintext,
-            @NonNull OptionalLong statusCode) {
+    private @NonNull byte[] encryptMessageToDeviceHelper(@Nullable byte[] messagePlaintext,
+                                                         @NonNull OptionalLong statusCode,
+                                                         boolean setInvalidEReaderKey) {
         byte[] messageCiphertext = null;
         if (messagePlaintext != null) {
             try {
@@ -156,11 +144,11 @@ final class SessionEncryptionReader {
                 cipher.init(Cipher.ENCRYPT_MODE, mSKReader, encryptionParameterSpec);
                 messageCiphertext = cipher.doFinal(messagePlaintext); // This includes the auth tag
             } catch (BadPaddingException
-                    | IllegalBlockSizeException
-                    | NoSuchPaddingException
-                    | InvalidKeyException
-                    | NoSuchAlgorithmException
-                    | InvalidAlgorithmParameterException e) {
+                     | IllegalBlockSizeException
+                     | NoSuchPaddingException
+                     | InvalidKeyException
+                     | NoSuchAlgorithmException
+                     | InvalidAlgorithmParameterException e) {
                 throw new IllegalStateException("Error encrypting message", e);
             }
             mSKReaderCounter += 1;
@@ -169,7 +157,9 @@ final class SessionEncryptionReader {
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> mapBuilder = builder.addMap();
         if (!mSessionEstablishmentSent && mSendSessionEstablishment) {
-            DataItem eReaderKey = Util.cborBuildCoseKey(mEReaderKeyPublic);
+            DataItem eReaderKey = setInvalidEReaderKey ?
+                    Util.cborBuildCoseKeyWithMalformedYPoint(mEReaderKeyPublic)
+                    : Util.cborBuildCoseKey(mEReaderKeyPublic);
             DataItem eReaderKeyBytes = Util.cborBuildTaggedByteString(
                     Util.cborEncode(eReaderKey));
             mapBuilder.put(new UnicodeString("eReaderKey"), eReaderKeyBytes);
@@ -189,6 +179,32 @@ final class SessionEncryptionReader {
         mSessionEstablishmentSent = true;
 
         return messageData;
+    }
+
+    /**
+     * Encrypts a message to the remote mDL prover.
+     *
+     * <p>This method returns <code>SessionEstablishment</code> CBOR for the first call and
+     * <code>SessionData</code> CBOR for subsequent calls. These CBOR data structures are
+     * defined in ISO 18013-5 9.1.1 Session encryption.
+     *
+     * @param messagePlaintext if not <code>null</code>, the message to encrypt and include
+     *                         in <code>SessionData</code>.
+     * @param statusCode if set, the status code to include in <code>SessionData</code>.
+     * @return the bytes of the <code>SessionEstablishment</code> or <code>SessionData</code>
+     *     CBOR as described above.
+     */
+    public @NonNull byte[] encryptMessageToDevice(@Nullable byte[] messagePlaintext,
+            @NonNull OptionalLong statusCode) {
+        return encryptMessageToDeviceHelper(messagePlaintext, statusCode, false);
+    }
+
+    // Only used for testing, will produce a SessionEstablishment message with an
+    // invalid COSE_Key for EReaderKeyq
+    @NonNull byte[] encryptMessageToDeviceWithInvalidEReaderKey(
+            @Nullable byte[] messagePlaintext,
+            @NonNull OptionalLong statusCode) {
+        return encryptMessageToDeviceHelper(messagePlaintext, statusCode, true);
     }
 
     /**
