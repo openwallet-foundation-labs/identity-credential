@@ -122,12 +122,14 @@ class KeystoreWritableIdentityCredential extends WritableIdentityCredential {
 
             mKeyPair = null;
             boolean isStrongBoxBacked = false;
+            /* Disable StrongBox usage for now, see Issue #259 for details
             PackageManager pm = mContext.getPackageManager();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
                     pm.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)) {
                 isStrongBoxBacked = true;
                 builder.setIsStrongBoxBacked(true);
             }
+            */
             kpg.initialize(builder.build());
             mKeyPair = kpg.generateKeyPair();
             Log.i(TAG, "CredentialKey created, strongBoxBacked=" + isStrongBoxBacked);
