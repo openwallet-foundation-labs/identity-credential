@@ -3,6 +3,7 @@ package com.android.mdl.appreader.transfer
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.media.MediaPlayer
 import android.nfc.NfcAdapter
 import android.os.Build
 import android.util.Log
@@ -12,9 +13,10 @@ import androidx.lifecycle.MutableLiveData
 import com.android.identity.ConnectionMethod
 import com.android.identity.ConnectionMethodHttp
 import com.android.identity.DataTransportOptions
-import com.android.identity.VerificationHelper
 import com.android.identity.DeviceRequestGenerator
 import com.android.identity.DeviceResponseParser
+import com.android.identity.VerificationHelper
+import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
 import com.android.mdl.appreader.readercertgen.SupportedCurves.*
@@ -103,7 +105,7 @@ class TransferManager private constructor(private val context: Context) {
         adapter.enableReaderMode(
             activity, readerModeListener,
             NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
-                    + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,
+                    + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
             null)
     }
 
@@ -168,8 +170,11 @@ class TransferManager private constructor(private val context: Context) {
     private fun destroy() {
         responseBytes = null
         verification = null
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 
+    var mediaPlayer: MediaPlayer? = MediaPlayer.create(context, R.raw.nfc_connected)
 
     private val responseListener = object : VerificationHelper.Listener {
         override fun onReaderEngagementReady(readerEngagement: ByteArray) {
@@ -180,6 +185,8 @@ class TransferManager private constructor(private val context: Context) {
         override fun onDeviceEngagementReceived(connectionMethods: MutableList<ConnectionMethod>) {
             // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
             // if both BLE modes are available at the same time.
+            mediaPlayer = mediaPlayer ?: MediaPlayer.create(context, R.raw.nfc_connected)
+            mediaPlayer?.start()
             setAvailableTransferMethods(ConnectionMethod.disambiguate(connectionMethods))
             transferStatusLd.value = TransferStatus.ENGAGED
         }

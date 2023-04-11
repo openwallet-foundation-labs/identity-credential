@@ -23,7 +23,7 @@ import co.nstant.in.cbor.model.Number;
  * Connection method for HTTP connections.
  */
 public class ConnectionMethodHttp extends ConnectionMethod {
-    private static final String TAG = "ConnectionOptionsRestApi";
+    private static final String TAG = "ConnectionMethodRestApi";   // limit to <= 23 chars
     private final String mUri;
 
     static final int METHOD_TYPE = 4;

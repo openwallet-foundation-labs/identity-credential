@@ -81,7 +81,7 @@ public abstract class ConnectionMethod {
     ConnectionMethod fromNdefRecord(@NonNull NdefRecord record, boolean isForHandoverSelect) {
         // BLE Carrier Configuration record
         //
-        if (record.getTnf() == 0x02
+        if (record.getTnf() == NdefRecord.TNF_MIME_MEDIA
                 && Arrays.equals(record.getType(),
                 "application/vnd.bluetooth.le.oob".getBytes(UTF_8))
                 && Arrays.equals(record.getId(), "0".getBytes(UTF_8))) {
@@ -90,7 +90,7 @@ public abstract class ConnectionMethod {
 
         // Wifi Aware Carrier Configuration record
         //
-        if (record.getTnf() == 0x02
+        if (record.getTnf() == NdefRecord.TNF_MIME_MEDIA
                 && Arrays.equals(record.getType(),
                 "application/vnd.wfa.nan".getBytes(UTF_8))
                 && Arrays.equals(record.getId(), "W".getBytes(UTF_8))) {
@@ -105,7 +105,7 @@ public abstract class ConnectionMethod {
 
         // NFC Carrier Configuration record
         //
-        if (record.getTnf() == 0x02
+        if (record.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE
                 && Arrays.equals(record.getType(),
                 "iso.org:18013:nfc".getBytes(UTF_8))
                 && Arrays.equals(record.getId(), "nfc".getBytes(UTF_8))) {

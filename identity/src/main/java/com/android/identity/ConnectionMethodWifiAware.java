@@ -31,7 +31,7 @@ import co.nstant.in.cbor.model.Number;
  * Connection method for Wifi Aware.
  */
 public class ConnectionMethodWifiAware extends ConnectionMethod {
-    private static final String TAG = "ConnectionMethodWifiAware";
+    private static final String TAG = "ConnectionMethodWifiNAN";    // limit to <= 23 chars
     private final String mPassphraseInfoPassphrase;
     private final OptionalLong mChannelInfoChannelNumber;
     private final OptionalLong mChannelInfoOperatingClass;

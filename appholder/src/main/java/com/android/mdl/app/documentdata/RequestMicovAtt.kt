@@ -11,7 +11,7 @@ object RequestMicovAtt : RequestDocument() {
     enum class DataItems(override val identifier: String, override val stringResourceId: Int) :
         RequestDataItem {
         INDICATION_OF_VACCINATION_YELLOW_FEVER(
-            "D47_vaccinated",
+            "1D47_vaccinated",
             R.string.micov_att_1D47_vaccinated
         ),
         INDICATION_OF_VACCINATION_COVID_19("RA01_vaccinated", R.string.micov_att_RA01_vaccinated),

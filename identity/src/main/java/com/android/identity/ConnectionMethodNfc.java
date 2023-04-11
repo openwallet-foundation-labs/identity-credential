@@ -208,7 +208,7 @@ public class ConnectionMethodNfc extends ConnectionMethod {
         encodeInt(0x02, (int) mResponseDataFieldMaxLength, baos);
         byte[] oobData = baos.toByteArray();
 
-        NdefRecord record = new NdefRecord(NdefRecord.TNF_MIME_MEDIA,
+        NdefRecord record = new NdefRecord(NdefRecord.TNF_EXTERNAL_TYPE,
                 "iso.org:18013:nfc".getBytes(UTF_8),
                 carrierDataReference,
                 oobData);

@@ -302,7 +302,8 @@ class NfcUtil {
             // This parses the various carrier specific NDEF records, see
             // DataTransport.parseNdefRecord() for details.
             //
-            if (r.getTnf() == NdefRecord.TNF_MIME_MEDIA) {
+            if ((r.getTnf() == NdefRecord.TNF_MIME_MEDIA) ||
+                    (r.getTnf() == NdefRecord.TNF_EXTERNAL_TYPE)) {
                 ConnectionMethod cm = ConnectionMethod.fromNdefRecord(r, true);
                 if (cm != null) {
                     ret.connectionMethods.add(cm);

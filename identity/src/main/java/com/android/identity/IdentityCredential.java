@@ -327,6 +327,7 @@ public abstract class IdentityCredential {
      * @throws InvalidRequestMessageException         if the requestMessage is malformed.
      * @throws EphemeralPublicKeyNotFoundException    if the ephemeral public key was not found in
      *                                                the session transcript.
+     * @throws CredentialInvalidatedException         if the credential has been invalidated
      * @deprecated Use {@link PresentationSession} instead.
      */
     @Deprecated
