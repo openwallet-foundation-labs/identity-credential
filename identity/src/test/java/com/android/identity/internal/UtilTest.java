@@ -392,7 +392,7 @@ public class UtilTest {
 
     private KeyPair generateKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
-        kpg.initialize(new ECGenParameterSpec("secp256k1"));
+        kpg.initialize(new ECGenParameterSpec("secp256r1"));
         return kpg.generateKeyPair();
     }
 
