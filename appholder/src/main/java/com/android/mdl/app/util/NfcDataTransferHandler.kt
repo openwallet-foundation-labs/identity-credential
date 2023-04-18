@@ -38,6 +38,6 @@ class NfcDataTransferHandler : HostApduService() {
 
     override fun onDeactivated(reason: Int) {
         log("onDeactivated: reason-> $reason")
-        DataTransportNfc.onDeactivated(reason);
+        DataTransportNfc.onDeactivated(reason)
     }
 }

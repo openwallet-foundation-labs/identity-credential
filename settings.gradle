@@ -3,6 +3,11 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        jcenter() {
+            content {
+                includeGroup("org.jetbrains.dokka")
+            }
+        }
     }
 }
 dependencyResolutionManagement {
@@ -18,5 +23,5 @@ dependencyResolutionManagement {
         }
     }
 }
-include ':appholder', ':appverifier',':identity'
+include ':appholder', ':appverifier', ':identity', ':identity-android'
 rootProject.name = 'Identity Credential'

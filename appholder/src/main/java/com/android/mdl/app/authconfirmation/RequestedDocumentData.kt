@@ -1,6 +1,6 @@
 package com.android.mdl.app.authconfirmation
 
-import com.android.identity.DeviceRequestParser
+import com.android.identity.mdoc.request.DeviceRequestParser
 
 data class RequestedDocumentData(
     val userReadableName: String,

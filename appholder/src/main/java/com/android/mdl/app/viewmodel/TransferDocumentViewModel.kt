@@ -1,7 +1,6 @@
 package com.android.mdl.app.viewmodel
 
 import android.app.Application
-import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.databinding.ObservableField
@@ -9,11 +8,10 @@ import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.Constants
-import com.android.identity.Constants.DEVICE_RESPONSE_STATUS_OK
+import com.android.identity.util.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.CredentialInvalidatedException
-import com.android.identity.DeviceRequestParser
-import com.android.identity.DeviceResponseGenerator
+import com.android.identity.mdoc.response.DeviceResponseGenerator
+import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.mdl.app.R
 import com.android.mdl.app.authconfirmation.RequestedDocumentData
 import com.android.mdl.app.authconfirmation.RequestedElement
@@ -24,8 +22,6 @@ import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.util.logWarning
 import com.android.mdl.app.util.PreferencesHelper
-import java.util.Optional
-import java.util.OptionalLong
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 

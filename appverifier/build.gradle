@@ -57,6 +57,7 @@ android {
 dependencies {
     // Uses module as identity credential api
     implementation project(':identity')
+    implementation project(':identity-android')
 
     implementation libs.bundles.androidx.core
     implementation libs.bundles.androidx.lifecycle

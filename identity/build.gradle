@@ -1,97 +1,26 @@
 plugins {
-    id("com.android.library")
-    id("maven-publish")
+    id("java-library")
+    id "org.jetbrains.kotlin.jvm"
+    alias libs.plugins.dokka
 }
 
-android {
-    compileSdk 33
+java {
+    apply plugin: 'org.jetbrains.dokka'
 
-    defaultConfig {
-        minSdkVersion 24
+    withSourcesJar()
+    withJavadocJar()
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
-    }
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-
-
-    namespace "com.android.identity"
-    lint {
-        lintConfig file('lint.xml')
-    }
-
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
 }
 
 dependencies {
     implementation("androidx.annotation:annotation:1.5.0")
-    implementation "androidx.biometric:biometric:1.2.0-alpha05"
     implementation "co.nstant.in:cbor:0.9"
     implementation "org.bouncycastle:bcprov-jdk15on:1.67"
     implementation("org.bouncycastle:bcpkix-jdk15on:1.67")
-    implementation "com.android.volley:volley:1.2.1"
 
-    testImplementation "androidx.test.espresso:espresso-core:3.4.0"
-    testImplementation "androidx.test.ext:junit:1.1.3"
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.bouncycastle:bcprov-jdk15on:1.67"
-
-    androidTestImplementation "androidx.test.ext:junit:1.1.3"
-    androidTestImplementation "androidx.test.espresso:espresso-core:3.4.0"
-}
-
-version = 'YYYYMMDD'
-
-task generateApiDoc(type: Javadoc) {
-    source = android.sourceSets.main.java.srcDirs
-
-    ext.androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-    classpath += files(ext.androidJar)
-
-    options.links("http://docs.oracle.com/javase/7/docs/api/");
-    options.links("http://d.android.com/reference/");
-
-    destinationDir = file("../version-" + version + "/")
-    failOnError false
-}
-
-tasks.withType(Test) {
-    testLogging {
-        events "standardOut", "passed", "skipped", "failed"
-    }
-}
-
-afterEvaluate {
-    generateApiDoc.classpath += files(android.libraryVariants.collect { variant ->
-        variant.javaCompileProvider.get().classpath.files
-    })
-
-    publishing {
-        publications {
-            release(MavenPublication) {
-                from components.release
-                groupId 'com.android.identity'
-                artifactId 'identity-credential'
-
-                pom {
-                    licenses {
-                        license {
-                            name = 'Apache 2.0'
-                            url = 'https://opensource.org/licenses/Apache-2.0'
-                        }
-                    }
-                }
-            }
-        }
-    }
 }

@@ -40,7 +40,7 @@ public class TestUtilities {
 
     private TestUtilities() {}
 
-    static @NonNull X509Certificate generateSelfSignedCert(KeyPair keyPair) {
+    public static @NonNull X509Certificate generateSelfSignedCert(KeyPair keyPair) {
         try {
             final Date notBefore = Date.from(Instant.now());
             final Date notAfter = Date.from(Instant.now().plus(Duration.ofDays(30)));

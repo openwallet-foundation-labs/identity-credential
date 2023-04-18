@@ -15,6 +15,10 @@ import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
+import com.android.identity.mdoc.request.DeviceRequestParser
+import com.android.identity.Utility
+import com.android.identity.mdoc.origininfo.OriginInfo
+import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.documentdata.RequestEuPid
 import com.android.mdl.app.documentdata.RequestMdl
@@ -193,7 +197,8 @@ class TransferManager private constructor(private val context: Context) {
                         val (first1, second1) = Utility.decodeStaticAuthData(staticAuthData)
 
                         log("StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
-                        response.addDocument(
+                        Utility.addDocument(
+                            response,
                             docType,
                             c,
                             first1,

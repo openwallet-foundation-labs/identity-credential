@@ -138,11 +138,11 @@ public class SimpleIssuerTrustStore implements IssuerTrustStore {
 			return false;
 		}
 
-		Iterator<X509Certificate> certIterator = (Iterator<X509Certificate>) certificationTrustPath.iterator();
+		Iterator<X509Certificate> certIterator = certificationTrustPath.iterator();
 
 		X509Certificate leafCert = certIterator.next();
 
-		if (leafCert.getKeyUsage()[DIGITAL_SIGNATURE] == false) {
+		if (!leafCert.getKeyUsage()[DIGITAL_SIGNATURE]) {
 //			throw new CertificateException("Document Signer certificate is not a signing certificate");
 			return false;
 		}

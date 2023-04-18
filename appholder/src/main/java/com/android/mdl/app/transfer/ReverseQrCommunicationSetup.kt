@@ -5,7 +5,7 @@ import android.net.Uri
 import android.util.Base64
 import com.android.identity.DataTransport
 import com.android.identity.EngagementParser
-import com.android.identity.OriginInfo
+import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.DeviceRetrievalHelper
 import com.android.identity.PresentationSession
 import com.android.mdl.app.util.log
