@@ -97,6 +97,7 @@
 [plugins]
     android-application = { id = "com.android.application", version.ref = "gradle-plugin" }
     android-library = { id = "com.android.library", version.ref = "gradle-plugin" }
+    dokka = { id = "org.jetbrains.dokka", version.ref = "kotlin"}
     kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
     sonarqube = { id = "org.sonarqube", version.ref = "sonar-gradle-plugin" }
     jacoco = { id = "org.kordamp.gradle.jacoco", version.ref = "jacoco" }

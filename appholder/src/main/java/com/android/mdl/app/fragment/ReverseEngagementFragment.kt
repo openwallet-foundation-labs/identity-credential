@@ -14,8 +14,8 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import com.android.identity.OriginInfo
-import com.android.identity.OriginInfoQr
+import com.android.identity.mdoc.origininfo.OriginInfo
+import com.android.identity.mdoc.origininfo.OriginInfoQr
 import com.android.mdl.app.databinding.FragmentReverseEngagementBinding
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.logWarning

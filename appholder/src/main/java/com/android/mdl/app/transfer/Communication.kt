@@ -2,8 +2,8 @@ package com.android.mdl.app.transfer
 
 import android.annotation.SuppressLint
 import android.content.Context
-import com.android.identity.Constants
-import com.android.identity.DeviceRequestParser
+import com.android.identity.util.Constants
+import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.DeviceRetrievalHelper
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor

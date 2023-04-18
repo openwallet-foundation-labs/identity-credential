@@ -2,7 +2,6 @@ package com.android.mdl.appreader.util
 
 import android.content.Context
 import androidx.preference.PreferenceManager
-import com.android.identity.Constants
 
 object PreferencesHelper {
     private const val BLE_DATA_L2CAP = "ble_l2cap"

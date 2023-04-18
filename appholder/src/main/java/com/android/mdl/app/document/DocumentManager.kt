@@ -7,6 +7,7 @@ import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.*
 import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
+import com.android.identity.Utility
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE

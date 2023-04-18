@@ -7,4 +7,13 @@ plugins {
     alias libs.plugins.navigation.safe.args apply false
     alias libs.plugins.kapt apply false
     alias libs.plugins.parcelable apply false
+    alias libs.plugins.dokka
+}
+
+version = 'YYYYMMDD'
+
+tasks.dokkaHtmlMultiModule {
+    moduleName.set(rootProject.name)
+    // This has it output to the root directory. Default is to put it in build/dokka.
+    // outputDirectory.set(file(version+"/documentation"))
 }

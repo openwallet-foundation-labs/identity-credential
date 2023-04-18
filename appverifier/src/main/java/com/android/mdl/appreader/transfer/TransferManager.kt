@@ -13,8 +13,8 @@ import androidx.lifecycle.MutableLiveData
 import com.android.identity.ConnectionMethod
 import com.android.identity.ConnectionMethodHttp
 import com.android.identity.DataTransportOptions
-import com.android.identity.DeviceRequestGenerator
-import com.android.identity.DeviceResponseParser
+import com.android.identity.mdoc.request.DeviceRequestGenerator
+import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.VerificationHelper
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
@@ -91,7 +91,7 @@ class TransferManager private constructor(private val context: Context) {
         // and the dynamically allocated TCP port as port. So the resulting ConnectionMethodHttp
         // which will be included in ReaderEngagement CBOR will contain an URI of the
         // form http://192.168.1.2:18013/mdocreader
-        methods.add(ConnectionMethodHttp(""));
+        methods.add(ConnectionMethodHttp(""))
         builder.setUseReverseEngagement(methods)
         verification = builder.build()
         usingReverseEngagement = true
@@ -306,7 +306,8 @@ class TransferManager private constructor(private val context: Context) {
                 }
             }
 
-            val generator = DeviceRequestGenerator()
+            val generator =
+                DeviceRequestGenerator()
             generator.setSessionTranscript(it.sessionTranscript)
             requestDocumentList.getAll().forEach { requestDocument ->
                 generator.addDocumentRequest(
@@ -344,7 +345,8 @@ class TransferManager private constructor(private val context: Context) {
     fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {
         responseBytes?.let { rb ->
             verification?.let { v ->
-                val parser = DeviceResponseParser()
+                val parser =
+                    DeviceResponseParser()
                 parser.setSessionTranscript(v.sessionTranscript)
                 parser.setEphemeralReaderKey(v.ephemeralReaderKey)
                 parser.setDeviceResponse(rb)
