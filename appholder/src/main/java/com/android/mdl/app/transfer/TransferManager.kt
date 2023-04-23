@@ -255,8 +255,11 @@ class TransferManager private constructor(private val context: Context) {
         return null
     }
 
-    fun sendResponse(deviceResponse: ByteArray) {
-        communication.sendResponse(deviceResponse)
+    fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
+        communication.sendResponse(deviceResponse, closeAfterSending)
+        if (closeAfterSending) {
+            disconnect()
+        }
     }
 
     fun readDocumentEntries(document: Document): CredentialDataResult.Entries? {

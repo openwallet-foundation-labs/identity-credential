@@ -27,6 +27,7 @@ import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.PublicKey;
 import java.util.List;
+import java.util.Locale;
 import java.util.OptionalLong;
 import java.util.concurrent.Executor;
 
@@ -86,8 +87,6 @@ public class DeviceRetrievalHelper {
     boolean mReceivedSessionTerminated;
 
     private boolean mInhibitCallbacks;
-    private boolean mUseTransportSpecificSessionTermination;
-    private boolean mSendSessionTerminationMessage;
     private byte[] mReverseEngagementReaderEngagement;
     private List<OriginInfo> mReverseEngagementOriginInfos;
     private byte[] mReverseEngagementEncodedEReaderKey;
@@ -140,7 +139,9 @@ public class DeviceRetrievalHelper {
             @Override
             public void onDisconnected() {
                 Logger.d(TAG, "onDisconnected");
-                mTransport.close();
+                if (mTransport != null) {
+                    mTransport.close();
+                }
                 if (!mReceivedSessionTerminated) {
                     reportError(new Error("Peer disconnected without proper session termination"));
                 } else {
@@ -181,7 +182,9 @@ public class DeviceRetrievalHelper {
 
             @Override
             public void onError(@NonNull Throwable error) {
-                mTransport.close();
+                if (mTransport != null) {
+                    mTransport.close();
+                }
                 reportError(error);
             }
 
@@ -199,7 +202,9 @@ public class DeviceRetrievalHelper {
             public void onTransportSpecificSessionTermination() {
                 Logger.d(TAG, "Received transport-specific session termination");
                 mReceivedSessionTerminated = true;
-                mTransport.close();
+                if (mTransport != null) {
+                    mTransport.close();
+                }
                 reportDeviceDisconnected(true);
             }
 
@@ -389,15 +394,19 @@ public class DeviceRetrievalHelper {
      * <p>This is typically called in response to the {@link Listener#onDeviceRequest(byte[])}
      * callback.
      *
-     * <p>The <code>deviceResponseBytes</code> parameter should contain CBOR conforming to
+     * <p>If set, <code>deviceResponseBytes</code> parameter should contain CBOR conforming to
      * <code>DeviceResponse</code> <a href="http://cbor.io/">CBOR</a>
      * as specified in <em>ISO/IEC 18013-5</em> section 8.3 <em>Device Retrieval</em>. This
      * can be generated using {@link DeviceResponseGenerator}.
      *
-     * @param deviceResponseBytes the response to send.
+     * At least one of {@code deviceResponseBytes} and {@code status} must be set.
+     *
+     * @param deviceResponseBytes the response to send or {@code null}.
+     * @param status optional status code to send.
+     * @throws IllegalArgumentException if {@code deviceResponseBytes} is {@code null } and {@code status} is empty.
      */
-    public void sendDeviceResponse(@NonNull byte[] deviceResponseBytes) {
-        this.sendDeviceResponse(deviceResponseBytes, null, null);
+    public void sendDeviceResponse(@Nullable byte[] deviceResponseBytes, @NonNull OptionalLong status) {
+        this.sendDeviceResponse(deviceResponseBytes, status, null, null);
     }
 
     /**
@@ -406,32 +415,58 @@ public class DeviceRetrievalHelper {
      * <p>This is typically called in response to the {@link Listener#onDeviceRequest(byte[])}
      * callback.
      *
-     * <p>The <code>deviceResponseBytes</code> parameter should contain CBOR conforming to
+     * <p>If set, <code>deviceResponseBytes</code> parameter should contain CBOR conforming to
      * <code>DeviceResponse</code> <a href="http://cbor.io/">CBOR</a>
      * as specified in <em>ISO/IEC 18013-5</em> section 8.3 <em>Device Retrieval</em>. This
      * can be generated using {@link DeviceResponseGenerator}.
      *
-     * @param deviceResponseBytes the response to send.
+     * At least one of {@code deviceResponseBytes} and {@code status} must be set.
+     *
+     * @param deviceResponseBytes the response to send or {@code null}.
+     * @param status optional status code to send.
      * @param progressListener a progress listener that will subscribe to updates or <code>null</code>
      * @param progressExecutor a {@link Executor} to do the progress listener updates in, or
      *                         <code>null</code> (required if <code>progressListener</code> is
      *                         non-null
      */
-    public void sendDeviceResponse(@NonNull byte[] deviceResponseBytes,
-        @Nullable TransmissionProgressListener progressListener,
-        @Nullable Executor progressExecutor) {
-        Logger.dCbor(TAG, "DeviceResponse to send", deviceResponseBytes);
-        byte[] encryptedData =
-            mSessionEncryption.encryptMessageToReader(deviceResponseBytes, OptionalLong.empty());
-        mTransport.sendMessage(encryptedData, progressListener, progressExecutor);
+    public void sendDeviceResponse(@Nullable byte[] deviceResponseBytes,
+                                   @NonNull OptionalLong status,
+                                   @Nullable TransmissionProgressListener progressListener,
+                                   @Nullable Executor progressExecutor) {
+        byte[] sessionDataMessage = null;
+        if (deviceResponseBytes == null) {
+            if (!status.isPresent()) {
+                throw new IllegalArgumentException("deviceResponseBytes and status cannot both be null");
+            }
+            Logger.d(TAG,
+                    String.format(Locale.US, "sendDeviceResponse: status is %d and data is unset",
+                            status.getAsLong()));
+            sessionDataMessage = SessionEncryptionDevice.encodeStatusToReader(status.getAsLong());
+        } else {
+            if (status.isPresent()) {
+                Logger.dCbor(TAG,
+                        String.format(Locale.US, "sendDeviceResponse: status is %d and data is",
+                                status.getAsLong()), deviceResponseBytes);
+            } else {
+                Logger.dCbor(TAG, "sendDeviceResponse: status is unset and data is",
+                        deviceResponseBytes);
+            }
+            sessionDataMessage = mSessionEncryption.encryptMessageToReader(deviceResponseBytes, status);
+        }
+        if (mTransport == null) {
+            Logger.d(TAG, "sendDeviceResponse: ignoring because transport is unset");
+            return;
+        }
+        mTransport.sendMessage(sessionDataMessage, progressListener, progressExecutor);
     }
 
     /**
      * Stops the presentation and shuts down the transport.
      *
-     * <p>If connected to a mdoc verifier also sends a session termination message prior to
-     * disconnecting if applicable. See {@link #setSendSessionTerminationMessage(boolean)} and
-     * {@link #setUseTransportSpecificSessionTermination(boolean)} for how to configure this.
+     * <p>This does not send a message to terminate the session. Applications should use
+     * {@link #sendTransportSpecificTermination()} or
+     * {@link #sendDeviceResponse(byte[], OptionalLong)}
+     * with status {@link Constants#SESSION_DATA_STATUS_SESSION_TERMINATION} to do that.
      *
      * <p>No callbacks will be done on a listener after calling this.
      *
@@ -439,52 +474,17 @@ public class DeviceRetrievalHelper {
      */
     public void disconnect() {
         mInhibitCallbacks = true;
-        if (mTransport != null) {
-            // Only send session termination message if the session was actually established.
-            boolean sessionEstablished = (mSessionEncryption != null)
-                            && (mSessionEncryption.getNumMessagesDecrypted() > 0);
-            if (mSendSessionTerminationMessage && sessionEstablished) {
-                if (mUseTransportSpecificSessionTermination &&
-                        mTransport.supportsTransportSpecificTerminationMessage()) {
-                    Logger.d(TAG, "Sending transport-specific termination message");
-                    mTransport.sendTransportSpecificTerminationMessage();
-                } else {
-                    Logger.d(TAG, "Sending generic session termination message");
-                    byte[] sessionTermination = mSessionEncryption.encryptMessageToReader(
-                            null, OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION));
-                    mTransport.sendMessage(sessionTermination);
-                }
-            } else {
-                Logger.d(TAG, "Not sending session termination message");
-            }
-            mTransport.close();
-            mTransport = null;
+        if (mTransport == null) {
+            Logger.d(TAG, "disconnect: ignoring call because transport is unset");
+            return;
         }
-    }
-
-    /**
-     * Sets whether to use transport-specific session termination.
-     *
-     * <p>By default this is set to <code>false</code>.
-     *
-     * <p>As per <a href="https://www.iso.org/standard/69084.html">ISO/IEC 18013-5</a>
-     * transport-specific session-termination is currently only supported for BLE. The
-     * {@link #isTransportSpecificTerminationSupported()} method can be used to determine whether
-     * it's available for the current transport. If the current transport does not support
-     * the feature, then this method is a noop.
-     *
-     * @param useTransportSpecificSessionTermination Whether to use transport-specific session
-     */
-    public void setUseTransportSpecificSessionTermination(
-            boolean useTransportSpecificSessionTermination) {
-        mUseTransportSpecificSessionTermination = useTransportSpecificSessionTermination;
+        Logger.d(TAG, "disconnect: closing transport");
+        mTransport.close();
+        mTransport = null;
     }
 
     /**
      * Returns whether transport specific termination is available for the current connection.
-     *
-     * See {@link #setUseTransportSpecificSessionTermination(boolean)} for more information about
-     * what transport specific session termination is.
      *
      * @return <code>true</code> if transport specific termination is available, <code>false</code>
      *   if not or if not connected.
@@ -497,20 +497,28 @@ public class DeviceRetrievalHelper {
     }
 
     /**
-     * Sets whether to send session termination message.
+     * Sends a transport-specific termination message.
      *
-     * <p>This controls whether a session termination message is sent when
-     * {@link #disconnect()} is called. Most applications would want to do
-     * this as it is required by
-     * <a href="https://www.iso.org/standard/69084.html">ISO/IEC 18013-5</a>.
+     * <p>Transport-specific session terminated is only supported for certain device-retrieval
+     * methods. Use {@link #isTransportSpecificTerminationSupported()} to figure out if it
+     * is supported for the current connection.
      *
-     * <p>By default this is set to <code>true</code>.
-     *
-     * @param sendSessionTerminationMessage Whether to send session termination message.
+     * <p>If a session is not established or transport-specific session termination is not
+     * supported this is a no-op.
      */
-    public void setSendSessionTerminationMessage(
-            boolean sendSessionTerminationMessage) {
-        mSendSessionTerminationMessage = sendSessionTerminationMessage;
+    public void sendTransportSpecificTermination() {
+        if (mTransport == null) {
+            Logger.w(TAG, "No current transport");
+            return;
+        }
+
+        if (!mTransport.supportsTransportSpecificTerminationMessage()) {
+            Logger.w(TAG, "Current transport does not support transport-specific termination message");
+            return;
+        }
+
+        Logger.d(TAG, "Sending transport-specific termination message");
+        mTransport.sendTransportSpecificTerminationMessage();
     }
 
     /**
@@ -530,8 +538,7 @@ public class DeviceRetrievalHelper {
          *
          * <p>The application should use {@link DeviceRequestParser} to parse the request and
          * {@link DeviceResponseGenerator} to generate a response to be sent using
-         * {@link #sendDeviceResponse(byte[])}. Alternatively, the application may also choose to
-         * terminate the session using {@link #disconnect()}.
+         * {@link #sendDeviceResponse(byte[], OptionalLong)}.
          *
          * @param deviceRequestBytes     the device request.
          */

@@ -72,6 +72,7 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
     ScanCallback mScanCallback = new ScanCallback() {
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
+            Logger.d(TAG, "onScanCallback: callbackType=" + callbackType + " result=" + result);
             // if we already scanned and connect to device we don't want to
             // reconnect to another GattClient instance.
             if (mIsConnecting) {
@@ -343,6 +344,9 @@ class DataTransportBleCentralClientMode extends DataTransportBle {
 
     @Override
     public void sendMessage(@NonNull byte[] data) {
+        if (data.length == 0) {
+            throw new IllegalArgumentException("Data to send cannot be empty");
+        }
         if (mGattServer != null) {
             mGattServer.sendMessage(data);
         } else if (mGattClient != null) {

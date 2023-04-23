@@ -120,7 +120,7 @@ public abstract class DataTransport {
      * call this right after {@link #connect()}, data will be queued up and sent once a connection
      * has been established.
      *
-     * @param data the data to send
+     * @param data the data to send, must be at least one byte.
      */
     abstract void sendMessage(@NonNull byte[] data);
 

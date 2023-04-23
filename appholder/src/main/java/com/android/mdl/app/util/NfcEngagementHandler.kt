@@ -82,7 +82,6 @@ class NfcEngagementHandler : HostApduService() {
                 engagementHelper.handover
             )
             presentation = builder.build()
-            presentation?.setSendSessionTerminationMessage(true)
             communication.setupPresentation(presentation!!)
             engagementHelper.close()
             transferManager.updateStatus(TransferStatus.CONNECTED)

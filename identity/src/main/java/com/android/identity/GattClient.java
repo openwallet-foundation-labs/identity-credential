@@ -67,8 +67,8 @@ class GattClient extends BluetoothGattCallback {
     UUID mClientCharacteristicConfigUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     ByteArrayOutputStream mIncomingMessage = new ByteArrayOutputStream();
     Queue<byte[]> mWritingQueue = new ArrayDeque<>();
-    int writingQueueTotalChunks;
-    boolean writeIsOutstanding = false;
+    int mWritingQueueTotalChunks;
+    boolean mWriteIsOutstanding = false;
     private boolean mInhibitCallbacks = false;
     private int mNegotiatedMtu;
     private byte[] mIdentValue;
@@ -122,12 +122,8 @@ class GattClient extends BluetoothGattCallback {
             mL2CAPClient = null;
         }
         if (mGatt != null) {
-            try {
-                mGatt.disconnect();
-            } catch (SecurityException e) {
-                Logger.e(TAG, "Caught SecurityException while shutting down: " + e);
-            }
-            mGatt = null;
+            // used to convey we want to shutdown once all write are done.
+            sendMessage(new byte[0]);
         }
     }
 
@@ -470,17 +466,17 @@ class GattClient extends BluetoothGattCallback {
                 return;
             }
 
-            if (writingQueueTotalChunks > 0) {
+            if (mWritingQueueTotalChunks > 0) {
                 if (mWritingQueue.size() == 0) {
-                    reportMessageSendProgress(writingQueueTotalChunks, writingQueueTotalChunks);
-                    writingQueueTotalChunks = 0;
+                    reportMessageSendProgress(mWritingQueueTotalChunks, mWritingQueueTotalChunks);
+                    mWritingQueueTotalChunks = 0;
                 } else {
-                    reportMessageSendProgress(writingQueueTotalChunks-mWritingQueue.size(), writingQueueTotalChunks);
+                    reportMessageSendProgress(mWritingQueueTotalChunks -mWritingQueue.size(), mWritingQueueTotalChunks);
                 }
             }
 
 
-            writeIsOutstanding = false;
+            mWriteIsOutstanding = false;
             drainWritingQueue();
         }
     }
@@ -536,12 +532,23 @@ class GattClient extends BluetoothGattCallback {
     }
 
     void drainWritingQueue() {
-        Logger.d(TAG, "drainWritingQueue " + writeIsOutstanding);
-        if (writeIsOutstanding) {
+        Logger.d(TAG, "drainWritingQueue " + mWriteIsOutstanding);
+        if (mWriteIsOutstanding) {
             return;
         }
         byte[] chunk = mWritingQueue.poll();
         if (chunk == null) {
+            return;
+        }
+
+        if (chunk.length == 0) {
+            Logger.d(TAG, "Chunk is length 0, shutting down GattClient");
+            try {
+                mGatt.disconnect();
+            } catch (SecurityException e) {
+                Logger.e(TAG, "Caught SecurityException while shutting down: " + e);
+            }
+            mGatt = null;
             return;
         }
 
@@ -559,7 +566,7 @@ class GattClient extends BluetoothGattCallback {
             reportError(e);
             return;
         }
-        writeIsOutstanding = true;
+        mWriteIsOutstanding = true;
     }
 
 
@@ -572,28 +579,32 @@ class GattClient extends BluetoothGattCallback {
             return;
         }
 
-        // Also need room for the leading 0x00 or 0x01.
-        //
-        int maxDataSize = getCharacteristicValueSize() - 1;
+        if (data.length == 0) {
+            // Data of length 0 is used to signal we should shut down.
+            mWritingQueue.add(data);
+        } else {
+            // Also need room for the leading 0x00 or 0x01.
+            //
+            int maxDataSize = getCharacteristicValueSize() - 1;
+            int offset = 0;
+            do {
+                boolean moreDataComing = (offset + maxDataSize < data.length);
+                int size = data.length - offset;
+                if (size > maxDataSize) {
+                    size = maxDataSize;
+                }
 
-        int offset = 0;
-        do {
-            boolean moreDataComing = (offset + maxDataSize < data.length);
-            int size = data.length - offset;
-            if (size > maxDataSize) {
-                size = maxDataSize;
-            }
+                byte[] chunk = new byte[size + 1];
+                chunk[0] = moreDataComing ? (byte) 0x01 : (byte) 0x00;
+                System.arraycopy(data, offset, chunk, 1, size);
 
-            byte[] chunk = new byte[size + 1];
-            chunk[0] = moreDataComing ? (byte) 0x01 : (byte) 0x00;
-            System.arraycopy(data, offset, chunk, 1, size);
+                mWritingQueue.add(chunk);
 
-            mWritingQueue.add(chunk);
+                offset += size;
+            } while (offset < data.length);
+        }
 
-            offset += size;
-        } while (offset < data.length);
-
-        writingQueueTotalChunks = mWritingQueue.size();
+        mWritingQueueTotalChunks = mWritingQueue.size();
 
         drainWritingQueue();
     }

@@ -112,10 +112,7 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.startPresentationReverseEngagement(mdocUri, originInfos)
         val navController = findNavController(R.id.nav_host_fragment)
-        navController.navigate(
-            R.id.transferDocumentFragment,
-            bundleOf(TransferDocumentFragment.CLOSE_AFTER_SERVING_KEY to true)
-        )
+        navController.navigate(R.id.transferDocumentFragment)
     }
 
     override fun onSupportNavigateUp(): Boolean {

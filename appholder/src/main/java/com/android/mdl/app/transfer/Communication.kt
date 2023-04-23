@@ -2,10 +2,12 @@ package com.android.mdl.app.transfer
 
 import android.annotation.SuppressLint
 import android.content.Context
+import com.android.identity.Constants
 import com.android.identity.DeviceRequestParser
 import com.android.identity.DeviceRetrievalHelper
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
+import java.util.OptionalLong
 
 class Communication private constructor(
     private val context: Context,
@@ -33,27 +35,42 @@ class Communication private constructor(
         } ?: throw IllegalStateException("Request not received")
     }
 
-    fun sendResponse(deviceResponse: ByteArray) {
+    fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
         val progressListener: (Long, Long) -> Unit = { progress, max ->
             log("Progress: $progress of $max")
             if (progress == max) {
                 log("Completed...")
             }
         }
-        deviceRetrievalHelper?.sendDeviceResponse(deviceResponse, progressListener, context.mainExecutor())
+        if (closeAfterSending) {
+            deviceRetrievalHelper?.sendDeviceResponse(
+                deviceResponse,
+                OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION),
+                progressListener,
+                context.mainExecutor())
+            deviceRetrievalHelper?.disconnect()
+        } else {
+            deviceRetrievalHelper?.sendDeviceResponse(
+                deviceResponse,
+                OptionalLong.empty(),
+                progressListener,
+                context.mainExecutor())
+        }
     }
 
     fun stopPresentation(
         sendSessionTerminationMessage: Boolean,
         useTransportSpecificSessionTermination: Boolean
     ) {
-        deviceRetrievalHelper?.setSendSessionTerminationMessage(sendSessionTerminationMessage)
-        try {
-            if (deviceRetrievalHelper?.isTransportSpecificTerminationSupported == true && useTransportSpecificSessionTermination) {
-                deviceRetrievalHelper?.setUseTransportSpecificSessionTermination(true)
+        if (sendSessionTerminationMessage) {
+            if (useTransportSpecificSessionTermination) {
+                deviceRetrievalHelper?.sendTransportSpecificTermination()
+            } else {
+                deviceRetrievalHelper?.sendDeviceResponse(
+                    null,
+                    OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                )
             }
-        } catch (e: IllegalStateException) {
-            log("Error ignored.", e)
         }
         disconnect()
     }
