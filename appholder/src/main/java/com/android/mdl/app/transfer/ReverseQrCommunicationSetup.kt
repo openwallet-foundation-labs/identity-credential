@@ -72,7 +72,6 @@ class ReverseQrCommunicationSetup(
             session
         ).useReverseEngagement(transport, encodedReaderEngagement, origins)
         presentation = builder.build()
-        presentation?.setSendSessionTerminationMessage(true)
         onPresentationReady(session, presentation!!)
     }
 }

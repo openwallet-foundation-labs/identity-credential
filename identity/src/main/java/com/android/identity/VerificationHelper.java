@@ -160,7 +160,7 @@ public class VerificationHelper {
 
                     @Override
                     public void onDisconnected() {
-                        Logger.d(TAG, "onListeningPeerDisconnected for " + transport);
+                        Logger.d(TAG, "onDisconnected for " + transport);
                         transport.close();
                     }
 
@@ -773,7 +773,7 @@ public class VerificationHelper {
             public void onDisconnected() {
                 Logger.d(TAG, "onDisconnected for " + mDataTransport);
                 mDataTransport.close();
-                reportDeviceDisconnected(false);
+                reportError(new Error("Peer disconnected without proper session termination"));
             }
 
             @Override
@@ -839,6 +839,7 @@ public class VerificationHelper {
             reportError(new Error("onMessageReceived but no message"));
             return;
         }
+        Logger.dCbor(TAG, "SessionData received", data);
 
         if (mDeviceEngagement == null) {
             // DeviceEngagement is delivered in the first message...
@@ -868,21 +869,26 @@ public class VerificationHelper {
             Logger.dCbor(TAG, "DeviceResponse received", decryptedMessage.first);
             reportResponseReceived(decryptedMessage.first);
         } else {
-            // No data, so status must be set.
+            // No data, so status must be set...
             if (!decryptedMessage.second.isPresent()) {
                 mDataTransport.close();
                 reportError(new Error("No data and no status in SessionData"));
+                return;
+            }
+        }
+
+        // It's possible both data and status is set, for example if the holder only
+        // wants to serve a single response.
+        if (decryptedMessage.second.isPresent()) {
+            long statusCode = decryptedMessage.second.getAsLong();
+            Logger.d(TAG, "SessionData with status code " + statusCode);
+            if (statusCode == Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
+                mDataTransport.close();
+                reportDeviceDisconnected(false);
             } else {
-                long statusCode = decryptedMessage.second.getAsLong();
-                Logger.d(TAG, "SessionData with status code " + statusCode);
-                if (statusCode == Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
-                    mDataTransport.close();
-                    reportDeviceDisconnected(false);
-                } else {
-                    mDataTransport.close();
-                    reportError(new Error("Expected status code 20, got "
-                            + statusCode + " instead"));
-                }
+                mDataTransport.close();
+                reportError(new Error("Expected status code 20, got "
+                        + statusCode + " instead"));
             }
         }
     }

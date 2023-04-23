@@ -9,6 +9,7 @@ import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.android.identity.Constants
 import com.android.identity.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.CredentialInvalidatedException
 import com.android.identity.DeviceRequestParser
@@ -22,6 +23,9 @@ import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.util.logWarning
+import com.android.mdl.app.util.PreferencesHelper
+import java.util.Optional
+import java.util.OptionalLong
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
@@ -98,6 +102,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         requestedElements.addAll(result)
     }
 
+    // Returns true if a response was sent, false if additional auth is needed
     fun sendResponseForSelection(): Boolean {
         val elementsToSend = signedElements.collect()
         val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
@@ -125,7 +130,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 logWarning("No requestedDocument for " + signedDocument.documentType)
             }
         }
-        transferManager.sendResponse(response.generate())
+        transferManager.sendResponse(response.generate(), PreferencesHelper.isConnectionAutoCloseEnabled())
         transferManager.setResponseServed()
         val documentsCount = elementsToSend.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))

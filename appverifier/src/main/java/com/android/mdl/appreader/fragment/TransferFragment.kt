@@ -91,13 +91,10 @@ class TransferFragment : Fragment() {
                     findNavController().navigate(R.id.action_Transfer_to_ShowDocument)
                 }
                 TransferStatus.DISCONNECTED -> {
-                    Toast.makeText(
-                        requireContext(), "Error: Disconnected",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    findNavController().navigate(R.id.action_Transfer_to_RequestOptions)
+                    binding.tvStatus.text = "Disconnected"
                 }
                 TransferStatus.ERROR -> {
+                    // TODO: Pass and show the actual text of the exception here.
                     Toast.makeText(
                         requireContext(), "Error connecting to holder",
                         Toast.LENGTH_SHORT

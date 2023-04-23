@@ -347,7 +347,7 @@ public class DeviceRetrievalHelperTest {
                                     issuerSignedDataItemsWithValues,
                                     null,
                                     encodedIssuerAuth);
-                            presentation[0].sendDeviceResponse(generator.generate());
+                            presentation[0].sendDeviceResponse(generator.generate(), OptionalLong.empty());
 
                         } catch (NoAuthenticationKeyAvailableException |
                                 InvalidReaderSignatureException |

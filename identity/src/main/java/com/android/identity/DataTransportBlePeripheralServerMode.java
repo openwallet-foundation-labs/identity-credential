@@ -336,6 +336,9 @@ class DataTransportBlePeripheralServerMode extends DataTransportBle {
 
     @Override
     public void sendMessage(@NonNull byte[] data) {
+        if (data.length == 0) {
+            throw new IllegalArgumentException("Data to send cannot be empty");
+        }
         if (mGattServer != null) {
             mGattServer.sendMessage(data);
         } else if (mGattClient != null) {

@@ -121,6 +121,7 @@ class DeviceEngagementFragment : Fragment() {
                 }
 
                 TransferStatus.ERROR -> {
+                    // TODO: Pass and show the actual text of the exception here.
                     Log.d(LOG_TAG, "Error received")
                     Toast.makeText(
                         requireContext(), "Error connecting to holder",

@@ -52,7 +52,6 @@ class QrCommunicationSetup(
                 qrEngagement.handover
             )
             deviceRetrievalHelper = builder.build()
-            deviceRetrievalHelper?.setSendSessionTerminationMessage(true)
             qrEngagement.close()
             onDeviceRetrievalHelperReady(session, deviceRetrievalHelper!!)
         }

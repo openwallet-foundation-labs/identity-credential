@@ -23,18 +23,10 @@ import com.android.mdl.app.util.log
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 
 class TransferDocumentFragment : Fragment() {
-
-    companion object {
-        const val CLOSE_AFTER_SERVING_KEY = "closeAfterServing"
-    }
-
     private var _binding: FragmentTransferDocumentBinding? = null
     private val binding get() = _binding!!
 
     private val viewModel: TransferDocumentViewModel by activityViewModels()
-    private val closeAfterServing by lazy {
-        arguments?.getBoolean("closeAfterServing", false) ?: false
-    }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -85,12 +77,6 @@ class TransferDocumentFragment : Fragment() {
 
     private fun onRequestServed() {
         log("Request Served")
-        if (PreferencesHelper.isConnectionAutoCloseEnabled()) {
-            onCloseConnection(
-                sendSessionTerminationMessage = true,
-                useTransportSpecificSessionTermination = false
-            )
-        }
     }
 
     private fun onTransferRequested() {
@@ -156,6 +142,11 @@ class TransferDocumentFragment : Fragment() {
                 // Send response with 0 documents
                 viewModel.sendResponseForSelection()
             }
+            // TODO: this is kind of a hack but we really need to move the sending of the
+            //  message to here instead of in the auth confirmation dialog
+            if (PreferencesHelper.isConnectionAutoCloseEnabled()) {
+                hideButtons()
+            }
         } catch (e: Exception) {
             val message = "On request received error: ${e.message}"
             log(message, e)
@@ -181,9 +172,6 @@ class TransferDocumentFragment : Fragment() {
         log("Disconnected")
         hideButtons()
         TransferManager.getInstance(requireContext()).disconnect()
-        if (closeAfterServing) {
-            requireActivity().finish()
-        }
     }
 
     private fun onTransferError() {
