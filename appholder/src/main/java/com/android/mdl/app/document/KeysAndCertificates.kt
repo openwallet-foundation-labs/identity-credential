@@ -87,7 +87,7 @@ object KeysAndCertificates {
             getCertificate(context, R.raw.louisiana_department_of_motor_vehicles_cert),
             getCertificate(context, R.raw.nist_reader_ca_cer),
             getCertificate(context, R.raw.reader_ca_nec_reader_ca_cer),
-            getCertificate(context, R.raw.samsung_mdl_reader_cert256_cer),
+            getCertificate(context, R.raw.samsung_iaca_test_cert),
             getCertificate(context, R.raw.scytales_root_ca),
             getCertificate(context, R.raw.spruce_iaca_cert),
             getCertificate(context, R.raw.ul_cert_ca_01),
