@@ -389,6 +389,7 @@ public class NfcEngagementHelper {
                         .add(SimpleValue.NULL)  // Handover Request message
                         .end()
                         .build().get(0));
+                Logger.dCbor(TAG, "NFC static DeviceEngagement", mEncodedDeviceEngagement);
                 Logger.dCbor(TAG, "NFC static Handover", mEncodedHandover);
 
                 // Technically we should ensure the transports are up until sending the response...
@@ -690,6 +691,7 @@ public class NfcEngagementHelper {
                 .add(mHandoverRequestMessage)  // Handover Request message
                 .end()
                 .build().get(0));
+        Logger.dCbor(TAG, "NFC negotiated DeviceEngagement", mEncodedDeviceEngagement);
         Logger.dCbor(TAG, "NFC negotiated Handover", mEncodedHandover);
 
         // Technically we should ensure the transports are up until sending the response...
