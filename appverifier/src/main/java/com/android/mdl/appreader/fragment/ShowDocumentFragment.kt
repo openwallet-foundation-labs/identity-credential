@@ -164,6 +164,17 @@ class ShowDocumentFragment : Fragment() {
             SimpleIssuerTrustStore(KeysAndCertificates.getTrustedIssuerCertificates(requireContext()))
 
         val sb = StringBuffer()
+
+        for (doc in documents) {
+            if (!checkPortraitPresenceIfRequired(doc)) {
+                // provide an informed exit from the request if the holder opts not to share the portrait image
+                sb.append("<h3>WARNING: <font color=\"red\">No portrait image provided for ${doc.docType}.</font></h3><br>")
+                sb.append("<h3>This means it's not possible to verify the presenter is the authorized holder of the mDL.<br>")
+                sb.append("<br>You should avoid any business transactions or inquiries until proper identification is confirmed.</h3>")
+                return sb.toString()
+            }
+        }
+
         sb.append("Number of documents returned: <b>${documents.size}</b><br>")
         sb.append("Address: <b>" + transferManager.mdocConnectionMethod + "</b><br>")
         sb.append("<br>")
@@ -269,14 +280,36 @@ class ShowDocumentFragment : Fragment() {
         return sb.toString()
     }
 
+    private fun isPortraitApplicable(docType: String, namespace: String?): Boolean{
+        val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
+        val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
+        return hasPortrait && namespaceContainsPortrait
+    }
+
     private fun isPortraitElement(
         docType: String,
         namespace: String?,
         entryName: String?
     ): Boolean {
-        val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
-        val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
-        return hasPortrait && namespaceContainsPortrait && entryName == "portrait"
+        val portraitApplicable = isPortraitApplicable(docType, namespace)
+        return portraitApplicable && entryName == "portrait"
+    }
+
+    // ISO/IEC 18013-5 requires the portrait image to be shared if the portrait was requested and if any other data element is released
+    private fun checkPortraitPresenceIfRequired(document: DeviceResponseParser.Document): Boolean {
+        document.issuerNamespaces.forEach { ns ->
+            val portraitApplicable = isPortraitApplicable(document.docType, ns)
+            if (portraitApplicable) {
+                val entries = document.getIssuerEntryNames(ns)
+                val isPortraitMandatory = entries.isNotEmpty()
+                val isPortraitMissing = !entries.contains("portrait")
+                // check if other data elements are released but portrait is not present
+                if (isPortraitMandatory && isPortraitMissing) {
+                    return false
+                }
+            }
+        }
+        return true
     }
 
     private fun Resources.Theme.attr(@AttrRes attribute: Int): TypedValue {
