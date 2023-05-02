@@ -167,11 +167,13 @@ class ShowDocumentFragment : Fragment() {
 
         for (doc in documents) {
             if (!checkPortraitPresenceIfRequired(doc)) {
-                // provide an informed exit from the request if the holder opts not to share the portrait image
-                sb.append("<h3>WARNING: <font color=\"red\">No portrait image provided for ${doc.docType}.</font></h3><br>")
-                sb.append("<h3>This means it's not possible to verify the presenter is the authorized holder of the mDL.<br>")
-                sb.append("<br>You should avoid any business transactions or inquiries until proper identification is confirmed.</h3>")
-                return sb.toString()
+                // Warn if portrait isn't included in the response.
+                sb.append("<h3>WARNING: <font color=\"red\">No portrait image provided "
+                        + "for ${doc.docType}.</font></h3><br>")
+                sb.append("<i>This means it's not possible to verify the presenter is the authorized "
+                        + "holder. Be careful doing any business transactions or inquiries until "
+                        + "proper identification is confirmed.</i><br>")
+                sb.append("<br>")
             }
         }
 
