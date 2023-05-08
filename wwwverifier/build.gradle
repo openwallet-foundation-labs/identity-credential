@@ -58,8 +58,8 @@ appengine {
 group = 'com.google.sps'
 version = '1'
 description = 'portfolio'
-java.sourceCompatibility = JavaVersion.VERSION_11
-java.targetCompatibility = JavaVersion.VERSION_11
+java.sourceCompatibility = JavaVersion.VERSION_1_8
+java.targetCompatibility = JavaVersion.VERSION_1_8
 
 publishing {
   publications {
