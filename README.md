@@ -48,6 +48,12 @@ appengine {
     }
 }
 ```
+Grant Datastore Owner permissions to your AppEngine service account:
+```
+gcloud projects add-iam-policy-binding <YOUR_PROJECT_ID> \
+    --member="serviceAccount:<YOUR_PROJECT_ID>@appspot.gserviceaccount.com" \
+    --role="roles/datastore.owner"
+```
 
 Then, navigate to wwwverifier:
 
