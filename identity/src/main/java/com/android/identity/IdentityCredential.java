@@ -358,6 +358,7 @@ public abstract class IdentityCredential {
      *                      eligible for replacement. This value must be greater than zero.
      * @deprecated Use {@link #setAvailableAuthenticationKeys(int, int, long)} instead.
      */
+    @Deprecated
     public abstract void setAvailableAuthenticationKeys(int keyCount, int maxUsesPerKey);
 
     /**
