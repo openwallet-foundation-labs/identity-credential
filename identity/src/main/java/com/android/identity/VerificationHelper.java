@@ -339,7 +339,7 @@ public class VerificationHelper {
             throws IOException {
         Logger.dHex(TAG, "transceive: Sending APDU", apdu);
         byte[] ret = isoDep.transceive(apdu);
-        Logger.dHex(TAG, "q: Received APDU", ret);
+        Logger.dHex(TAG, "transceive: Received APDU", ret);
         return ret;
     }
 
@@ -357,25 +357,48 @@ public class VerificationHelper {
         return Arrays.copyOfRange(ret, 0, ret.length - 2);
     }
 
-    private byte[] ndefReadMessage(@NonNull IsoDep isoDep, int nWait)
+    private byte[] ndefReadMessage(@NonNull IsoDep isoDep, double tWaitMillis, int nWait)
             throws IOException {
         byte[] apdu;
         byte[] ret;
 
-        // TODO: Allow up to nWait retries
+        int replyLen;
+        do {
+            apdu = NfcUtil.createApduReadBinary(0x0000, 2);
+            ret = transceive(isoDep, apdu);
+            if (ret.length != 4 || ret[2] != ((byte) 0x90) || ret[3] != ((byte) 0x00)) {
+                Logger.eHex(TAG, "ndefReadMessage: Malformed response for first "
+                        + "READ_BINARY command for length, ret", ret);
+                return null;
+            }
+            replyLen = ((int) ret[0] & 0xff) * 256 + ((int) ret[1] & 0xff);
+            if (replyLen > 0) {
+                break;
+            }
 
-        apdu = NfcUtil.createApduReadBinary(0x0000, 2);
-        ret = transceive(isoDep, apdu);
-        if (ret.length != 4 || ret[2] != ((byte) 0x90) || ret[3] != ((byte) 0x00)) {
-            Logger.eHex(TAG, "Error sending second READ_BINARY command for length, ret", ret);
-            return null;
-        }
-        int replyLen = ((int) ret[0] & 0xff) * 256 + ((int) ret[1] & 0xff);
+            // As per [TNEP] 4.1.7 if the tag sends an empty NDEF message it means that
+            // it's requesting extra time... honor this if we can.
+            if (nWait > 0) {
+                Logger.d(TAG, String.format(Locale.US,
+                        "ndefReadMessage: NDEF message with length 0 and %d time extensions left", nWait));
+                try {
+                    long waitMillis = (long) Math.ceil(tWaitMillis);
+                    Logger.d(TAG, String.format(Locale.US, "ndefReadMessage: Sleeping %d ms", waitMillis));
+                    Thread.sleep(waitMillis);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException("Unexpected interrupt", e);
+                }
+                nWait--;
+            } else {
+                Logger.e(TAG, "ndefReadMessage: NDEF message with length 0 but no time extensions left");
+                return null;
+            }
+        } while (true);
 
         apdu = NfcUtil.createApduReadBinary(0x0002, replyLen);
         ret = transceive(isoDep, apdu);
         if (ret.length != replyLen + 2 || ret[replyLen] != ((byte) 0x90) || ret[replyLen + 1] != ((byte) 0x00)) {
-            Logger.eHex(TAG, "Error sending second READ_BINARY command for payload, ret", ret);
+            Logger.eHex(TAG, "Malformed response for second READ_BINARY command for payload, ret", ret);
             return null;
         }
         return Arrays.copyOfRange(ret, 0, ret.length - 2);
@@ -466,10 +489,11 @@ public class VerificationHelper {
         }
 
         // Now read NDEF file...
-        byte[] receivedNdefMessage = ndefReadMessage(isoDep, nWait);
+        byte[] receivedNdefMessage = ndefReadMessage(isoDep, tWaitMillis, nWait);
         if (receivedNdefMessage == null) {
             return null;
         }
+
         Logger.dHex(TAG, "ndefTransact: read NDEF message", receivedNdefMessage);
         return receivedNdefMessage;
     }
@@ -540,7 +564,7 @@ public class VerificationHelper {
                     }
 
                     // First see if we should use negotiated handover..
-                    byte[] initialNdefMessage = ndefReadMessage(isoDep, 0);
+                    byte[] initialNdefMessage = ndefReadMessage(isoDep, 1.0, 0);
 
                     NdefRecord handoverServiceRecord = NfcUtil.findServiceParameterRecordWithName(initialNdefMessage,
                             "urn:nfc:sn:handover");
