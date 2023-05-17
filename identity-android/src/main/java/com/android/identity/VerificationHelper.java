@@ -74,7 +74,7 @@ public class VerificationHelper {
     DataTransport mDataTransport;
     Listener mListener;
     KeyPair mEphemeralKeyPair;
-    SessionEncryptionReader mSessionEncryptionReader;
+    SessionEncryption mSessionEncryptionReader;
     byte[] mDeviceEngagement;
     byte[] mEncodedSessionTranscript;
     Executor mListenerExecutor;
@@ -726,9 +726,8 @@ public class VerificationHelper {
                 .build().get(0));
         Logger.dCbor(TAG, "SessionTranscript", mEncodedSessionTranscript);
 
-        mSessionEncryptionReader = new SessionEncryptionReader(
-                mEphemeralKeyPair.getPrivate(),
-                mEphemeralKeyPair.getPublic(),
+        mSessionEncryptionReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+                mEphemeralKeyPair,
                 eDeviceKey,
                 mEncodedSessionTranscript);
         if (mReaderEngagement != null) {
@@ -884,7 +883,7 @@ public class VerificationHelper {
 
         Pair<byte[], OptionalLong> decryptedMessage = null;
         try {
-            decryptedMessage = mSessionEncryptionReader.decryptMessageFromDevice(data);
+            decryptedMessage = mSessionEncryptionReader.decryptMessage(data);
         } catch (Exception e) {
             mDataTransport.close();
             reportError(new Error("Error decrypting message from device", e));
@@ -1018,7 +1017,7 @@ public class VerificationHelper {
                     mDataTransport.sendTransportSpecificTerminationMessage();
                 } else {
                     Log.d(TAG, "Sending generic session termination message");
-                    byte[] sessionTermination = mSessionEncryptionReader.encryptMessageToDevice(
+                    byte[] sessionTermination = mSessionEncryptionReader.encryptMessage(
                             null, OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION));
                     mDataTransport.sendMessage(sessionTermination);
                 }
@@ -1061,7 +1060,7 @@ public class VerificationHelper {
 
         Logger.dCbor(TAG, "DeviceRequest to send", deviceRequestBytes);
 
-        byte[] message = mSessionEncryptionReader.encryptMessageToDevice(
+        byte[] message = mSessionEncryptionReader.encryptMessage(
                 deviceRequestBytes, OptionalLong.empty());
         Logger.dCbor(TAG, "SessionData to send", message);
         mDataTransport.sendMessage(message);
@@ -1253,7 +1252,7 @@ public class VerificationHelper {
             mHelper.mContext = context;
             mHelper.mListener = listener;
             mHelper.mListenerExecutor = executor;
-            mHelper.mEphemeralKeyPair = Utility.createEphemeralKeyPair();
+            mHelper.mEphemeralKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         }
 
         /**

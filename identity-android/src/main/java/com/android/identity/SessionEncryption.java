@@ -18,17 +18,20 @@ package com.android.identity;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import androidx.core.util.Pair;
-
+import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 
 import com.android.identity.internal.Util;
 
 import java.io.ByteArrayInputStream;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -51,50 +54,66 @@ import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
-import co.nstant.in.cbor.model.Number;
 import co.nstant.in.cbor.model.UnicodeString;
 
 
 /**
- * A helper class for encrypting and decrypting messages exchanged with a remote
- * mDL prover, conforming to ISO 18013-5 9.1.1 Session encryption.
+ * Helper class for implementing session encryption according to ISO/IEC 18013-5:2021
+ * section 9.1.1 Session encryption.
  */
-final class SessionEncryptionReader {
+final class SessionEncryption {
 
-    private static final String TAG = "SessionEncryptionReader";
+    private static final String TAG = "SessionEncryption";
 
+    public static final int ROLE_MDOC = 0;
+    public static final int ROLE_MDOC_READER = 1;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(value = {ROLE_MDOC, ROLE_MDOC_READER})
+    public @interface Role {
+    }
+
+    protected final @DataTransport.Role int mRole;
     private boolean mSessionEstablishmentSent;
 
-    private final PrivateKey mEReaderKeyPrivate;
-    private final PublicKey mEReaderKeyPublic;
-    private final PublicKey mEDeviceKeyPublic;
+    private final PublicKey mESelfKeyPublic;
 
-    private final SecretKeySpec mSKDevice;
-    private final SecretKeySpec mSKReader;
-    private int mSKDeviceCounter = 1;
-    private int mSKReaderCounter = 1;
+    private final SecretKeySpec mSKRemote;
+    private final SecretKeySpec mSKSelf;
+    private int mDecryptedCounter = 1;
+    private int mEncryptedCounter = 1;
     private boolean mSendSessionEstablishment = true;
 
     /**
-     * Creates a new {@link SessionEncryptionReader} object.
+     * Creates a new {@link SessionEncryption} object.
      *
-     * @param eReaderKeyPrivate the reader private ephemeral key.
-     * @param eReaderKeyPublic the reader public ephemeral key.
-     * @param eDeviceKeyPublic the device public key.
-     * @param encodedSessionTranscript the bytes of the <code>SessionTranscript</code> CBOR.
+     * <p>The <code>DeviceEngagement</code> and <code>Handover</code> CBOR referenced in the
+     * parameters below must conform to the CDDL in ISO 18013-5.
+     *
+     * All references to a "remote" device refer to a device with the opposite role. For example,
+     * {@link SessionEncryption} objects with the <code>ROLE_MDOC</code> role will encrypt messages
+     * with the remote mDL reader as the intended receiver, so the reader is the remote device.
+     *
+     * @param role The role of the SessionEncryption object
+     * @param keyPair The ephemeral key pair of the role (e.g. if <code>ROLE_MDOC_READER</code>,
+     *                then use the ephemeral key pair of the reader, and if <code>ROLE_MDOC</code>,
+     *                then use the ephemeral key pair of the holder).
+     * @param remotePublicKey The public ephemeral key of the remote device.
+     * @param encodedSessionTranscript The bytes of the <code>SessionTranscript</code> CBOR.
      */
-    public SessionEncryptionReader(@NonNull PrivateKey eReaderKeyPrivate,
-            @NonNull PublicKey eReaderKeyPublic,
-            @NonNull PublicKey eDeviceKeyPublic,
-            @NonNull byte[] encodedSessionTranscript) {
-        mEReaderKeyPrivate = eReaderKeyPrivate;
-        mEReaderKeyPublic = eReaderKeyPublic;
-        mEDeviceKeyPublic = eDeviceKeyPublic;
+    public SessionEncryption(@Role @NonNull int role,
+                             @NonNull KeyPair keyPair,
+                             @NonNull PublicKey remotePublicKey,
+                             @NonNull byte[] encodedSessionTranscript) {
+        mRole = role;
+        PrivateKey mESelfKeyPrivate = keyPair.getPrivate();
+        mESelfKeyPublic = keyPair.getPublic();
 
+        SecretKeySpec deviceSK, readerSK;
         try {
             KeyAgreement ka = KeyAgreement.getInstance("ECDH");
-            ka.init(mEReaderKeyPrivate);
-            ka.doPhase(mEDeviceKeyPublic, true);
+            ka.init(mESelfKeyPrivate);
+            ka.doPhase(remotePublicKey, true);
             byte[] sharedSecret = ka.generateSecret();
 
             byte[] sessionTranscriptBytes = Util.cborEncode(
@@ -104,18 +123,28 @@ final class SessionEncryptionReader {
             byte[] info = "SKDevice".getBytes(UTF_8);
             byte[] derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
 
-            mSKDevice = new SecretKeySpec(derivedKey, "AES");
+            deviceSK = new SecretKeySpec(derivedKey, "AES");
 
             info = "SKReader".getBytes(UTF_8);
             derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
-            mSKReader = new SecretKeySpec(derivedKey, "AES");
+            readerSK = new SecretKeySpec(derivedKey, "AES");
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new IllegalStateException("Error deriving keys", e);
+        }
+
+        if (mRole == ROLE_MDOC) {
+            mSKSelf = deviceSK;
+            mSKRemote = readerSK;
+        } else {
+            mSKSelf = readerSK;
+            mSKRemote = deviceSK;
         }
     }
 
     /**
-     * Configure whether to send <code>SessionEstablishment</code> as the first message.
+     * Configure whether to send <code>SessionEstablishment</code> as the first message. Only a
+     * SessionEncryption with the role <code>ROLE_MDOC_READER</code> will send a
+     * SessionEstablishment message.
      *
      * <p>If set to <code>false</code> the first message to the mdoc will <em>not</em>
      * contain <code>eReaderKey</code>. This is useful for situations where this key has
@@ -125,25 +154,31 @@ final class SessionEncryptionReader {
      *
      * @param sendSessionEstablishment whether to send <code>SessionEstablishment</code>
      *                                 as the first message.
+     * @throws IllegalStateException if role is <code>ROLE_MDOC</code>
      */
     void setSendSessionEstablishment(boolean sendSessionEstablishment) {
+        if (mRole == ROLE_MDOC) {
+            throw new IllegalStateException("Only readers should be sending sessionEstablishment" +
+                    "messages, but the role is ROLE_MDOC");
+        }
         mSendSessionEstablishment = sendSessionEstablishment;
     }
 
-    private @NonNull byte[] encryptMessageToDeviceHelper(@Nullable byte[] messagePlaintext,
-                                                         @NonNull OptionalLong statusCode,
-                                                         boolean setInvalidEReaderKey) {
+    private @NonNull byte[] encryptMessageHelper(@Nullable byte[] messagePlaintext,
+                                                 @NonNull OptionalLong statusCode,
+                                                 boolean setInvalidEReaderKey) {
         byte[] messageCiphertext = null;
         if (messagePlaintext != null) {
             try {
                 // The IV and these constants are specified in ISO/IEC 18013-5:2021 clause 9.1.1.5.
                 ByteBuffer iv = ByteBuffer.allocate(12);
                 iv.putInt(0, 0x00000000);
-                iv.putInt(4, 0x00000000);
-                iv.putInt(8, mSKReaderCounter);
+                int ivIdentifier = mRole == ROLE_MDOC? 0x00000001 : 0x00000000;
+                iv.putInt(4, ivIdentifier);
+                iv.putInt(8, mEncryptedCounter);
                 Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
                 GCMParameterSpec encryptionParameterSpec = new GCMParameterSpec(128, iv.array());
-                cipher.init(Cipher.ENCRYPT_MODE, mSKReader, encryptionParameterSpec);
+                cipher.init(Cipher.ENCRYPT_MODE, mSKSelf, encryptionParameterSpec);
                 messageCiphertext = cipher.doFinal(messagePlaintext); // This includes the auth tag
             } catch (BadPaddingException
                      | IllegalBlockSizeException
@@ -153,15 +188,15 @@ final class SessionEncryptionReader {
                      | InvalidAlgorithmParameterException e) {
                 throw new IllegalStateException("Error encrypting message", e);
             }
-            mSKReaderCounter += 1;
+            mEncryptedCounter += 1;
         }
 
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> mapBuilder = builder.addMap();
-        if (!mSessionEstablishmentSent && mSendSessionEstablishment) {
+        if (!mSessionEstablishmentSent && mSendSessionEstablishment && mRole == ROLE_MDOC_READER) {
             DataItem eReaderKey = setInvalidEReaderKey ?
-                    Util.cborBuildCoseKeyWithMalformedYPoint(mEReaderKeyPublic)
-                    : Util.cborBuildCoseKey(mEReaderKeyPublic);
+                    Util.cborBuildCoseKeyWithMalformedYPoint(mESelfKeyPublic)
+                    : Util.cborBuildCoseKey(mESelfKeyPublic);
             DataItem eReaderKeyBytes = Util.cborBuildTaggedByteString(
                     Util.cborEncode(eReaderKey));
             mapBuilder.put(new UnicodeString("eReaderKey"), eReaderKeyBytes);
@@ -184,7 +219,7 @@ final class SessionEncryptionReader {
     }
 
     /**
-     * Encrypts a message to the remote mDL prover.
+     * Encrypt a message intended for the remote device.
      *
      * <p>This method returns <code>SessionEstablishment</code> CBOR for the first call and
      * <code>SessionData</code> CBOR for subsequent calls. These CBOR data structures are
@@ -196,21 +231,36 @@ final class SessionEncryptionReader {
      * @return the bytes of the <code>SessionEstablishment</code> or <code>SessionData</code>
      *     CBOR as described above.
      */
-    public @NonNull byte[] encryptMessageToDevice(@Nullable byte[] messagePlaintext,
-            @NonNull OptionalLong statusCode) {
-        return encryptMessageToDeviceHelper(messagePlaintext, statusCode, false);
+    public @NonNull byte[] encryptMessage(@Nullable byte[] messagePlaintext,
+                                          @NonNull OptionalLong statusCode) {
+        return encryptMessageHelper(messagePlaintext, statusCode, false);
     }
 
     // Only used for testing, will produce a SessionEstablishment message with an
-    // invalid COSE_Key for EReaderKeyq
-    @NonNull byte[] encryptMessageToDeviceWithInvalidEReaderKey(
+    // invalid COSE_Key for EReaderKey
+    @NonNull byte[] encryptMessageWithInvalidEReaderKey(
             @Nullable byte[] messagePlaintext,
             @NonNull OptionalLong statusCode) {
-        return encryptMessageToDeviceHelper(messagePlaintext, statusCode, true);
+        return encryptMessageHelper(messagePlaintext, statusCode, true);
     }
 
     /**
-     * Decrypts a message received from the remote mDL prover.
+     * Create a SessionData message (as defined in ISO/IEC 18013-5 9.1.1.4 Procedure) with a status
+     * code and no data.
+     *
+     * @param statusCode the intended status code, with value as defined in ISO/IEC 18013-5 Table 20.
+     * @return a byte array with the encoded CBOR message
+     */
+    static public @NonNull byte[] encodeStatus(long statusCode) {
+        CborBuilder builder = new CborBuilder();
+        MapBuilder<CborBuilder> mapBuilder = builder.addMap();
+        mapBuilder.put("status", statusCode);
+        mapBuilder.end();
+        return Util.cborEncode(builder.build().get(0));
+    }
+
+    /**
+     * Decrypts a message received from the remote device.
      *
      * <p>This method expects the passed-in data to conform to the <code>SessionData</code>
      * DDL as defined in ISO 18013-5 9.1.1 Session encryption.
@@ -219,11 +269,11 @@ final class SessionEncryptionReader {
      * first element is the decrypted data and the second element is the status.
      *
      * @param messageData the bytes of the <code>SessionData</code> CBOR as described above.
-     * @return A pair with the decrypted data and status, as decribed above.
+     * @return A pair with the decrypted data and status, as described above.
      * @exception IllegalArgumentException if the passed in data does not conform to the CDDL.
      * @exception IllegalStateException if decryption fails.
      */
-    public @NonNull Pair<byte[], OptionalLong> decryptMessageFromDevice(
+    public @NonNull Pair<byte[], OptionalLong> decryptMessage(
             @NonNull byte[] messageData) {
         ByteArrayInputStream bais = new ByteArrayInputStream(messageData);
         List<DataItem> dataItems;
@@ -252,21 +302,20 @@ final class SessionEncryptionReader {
         OptionalLong status = OptionalLong.empty();
         DataItem dataItemStatus = map.get(new UnicodeString("status"));
         if (dataItemStatus != null) {
-            if (!(dataItemStatus instanceof Number)) {
-                throw new IllegalArgumentException("status is not a number");
-            }
-            status = OptionalLong.of(((Number) dataItemStatus).getValue().intValue());
+            status = OptionalLong.of(Util.checkedLongValue(dataItemStatus));
         }
 
         byte[] plainText = null;
         if (messageCiphertext != null) {
             ByteBuffer iv = ByteBuffer.allocate(12);
             iv.putInt(0, 0x00000000);
-            iv.putInt(4, 0x00000001);
-            iv.putInt(8, mSKDeviceCounter);
+            int ivIdentifier = mRole == ROLE_MDOC? 0x00000000 : 0x00000001;
+            iv.putInt(4, ivIdentifier);
+            iv.putInt(8, mDecryptedCounter);
             try {
                 final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                cipher.init(Cipher.DECRYPT_MODE, mSKDevice, new GCMParameterSpec(128, iv.array()));
+                cipher.init(Cipher.DECRYPT_MODE, mSKRemote, new GCMParameterSpec(128,
+                        iv.array()));
                 plainText = cipher.doFinal(messageCiphertext);
             } catch (BadPaddingException
                     | IllegalBlockSizeException
@@ -276,28 +325,27 @@ final class SessionEncryptionReader {
                     | NoSuchPaddingException e) {
                 throw new IllegalStateException("Error decrypting data", e);
             }
-            mSKDeviceCounter += 1;
+            mDecryptedCounter += 1;
         }
 
         return new Pair<>(plainText, status);
     }
 
     /**
-     * Gets the number of messages encrypted with
-     * {@link #encryptMessageToDevice(byte[], OptionalLong)}.
+     * Gets the number of messages encrypted with {@link #encryptMessage(byte[], OptionalLong)}.
      *
      * @return Number of messages encrypted.
      */
     public int getNumMessagesEncrypted() {
-        return mSKReaderCounter - 1;
+        return mEncryptedCounter - 1;
     }
 
     /**
-     * Gets the number of messages decrypted with {@link #decryptMessageFromDevice(byte[])}
+     * Gets the number of messages decrypted with {@link #decryptMessage(byte[])}
      *
      * @return Number of messages decrypted.
      */
     public int getNumMessagesDecrypted() {
-        return mSKDeviceCounter - 1;
+        return mDecryptedCounter - 1;
     }
 }
