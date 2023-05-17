@@ -78,12 +78,12 @@ public class DeviceRetrievalHelper {
 
     private byte[] mDeviceEngagement;
     private byte[] mHandover;
-    SessionEncryptionDevice mSessionEncryption;
+    SessionEncryption mSessionEncryption;
     private byte[] mEncodedSessionTranscript;
 
     private byte[] mAlternateDeviceEngagement;
     private byte[] mAlternateHandover;
-    SessionEncryptionDevice mAlternateSessionEncryption;
+    SessionEncryption mAlternateSessionEncryption;
     private byte[] mEncodedAlternateSessionTranscript;
 
     PresentationSession mPresentationSession;
@@ -267,7 +267,8 @@ public class DeviceRetrievalHelper {
                 .add(Util.cborDecode(mHandover))
                 .end()
                 .build().get(0));
-        mSessionEncryption = new SessionEncryptionDevice(mEphemeralKeyPair.getPrivate(),
+        mSessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                mEphemeralKeyPair,
                 mEReaderKey,
                 mEncodedSessionTranscript);
 
@@ -279,7 +280,8 @@ public class DeviceRetrievalHelper {
                     .add(Util.cborDecode(mAlternateHandover))
                     .end()
                     .build().get(0));
-            mAlternateSessionEncryption = new SessionEncryptionDevice(mEphemeralKeyPair.getPrivate(),
+            mAlternateSessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                    mEphemeralKeyPair,
                     mEReaderKey,
                     mEncodedAlternateSessionTranscript);
         }
@@ -290,7 +292,7 @@ public class DeviceRetrievalHelper {
         try {
             ensureSessionEncryption(data);
         } catch (IllegalStateException e) {
-            mTransport.sendMessage(SessionEncryptionDevice.encodeStatusToReader(
+            mTransport.sendMessage(SessionEncryption.encodeStatus(
                     Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION));
             mTransport.close();
             reportError(new Error("Error decoding EReaderKey in SessionEstablishment", e));
@@ -298,9 +300,9 @@ public class DeviceRetrievalHelper {
         }
         Pair<byte[], OptionalLong> decryptedMessage = null;
         try {
-            decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
+            decryptedMessage = mSessionEncryption.decryptMessage(data);
         } catch (RuntimeException e) {
-            mTransport.sendMessage(mSessionEncryption.encryptMessageToReader(
+            mTransport.sendMessage(mSessionEncryption.encryptMessage(
                     null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
             mTransport.close();
             reportError(new Error("Error decrypting message from reader", e));
@@ -311,9 +313,9 @@ public class DeviceRetrievalHelper {
             mSessionEncryption = mAlternateSessionEncryption;
             mEncodedSessionTranscript = mEncodedAlternateSessionTranscript;
             try {
-                decryptedMessage = mSessionEncryption.decryptMessageFromReader(data);
+                decryptedMessage = mSessionEncryption.decryptMessage(data);
             } catch (RuntimeException e) {
-                mTransport.sendMessage(mSessionEncryption.encryptMessageToReader(
+                mTransport.sendMessage(mSessionEncryption.encryptMessage(
                         null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
                 mTransport.close();
                 reportError(new Error("Error decrypting message from reader", e));
@@ -322,7 +324,7 @@ public class DeviceRetrievalHelper {
         }
         if (decryptedMessage == null) {
             Logger.d(TAG, "Decryption failed!");
-            mTransport.sendMessage(mSessionEncryption.encryptMessageToReader(
+            mTransport.sendMessage(mSessionEncryption.encryptMessage(
                     null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
             mTransport.close();
             reportError(new Error("Error decrypting message from reader"));
@@ -448,7 +450,7 @@ public class DeviceRetrievalHelper {
             Logger.d(TAG,
                     String.format(Locale.US, "sendDeviceResponse: status is %d and data is unset",
                             status.getAsLong()));
-            sessionDataMessage = SessionEncryptionDevice.encodeStatusToReader(status.getAsLong());
+            sessionDataMessage = SessionEncryption.encodeStatus(status.getAsLong());
         } else {
             if (status.isPresent()) {
                 Logger.dCbor(TAG,
@@ -458,7 +460,7 @@ public class DeviceRetrievalHelper {
                 Logger.dCbor(TAG, "sendDeviceResponse: status is unset and data is",
                         deviceResponseBytes);
             }
-            sessionDataMessage = mSessionEncryption.encryptMessageToReader(deviceResponseBytes, status);
+            sessionDataMessage = mSessionEncryption.encryptMessage(deviceResponseBytes, status);
         }
         if (mTransport == null) {
             Logger.d(TAG, "sendDeviceResponse: ignoring because transport is unset");

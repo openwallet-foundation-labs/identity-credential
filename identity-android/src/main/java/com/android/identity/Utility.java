@@ -30,6 +30,7 @@ import androidx.annotation.NonNull;
 
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
+import com.android.identity.util.Constants;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
 
@@ -522,10 +523,37 @@ public class Utility {
         return IdentityCredentialStore.getKeystoreInstance(context, context.getNoBackupFilesDir());
     }
 
-    public static @NonNull KeyPair createEphemeralKeyPair() {
+    public static @NonNull KeyPair createEphemeralKeyPair(@Constants.EcCurve int curve) {
+        String stdName;
+        switch (curve) {
+            case Constants.EC_CURVE_P256:
+                stdName = "secp256r1";
+                break;
+            case Constants.EC_CURVE_P384:
+                stdName = "secp384r1";
+                break;
+            case Constants.EC_CURVE_P521:
+                stdName = "secp521r1";
+                break;
+            case Constants.EC_CURVE_BRAINPOOLP256R1:
+                stdName = "brainpoolP256r1";
+                break;
+            case Constants.EC_CURVE_BRAINPOOLP320R1:
+                stdName = "brainpoolP320r1";
+                break;
+            case Constants.EC_CURVE_BRAINPOOLP384R1:
+                stdName = "brainpoolP384r1";
+                break;
+            case Constants.EC_CURVE_BRAINPOOLP512R1:
+                stdName = "brainpoolP512r1";
+                break;
+            default:
+                throw new IllegalArgumentException("curve provided is not one of the supported curves");
+        }
+
         try {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
-            ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
+            ECGenParameterSpec ecSpec = new ECGenParameterSpec(stdName);
             kpg.initialize(ecSpec);
             KeyPair keyPair = kpg.generateKeyPair();
             return keyPair;

@@ -200,7 +200,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair();
+        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -209,9 +209,8 @@ public class DeviceRetrievalHelperTest {
                 .add(handover)
                 .end()
                 .build().get(0));
-        SessionEncryptionReader seReader = new SessionEncryptionReader(
-                eReaderKeyPair.getPrivate(),
-                eReaderKeyPair.getPublic(),
+        SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+                eReaderKeyPair,
                 session.getEphemeralKeyPair().getPublic(),
                 encodedSessionTranscript);
 
@@ -227,7 +226,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
                 .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
                 .generate();
-        byte[] sessionEstablishment = seReader.encryptMessageToDevice(encodedDeviceRequest,
+        byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
@@ -260,7 +259,7 @@ public class DeviceRetrievalHelperTest {
             public void onMessageReceived() {
                 byte[] data = verifierTransport.getMessage();
                 Pair<byte[], OptionalLong> decryptedMessage =
-                        seReader.decryptMessageFromDevice(data);
+                        seReader.decryptMessage(data);
                 Assert.assertFalse(decryptedMessage.second.isPresent());
 
                 DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
@@ -286,7 +285,7 @@ public class DeviceRetrievalHelperTest {
 
                 // Send a close message (status 20 is "session termination")
                 verifierTransport.sendMessage(
-                        seReader.encryptMessageToDevice(null, OptionalLong.of(
+                        seReader.encryptMessage(null, OptionalLong.of(
                                 Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)));
             }
         }, executor);
@@ -474,7 +473,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair();
+        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -483,9 +482,8 @@ public class DeviceRetrievalHelperTest {
                 .add(handover)
                 .end()
                 .build().get(0));
-        SessionEncryptionReader seReader = new SessionEncryptionReader(
-                eReaderKeyPair.getPrivate(),
-                eReaderKeyPair.getPublic(),
+        SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+                eReaderKeyPair,
                 session.getEphemeralKeyPair().getPublic(),
                 encodedSessionTranscript);
 
@@ -501,7 +499,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
                 .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
                 .generate();
-        byte[] sessionEstablishment = seReader.encryptMessageToDevice(encodedDeviceRequest,
+        byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
@@ -534,7 +532,7 @@ public class DeviceRetrievalHelperTest {
             public void onMessageReceived() {
                 byte[] data = verifierTransport.getMessage();
                 Pair<byte[], OptionalLong> decryptedMessage =
-                        seReader.decryptMessageFromDevice(data);
+                        seReader.decryptMessage(data);
                 Assert.assertNull(decryptedMessage.first);
                 Assert.assertTrue(decryptedMessage.second.isPresent());
                 long status = decryptedMessage.second.getAsLong();
@@ -645,7 +643,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair();
+        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -654,9 +652,8 @@ public class DeviceRetrievalHelperTest {
                 .add(handover)
                 .end()
                 .build().get(0));
-        SessionEncryptionReader seReader = new SessionEncryptionReader(
-                eReaderKeyPair.getPrivate(),
-                eReaderKeyPair.getPublic(),
+        SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+                eReaderKeyPair,
                 session.getEphemeralKeyPair().getPublic(),
                 encodedSessionTranscript);
 
@@ -675,7 +672,7 @@ public class DeviceRetrievalHelperTest {
         // NOTE! This creates a SessionEstablishment where EReaderKey's Y coordinate is negated
         // and thus the key is not valid. This is to check that DeviceRetrievalHelper correctly
         // detects this condition.
-        byte[] sessionEstablishment = seReader.encryptMessageToDeviceWithInvalidEReaderKey(
+        byte[] sessionEstablishment = seReader.encryptMessageWithInvalidEReaderKey(
                 encodedDeviceRequest,
                 OptionalLong.empty());
 
@@ -710,7 +707,7 @@ public class DeviceRetrievalHelperTest {
             public void onMessageReceived() {
                 byte[] data = verifierTransport.getMessage();
                 Pair<byte[], OptionalLong> decryptedMessage =
-                        seReader.decryptMessageFromDevice(data);
+                        seReader.decryptMessage(data);
                 Assert.assertNull(decryptedMessage.first);
                 Assert.assertTrue(decryptedMessage.second.isPresent());
                 long status = decryptedMessage.second.getAsLong();
@@ -819,7 +816,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
-        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair();
+        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -828,9 +825,8 @@ public class DeviceRetrievalHelperTest {
                 .add(Util.cborDecode(encodedHandover))
                 .end()
                 .build().get(0));
-        SessionEncryptionReader seReader = new SessionEncryptionReader(
-                eReaderKeyPair.getPrivate(),
-                eReaderKeyPair.getPublic(),
+        SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+                eReaderKeyPair,
                 session.getEphemeralKeyPair().getPublic(),
                 encodedSessionTranscript);
 
@@ -839,7 +835,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
                 .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
                 .generate();
-        byte[] sessionEstablishment = seReader.encryptMessageToDevice(encodedDeviceRequest,
+        byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
