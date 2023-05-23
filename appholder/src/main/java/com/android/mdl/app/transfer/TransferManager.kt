@@ -18,6 +18,8 @@ import com.android.identity.*
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.android.legacy.Utility
 import com.android.identity.android.legacy.*
+import com.android.identity.mdoc.mso.StaticAuthDataParser
+import com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.mdl.app.document.Document
@@ -195,16 +197,20 @@ class TransferManager private constructor(private val context: Context) {
                             return true
                         }
                         val staticAuthData: ByteArray = c.staticAuthenticationData
-                        val (first1, second1) = Utility.decodeStaticAuthData(staticAuthData)
+                        val parsedStaticAuthData: StaticAuthData =
+                            StaticAuthDataParser(staticAuthData).parse()
+                        val issuerSignedMapping: Map<String, List<ByteArray>> =
+                            parsedStaticAuthData.digestIdMapping
+                        val encodedIssuerAuth: ByteArray = parsedStaticAuthData.issuerAuth
 
                         log("StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
                         Utility.addDocument(
                             response,
                             docType,
                             c,
-                            first1,
+                            issuerSignedMapping,
                             null,
-                            second1
+                            encodedIssuerAuth
                         )
                     } catch (e: IllegalArgumentException) {
                         e.printStackTrace()

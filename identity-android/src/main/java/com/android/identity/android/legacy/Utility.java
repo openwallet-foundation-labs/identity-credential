@@ -28,6 +28,7 @@ import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 
+import com.android.identity.mdoc.mso.StaticAuthDataGenerator;
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
 import com.android.identity.util.Constants;
@@ -75,183 +76,14 @@ public class Utility {
     }
 
     /**
-     * Helper to encode digest-id mapping and issuerAuth CBOR into a single byte array.
-     *
-     * <p>The resulting byte array can be stored as <code>staticAuthData</code> using
-     * {@link IdentityCredential#storeStaticAuthenticationData(X509Certificate, Calendar, byte[])}
-     * and returned using {@link ResultData#getStaticAuthenticationData()} at presentation time.
-     *
-     * <p>Use {@link #decodeStaticAuthData(byte[])} for the reverse operation.
-     *
-     * <p>The returned data are the bytes of CBOR with the following CDDL:
-     * <pre>
-     *     StaticAuthData = {
-     *         "digestIdMapping": DigestIdMapping,
-     *         "issuerAuth" : IssuerAuth
-     *     }
-     *
-     *     DigestIdMapping = {
-     *         NameSpace =&gt; [ + IssuerSignedItemBytes ]
-     *     }
-     *
-     *     ; Defined in ISO 18013-5
-     *     ;
-     *     NameSpace = String
-     *     DataElementIdentifier = String
-     *     DigestID = uint
-     *     IssuerAuth = COSE_Sign1 ; The payload is MobileSecurityObjectBytes
-     *
-     *     IssuerSignedItemBytes = #6.24(bstr .cbor IssuerSignedItem)
-     *
-     *     IssuerSignedItem = {
-     *       "digestID" : uint,                           ; Digest ID for issuer data auth
-     *       "random" : bstr,                             ; Random value for issuer data auth
-     *       "elementIdentifier" : DataElementIdentifier, ; Data element identifier
-     *       "elementValue" : NULL                        ; Placeholder for Data element value
-     *     }
-     * </pre>
-     *
-     * <p>Note that the the byte[] arrays returned in the list of map values are
-     * the bytes of IssuerSignedItem, not IssuerSignedItemBytes.
-     *
-     * @param issuerSignedMapping A mapping from namespaces into a list of the bytes of
-     *                            IssuerSignedItem (not tagged). The elementValue key
-     *                            must be present and set to the NULL value.
-     * @param encodedIssuerAuth   The bytes of <code>COSE_Sign1</code> signed by the issuing
-     *                            authority and where the payload is set to bytes of
-     *                            <code>MobileSecurityObjectBytes</code>.
-     * @return the bytes of the CBOR described above.
-     */
-    public static @NonNull
-    byte[] encodeStaticAuthData(
-            @NonNull Map<String, List<byte[]>> issuerSignedMapping,
-            @NonNull byte[] encodedIssuerAuth) {
-
-        CborBuilder builder = new CborBuilder();
-        MapBuilder<CborBuilder> outerBuilder = builder.addMap();
-        for (Map.Entry<String, List<byte[]>> oe : issuerSignedMapping.entrySet()) {
-            String ns = oe.getKey();
-            ArrayBuilder<MapBuilder<CborBuilder>> innerBuilder = outerBuilder.putArray(ns);
-            for (byte[] encodedIssuerSignedItem : oe.getValue()) {
-                // This API specifies that these are just the bytes of IssuerSignedItem, not
-                // the bytes of a tagged bytestring.
-                DataItem issuerSignedItem = Util.cborDecode(encodedIssuerSignedItem);
-
-                // Ensure that elementValue is NULL to avoid applications or issuers that send
-                // the raw DataElementValue in the IssuerSignedItem. If we allowed non-NULL
-                // values, then PII would be exposed that would otherwise be guarded by
-                // access control checks.
-                DataItem value = Util.cborMapExtract(issuerSignedItem, "elementValue");
-                if (!(value instanceof SimpleValue)
-                        || ((SimpleValue) value).getSimpleValueType() != SimpleValueType.NULL) {
-                    String name = Util.cborMapExtractString(issuerSignedItem, "elementIdentifier");
-                    throw new IllegalArgumentException("elementValue for nameSpace " + ns
-                            + " elementName " + name + " is not NULL");
-                }
-
-                // We'll do the tagging.
-                innerBuilder.add(Util.cborBuildTaggedByteString(encodedIssuerSignedItem));
-            }
-        }
-        DataItem digestIdMappingItem = builder.build().get(0);
-
-        byte[] staticAuthData = Util.cborEncode(new CborBuilder()
-                .addMap()
-                .put(new UnicodeString("digestIdMapping"), digestIdMappingItem)
-                .put(new UnicodeString("issuerAuth"), Util.cborDecode(encodedIssuerAuth))
-                .end()
-                .build().get(0));
-        return staticAuthData;
-    }
-
-    /**
-     * Helper to decode <code>staticAuthData</code> in the format specified by the
-     * {@link #encodeStaticAuthData(Map, byte[])} method.
-     *
-     * <p>Note that the the byte[] arrays returned in the list of map values are
-     * the bytes of IssuerSignedItem, not IssuerSignedItemBytes.
-     *
-     * @param staticAuthData the bytes of CBOR as described above.
-     * @return <code>issuerSignedMapping</code> and <code>encodedIssuerAuth</code>.
-     * @throws IllegalArgumentException if the given data is not in the format specified by the
-     *                                  {@link #encodeStaticAuthData(Map, byte[])} method.
-     */
-    public static @NonNull
-    Pair<Map<String, List<byte[]>>, byte[]>
-    decodeStaticAuthData(@NonNull byte[] staticAuthData) {
-        DataItem topMapItem = Util.cborDecode(staticAuthData);
-        if (!(topMapItem instanceof co.nstant.in.cbor.model.Map)) {
-            throw new IllegalArgumentException("Top-level is not a map");
-        }
-        co.nstant.in.cbor.model.Map topMap = (co.nstant.in.cbor.model.Map) topMapItem;
-        DataItem issuerAuthItem = topMap.get(new UnicodeString("issuerAuth"));
-        if (issuerAuthItem == null) {
-            throw new IllegalArgumentException("issuerAuth item does not exist");
-        }
-        byte[] encodedIssuerAuth = Util.cborEncode(issuerAuthItem);
-
-        Map<String, List<byte[]>> buildOuterMap = new HashMap<>();
-
-        DataItem outerMapItem = topMap.get(new UnicodeString("digestIdMapping"));
-        if (!(outerMapItem instanceof co.nstant.in.cbor.model.Map)) {
-            throw new IllegalArgumentException(
-                    "digestIdMapping value is not a map or does not exist");
-        }
-        co.nstant.in.cbor.model.Map outerMap = (co.nstant.in.cbor.model.Map) outerMapItem;
-        for (DataItem outerKey : outerMap.getKeys()) {
-            if (!(outerKey instanceof UnicodeString)) {
-                throw new IllegalArgumentException("Outer key is not a string");
-            }
-            String ns = ((UnicodeString) outerKey).getString();
-
-            List<byte[]> buildInnerArray = new ArrayList<>();
-            buildOuterMap.put(ns, buildInnerArray);
-
-            DataItem outerValue = outerMap.get(outerKey);
-            if (!(outerValue instanceof co.nstant.in.cbor.model.Array)) {
-                throw new IllegalArgumentException("Outer value is not an array");
-            }
-            co.nstant.in.cbor.model.Array innerArray = (co.nstant.in.cbor.model.Array) outerValue;
-            for (DataItem innerKey : innerArray.getDataItems()) {
-                if (!(innerKey instanceof ByteString)) {
-                    throw new IllegalArgumentException("Inner key is not a bstr");
-                }
-                if (innerKey.getTag().getValue() != 24) {
-                    throw new IllegalArgumentException("Inner key does not have tag 24");
-                }
-                byte[] encodedIssuerSignedItemBytes = ((ByteString) innerKey).getBytes();
-
-                // Strictly not necessary but check that elementValue is NULL. This is to
-                // avoid applications (or issuers) sending the value in issuerSignedMapping
-                // which is part of staticAuthData. This would be bad because then the
-                // data element value would be available without any access control checks.
-                //
-                DataItem issuerSignedItem = Util.cborExtractTaggedAndEncodedCbor(innerKey);
-                DataItem value = Util.cborMapExtract(issuerSignedItem, "elementValue");
-                if (!(value instanceof SimpleValue)
-                        || ((SimpleValue) value).getSimpleValueType() != SimpleValueType.NULL) {
-                    String name = Util.cborMapExtractString(issuerSignedItem, "elementIdentifier");
-                    throw new IllegalArgumentException("elementValue for nameSpace " + ns
-                            + " elementName " + name + " is not NULL");
-                }
-
-                buildInnerArray.add(encodedIssuerSignedItemBytes);
-            }
-        }
-
-        return new Pair<>(buildOuterMap, encodedIssuerAuth);
-    }
-
-
-    /**
      * Helper function to create a self-signed credential, including authentication keys and
      * static authentication data.
      *
      * <p>The created authentication keys will have associated <code>staticAuthData</code>
-     * which is encoded in the same format as returned by
-     * the {@link #encodeStaticAuthData(Map, byte[])} helper method meaning that at
-     * presentation-time the {@link #decodeStaticAuthData(byte[])} helper can be used to recover
-     * the digest-id mapping and <code>IssuerAuth</code> CBOR.
+     * which is encoded in the same format as returned by {@link StaticAuthDataGenerator}.generate()
+     * method meaning that at presentation-time the
+     * {@link com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData} object
+     * can be used to recover the digest-id mapping and <code>IssuerAuth</code> CBOR.
      *
      * <p>This helper is useful only when developing mdoc applications that are not yet
      * using a live issuing authority.
@@ -374,7 +206,7 @@ public class Utility {
                     //
                     byte[] encodedIssuerSignedItemCleared =
                             Util.issuerSignedItemClearValue(encodedIssuerSignedItem);
-                    innerArray.add(encodedIssuerSignedItemCleared);
+                    innerArray.add(Util.cborEncode(Util.cborBuildTaggedByteString(encodedIssuerSignedItemCleared)));
 
                     vdInner.put(digestId, digest);
                 }
@@ -403,8 +235,8 @@ public class Utility {
 
             // Store issuerSignedMapping and issuerAuth (the MSO) in staticAuthData...
             //
-            byte[] staticAuthData = encodeStaticAuthData(
-                    issuerSignedMapping, encodedIssuerAuth);
+            byte[] staticAuthData =
+                    new StaticAuthDataGenerator(issuerSignedMapping, encodedIssuerAuth).generate();
             c.storeStaticAuthenticationData(authKeyCert,
                     validToCalendar,
                     staticAuthData);
@@ -418,7 +250,8 @@ public class Utility {
     /**
      * Merges issuer-signed data with credential result data.
      *
-     * @param issuerSignedMapping A mapping obtained from {@link #decodeStaticAuthData(byte[])}.
+     * @param issuerSignedMapping A mapping obtained from
+     *                            {@link com.android.identity.mdoc.mso.StaticAuthDataParser}.
      * @param issuerSigned        Data values from a credential.
      * @return The given mapping but where each <code>encodedIssuerAuth</code> has the given
      * data values filled in.
@@ -473,7 +306,7 @@ public class Utility {
      * entry of each IssuerSignedItem value.
      *
      * <p>Note: The <code>issuerSignedData</code> and <code>encodedIssuerAuth</code> are
-     * parameters usually obtained via {@link Utility#decodeStaticAuthData(byte[])}.
+     * parameters usually obtained via {@link com.android.identity.mdoc.mso.StaticAuthDataParser}.
      *
      * @param deviceResponseGenerator The generator to add the document to.
      * @param docType              The type of the document to send.
