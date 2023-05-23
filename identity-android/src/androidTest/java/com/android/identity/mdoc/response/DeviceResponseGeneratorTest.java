@@ -34,6 +34,7 @@ import com.android.identity.android.legacy.PersonalizationData;
 import com.android.identity.android.legacy.PresentationSession;
 import com.android.identity.android.legacy.Utility;
 import com.android.identity.android.legacy.WritableIdentityCredential;
+import com.android.identity.mdoc.mso.StaticAuthDataParser;
 import com.android.identity.util.CborUtil;
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
@@ -272,11 +273,11 @@ public class DeviceResponseGeneratorTest {
         byte[] encodedDeviceSignedMac = result.getDeviceMac();
 
         byte[] staticAuthData = result.getStaticAuthenticationData();
-        Pair<Map<String, List<byte[]>>, byte[]>
-                decodedStaticAuthData = Utility.decodeStaticAuthData(staticAuthData);
+        StaticAuthDataParser.StaticAuthData decodedStaticAuthData =
+                new StaticAuthDataParser(staticAuthData).parse();
 
-        Map<String, List<byte[]>> issuerSignedDataItems = decodedStaticAuthData.first;
-        byte[] encodedIssuerAuth = decodedStaticAuthData.second;
+        Map<String, List<byte[]>> issuerSignedDataItems = decodedStaticAuthData.getDigestIdMapping();
+        byte[] encodedIssuerAuth = decodedStaticAuthData.getIssuerAuth();
 
         Map<String, List<byte[]>> issuerSignedDataItemsWithValues =
                 Utility.mergeIssuerSigned(issuerSignedDataItems, result.getIssuerSignedEntries());

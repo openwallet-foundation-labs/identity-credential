@@ -44,6 +44,7 @@ import com.android.identity.android.mdoc.engagement.QrEngagementHelper;
 import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
 import com.android.identity.android.mdoc.transport.DataTransportTcp;
+import com.android.identity.mdoc.mso.StaticAuthDataParser;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.request.DeviceRequestParser;
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
@@ -350,13 +351,12 @@ public class DeviceRetrievalHelperTest {
                                             .build());
 
                             byte[] staticAuthData = result.getStaticAuthenticationData();
-                            Pair<Map<String, List<byte[]>>, byte[]>
-                                    decodedStaticAuthData = Utility.decodeStaticAuthData(
-                                    staticAuthData);
+                            StaticAuthDataParser.StaticAuthData decodedStaticAuthData =
+                                    new StaticAuthDataParser(staticAuthData).parse();
 
                             Map<String, List<byte[]>> issuerSignedDataItems =
-                                    decodedStaticAuthData.first;
-                            byte[] encodedIssuerAuth = decodedStaticAuthData.second;
+                                    decodedStaticAuthData.getDigestIdMapping();
+                            byte[] encodedIssuerAuth = decodedStaticAuthData.getIssuerAuth();
 
                             Map<String, List<byte[]>> issuerSignedDataItemsWithValues =
                                     Utility.mergeIssuerSigned(issuerSignedDataItems,
