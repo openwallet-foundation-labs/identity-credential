@@ -12,5 +12,5 @@ pycryptodomex==3.10.1
 PyYAML==5.4.1
 requests==2.31.0
 shellescape==3.8.1
-tornado==6.1
+tornado==6.3.2
 urllib3==1.26.5
