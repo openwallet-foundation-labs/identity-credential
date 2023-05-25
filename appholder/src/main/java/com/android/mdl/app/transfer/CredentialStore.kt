@@ -1,7 +1,7 @@
 package com.android.mdl.app.transfer
 
 import android.content.Context
-import com.android.identity.IdentityCredentialStore
+import com.android.identity.android.legacy.IdentityCredentialStore
 import com.android.mdl.app.util.PreferencesHelper
 
 class CredentialStore(

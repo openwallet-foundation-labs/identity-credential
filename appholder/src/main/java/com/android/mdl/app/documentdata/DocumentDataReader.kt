@@ -15,8 +15,8 @@ import co.nstant.`in`.cbor.model.SimpleValue
 import co.nstant.`in`.cbor.model.SimpleValueType
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
-import com.android.identity.CredentialDataResult
-import com.android.identity.CredentialDataResult.Entries.STATUS_USER_AUTHENTICATION_FAILED
+import com.android.identity.android.legacy.CredentialDataResult
+import com.android.identity.android.legacy.CredentialDataResult.Entries.STATUS_USER_AUTHENTICATION_FAILED
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
 import com.android.mdl.app.util.DocumentData.EU_PID_NAMESPACE

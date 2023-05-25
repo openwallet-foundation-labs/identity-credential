@@ -16,7 +16,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
 import com.android.identity.mdoc.request.DeviceRequestParser
-import com.android.identity.Utility
+import com.android.identity.android.legacy.Utility
+import com.android.identity.android.legacy.*
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.mdl.app.document.Document

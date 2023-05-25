@@ -9,7 +9,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.android.identity.IdentityCredential
+import com.android.identity.android.legacy.IdentityCredential
 import com.android.mdl.app.databinding.FragmentDocumentDetailBinding
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager

@@ -5,9 +5,9 @@ import static com.android.mdl.app.util.LogginExtensionsKt.logError;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
-import com.android.identity.AccessControlProfile;
-import com.android.identity.AccessControlProfileId;
-import com.android.identity.PersonalizationData;
+import com.android.identity.android.legacy.AccessControlProfile;
+import com.android.identity.android.legacy.AccessControlProfileId;
+import com.android.identity.android.legacy.PersonalizationData;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;

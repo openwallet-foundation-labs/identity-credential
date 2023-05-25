@@ -3,11 +3,11 @@ package com.android.mdl.app.transfer
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
-import com.android.identity.DataTransport
-import com.android.identity.EngagementParser
+import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.mdoc.engagement.EngagementParser
 import com.android.identity.mdoc.origininfo.OriginInfo
-import com.android.identity.DeviceRetrievalHelper
-import com.android.identity.PresentationSession
+import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
+import com.android.identity.android.legacy.PresentationSession
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
 
@@ -50,7 +50,9 @@ class ReverseQrCommunicationSetup(
             uri.encodedSchemeSpecificPart,
             Base64.URL_SAFE or Base64.NO_PADDING
         )
-        val engagement = EngagementParser(encodedReaderEngagement).parse()
+        val engagement = EngagementParser(
+            encodedReaderEngagement
+        ).parse()
         if (engagement.connectionMethods.size == 0) {
             throw IllegalStateException("No connection methods in engagement")
         }
@@ -59,8 +61,9 @@ class ReverseQrCommunicationSetup(
         val connectionMethod = engagement.connectionMethods[0]
         log("Using connection method $connectionMethod")
 
-        val transport = connectionMethod.createDataTransport(
+        val transport = DataTransport.fromConnectionMethod(
             context,
+            connectionMethod,
             DataTransport.ROLE_MDOC,
             connectionSetup.getConnectionOptions()
         )
