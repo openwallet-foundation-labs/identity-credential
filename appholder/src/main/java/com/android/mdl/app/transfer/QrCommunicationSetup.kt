@@ -1,10 +1,10 @@
 package com.android.mdl.app.transfer
 
 import android.content.Context
-import com.android.identity.DataTransport
-import com.android.identity.DeviceRetrievalHelper
-import com.android.identity.PresentationSession
-import com.android.identity.QrEngagementHelper
+import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
+import com.android.identity.android.legacy.PresentationSession
+import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
 
@@ -87,14 +87,15 @@ class QrCommunicationSetup(
         get() = qrEngagement.deviceEngagementUriEncoded
 
     fun configure() {
-        qrEngagement = QrEngagementHelper(
-            context,
-            session,
-            connectionSetup.getConnectionMethods(),
-            connectionSetup.getConnectionOptions(),
-            qrEngagementListener,
-            context.mainExecutor()
-        )
+        qrEngagement =
+            QrEngagementHelper.Builder(
+                context,
+                session,
+                connectionSetup.getConnectionOptions(),
+                qrEngagementListener,
+                context.mainExecutor())
+                .setConnectionMethods(connectionSetup.getConnectionMethods())
+                .build()
     }
 
     fun close() {

@@ -1,11 +1,11 @@
 package com.android.mdl.app.transfer
 
 import android.content.Context
-import com.android.identity.ConnectionMethod
-import com.android.identity.ConnectionMethodBle
-import com.android.identity.ConnectionMethodNfc
-import com.android.identity.ConnectionMethodWifiAware
-import com.android.identity.DataTransportOptions
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
+import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.mdl.app.util.PreferencesHelper
 import java.util.ArrayList
 import java.util.OptionalLong
@@ -25,18 +25,44 @@ class ConnectionSetup(
     fun getConnectionMethods(): List<ConnectionMethod> {
         val connectionMethods = ArrayList<ConnectionMethod>()
         if (PreferencesHelper.isBleDataRetrievalEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(false, true, null, UUID.randomUUID()))
+            connectionMethods.add(
+                ConnectionMethodBle(
+                    false,
+                    true,
+                    null,
+                    UUID.randomUUID()
+                )
+            )
         }
         if (PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(true, false, UUID.randomUUID(), null))
+            connectionMethods.add(
+                ConnectionMethodBle(
+                    true,
+                    false,
+                    UUID.randomUUID(),
+                    null
+                )
+            )
         }
         if (PreferencesHelper.isWifiDataRetrievalEnabled()) {
             val empty = OptionalLong.empty()
-            connectionMethods.add(ConnectionMethodWifiAware(null, empty, empty, null))
+            connectionMethods.add(
+                ConnectionMethodWifiAware(
+                    null,
+                    empty,
+                    empty,
+                    null
+                )
+            )
         }
         if (PreferencesHelper.isNfcDataRetrievalEnabled()) {
             // TODO: Add API to ConnectionMethodNfc to get sizes appropriate for the device
-            connectionMethods.add(ConnectionMethodNfc(0xffff, 0x10000))
+            connectionMethods.add(
+                ConnectionMethodNfc(
+                    0xffff,
+                    0x10000
+                )
+            )
         }
         return connectionMethods
     }

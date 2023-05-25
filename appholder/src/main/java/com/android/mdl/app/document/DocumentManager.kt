@@ -6,8 +6,9 @@ import android.graphics.Bitmap
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.*
-import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
-import com.android.identity.Utility
+import com.android.identity.android.legacy.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
+import com.android.identity.android.legacy.Utility
+import com.android.identity.android.legacy.*
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
@@ -227,7 +228,8 @@ class DocumentManager private constructor(private val context: Context) {
 
     private fun provisionSelfSignedMdl(dData: SelfSignedDocumentData) {
 
-        val idSelf = AccessControlProfileId(0)
+        val idSelf =
+            AccessControlProfileId(0)
         val profileSelfBuilder = AccessControlProfile.Builder(idSelf)
             .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
         if (dData.provisionInfo.userAuthentication) {
@@ -359,7 +361,8 @@ class DocumentManager private constructor(private val context: Context) {
 
     private fun provisionSelfSignedMvr(dData: SelfSignedDocumentData) {
 
-        val idSelf = AccessControlProfileId(0)
+        val idSelf =
+            AccessControlProfileId(0)
         val profileSelfBuilder = AccessControlProfile.Builder(idSelf)
             .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
         if (dData.provisionInfo.userAuthentication) {
@@ -439,7 +442,8 @@ class DocumentManager private constructor(private val context: Context) {
 
     private fun provisionSelfSignedMicov(dData: SelfSignedDocumentData) {
 
-        val idSelf = AccessControlProfileId(0)
+        val idSelf =
+            AccessControlProfileId(0)
         val profileSelfBuilder = AccessControlProfile.Builder(idSelf)
             .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
         if (dData.provisionInfo.userAuthentication) {
@@ -601,7 +605,8 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     private fun provisionSelfSignedEuPid(dData: SelfSignedDocumentData) {
-        val idSelf = AccessControlProfileId(0)
+        val idSelf =
+            AccessControlProfileId(0)
         val profileSelfBuilder = AccessControlProfile.Builder(idSelf)
             .setUserAuthenticationRequired(dData.provisionInfo.userAuthentication)
         if (dData.provisionInfo.userAuthentication) {

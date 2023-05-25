@@ -17,10 +17,17 @@
 package com.android.identity;
 
 import androidx.annotation.NonNull;
+
+import com.android.identity.util.Constants;
+
 import java.math.BigInteger;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.security.spec.ECGenParameterSpec;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
@@ -63,6 +70,46 @@ public class TestUtilities {
                 .getCertificate(certHolder);
         } catch (OperatorCreationException | CertIOException | CertificateException e) {
             throw new IllegalStateException("Error generating self-signed certificate", e);
+        }
+    }
+
+    public static @NonNull KeyPair createEphemeralKeyPair(@Constants.EcCurve int curve) {
+        String stdName;
+        switch (curve) {
+            case Constants.EC_CURVE_P256:
+                stdName = "secp256r1";
+                break;
+            case Constants.EC_CURVE_P384:
+                stdName = "secp384r1";
+                break;
+            case Constants.EC_CURVE_P521:
+                stdName = "secp521r1";
+                break;
+            case Constants.EC_CURVE_BRAINPOOLP256R1:
+                stdName = "brainpoolP256r1";
+                break;
+            case Constants.EC_CURVE_BRAINPOOLP320R1:
+                stdName = "brainpoolP320r1";
+                break;
+            case Constants.EC_CURVE_BRAINPOOLP384R1:
+                stdName = "brainpoolP384r1";
+                break;
+            case Constants.EC_CURVE_BRAINPOOLP512R1:
+                stdName = "brainpoolP512r1";
+                break;
+            default:
+                throw new IllegalArgumentException("curve provided is not one of the supported curves");
+        }
+
+        try {
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+            ECGenParameterSpec ecSpec = new ECGenParameterSpec(stdName);
+            kpg.initialize(ecSpec);
+            KeyPair keyPair = kpg.generateKeyPair();
+            return keyPair;
+        } catch (NoSuchAlgorithmException
+                 | InvalidAlgorithmParameterException e) {
+            throw new IllegalStateException("Error generating ephemeral key-pair", e);
         }
     }
 }

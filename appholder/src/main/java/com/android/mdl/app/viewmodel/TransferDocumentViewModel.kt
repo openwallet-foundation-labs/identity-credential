@@ -9,7 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.util.Constants.DEVICE_RESPONSE_STATUS_OK
-import com.android.identity.CredentialInvalidatedException
+import com.android.identity.android.legacy.CredentialInvalidatedException
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.mdl.app.R

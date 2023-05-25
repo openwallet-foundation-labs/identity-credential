@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.android.identity.PersonalizationData
+import com.android.identity.android.legacy.PersonalizationData
 import com.android.mdl.app.databinding.FragmentUpdateCheckBinding
 import com.android.mdl.app.document.Document
 import com.android.mdl.app.document.DocumentManager

@@ -10,8 +10,8 @@ import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
-import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
-import com.android.identity.IdentityCredentialStore.IMPLEMENTATION_TYPE_KEYSTORE
+import com.android.identity.android.legacy.IdentityCredentialStore.IMPLEMENTATION_TYPE_HARDWARE
+import com.android.identity.android.legacy.IdentityCredentialStore.IMPLEMENTATION_TYPE_KEYSTORE
 import com.android.mdl.app.R
 import com.android.mdl.app.adapter.ColorAdapter
 import com.android.mdl.app.databinding.FragmentAddSelfSignedBinding

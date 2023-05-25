@@ -10,12 +10,12 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.ConnectionMethod
-import com.android.identity.ConnectionMethodHttp
-import com.android.identity.DataTransportOptions
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
+import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.VerificationHelper
+import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -91,7 +91,11 @@ class TransferManager private constructor(private val context: Context) {
         // and the dynamically allocated TCP port as port. So the resulting ConnectionMethodHttp
         // which will be included in ReaderEngagement CBOR will contain an URI of the
         // form http://192.168.1.2:18013/mdocreader
-        methods.add(ConnectionMethodHttp(""))
+        methods.add(
+            ConnectionMethodHttp(
+                ""
+            )
+        )
         builder.setUseReverseEngagement(methods)
         verification = builder.build()
         usingReverseEngagement = true

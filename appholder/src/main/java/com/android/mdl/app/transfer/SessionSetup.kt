@@ -1,7 +1,7 @@
 package com.android.mdl.app.transfer
 
-import com.android.identity.IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-import com.android.identity.PresentationSession
+import com.android.identity.android.legacy.IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
+import com.android.identity.android.legacy.PresentationSession
 
 class SessionSetup(
     private val credentialStore: CredentialStore

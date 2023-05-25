@@ -22,10 +22,10 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.navigation.NavDeepLinkBuilder
-import com.android.identity.DataTransport
-import com.android.identity.NfcEngagementHelper
-import com.android.identity.DeviceRetrievalHelper
-import com.android.identity.PresentationSession
+import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
+import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
+import com.android.identity.android.legacy.PresentationSession
 import com.android.mdl.app.MainActivity
 import com.android.mdl.app.R
 import com.android.mdl.app.transfer.Communication

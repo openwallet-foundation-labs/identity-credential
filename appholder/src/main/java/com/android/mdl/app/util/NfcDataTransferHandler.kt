@@ -18,7 +18,7 @@ package com.android.mdl.app.util
 
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
-import com.android.identity.DataTransportNfc
+import com.android.identity.android.mdoc.transport.DataTransportNfc
 import com.android.mdl.app.transfer.TransferManager
 
 class NfcDataTransferHandler : HostApduService() {
