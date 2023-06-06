@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 
 import androidx.annotation.VisibleForTesting;
 
+import com.android.identity.keystore.KeystoreEngine;
 import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
 import org.bouncycastle.asn1.ASN1Encodable;
@@ -576,6 +577,61 @@ public class Util {
         } catch (SignatureException e) {
             throw new IllegalStateException("Error signing data", e);
         }
+
+        CborBuilder builder = new CborBuilder();
+        ArrayBuilder<CborBuilder> array = builder.addArray();
+        array.add(protectedHeadersBytes);
+        MapBuilder<ArrayBuilder<CborBuilder>> unprotectedHeaders = array.addMap();
+        try {
+            if (certificateChain != null && certificateChain.size() > 0) {
+                if (certificateChain.size() == 1) {
+                    X509Certificate cert = certificateChain.iterator().next();
+                    unprotectedHeaders.put(COSE_LABEL_X5CHAIN, cert.getEncoded());
+                } else {
+                    ArrayBuilder<MapBuilder<ArrayBuilder<CborBuilder>>> x5chainsArray =
+                            unprotectedHeaders.putArray(COSE_LABEL_X5CHAIN);
+                    for (X509Certificate cert : certificateChain) {
+                        x5chainsArray.add(cert.getEncoded());
+                    }
+                }
+            }
+        } catch (CertificateEncodingException e) {
+            throw new IllegalStateException("Error encoding certificate", e);
+        }
+        if (data == null || data.length == 0) {
+            array.add(new SimpleValue(SimpleValueType.NULL));
+        } else {
+            array.add(data);
+        }
+        array.add(coseSignature);
+
+        return builder.build().get(0);
+    }
+
+    public static @NonNull
+    DataItem coseSign1Sign(@NonNull KeystoreEngine keystoreEngine,
+                           @NonNull String alias,
+                           @KeystoreEngine.Algorithm int signatureAlgorithm,
+                           @Nullable KeystoreEngine.KeyUnlockData keyUnlockData,
+                           @Nullable byte[] data,
+                           @Nullable byte[] detachedContent,
+                           @Nullable Collection<X509Certificate> certificateChain)
+            throws KeystoreEngine.KeyLockedException {
+
+        int dataLen = (data != null ? data.length : 0);
+        int detachedContentLen = (detachedContent != null ? detachedContent.length : 0);
+        if (dataLen > 0 && detachedContentLen > 0) {
+            throw new IllegalArgumentException("data and detachedContent cannot both be non-empty");
+        }
+
+        CborBuilder protectedHeaders = new CborBuilder();
+        MapBuilder<CborBuilder> protectedHeadersMap = protectedHeaders.addMap();
+        protectedHeadersMap.put(COSE_LABEL_ALG, signatureAlgorithm);
+        byte[] protectedHeadersBytes = cborEncode(protectedHeaders.build().get(0));
+
+        byte[] toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent);
+        byte[] derSignature = keystoreEngine.sign(alias, signatureAlgorithm, toBeSigned, keyUnlockData);
+        byte[] coseSignature = signatureDerToCose(derSignature, 32); // TODO: infer from alias
 
         CborBuilder builder = new CborBuilder();
         ArrayBuilder<CborBuilder> array = builder.addArray();
