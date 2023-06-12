@@ -45,6 +45,10 @@ class NfcEngagementHandler : HostApduService() {
 
     private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
 
+        override fun onTwoWayEngagementDetected() {
+            log("Engagement Listener: Two Way Engagement Detected.")
+        }
+
         override fun onDeviceConnecting() {
             log("Engagement Listener: Device Connecting. Launching Transfer Screen")
             val launchAppIntent = Intent(applicationContext, MainActivity::class.java)

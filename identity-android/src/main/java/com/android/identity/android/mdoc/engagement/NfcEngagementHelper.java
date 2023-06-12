@@ -593,6 +593,7 @@ public class NfcEngagementHelper {
         }
 
         Logger.d(TAG, "Service Select NDEF message has been validated");
+        reportTwoWayEngagementDetected();
 
         // From NDEF Exchange Protocol 1.0: 4.3 TNEP Status Message
         // If the NFC Tag Device has received a Service Select Message with a known
@@ -743,6 +744,16 @@ public class NfcEngagementHelper {
 
     // Note: The report*() methods are safe to call from any thread.
 
+    void reportTwoWayEngagementDetected() {
+        Logger.d(TAG, "reportTwoWayEngagementDetected");
+        final Listener listener = mListener;
+        final Executor executor = mExecutor;
+        if (!mInhibitCallbacks && listener != null && executor != null) {
+            executor.execute(listener::onTwoWayEngagementDetected);
+        }
+    }
+
+
     void reportDeviceConnecting() {
         Logger.d(TAG, "reportDeviceConnecting");
         final Listener listener = mListener;
@@ -771,6 +782,7 @@ public class NfcEngagementHelper {
     }
 
     public interface Listener {
+        void onTwoWayEngagementDetected();
         void onDeviceConnecting();
         void onDeviceConnected(DataTransport transport);
         void onError(@NonNull Throwable error);
