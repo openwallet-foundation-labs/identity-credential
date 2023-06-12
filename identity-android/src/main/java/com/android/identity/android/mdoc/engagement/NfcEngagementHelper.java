@@ -39,6 +39,8 @@ public class NfcEngagementHelper {
     private final PresentationSession mPresentationSession;
     private final Context mContext;
     private final KeyPair mEphemeralKeyPair;
+    private final int mNegotiatedHandoverWtInt;
+    private final int mNegotiatedHandoverMaxNumWaitingTimeExtensions;
     private List<ConnectionMethod> mStaticHandoverConnectionMethods;
     private final DataTransportOptions mOptions;
     private final Listener mListener;
@@ -79,13 +81,17 @@ public class NfcEngagementHelper {
     private boolean mTransportsAreSettingUp;
     private boolean mTestingDoNotStartTransports = false;
 
-    NfcEngagementHelper(@NonNull Context context,
-                        @NonNull PresentationSession presentationSession,
-                        @NonNull DataTransportOptions options,
-                        @NonNull Listener listener,
-                        @NonNull Executor executor) {
+    private NfcEngagementHelper(@NonNull Context context,
+                                @NonNull PresentationSession presentationSession,
+                                @NonNull DataTransportOptions options,
+                                int negotiatedHandoverWtInt,
+                                int negotiatedHandoverMaxNumWaitingTimeExtensions,
+                                @NonNull Listener listener,
+                                @NonNull Executor executor) {
         mContext = context;
         mPresentationSession = presentationSession;
+        mNegotiatedHandoverWtInt = negotiatedHandoverWtInt;
+        mNegotiatedHandoverMaxNumWaitingTimeExtensions = negotiatedHandoverMaxNumWaitingTimeExtensions;
         mListener = listener;
         mExecutor = executor;
         mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
@@ -302,28 +308,13 @@ public class NfcEngagementHelper {
         byte[] serviceNameUriUtf8 = "urn:nfc:sn:handover".getBytes(UTF_8);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
-            // t_wait = 2^(wt_int/4 - 1) milliseconds, where wt_int is six bits so
-            //
-            //     wt_int = 0   ->  t_wait = 2^(0/4 - 1) ms = 2^-1 ms = 0.50 ms
-            //     wt_int = 1   ->  t_wait = 2^(1/4 - 1) ms = 2^-0.75 ms = 0.59 ms
-            //     wt_int = 2   ->  t_wait = 2^(2/4 - 1) ms = 2^-0.50 ms = 0.71 ms
-            //     ..
-            //     wt_int = 8   ->  t_wait = 2^(8/4 - 1) ms = 2^1 ms = 2 ms
-            //     ..
-            //     wt_int = 32  ->  t_wait = 2^(32/4 - 1) ms = 2^7 ms = 128 ms
-            //     ..
-            //     wt_int = 48  ->  t_wait = 2^(48/4 - 1) ms = 2^11 ms = 2048 ms
-            //     ..
-            //     wt_int = 63  ->  t_wait = 2^(63/4 - 1) ms = 2^14.75 ms = 27554 ms
-            //
-            int wt_int = 0;
             // The payload of the record is defined in Tag NDEF Exchange Protocol 1.0 section 4.1.2:
             baos.write(0x10);   // TNEP version: 1.0
             baos.write(serviceNameUriUtf8.length);
             baos.write(serviceNameUriUtf8);
-            baos.write(0x00);   // TNEP Communication Mode: Single Response communication mode
-            baos.write(wt_int);    // Minimum Waiting Time
-            baos.write(0x00);   // Maximum Number of Waiting Time Extensions
+            baos.write(0x00);              // TNEP Communication Mode: Single Response communication mode
+            baos.write(mNegotiatedHandoverWtInt);            // Minimum Waiting Time
+            baos.write(mNegotiatedHandoverMaxNumWaitingTimeExtensions);   // Maximum Number of Waiting Time Extensions
             baos.write(0xff);   // Maximum NDEF Message Size (upper 8 bits)
             baos.write(0xff);   // Maximum NDEF Message Size (lower 8 bits)
         } catch (IOException e) {
@@ -795,9 +786,20 @@ public class NfcEngagementHelper {
                        @NonNull PresentationSession presentationSession,
                        @NonNull DataTransportOptions options,
                        @NonNull Listener listener, @NonNull Executor executor) {
+            // For now we just hardcode wt_int to 16 meaning the Minimum Waiting Time shall
+            // be 8 ms as per the table in [TNEP] 4.1.6 Minimum Waiting Time. We also include
+            // the maximum number of waiting time extensions to be set at 15 which is the
+            // maximum allowed. This is only used for negotiated handover and - if needed - we
+            // could expose these settings to applications.
+            //
+            int negotiatedHandoverWtInt = 16;
+            int negotiatedHandoverMaxNumWaitingTimeExtensions = 15;
+
             mHelper = new NfcEngagementHelper(context,
                     presentationSession,
                     options,
+                    negotiatedHandoverWtInt,
+                    negotiatedHandoverMaxNumWaitingTimeExtensions,
                     listener,
                     executor);
         }
