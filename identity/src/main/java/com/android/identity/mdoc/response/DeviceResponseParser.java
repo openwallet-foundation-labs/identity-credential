@@ -206,45 +206,47 @@ public final class DeviceResponseParser {
 
             PublicKey deviceKey = parsedMso.getDeviceKey();
 
-            DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
-            Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
-            for (String nameSpace : nameSpacesKeys) {
-                Map<Long, byte[]> innerDigestMapping = digestMapping.get(nameSpace);
-                if (innerDigestMapping == null) {
-                    throw new IllegalArgumentException("No digestID MSO entry for namespace "
-                            + nameSpace);
-                }
-                List<DataItem> elems = Util.cborMapExtractArray(nameSpaces, nameSpace);
-                for (DataItem elem : elems) {
-                    if (!(elem.hasTag() && elem.getTag().getValue() == 24
-                            && (elem instanceof ByteString))) {
-                        throw new IllegalArgumentException(
-                                "issuerSignedItemBytes is not a tagged ByteString");
+            // nameSpaces may be absent...
+            if (Util.cborMapHasKey(issuerSigned, "nameSpaces")) {
+                DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
+                Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
+                for (String nameSpace : nameSpacesKeys) {
+                    Map<Long, byte[]> innerDigestMapping = digestMapping.get(nameSpace);
+                    if (innerDigestMapping == null) {
+                        throw new IllegalArgumentException("No digestID MSO entry for namespace "
+                                + nameSpace);
                     }
-                    // We need the encoded representation with the tag.
-                    byte[] encodedIssuerSignedItem = ((ByteString) elem).getBytes();
-                    byte[] encodedIssuerSignedItemBytes = Util.cborEncode(
-                            Util.cborBuildTaggedByteString(encodedIssuerSignedItem));
-                    byte[] expectedDigest = digester.digest(encodedIssuerSignedItemBytes);
+                    List<DataItem> elems = Util.cborMapExtractArray(nameSpaces, nameSpace);
+                    for (DataItem elem : elems) {
+                        if (!(elem.hasTag() && elem.getTag().getValue() == 24
+                                && (elem instanceof ByteString))) {
+                            throw new IllegalArgumentException(
+                                    "issuerSignedItemBytes is not a tagged ByteString");
+                        }
+                        // We need the encoded representation with the tag.
+                        byte[] encodedIssuerSignedItem = ((ByteString) elem).getBytes();
+                        byte[] encodedIssuerSignedItemBytes = Util.cborEncode(
+                                Util.cborBuildTaggedByteString(encodedIssuerSignedItem));
+                        byte[] expectedDigest = digester.digest(encodedIssuerSignedItemBytes);
 
-                    DataItem issuerSignedItem = Util.cborExtractTaggedAndEncodedCbor(elem);
-                    String elementName = Util.cborMapExtractString(issuerSignedItem,
-                            "elementIdentifier");
-                    DataItem elementValue = Util.cborMapExtract(issuerSignedItem, "elementValue");
-                    long digestId = Util.cborMapExtractNumber(issuerSignedItem, "digestID");
+                        DataItem issuerSignedItem = Util.cborExtractTaggedAndEncodedCbor(elem);
+                        String elementName = Util.cborMapExtractString(issuerSignedItem,
+                                "elementIdentifier");
+                        DataItem elementValue = Util.cborMapExtract(issuerSignedItem, "elementValue");
+                        long digestId = Util.cborMapExtractNumber(issuerSignedItem, "digestID");
 
-                    byte[] digest = innerDigestMapping.get(digestId);
-                    if (digest == null) {
-                        throw new IllegalArgumentException("No digestID MSO entry for ID "
-                                + digestId + " in namespace " + nameSpace);
+                        byte[] digest = innerDigestMapping.get(digestId);
+                        if (digest == null) {
+                            throw new IllegalArgumentException("No digestID MSO entry for ID "
+                                    + digestId + " in namespace " + nameSpace);
+                        }
+                        boolean digestMatch = Arrays.equals(expectedDigest, digest);
+                        builder.addIssuerEntry(nameSpace, elementName,
+                                Util.cborEncode(elementValue),
+                                digestMatch);
                     }
-                    boolean digestMatch = Arrays.equals(expectedDigest, digest);
-                    builder.addIssuerEntry(nameSpace, elementName,
-                            Util.cborEncode(elementValue),
-                            digestMatch);
                 }
             }
-
             return deviceKey;
         }
 

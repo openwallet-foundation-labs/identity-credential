@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
+
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +36,7 @@ import co.nstant.in.cbor.model.UnicodeString;
  * as specified in <em>ISO/IEC 18013-5</em> section 8.3 <em>Device Retrieval</em>.
  */
 public final class DeviceResponseGenerator {
-
+    private static final String TAG = "DeviceResponseGenerator";
     private final ArrayBuilder<CborBuilder> mDocumentsBuilder;
     @Constants.DeviceResponseStatus private final long mStatusCode;
 
@@ -166,6 +167,20 @@ public final class DeviceResponseGenerator {
             mapBuilder.put(new UnicodeString("errors"), errorsBuilder.build().get(0));
         }
         mDocumentsBuilder.add(builder.build().get(0));
+        return this;
+    }
+
+    /**
+     * Adds a new document to the device response.
+     *
+     * This can be used with the output {@link DocumentGenerator} for MDOC presentations.
+     *
+     * @param encodedDocument the bytes of {@code Document} CBOR as defined in ISO/IEC
+     *                        18013-5 section 8.3.2.1.2.2.
+     * @return the generator.
+     */
+    public @NonNull DeviceResponseGenerator addDocument(@NonNull byte[] encodedDocument) {
+        mDocumentsBuilder.add(Util.cborDecode(encodedDocument));
         return this;
     }
 
