@@ -83,9 +83,13 @@ import co.nstant.in.cbor.model.UnicodeString;
  * {@link PendingAuthenticationKey#certify(byte[], Timestamp, Timestamp)} to
  * upgrade the {@link PendingAuthenticationKey} to a {@link AuthenticationKey}.
  *
- * <p>At credential presentation time the application first uses {@link CredentialStore}
- * to find a suitable {@link Credential} for presentation. TODO: link to CredentialRequest
- * and DeviceResponseGenerator when this part of the code lands.
+ * <p>At credential presentation time the application first receives the request
+ * from a remote reader using a specific credential presentation protocol, such
+ * as ISO/IEC 18013-5:2021. The details of the credential-specific request includes
+ * enough information (for example, the <em>DocType</em> if using ISO/IEC 18013-5:2021)
+ * for the application to locate a suitable {@link Credential} from a {@link CredentialStore}.
+ * See {@link CredentialRequest} for more information about how to generate the response for
+ * the remote reader given a {@link Credential} instance.
  *
  * <p>There is nothing mDL/MDOC specific about this type, it can be used for any kind
  * of credential regardless of shape, presentation, or issuance protocol used.

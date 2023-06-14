@@ -21,7 +21,6 @@ import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
 import android.security.keystore.KeyProperties;
-import androidx.core.util.Pair;
 
 import androidx.test.filters.SmallTest;
 
@@ -36,8 +35,6 @@ import com.android.identity.android.legacy.Utility;
 import com.android.identity.android.legacy.WritableIdentityCredential;
 import com.android.identity.mdoc.mso.StaticAuthDataParser;
 import com.android.identity.util.CborUtil;
-import com.android.identity.mdoc.response.DeviceResponseGenerator;
-import com.android.identity.mdoc.response.DeviceResponseParser;
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
 
@@ -66,13 +63,11 @@ import java.util.Map;
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
 
-// TODO: Move to non-Android tests - can't do that right now b/c it's used IdentityCredentialStore
-//   to generate DeviceNameSpaces and DeviceAuth.
-public class DeviceResponseGeneratorTest {
+public class DeviceResponseGeneratorOnAndroidTest {
 
     private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
-    private static final String AAMVA_NAMESPACE = "org.aamva.18013.5.1";  // TODO: verify
+    private static final String AAMVA_NAMESPACE = "org.aamva.18013.5.1";
 
     private KeyPair generateIssuingAuthorityKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
