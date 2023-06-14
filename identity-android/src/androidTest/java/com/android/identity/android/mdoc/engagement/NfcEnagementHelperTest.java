@@ -72,6 +72,10 @@ public class NfcEnagementHelperTest {
 
         NfcEngagementHelper.Listener listener = new NfcEngagementHelper.Listener() {
             @Override
+            public void onTwoWayEngagementDetected() {
+            }
+
+            @Override
             public void onDeviceConnecting() {
 
             }
@@ -204,6 +208,10 @@ public class NfcEnagementHelperTest {
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
 
         NfcEngagementHelper.Listener listener = new NfcEngagementHelper.Listener() {
+            @Override
+            public void onTwoWayEngagementDetected() {
+            }
+
             @Override
             public void onDeviceConnecting() {
 
