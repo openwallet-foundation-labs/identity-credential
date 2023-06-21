@@ -314,8 +314,8 @@ public class NfcEnagementHelperTest {
         Assert.assertEquals(0x10, spr.tnepVersion);
         Assert.assertEquals("urn:nfc:sn:handover", spr.serviceNameUri);
         Assert.assertEquals(0x00, spr.tnepCommunicationMode);
-        Assert.assertEquals(0.5, spr.tWaitMillis, 0.001);
-        Assert.assertEquals(0, spr.nWait);
+        Assert.assertEquals(8.0, spr.tWaitMillis, 0.001);
+        Assert.assertEquals(15, spr.nWait);
 
         // Keep the following code in sync with verificationHelper.startNegotiatedHandover()
 
