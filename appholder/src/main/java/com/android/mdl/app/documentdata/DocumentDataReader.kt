@@ -15,9 +15,7 @@ import co.nstant.`in`.cbor.model.SimpleValue
 import co.nstant.`in`.cbor.model.SimpleValueType
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
-import com.android.identity.android.legacy.CredentialDataResult
-import com.android.identity.android.legacy.CredentialDataResult.Entries.STATUS_USER_AUTHENTICATION_FAILED
-import com.android.mdl.app.document.Document
+import com.android.identity.credential.NameSpacedData
 import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
 import com.android.mdl.app.util.DocumentData.EU_PID_NAMESPACE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
@@ -30,48 +28,44 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 
-class DocumentDataReader(private val entries: CredentialDataResult.Entries) {
+class DocumentDataReader(private val docType: String) {
 
-    fun read(document: Document): DocumentElements {
-        val missingAuth = entries.namespaces.any { namespace ->
-            entries.getEntryNames(namespace).any { entry ->
-                entries.getStatus(namespace, entry) == STATUS_USER_AUTHENTICATION_FAILED
-            }
-        }
-        if (missingAuth) {
-            return DocumentElements(requestUserAuthorization = true)
-        }
-
+    fun read(nameSpacedData: NameSpacedData): DocumentElements {
         val builder = StringBuilder()
         var portraitBytes: ByteArray? = null
         var signatureBytes: ByteArray? = null
-        val docType = document.docType
-        entries.namespaces.forEach { ns ->
+        var fingerprintBytes: ByteArray? = null
+
+        nameSpacedData.nameSpaceNames.forEach { namespace ->
+            val dataElementNames = nameSpacedData.getDataElementNames(namespace)
             builder.append("<br>")
-            builder.append("<h5>Namespace: $ns</h5>")
+            builder.append("<h5>Namespace: $namespace</h5>")
             builder.append("<p>")
-            entries.getEntryNames(ns).forEach { entryName ->
-                val byteArray: ByteArray? = entries.getEntry(ns, entryName)
-                byteArray?.let { value ->
+            dataElementNames.forEach { entryName ->
+                val byteArray: ByteArray = nameSpacedData.getDataElement(namespace, entryName)
+                byteArray.let { value ->
                     val valueStr: String
-                    if (isPortraitElement(docType, ns, entryName)) {
+                    if (isPortraitElement(docType, namespace, entryName)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
-                        portraitBytes = entries.getEntryBytestring(ns, entryName)
-                    } else if (docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && entryName == "fac") {
+                        portraitBytes = nameSpacedData.getDataElementByteString(namespace, entryName)
+                    } else if (docType == MICOV_DOCTYPE && namespace == MICOV_ATT_NAMESPACE && entryName == "fac") {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
-                        portraitBytes = entries.getEntryBytestring(ns, entryName)
-                    } else if (docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && entryName == "extra") {
+                        portraitBytes = nameSpacedData.getDataElement(namespace, entryName)
+                    } else if (docType == MDL_DOCTYPE && namespace == MDL_NAMESPACE && entryName == "extra") {
                         valueStr = String.format("%d bytes extra data", value.size)
-                    } else if (docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && entryName == "signature_usual_mark") {
+                    } else if (docType == MDL_DOCTYPE && namespace == MDL_NAMESPACE && entryName == "signature_usual_mark") {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
-                        signatureBytes = entries.getEntryBytestring(ns, entryName)
+                        signatureBytes = nameSpacedData.getDataElementByteString(namespace, entryName)
+                    } else if (docType == EU_PID_DOCTYPE && namespace == EU_PID_NAMESPACE && entryName == "biometric_template_finger") {
+                        valueStr = String.format("(%d bytes, not shown)", value.size)
+                        fingerprintBytes = nameSpacedData.getDataElementByteString(namespace, entryName)
                     } else {
                         valueStr = cborPrettyPrint(value)
                     }
                     builder.append("<b>$entryName</b> -> $valueStr<br>")
                 }
+                builder.append("</p><br>")
             }
-            builder.append("</p><br>")
         }
         val portrait = portraitBytes?.let { bytes ->
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
@@ -79,7 +73,16 @@ class DocumentDataReader(private val entries: CredentialDataResult.Entries) {
         val signature = signatureBytes?.let { bytes ->
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         }
-        return DocumentElements(builder.toString(), portrait = portrait, signature = signature)
+        val fingerprint = fingerprintBytes?.let { bytes ->
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }
+
+        return DocumentElements(
+            text = builder.toString(),
+            portrait = portrait,
+            signature = signature,
+            fingerprint = fingerprint
+        )
     }
 
     private fun isPortraitElement(

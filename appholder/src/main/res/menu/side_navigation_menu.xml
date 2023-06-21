@@ -9,13 +9,6 @@
         android:title="@string/menu_wallet" />
 
     <item
-        android:id="@+id/add"
-        android:enabled="true"
-        android:checkable="true"
-        android:icon="@drawable/ic_add_http"
-        android:title="@string/menu_add_document" />
-
-    <item
         android:id="@+id/addSelfSignedDocument"
         android:enabled="true"
         android:checkable="true"

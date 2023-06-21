@@ -37,8 +37,8 @@ import com.android.mdl.app.util.Field
 import com.android.mdl.app.util.FieldType
 import com.android.mdl.app.util.FormatUtil.fullDateStringToMilliseconds
 import com.android.mdl.app.util.FormatUtil.millisecondsToFullDateString
-import com.android.mdl.app.util.ProvisionInfo
-import com.android.mdl.app.util.SelfSignedDocumentData
+import com.android.mdl.app.selfsigned.ProvisionInfo
+import com.android.mdl.app.selfsigned.SelfSignedDocumentData
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.logError
 import com.android.mdl.app.viewmodel.SelfSignedViewModel

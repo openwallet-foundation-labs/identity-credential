@@ -13,7 +13,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.FragmentTransferDocumentBinding
-import com.android.mdl.app.document.Document
+import com.android.mdl.app.document.DocumentInformation
 import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.readerauth.SimpleReaderTrustStore
 import com.android.mdl.app.transfer.TransferManager
@@ -155,7 +155,7 @@ class TransferDocumentFragment : Fragment() {
         }
     }
 
-    private fun showDocumentSelection(doc: List<Document>) {
+    private fun showDocumentSelection(doc: List<DocumentInformation>) {
         val alertDialogBuilder = AlertDialog.Builder(requireContext())
         alertDialogBuilder.setTitle("Select which document to share")
         val listItems = doc.map { it.userVisibleName }.toTypedArray()

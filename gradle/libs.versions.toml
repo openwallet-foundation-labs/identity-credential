@@ -12,13 +12,13 @@
     fragment = "1.6.0"
     compose-bom = "2023.06.00"
     kotlin-compiler-extension = "1.4.6"
+    kotlinx-serialization-version = "1.5.0"
     legacy-support-v4 = "1.0.0"
     androidx-preference = "1.2.0"
     androidx-annotation = "1.6.0"
     coroutines-version = "1.7.1"
     zxing = "3.4.0"
     volley = "1.2.1"
-    room = "2.5.1"
     biometrics = "1.2.0-alpha05"
     cbor = "0.9"
     exif = "1.3.6"
@@ -59,9 +59,7 @@
 
     volley = { module = "com.android.volley:volley", version.ref = "volley" }
 
-    androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
-    androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
-    androidx-room-kapt = { module = "androidx.room:room-compiler", version.ref = "room" }
+    kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-version" }
 
     androidx-biometrics = { module = "androidx.biometric:biometric", version.ref = "biometrics" }
     androidx-zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
@@ -89,7 +87,6 @@
     androidx-lifecycle = ["androidx-lifecycle-extensions", "androidx-lifecycle-livedata", "androidx-lifecycle-viewmodel"]
     androidx-navigation = ["androidx-navigation-ktx", "androidx-navigation-ui-ktx"]
     compose = ["compose-ui", "compose-foundation", "compose-material", "compose-ui-tooling", "compose-preview", "compose-icons"]
-    androidx-room = ["androidx-room-runtime", "androidx-room-ktx"]
     androidx-crypto = ["androidx-biometrics", "androidx-zxing-core"]
     bouncy-castle = ["bouncy-castle-bcprov", "bouncy-castle-bcpkix"]
     ui-testing = ["androidx-test-ext-junit", "androidx-test-espresso"]
@@ -100,6 +97,7 @@
     android-library = { id = "com.android.library", version.ref = "gradle-plugin" }
     dokka = { id = "org.jetbrains.dokka", version.ref = "kotlin"}
     kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+    kotlinx-serialization-plugin = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
     sonarqube = { id = "org.sonarqube", version.ref = "sonar-gradle-plugin" }
     jacoco = { id = "org.kordamp.gradle.jacoco", version.ref = "jacoco" }
     navigation-safe-args = { id = "androidx.navigation.safeargs.kotlin", version.ref = "navigation_plugin" }

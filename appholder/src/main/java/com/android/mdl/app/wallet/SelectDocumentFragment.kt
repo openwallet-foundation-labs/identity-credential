@@ -16,7 +16,7 @@ import androidx.navigation.fragment.findNavController
 import com.android.mdl.app.R
 import com.android.mdl.app.adapter.DocumentAdapter
 import com.android.mdl.app.databinding.FragmentSelectDocumentBinding
-import com.android.mdl.app.document.Document
+import com.android.mdl.app.document.DocumentInformation
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.util.log
@@ -132,7 +132,7 @@ class SelectDocumentFragment : Fragment() {
     private fun setupScreen(
         binding: FragmentSelectDocumentBinding,
         adapter: DocumentAdapter,
-        documentsList: MutableList<Document>
+        documentsList: MutableList<DocumentInformation>
     ) {
         if (documentsList.isEmpty()) {
             showEmptyView(binding)

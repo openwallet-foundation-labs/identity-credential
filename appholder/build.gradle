@@ -1,6 +1,7 @@
 plugins {
     alias libs.plugins.android.application
     alias libs.plugins.kotlin.android
+    alias libs.plugins.kotlinx.serialization.plugin
     alias libs.plugins.navigation.safe.args
     alias libs.plugins.parcelable
     alias libs.plugins.kapt
@@ -68,16 +69,13 @@ dependencies {
     implementation libs.bundles.androidx.core
     implementation libs.bundles.androidx.lifecycle
     implementation libs.bundles.androidx.navigation
-    implementation libs.bundles.androidx.room
     implementation libs.bundles.androidx.crypto
     implementation libs.bundles.bouncy.castle
     implementation libs.bundles.compose
-    implementation libs.volley
     implementation libs.cbor
     implementation libs.exifinterface
     implementation libs.code.scanner
-
-    kapt libs.androidx.room.kapt
+    implementation libs.kotlinx.serialization
 
     androidTestImplementation libs.bundles.ui.testing
 

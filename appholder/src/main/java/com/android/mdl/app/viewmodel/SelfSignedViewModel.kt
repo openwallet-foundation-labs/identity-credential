@@ -8,13 +8,13 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.android.mdl.app.R
 import com.android.mdl.app.document.DocumentManager
+import com.android.mdl.app.selfsigned.SelfSignedDocumentData
 import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MDL_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
 import com.android.mdl.app.util.Field
 import com.android.mdl.app.util.FieldType
-import com.android.mdl.app.util.SelfSignedDocumentData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -200,14 +200,14 @@ class SelfSignedViewModel(val app: Application) :
         }
     }
 
-    fun createSelfSigned(dData: SelfSignedDocumentData) {
+    fun createSelfSigned(documentData: SelfSignedDocumentData) {
         loading.value = View.VISIBLE
-        viewModelScope.launch (Dispatchers.IO) {
-            documentManager.createSelfSignedCredential(dData)
-            withContext(Dispatchers.Main) {
-                created.value = true
-                loading.value = View.GONE
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                documentManager.createSelfSignedDocument(documentData)
             }
+            created.value = true
+            loading.value = View.GONE
         }
     }
 
