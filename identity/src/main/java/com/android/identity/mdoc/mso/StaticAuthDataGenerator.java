@@ -76,7 +76,7 @@ public class StaticAuthDataGenerator {
      * Constructs a new {@link StaticAuthDataGenerator}.
      *
      * @param digestIDMapping A non-empty mapping between a <code>Namespace</code> and a list of
-     *                        <code>IssuerSignedItemBytes</code>.
+     *                        <code>IssuerSignedItemMetadataBytes</code>.
      * @param encodedIssuerAuth A COSE_Sign1 object with a payload of MobileSecurityObjectBytes.
      * @exception IllegalArgumentException if the <code>digestIDMapping</code> is empty.
      */

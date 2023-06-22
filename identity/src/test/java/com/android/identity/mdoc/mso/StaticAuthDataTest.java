@@ -188,21 +188,23 @@ public class StaticAuthDataTest {
         Assert.assertNotNull(list);
         Assert.assertEquals(2, list.size());
         Assert.assertEquals(
-                "{\n" +
+                "24(<< {\n" +
                         "  \"random\": h'505152',\n" +
                         "  \"digestID\": 42,\n" +
                         "  \"elementIdentifier\": \"dataElementName\",\n" +
                         "  \"elementValue\": null\n" +
-                        "}",
-                CborUtil.toDiagnostics(list.get(0), CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT));
+                        "} >>)",
+                CborUtil.toDiagnostics(list.get(0), CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT
+                        + CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR));
         Assert.assertEquals(
-                "{\n" +
+                "24(<< {\n" +
                         "  \"digestID\": 43,\n" +
                         "  \"random\": h'535455',\n" +
                         "  \"elementIdentifier\": \"dataElementName2\",\n" +
                         "  \"elementValue\": null\n" +
-                        "}",
-                CborUtil.toDiagnostics(list.get(1), CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT));
+                        "} >>)",
+                CborUtil.toDiagnostics(list.get(1), CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT
+                        + CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR));
 
         byte[] issuerAuth = decodedStaticAuthData.getIssuerAuth();
         Assert.assertArrayEquals(encodedIssuerAuth, issuerAuth);

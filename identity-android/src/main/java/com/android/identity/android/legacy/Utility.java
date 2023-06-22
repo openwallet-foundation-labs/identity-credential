@@ -274,10 +274,10 @@ public class Utility {
                         + "issuerSignedMapping");
             } else {
                 Collection<String> entryNames = issuerSigned.getEntryNames(namespaceName);
-                for (byte[] encodedIssuerSignedItem : encodedIssuerSignedItemForNs) {
+                for (byte[] encodedTaggedIssuerSignedItem : encodedIssuerSignedItemForNs) {
+                    byte[] encodedIssuerSignedItem = Util.cborExtractTaggedCbor(encodedTaggedIssuerSignedItem);
                     DataItem issuerSignedItem = Util.cborDecode(encodedIssuerSignedItem);
-                    String elemName = Util
-                            .cborMapExtractString(issuerSignedItem, "elementIdentifier");
+                    String elemName = Util.cborMapExtractString(issuerSignedItem, "elementIdentifier");
 
                     if (!entryNames.contains(elemName)) {
                         continue;
@@ -287,7 +287,8 @@ public class Utility {
                         byte[] encodedIssuerSignedItemWithValue =
                                 Util.issuerSignedItemSetValue(encodedIssuerSignedItem, elemValue);
 
-                        newEncodedIssuerSignedItemForNs.add(encodedIssuerSignedItemWithValue);
+                        newEncodedIssuerSignedItemForNs.add(
+                                Util.cborEncode(Util.cborBuildTaggedByteString(encodedIssuerSignedItemWithValue)));
                     }
                 }
             }
@@ -311,7 +312,7 @@ public class Utility {
      * @param deviceResponseGenerator The generator to add the document to.
      * @param docType              The type of the document to send.
      * @param credentialDataResult The device- and issuer-signed data elements to include.
-     * @param issuerSignedMapping A mapping from namespaces to an array of IssuerSignedItem
+     * @param issuerSignedMapping A mapping from namespaces to an array of IssuerSignedItemBytes
      *                            CBOR for the namespace. The "elementValue" value in each
      *                            IssuerSignedItem CBOR must be set to the NULL value.
      * @param encodedIssuerAuth   the bytes of <code>COSE_Sign1</code> signed by the issuing
