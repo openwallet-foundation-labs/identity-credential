@@ -56,12 +56,12 @@ public final class DeviceResponseGenerator {
     /**
      * Adds a new document to the device response.
      *
-     * <p>Issuer-signed data is provided in <code>issuerSignedData</code> which
-     * maps from namespaces into a list of bytes of IssuerSignedItem CBOR as
+     * <p>Issuer-signed data is provided in <code>issuerNameSpaces</code> which
+     * maps from namespaces into a list of bytes of IssuerSignedItemBytes CBOR as
      * defined in 18013-5 where each contains the digest-id, element name,
-     * issuer-generated random value and finally the element value. Each IssuerSignedItem
-     * must be encoded so the digest of them in a #6.24 bstr matches with the digests in
-     * the <code>MobileSecurityObject</code> in the <code>issuerAuth</code> parameter.
+     * issuer-generated random value and finally the element value. Each IssuerSignedItemBytes
+     * must be encoded so its digest matches with the digest in the
+     * <code>MobileSecurityObject</code> in the <code>issuerAuth</code> parameter.
      *
      * <p>The <code>encodedIssuerAuth</code> parameter contains the bytes of the
      * <code>IssuerAuth</code> CBOR as defined in <em>ISO/IEC 18013-5</em>
@@ -91,7 +91,7 @@ public final class DeviceResponseGenerator {
      * @param encodedDeviceNamespaces bytes of the <code>DeviceNameSpaces</code> CBOR.
      * @param encodedDeviceSignature bytes of a COSE_Sign1 for authenticating the device data.
      * @param encodedDeviceMac bytes of a COSE_Mac0 for authenticating the device data.
-     * @param issuerSignedData the map described above.
+     * @param issuerNameSpaces the map described above.
      * @param errors a map with errors as described above.
      * @param encodedIssuerAuth the bytes of the <code>COSE_Sign1</code> described above.
      * @return the passed-in {@link DeviceResponseGenerator}.
@@ -100,17 +100,16 @@ public final class DeviceResponseGenerator {
             @NonNull byte[] encodedDeviceNamespaces,
             @Nullable byte[] encodedDeviceSignature,
             @Nullable byte[] encodedDeviceMac,
-            @NonNull Map<String, List<byte[]>> issuerSignedData,
+            @NonNull Map<String, List<byte[]>> issuerNameSpaces,
             @Nullable Map<String, Map<String, Long>> errors,
             @NonNull byte[] encodedIssuerAuth) {
 
         CborBuilder issuerNameSpacesBuilder = new CborBuilder();
         MapBuilder<CborBuilder> insOuter = issuerNameSpacesBuilder.addMap();
-        for (String ns : issuerSignedData.keySet()) {
+        for (String ns : issuerNameSpaces.keySet()) {
             ArrayBuilder<MapBuilder<CborBuilder>> insInner = insOuter.putArray(ns);
-            for (byte[] encodedIssuerSignedItem : issuerSignedData.get(ns)) {
-                // We'll do the #6.24 wrapping here.
-                insInner.add(Util.cborBuildTaggedByteString(encodedIssuerSignedItem));
+            for (byte[] encodedIssuerSignedItemBytes : issuerNameSpaces.get(ns)) {
+                insInner.add(Util.cborDecode(encodedIssuerSignedItemBytes));
             }
             insInner.end();
         }

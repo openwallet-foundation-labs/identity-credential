@@ -84,7 +84,7 @@ public class StaticAuthDataParser {
 
         /**
          * Gets the mapping between <code>Namespace</code>s and a list of
-         * <code>IssuerSignedItemBytes</code> as set in the <code>StaticAuthData</code> CBOR.
+         * <code>IssuerSignedItemMetadataBytes</code> as set in the <code>StaticAuthData</code> CBOR.
          *
          * @return The digestID mapping.
          */
@@ -104,12 +104,9 @@ public class StaticAuthDataParser {
                     if (innerKey.getTag().getValue() != 24) {
                         throw new IllegalArgumentException("Inner key does not have tag 24");
                     }
-                    byte[] encodedIssuerSignedItemBytes = ((ByteString) innerKey).getBytes();
-
                     // Strictly not necessary but check that elementValue is NULL. This is to
                     // avoid applications (or issuers) sending the value in issuerSignedMapping
-                    // which is part of staticAuthData. This would be bad because then the
-                    // data element value would be available without any access control checks.
+                    // which is part of staticAuthData.
                     DataItem issuerSignedItem = Util.cborExtractTaggedAndEncodedCbor(innerKey);
                     DataItem value = Util.cborMapExtract(issuerSignedItem, "elementValue");
                     if (!(value instanceof SimpleValue)
@@ -118,8 +115,7 @@ public class StaticAuthDataParser {
                         throw new IllegalArgumentException("elementValue for nameSpace " + namespace
                                 + " elementName " + name + " is not NULL");
                     }
-
-                    innerArray.add(encodedIssuerSignedItemBytes);
+                    innerArray.add(Util.cborEncode(innerKey));
                 }
 
                 mDigestIdMapping.put(namespace, innerArray);
