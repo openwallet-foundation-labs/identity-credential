@@ -27,6 +27,28 @@ object RequestMdlUsTransportation : RequestDocument() {
 
     enum class DataItems(override val identifier: String, override val stringResourceId: Int) :
         RequestDataItem {
+        // AAMVA_VERSION("aamva_version", R.string.aamva_version),
+        // AKA_FAMILY_NAME_V2("aka_family_name.v2", R.string.aka_family_name_v2),
+        // AKA_GIVEN_NAME_V2("aka_given_name.v2", R.string.aka_given_name_v2),
+        // AKA_SUFFIX("aka_suffix", R.string.aka_suffix),
+        // CDL_INDICATOR("CDL_indicator", R.string.cdl_indicator),
+        // DHS_COMPLIANCE("DHS_compliance", R.string.dhs_compliance),
+        // DHS_COMPLIANCE_TEXT("DHS_compliance_text", R.string.dhs_compliance_text),
+        // DHS_TEMPORARY_LAWFUL_STATUS("DHS_temporary_lawful_status", 
+        //     R.string.dhs_temporary_lawful_status),
+        // EDL_CREDENTIAL("EDL_credential", R.string.edl_credential),
+        // FAMILY_NAME_TRUNCATION("family_name_truncation", R.string.family_name_truncation),
+        // GIVEN_NAME_TRUNCATION("given_name_truncation", R.string.given_name_truncation),
+        // HAZMAT_ENDORSEMENT_EXPIRATION_DATE("hazmat_endorsement_expiration_date", 
+        //     R.string.hazmat_endorsement_expiration_date),
+        // NAME_SUFFIX("name_suffix", R.string.name_suffix),
+        // ORGAN_DONOR("organ_donor", R.string.organ_donor),
+        // RACE_ETHNICITY("race_ethnicity", R.string.race_ethnicity),
+        // RESIDENT_COUNTY("resident_county", R.string.resident_county),
+        // SEX("", R.string.sex),
+        // VETERAN("veteran", R.string.veteran),
+        // WEIGHT_RANGE("weight_range", R.string.weight_range),
+
         SEX("", R.string.sex),
         PORTRAIT("portrait", R.string.portrait),
         GIVEN_NAME("given_name", R.string.given_name),
