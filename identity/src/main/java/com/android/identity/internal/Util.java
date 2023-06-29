@@ -245,7 +245,13 @@ public class Util {
     }
 
     public static boolean cborDecodeBoolean(@NonNull byte[] data) {
-        SimpleValue simple = (SimpleValue) cborDecode(data);
+        SimpleValue simple;
+        try {
+            simple = (SimpleValue) cborDecode(data);
+        } catch (ClassCastException e) {
+            throw new IllegalArgumentException("Data given cannot be cast into a boolean.", e);
+        }
+
         return simple.getSimpleValueType() == SimpleValueType.TRUE;
     }
 

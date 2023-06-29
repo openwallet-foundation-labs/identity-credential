@@ -81,6 +81,7 @@ public class CredentialUtilTest {
         Assert.assertEquals(numAuthKeys, credential.getPendingAuthenticationKeys().size());
         count = 0;
         for (Credential.PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
+            Assert.assertTrue(pak.getApplicationData().getBoolean(managedKeyDomain));
             pak.certify(new byte[] {0, (byte) count++},
                     Timestamp.ofEpochMilli(100),
                     Timestamp.ofEpochMilli(200));
@@ -139,6 +140,7 @@ public class CredentialUtilTest {
         Assert.assertEquals(5, credential.getPendingAuthenticationKeys().size());
         count = 0;
         for (Credential.PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
+            Assert.assertTrue(pak.getApplicationData().getBoolean(managedKeyDomain));
             pak.certify(new byte[] {1, (byte) count++},
                     Timestamp.ofEpochMilli(100),
                     Timestamp.ofEpochMilli(210));
@@ -180,6 +182,7 @@ public class CredentialUtilTest {
         Assert.assertEquals(5, credential.getPendingAuthenticationKeys().size());
         count = 0;
         for (Credential.PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
+            Assert.assertTrue(pak.getApplicationData().getBoolean(managedKeyDomain));
             pak.certify(new byte[] {2, (byte) count++},
                     Timestamp.ofEpochMilli(100),
                     Timestamp.ofEpochMilli(210));
