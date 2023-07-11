@@ -1155,6 +1155,11 @@ public class Util {
         return item;
     }
 
+    public static
+    @KeystoreEngine.EcCurve int coseKeyGetCurve(@NonNull DataItem coseKey) {
+        return (int) cborMapExtractNumber(coseKey, COSE_KEY_EC2_CRV);
+    }
+
     public static @NonNull
     PublicKey coseKeyDecode(@NonNull DataItem coseKey) {
         long kty = cborMapExtractNumber(coseKey, COSE_KEY_KTY);
