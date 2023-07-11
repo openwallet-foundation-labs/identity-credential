@@ -21,6 +21,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.keystore.KeystoreEngine;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.android.mdoc.transport.TransmissionProgressListener;
 import com.android.identity.android.legacy.CredentialDataRequest;
@@ -247,10 +248,12 @@ public class DeviceRetrievalHelper {
 
     }
 
-    // Throws IllegalStateException if e.g. the EReaderKey isn't of the right form.
-    private void ensureSessionEncryption(@NonNull byte[] data) {
+    // Returns nothing if everything parses correctly or session encryption has already been set
+    // up, otherwise the status code (10, 11, 20 as per 18013-5 table 20) to include in the
+    // SessionData response.
+    private OptionalLong ensureSessionEncryption(@NonNull byte[] data) {
         if (mSessionEncryption != null) {
-            return;
+            return OptionalLong.empty();
         }
 
         // For reverse engagement, we get EReaderKeyBytes via Reverse Engagement...
@@ -266,9 +269,34 @@ public class DeviceRetrievalHelper {
         } else {
             // This is the first message. Extract eReaderKey to set up session encryption...
             DataItem decodedData = Util.cborDecode(data);
-            encodedEReaderKey = Util.cborMapExtractByteString(decodedData, "eReaderKey");
+            try {
+                encodedEReaderKey = Util.cborMapExtractByteString(decodedData, "eReaderKey");
+            } catch (IllegalArgumentException e) {
+                Logger.w(TAG, "Error extracting eReaderKey", e);
+                return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_CBOR_DECODING);
+            }
         }
-        mEReaderKey = Util.coseKeyDecode(Util.cborDecode(encodedEReaderKey));
+        DataItem eReaderKeyDataItem = Util.cborDecode(encodedEReaderKey);
+        @KeystoreEngine.EcCurve int curve;
+        try {
+            curve = Util.coseKeyGetCurve(eReaderKeyDataItem);
+        } catch (IllegalArgumentException e) {
+            Logger.w(TAG, "No curve identifier in COSE_Key", e);
+            return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION);
+        }
+        if (curve != KeystoreEngine.EC_CURVE_P256) {
+            Logger.w(TAG,
+                    String.format(Locale.US, "Expected curve P-256 (%d) but got %d",
+                            KeystoreEngine.EC_CURVE_P256, curve));
+            return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION);
+        }
+        try {
+            mEReaderKey = Util.coseKeyDecode(eReaderKeyDataItem);
+        } catch (IllegalArgumentException
+                 | IllegalStateException e) {
+            Logger.w(TAG, "Error decoding COSE_Key", e);
+            return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION);
+        }
 
         mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -295,19 +323,21 @@ public class DeviceRetrievalHelper {
                     mEReaderKey,
                     mEncodedAlternateSessionTranscript);
         }
+        return OptionalLong.empty();
     }
 
     private void processMessageReceived(@NonNull byte[] data) {
         Logger.dCbor(TAG, "SessionData received", data);
-        try {
-            ensureSessionEncryption(data);
-        } catch (IllegalStateException e) {
-            mTransport.sendMessage(SessionEncryption.encodeStatus(
-                    Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION));
+        OptionalLong status = ensureSessionEncryption(data);
+        if (status.isPresent()) {
+            mTransport.sendMessage(SessionEncryption.encodeStatus(status.getAsLong()));
             mTransport.close();
-            reportError(new Error("Error decoding EReaderKey in SessionEstablishment", e));
+            reportError(new Error(String.format(Locale.US,
+                    "Error decoding EReaderKey in SessionEstablishment, returning status %d",
+                    status.getAsLong())));
             return;
         }
+
         SessionEncryption.DecryptedMessage decryptedMessage = null;
         try {
             decryptedMessage = mSessionEncryption.decryptMessage(data);
