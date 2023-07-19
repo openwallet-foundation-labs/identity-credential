@@ -11,6 +11,18 @@
     <string name="select_the_transfer_method">Select the transfer method</string>
     <string name="request_items">Request items</string>
 
+    <!-- Request Selection -->
+    <string name="mdl_over_18">Older than 18</string>
+    <string name="mdl_over_21">Older than 21"</string>
+    <string name="mdl_mandatory_fields">Mandatory fields"</string>
+    <string name="mdl_us_transportation">mDL for US transportation</string>
+    <string name="mdl_custom">Custom"</string>
+    <string name="mdl_full">Full mDL"</string>
+    <string name="mdl_micov_linkage">Request mDL + micov with linkage</string>
+    <string name="mvr_full">Request mVR"</string>
+    <string name="micov_full">Request micov"</string>
+    <string name="eu_pid_full">Request EU Personal ID"</string>
+
     <!-- mDL strings -->
     <string name="family_name">Family Name</string>
     <string name="given_name">Given Names</string>
@@ -90,5 +102,10 @@
     <string name="age_over_60">Age over 60?</string>
     <string name="age_over_65">Age over 65?</string>
     <string name="age_over_68">Age pver 68?</string>
+
+    <!-- Side Menu Items -->
+    <string name="menu_reader_home">Home</string>
+    <string name="menu_reverse_engagement">Reverse Engagement</string>
+    <string name="menu_settings">Settings</string>
 
 </resources>
