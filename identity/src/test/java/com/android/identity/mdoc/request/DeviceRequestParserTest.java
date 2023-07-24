@@ -56,7 +56,7 @@ public class DeviceRequestParserTest {
 
     @Before
     public void setUp() {
-        Security.addProvider(new BouncyCastleProvider());
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
     }
 
     @After

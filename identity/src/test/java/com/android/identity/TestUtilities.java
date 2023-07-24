@@ -102,7 +102,7 @@ public class TestUtilities {
         }
 
         try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
             ECGenParameterSpec ecSpec = new ECGenParameterSpec(stdName);
             kpg.initialize(ecSpec);
             KeyPair keyPair = kpg.generateKeyPair();
