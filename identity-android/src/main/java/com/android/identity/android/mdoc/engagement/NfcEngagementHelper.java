@@ -7,12 +7,12 @@ import android.content.Context;
 import android.nfc.FormatException;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
+import android.os.Bundle;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 
 import com.android.identity.android.util.NfcUtil;
-import com.android.identity.android.legacy.PresentationSession;
 import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
@@ -23,7 +23,7 @@ import com.android.identity.internal.Util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Retention;
-import java.security.KeyPair;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -33,14 +33,33 @@ import java.util.concurrent.Executor;
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.SimpleValue;
 
+/**
+ * Helper used for NFC engagement.
+ *
+ * <p>This implements NFC engagement as defined in ISO/IEC 18013-5:2021.
+ *
+ * <p>Applications can instantiate a {@link NfcEngagementHelper} using
+ * {@link NfcEngagementHelper.Builder} to specify the NFC engagement
+ * type (static or negotiated) and other details, such as which device
+ * retrieval methods to offer with static handover.
+ *
+ * <p>If negotiated handover is used, {@link Listener#onTwoWayEngagementDetected()}
+ * is called when the NFC tag reader has selected the connection handover service.
+ *
+ * <p>When a remote mdoc reader connects to either one of the transports advertised
+ * via static handover or one of the transports offered by the reader via
+ * negotiated handover, {@link Listener#onDeviceConnected(DataTransport)} is called
+ * and the application can use the passed-in {@link DataTransport} to create a
+ * {@link com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper}
+ * to start the transaction.
+ */
 public class NfcEngagementHelper {
     private static final String TAG = "NfcEngagementHelper";
 
-    private final PresentationSession mPresentationSession;
     private final Context mContext;
-    private final KeyPair mEphemeralKeyPair;
     private final int mNegotiatedHandoverWtInt;
     private final int mNegotiatedHandoverMaxNumWaitingTimeExtensions;
+    private final PublicKey mEDeviceKey;
     private List<ConnectionMethod> mStaticHandoverConnectionMethods;
     private final DataTransportOptions mOptions;
     private final Listener mListener;
@@ -82,28 +101,34 @@ public class NfcEngagementHelper {
     private boolean mTestingDoNotStartTransports = false;
 
     private NfcEngagementHelper(@NonNull Context context,
-                                @NonNull PresentationSession presentationSession,
+                                @NonNull PublicKey eDeviceKey,
                                 @NonNull DataTransportOptions options,
                                 int negotiatedHandoverWtInt,
                                 int negotiatedHandoverMaxNumWaitingTimeExtensions,
                                 @NonNull Listener listener,
                                 @NonNull Executor executor) {
         mContext = context;
-        mPresentationSession = presentationSession;
+        mEDeviceKey = eDeviceKey;
         mNegotiatedHandoverWtInt = negotiatedHandoverWtInt;
         mNegotiatedHandoverMaxNumWaitingTimeExtensions = negotiatedHandoverMaxNumWaitingTimeExtensions;
         mListener = listener;
         mExecutor = executor;
-        mEphemeralKeyPair = mPresentationSession.getEphemeralKeyPair();
         mOptions = options;
         mEncodedDeviceEngagement = new EngagementGenerator(
-                mEphemeralKeyPair.getPublic(),
+                mEDeviceKey,
                 EngagementGenerator.ENGAGEMENT_VERSION_1_0
             ).generate();
         Logger.dCbor(TAG, "NFC DeviceEngagement", mEncodedDeviceEngagement);
         Logger.d(TAG, "Starting");
     }
 
+    /**
+     * Close all transports currently being listened on.
+     *
+     * <p>No callbacks will be done on a listener after calling this.
+     *
+     * <p>This method is idempotent so it is safe to call multiple times.
+     */
     public void close() {
         mInhibitCallbacks = true;
         if (mTransports != null) {
@@ -120,11 +145,27 @@ public class NfcEngagementHelper {
         mSelectedNfcFile = null;
     }
 
+    /**
+     * Gets the bytes of the {@code DeviceEngagement} CBOR.
+     *
+     * <p>This returns the bytes of the {@code DeviceEngagement} CBOR according to
+     * ISO/IEC 18013-5:2021 section 8.2.2.1.
+     *
+     * @return the bytes of the {@code DeviceEngagement} CBOR.
+     */
     public @NonNull
     byte[] getDeviceEngagement() {
         return mEncodedDeviceEngagement;
     }
 
+    /**
+     * Gets the bytes of the {@code Handover} CBOR.
+     *
+     * <p>This returns the bytes of the {@code Handover} CBOR according to
+     * ISO/IEC 18013-5:2021 section 9.1.5.1.
+     *
+     * @return the Handover used for NFC.
+     */
     public @NonNull
     byte[] getHandover() {
         return mEncodedHandover;
@@ -151,7 +192,7 @@ public class NfcEngagementHelper {
         mTimeStartedSettingUpTransports = System.currentTimeMillis();
 
         byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
-                Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()))));
+                Util.cborEncode(Util.cborBuildCoseKey(mEDeviceKey))));
 
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
@@ -239,10 +280,28 @@ public class NfcEngagementHelper {
         Logger.d(TAG, String.format(Locale.US, "All transports set up in %d msec", setupTimeMillis));
     }
 
+    /**
+     * Method to call when link has been lost or if a different NFC AID has been selected.
+     *
+     * This should be called from the application's implementation of
+     * {@link android.nfc.cardemulation.HostApduService#onDeactivated(int)}.
+     *
+     * @param reason Either {@link android.nfc.cardemulation.HostApduService#DEACTIVATION_LINK_LOSS}
+     *               or {@link android.nfc.cardemulation.HostApduService#DEACTIVATION_DESELECTED}.
+     */
     public void nfcOnDeactivated(int reason) {
         Logger.d(TAG, String.format(Locale.US, "nfcOnDeactivated reason %d", reason));
     }
 
+    /**
+     * Method to call when a command APDU has been received.
+     *
+     * This should be called from the application's implementation of
+     * {@link android.nfc.cardemulation.HostApduService#processCommandApdu(byte[], Bundle)}.
+     *
+     * @param apdu The APDU that was received from the remote device.
+     * @return a byte-array containing the response APDU.
+     */
     public @NonNull byte[] nfcProcessCommandApdu(@NonNull byte[] apdu) {
         byte[] ret = null;
 
@@ -666,7 +725,8 @@ public class NfcEngagementHelper {
             Logger.d(TAG, "Have connectionMethod: " + cm);
         }
 
-        // For now, just pick the first method...
+        // TODO: add a method to the Listener so the application can select which one to use.
+        //  For now we just pick the first method.
         ConnectionMethod method = disambiguatedCms.get(0);
         List<ConnectionMethod> listWithSelectedConnectionMethod = new ArrayList<>();
         listWithSelectedConnectionMethod.add(method);
@@ -772,20 +832,70 @@ public class NfcEngagementHelper {
         }
     }
 
+    /**
+     * Listener for {@link NfcEngagementHelper}.
+     */
     public interface Listener {
+        /**
+         * Called when two-way engagement has been detected.
+         *
+         * <p>If negotiated handover is used, this is called when the NFC tag reader has
+         * selected the connection handover service.
+         */
         void onTwoWayEngagementDetected();
+
+        /**
+         * Called when a remote mdoc reader is starting to connect.
+         */
         void onDeviceConnecting();
+
+        /**
+         * Called when a remote mdoc reader has connected.
+         *
+         * <p>The application should use the passed-in {@link DataTransport} with
+         * {@link com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper}
+         * to start the transaction.
+         *
+         * <p>After this is called, no more callbacks will be done on listener and all other
+         * listening transports will be closed. Calling {@link #close()} will not close the
+         * passed-in transport.
+         *
+         * @param transport a {@link DataTransport} for the connection to the remote mdoc reader.
+         */
         void onDeviceConnected(DataTransport transport);
+
+        /**
+         * Called when an irrecoverable error has occurred.
+         *
+         * @param error details of what error has occurred.
+         */
         void onError(@NonNull Throwable error);
     }
 
+    /**
+     * A builder for {@link NfcEngagementHelper}.
+     */
     public static class Builder {
         NfcEngagementHelper mHelper;
 
+        /**
+         * Creates a new builder for {@link QrEngagementHelper}.
+         *
+         * <p>Applications should call {@link #useNegotiatedHandover()} or
+         * {@link #useStaticHandover(List)} before calling {@link #build()}.
+         *
+         * @param context application context.
+         * @param eDeviceKey the public part of {@code EDeviceKey} for <em>mdoc session
+         *                   encryption</em> according to ISO/IEC 18013-5:2021 section 9.1.1.4.
+         * @param options set of options for creating {@link DataTransport} instances.
+         * @param listener the listener.
+         * @param executor a {@link Executor} to use with the listener.
+         */
         public Builder(@NonNull Context context,
-                       @NonNull PresentationSession presentationSession,
+                       @NonNull PublicKey eDeviceKey,
                        @NonNull DataTransportOptions options,
-                       @NonNull Listener listener, @NonNull Executor executor) {
+                       @NonNull Listener listener,
+                       @NonNull Executor executor) {
             // For now we just hardcode wt_int to 16 meaning the Minimum Waiting Time shall
             // be 8 ms as per the table in [TNEP] 4.1.6 Minimum Waiting Time. We also include
             // the maximum number of waiting time extensions to be set at 15 which is the
@@ -796,7 +906,7 @@ public class NfcEngagementHelper {
             int negotiatedHandoverMaxNumWaitingTimeExtensions = 15;
 
             mHelper = new NfcEngagementHelper(context,
-                    presentationSession,
+                    eDeviceKey,
                     options,
                     negotiatedHandoverWtInt,
                     negotiatedHandoverMaxNumWaitingTimeExtensions,
@@ -804,16 +914,39 @@ public class NfcEngagementHelper {
                     executor);
         }
 
-        public Builder useStaticHandover(@NonNull List<ConnectionMethod> connectionMethods) {
+        /**
+         * Configures the builder so NFC Static Handover is used.
+         *
+         * @param connectionMethods a list of connection methods to use.
+         * @return the builder.
+         */
+        public @NonNull Builder useStaticHandover(@NonNull List<ConnectionMethod> connectionMethods) {
             mHelper.mStaticHandoverConnectionMethods = ConnectionMethod.combine(connectionMethods);
             return this;
         }
 
-        public Builder useNegotiatedHandover() {
+        /**
+         * Configures the builder so NFC Negotiated Handover is used.
+         *
+         * <p>Note: there is currently no way to specify which of the connection
+         * methods offered by the mdoc reader should be used. This will be added
+         * in a future version.
+         *
+         * @return the buider.
+         */
+        public @NonNull Builder useNegotiatedHandover() {
             mHelper.mUsingNegotiatedHandover = true;
             return this;
         }
 
+        /**
+         * Builds the {@link NfcEngagementHelper} and starts listening for connections.
+         *
+         * <p>The application should forward APDUs using {@link #nfcProcessCommandApdu(byte[])}
+         * and deactivation events using {@link #nfcOnDeactivated(int)}.
+         *
+         * @return the helper, ready to be used.
+         */
         public @NonNull NfcEngagementHelper build() {
             if (mHelper.mUsingNegotiatedHandover && mHelper.mStaticHandoverConnectionMethods != null) {
                 throw new IllegalStateException("Can't use static and negotiated handover at the same time.");

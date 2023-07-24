@@ -93,7 +93,7 @@ public class NfcEnagementHelperTest {
         Executor executor = Executors.newSingleThreadExecutor();
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
-                session,
+                session.getEphemeralKeyPair().getPublic(),
                 new DataTransportOptions.Builder().build(),
                 listener,
                 executor);
@@ -229,7 +229,7 @@ public class NfcEnagementHelperTest {
         Executor executor = Executors.newSingleThreadExecutor();
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
-                session,
+                session.getEphemeralKeyPair().getPublic(),
                 new DataTransportOptions.Builder().build(),
                 listener,
                 executor);

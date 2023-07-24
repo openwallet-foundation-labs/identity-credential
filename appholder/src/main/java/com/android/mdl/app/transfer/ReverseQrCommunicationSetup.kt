@@ -10,6 +10,7 @@ import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.legacy.PresentationSession
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
+import java.security.PublicKey
 
 class ReverseQrCommunicationSetup(
     private val context: Context,
@@ -22,6 +23,11 @@ class ReverseQrCommunicationSetup(
     private val session = SessionSetup(CredentialStore(context)).createSession()
     private val connectionSetup = ConnectionSetup(context)
     private val presentationListener = object : DeviceRetrievalHelper.Listener {
+        override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
+            log("DeviceRetrievalHelper Listener (QR): OnEReaderKeyReceived")
+            session.setSessionTranscript(presentation!!.sessionTranscript)
+            session.setReaderEphemeralPublicKey(eReaderKey)
+        }
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             onNewRequest(deviceRequestBytes)
@@ -72,8 +78,9 @@ class ReverseQrCommunicationSetup(
             context,
             presentationListener,
             context.mainExecutor(),
-            session
-        ).useReverseEngagement(transport, encodedReaderEngagement, origins)
+            session.ephemeralKeyPair
+        )
+        builder.useReverseEngagement(transport, encodedReaderEngagement, origins)
         presentation = builder.build()
         onPresentationReady(session, presentation!!)
     }

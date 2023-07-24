@@ -33,6 +33,7 @@ import com.android.mdl.app.transfer.ConnectionSetup
 import com.android.mdl.app.transfer.CredentialStore
 import com.android.mdl.app.transfer.SessionSetup
 import com.android.mdl.app.transfer.TransferManager
+import java.security.PublicKey
 
 
 class NfcEngagementHandler : HostApduService() {
@@ -78,7 +79,7 @@ class NfcEngagementHandler : HostApduService() {
                 applicationContext,
                 presentationListener,
                 applicationContext.mainExecutor(),
-                session
+                session.ephemeralKeyPair
             )
             builder.useForwardEngagement(
                 transport,
@@ -99,6 +100,11 @@ class NfcEngagementHandler : HostApduService() {
     }
 
     private val presentationListener = object : DeviceRetrievalHelper.Listener {
+        override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
+            log("DeviceRetrievalHelper Listener (NFC): OnEReaderKeyReceived")
+            session.setSessionTranscript(presentation!!.sessionTranscript)
+            session.setReaderEphemeralPublicKey(eReaderKey)
+        }
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             log("Presentation Listener: OnDeviceRequest")
@@ -127,7 +133,7 @@ class NfcEngagementHandler : HostApduService() {
         val connectionSetup = ConnectionSetup(applicationContext)
         val builder = NfcEngagementHelper.Builder(
             applicationContext,
-            session,
+            session.ephemeralKeyPair.public,
             connectionSetup.getConnectionOptions(),
             nfcEngagementListener,
             applicationContext.mainExecutor())

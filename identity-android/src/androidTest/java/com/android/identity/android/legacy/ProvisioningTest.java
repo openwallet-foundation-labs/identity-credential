@@ -601,7 +601,7 @@ public class ProvisioningTest {
         }
 
         KeyPair ephemeralKeyPair = credential.createEphemeralKeyPair();
-        KeyPair readerEphemeralKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         credential.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
         byte[] sessionTranscript = Util.buildSessionTranscript(ephemeralKeyPair);
 
@@ -621,7 +621,7 @@ public class ProvisioningTest {
 
         // Now try with a different (but still valid) sessionTranscript - this should fail with
         // a RuntimeException
-        KeyPair otherEphemeralKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair otherEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] otherSessionTranscript = Util.buildSessionTranscript(otherEphemeralKeyPair);
         try {
             credential.setSessionTranscript(otherSessionTranscript);

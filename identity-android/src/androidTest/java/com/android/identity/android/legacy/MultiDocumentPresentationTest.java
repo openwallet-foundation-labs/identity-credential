@@ -207,7 +207,7 @@ public class MultiDocumentPresentationTest {
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
 
         KeyPair ephemeralKeyPair = session.getEphemeralKeyPair();
-        KeyPair readerEphemeralKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         session.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
         byte[] sessionTranscript = Util.buildSessionTranscript(ephemeralKeyPair);
         session.setSessionTranscript(sessionTranscript);

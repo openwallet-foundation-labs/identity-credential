@@ -172,28 +172,4 @@ public class Constants {
             })
     public @interface BleDataRetrievalOption {
     }
-
-    // TODO: Replace using KeystoreEngine.EcCurve once the keystore-abstraction branch lands
-    /**
-     * An annotation used to specify allowed curve identifiers.
-     *
-     * <p>All curve identifiers are from the
-     * <a href="https://www.iana.org/assignments/cose/cose.xhtml">
-     * IANA COSE registry</a>.
-     */
-    @Retention(SOURCE)
-    @IntDef(value = {
-            EC_CURVE_P256,
-            EC_CURVE_P384,
-            EC_CURVE_P521,
-            EC_CURVE_BRAINPOOLP256R1,
-            EC_CURVE_BRAINPOOLP320R1,
-            EC_CURVE_BRAINPOOLP384R1,
-            EC_CURVE_BRAINPOOLP512R1,
-            EC_CURVE_ED25519,
-            EC_CURVE_ED448
-    })
-    public @interface EcCurve {
-    }
-
 }

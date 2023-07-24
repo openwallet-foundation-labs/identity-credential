@@ -244,7 +244,7 @@ public class DeviceResponseGeneratorOnAndroidTest {
                 Arrays.asList("given_name", "family_name", "some_number", "raw_cbor_1", "raw_cbor_2"));
         issuerSignedEntriesToRequest.put(AAMVA_NAMESPACE, Collections.singletonList("real_id"));
 
-        KeyPair readerEphemeralKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
 
         PresentationSession session = store.createPresentationSession(
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
