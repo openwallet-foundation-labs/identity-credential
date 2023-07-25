@@ -26,7 +26,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.biometric.BiometricPrompt;
 
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
+import com.android.identity.credential.Credential;
+import com.android.identity.credential.CredentialStore;
+import com.android.identity.credential.NameSpacedData;
 import com.android.identity.internal.Util;
+import com.android.identity.securearea.SecureArea;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -816,6 +821,54 @@ class KeystoreIdentityCredential extends IdentityCredential {
     public @NonNull
     List<Calendar> getAuthenticationDataExpirations() {
         return mData.getAuthKeyExpirations();
+    }
+
+    // tested in identity-android/src/androidTest/java/com/android/identity/android/legacy/MigrateFromKeystoreICStoreTest.java
+    /**
+     * Gathers all the {@link PersonalizationData.NamespaceData} from this credential and creates a
+     * new {@link Credential} with this data inside the given {@link CredentialStore}. The key used
+     * by the {@link CredentialData} in this credential is preserved, and this method will also pass
+     * metadata for this key to the new {@link Credential} for future usage. Once the new
+     * {@link Credential} is created, this method will delete the file with encrypted
+     * {@link CredentialData} as well as any per reader session keys, acp timeout keys, and auth keys.
+     *
+     * <p> The returned {@link Credential} will also have the same name as this credential, so it can
+     * be retrieved from the given {@link CredentialStore} using
+     * {@link CredentialStore#lookupCredential(String)} with the same name.
+     *
+     * <p> In total, the data within each namespace and the credential key will be migrated to the
+     * new {@link Credential}, while the access control profile information, per reader session/acp
+     * timeout/auth keys will not be transferred.
+     *
+     * @param credentialStore the credential store where the new {@link Credential} should be stored.
+     * @return the new {@link Credential}.
+     */
+    public @NonNull Credential migrateToCredentialStore(@NonNull CredentialStore credentialStore) {
+        loadData();
+
+        if (mData == null) {
+            throw new IllegalStateException("The credential has been deleted prior to migration.");
+        }
+        String aliasForOldCredKey = mData.getCredentialKeyAlias();
+        AndroidKeystoreSecureArea.CreateKeySettings.Builder keySettingsBuilder = Utility.extractKeySettings(aliasForOldCredKey);
+        keySettingsBuilder.setEcCurve(SecureArea.EC_CURVE_P256);
+
+        Credential newCred = credentialStore.createCredentialWithExistingKey(mCredentialName,
+                keySettingsBuilder.build(), aliasForOldCredKey);
+
+        NameSpacedData.Builder nsBuilder = new NameSpacedData.Builder();
+        for (PersonalizationData.NamespaceData namespaceData : mData.getNamespaceDatas()) {
+            for (String entryName : namespaceData.getEntryNames()) {
+                byte[] value = namespaceData.getEntryValue(entryName);
+                nsBuilder.putEntry(namespaceData.mNamespace, entryName, value);
+            }
+        }
+
+        newCred.setNameSpacedData(nsBuilder.build());
+
+        CredentialData.deleteForMigration(mContext, mStorageDirectory, mCredentialName);
+
+        return newCred;
     }
 
 }

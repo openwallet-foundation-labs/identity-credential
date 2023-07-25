@@ -78,6 +78,28 @@ public class CredentialStore {
     }
 
     /**
+     * Creates a new credential using a key which already exists in some keystore.
+     *
+     * <p>If a credential with the given name already exists, it will be overwritten by the
+     * newly created credential.
+     *
+     * @param name name of the credential.
+     * @param credentialKeySettings the settings to use for CredentialKey.
+     * @param existingKeyAlias the alias of the existing key.
+     * @return A newly created credential.
+     */
+    public @NonNull Credential createCredentialWithExistingKey(
+            @NonNull String name,
+            @NonNull SecureArea.CreateKeySettings credentialKeySettings,
+            @NonNull String existingKeyAlias) {
+        return Credential.createWithExistingKey(mStorageEngine,
+                mSecureAreaRepository,
+                name,
+                credentialKeySettings,
+                existingKeyAlias);
+    }
+
+    /**
      * Looks up a previously created credential.
      *
      * @param name the name of the credential.

@@ -176,6 +176,11 @@ public class AndroidKeystoreSecureArea implements SecureArea {
     public void createKey(@NonNull String alias,
                           @NonNull SecureArea.CreateKeySettings createKeySettings) {
         CreateKeySettings aSettings = (CreateKeySettings) createKeySettings;
+        if (aSettings.getExistingKeyAlias() != null) {
+            createFromExistingKey(aSettings.getExistingKeyAlias(), aSettings);
+            return;
+        }
+
         KeyPairGenerator kpg = null;
         try {
             kpg = KeyPairGenerator.getInstance(
@@ -310,6 +315,26 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         Logger.d(TAG, "EC key with alias '" + alias + "' created");
 
         saveKeyMetadata(alias, aSettings, attestation);
+    }
+
+    private void createFromExistingKey(@NonNull String existingKeyAlias, CreateKeySettings aSettings) {
+        List<X509Certificate> attestation = new ArrayList<>();
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+            Certificate[] certificates = ks.getCertificateChain(existingKeyAlias);
+            for (Certificate certificate : certificates) {
+                attestation.add((X509Certificate) certificate);
+            }
+        } catch (CertificateException
+                 | KeyStoreException
+                 | IOException
+                 | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Error generating certificate chain", e);
+        }
+
+        saveKeyMetadata(existingKeyAlias, aSettings, attestation);
+        Logger.d(TAG, "EC key with alias '" + existingKeyAlias + "' transferred");
     }
 
     @Override
@@ -835,6 +860,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         private final String mAttestKeyAlias;
         private final Timestamp mValidFrom;
         private final Timestamp mValidUntil;
+        private final String mExistingKeyAlias;
 
         private CreateKeySettings(@KeyPurpose int keyPurpose,
                                   @EcCurve int ecCurve,
@@ -845,7 +871,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                                   boolean useStrongBox,
                                   @Nullable String attestKeyAlias,
                                   @Nullable Timestamp validFrom,
-                                  @Nullable Timestamp validUntil) {
+                                  @Nullable Timestamp validUntil,
+                                  @Nullable String existingKeyAlias) {
             super(AndroidKeystoreSecureArea.class);
             mKeyPurposes = keyPurpose;
             mEcCurve = ecCurve;
@@ -857,6 +884,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             mAttestKeyAlias = attestKeyAlias;
             mValidFrom = validFrom;
             mValidUntil = validUntil;
+            mExistingKeyAlias = existingKeyAlias;
         }
 
         /**
@@ -951,6 +979,14 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         }
 
         /**
+         * If the CreateKeySettings represents a key which already exists, returns the alias of the
+         * key which it represents. Otherwise, returns {@code null}.
+         *
+         * @return the alias or {@code null} if not set.
+         */
+        public @Nullable String getExistingKeyAlias() { return mExistingKeyAlias; }
+
+        /**
          * A builder for {@link CreateKeySettings}.
          */
         public static class Builder {
@@ -964,6 +1000,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             private String mAttestKeyAlias;
             private Timestamp mValidFrom;
             private Timestamp mValidUntil;
+            private String mExistingKeyAlias;
 
             /**
              * Constructor.
@@ -1050,7 +1087,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             /**
              * Method to specify if StrongBox Android Keystore should be used, if available.
              *
-             * By default StrongBox isn't used.
+             * <p>By default StrongBox isn't used.
              *
              * @param useStrongBox Whether to use StrongBox.
              * @return the builder.
@@ -1092,6 +1129,21 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             }
 
             /**
+             * Method to specify both (1) if the {@link CreateKeySettings} should represent a key
+             * which already exists, and (2) the alias of said key.
+             *
+             * <p>By default the alias is <code>null</code>, indicating a new key should be created
+             * rather than repurposing an existing key.
+             *
+             * @param alias the alias of the key.
+             * @return the builder.
+             */
+            public @NonNull Builder setExistingKeyAlias(@NonNull String alias) {
+                mExistingKeyAlias = alias;
+                return this;
+            }
+
+            /**
              * Builds the {@link CreateKeySettings}.
              *
              * @return a new {@link CreateKeySettings}.
@@ -1107,7 +1159,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                         mUseStrongBox,
                         mAttestKeyAlias,
                         mValidFrom,
-                        mValidUntil);
+                        mValidUntil,
+                        mExistingKeyAlias);
             }
         }
 
