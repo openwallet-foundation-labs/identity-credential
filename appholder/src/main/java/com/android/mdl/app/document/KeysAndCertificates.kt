@@ -51,8 +51,8 @@ object KeysAndCertificates {
 
     fun getMdlDsKeyPair(context: Context) =
         KeyPair(
-            getPublicKey(context, R.raw.google_mdl_ds_pubkey),
-            getPrivateKey(context, R.raw.google_mdl_ds_privkey)
+            getPublicKey(context, R.raw.google_mdl_ds_cert_iaca_2_pubkey),
+            getPrivateKey(context, R.raw.google_mdl_ds_cert_iaca_2_privkey)
         )
 
     fun getMekbDsKeyPair(context: Context) =
@@ -67,7 +67,7 @@ object KeysAndCertificates {
             getPrivateKey(context, R.raw.google_micov_ds_privkey)
         )
 
-    fun getMdlDsCertificate(context: Context) = getCertificate(context, R.raw.google_mdl_ds_cert)
+    fun getMdlDsCertificate(context: Context) = getCertificate(context, R.raw.google_mdl_ds_cert_iaca_2)
 
     fun getMekbDsCertificate(context: Context) = getCertificate(context, R.raw.google_mekb_ds_cert)
 
