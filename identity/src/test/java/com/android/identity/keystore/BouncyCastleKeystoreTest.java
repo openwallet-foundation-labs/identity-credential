@@ -45,7 +45,7 @@ public class BouncyCastleKeystoreTest {
 
     @Before
     public void setup() {
-        Security.addProvider(new BouncyCastleProvider());
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
     }
 
     @Test

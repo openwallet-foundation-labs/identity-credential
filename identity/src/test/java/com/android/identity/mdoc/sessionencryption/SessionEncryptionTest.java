@@ -23,7 +23,10 @@ import com.android.identity.keystore.KeystoreEngine;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.util.Constants;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -31,6 +34,7 @@ import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.util.OptionalLong;
 
 import co.nstant.in.cbor.model.Array;
@@ -38,6 +42,16 @@ import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 
 public class SessionEncryptionTest {
+
+    @Before
+    public void setUp() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+    }
+
+    @After
+    public void tearDown() {
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
+    }
 
     @Test
     public void testReaderAgainstVectors() {
