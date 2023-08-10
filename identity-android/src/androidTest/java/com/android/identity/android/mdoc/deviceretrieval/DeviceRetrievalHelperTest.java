@@ -52,6 +52,7 @@ import com.android.identity.mdoc.response.DeviceResponseParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
+import com.android.identity.util.Logger;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -63,8 +64,10 @@ import org.junit.runner.RunWith;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigInteger;
+import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.PublicKey;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
@@ -208,7 +211,7 @@ public class DeviceRetrievalHelperTest {
                 };
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
-                session,
+                session.getEphemeralKeyPair().getPublic(),
                 new DataTransportOptions.Builder().build(),
                 qrHelperListener,
                 executor)
@@ -218,7 +221,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -316,6 +319,16 @@ public class DeviceRetrievalHelperTest {
                 new DeviceRetrievalHelper.Listener() {
 
                     @Override
+                    public void onEReaderKeyReceived(@NonNull PublicKey eReaderKey) {
+                        try {
+                            session.setSessionTranscript(presentation[0].getSessionTranscript());
+                            session.setReaderEphemeralPublicKey(eReaderKey);
+                        } catch (InvalidKeyException e) {
+                            throw new AssertionError(e);
+                        }
+                    }
+
+                    @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
                         DeviceRequestParser parser = new DeviceRequestParser();
                         parser.setDeviceRequest(deviceRequestBytes);
@@ -399,7 +412,7 @@ public class DeviceRetrievalHelperTest {
                 context,
                 listener,
                 context.getMainExecutor(),
-                session)
+                session.getEphemeralKeyPair())
                 .useForwardEngagement(proverTransport,
                         qrHelper.getDeviceEngagement(),
                         qrHelper.getHandover())
@@ -479,7 +492,7 @@ public class DeviceRetrievalHelperTest {
                 };
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
-                session,
+                session.getEphemeralKeyPair().getPublic(),
                 new DataTransportOptions.Builder().build(),
                 qrHelperListener,
                 executor)
@@ -489,7 +502,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -563,6 +576,14 @@ public class DeviceRetrievalHelperTest {
         final DeviceRetrievalHelper[] presentation = {null};
         DeviceRetrievalHelper.Listener listener =
                 new DeviceRetrievalHelper.Listener() {
+                    @Override
+                    public void onEReaderKeyReceived(@NonNull PublicKey eReaderKey) {
+                        try {
+                            session.setReaderEphemeralPublicKey(eReaderKey);
+                        } catch (InvalidKeyException e) {
+                            throw new AssertionError(e);
+                        }
+                    }
 
                     @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
@@ -586,7 +607,7 @@ public class DeviceRetrievalHelperTest {
                 context,
                 listener,
                 context.getMainExecutor(),
-                session)
+                session.getEphemeralKeyPair())
                 .useForwardEngagement(proverTransport,
                         qrHelper.getDeviceEngagement(),
                         qrHelper.getHandover())
@@ -648,7 +669,7 @@ public class DeviceRetrievalHelperTest {
                 };
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
-                session,
+                session.getEphemeralKeyPair().getPublic(),
                 new DataTransportOptions.Builder().build(),
                 qrHelperListener,
                 executor)
@@ -658,7 +679,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -737,6 +758,14 @@ public class DeviceRetrievalHelperTest {
         final DeviceRetrievalHelper[] presentation = {null};
         DeviceRetrievalHelper.Listener listener =
                 new DeviceRetrievalHelper.Listener() {
+                    @Override
+                    public void onEReaderKeyReceived(@NonNull PublicKey eReaderKey) {
+                        try {
+                            session.setReaderEphemeralPublicKey(eReaderKey);
+                        } catch (InvalidKeyException e) {
+                            throw new AssertionError(e);
+                        }
+                    }
 
                     @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
@@ -760,7 +789,7 @@ public class DeviceRetrievalHelperTest {
                 context,
                 listener,
                 context.getMainExecutor(),
-                session)
+                session.getEphemeralKeyPair())
                 .useForwardEngagement(proverTransport,
                         qrHelper.getDeviceEngagement(),
                         qrHelper.getHandover())
@@ -820,7 +849,7 @@ public class DeviceRetrievalHelperTest {
                 };
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
-                session,
+                session.getEphemeralKeyPair().getPublic(),
                 new DataTransportOptions.Builder().build(),
                 qrHelperListener,
                 executor)
@@ -830,7 +859,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
-        KeyPair eReaderKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -891,6 +920,15 @@ public class DeviceRetrievalHelperTest {
         DeviceRetrievalHelper.Listener listener =
                 new DeviceRetrievalHelper.Listener() {
                     @Override
+                    public void onEReaderKeyReceived(@NonNull PublicKey eReaderKey) {
+                        try {
+                            session.setReaderEphemeralPublicKey(eReaderKey);
+                        } catch (InvalidKeyException e) {
+                            throw new AssertionError(e);
+                        }
+                    }
+
+                    @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
                         // Don't respond yet.. simulate the holder taking infinity to respond.
                         // instead, we'll simply wait for the verifier to disconnect instead.
@@ -912,7 +950,7 @@ public class DeviceRetrievalHelperTest {
                 context,
                 listener,
                 context.getMainExecutor(),
-                session)
+                session.getEphemeralKeyPair())
                 .useForwardEngagement(proverTransport,
                     qrHelper.getDeviceEngagement(),
                     qrHelper.getHandover())

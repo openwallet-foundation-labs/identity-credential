@@ -19,6 +19,7 @@ package com.android.identity.mdoc.sessionencryption;
 import com.android.identity.TestUtilities;
 import com.android.identity.TestVectors;
 import com.android.identity.internal.Util;
+import com.android.identity.keystore.KeystoreEngine;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.util.Constants;
 
@@ -171,10 +172,10 @@ public class SessionEncryptionTest {
                 sessionEncryptionDevice.encryptMessage(null, OptionalLong.of(20)));
     }
 
-    private void testCurve(@Constants.EcCurve int curve) {
-        KeyPair eReaderKeyPair = TestUtilities.createEphemeralKeyPair(curve);
+    private void testCurve(@KeystoreEngine.EcCurve int curve) {
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(curve);
         PublicKey eReaderKeyPublic = eReaderKeyPair.getPublic();
-        KeyPair eDeviceKeyPair = TestUtilities.createEphemeralKeyPair(curve);
+        KeyPair eDeviceKeyPair = Util.createEphemeralKeyPair(curve);
         PublicKey eDeviceKeyPublic = eDeviceKeyPair.getPublic();
         PrivateKey eDeviceKeyPrivate = eDeviceKeyPair.getPrivate();
 
@@ -254,7 +255,7 @@ public class SessionEncryptionTest {
         testCurve(Constants.EC_CURVE_BRAINPOOLP512R1);
     }
 
-    // TODO add these back in after Keystore abstraction is merged
+    // TODO: remove @Ignore once ED25519 / ED448 is no longer buggy
     @Ignore
     @Test
     public void testEd25519() {

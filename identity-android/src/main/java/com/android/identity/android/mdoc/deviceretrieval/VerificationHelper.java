@@ -30,6 +30,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.android.identity.keystore.KeystoreEngine;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.android.legacy.Utility;
 import com.android.identity.android.mdoc.transport.DataTransport;
@@ -1264,7 +1265,7 @@ public class VerificationHelper {
             mHelper.mContext = context;
             mHelper.mListener = listener;
             mHelper.mListenerExecutor = executor;
-            mHelper.mEphemeralKeyPair = Utility.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            mHelper.mEphemeralKeyPair = Util.createEphemeralKeyPair(KeystoreEngine.EC_CURVE_P256);
         }
 
         /**

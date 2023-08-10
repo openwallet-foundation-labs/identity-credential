@@ -5,8 +5,10 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.legacy.PresentationSession
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper
+import com.android.identity.keystore.KeystoreEngine
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
+import java.security.PublicKey
 
 class QrCommunicationSetup(
     private val context: Context,
@@ -44,7 +46,7 @@ class QrCommunicationSetup(
                 context,
                 deviceRetrievalHelperListener,
                 context.mainExecutor(),
-                session
+                session.ephemeralKeyPair
             )
             builder.useForwardEngagement(
                 transport,
@@ -63,6 +65,11 @@ class QrCommunicationSetup(
     }
 
     private val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
+        override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
+            log("DeviceRetrievalHelper Listener (QR): OnEReaderKeyReceived")
+            session.setSessionTranscript(deviceRetrievalHelper!!.sessionTranscript)
+            session.setReaderEphemeralPublicKey(eReaderKey)
+        }
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             log("DeviceRetrievalHelper Listener (QR): OnDeviceRequest")
@@ -90,7 +97,7 @@ class QrCommunicationSetup(
         qrEngagement =
             QrEngagementHelper.Builder(
                 context,
-                session,
+                session.ephemeralKeyPair.public,
                 connectionSetup.getConnectionOptions(),
                 qrEngagementListener,
                 context.mainExecutor())
