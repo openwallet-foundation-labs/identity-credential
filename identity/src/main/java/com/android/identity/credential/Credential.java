@@ -23,15 +23,17 @@ import com.android.identity.internal.Util;
 import com.android.identity.keystore.KeystoreEngine;
 import com.android.identity.keystore.KeystoreEngineRepository;
 import com.android.identity.storage.StorageEngine;
+import com.android.identity.util.ApplicationData;
 import com.android.identity.util.Logger;
+import com.android.identity.util.SimpleApplicationData;
 import com.android.identity.util.Timestamp;
 
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.CborDecoder;
@@ -39,6 +41,7 @@ import co.nstant.in.cbor.CborException;
 import co.nstant.in.cbor.builder.ArrayBuilder;
 import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.Array;
+import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnicodeString;
 
@@ -59,8 +62,8 @@ import co.nstant.in.cbor.model.UnicodeString;
  * set and get using {@link #setNameSpacedData(NameSpacedData)} and
  * {@link #getNameSpacedData()}. Typically this is sent by the issuer at
  * credential creation and when data in the credential has changed. Additionally,
- * the application can set/get any data of data it wants using
- * {@link #setApplicationData(String, byte[])} and {@link #getApplicationData(String)}.
+ * the application can set/get any data of data it wants by using
+ * {@link #getApplicationData()} and modifying the returned {@link ApplicationData}.
  * Both kinds of data is persisted for the life-time of the application.
  *
  * <p>Each credential may have a number of <em>Authentication Keys</em>
@@ -109,7 +112,7 @@ public class Credential {
 
     private NameSpacedData mNameSpacedData = new NameSpacedData.Builder().build();
     private KeystoreEngine mKeystoreEngine;
-    private LinkedHashMap<String, byte[]> mApplicationData = new LinkedHashMap<>();
+    private SimpleApplicationData mApplicationData = new SimpleApplicationData(this::saveCredential);
 
     private List<PendingAuthenticationKey> mPendingAuthenticationKeys = new ArrayList<>();
     private List<AuthenticationKey> mAuthenticationKeys = new ArrayList<>();
@@ -151,12 +154,7 @@ public class Credential {
         map.put("credentialKeyAlias", mCredentialKeyAlias);
         map.put(new UnicodeString("nameSpacedData"), mNameSpacedData.toCbor());
 
-        MapBuilder<MapBuilder<CborBuilder>> applicationDataBuilder =
-                map.putMap("applicationData");
-        for (String key : mApplicationData.keySet()) {
-            byte[] value = mApplicationData.get(key);
-            applicationDataBuilder.put(key, value);
-        }
+        map.put("applicationData", mApplicationData.encodeAsCbor());
 
         ArrayBuilder<MapBuilder<CborBuilder>> pendingAuthenticationKeysArrayBuilder =
                 map.putArray("pendingAuthenticationKeys");
@@ -220,16 +218,12 @@ public class Credential {
         }
         mNameSpacedData = NameSpacedData.fromCbor(nameSpacedDataItem);
 
-        mApplicationData = new LinkedHashMap<>();
         DataItem applicationDataDataItem = map.get(new UnicodeString("applicationData"));
-        if (!(applicationDataDataItem instanceof co.nstant.in.cbor.model.Map)) {
-            throw new IllegalStateException("applicationData not found or not map");
+        if (!(applicationDataDataItem instanceof co.nstant.in.cbor.model.ByteString)) {
+            throw new IllegalStateException("applicationData not found or not byte[]");
         }
-        for (DataItem keyItem : ((co.nstant.in.cbor.model.Map) applicationDataDataItem).getKeys()) {
-            String key = ((UnicodeString) keyItem).getString();
-            byte[] value = Util.cborMapExtractByteString(applicationDataDataItem, key);
-            mApplicationData.put(key, value);
-        }
+        mApplicationData = SimpleApplicationData.decodeFromCbor(
+                ((ByteString) applicationDataDataItem).getBytes(), this::saveCredential);
 
         mPendingAuthenticationKeys = new ArrayList<>();
         DataItem pendingAuthenticationKeysDataItem = map.get(new UnicodeString("pendingAuthenticationKeys"));
@@ -333,71 +327,17 @@ public class Credential {
     }
 
     /**
-     * Sets application specific data.
-     *
-     * <p>This allows applications to store additional data it wants to associate with the
-     * credential, for example the document type (e.g. DocType for 18013-5 credentials),
-     * user-visible name, logos/background, state, and so on.
-     *
-     * <p>Use {@link #getApplicationData(String)} to read the data back.
-     *
-     * @param key the key for the data.
-     * @param value the value or {@code null} to remove.
-     */
-    public void setApplicationData(@NonNull String key, @Nullable byte[] value) {
-        if (value == null) {
-            mApplicationData.remove(key);
-        } else {
-            mApplicationData.put(key, value);
-        }
-        saveCredential();
-    }
-
-    /**
-     * Sets application specific data as a string.
-     *
-     * <p>Like {@link #setApplicationData(String, byte[])} but encodes the given value
-     * as an UTF-8 string before storing it.
-     *
-     * @param key the key for the data.
-     * @param value the value or {@code null} to remove.
-     */
-    public void setApplicationDataString(@NonNull String key, @Nullable String value) {
-        if (value == null) {
-            mApplicationData.remove(key);
-        } else {
-            mApplicationData.put(key, value.getBytes(StandardCharsets.UTF_8));
-        }
-        saveCredential();
-    }
-
-    /**
      * Gets application specific data.
      *
-     * <p>Gets data previously stored with {@link #getApplicationData(String)}.
+     * <p>Use this object to store additional data an application may want to associate with the
+     * credential, for example the document type (e.g. DocType for 18013-5 credentials),
+     * user-visible name, logos/background, state, and so on. Setters and associated getters are
+     * enumerated in the {@link ApplicationData} interface.
      *
-     * @param key the key for the data.
-     * @return the value or {@code null} if there is no value for the given key.
+     * @return application specific data.
      */
-    public @Nullable byte[] getApplicationData(@NonNull String key) {
-        return mApplicationData.get(key);
-    }
-
-    /**
-     * Gets application specific data as a string.
-     *
-     * <p>Like {@link #getApplicationData(String)} but decodes the value as
-     * an UTF-8 string before returning it.
-     *
-     * @param key the key for the data.
-     * @return the value or {@code null} if there is no value for the given key.
-     */
-    public @Nullable String getApplicationDataString(@NonNull String key) {
-        byte[] value = mApplicationData.get(key);
-        if (value == null) {
-            return null;
-        }
-        return new String(value, StandardCharsets.UTF_8);
+    public @NonNull ApplicationData getApplicationData() {
+        return mApplicationData;
     }
 
     /**
@@ -451,7 +391,7 @@ public class Credential {
         private Credential mCredential;
         private String mKeystoreEngineName;
         private String mReplacementAlias;
-        private LinkedHashMap<String, byte[]> mApplicationData = new LinkedHashMap<>();
+        private SimpleApplicationData mApplicationData;
 
         static AuthenticationKey create(
                 @NonNull PendingAuthenticationKey pendingAuthenticationKey,
@@ -581,13 +521,8 @@ public class Credential {
                     .put("usageCount", mUsageCount)
                     .put("data", mData)
                     .put("validFrom", mValidFrom.toEpochMilli())
-                    .put("validUntil", mValidUntil.toEpochMilli());
-            MapBuilder<MapBuilder<CborBuilder>> applicationDataBuilder =
-                    mapBuilder.putMap("applicationData");
-            for (String key : mApplicationData.keySet()) {
-                byte[] value = mApplicationData.get(key);
-                applicationDataBuilder.put(key, value);
-            }
+                    .put("validUntil", mValidUntil.toEpochMilli())
+                    .put("applicationData", mApplicationData.encodeAsCbor());
             if (mReplacementAlias != null) {
                 mapBuilder.put("replacementAlias", mReplacementAlias);
             }
@@ -606,17 +541,14 @@ public class Credential {
             if (Util.cborMapHasKey(dataItem, "replacementAlias")) {
                 ret.mReplacementAlias = Util.cborMapExtractString(dataItem, "replacementAlias");
             }
-            ret.mApplicationData = new LinkedHashMap<>();
-            DataItem applicationDataDataItem = Util.cborMapExtractMap(dataItem, "applicationData");
-            if (!(applicationDataDataItem instanceof co.nstant.in.cbor.model.Map)) {
-                throw new IllegalStateException("applicationData not found or not map");
-            }
-            for (DataItem keyItem : ((co.nstant.in.cbor.model.Map) applicationDataDataItem).getKeys()) {
-                String key = ((UnicodeString) keyItem).getString();
-                byte[] value = Util.cborMapExtractByteString(applicationDataDataItem, key);
-                ret.mApplicationData.put(key, value);
+            DataItem applicationDataDataItem = Util.cborMapExtract(dataItem, "applicationData");
+            if (!(applicationDataDataItem instanceof co.nstant.in.cbor.model.ByteString)) {
+                throw new IllegalStateException("applicationData not found or not byte[]");
             }
             ret.mCredential = credential;
+            ret.mApplicationData = SimpleApplicationData.decodeFromCbor(
+                    ((ByteString) applicationDataDataItem).getBytes(),
+                    () -> ret.mCredential.saveCredential());
             return ret;
         }
 
@@ -647,70 +579,16 @@ public class Credential {
         }
 
         /**
-         * Sets application specific data.
-         *
-         * <p>This allows applications to store additional data it wants to associate with the
-         * pending authentication key.
-         *
-         * <p>Use {@link #getApplicationData(String)} to read the data back.
-         *
-         * @param key the key for the data.
-         * @param value the value or {@code null} to remove.
-         */
-        public void setApplicationData(@NonNull String key, @Nullable byte[] value) {
-            if (value == null) {
-                mApplicationData.remove(key);
-            } else {
-                mApplicationData.put(key, value);
-            }
-            mCredential.saveCredential();
-        }
-
-        /**
-         * Sets application specific data as a string.
-         *
-         * <p>Like {@link #setApplicationData(String, byte[])} but encodes the given value
-         * as an UTF-8 string before storing it.
-         *
-         * @param key the key for the data.
-         * @param value the value or {@code null} to remove.
-         */
-        public void setApplicationDataString(@NonNull String key, @Nullable String value) {
-            if (value == null) {
-                mApplicationData.remove(key);
-            } else {
-                mApplicationData.put(key, value.getBytes(StandardCharsets.UTF_8));
-            }
-            mCredential.saveCredential();
-        }
-
-        /**
          * Gets application specific data.
          *
-         * <p>Gets data previously stored with {@link #getApplicationData(String)}.
+         * <p>Use this object to store additional data an application may want to associate
+         * with the authentication key. Setters and associated getters are
+         * enumerated in the {@link ApplicationData} interface.
          *
-         * @param key the key for the data.
-         * @return the value or {@code null} if there is no value for the given key.
+         * @return application specific data.
          */
-        public @Nullable byte[] getApplicationData(@NonNull String key) {
-            return mApplicationData.get(key);
-        }
-
-        /**
-         * Gets application specific data as a string.
-         *
-         * <p>Like {@link #getApplicationData(String)} but decodes the value as
-         * an UTF-8 string before returning it.
-         *
-         * @param key the key for the data.
-         * @return the value or {@code null} if there is no value for the given key.
-         */
-        public @Nullable String getApplicationDataString(@NonNull String key) {
-            byte[] value = mApplicationData.get(key);
-            if (value == null) {
-                return null;
-            }
-            return new String(value, StandardCharsets.UTF_8);
+        public @NonNull ApplicationData getApplicationData() {
+            return mApplicationData;
         }
     }
 
@@ -734,7 +612,7 @@ public class Credential {
         String mAlias;
         Credential mCredential;
         private String mReplacementForAlias;
-        private LinkedHashMap<String, byte[]> mApplicationData = new LinkedHashMap<>();
+        private SimpleApplicationData mApplicationData;
 
         static @NonNull PendingAuthenticationKey create(
                 @NonNull String alias,
@@ -754,6 +632,7 @@ public class Credential {
                 ret.mReplacementForAlias = asReplacementFor.getAlias();
             }
             ret.mCredential = credential;
+            ret.mApplicationData = new SimpleApplicationData(() -> ret.mCredential.saveCredential());
             return ret;
         }
 
@@ -848,12 +727,7 @@ public class Credential {
             if (mReplacementForAlias != null) {
                 mapBuilder.put("replacementForAlias", mReplacementForAlias);
             }
-            MapBuilder<MapBuilder<CborBuilder>> applicationDataBuilder =
-                    mapBuilder.putMap("applicationData");
-            for (String key : mApplicationData.keySet()) {
-                byte[] value = mApplicationData.get(key);
-                applicationDataBuilder.put(key, value);
-            }
+            mapBuilder.put("applicationData", mApplicationData.encodeAsCbor());
             return builder.build().get(0);
         }
 
@@ -865,17 +739,14 @@ public class Credential {
             if (Util.cborMapHasKey(dataItem, "replacementForAlias")) {
                 ret.mReplacementForAlias = Util.cborMapExtractString(dataItem, "replacementForAlias");
             }
-            ret.mApplicationData = new LinkedHashMap<>();
-            DataItem applicationDataDataItem = Util.cborMapExtractMap(dataItem, "applicationData");
-            if (!(applicationDataDataItem instanceof co.nstant.in.cbor.model.Map)) {
-                throw new IllegalStateException("applicationData not found or not map");
-            }
-            for (DataItem keyItem : ((co.nstant.in.cbor.model.Map) applicationDataDataItem).getKeys()) {
-                String key = ((UnicodeString) keyItem).getString();
-                byte[] value = Util.cborMapExtractByteString(applicationDataDataItem, key);
-                ret.mApplicationData.put(key, value);
+            DataItem applicationDataDataItem = Util.cborMapExtract(dataItem, "applicationData");
+            if (!(applicationDataDataItem instanceof co.nstant.in.cbor.model.ByteString)) {
+                throw new IllegalStateException("applicationData not found or not byte[]");
             }
             ret.mCredential = credential;
+            ret.mApplicationData = SimpleApplicationData.decodeFromCbor(
+                    ((ByteString) applicationDataDataItem).getBytes(),
+                    () -> ret.mCredential.saveCredential());
             return ret;
         }
 
@@ -900,70 +771,16 @@ public class Credential {
         }
 
         /**
-         * Sets application specific data.
-         *
-         * <p>This allows applications to store additional data it wants to associate with the
-         * authentication key.
-         *
-         * <p>Use {@link #getApplicationData(String)} to read the data back.
-         *
-         * @param key the key for the data.
-         * @param value the value or {@code null} to remove.
-         */
-        public void setApplicationData(@NonNull String key, @Nullable byte[] value) {
-            if (value == null) {
-                mApplicationData.remove(key);
-            } else {
-                mApplicationData.put(key, value);
-            }
-            mCredential.saveCredential();
-        }
-
-        /**
-         * Sets application specific data as a string.
-         *
-         * <p>Like {@link #setApplicationData(String, byte[])} but encodes the given value
-         * as an UTF-8 string before storing it.
-         *
-         * @param key the key for the data.
-         * @param value the value or {@code null} to remove.
-         */
-        public void setApplicationDataString(@NonNull String key, @Nullable String value) {
-            if (value == null) {
-                mApplicationData.remove(key);
-            } else {
-                mApplicationData.put(key, value.getBytes(StandardCharsets.UTF_8));
-            }
-            mCredential.saveCredential();
-        }
-
-        /**
          * Gets application specific data.
          *
-         * <p>Gets data previously stored with {@link #getApplicationData(String)}.
+         * <p>Use this object to store additional data an application may want to associate
+         * with the pending authentication key. Setters and associated getters are
+         * enumerated in the {@link ApplicationData} interface.
          *
-         * @param key the key for the data.
-         * @return the value or {@code null} if there is no value for the given key.
+         * @return application specific data.
          */
-        public @Nullable byte[] getApplicationData(@NonNull String key) {
-            return mApplicationData.get(key);
-        }
-
-        /**
-         * Gets application specific data as a string.
-         *
-         * <p>Like {@link #getApplicationData(String)} but decodes the value as
-         * an UTF-8 string before returning it.
-         *
-         * @param key the key for the data.
-         * @return the value or {@code null} if there is no value for the given key.
-         */
-        public @Nullable String getApplicationDataString(@NonNull String key) {
-            byte[] value = mApplicationData.get(key);
-            if (value == null) {
-                return null;
-            }
-            return new String(value, StandardCharsets.UTF_8);
+        public @NonNull ApplicationData getApplicationData() {
+            return mApplicationData;
         }
     }
 

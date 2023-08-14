@@ -761,6 +761,18 @@ public class UtilTest {
     }
 
     @Test
+    public void encodeDecodeString() {
+        assertEquals("abc", Util.cborDecodeString(Util.cborEncodeString("abc")));
+        assertEquals("", Util.cborDecodeString(Util.cborEncodeString("")));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeString(Util.cborEncodeNumber(0L)));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeString(Util.cborEncodeBytestring(new byte[] {0x53, 0x54, 0x55})));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeString(Util.cborEncodeBoolean(true)));
+    }
+
+    @Test
     public void checkedLongValue() {
         final DataItem dataItem = new co.nstant.in.cbor.model.UnsignedInteger(8675309);
         assertEquals(8675309, Util.checkedLongValue(dataItem));
@@ -794,6 +806,30 @@ public class UtilTest {
         final BigInteger tooSmall = lowerLimit.subtract(BigInteger.ONE);
         assertThrows(ArithmeticException.class,
             () -> Util.checkedLongValue(new co.nstant.in.cbor.model.NegativeInteger(tooSmall)));
+    }
+
+    @Test
+    public void encodeDecodeLong() {
+        assertEquals(83L, Util.cborDecodeLong(Util.cborEncodeNumber(83L)));
+        assertEquals(0L, Util.cborDecodeLong(Util.cborEncodeNumber(0L)));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeLong(Util.cborEncodeString("0L")));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeLong(Util.cborEncodeBytestring(new byte[] {0x53, 0x54, 0x55})));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeLong(Util.cborEncodeBoolean(true)));
+    }
+
+    @Test
+    public void encodeDecodeBoolean() {
+        assertTrue(Util.cborDecodeBoolean(Util.cborEncodeBoolean(true)));
+        assertFalse(Util.cborDecodeBoolean(Util.cborEncodeBoolean(false)));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeBoolean(Util.cborEncodeString("test")));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeBoolean(Util.cborEncodeBytestring(new byte[] {0x53, 0x54, 0x55})));
+        assertThrows(IllegalArgumentException.class,
+                () -> Util.cborDecodeBoolean(Util.cborEncodeNumber(83L)));
     }
 
     // TODO: Replace with Assert.assertThrows() once we use a recent enough version of JUnit.

@@ -72,7 +72,7 @@ public class CredentialUtil {
             boolean keyExceededUseCount = false;
             boolean keyBeyondExpirationDate = false;
 
-            if (authKey.getApplicationData(managedKeyDomain) == null) {
+            if (!authKey.getApplicationData().keyExists(managedKeyDomain)) {
                 // not one of ours...
                 continue;
             }
@@ -91,7 +91,7 @@ public class CredentialUtil {
                 if (authKey.getReplacement() == null) {
                     Credential.PendingAuthenticationKey pendingKey =
                             credential.createPendingAuthenticationKey(createKeySettings, authKey);
-                    pendingKey.setApplicationData(managedKeyDomain, new byte[0]);
+                    pendingKey.getApplicationData().setBoolean(managedKeyDomain, true);
                     numReplacementsGenerated++;
                     continue;
                 }
@@ -107,7 +107,7 @@ public class CredentialUtil {
             for (int n = 0; n < numNonReplacementsToGenerate; n++) {
                 Credential.PendingAuthenticationKey pendingKey =
                         credential.createPendingAuthenticationKey(createKeySettings, null);
-                pendingKey.setApplicationData(managedKeyDomain, new byte[0]);
+                pendingKey.getApplicationData().setBoolean(managedKeyDomain, true);
             }
         }
         return numReplacementsGenerated + numNonReplacementsToGenerate;
