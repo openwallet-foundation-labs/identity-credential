@@ -20,8 +20,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.identity.internal.Util;
-import com.android.identity.keystore.KeystoreEngine;
-import com.android.identity.keystore.KeystoreEngineRepository;
+import com.android.identity.securearea.SecureArea;
+import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.ApplicationData;
 import com.android.identity.util.Logger;
@@ -32,8 +32,6 @@ import java.io.ByteArrayInputStream;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.CborDecoder;
@@ -76,7 +74,7 @@ import co.nstant.in.cbor.model.UnicodeString;
  * data includes the <em>Mobile Security Object</em> which includes the authentication
  * key and is signed by the issuer. This is used for anti-cloning and to return data signed
  * by the device. The way it works in this API is that the application can use
- * {@link #createPendingAuthenticationKey(KeystoreEngine.CreateKeySettings, AuthenticationKey)}
+ * {@link #createPendingAuthenticationKey(SecureArea.CreateKeySettings, AuthenticationKey)}
  * to get a {@link PendingAuthenticationKey}. With this in hand, the application can use
  * {@link PendingAuthenticationKey#getAttestation()} and send the attestation
  * to the issuer for certification. The issuer will then craft credential-shape
@@ -106,12 +104,12 @@ public class Credential {
     static final String AUTHENTICATION_KEY_ALIAS_PREFIX = "IC_AuthenticationKey_";
 
     private final StorageEngine mStorageEngine;
-    private final KeystoreEngineRepository mKeystoreEngineRepository;
+    private final SecureAreaRepository mSecureAreaRepository;
     private String mName;
     private String mCredentialKeyAlias;
 
     private NameSpacedData mNameSpacedData = new NameSpacedData.Builder().build();
-    private KeystoreEngine mKeystoreEngine;
+    private SecureArea mSecureArea;
     private SimpleApplicationData mApplicationData = new SimpleApplicationData(this::saveCredential);
 
     private List<PendingAuthenticationKey> mPendingAuthenticationKeys = new ArrayList<>();
@@ -120,27 +118,27 @@ public class Credential {
     private long mAuthenticationKeyCounter;
 
     private Credential(@NonNull StorageEngine storageEngine,
-                       @NonNull KeystoreEngineRepository keystoreEngineRepository) {
+                       @NonNull SecureAreaRepository secureAreaRepository) {
         mStorageEngine = storageEngine;
-        mKeystoreEngineRepository = keystoreEngineRepository;
+        mSecureAreaRepository = secureAreaRepository;
     }
 
     // Called by CredentialStore.createCredential().
     static Credential create(@NonNull StorageEngine storageEngine,
-                             @NonNull KeystoreEngineRepository keystoreEngineRepository,
+                             @NonNull SecureAreaRepository secureAreaRepository,
                              @NonNull String name,
-                             @NonNull KeystoreEngine.CreateKeySettings credentialKeySettings) {
+                             @NonNull SecureArea.CreateKeySettings credentialKeySettings) {
 
-        Credential credential = new Credential(storageEngine, keystoreEngineRepository);
+        Credential credential = new Credential(storageEngine, secureAreaRepository);
         credential.mName = name;
-        String keystoreEngineClassName = credentialKeySettings.getKeystoreEngineClass().getName();
-        credential.mKeystoreEngine = keystoreEngineRepository.getImplementation(keystoreEngineClassName);
-        if (credential.mKeystoreEngine == null) {
-            throw new IllegalStateException("No KeystoreEngine with name " + keystoreEngineClassName);
+        String secureAreaClassName = credentialKeySettings.getSecureAreaClass().getName();
+        credential.mSecureArea = secureAreaRepository.getImplementation(secureAreaClassName);
+        if (credential.mSecureArea == null) {
+            throw new IllegalStateException("No SecureArea with name " + secureAreaClassName);
         }
         credential.mCredentialKeyAlias = CREDENTIAL_KEY_ALIAS_PREFIX + name;
 
-        credential.mKeystoreEngine.createKey(credential.mCredentialKeyAlias, credentialKeySettings);
+        credential.mSecureArea.createKey(credential.mCredentialKeyAlias, credentialKeySettings);
 
         credential.saveCredential();
 
@@ -150,7 +148,7 @@ public class Credential {
     private void saveCredential() {
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
-        map.put("keystoreImplementationClassName", mKeystoreEngine.getClass().getName());
+        map.put("secureAreaClassName", mSecureArea.getClass().getName());
         map.put("credentialKeyAlias", mCredentialKeyAlias);
         map.put(new UnicodeString("nameSpacedData"), mNameSpacedData.toCbor());
 
@@ -175,17 +173,17 @@ public class Credential {
 
     // Called by CredentialStore.lookupCredential().
     static Credential lookup(@NonNull StorageEngine storageEngine,
-                             @NonNull KeystoreEngineRepository keystoreEngineRepository,
+                             @NonNull SecureAreaRepository secureAreaRepository,
                              @NonNull String name) {
-        Credential credential = new Credential(storageEngine, keystoreEngineRepository);
+        Credential credential = new Credential(storageEngine, secureAreaRepository);
         credential.mName = name;
-        if (!credential.loadCredential(keystoreEngineRepository)) {
+        if (!credential.loadCredential(secureAreaRepository)) {
             return null;
         }
         return credential;
     }
 
-    private boolean loadCredential(@NonNull KeystoreEngineRepository keystoreEngineRepository) {
+    private boolean loadCredential(@NonNull SecureAreaRepository secureAreaRepository) {
         byte[] data = mStorageEngine.get(CREDENTIAL_PREFIX + mName);
         if (data == null) {
             return false;
@@ -206,9 +204,9 @@ public class Credential {
         }
         co.nstant.in.cbor.model.Map map = (co.nstant.in.cbor.model.Map) dataItems.get(0);
 
-        String keystoreImplementationClassName =
-                Util.cborMapExtractString(map, "keystoreImplementationClassName");
-        mKeystoreEngine = keystoreEngineRepository.getImplementation(keystoreImplementationClassName);
+        String secureAreaImplementationClassName =
+                Util.cborMapExtractString(map, "secureAreaClassName");
+        mSecureArea = secureAreaRepository.getImplementation(secureAreaImplementationClassName);
 
         mCredentialKeyAlias = Util.cborMapExtractString(map, "credentialKeyAlias");
 
@@ -256,7 +254,7 @@ public class Credential {
         for (AuthenticationKey key : new ArrayList<>(mAuthenticationKeys)) {
             key.delete();
         }
-        mKeystoreEngine.deleteKey(mCredentialKeyAlias);
+        mSecureArea.deleteKey(mCredentialKeyAlias);
         mStorageEngine.delete(CREDENTIAL_PREFIX + mName);
     }
 
@@ -277,15 +275,15 @@ public class Credential {
      * @return An X.509 certificate chain for <em>CredentialKey</em>.
      */
     public @NonNull List<X509Certificate> getAttestation() {
-        KeystoreEngine.KeyInfo keyInfo = mKeystoreEngine.getKeyInfo(mCredentialKeyAlias);
+        SecureArea.KeyInfo keyInfo = mSecureArea.getKeyInfo(mCredentialKeyAlias);
         return keyInfo.getAttestation();
     }
 
     /**
      * Gets the alias for <em>CredentialKey</em>.
      *
-     * <p>This can be used together with the {@link KeystoreEngine} returned by
-     * {@link #getCredentialKeystoreEngine()}.
+     * <p>This can be used together with the {@link SecureArea} returned by
+     * {@link #getCredentialSecureArea()}.
      *
      * @return The alias for <em>CredentialKey</em>.
      */
@@ -294,15 +292,15 @@ public class Credential {
     }
 
     /**
-     * Gets the keystore engine for <em>CredentialKey</em>.
+     * Gets the secure area for <em>CredentialKey</em>.
      *
      * <p>This can be used together with the alias returned by
      * {@link #getCredentialKeyAlias()}.
      *
-     * @return The {@link KeystoreEngine} used for <em>CredentialKey</em>.
+     * @return The {@link SecureArea} used for <em>CredentialKey</em>.
      */
-    public @NonNull KeystoreEngine getCredentialKeystoreEngine() {
-        return mKeystoreEngine;
+    public @NonNull SecureArea getCredentialSecureArea() {
+        return mSecureArea;
     }
 
     /**
@@ -378,7 +376,7 @@ public class Credential {
      * A certified authentication key.
      *
      * <p>To create an instance of this type, an application must first use
-     * {@link Credential#createPendingAuthenticationKey(KeystoreEngine.CreateKeySettings, AuthenticationKey)}
+     * {@link Credential#createPendingAuthenticationKey(SecureArea.CreateKeySettings, AuthenticationKey)}
      * to create a {@link PendingAuthenticationKey} and after issuer certification
      * has been received it can be upgraded to a {@link AuthenticationKey}.
      */
@@ -389,7 +387,7 @@ public class Credential {
         private Timestamp mValidFrom;
         private Timestamp mValidUntil;
         private Credential mCredential;
-        private String mKeystoreEngineName;
+        private String mSecureAreaName;
         private String mReplacementAlias;
         private SimpleApplicationData mApplicationData;
 
@@ -405,7 +403,7 @@ public class Credential {
             ret.mValidFrom = validFrom;
             ret.mValidUntil = validUntil;
             ret.mCredential = credential;
-            ret.mKeystoreEngineName = pendingAuthenticationKey.mKeystoreEngineName;
+            ret.mSecureAreaName = pendingAuthenticationKey.mSecureAreaName;
             ret.mApplicationData = pendingAuthenticationKey.mApplicationData;
             return ret;
         }
@@ -452,12 +450,12 @@ public class Credential {
          * <p>After deletion, this object should no longer be used.
          */
         public void delete() {
-            KeystoreEngine keystoreEngine = mCredential.mKeystoreEngineRepository
-                    .getImplementation(mKeystoreEngineName);
-            if (keystoreEngine == null) {
-                throw new IllegalArgumentException("Unknown engine " + mKeystoreEngineName);
+            SecureArea secureArea = mCredential.mSecureAreaRepository
+                    .getImplementation(mSecureAreaName);
+            if (secureArea == null) {
+                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
             }
-            keystoreEngine.deleteKey(mAlias);
+            secureArea.deleteKey(mAlias);
             mCredential.removeAuthenticationKey(this);
         }
 
@@ -475,20 +473,20 @@ public class Credential {
          * @return An X.509 certificate chain for the authentication key.
          */
         public @NonNull List<X509Certificate> getAttestation() {
-            KeystoreEngine keystoreEngine = mCredential.mKeystoreEngineRepository
-                    .getImplementation(mKeystoreEngineName);
-            if (keystoreEngine == null) {
-                throw new IllegalArgumentException("Unknown engine " + mKeystoreEngineName);
+            SecureArea secureArea = mCredential.mSecureAreaRepository
+                    .getImplementation(mSecureAreaName);
+            if (secureArea == null) {
+                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
             }
-            KeystoreEngine.KeyInfo keyInfo = keystoreEngine.getKeyInfo(mAlias);
+            SecureArea.KeyInfo keyInfo = secureArea.getKeyInfo(mAlias);
             return keyInfo.getAttestation();
         }
 
         /**
          * Gets the alias for the authentication key.
          *
-         * <p>This can be used together with the {@link KeystoreEngine} returned by
-         * {@link #getKeystoreEngine()} ()}.
+         * <p>This can be used together with the {@link SecureArea} returned by
+         * {@link #getSecureArea()} ()}.
          *
          * @return The alias for the authentication key.
          */
@@ -497,27 +495,27 @@ public class Credential {
         }
 
         /**
-         * Gets the keystore engine for the authentication key.
+         * Gets the secure area for the authentication key.
          *
          * <p>This can be used together with the alias returned by
          * {@link #getAlias()}.
          *
-         * @return The {@link KeystoreEngine} used for <em>CredentialKey</em>.
+         * @return The {@link SecureArea} used for <em>CredentialKey</em>.
          */
-        public @NonNull KeystoreEngine getKeystoreEngine() {
-            KeystoreEngine keystoreEngine = mCredential.mKeystoreEngineRepository
-                    .getImplementation(mKeystoreEngineName);
-            if (keystoreEngine == null) {
-                throw new IllegalArgumentException("Unknown engine " + mKeystoreEngineName);
+        public @NonNull SecureArea getSecureArea() {
+            SecureArea secureArea = mCredential.mSecureAreaRepository
+                    .getImplementation(mSecureAreaName);
+            if (secureArea == null) {
+                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
             }
-            return keystoreEngine;
+            return secureArea;
         }
 
         DataItem toCbor() {
             CborBuilder builder = new CborBuilder();
             MapBuilder<CborBuilder> mapBuilder = builder.addMap();
             mapBuilder.put("alias", mAlias)
-                    .put("keystoreEngineName", mKeystoreEngineName)
+                    .put("secureAreaName", mSecureAreaName)
                     .put("usageCount", mUsageCount)
                     .put("data", mData)
                     .put("validFrom", mValidFrom.toEpochMilli())
@@ -533,7 +531,7 @@ public class Credential {
                                           @NonNull Credential credential) {
             AuthenticationKey ret = new AuthenticationKey();
             ret.mAlias = Util.cborMapExtractString(dataItem, "alias");
-            ret.mKeystoreEngineName = Util.cborMapExtractString(dataItem, "keystoreEngineName");
+            ret.mSecureAreaName = Util.cborMapExtractString(dataItem, "secureAreaName");
             ret.mUsageCount = (int) Util.cborMapExtractNumber(dataItem, "usageCount");
             ret.mData = Util.cborMapExtractByteString(dataItem, "data");
             ret.mValidFrom = Timestamp.ofEpochMilli(Util.cborMapExtractNumber(dataItem, "validFrom"));
@@ -596,7 +594,7 @@ public class Credential {
      * An authentication key pending certification.
      *
      * <p>To create a pending authentication key, use
-     * {@link Credential#createPendingAuthenticationKey(KeystoreEngine.CreateKeySettings, AuthenticationKey)}.
+     * {@link Credential#createPendingAuthenticationKey(SecureArea.CreateKeySettings, AuthenticationKey)}.
      *
      * <p>Because issuer certification of authentication could take a long time, pending
      * authentication keys are persisted and {@link Credential#getPendingAuthenticationKeys()}
@@ -607,7 +605,7 @@ public class Credential {
      * to upgrade to a {@link AuthenticationKey}.
      */
     public static class PendingAuthenticationKey {
-        String mKeystoreEngineName;
+        String mSecureAreaName;
 
         String mAlias;
         Credential mCredential;
@@ -616,18 +614,18 @@ public class Credential {
 
         static @NonNull PendingAuthenticationKey create(
                 @NonNull String alias,
-                @NonNull KeystoreEngine.CreateKeySettings createKeySettings,
+                @NonNull SecureArea.CreateKeySettings createKeySettings,
                 @Nullable AuthenticationKey asReplacementFor,
                 @NonNull Credential credential) {
             PendingAuthenticationKey ret = new PendingAuthenticationKey();
             ret.mAlias = alias;
-            ret.mKeystoreEngineName = createKeySettings.getKeystoreEngineClass().getName();
-            KeystoreEngine keystoreEngine = credential.mKeystoreEngineRepository
-                    .getImplementation(ret.mKeystoreEngineName);
-            if (keystoreEngine == null) {
-                throw new IllegalArgumentException("Unknown engine " + ret.mKeystoreEngineName);
+            ret.mSecureAreaName = createKeySettings.getSecureAreaClass().getName();
+            SecureArea secureArea = credential.mSecureAreaRepository
+                    .getImplementation(ret.mSecureAreaName);
+            if (secureArea == null) {
+                throw new IllegalArgumentException("Unknown engine " + ret.mSecureAreaName);
             }
-            keystoreEngine.createKey(alias, createKeySettings);
+            secureArea.createKey(alias, createKeySettings);
             if (asReplacementFor != null) {
                 ret.mReplacementForAlias = asReplacementFor.getAlias();
             }
@@ -645,20 +643,20 @@ public class Credential {
          * @return An X.509 certificate chain for the pending authentication key.
          */
         public @NonNull List<X509Certificate> getAttestation() {
-            KeystoreEngine keystoreEngine = mCredential.mKeystoreEngineRepository
-                    .getImplementation(mKeystoreEngineName);
-            if (keystoreEngine == null) {
-                throw new IllegalArgumentException("Unknown engine " + mKeystoreEngineName);
+            SecureArea secureArea = mCredential.mSecureAreaRepository
+                    .getImplementation(mSecureAreaName);
+            if (secureArea == null) {
+                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
             }
-            KeystoreEngine.KeyInfo keyInfo = keystoreEngine.getKeyInfo(mAlias);
+            SecureArea.KeyInfo keyInfo = secureArea.getKeyInfo(mAlias);
             return keyInfo.getAttestation();
         }
 
         /**
          * Gets the alias for the pending authentication key.
          *
-         * <p>This can be used together with the {@link KeystoreEngine} returned by
-         * {@link #getKeystoreEngine()} ()}.
+         * <p>This can be used together with the {@link SecureArea} returned by
+         * {@link #getSecureArea()} ()}.
          *
          * @return The alias for the authentication key.
          */
@@ -667,32 +665,32 @@ public class Credential {
         }
 
         /**
-         * Gets the keystore engine for the pending authentication key.
+         * Gets the secure area for the pending authentication key.
          *
          * <p>This can be used together with the alias returned by
          * {@link #getAlias()}.
          *
-         * @return The {@link KeystoreEngine} used for <em>CredentialKey</em>.
+         * @return The {@link SecureArea} used for <em>CredentialKey</em>.
          */
-        public @NonNull KeystoreEngine getKeystoreEngine() {
-            KeystoreEngine keystoreEngine = mCredential.mKeystoreEngineRepository
-                    .getImplementation(mKeystoreEngineName);
-            if (keystoreEngine == null) {
-                throw new IllegalArgumentException("Unknown engine " + mKeystoreEngineName);
+        public @NonNull SecureArea getSecureArea() {
+            SecureArea secureArea = mCredential.mSecureAreaRepository
+                    .getImplementation(mSecureAreaName);
+            if (secureArea == null) {
+                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
             }
-            return keystoreEngine;
+            return secureArea;
         }
 
         /**
          * Deletes the pending authentication key.
          */
         public void delete() {
-            KeystoreEngine keystoreEngine = mCredential.mKeystoreEngineRepository
-                    .getImplementation(mKeystoreEngineName);
-            if (keystoreEngine == null) {
-                throw new IllegalArgumentException("Unknown engine " + mKeystoreEngineName);
+            SecureArea secureArea = mCredential.mSecureAreaRepository
+                    .getImplementation(mSecureAreaName);
+            if (secureArea == null) {
+                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
             }
-            keystoreEngine.deleteKey(mAlias);
+            secureArea.deleteKey(mAlias);
             mCredential.removePendingAuthenticationKey(this);
         }
 
@@ -723,7 +721,7 @@ public class Credential {
             CborBuilder builder = new CborBuilder();
             MapBuilder<CborBuilder> mapBuilder = builder.addMap();
             mapBuilder.put("alias", mAlias)
-                    .put("keystoreEngineName", mKeystoreEngineName);
+                    .put("secureAreaName", mSecureAreaName);
             if (mReplacementForAlias != null) {
                 mapBuilder.put("replacementForAlias", mReplacementForAlias);
             }
@@ -735,7 +733,7 @@ public class Credential {
                                                  @NonNull Credential credential) {
             PendingAuthenticationKey ret = new PendingAuthenticationKey();
             ret.mAlias = Util.cborMapExtractString(dataItem, "alias");
-            ret.mKeystoreEngineName = Util.cborMapExtractString(dataItem, "keystoreEngineName");
+            ret.mSecureAreaName = Util.cborMapExtractString(dataItem, "secureAreaName");
             if (Util.cborMapHasKey(dataItem, "replacementForAlias")) {
                 ret.mReplacementForAlias = Util.cborMapExtractString(dataItem, "replacementForAlias");
             }
@@ -793,7 +791,7 @@ public class Credential {
      * has been obtained.
      *
      * <p>For a higher-level way of managing authentication keys, see
-     * {@link CredentialUtil#managedAuthenticationKeyHelper(Credential, KeystoreEngine.CreateKeySettings, String, Timestamp, int, int, long)}.
+     * {@link CredentialUtil#managedAuthenticationKeyHelper(Credential, SecureArea.CreateKeySettings, String, Timestamp, int, int, long)}.
      *
      * @param createKeySettings settings for the authentication key.
      * @param asReplacementFor if not {@code null}, replace the given authentication key
@@ -803,7 +801,7 @@ public class Credential {
      *   key already has a pending key intending to replace it.
      */
     public @NonNull PendingAuthenticationKey createPendingAuthenticationKey(
-            @NonNull KeystoreEngine.CreateKeySettings createKeySettings,
+            @NonNull SecureArea.CreateKeySettings createKeySettings,
             @Nullable AuthenticationKey asReplacementFor) {
         if (asReplacementFor != null && asReplacementFor.getReplacement() != null) {
             throw new IllegalStateException(

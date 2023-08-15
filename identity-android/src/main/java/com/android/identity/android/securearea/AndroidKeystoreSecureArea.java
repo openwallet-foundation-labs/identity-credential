@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.android.keystore;
+package com.android.identity.android.securearea;
 
 import android.content.Context;
 import android.os.Build;
@@ -22,18 +22,21 @@ import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.security.keystore.UserNotAuthenticatedException;
 
+import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.biometric.BiometricPrompt;
 
 import com.android.identity.internal.Util;
-import com.android.identity.keystore.KeystoreEngine;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -72,7 +75,7 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
- * An implementation of {@link KeystoreEngine} using Android Keystore.
+ * An implementation of {@link SecureArea} using Android Keystore.
  *
  * <p>Keys created using this implementation are hardware-backed, that is the private key
  * material is designed to never leave Secure Hardware. In this context Secure Hardware
@@ -91,8 +94,8 @@ import co.nstant.in.cbor.model.UnicodeString;
  * <a href="https://developer.android.com/build/configure-app-module#set_the_application_id">
  * Application Id</a>) created the key.
  *
- * <p>Curve {@link AndroidKeystore#EC_CURVE_P256} for signing using algorithm
- * {@link AndroidKeystore#ALGORITHM_ES256} is guaranteed to be implemented in
+ * <p>Curve {@link SecureArea#EC_CURVE_P256} for signing using algorithm
+ * {@link SecureArea#ALGORITHM_ES256} is guaranteed to be implemented in
  * Secure Hardware on any Android device shipping with Android 8.1 or later. As of 2023
  * this includes nearly all Android devices.
  *
@@ -110,7 +113,7 @@ import co.nstant.in.cbor.model.UnicodeString;
  * the normal hardware-backed keystore and - if available - the StrongBox-backed keystore.
  *
  * <p>For Keymint 1.0 (version 100 and up), ECDH is also supported when using
- * {@link AndroidKeystore#EC_CURVE_P256}. Additionally, this version also supports
+ * {@link SecureArea#EC_CURVE_P256}. Additionally, this version also supports
  * the use of
  * <a href="https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder#setAttestKeyAlias(java.lang.String)">
  * attest keys</a>.
@@ -121,37 +124,57 @@ import co.nstant.in.cbor.model.UnicodeString;
  *
  * <p>If the device has a secure lock screen (either PIN, pattern, or password) this can
  * be used to protect keys using
- * {@link CreateKeySettings.Builder#setUserAuthenticationRequired(boolean, long)}.
+ * {@link CreateKeySettings.Builder#setUserAuthenticationRequired(boolean, long, int)}.
  * The application can test for whether the lock screen is configured using
  * <a href="https://developer.android.com/reference/android/app/KeyguardManager#isDeviceSecure()">
  * KeyGuardManager.isDeviceSecure()</a>.
  *
  * <p>This implementation works only on Android and requires API level 24 or later.
  */
-public class AndroidKeystore implements KeystoreEngine {
-    private static final String TAG = "AndroidKeystore";
+public class AndroidKeystoreSecureArea implements SecureArea {
+    private static final String TAG = "AndroidKeystoreSA";  // limit to <= 23 chars
     private final Context mContext;
     private final StorageEngine mStorageEngine;
 
     // Prefix used for storage items, the key alias follows.
     private static final String PREFIX = "IC_AndroidKeystore_";
 
+    /**
+     * Flag indicating that authentication is needed using the user's Lock-Screen Knowledge Factor.
+     */
+    public static final int USER_AUTHENTICATION_TYPE_LSKF = 1<<0;
 
     /**
-     * Constructs a new {@link AndroidKeystore}.
+     * Flag indicating that authentication is needed using the user's biometric.
+     */
+    public static final int USER_AUTHENTICATION_TYPE_BIOMETRIC = 1<<1;
+
+    /**
+     * An annotation used to indicate different types of user authentication.
+     */
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(flag = true,
+            value = {
+                    USER_AUTHENTICATION_TYPE_LSKF,
+                    USER_AUTHENTICATION_TYPE_BIOMETRIC
+            })
+    @interface UserAuthenticationType {}
+
+    /**
+     * Constructs a new {@link AndroidKeystoreSecureArea}.
      *
      * @param context the application context.
      * @param storageEngine the storage engine to use for storing metadata about keys.
      */
-    public AndroidKeystore(@NonNull Context context,
-                           @NonNull StorageEngine storageEngine) {
+    public AndroidKeystoreSecureArea(@NonNull Context context,
+                                     @NonNull StorageEngine storageEngine) {
         mContext = context;
         mStorageEngine = storageEngine;
     }
 
     @Override
     public void createKey(@NonNull String alias,
-                          @NonNull KeystoreEngine.CreateKeySettings createKeySettings) {
+                          @NonNull SecureArea.CreateKeySettings createKeySettings) {
         CreateKeySettings aSettings = (CreateKeySettings) createKeySettings;
         KeyPairGenerator kpg = null;
         try {
@@ -196,14 +219,14 @@ public class AndroidKeystore implements KeystoreEngine {
                     builder.setAlgorithmParameterSpec(new ECGenParameterSpec("x25519"));
                     break;
 
-                case KeystoreEngine.EC_CURVE_BRAINPOOLP256R1:
-                case KeystoreEngine.EC_CURVE_BRAINPOOLP320R1:
-                case KeystoreEngine.EC_CURVE_BRAINPOOLP384R1:
-                case KeystoreEngine.EC_CURVE_BRAINPOOLP512R1:
-                case KeystoreEngine.EC_CURVE_ED448:
-                case KeystoreEngine.EC_CURVE_P384:
-                case KeystoreEngine.EC_CURVE_P521:
-                case KeystoreEngine.EC_CURVE_X448:
+                case SecureArea.EC_CURVE_BRAINPOOLP256R1:
+                case SecureArea.EC_CURVE_BRAINPOOLP320R1:
+                case SecureArea.EC_CURVE_BRAINPOOLP384R1:
+                case SecureArea.EC_CURVE_BRAINPOOLP512R1:
+                case SecureArea.EC_CURVE_ED448:
+                case SecureArea.EC_CURVE_P384:
+                case SecureArea.EC_CURVE_P521:
+                case SecureArea.EC_CURVE_X448:
                 default:
                     throw new IllegalArgumentException("Curve is not supported");
             }
@@ -211,13 +234,31 @@ public class AndroidKeystore implements KeystoreEngine {
             if (aSettings.getUserAuthenticationRequired()) {
                 builder.setUserAuthenticationRequired(true);
                 long timeoutMillis = aSettings.getUserAuthenticationTimeoutMillis();
-                if (timeoutMillis == 0) {
-                    builder.setUserAuthenticationValidityDurationSeconds(-1);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    @UserAuthenticationType int userAuthenticationType = aSettings.getUserAuthenticationType();
+                    int type = 0;
+                    if ((userAuthenticationType & USER_AUTHENTICATION_TYPE_LSKF) != 0) {
+                        type |= KeyProperties.AUTH_DEVICE_CREDENTIAL;
+                    }
+                    if ((userAuthenticationType & USER_AUTHENTICATION_TYPE_BIOMETRIC) != 0) {
+                        type |= KeyProperties.AUTH_BIOMETRIC_STRONG;
+                    }
+                    if (timeoutMillis == 0) {
+                        builder.setUserAuthenticationParameters(0, type);
+                    } else {
+                        int timeoutSeconds = (int) Math.max(1, timeoutMillis/1000);
+                        builder.setUserAuthenticationParameters(timeoutSeconds, type);
+                    }
                 } else {
-                    int timeoutSeconds = (int) Math.max(1, timeoutMillis/1000);
-                    builder.setUserAuthenticationValidityDurationSeconds(timeoutSeconds);
+                    if (timeoutMillis == 0) {
+                        builder.setUserAuthenticationValidityDurationSeconds(-1);
+                    } else {
+                        int timeoutSeconds = (int) Math.max(1, timeoutMillis / 1000);
+                        builder.setUserAuthenticationValidityDurationSeconds(timeoutSeconds);
+                    }
                 }
                 builder.setInvalidatedByBiometricEnrollment(false);
+
             }
             if (aSettings.getUseStrongBox()) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -314,8 +355,8 @@ public class AndroidKeystore implements KeystoreEngine {
     public @NonNull byte[] sign(@NonNull String alias,
                                 @Algorithm int signatureAlgorithm,
                                 @NonNull byte[] dataToSign,
-                                @Nullable KeystoreEngine.KeyUnlockData keyUnlockData)
-            throws KeystoreEngine.KeyLockedException {
+                                @Nullable SecureArea.KeyUnlockData keyUnlockData)
+            throws SecureArea.KeyLockedException {
         if (keyUnlockData != null) {
             KeyUnlockData unlockData = (KeyUnlockData) keyUnlockData;
             if (!unlockData.mAlias.equals(alias)) {
@@ -379,7 +420,7 @@ public class AndroidKeystore implements KeystoreEngine {
     @Override
     public @NonNull byte[] keyAgreement(@NonNull String alias,
                                         @NonNull PublicKey otherKey,
-                                        @Nullable KeystoreEngine.KeyUnlockData keyUnlockData)
+                                        @Nullable SecureArea.KeyUnlockData keyUnlockData)
             throws KeyLockedException {
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
@@ -421,7 +462,7 @@ public class AndroidKeystore implements KeystoreEngine {
      *
      * <p>Currently only user-authentication is supported.
      */
-    public static class KeyUnlockData implements KeystoreEngine.KeyUnlockData {
+    public static class KeyUnlockData implements SecureArea.KeyUnlockData {
 
         private Signature mSignature;
         private final String mAlias;
@@ -442,12 +483,12 @@ public class AndroidKeystore implements KeystoreEngine {
          *
          * <p>This can be used with {@link BiometricPrompt} to unlock the key.
          * On successful authentication, this object should be passed to
-         * {@link AndroidKeystore#sign(String, int, byte[], KeystoreEngine.KeyUnlockData)}.
+         * {@link AndroidKeystoreSecureArea#sign(String, int, byte[], SecureArea.KeyUnlockData)}.
          *
          * <p>Note that a {@link BiometricPrompt.CryptoObject} is returned only if the key is
          * configured to require authentication for every use of the key, that is, when the
          * key was created with a zero timeout as per
-         * {@link AndroidKeystore.CreateKeySettings.Builder#setUserAuthenticationRequired(boolean, long)}.
+         * {@link AndroidKeystoreSecureArea.CreateKeySettings.Builder#setUserAuthenticationRequired(boolean, long, int)}.
          *
          * @param signatureAlgorithm the signature algorithm to use.
          * @return A {@link BiometricPrompt.CryptoObject} or {@code null}.
@@ -497,12 +538,12 @@ public class AndroidKeystore implements KeystoreEngine {
          *
          * <p>This can be used with {@link BiometricPrompt} to unlock the key.
          * On successful authentication, this object should be passed to
-         * {@link AndroidKeystore#keyAgreement(String, PublicKey, KeystoreEngine.KeyUnlockData)}.
+         * {@link AndroidKeystoreSecureArea#keyAgreement(String, PublicKey, SecureArea.KeyUnlockData)}.
          *
          * <p>Note that a {@link BiometricPrompt.CryptoObject} is returned only if the key is
          * configured to require authentication for every use of the key, that is, when the
          * key was created with a zero timeout as per
-         * {@link AndroidKeystore.CreateKeySettings.Builder#setUserAuthenticationRequired(boolean, long)}.
+         * {@link AndroidKeystoreSecureArea.CreateKeySettings.Builder#setUserAuthenticationRequired(boolean, long, int)}.
          *
          * @return A {@link BiometricPrompt.CryptoObject} or {@code null}.
          */
@@ -550,11 +591,12 @@ public class AndroidKeystore implements KeystoreEngine {
     /**
      * Android Keystore specific class for information about a key.
      */
-    public static class KeyInfo extends KeystoreEngine.KeyInfo {
+    public static class KeyInfo extends SecureArea.KeyInfo {
 
         private final boolean mUserAuthenticationRequired;
         private final boolean mIsStrongBoxBacked;
         private final long mUserAuthenticationTimeoutMillis;
+        private final @UserAuthenticationType int mUserAuthenticationType;
         private final String mAttestKeyAlias;
         private final Timestamp mValidFrom;
         private final Timestamp mValidUntil;
@@ -566,12 +608,14 @@ public class AndroidKeystore implements KeystoreEngine {
                 @Nullable String attestKeyAlias,
                 boolean userAuthenticationRequired,
                 long userAuthenticationTimeoutMillis,
+                @UserAuthenticationType int userAuthenticationType,
                 boolean isStrongBoxBacked,
                 @Nullable Timestamp validFrom,
                 @Nullable Timestamp validUntil) {
             super(attestation, keyPurposes, ecCurve, isHardwareBacked);
             mUserAuthenticationRequired = userAuthenticationRequired;
             mUserAuthenticationTimeoutMillis = userAuthenticationTimeoutMillis;
+            mUserAuthenticationType = userAuthenticationType;
             mIsStrongBoxBacked = isStrongBoxBacked;
             mAttestKeyAlias = attestKeyAlias;
             mValidFrom = validFrom;
@@ -604,6 +648,17 @@ public class AndroidKeystore implements KeystoreEngine {
          */
         public long getUserAuthenticationTimeoutMillis() {
             return mUserAuthenticationTimeoutMillis;
+        }
+
+        /**
+         * Gets user authentication type.
+         *
+         * @return a combination of the flags {@link #USER_AUTHENTICATION_TYPE_LSKF} and
+         *         {@link #USER_AUTHENTICATION_TYPE_BIOMETRIC} or 0 if user authentication is
+         *         not required.
+         */
+        public @UserAuthenticationType int getUserAuthenticationType() {
+            return mUserAuthenticationType;
         }
 
         /**
@@ -702,6 +757,19 @@ public class AndroidKeystore implements KeystoreEngine {
                 }
             }
 
+            @UserAuthenticationType int userAuthenticationType = USER_AUTHENTICATION_TYPE_LSKF
+                    | USER_AUTHENTICATION_TYPE_BIOMETRIC;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                userAuthenticationType = 0;
+                int type = keyInfo.getUserAuthenticationType();
+                if ((type & KeyProperties.AUTH_DEVICE_CREDENTIAL) != 0) {
+                    userAuthenticationType |= USER_AUTHENTICATION_TYPE_LSKF;
+                }
+                if ((type & KeyProperties.AUTH_BIOMETRIC_STRONG) != 0) {
+                    userAuthenticationType |= USER_AUTHENTICATION_TYPE_BIOMETRIC;
+                }
+            }
+
             return new KeyInfo(
                     attestation,
                     keyPurposes,
@@ -710,6 +778,7 @@ public class AndroidKeystore implements KeystoreEngine {
                     attestKeyAlias,
                     userAuthenticationRequired,
                     userAuthenticationTimeoutMillis,
+                    userAuthenticationType,
                     isStrongBoxBacked,
                     validFrom,
                     validUntil);
@@ -755,12 +824,13 @@ public class AndroidKeystore implements KeystoreEngine {
     /**
      * Class for holding Android Keystore-specific settings related to key creation.
      */
-    public static class CreateKeySettings extends KeystoreEngine.CreateKeySettings {
+    public static class CreateKeySettings extends SecureArea.CreateKeySettings {
         private final @KeyPurpose int mKeyPurposes;
         private final @EcCurve int mEcCurve;
         private final byte[] mAttestationChallenge;
         private final boolean mUserAuthenticationRequired;
         private final long mUserAuthenticationTimeoutMillis;
+        private final @UserAuthenticationType int mUserAuthenticationType;
         private final boolean mUseStrongBox;
         private final String mAttestKeyAlias;
         private final Timestamp mValidFrom;
@@ -771,16 +841,18 @@ public class AndroidKeystore implements KeystoreEngine {
                                   @NonNull byte[] attestationChallenge,
                                   boolean userAuthenticationRequired,
                                   long userAuthenticationTimeoutMillis,
+                                  @UserAuthenticationType int userAuthenticationType,
                                   boolean useStrongBox,
                                   @Nullable String attestKeyAlias,
                                   @Nullable Timestamp validFrom,
                                   @Nullable Timestamp validUntil) {
-            super(AndroidKeystore.class);
+            super(AndroidKeystoreSecureArea.class);
             mKeyPurposes = keyPurpose;
             mEcCurve = ecCurve;
             mAttestationChallenge = attestationChallenge;
             mUserAuthenticationRequired = userAuthenticationRequired;
             mUserAuthenticationTimeoutMillis = userAuthenticationTimeoutMillis;
+            mUserAuthenticationType = userAuthenticationType;
             mUseStrongBox = useStrongBox;
             mAttestKeyAlias = attestKeyAlias;
             mValidFrom = validFrom;
@@ -812,6 +884,16 @@ public class AndroidKeystore implements KeystoreEngine {
          */
         public long getUserAuthenticationTimeoutMillis() {
             return mUserAuthenticationTimeoutMillis;
+        }
+
+        /**
+         * Gets user authentication type.
+         *
+         * @return a combination of the flags {@link #USER_AUTHENTICATION_TYPE_LSKF} and
+         * {@link #USER_AUTHENTICATION_TYPE_BIOMETRIC}.
+         */
+        public @UserAuthenticationType int getUserAuthenticationType() {
+            return mUserAuthenticationType;
         }
 
         /**
@@ -877,6 +959,7 @@ public class AndroidKeystore implements KeystoreEngine {
             private final byte[] mAttestationChallenge;
             private boolean mUserAuthenticationRequired;
             private long mUserAuthenticationTimeoutMillis;
+            private @UserAuthenticationType int mUserAuthenticationType;
             private boolean mUseStrongBox;
             private String mAttestKeyAlias;
             private Timestamp mValidFrom;
@@ -894,7 +977,7 @@ public class AndroidKeystore implements KeystoreEngine {
             /**
              * Sets the key purpose.
              *
-             * <p>By default the key purpose is {@link AndroidKeystore#KEY_PURPOSE_SIGN}.
+             * <p>By default the key purpose is {@link AndroidKeystoreSecureArea#KEY_PURPOSE_SIGN}.
              *
              * @param keyPurposes one or more purposes.
              * @return the builder.
@@ -911,7 +994,7 @@ public class AndroidKeystore implements KeystoreEngine {
             /**
              * Sets the curve to use for EC keys.
              *
-             * <p>By default {@link AndroidKeystore#EC_CURVE_P256} is used.
+             * <p>By default {@link AndroidKeystoreSecureArea#EC_CURVE_P256} is used.
              *
              * @param curve the curve to use.
              * @return the builder.
@@ -924,19 +1007,45 @@ public class AndroidKeystore implements KeystoreEngine {
             /**
              * Method to specify if user authentication is required to use the key.
              *
+             * <p>On devices with prior to API 30, {@code userAuthenticationType} must be
+             * {@link #USER_AUTHENTICATION_TYPE_LSKF} combined with
+             * {@link #USER_AUTHENTICATION_TYPE_BIOMETRIC}. On API 30 and later
+             * either flag may be used independently. The value cannot be zero if user
+             * authentication is required.
+             *
              * <p>By default, no user authentication is required.
              *
              * @param required True if user authentication is required, false otherwise.
              * @param timeoutMillis If 0, user authentication is required for every use of
              *                      the key, otherwise it's required within the given amount
              *                      of milliseconds.
+             * @param userAuthenticationType a combination of the flags
+             *   {@link #USER_AUTHENTICATION_TYPE_LSKF} and
+             *   {@link #USER_AUTHENTICATION_TYPE_BIOMETRIC}.
              * @return the builder.
              */
-            public @NonNull Builder setUserAuthenticationRequired(boolean required, long timeoutMillis) {
+            public @NonNull Builder setUserAuthenticationRequired(
+                    boolean required,
+                    long timeoutMillis,
+                    @UserAuthenticationType int userAuthenticationType) {
+                if (required) {
+                    if (userAuthenticationType == 0) {
+                        throw new IllegalArgumentException(
+                                "userAuthenticationType must be set when user authentication is required");
+                    }
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+                        if (userAuthenticationType != (USER_AUTHENTICATION_TYPE_LSKF | USER_AUTHENTICATION_TYPE_BIOMETRIC)) {
+                            throw new IllegalArgumentException(
+                                    "Only LSKF and Strong Biometric supported on this API level");
+                        }
+                    }
+                }
                 mUserAuthenticationRequired = required;
                 mUserAuthenticationTimeoutMillis = timeoutMillis;
+                mUserAuthenticationType = userAuthenticationType;
                 return this;
             }
+
 
             /**
              * Method to specify if StrongBox Android Keystore should be used, if available.
@@ -994,6 +1103,7 @@ public class AndroidKeystore implements KeystoreEngine {
                         mAttestationChallenge,
                         mUserAuthenticationRequired,
                         mUserAuthenticationTimeoutMillis,
+                        mUserAuthenticationType,
                         mUseStrongBox,
                         mAttestKeyAlias,
                         mValidFrom,

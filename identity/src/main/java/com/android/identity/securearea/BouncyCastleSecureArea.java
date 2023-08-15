@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.keystore;
+package com.android.identity.securearea;
 
 import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -79,35 +79,35 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
- * An implementation of {@link KeystoreEngine} using the
+ * An implementation of {@link SecureArea} using the
  * <a href="https://www.bouncycastle.org/">Bouncy Castle</a> library.
  *
- * <p>This implementation supports all the curves and algorithms defined by {@link KeystoreEngine}
+ * <p>This implementation supports all the curves and algorithms defined by {@link SecureArea}
  * and also supports passphrase-protected keys. Key material is stored using the
  * {@link StorageEngine} abstraction and passphrase-protected keys are encrypted using
  * <a href="https://en.wikipedia.org/wiki/Galois/Counter_Mode">AES-GCM</a>
  * with 256-bit keys with the key derived from the passphrase using
  * <a href="https://en.wikipedia.org/wiki/HKDF">HKDF</a>.
  */
-public class BouncyCastleKeystore implements KeystoreEngine {
-    private static final String TAG = "BouncyCastleKeystore";
+public class BouncyCastleSecureArea implements SecureArea {
+    private static final String TAG = "BouncyCastleSA";  // limit to <= 23 chars
     private final StorageEngine mStorageEngine;
 
     // Prefix for storage items.
-    private static final String PREFIX = "IC_BouncyCastleKeystore_";
+    private static final String PREFIX = "IC_BouncyCastleSA_";
 
     /**
-     * Creates a new Bouncy Castle keystore engine.
+     * Creates a new Bouncy Castle secure area.
      *
      * @param storageEngine the storage engine to use for storing key material.
      */
-    public BouncyCastleKeystore(@NonNull StorageEngine storageEngine) {
+    public BouncyCastleSecureArea(@NonNull StorageEngine storageEngine) {
         mStorageEngine = storageEngine;
     }
 
     @Override
     public void createKey(@NonNull String alias,
-                          @NonNull KeystoreEngine.CreateKeySettings createKeySettings) {
+                          @NonNull SecureArea.CreateKeySettings createKeySettings) {
         CreateKeySettings settings = (CreateKeySettings) createKeySettings;
         ArrayList<X509Certificate> certificateChain = new ArrayList<>();
 
@@ -267,37 +267,37 @@ public class BouncyCastleKeystore implements KeystoreEngine {
         // Use the "natural" signature algorithm for the curve...
         String signatureAlgorithmName;
         switch (attestationKeyData.curve) {
-            case KeystoreEngine.EC_CURVE_P256:
+            case SecureArea.EC_CURVE_P256:
                 signatureAlgorithmName = "SHA256withECDSA";
                 break;
-            case KeystoreEngine.EC_CURVE_P384:
+            case SecureArea.EC_CURVE_P384:
                 signatureAlgorithmName = "SHA384withECDSA";
                 break;
-            case KeystoreEngine.EC_CURVE_P521:
+            case SecureArea.EC_CURVE_P521:
                 signatureAlgorithmName = "SHA512withECDSA";
                 break;
-            case KeystoreEngine.EC_CURVE_BRAINPOOLP256R1:
+            case SecureArea.EC_CURVE_BRAINPOOLP256R1:
                 signatureAlgorithmName = "SHA256withECDSA";
                 break;
-            case KeystoreEngine.EC_CURVE_BRAINPOOLP320R1:
+            case SecureArea.EC_CURVE_BRAINPOOLP320R1:
                 signatureAlgorithmName = "SHA256withECDSA";
                 break;
-            case KeystoreEngine.EC_CURVE_BRAINPOOLP384R1:
+            case SecureArea.EC_CURVE_BRAINPOOLP384R1:
                 signatureAlgorithmName = "SHA384withECDSA";
                 break;
-            case KeystoreEngine.EC_CURVE_BRAINPOOLP512R1:
+            case SecureArea.EC_CURVE_BRAINPOOLP512R1:
                 signatureAlgorithmName = "SHA512withECDSA";
                 break;
-            case KeystoreEngine.EC_CURVE_ED25519:
+            case SecureArea.EC_CURVE_ED25519:
                 signatureAlgorithmName = "EdDSA";
                 break;
-            case KeystoreEngine.EC_CURVE_ED448:
+            case SecureArea.EC_CURVE_ED448:
                 signatureAlgorithmName = "EdDSA";
                 break;
 
             default:
-            case KeystoreEngine.EC_CURVE_X25519:
-            case KeystoreEngine.EC_CURVE_X448:
+            case SecureArea.EC_CURVE_X25519:
+            case SecureArea.EC_CURVE_X448:
                 throw new IllegalStateException("Invalid curve " + attestationKeyData.curve
                         + "for attestation signing");
         }
@@ -333,13 +333,13 @@ public class BouncyCastleKeystore implements KeystoreEngine {
     }
 
     private @NonNull KeyData loadKey(@NonNull String alias,
-                                     @Nullable KeystoreEngine.KeyUnlockData keyUnlockData)
+                                     @Nullable SecureArea.KeyUnlockData keyUnlockData)
             throws KeyLockedException {
         KeyData ret = new KeyData();
 
         String passphrase = null;
         if (keyUnlockData != null) {
-            BouncyCastleKeystore.KeyUnlockData unlockData = (BouncyCastleKeystore.KeyUnlockData) keyUnlockData;
+            BouncyCastleSecureArea.KeyUnlockData unlockData = (BouncyCastleSecureArea.KeyUnlockData) keyUnlockData;
             passphrase = unlockData.mPassphrase;
         }
 
@@ -414,8 +414,8 @@ public class BouncyCastleKeystore implements KeystoreEngine {
     public byte[] sign(@NonNull String alias,
                        @Algorithm int signatureAlgorithm,
                        @NonNull byte[] dataToSign,
-                       @Nullable KeystoreEngine.KeyUnlockData keyUnlockData)
-            throws KeystoreEngine.KeyLockedException {
+                       @Nullable SecureArea.KeyUnlockData keyUnlockData)
+            throws SecureArea.KeyLockedException {
         KeyData keyData = loadKey(alias, keyUnlockData);
         if ((keyData.keyPurposes & KEY_PURPOSE_SIGN) == 0) {
             throw new IllegalArgumentException("Key does not have purpose KEY_PURPOSE_SIGN");
@@ -462,7 +462,7 @@ public class BouncyCastleKeystore implements KeystoreEngine {
     @Override
     public @NonNull byte[] keyAgreement(@NonNull String alias,
                                         @NonNull PublicKey otherKey,
-                                        @Nullable KeystoreEngine.KeyUnlockData keyUnlockData)
+                                        @Nullable SecureArea.KeyUnlockData keyUnlockData)
             throws KeyLockedException {
         KeyData keyData = loadKey(alias, keyUnlockData);
         if ((keyData.keyPurposes & KEY_PURPOSE_AGREE_KEY) == 0) {
@@ -483,7 +483,7 @@ public class BouncyCastleKeystore implements KeystoreEngine {
     /**
      * Bouncy Castle specific class for information about an EC key.
      */
-    public static class KeyInfo extends KeystoreEngine.KeyInfo {
+    public static class KeyInfo extends SecureArea.KeyInfo {
 
         private final boolean mIsPassphraseProtected;
         private final @Nullable String mAttestationKeyAlias;
@@ -569,7 +569,7 @@ public class BouncyCastleKeystore implements KeystoreEngine {
      *
      * <p>Currently only passphrases are supported.
      */
-    public static class KeyUnlockData implements KeystoreEngine.KeyUnlockData {
+    public static class KeyUnlockData implements SecureArea.KeyUnlockData {
         private final String mPassphrase;
 
         /**
@@ -585,7 +585,7 @@ public class BouncyCastleKeystore implements KeystoreEngine {
     /**
      * Class used to indicate key creation settings.
      */
-    public static class CreateKeySettings extends KeystoreEngine.CreateKeySettings {
+    public static class CreateKeySettings extends SecureArea.CreateKeySettings {
         private final String mAttestationKeyAlias;
         private @KeyPurpose int mKeyPurposes;
         private final @EcCurve int mEcCurve;
@@ -597,7 +597,7 @@ public class BouncyCastleKeystore implements KeystoreEngine {
                                   @EcCurve int ecCurve,
                                   @KeyPurpose int keyPurposes,
                                   @Nullable String attestationKeyAlias) {
-            super(BouncyCastleKeystore.class);
+            super(BouncyCastleSecureArea.class);
             mPassphraseRequired = passphraseRequired;
             mPassphrase = passphrase;
             mEcCurve = ecCurve;
@@ -664,7 +664,7 @@ public class BouncyCastleKeystore implements KeystoreEngine {
             /**
              * Sets the key purpose.
              *
-             * <p>By default the key purpose is {@link KeystoreEngine#KEY_PURPOSE_SIGN}.
+             * <p>By default the key purpose is {@link SecureArea#KEY_PURPOSE_SIGN}.
              *
              * @param keyPurposes one or more purposes.
              * @return the builder.
@@ -681,7 +681,7 @@ public class BouncyCastleKeystore implements KeystoreEngine {
             /**
              * Sets the curve to use for EC keys.
              *
-             * <p>By default {@link KeystoreEngine#EC_CURVE_P256} is used.
+             * <p>By default {@link SecureArea#EC_CURVE_P256} is used.
              *
              * @param curve the curve to use.
              * @return the builder.

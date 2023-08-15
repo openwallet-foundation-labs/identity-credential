@@ -779,7 +779,8 @@ public class DeviceRetrievalHelperTest {
 
                     @Override
                     public void onError(@NonNull Throwable error) {
-                        Assert.assertEquals("Error decoding EReaderKey in SessionEstablishment",
+                        Assert.assertEquals(
+                                "Error decoding EReaderKey in SessionEstablishment, returning status 10",
                                 error.getMessage());
                         condVarDecryptionErrorReceived.open();
                     }

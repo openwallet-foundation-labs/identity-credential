@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.android.keystore;
+package com.android.identity.android.securearea;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
@@ -26,9 +26,8 @@ import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 
 import com.android.identity.AndroidAttestationExtensionParser;
-import com.android.identity.android.keystore.AndroidKeystore;
 import com.android.identity.android.storage.AndroidStorageEngine;
-import com.android.identity.keystore.KeystoreEngine;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Timestamp;
 
@@ -55,16 +54,16 @@ import java.security.cert.CertificateException;
 
 import javax.crypto.KeyAgreement;
 
-public class AndroidKeystoreTest {
+public class AndroidKeystoreSecureAreaTest {
 
     @Test
     public void testEcKeyDeletion() {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
-        AndroidKeystore.CreateKeySettings settings =
-                new AndroidKeystore.CreateKeySettings.Builder(new byte[] {1, 2, 3}).build();
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3}).build();
 
         // First create the key...
         ks.createKey("testKey", settings);
@@ -74,11 +73,11 @@ public class AndroidKeystoreTest {
 
         // Now that we know the key doesn't exist, check that ecKeySign() throws
         try {
-            ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, new byte[] {1, 2}, null);
+            ks.sign("testKey", SecureArea.ALGORITHM_ES256, new byte[] {1, 2}, null);
             Assert.fail();
         } catch (IllegalArgumentException e) {
             // Expected path.
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -102,25 +101,26 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         byte[] challenge = new byte[] {1, 2, 3};
-        AndroidKeystore.CreateKeySettings settings =
-                new AndroidKeystore.CreateKeySettings.Builder(challenge)
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
                         .setUseStrongBox(useStrongBox)
                         .build();
 
         ks.createKey("testKey", settings);
 
-        AndroidKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(0, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(0, keyInfo.getUserAuthenticationType());
         Assert.assertNull(keyInfo.getAttestKeyAlias());
         Assert.assertNull(keyInfo.getValidFrom());
         Assert.assertNull(keyInfo.getValidUntil());
@@ -128,8 +128,8 @@ public class AndroidKeystoreTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -161,34 +161,151 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         byte[] challenge = new byte[] {1, 2, 3};
-        AndroidKeystore.CreateKeySettings settings =
-                new AndroidKeystore.CreateKeySettings.Builder(challenge)
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
                         .setUseStrongBox(useStrongBox)
-                        .setUserAuthenticationRequired(true, 42)
+                        .setUserAuthenticationRequired(true,
+                                42,
+                                AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
+                                        | AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC)
                         .build();
 
         ks.createKey("testKey", settings);
 
-        AndroidKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(42, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
+                | AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC,
+                keyInfo.getUserAuthenticationType());
         Assert.assertNull(keyInfo.getAttestKeyAlias());
         Assert.assertNull(keyInfo.getValidFrom());
         Assert.assertNull(keyInfo.getValidUntil());
 
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
-            ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
+            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
             Assert.fail("Should not be reached");
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
+            /* expected path */
+        }
+    }
+
+    @Test
+    public void testEcKeyAuthenticationTypeLskf() {
+        // setUserAuthenticationParameters() is only available on API 30 or later.
+        //
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R);
+
+        Context context = androidx.test.InstrumentationRegistry.getTargetContext();
+        File storageDir = new File(context.getDataDir(), "ic-testing");
+        StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
+
+        @AndroidKeystoreSecureArea.UserAuthenticationType int type =
+                AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF;
+
+        byte[] challenge = new byte[] {1, 2, 3};
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
+                        .setUserAuthenticationRequired(true, 42, type)
+                        .build();
+
+        ks.createKey("testKey", settings);
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        Assert.assertNotNull(keyInfo);
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertTrue(keyInfo.isHardwareBacked());
+        Assert.assertFalse(keyInfo.isStrongBoxBacked());
+        Assert.assertTrue(keyInfo.isUserAuthenticationRequired());
+        Assert.assertEquals(42, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(type, keyInfo.getUserAuthenticationType());
+        Assert.assertNull(keyInfo.getAttestKeyAlias());
+        Assert.assertNull(keyInfo.getValidFrom());
+        Assert.assertNull(keyInfo.getValidUntil());
+
+        byte[] dataToSign = new byte[] {4, 5, 6};
+        try {
+            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+            Assert.fail("Should not be reached");
+        } catch (SecureArea.KeyLockedException e) {
+            /* expected path */
+        }
+    }
+
+    @Test
+    public void testEcKeyAuthenticationTypeBiometric() {
+        // setUserAuthenticationParameters() is only available on API 30 or later.
+        //
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R);
+
+        Context context = androidx.test.InstrumentationRegistry.getTargetContext();
+        File storageDir = new File(context.getDataDir(), "ic-testing");
+        StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
+
+        @AndroidKeystoreSecureArea.UserAuthenticationType int type =
+                AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC;
+
+        byte[] challenge = new byte[] {1, 2, 3};
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
+                        .setUserAuthenticationRequired(true, 42, type)
+                        .build();
+
+        ks.createKey("testKey", settings);
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        Assert.assertNotNull(keyInfo);
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertTrue(keyInfo.isHardwareBacked());
+        Assert.assertFalse(keyInfo.isStrongBoxBacked());
+        Assert.assertTrue(keyInfo.isUserAuthenticationRequired());
+        Assert.assertEquals(42, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(type, keyInfo.getUserAuthenticationType());
+        Assert.assertNull(keyInfo.getAttestKeyAlias());
+        Assert.assertNull(keyInfo.getValidFrom());
+        Assert.assertNull(keyInfo.getValidUntil());
+
+        byte[] dataToSign = new byte[] {4, 5, 6};
+        try {
+            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+            Assert.fail("Should not be reached");
+        } catch (SecureArea.KeyLockedException e) {
+            /* expected path */
+        }
+    }
+
+    @Test
+    public void testEcKeyAuthenticationTypeNone() {
+        // setUserAuthenticationParameters() is only available on API 30 or later.
+        //
+        Assume.assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R);
+
+        Context context = androidx.test.InstrumentationRegistry.getTargetContext();
+        File storageDir = new File(context.getDataDir(), "ic-testing");
+        StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
+
+        @AndroidKeystoreSecureArea.UserAuthenticationType int type = 0;
+
+        byte[] challenge = new byte[] {1, 2, 3};
+        try {
+            AndroidKeystoreSecureArea.CreateKeySettings settings =
+                    new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
+                            .setUserAuthenticationRequired(true, 42, type)
+                            .build();
+            Assert.fail("Should not be reached");
+        } catch (IllegalArgumentException e) {
             /* expected path */
         }
     }
@@ -206,24 +323,25 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         byte[] challenge = new byte[] {1, 2, 3};
-        AndroidKeystore.CreateKeySettings settings =
-                new AndroidKeystore.CreateKeySettings.Builder(challenge)
-                        .setEcCurve(KeystoreEngine.EC_CURVE_ED25519)
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
+                        .setEcCurve(SecureArea.EC_CURVE_ED25519)
                         .build();
         ks.createKey("testKey", settings);
 
-        AndroidKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_ED25519, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_ED25519, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(0, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(0, keyInfo.getUserAuthenticationType());
         Assert.assertNull(keyInfo.getAttestKeyAlias());
         Assert.assertNull(keyInfo.getValidFrom());
         Assert.assertNull(keyInfo.getValidUntil());
@@ -231,8 +349,8 @@ public class AndroidKeystoreTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", KeystoreEngine.ALGORITHM_EDDSA, dataToSign, null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_EDDSA, dataToSign, null);
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -253,7 +371,7 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
@@ -261,16 +379,16 @@ public class AndroidKeystoreTest {
                 PackageManager.FEATURE_HARDWARE_KEYSTORE, 100));
 
         ks.createKey("testKey",
-                new AndroidKeystore.CreateKeySettings.Builder(new byte[] {1, 2, 3})
-                        .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
+                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
                         .build());
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
-            ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
+            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
             Assert.fail("Signing shouldn't work with a key w/o KEY_PURPOSE_SIGN");
         } catch (IllegalArgumentException e) {
             Assert.assertEquals("Key does not have purpose KEY_PURPOSE_SIGN", e.getMessage());
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
     }
@@ -298,7 +416,7 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         KeyPair otherKeyPair;
         try {
@@ -310,20 +428,21 @@ public class AndroidKeystoreTest {
         }
 
         ks.createKey("testKey",
-                new AndroidKeystore.CreateKeySettings.Builder(new byte[] {1, 2, 3})
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
                         .setUseStrongBox(useStrongBox)
-                        .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
+                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
                         .build());
 
-        AndroidKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(0, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(0, keyInfo.getUserAuthenticationType());
         Assert.assertNull(keyInfo.getAttestKeyAlias());
         Assert.assertNull(keyInfo.getValidFrom());
         Assert.assertNull(keyInfo.getValidUntil());
@@ -332,7 +451,7 @@ public class AndroidKeystoreTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -365,7 +484,7 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         KeyPair otherKeyPair;
         try {
@@ -376,20 +495,21 @@ public class AndroidKeystoreTest {
         }
 
         ks.createKey("testKey",
-                new AndroidKeystore.CreateKeySettings.Builder(new byte[] {1, 2, 3})
-                        .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
-                        .setEcCurve(KeystoreEngine.EC_CURVE_X25519)
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
+                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
+                        .setEcCurve(SecureArea.EC_CURVE_X25519)
                         .build());
 
-        AndroidKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_X25519, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_X25519, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(0, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(0, keyInfo.getUserAuthenticationType());
         Assert.assertNull(keyInfo.getAttestKeyAlias());
         Assert.assertNull(keyInfo.getValidFrom());
         Assert.assertNull(keyInfo.getValidUntil());
@@ -398,7 +518,7 @@ public class AndroidKeystoreTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -442,7 +562,7 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         KeyPair otherKeyPair;
         try {
@@ -454,22 +574,23 @@ public class AndroidKeystoreTest {
         }
 
         ks.createKey("testKey",
-                new AndroidKeystore.CreateKeySettings.Builder(new byte[] {1, 2, 3})
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
                         .setUseStrongBox(useStrongBox)
-                        .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY
-                                | KeystoreEngine.KEY_PURPOSE_SIGN)
+                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY
+                                | SecureArea.KEY_PURPOSE_SIGN)
                         .build());
 
-        AndroidKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_AGREE_KEY
-                | KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY
+                | SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(0, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(0, keyInfo.getUserAuthenticationType());
         Assert.assertNull(keyInfo.getAttestKeyAlias());
         Assert.assertNull(keyInfo.getValidFrom());
         Assert.assertNull(keyInfo.getValidUntil());
@@ -478,7 +599,7 @@ public class AndroidKeystoreTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -500,8 +621,8 @@ public class AndroidKeystoreTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -522,7 +643,7 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         // According to https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE
         // ECDH is available if FEATURE_HARDWARE_KEYSTORE is >= 100.
@@ -539,14 +660,14 @@ public class AndroidKeystoreTest {
         }
 
         ks.createKey("testKey",
-                new AndroidKeystore.CreateKeySettings.Builder(new byte[] {1, 2, 3})
-                        //.setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
+                        //.setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
                         .build());
 
         try {
             ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
             Assert.fail("ECDH shouldn't work with a key w/o KEY_PURPOSE_AGREE_KEY");
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         } catch (IllegalArgumentException e) {
             Assert.assertEquals("Key does not have purpose KEY_PURPOSE_AGREE_KEY", e.getMessage());
@@ -559,24 +680,24 @@ public class AndroidKeystoreTest {
         Context context = androidx.test.InstrumentationRegistry.getTargetContext();
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         byte[] challenge = new byte[] {1, 2, 3};
-        AndroidKeystore.CreateKeySettings settings =
-                new AndroidKeystore.CreateKeySettings.Builder(challenge).build();
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge).build();
 
         ks.createKey("testKey", settings);
-        KeystoreEngine.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
+        SecureArea.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
         Assert.assertTrue(keyInfoOld.getAttestation().size() >= 1);
 
         ks.createKey("testKey", settings);
-        KeystoreEngine.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -614,7 +735,7 @@ public class AndroidKeystoreTest {
     public void testAttestationHelper(Context context, boolean useStrongBox) throws IOException {
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         Calendar validFromCalendar = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
         validFromCalendar.set(2023, 5, 15, 0, 0, 0);
@@ -624,8 +745,8 @@ public class AndroidKeystoreTest {
         Timestamp validUntil = Timestamp.ofEpochMilli(validUntilCalendar.getTimeInMillis());
 
         byte[] challenge = new byte[] {1, 2, 3};
-        AndroidKeystore.CreateKeySettings settings =
-                new AndroidKeystore.CreateKeySettings.Builder(challenge)
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
                         .setUseStrongBox(useStrongBox)
                         .setValidityPeriod(validFrom, validUntil)
                         .build();
@@ -635,15 +756,16 @@ public class AndroidKeystoreTest {
         ks.createKey("testKey", settings);
 
         // On Android, at least three certificates are present in the chain.
-        AndroidKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 3);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(0, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(0, keyInfo.getUserAuthenticationType());
         Assert.assertNull(keyInfo.getAttestKeyAlias());
         Assert.assertEquals(validFrom, keyInfo.getValidFrom());
         Assert.assertEquals(validUntil, keyInfo.getValidUntil());
@@ -710,11 +832,11 @@ public class AndroidKeystoreTest {
 
         File storageDir = new File(context.getDataDir(), "ic-testing");
         StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
-        AndroidKeystore ks = new AndroidKeystore(context, storageEngine);
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         byte[] challenge = new byte[] {4, 5, 6, 7};
-        AndroidKeystore.CreateKeySettings settings =
-                new AndroidKeystore.CreateKeySettings.Builder(challenge)
+        AndroidKeystoreSecureArea.CreateKeySettings settings =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
                         .setAttestKeyAlias(attestKeyAlias)
                         .setUseStrongBox(useStrongBox)
                         .build();
@@ -723,15 +845,16 @@ public class AndroidKeystoreTest {
 
         ks.createKey("testKey", settings);
 
-        AndroidKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(0, keyInfo.getUserAuthenticationTimeoutMillis());
+        Assert.assertEquals(0, keyInfo.getUserAuthenticationType());
         Assert.assertEquals(attestKeyAlias, keyInfo.getAttestKeyAlias());
         Assert.assertNull(keyInfo.getValidFrom());
         Assert.assertNull(keyInfo.getValidUntil());

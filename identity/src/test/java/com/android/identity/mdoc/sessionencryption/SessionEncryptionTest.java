@@ -16,10 +16,9 @@
 
 package com.android.identity.mdoc.sessionencryption;
 
-import com.android.identity.TestUtilities;
 import com.android.identity.TestVectors;
 import com.android.identity.internal.Util;
-import com.android.identity.keystore.KeystoreEngine;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.util.Constants;
 
@@ -172,7 +171,7 @@ public class SessionEncryptionTest {
                 sessionEncryptionDevice.encryptMessage(null, OptionalLong.of(20)));
     }
 
-    private void testCurve(@KeystoreEngine.EcCurve int curve) {
+    private void testCurve(@SecureArea.EcCurve int curve) {
         KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(curve);
         PublicKey eReaderKeyPublic = eReaderKeyPair.getPublic();
         KeyPair eDeviceKeyPair = Util.createEphemeralKeyPair(curve);

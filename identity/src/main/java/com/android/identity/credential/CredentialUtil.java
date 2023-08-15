@@ -18,7 +18,7 @@ package com.android.identity.credential;
 
 import androidx.annotation.NonNull;
 
-import com.android.identity.keystore.KeystoreEngine;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Timestamp;
 
 /**
@@ -35,7 +35,7 @@ public class CredentialUtil {
      *     <li>If a key is used more than {@code maxUsesPerKey} times, a replacement is generated.</li>
      *     <li>If a key expires within {@code minValidTimeMillis} milliseconds, a replacement is generated.</li>
      * </ul>
-     * <p>This is all implemented on top of {@link Credential#createPendingAuthenticationKey(KeystoreEngine.CreateKeySettings, Credential.AuthenticationKey)}
+     * <p>This is all implemented on top of {@link Credential#createPendingAuthenticationKey(SecureArea.CreateKeySettings, Credential.AuthenticationKey)}
      * and {@link Credential.PendingAuthenticationKey#certify(byte[], Timestamp, Timestamp)}.
      * The application should examine the return value and if positive, collect the
      * pending authentication keys via {@link Credential#getPendingAuthenticationKeys()},
@@ -59,7 +59,7 @@ public class CredentialUtil {
      */
     public static int managedAuthenticationKeyHelper(
             @NonNull Credential credential,
-            @NonNull KeystoreEngine.CreateKeySettings createKeySettings,
+            @NonNull SecureArea.CreateKeySettings createKeySettings,
             @NonNull String managedKeyDomain,
             @NonNull Timestamp now,
             int numAuthenticationKeys,

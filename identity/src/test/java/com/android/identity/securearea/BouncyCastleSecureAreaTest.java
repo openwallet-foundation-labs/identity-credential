@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.keystore;
+package com.android.identity.securearea;
 
 import com.android.identity.storage.EphemeralStorageEngine;
 
@@ -39,9 +39,9 @@ import java.util.List;
 
 import javax.crypto.KeyAgreement;
 
-public class BouncyCastleKeystoreTest {
+public class BouncyCastleSecureAreaTest {
 
-    private static final String TAG = "BouncyCastleKeystoreTest";
+    private static final String TAG = "BouncyCastleSATest";  // limit to <= 23 chars
 
     @Before
     public void setup() {
@@ -51,11 +51,11 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeyDeletion() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         // First create the key...
-        ks.createKey("testKey", new BouncyCastleKeystore.CreateKeySettings.Builder().build());
-        BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        ks.createKey("testKey", new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
+        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         List<X509Certificate> certChain = keyInfo.getAttestation();
         Assert.assertTrue(certChain.size() >= 1);
 
@@ -64,11 +64,11 @@ public class BouncyCastleKeystoreTest {
 
         // Now that we know the key doesn't exist, check that ecKeySign() throws
         try {
-            ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, new byte[] {1, 2}, null);
+            ks.sign("testKey", SecureArea.ALGORITHM_ES256, new byte[] {1, 2}, null);
             Assert.fail();
         } catch (IllegalArgumentException e) {
             // Expected path.
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -79,15 +79,15 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeySigning() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
-        ks.createKey("testKey", new BouncyCastleKeystore.CreateKeySettings.Builder().build());
+        ks.createKey("testKey", new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
 
-        BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
         Assert.assertNull(keyInfo.getAttestationKeyAlias());
@@ -95,8 +95,8 @@ public class BouncyCastleKeystoreTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -115,15 +115,15 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeyCreate() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
-        ks.createKey("testKey", new BouncyCastleKeystore.CreateKeySettings.Builder().build());
+        ks.createKey("testKey", new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
 
-        BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
         Assert.assertNull(keyInfo.getAttestationKeyAlias());
@@ -143,24 +143,24 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeyCreateWithAttestationKey() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         ks.createKey("attestationKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder().build());
-        BouncyCastleKeystore.KeyInfo aKeyInfo = ks.getKeyInfo("attestationKey");
+                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
+        BouncyCastleSecureArea.KeyInfo aKeyInfo = ks.getKeyInfo("attestationKey");
         List<X509Certificate> attestationKeyCertChain = aKeyInfo.getAttestation();
         Assert.assertTrue(attestationKeyCertChain.size() >= 1);
 
         ks.createKey("testKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
                         .setAttestationKeyAlias("attestationKey")
                         .build());
 
-        BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
         Assert.assertEquals("attestationKey", keyInfo.getAttestationKeyAlias());
@@ -180,24 +180,24 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeySigningWithKeyWithoutCorrectPurpose() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         ks.createKey("attestationKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
                         .build());
 
         ks.createKey("testKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
-                        .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
                         .setAttestationKeyAlias("attestationKey")
                         .build());
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
-            ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
+            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
             Assert.fail("Signing shouldn't work with a key w/o KEY_PURPOSE_SIGN");
         } catch (IllegalArgumentException e) {
             Assert.assertEquals("Key does not have purpose KEY_PURPOSE_SIGN", e.getMessage());
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
     }
@@ -205,7 +205,7 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcdh() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         KeyPair otherKeyPair;
         try {
@@ -217,20 +217,20 @@ public class BouncyCastleKeystoreTest {
         }
 
         ks.createKey("attestationKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
                         .build());
 
         ks.createKey("testKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
-                        .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
                         .setAttestationKeyAlias("attestationKey")
                         .build());
 
-        BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
         Assert.assertEquals("attestationKey", keyInfo.getAttestationKeyAlias());
@@ -239,7 +239,7 @@ public class BouncyCastleKeystoreTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -262,7 +262,7 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcdhAndSigning() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         KeyPair otherKeyPair;
         try {
@@ -274,17 +274,17 @@ public class BouncyCastleKeystoreTest {
         }
 
         ks.createKey("testKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
-                        .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY
-                                | KeystoreEngine.KEY_PURPOSE_SIGN)
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY
+                                | SecureArea.KEY_PURPOSE_SIGN)
                         .build());
 
-        BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN
-                | KeystoreEngine.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN
+                | SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
         Assert.assertNull(keyInfo.getAttestationKeyAlias());
@@ -293,7 +293,7 @@ public class BouncyCastleKeystoreTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -315,8 +315,8 @@ public class BouncyCastleKeystoreTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -335,7 +335,7 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcdhWithoutCorrectPurpose() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         KeyPair otherKeyPair;
         try {
@@ -347,14 +347,14 @@ public class BouncyCastleKeystoreTest {
         }
 
         ks.createKey("testKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
-                        //.setKeyPurpose(KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                        //.setKeyPurpose(SecureArea.KEY_PURPOSE_AGREE_KEY)
                         .build());
 
         try {
             ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
             Assert.fail("ECDH shouldn't work with a key w/o KEY_PURPOSE_AGREE_KEY");
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         } catch (IllegalArgumentException e) {
             Assert.assertEquals("Key does not have purpose KEY_PURPOSE_AGREE_KEY", e.getMessage());
@@ -365,19 +365,19 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeySigningWithLockedKey() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         String passphrase = "verySekrit";
         ks.createKey("testKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
                         .setPassphraseRequired(true, passphrase)
                         .build());
 
-        BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(KeystoreEngine.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertTrue(keyInfo.isPassphraseProtected());
         Assert.assertNull(keyInfo.getAttestationKeyAlias());
@@ -386,32 +386,32 @@ public class BouncyCastleKeystoreTest {
         byte[] derSignature = new byte[0];
         try {
             derSignature = ks.sign("testKey",
-                    KeystoreEngine.ALGORITHM_ES256,
+                    SecureArea.ALGORITHM_ES256,
                     dataToSign,
                     null);
             Assert.fail();
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             // This is the expected path.
         }
 
         // Try with the wrong passphrase. This should fail.
         try {
             derSignature = ks.sign("testKey",
-                    KeystoreEngine.ALGORITHM_ES256,
+                    SecureArea.ALGORITHM_ES256,
                     dataToSign,
-                    new BouncyCastleKeystore.KeyUnlockData("wrongPassphrase"));
+                    new BouncyCastleSecureArea.KeyUnlockData("wrongPassphrase"));
             Assert.fail();
-        } catch (KeystoreEngine.KeyLockedException e) {
+        } catch (SecureArea.KeyLockedException e) {
             // This is the expected path.
         }
 
         // ... and with the right passphrase. This should work.
         try {
             derSignature = ks.sign("testKey",
-                    KeystoreEngine.ALGORITHM_ES256,
+                    SecureArea.ALGORITHM_ES256,
                     dataToSign,
-                    new BouncyCastleKeystore.KeyUnlockData(passphrase));
-        } catch (KeystoreEngine.KeyLockedException e) {
+                    new BouncyCastleSecureArea.KeyUnlockData(passphrase));
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -431,24 +431,24 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeyCreationOverridesExistingAlias() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         ks.createKey("testKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder().build());
-        BouncyCastleKeystore.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
+                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
+        BouncyCastleSecureArea.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
         List<X509Certificate> certChainOld = keyInfoOld.getAttestation();
         Assert.assertTrue(certChainOld.size() >= 1);
 
         ks.createKey("testKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder().build());
-        BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
+        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         List<X509Certificate> certChain = keyInfo.getAttestation();
         Assert.assertTrue(certChain.size() >= 1);
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature = new byte[0];
         try {
-            derSignature = ks.sign("testKey", KeystoreEngine.ALGORITHM_ES256, dataToSign, null);
-        } catch (KeystoreEngine.KeyLockedException e) {
+            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+        } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -473,84 +473,84 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeySigningAllCurves() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         int[] knownEcCurves = new int[] {
-                KeystoreEngine.EC_CURVE_P256,
-                KeystoreEngine.EC_CURVE_P384,
-                KeystoreEngine.EC_CURVE_P521,
-                KeystoreEngine.EC_CURVE_BRAINPOOLP256R1,
-                KeystoreEngine.EC_CURVE_BRAINPOOLP320R1,
-                KeystoreEngine.EC_CURVE_BRAINPOOLP384R1,
-                KeystoreEngine.EC_CURVE_BRAINPOOLP512R1,
+                SecureArea.EC_CURVE_P256,
+                SecureArea.EC_CURVE_P384,
+                SecureArea.EC_CURVE_P521,
+                SecureArea.EC_CURVE_BRAINPOOLP256R1,
+                SecureArea.EC_CURVE_BRAINPOOLP320R1,
+                SecureArea.EC_CURVE_BRAINPOOLP384R1,
+                SecureArea.EC_CURVE_BRAINPOOLP512R1,
                 // TODO: Edwards curve keys requires work in how private key is saved/loaded
-                //KeystoreEngine.EC_CURVE_ED25519,
-                //KeystoreEngine.EC_CURVE_ED448,
+                //SecureArea.EC_CURVE_ED25519,
+                //SecureArea.EC_CURVE_ED448,
         };
 
-        for (@KeystoreEngine.EcCurve int ecCurve : knownEcCurves) {
+        for (@SecureArea.EcCurve int ecCurve : knownEcCurves) {
             ks.createKey("testKey",
-                    new BouncyCastleKeystore.CreateKeySettings.Builder()
+                    new BouncyCastleSecureArea.CreateKeySettings.Builder()
                             .setEcCurve(ecCurve)
                             .build());
 
-            BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+            BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
             Assert.assertNotNull(keyInfo);
             Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-            Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+            Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
             Assert.assertEquals(ecCurve, keyInfo.getEcCurve());
             Assert.assertFalse(keyInfo.isHardwareBacked());
             Assert.assertFalse(keyInfo.isPassphraseProtected());
             Assert.assertNull(keyInfo.getAttestationKeyAlias());
 
-            @KeystoreEngine.Algorithm int[] signatureAlgorithms = new int[0];
+            @SecureArea.Algorithm int[] signatureAlgorithms = new int[0];
             switch (ecCurve) {
-                case KeystoreEngine.EC_CURVE_P256:
-                case KeystoreEngine.EC_CURVE_P384:
-                case KeystoreEngine.EC_CURVE_P521:
-                case KeystoreEngine.EC_CURVE_BRAINPOOLP256R1:
-                case KeystoreEngine.EC_CURVE_BRAINPOOLP320R1:
-                case KeystoreEngine.EC_CURVE_BRAINPOOLP384R1:
-                case KeystoreEngine.EC_CURVE_BRAINPOOLP512R1:
+                case SecureArea.EC_CURVE_P256:
+                case SecureArea.EC_CURVE_P384:
+                case SecureArea.EC_CURVE_P521:
+                case SecureArea.EC_CURVE_BRAINPOOLP256R1:
+                case SecureArea.EC_CURVE_BRAINPOOLP320R1:
+                case SecureArea.EC_CURVE_BRAINPOOLP384R1:
+                case SecureArea.EC_CURVE_BRAINPOOLP512R1:
                     signatureAlgorithms = new int[] {
-                            KeystoreEngine.ALGORITHM_ES256,
-                            KeystoreEngine.ALGORITHM_ES384,
-                            KeystoreEngine.ALGORITHM_ES512};
+                            SecureArea.ALGORITHM_ES256,
+                            SecureArea.ALGORITHM_ES384,
+                            SecureArea.ALGORITHM_ES512};
                     break;
 
-                case KeystoreEngine.EC_CURVE_ED25519:
-                case KeystoreEngine.EC_CURVE_ED448:
-                    signatureAlgorithms = new int[] {KeystoreEngine.ALGORITHM_EDDSA};
+                case SecureArea.EC_CURVE_ED25519:
+                case SecureArea.EC_CURVE_ED448:
+                    signatureAlgorithms = new int[] {SecureArea.ALGORITHM_EDDSA};
                     break;
 
                 default:
                     Assert.fail();
             }
 
-            for (@KeystoreEngine.Algorithm int signatureAlgorithm : signatureAlgorithms){
+            for (@SecureArea.Algorithm int signatureAlgorithm : signatureAlgorithms){
                 byte[] dataToSign = new byte[]{4, 5, 6};
                 byte[] derSignature = null;
                 try {
                     derSignature = ks.sign("testKey", signatureAlgorithm, dataToSign, null);
-                } catch (KeystoreEngine.KeyLockedException e) {
+                } catch (SecureArea.KeyLockedException e) {
                     throw new AssertionError(e);
                 }
 
                 String signatureAlgorithmName = "";
                 switch (signatureAlgorithm) {
-                    case KeystoreEngine.ALGORITHM_ES256:
+                    case SecureArea.ALGORITHM_ES256:
                         signatureAlgorithmName = "SHA256withECDSA";
                         break;
-                    case KeystoreEngine.ALGORITHM_ES384:
+                    case SecureArea.ALGORITHM_ES384:
                         signatureAlgorithmName = "SHA384withECDSA";
                         break;
-                    case KeystoreEngine.ALGORITHM_ES512:
+                    case SecureArea.ALGORITHM_ES512:
                         signatureAlgorithmName = "SHA512withECDSA";
                         break;
-                    case KeystoreEngine.ALGORITHM_EDDSA:
-                        if (ecCurve == KeystoreEngine.EC_CURVE_ED25519) {
+                    case SecureArea.ALGORITHM_EDDSA:
+                        if (ecCurve == SecureArea.EC_CURVE_ED25519) {
                             signatureAlgorithmName = "Ed25519";
-                        } else if (ecCurve == KeystoreEngine.EC_CURVE_ED448) {
+                        } else if (ecCurve == SecureArea.EC_CURVE_ED448) {
                             signatureAlgorithmName = "Ed448";
                         } else {
                             Assert.fail("ALGORITHM_EDDSA can only be used with "
@@ -578,57 +578,57 @@ public class BouncyCastleKeystoreTest {
     @Test
     public void testEcKeyEcdhAllCurves() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleKeystore ks = new BouncyCastleKeystore(storage);
+        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
 
         // Because we're using curves that cannot be used for signatures we need to
         // create an key used to sign the key attestations
         ks.createKey("attestationKey",
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
                         .build());
 
         int[] knownEcCurves = new int[] {
-                KeystoreEngine.EC_CURVE_P256,
-                KeystoreEngine.EC_CURVE_P384,
-                KeystoreEngine.EC_CURVE_P521,
-                KeystoreEngine.EC_CURVE_BRAINPOOLP256R1,
-                KeystoreEngine.EC_CURVE_BRAINPOOLP320R1,
-                KeystoreEngine.EC_CURVE_BRAINPOOLP384R1,
-                KeystoreEngine.EC_CURVE_BRAINPOOLP512R1,
+                SecureArea.EC_CURVE_P256,
+                SecureArea.EC_CURVE_P384,
+                SecureArea.EC_CURVE_P521,
+                SecureArea.EC_CURVE_BRAINPOOLP256R1,
+                SecureArea.EC_CURVE_BRAINPOOLP320R1,
+                SecureArea.EC_CURVE_BRAINPOOLP384R1,
+                SecureArea.EC_CURVE_BRAINPOOLP512R1,
                 // TODO: Edwards curve keys requires work in how private key is saved/loaded
-                //KeystoreEngine.EC_CURVE_X25519,
-                //KeystoreEngine.EC_CURVE_X448,
+                //SecureArea.EC_CURVE_X25519,
+                //SecureArea.EC_CURVE_X448,
         };
 
-        for (@KeystoreEngine.EcCurve int ecCurve : knownEcCurves) {
+        for (@SecureArea.EcCurve int ecCurve : knownEcCurves) {
             KeyPair otherKeyPair;
             try {
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
                 switch (ecCurve) {
-                    case KeystoreEngine.EC_CURVE_P256:
+                    case SecureArea.EC_CURVE_P256:
                         kpg.initialize(new ECGenParameterSpec("secp256r1"));
                         break;
-                    case KeystoreEngine.EC_CURVE_P384:
+                    case SecureArea.EC_CURVE_P384:
                         kpg.initialize(new ECGenParameterSpec("secp384r1"));
                         break;
-                    case KeystoreEngine.EC_CURVE_P521:
+                    case SecureArea.EC_CURVE_P521:
                         kpg.initialize(new ECGenParameterSpec("secp521r1"));
                         break;
-                    case KeystoreEngine.EC_CURVE_BRAINPOOLP256R1:
+                    case SecureArea.EC_CURVE_BRAINPOOLP256R1:
                         kpg.initialize(new ECGenParameterSpec("brainpoolP256r1"));
                         break;
-                    case KeystoreEngine.EC_CURVE_BRAINPOOLP320R1:
+                    case SecureArea.EC_CURVE_BRAINPOOLP320R1:
                         kpg.initialize(new ECGenParameterSpec("brainpoolP320r1"));
                         break;
-                    case KeystoreEngine.EC_CURVE_BRAINPOOLP384R1:
+                    case SecureArea.EC_CURVE_BRAINPOOLP384R1:
                         kpg.initialize(new ECGenParameterSpec("brainpoolP384r1"));
                         break;
-                    case KeystoreEngine.EC_CURVE_BRAINPOOLP512R1:
+                    case SecureArea.EC_CURVE_BRAINPOOLP512R1:
                         kpg.initialize(new ECGenParameterSpec("brainpoolP512r1"));
                         break;
-                    case KeystoreEngine.EC_CURVE_X25519:
+                    case SecureArea.EC_CURVE_X25519:
                         kpg = KeyPairGenerator.getInstance("x25519", new BouncyCastleProvider());
                         break;
-                    case KeystoreEngine.EC_CURVE_X448:
+                    case SecureArea.EC_CURVE_X448:
                         kpg = KeyPairGenerator.getInstance("x448", new BouncyCastleProvider());
                         break;
                     default:
@@ -641,16 +641,16 @@ public class BouncyCastleKeystoreTest {
             }
 
             ks.createKey("testKey",
-                    new BouncyCastleKeystore.CreateKeySettings.Builder()
-                            .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
+                    new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                            .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
                             .setEcCurve(ecCurve)
                             .setAttestationKeyAlias("attestationKey")
                             .build());
 
-            BouncyCastleKeystore.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+            BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
             Assert.assertNotNull(keyInfo);
             Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-            Assert.assertEquals(KeystoreEngine.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
+            Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
             Assert.assertEquals(ecCurve, keyInfo.getEcCurve());
             Assert.assertFalse(keyInfo.isHardwareBacked());
             Assert.assertFalse(keyInfo.isPassphraseProtected());
@@ -660,7 +660,7 @@ public class BouncyCastleKeystoreTest {
             byte[] ourSharedSecret;
             try {
                 ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-            } catch (KeystoreEngine.KeyLockedException e) {
+            } catch (SecureArea.KeyLockedException e) {
                 throw new AssertionError(e);
             }
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.keystore;
+package com.android.identity.securearea;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
@@ -28,12 +28,13 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * An interface to a Secure Keystore.
+ * An interface to a Secure Area.
  *
- * <p>This interface exists to abstract the underlying hardware-backed keystore
- * used for creation of key material.
+ * <p>This interface exists to abstract the underlying secure area used
+ * used for creation of key material and other security objects related
+ * to credentials.
  */
-public interface KeystoreEngine {
+public interface SecureArea {
 
     /** The curve identifier for P-256 */
     int EC_CURVE_P256 = 1;
@@ -121,7 +122,9 @@ public interface KeystoreEngine {
     int KEY_PURPOSE_AGREE_KEY = 1<<1;
 
     /**
-     * An annotation used to the purpose of a key.
+     * An annotation used for indicating the purpose of a key.
+     *
+     * <p>A key may have multiple purposes.
      */
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(flag = true,
@@ -138,7 +141,7 @@ public interface KeystoreEngine {
      * is exposed to the user of this interface.
      *
      * <p>The key is attested to and the generated certificate-chain depends on
-     * the specific Keystore Implementation used and the only guarantee is that
+     * the specific Secure Area used and the only guarantee is that
      * the leaf certificate contains the public key of the created key. Usually
      * a list of certificates chaining up to a well-known root is returned along
      * with platform specific information in the leaf certificate. The attestation
@@ -149,7 +152,7 @@ public interface KeystoreEngine {
      *
      * @param alias             A unique string to identify the newly created key.
      * @param createKeySettings A {@link CreateKeySettings} object.
-     * @throws IllegalArgumentException if the underlying Keystore Implementation
+     * @throws IllegalArgumentException if the underlying Secure Area Implementation
      *                                  does not support the requested creation
      *                                  settings, for example the EC curve to use.
      */
@@ -208,7 +211,7 @@ public interface KeystoreEngine {
      */
     @NonNull byte[] keyAgreement(@NonNull String alias,
                                  @NonNull PublicKey otherKey,
-                                 @Nullable KeystoreEngine.KeyUnlockData keyUnlockData)
+                                 @Nullable SecureArea.KeyUnlockData keyUnlockData)
             throws KeyLockedException;
 
     /**
@@ -224,7 +227,7 @@ public interface KeystoreEngine {
     /**
      * Class with information about a key.
      *
-     * <p>Concrete {@link KeystoreEngine} implementations may subclass this to provide
+     * <p>Concrete {@link SecureArea} implementations may subclass this to provide
      * implementation-specific information about the key.
      */
     class KeyInfo {
@@ -329,24 +332,24 @@ public interface KeystoreEngine {
     /**
      *  Abstract type used to indicate key creation settings (authentication
      *  required, nonce/challenge for remote attestation, etc.) and which
-     *  {@link KeystoreEngine} to use.
+     *  {@link SecureArea} to use.
      */
     abstract class CreateKeySettings {
 
-        private final Class<?> mKeystoreEngineClass;
+        private final Class<?> mSecureAreaClass;
 
-        protected CreateKeySettings(@NonNull Class<?> keystoreEngineClass) {
-            mKeystoreEngineClass = keystoreEngineClass;
+        protected CreateKeySettings(@NonNull Class<?> secureAreaClass) {
+            mSecureAreaClass = secureAreaClass;
         }
 
         /**
-         * Returns the class of the {@link KeystoreEngine} these settings are for.
+         * Returns the class of the {@link SecureArea} these settings are for.
          *
-         * @return A {@link KeystoreEngine}-derived type.
+         * @return A {@link SecureArea}-derived type.
          */
         public @NonNull
-        Class<?> getKeystoreEngineClass() {
-            return mKeystoreEngineClass;
+        Class<?> getSecureAreaClass() {
+            return mSecureAreaClass;
         }
     }
 }

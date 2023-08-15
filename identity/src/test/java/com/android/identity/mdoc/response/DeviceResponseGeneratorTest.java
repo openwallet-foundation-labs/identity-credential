@@ -21,9 +21,9 @@ import com.android.identity.credential.CredentialRequest;
 import com.android.identity.credential.CredentialStore;
 import com.android.identity.credential.NameSpacedData;
 import com.android.identity.internal.Util;
-import com.android.identity.keystore.BouncyCastleKeystore;
-import com.android.identity.keystore.KeystoreEngine;
-import com.android.identity.keystore.KeystoreEngineRepository;
+import com.android.identity.securearea.BouncyCastleSecureArea;
+import com.android.identity.securearea.SecureArea;
+import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator;
 import com.android.identity.mdoc.mso.StaticAuthDataParser;
@@ -60,9 +60,9 @@ public class DeviceResponseGeneratorTest {
 
     StorageEngine mStorageEngine;
 
-    KeystoreEngine mKeystoreEngine;
+    SecureArea mSecureArea;
 
-    KeystoreEngineRepository mKeystoreEngineRepository;
+    SecureAreaRepository mSecureAreaRepository;
 
     static final String DOC_TYPE = "com.example.credential_xyz";
     private Credential.AuthenticationKey mAuthKey;
@@ -108,9 +108,9 @@ public class DeviceResponseGeneratorTest {
     public void setup() throws Exception {
         mStorageEngine = new EphemeralStorageEngine();
 
-        mKeystoreEngineRepository = new KeystoreEngineRepository();
-        mKeystoreEngine = new BouncyCastleKeystore(mStorageEngine);
-        mKeystoreEngineRepository.addImplementation(mKeystoreEngine);
+        mSecureAreaRepository = new SecureAreaRepository();
+        mSecureArea = new BouncyCastleSecureArea(mStorageEngine);
+        mSecureAreaRepository.addImplementation(mSecureArea);
 
         provisionCredential();
     }
@@ -118,12 +118,12 @@ public class DeviceResponseGeneratorTest {
     private void provisionCredential() throws Exception {
         CredentialStore credentialStore = new CredentialStore(
                 mStorageEngine,
-                mKeystoreEngineRepository);
+                mSecureAreaRepository);
 
         // Create the credential...
         mCredential = credentialStore.createCredential(
                 "testCredential",
-                new BouncyCastleKeystore.CreateKeySettings.Builder().build());
+                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
         NameSpacedData nameSpacedData = new NameSpacedData.Builder()
                 .putEntryString("ns1", "foo1", "bar1")
                 .putEntryString("ns1", "foo2", "bar2")
@@ -141,9 +141,9 @@ public class DeviceResponseGeneratorTest {
         mTimeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000);
         Credential.PendingAuthenticationKey pendingAuthKey =
                 mCredential.createPendingAuthenticationKey(
-                        new BouncyCastleKeystore.CreateKeySettings.Builder()
-                                .setKeyPurposes(KeystoreEngine.KEY_PURPOSE_SIGN
-                                        | KeystoreEngine.KEY_PURPOSE_AGREE_KEY)
+                        new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                                .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN
+                                        | SecureArea.KEY_PURPOSE_AGREE_KEY)
                                 .build(),
                         null);
 
@@ -228,10 +228,10 @@ public class DeviceResponseGeneratorTest {
                         .setIssuerNamespaces(mergedIssuerNamespaces)
                         .setDeviceNamespacesSignature(
                                 new NameSpacedData.Builder().build(),
-                                mAuthKey.getKeystoreEngine(),
+                                mAuthKey.getSecureArea(),
                                 mAuthKey.getAlias(),
                                 null,
-                                KeystoreEngine.ALGORITHM_ES256)
+                                SecureArea.ALGORITHM_ES256)
                         .generate());
         byte[] encodedDeviceResponse = deviceResponseGenerator.generate();
 
@@ -316,7 +316,7 @@ public class DeviceResponseGeneratorTest {
                         .setIssuerNamespaces(mergedIssuerNamespaces)
                         .setDeviceNamespacesMac(
                                 new NameSpacedData.Builder().build(),
-                                mAuthKey.getKeystoreEngine(),
+                                mAuthKey.getSecureArea(),
                                 mAuthKey.getAlias(),
                                 null,
                                 eReaderKeyPair.getPublic())
@@ -374,10 +374,10 @@ public class DeviceResponseGeneratorTest {
                         .setIssuerNamespaces(mergedIssuerNamespaces)
                         .setDeviceNamespacesSignature(
                                 deviceSignedData,
-                                mAuthKey.getKeystoreEngine(),
+                                mAuthKey.getSecureArea(),
                                 mAuthKey.getAlias(),
                                 null,
-                                KeystoreEngine.ALGORITHM_ES256)
+                                SecureArea.ALGORITHM_ES256)
                         .generate());
         byte[] encodedDeviceResponse = deviceResponseGenerator.generate();
         DeviceResponseParser parser = new DeviceResponseParser();
@@ -448,10 +448,10 @@ public class DeviceResponseGeneratorTest {
                 new DocumentGenerator(DOC_TYPE, staticAuthData.getIssuerAuth(), encodedSessionTranscript)
                         .setDeviceNamespacesSignature(
                                 deviceSignedData,
-                                mAuthKey.getKeystoreEngine(),
+                                mAuthKey.getSecureArea(),
                                 mAuthKey.getAlias(),
                                 null,
-                                KeystoreEngine.ALGORITHM_ES256)
+                                SecureArea.ALGORITHM_ES256)
                         .generate());
         byte[] encodedDeviceResponse = deviceResponseGenerator.generate();
         DeviceResponseParser parser = new DeviceResponseParser();
@@ -512,10 +512,10 @@ public class DeviceResponseGeneratorTest {
                         .setIssuerNamespaces(mergedIssuerNamespaces)
                         .setDeviceNamespacesSignature(
                                 new NameSpacedData.Builder().build(),
-                                mAuthKey.getKeystoreEngine(),
+                                mAuthKey.getSecureArea(),
                                 mAuthKey.getAlias(),
                                 null,
-                                KeystoreEngine.ALGORITHM_ES256)
+                                SecureArea.ALGORITHM_ES256)
                         .generate());
         byte[] encodedDeviceResponse = deviceResponseGenerator.generate();
 
