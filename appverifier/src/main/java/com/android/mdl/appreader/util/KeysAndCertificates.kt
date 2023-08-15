@@ -60,6 +60,7 @@ object KeysAndCertificates {
             getCertificate(context, R.raw.credenceid_mdl_iaca_root),
             getCertificate(context, R.raw.fast_google_root_certificate),
             getCertificate(context, R.raw.google_mdl_iaca_cert),
+            getCertificate(context, R.raw.google_mdl_iaca_cert_2),
             getCertificate(context, R.raw.google_mekb_iaca_cert),
             getCertificate(context, R.raw.google_micov_csca_cert),
             getCertificate(context, R.raw.google_reader_ca),
