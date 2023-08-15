@@ -20,8 +20,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import com.android.identity.TestUtilities;
 
@@ -830,20 +830,6 @@ public class UtilTest {
                 () -> Util.cborDecodeBoolean(Util.cborEncodeBytestring(new byte[] {0x53, 0x54, 0x55})));
         assertThrows(IllegalArgumentException.class,
                 () -> Util.cborDecodeBoolean(Util.cborEncodeNumber(83L)));
-    }
-
-    // TODO: Replace with Assert.assertThrows() once we use a recent enough version of JUnit.
-    /** Asserts that the given {@code runnable} throws the given exception class, or a subclass. */
-    private static void assertThrows(
-            Class<? extends RuntimeException> expected, Runnable runnable) {
-        try {
-            runnable.run();
-            fail("Expected " + expected + " was not thrown");
-        } catch (RuntimeException e) {
-            Class actual = e.getClass();
-            assertTrue("Unexpected Exception class: " + actual,
-                    expected.isAssignableFrom(actual));
-        }
     }
 
     @Test
