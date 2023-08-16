@@ -19,8 +19,8 @@ package com.android.identity.credential;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.keystore.KeystoreEngine;
-import com.android.identity.keystore.KeystoreEngineRepository;
+import com.android.identity.securearea.SecureArea;
+import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.StorageEngine;
 
 import java.util.ArrayList;
@@ -34,8 +34,8 @@ import java.util.List;
  * not tied to that specific credential shape and is designed to hold any kind of
  * credential, regardless of shape, presentation-, or issuance-protocol used.
  *
- * <p>This code relies on a Secure Keystore for keys and this dependency is abstracted
- * by the {@link KeystoreEngine} interface and allows the use of different implementations
+ * <p>This code relies on a Secure Area for keys and this dependency is abstracted
+ * by the {@link SecureArea} interface and allows the use of different implementations
  * on a per-credential basis. Persistent storage of credentials is abstracted via
  * the {@link StorageEngine} interface which provides a simple key/value store.
  *
@@ -44,19 +44,19 @@ import java.util.List;
  */
 public class CredentialStore {
     private final StorageEngine mStorageEngine;
-    private final KeystoreEngineRepository mKeystoreEngineRepository;
+    private final SecureAreaRepository mSecureAreaRepository;
 
     /**
      * Creates a new credential store.
      *
      * @param storageEngine the {@link StorageEngine} to use for storing/retrieving credentials.
-     * @param keystoreEngineRepository the repository of configured {@link KeystoreEngine} that can
+     * @param secureAreaRepository the repository of configured {@link SecureArea} that can
      *                                 be used.
      */
     public CredentialStore(@NonNull StorageEngine storageEngine,
-                           @NonNull KeystoreEngineRepository keystoreEngineRepository) {
+                           @NonNull SecureAreaRepository secureAreaRepository) {
         mStorageEngine = storageEngine;
-        mKeystoreEngineRepository = keystoreEngineRepository;
+        mSecureAreaRepository = secureAreaRepository;
     }
 
     /**
@@ -70,9 +70,9 @@ public class CredentialStore {
      * @return A newly created credential.
      */
     public @NonNull Credential createCredential(@NonNull String name,
-                                                @NonNull KeystoreEngine.CreateKeySettings credentialKeySettings) {
+                                                @NonNull SecureArea.CreateKeySettings credentialKeySettings) {
         return Credential.create(mStorageEngine,
-                mKeystoreEngineRepository,
+                mSecureAreaRepository,
                 name,
                 credentialKeySettings);
     }
@@ -84,7 +84,7 @@ public class CredentialStore {
      * @return the credential or {@code null} if not found.
      */
     public @Nullable Credential lookupCredential(@NonNull String name) {
-        return Credential.lookup(mStorageEngine, mKeystoreEngineRepository, name);
+        return Credential.lookup(mStorageEngine, mSecureAreaRepository, name);
     }
 
     /**

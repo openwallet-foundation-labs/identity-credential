@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.keystore;
+package com.android.identity.securearea;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,38 +24,38 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * A repository of {@link KeystoreEngine} implementations.
+ * A repository of {@link SecureArea} implementations.
  *
- * <p>This is used by to provide fine-grained control for which {@link KeystoreEngine}
- * implementation to use when loading keys using different implementations.
+ * <p>This is used by to provide fine-grained control for which {@link SecureArea}
+ * implementation to use when loading keys and objects using different implementations.
  */
-public class KeystoreEngineRepository {
+public class SecureAreaRepository {
 
-    List<KeystoreEngine> mImplementations = new ArrayList<>();
+    List<SecureArea> mImplementations = new ArrayList<>();
 
     /**
      * Constructs a new object.
      */
-    public KeystoreEngineRepository() {
+    public SecureAreaRepository() {
     }
 
     /**
      * Gets all implementations in the repository.
      *
-     * @return A list of {@link KeystoreEngine} implementations in the repository.
+     * @return A list of {@link SecureArea} implementations in the repository.
      */
-    public @NonNull List<KeystoreEngine> getImplementations() {
+    public @NonNull List<SecureArea> getImplementations() {
         return Collections.unmodifiableList(mImplementations);
     }
 
     /**
-     * Gets a {@link KeystoreEngine} for a specific classname.
+     * Gets a {@link SecureArea} for a specific classname.
      *
      * @param className the classname for an implementation.
      * @return the implementation or {@code null} if no implementation has been registered.
      */
-    public @Nullable KeystoreEngine getImplementation(@NonNull String className) {
-        for (KeystoreEngine implementation : mImplementations) {
+    public @Nullable SecureArea getImplementation(@NonNull String className) {
+        for (SecureArea implementation : mImplementations) {
             if (implementation.getClass().getName().equals(className)) {
                 return implementation;
             }
@@ -64,11 +64,11 @@ public class KeystoreEngineRepository {
     }
 
     /**
-     * Adds a {@link KeystoreEngine} to the repository.
+     * Adds a {@link SecureArea} to the repository.
      *
-     * @param keystoreEngine an instance of a type implementing the {@link KeystoreEngine} interface.
+     * @param secureArea an instance of a type implementing the {@link SecureArea} interface.
      */
-    public void addImplementation(@NonNull KeystoreEngine keystoreEngine) {
-        mImplementations.add(keystoreEngine);
+    public void addImplementation(@NonNull SecureArea secureArea) {
+        mImplementations.add(secureArea);
     }
 }

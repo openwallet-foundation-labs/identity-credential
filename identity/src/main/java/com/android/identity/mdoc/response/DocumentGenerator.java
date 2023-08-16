@@ -21,7 +21,7 @@ import androidx.annotation.Nullable;
 
 import com.android.identity.credential.NameSpacedData;
 import com.android.identity.internal.Util;
-import com.android.identity.keystore.KeystoreEngine;
+import com.android.identity.securearea.SecureArea;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -56,8 +56,8 @@ public class DocumentGenerator {
     /**
      * Creates a new {@link DocumentGenerator}.
      *
-     * <p>At least one of {@link #setDeviceNamespacesSignature(NameSpacedData, KeystoreEngine, String, KeystoreEngine.KeyUnlockData, int)}
-     * or {@link #setDeviceNamespacesMac(NameSpacedData, KeystoreEngine, String, KeystoreEngine.KeyUnlockData, PublicKey)}
+     * <p>At least one of {@link #setDeviceNamespacesSignature(NameSpacedData, SecureArea, String, SecureArea.KeyUnlockData, int)}
+     * or {@link #setDeviceNamespacesMac(NameSpacedData, SecureArea, String, SecureArea.KeyUnlockData, PublicKey)}
      * must be called before {@link #generate()} is called.
      *
      * <p>Issuer-signed data can be set using {@link #setIssuerNamespaces(Map)}.
@@ -110,12 +110,12 @@ public class DocumentGenerator {
 
     private @NonNull
     DocumentGenerator setDeviceNamespaces(@NonNull NameSpacedData dataElements,
-                                          @NonNull KeystoreEngine keystoreEngine,
+                                          @NonNull SecureArea secureArea,
                                           @NonNull String keyAlias,
-                                          @Nullable KeystoreEngine.KeyUnlockData keyUnlockData,
-                                          @KeystoreEngine.Algorithm int signatureAlgorithm,
+                                          @Nullable SecureArea.KeyUnlockData keyUnlockData,
+                                          @SecureArea.Algorithm int signatureAlgorithm,
                                           @Nullable PublicKey eReaderKey)
-            throws KeystoreEngine.KeyLockedException {
+            throws SecureArea.KeyLockedException {
 
         CborBuilder deviceNameSpacesBuilder = new CborBuilder();
         MapBuilder<CborBuilder> mapBuilder = deviceNameSpacesBuilder.addMap();
@@ -144,9 +144,9 @@ public class DocumentGenerator {
 
         byte[] encodedDeviceSignature = null;
         byte[] encodedDeviceMac = null;
-        if (signatureAlgorithm != KeystoreEngine.ALGORITHM_UNSET) {
+        if (signatureAlgorithm != SecureArea.ALGORITHM_UNSET) {
             encodedDeviceSignature = Util.cborEncode(Util.coseSign1Sign(
-                    keystoreEngine,
+                    secureArea,
                     keyAlias,
                     signatureAlgorithm,
                     keyUnlockData,
@@ -154,7 +154,7 @@ public class DocumentGenerator {
                     deviceAuthenticationBytes,
                     null));
         } else {
-            byte[] sharedSecret = keystoreEngine
+            byte[] sharedSecret = secureArea
                     .keyAgreement(keyAlias,
                             eReaderKey,
                             keyUnlockData);
@@ -207,22 +207,22 @@ public class DocumentGenerator {
      * mdoc ECDSA / EdDSA Authentication.
      *
      * @param dataElements the data elements to return in {@code DeviceSigned}.
-     * @param keystoreEngine the {@link KeystoreEngine} for the authentication key to sign with.
+     * @param secureArea the {@link SecureArea} for the authentication key to sign with.
      * @param keyAlias the alias for the authentication key to sign with.
      * @param keyUnlockData unlock data for the authentication key, or {@code null}.
      * @param signatureAlgorithm the signature algorithm to use.
      * @return the generator.
-     * @throws KeystoreEngine.KeyLockedException if the authentication key is locked.
+     * @throws SecureArea.KeyLockedException if the authentication key is locked.
      */
     public @NonNull
     DocumentGenerator setDeviceNamespacesSignature(@NonNull NameSpacedData dataElements,
-                                                   @NonNull KeystoreEngine keystoreEngine,
+                                                   @NonNull SecureArea secureArea,
                                                    @NonNull String keyAlias,
-                                                   @Nullable KeystoreEngine.KeyUnlockData keyUnlockData,
-                                                   @KeystoreEngine.Algorithm int signatureAlgorithm)
-            throws KeystoreEngine.KeyLockedException {
+                                                   @Nullable SecureArea.KeyUnlockData keyUnlockData,
+                                                   @SecureArea.Algorithm int signatureAlgorithm)
+            throws SecureArea.KeyLockedException {
         return setDeviceNamespaces(dataElements,
-                keystoreEngine,
+                secureArea,
                 keyAlias,
                 keyUnlockData,
                 signatureAlgorithm,
@@ -236,25 +236,25 @@ public class DocumentGenerator {
      * mdoc MAC Authentication.
      *
      * @param dataElements the data elements to return in {@code DeviceSigned}.
-     * @param keystoreEngine the {@link KeystoreEngine} for the authentication key to sign with.
+     * @param secureArea the {@link SecureArea} for the authentication key to sign with.
      * @param keyAlias the alias for the authentication key to sign with.
      * @param keyUnlockData unlock data for the authentication key, or {@code null}.
      * @param eReaderKey the ephemeral public key used by the remote reader.
      * @return the generator.
-     * @throws KeystoreEngine.KeyLockedException if the authentication key is locked.
+     * @throws SecureArea.KeyLockedException if the authentication key is locked.
      */
     public @NonNull
     DocumentGenerator setDeviceNamespacesMac(@NonNull NameSpacedData dataElements,
-                                             @NonNull KeystoreEngine keystoreEngine,
+                                             @NonNull SecureArea secureArea,
                                              @NonNull String keyAlias,
-                                             @Nullable KeystoreEngine.KeyUnlockData keyUnlockData,
+                                             @Nullable SecureArea.KeyUnlockData keyUnlockData,
                                              @NonNull PublicKey eReaderKey)
-            throws KeystoreEngine.KeyLockedException {
+            throws SecureArea.KeyLockedException {
         return setDeviceNamespaces(dataElements,
-                keystoreEngine,
+                secureArea,
                 keyAlias,
                 keyUnlockData,
-                KeystoreEngine.ALGORITHM_UNSET,
+                SecureArea.ALGORITHM_UNSET,
                 eReaderKey);
     }
 
@@ -265,8 +265,8 @@ public class DocumentGenerator {
      * section 8.3.2.1.2.2.
      *
      * @return the bytes described above.
-     * @throws IllegalStateException if one of {@link #setDeviceNamespacesSignature(NameSpacedData, KeystoreEngine, String, KeystoreEngine.KeyUnlockData, int)}
-     *   or {@link #setDeviceNamespacesMac(NameSpacedData, KeystoreEngine, String, KeystoreEngine.KeyUnlockData, PublicKey)} hasn't been called on the generator.
+     * @throws IllegalStateException if one of {@link #setDeviceNamespacesSignature(NameSpacedData, SecureArea, String, SecureArea.KeyUnlockData, int)}
+     *   or {@link #setDeviceNamespacesMac(NameSpacedData, SecureArea, String, SecureArea.KeyUnlockData, PublicKey)} hasn't been called on the generator.
      */
     public @NonNull
     byte[] generate() {

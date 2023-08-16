@@ -21,13 +21,9 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.keystore.KeystoreEngine;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.android.mdoc.transport.TransmissionProgressListener;
-import com.android.identity.android.legacy.CredentialDataRequest;
-import com.android.identity.android.legacy.IdentityCredential;
-import com.android.identity.android.legacy.IdentityCredentialStore;
-import com.android.identity.android.legacy.WritableIdentityCredential;
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper;
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper;
 import com.android.identity.android.mdoc.transport.DataTransport;
@@ -271,17 +267,17 @@ public class DeviceRetrievalHelper {
             }
         }
         DataItem eReaderKeyDataItem = Util.cborDecode(encodedEReaderKey);
-        @KeystoreEngine.EcCurve int curve;
+        @SecureArea.EcCurve int curve;
         try {
             curve = Util.coseKeyGetCurve(eReaderKeyDataItem);
         } catch (IllegalArgumentException e) {
             Logger.w(TAG, "No curve identifier in COSE_Key", e);
             return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION);
         }
-        if (curve != KeystoreEngine.EC_CURVE_P256) {
+        if (curve != SecureArea.EC_CURVE_P256) {
             Logger.w(TAG,
                     String.format(Locale.US, "Expected curve P-256 (%d) but got %d",
-                            KeystoreEngine.EC_CURVE_P256, curve));
+                            SecureArea.EC_CURVE_P256, curve));
             return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION);
         }
         try {

@@ -26,11 +26,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
-import com.android.identity.keystore.KeystoreEngine
-import com.android.identity.android.keystore.AndroidKeystore
+import com.android.identity.securearea.SecureArea
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
-import com.android.identity.keystore.KeystoreEngine.KEY_PURPOSE_AGREE_KEY
-import com.android.identity.keystore.KeystoreEngine.KEY_PURPOSE_SIGN
+import com.android.identity.securearea.SecureArea.KEY_PURPOSE_AGREE_KEY
+import com.android.identity.securearea.SecureArea.KEY_PURPOSE_SIGN
 import com.android.identity.util.Logger
 import java.io.File
 import java.security.KeyPair
@@ -39,13 +39,13 @@ import java.security.NoSuchAlgorithmException
 
 class MainActivity : AppCompatActivity() {
     private lateinit var otherKeyPairForEcdh: KeyPair
-    private lateinit var keystore: AndroidKeystore
+    private lateinit var secureArea: AndroidKeystoreSecureArea
     private lateinit var storage: AndroidStorageEngine
     private val TAG = "MainActivity"
 
     private fun doUserAuthAndTryAgain(keyAlias : String,
                                       keyPurpose: Int,
-                                      unlockData: AndroidKeystore.KeyUnlockData,
+                                      unlockData: AndroidKeystoreSecureArea.KeyUnlockData,
                                       forceLskf: Boolean) {
 
         var cryptoObject : BiometricPrompt.CryptoObject? = null
@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
 
         if (keyPurpose == KEY_PURPOSE_SIGN) {
             title = "Unlock to sign with key"
-            cryptoObject = unlockData.getCryptoObjectForSigning(KeystoreEngine.ALGORITHM_ES256)
+            cryptoObject = unlockData.getCryptoObjectForSigning(SecureArea.ALGORITHM_ES256)
         } else if (keyPurpose == KEY_PURPOSE_AGREE_KEY) {
             title = "Unlock to ECDH with key"
             // TODO: Note that getCryptoObjectForEcdh() will throw in the auth-per-op case
@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
         if (forceLskf) {
             // TODO: this works only on Android 11 or later but for now this is fine
             //   as this is just a reference/test app and this path is only hit if
-            //   the user actually presses the "Use PIN" button.  Longer term, we should
+            //   the user actually presses the "Use LSKF" button.  Longer term, we should
             //   fall back to using KeyGuard which will work on all Android versions.
             promptInfoBuilder.setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
         } else {
@@ -108,9 +108,9 @@ class MainActivity : AppCompatActivity() {
 
                     // Now try to use the key again...
                     if (keyPurpose == KEY_PURPOSE_SIGN) {
-                        val derSignature = keystore.sign(
+                        val derSignature = secureArea.sign(
                             keyAlias,
-                            KeystoreEngine.ALGORITHM_ES256,
+                            SecureArea.ALGORITHM_ES256,
                             "data".toByteArray(),
                             unlockData
                         )
@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity() {
                             derSignature
                         )
                     } else if (keyPurpose == KEY_PURPOSE_AGREE_KEY) {
-                        val sharedSecret = keystore.keyAgreement(
+                        val sharedSecret = secureArea.keyAgreement(
                             keyAlias,
                             otherKeyPairForEcdh.public,
                             null)
@@ -165,29 +165,39 @@ class MainActivity : AppCompatActivity() {
         storage = AndroidStorageEngine.Builder(applicationContext,
             File(applicationContext.dataDir, "ic-testing"))
             .build()
-        keystore = AndroidKeystore(applicationContext, storage)
+        secureArea =
+            AndroidKeystoreSecureArea(
+                applicationContext,
+                storage
+            )
+
+        // Specify that either LSKF or Biometric Auth can be used. This is guaranteed to work on
+        // any Android device that this app can run out (API 24 or higher).
+        //
+        val authType = (AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
+                + AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC)
 
         // Create EC signing keys. This is guaranteed to work on any Android device
         // that this app can run out (API 24 or higher).
         //
-        keystore.createKey(keySignNoAuth,
-            AndroidKeystore.CreateKeySettings.Builder("challenge".toByteArray()).build())
+        secureArea.createKey(keySignNoAuth,
+            AndroidKeystoreSecureArea.CreateKeySettings.Builder("challenge".toByteArray()).build())
 
         val keyguardManager: KeyguardManager =
             applicationContext.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
 
         // Can only use auth-bound keys with a lockscreen
         if (keyguardManager.isDeviceSecure) {
-            keystore.createKey(
+            secureArea.createKey(
                 keySignTimeout10Sec,
-                AndroidKeystore.CreateKeySettings.Builder("challenge".toByteArray())
-                    .setUserAuthenticationRequired(true, 10 * 1000)
+                AndroidKeystoreSecureArea.CreateKeySettings.Builder("challenge".toByteArray())
+                    .setUserAuthenticationRequired(true, 10 * 1000, authType)
                     .build()
             )
-            keystore.createKey(
+            secureArea.createKey(
                 keySignTimeoutNone,
-                AndroidKeystore.CreateKeySettings.Builder("challenge".toByteArray())
-                    .setUserAuthenticationRequired(true, 0)
+                AndroidKeystoreSecureArea.CreateKeySettings.Builder("challenge".toByteArray())
+                    .setUserAuthenticationRequired(true, 0, authType)
                     .build()
             )
         } else {
@@ -200,10 +210,10 @@ class MainActivity : AppCompatActivity() {
         // and later so we need to handle it not being available.
         //
         try {
-            keystore.createKey(
+            secureArea.createKey(
                 keyEcdhNoAuth,
-                AndroidKeystore.CreateKeySettings.Builder("challenge".toByteArray())
-                    .setKeyPurposes(AndroidKeystore.KEY_PURPOSE_AGREE_KEY)
+                AndroidKeystoreSecureArea.CreateKeySettings.Builder("challenge".toByteArray())
+                    .setKeyPurposes(AndroidKeystoreSecureArea.KEY_PURPOSE_AGREE_KEY)
                     .build())
         } catch (e: IllegalArgumentException) {
             Logger.w(TAG, "Error creating key $keyEcdhNoAuth", e)
@@ -212,11 +222,11 @@ class MainActivity : AppCompatActivity() {
         // Can only use auth-bound keys with a lockscreen
         if (keyguardManager.isDeviceSecure) {
             try {
-                keystore.createKey(
+                secureArea.createKey(
                     keyEcdhTimeout10Sec,
-                    AndroidKeystore.CreateKeySettings.Builder("challenge".toByteArray())
-                        .setKeyPurposes(AndroidKeystore.KEY_PURPOSE_AGREE_KEY)
-                        .setUserAuthenticationRequired(true, 10 * 1000)
+                    AndroidKeystoreSecureArea.CreateKeySettings.Builder("challenge".toByteArray())
+                        .setKeyPurposes(AndroidKeystoreSecureArea.KEY_PURPOSE_AGREE_KEY)
+                        .setUserAuthenticationRequired(true, 10 * 1000, authType)
                         .build()
                 )
             } catch (e: IllegalArgumentException) {
@@ -224,11 +234,11 @@ class MainActivity : AppCompatActivity() {
                 (findViewById(R.id.button_ecdh_auth_timeout_10_sec) as Button).isEnabled = false
             }
             try {
-                keystore.createKey(
+                secureArea.createKey(
                     keyEcdhTimeoutNone,
-                    AndroidKeystore.CreateKeySettings.Builder("challenge".toByteArray())
-                        .setKeyPurposes(AndroidKeystore.KEY_PURPOSE_AGREE_KEY)
-                        .setUserAuthenticationRequired(true, 0)
+                    AndroidKeystoreSecureArea.CreateKeySettings.Builder("challenge".toByteArray())
+                        .setKeyPurposes(AndroidKeystoreSecureArea.KEY_PURPOSE_AGREE_KEY)
+                        .setUserAuthenticationRequired(true, 0, authType)
                         .build()
                 )
             } catch (e: IllegalArgumentException) {
@@ -242,8 +252,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         (findViewById(R.id.button_sign_no_auth) as Button).setOnClickListener {
-            val derSignature = keystore.sign(keySignNoAuth,
-                KeystoreEngine.ALGORITHM_ES256,
+            val derSignature = secureArea.sign(keySignNoAuth,
+                SecureArea.ALGORITHM_ES256,
                 "data".toByteArray(),
                 null)
             Logger.dHex(TAG,
@@ -253,26 +263,26 @@ class MainActivity : AppCompatActivity() {
 
         (findViewById(R.id.button_sign_auth_timeout_10_sec) as Button).setOnClickListener {
             try {
-                val derSignature = keystore.sign(
+                val derSignature = secureArea.sign(
                     keySignTimeout10Sec,
-                    KeystoreEngine.ALGORITHM_ES256,
+                    SecureArea.ALGORITHM_ES256,
                     "data".toByteArray(),
                     null
                 )
                 Logger.dHex(TAG,
                     "Made signature with key '$keySignTimeout10Sec' without authentication",
                     derSignature)
-            } catch (e: KeystoreEngine.KeyLockedException) {
-                val unlockData = AndroidKeystore.KeyUnlockData(keySignTimeout10Sec)
+            } catch (e: SecureArea.KeyLockedException) {
+                val unlockData = AndroidKeystoreSecureArea.KeyUnlockData(keySignTimeout10Sec)
                 doUserAuthAndTryAgain(keySignTimeout10Sec, KEY_PURPOSE_SIGN, unlockData, false)
             }
         }
 
         (findViewById(R.id.button_sign_auth_timeout_0) as Button).setOnClickListener {
             try {
-                val derSignature = keystore.sign(
+                val derSignature = secureArea.sign(
                     keySignTimeoutNone,
-                    KeystoreEngine.ALGORITHM_ES256,
+                    SecureArea.ALGORITHM_ES256,
                     "data".toByteArray(),
                     null
                 )
@@ -280,14 +290,14 @@ class MainActivity : AppCompatActivity() {
                     "Made signature with key '$keySignTimeoutNone' without "
                             + "authentication (should never happen)",
                     derSignature)
-            } catch (e: KeystoreEngine.KeyLockedException) {
-                val unlockData = AndroidKeystore.KeyUnlockData(keySignTimeoutNone)
+            } catch (e: SecureArea.KeyLockedException) {
+                val unlockData = AndroidKeystoreSecureArea.KeyUnlockData(keySignTimeoutNone)
                 doUserAuthAndTryAgain(keySignTimeoutNone, KEY_PURPOSE_SIGN, unlockData, false)
             }
         }
 
         (findViewById(R.id.button_ecdh_no_auth) as Button).setOnClickListener {
-            val sharedSecret = keystore.keyAgreement(keyEcdhNoAuth,
+            val sharedSecret = secureArea.keyAgreement(keyEcdhNoAuth,
                 otherKeyPairForEcdh.public,
                 null)
             Logger.dHex(TAG,
@@ -297,28 +307,28 @@ class MainActivity : AppCompatActivity() {
 
         (findViewById(R.id.button_ecdh_auth_timeout_10_sec) as Button).setOnClickListener {
             try {
-                val sharedSecret = keystore.keyAgreement(keyEcdhTimeout10Sec,
+                val sharedSecret = secureArea.keyAgreement(keyEcdhTimeout10Sec,
                     otherKeyPairForEcdh.public,
                     null)
                 Logger.dHex(TAG,
                     "ECDH with key '$keySignNoAuth' without authentication",
                     sharedSecret)
-            } catch (e: KeystoreEngine.KeyLockedException) {
-                val unlockData = AndroidKeystore.KeyUnlockData(keyEcdhTimeout10Sec)
+            } catch (e: SecureArea.KeyLockedException) {
+                val unlockData = AndroidKeystoreSecureArea.KeyUnlockData(keyEcdhTimeout10Sec)
                 doUserAuthAndTryAgain(keyEcdhTimeout10Sec, KEY_PURPOSE_AGREE_KEY, unlockData, false)
             }
         }
 
         (findViewById(R.id.button_ecdh_auth_timeout_0) as Button).setOnClickListener {
             try {
-                val sharedSecret = keystore.keyAgreement(keyEcdhTimeoutNone,
+                val sharedSecret = secureArea.keyAgreement(keyEcdhTimeoutNone,
                     otherKeyPairForEcdh.public,
                     null)
                 Logger.dHex(TAG,
                     "ECDH with key '$keySignNoAuth' without authentication",
                     sharedSecret)
-            } catch (e: KeystoreEngine.KeyLockedException) {
-                val unlockData = AndroidKeystore.KeyUnlockData(keyEcdhTimeoutNone)
+            } catch (e: SecureArea.KeyLockedException) {
+                val unlockData = AndroidKeystoreSecureArea.KeyUnlockData(keyEcdhTimeoutNone)
                 doUserAuthAndTryAgain(keyEcdhTimeoutNone, KEY_PURPOSE_AGREE_KEY, unlockData, false)
             }
         }

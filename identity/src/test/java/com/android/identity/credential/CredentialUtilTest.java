@@ -16,9 +16,9 @@
 
 package com.android.identity.credential;
 
-import com.android.identity.keystore.BouncyCastleKeystore;
-import com.android.identity.keystore.KeystoreEngine;
-import com.android.identity.keystore.KeystoreEngineRepository;
+import com.android.identity.securearea.BouncyCastleSecureArea;
+import com.android.identity.securearea.SecureArea;
+import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.EphemeralStorageEngine;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Timestamp;
@@ -30,34 +30,34 @@ import org.junit.Test;
 public class CredentialUtilTest {
     StorageEngine mStorageEngine;
 
-    KeystoreEngine mKeystoreEngine;
+    SecureArea mSecureArea;
 
-    KeystoreEngineRepository mKeystoreEngineRepository;
+    SecureAreaRepository mSecureAreaRepository;
 
     @Before
     public void setup() {
         mStorageEngine = new EphemeralStorageEngine();
 
-        mKeystoreEngineRepository = new KeystoreEngineRepository();
-        mKeystoreEngine = new BouncyCastleKeystore(mStorageEngine);
-        mKeystoreEngineRepository.addImplementation(mKeystoreEngine);
+        mSecureAreaRepository = new SecureAreaRepository();
+        mSecureArea = new BouncyCastleSecureArea(mStorageEngine);
+        mSecureAreaRepository.addImplementation(mSecureArea);
     }
 
     @Test
     public void testManagedAuthenticationKeyHelper() {
         CredentialStore credentialStore = new CredentialStore(
                 mStorageEngine,
-                mKeystoreEngineRepository);
+                mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
                 "testCredential",
-                new BouncyCastleKeystore.CreateKeySettings.Builder().build());
+                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
 
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
-        KeystoreEngine.CreateKeySettings authKeySettings =
-                new BouncyCastleKeystore.CreateKeySettings.Builder()
+        SecureArea.CreateKeySettings authKeySettings =
+                new BouncyCastleSecureArea.CreateKeySettings.Builder()
                         .build();
 
         int numAuthKeys = 10;

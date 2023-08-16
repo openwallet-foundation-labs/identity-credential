@@ -5,7 +5,6 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.legacy.PresentationSession
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper
-import com.android.identity.keystore.KeystoreEngine
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.mainExecutor
 import java.security.PublicKey
