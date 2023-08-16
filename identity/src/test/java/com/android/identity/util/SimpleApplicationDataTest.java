@@ -69,6 +69,18 @@ public class SimpleApplicationDataTest {
     }
 
     @Test
+    public void testListenerNotCalledDuringConstruction() {
+        SimpleApplicationData appData = new SimpleApplicationData(null);
+        appData.setString("foo", "bar");
+        assertEquals("bar", appData.getString("foo"));
+        final int[] numOnDataSetCalled = {0};
+        testEncodingConsistency(appData,
+                SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(),
+                        () -> numOnDataSetCalled[0] += 1));
+        assertEquals(0, numOnDataSetCalled[0]);
+    }
+
+    @Test
     public void testByteArrays() {
         SimpleApplicationData appData = new SimpleApplicationData(null);
 
