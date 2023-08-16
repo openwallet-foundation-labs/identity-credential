@@ -40,7 +40,7 @@ import co.nstant.in.cbor.model.UnicodeString;
  */
 public class SimpleApplicationData implements ApplicationData {
     private Map<String, byte[]> mApplicationData = new LinkedHashMap<>();
-    private Listener mListener;
+    private final Listener mListener;
 
     /**
      * Creates a new SimpleApplicationData and sets the listener to be used for notification
@@ -165,7 +165,7 @@ public class SimpleApplicationData implements ApplicationData {
         for (DataItem keyItem : ((co.nstant.in.cbor.model.Map) applicationDataDataItem).getKeys()) {
             String key = ((UnicodeString) keyItem).getString();
             byte[] value = Util.cborMapExtractByteString(applicationDataDataItem, key);
-            appData.setData(key, value);
+            appData.mApplicationData.put(key, value);
         }
         return appData;
     }
