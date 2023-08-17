@@ -7,11 +7,27 @@
    <script src="script.js"></script>
  </head>
  <body>
+    <h1>Android Identity Credential MDoc Reader</h1>
+    <div id="buttons">
+        <button type="button" onclick="createSession('all')">
+            Request all mandatory license and holder data 
+        </button>
+        
+        <button type="button" onclick="createSession('age')">
+            Request age verification (over 18)
+        </button>
+    </div>
+
    <div id="content">
-     <h1>Android Identity Credential MDoc Reader</h1>
      <div id="mdoc-uri-text"></div>
      <br />
+     <div id="portrait">
+        <img id="portrait-render" src="">
+     </div>
+     <br />
      <div id="response-display"></div>
+     <br />
+     <div id="logs"></div>
    </div>
  </body>
 </html>

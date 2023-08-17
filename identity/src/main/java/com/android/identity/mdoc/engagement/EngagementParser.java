@@ -172,9 +172,13 @@ public class EngagementParser {
                 if (Util.cborMapHasKey(map, 5)) {
                     List<DataItem> originInfoItems = Util.cborMapExtractArray(map, 5);
                     for (DataItem oiDataItem : originInfoItems) {
-                        OriginInfo originInfo = OriginInfo.decode(oiDataItem);
-                        if (originInfo != null) {
-                            mOriginInfos.add(originInfo);
+                        try {
+                            OriginInfo originInfo = OriginInfo.decode(oiDataItem);
+                            if (originInfo != null) {
+                                mOriginInfos.add(originInfo);
+                            }
+                        } catch (Exception e) {
+                            Logger.w(TAG, "OriginInfo is incorrectly formatted.", e);
                         }
                     }
                 }

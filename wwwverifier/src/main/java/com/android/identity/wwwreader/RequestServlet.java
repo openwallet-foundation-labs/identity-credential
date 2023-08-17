@@ -28,10 +28,13 @@ import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
+import com.android.identity.util.CborUtil;
 import com.android.identity.util.Timestamp;
 import com.google.gson.Gson;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -70,6 +73,13 @@ import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.Text;
 
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+
 /**
  * This servlet performs three main functions:
  * (1) Generates a mdoc:// URI upon button click, containing a ReaderEngagement CBOR message
@@ -82,25 +92,97 @@ import com.google.appengine.api.datastore.Text;
 public class RequestServlet extends HttpServlet {
 
     public static final DatastoreService ds = DatastoreServiceFactory.getDatastoreService();
+    
+    private static boolean mStoreLogs = false;
+    private static final String bucketName = "mdoc-reader-external.appspot.com"; // The ID of your GCS bucket
 
    /**
     * Handles two types of HTTP GET requests:
     * (1) A request to create a new session, which involves creating a new entity in Datastore
     * (2) A request to retrieve information from DeviceResponse from an existing session
+    * (3) A request to retrieve the logs from an existing session in order to be displayed
     *
-    * @return String, containing either (1) a generated mdoc:// URI and unique Datastore key
-    * or (2) parsed DeviceResponse data
+    * <p> Adds the requested information to the given response as a String, containing either
+    * (1) a generated mdoc:// URI and unique Datastore key or
+    * (2) parsed DeviceResponse data or
+    * (3) formatted logs
     */
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType("text/html;");
         String[] pathArr = parsePathInfo(request);
+
         if (pathArr[0].equals(ServletConsts.SESSION_URL)) {
-            response.getWriter().println(createNewSession());
+            Map<String, String[]> urlQueryParams = request.getParameterMap();
+            String[] requestedAttributes = urlQueryParams.getOrDefault(
+                    ServletConsts.REQUESTED_ATTRIBUTES_QUERY, new String[]{"all"});
+            if (requestedAttributes.length != 1) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+                return;
+            }
+            response.getWriter().println(createNewSession(requestedAttributes[0]));
+
         } else if (pathArr[0].equals(ServletConsts.RESPONSE_URL) && pathArr.length == 2) {
             Key key = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathArr[1]);
             response.getWriter().println(getDeviceResponse(key));
+
+        } else if (pathArr[0].equals(ServletConsts.DISPLAY_LOGS_URL) && pathArr.length == 2) {
+            Key key = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathArr[1]);
+            response.getWriter().println(getLogs(key));
         }
+    }
+
+    /**
+     * Handles two distinct POST requests:
+     * (1) The first POST request sent to the servlet, which contains a MessageData message
+     * (2) The second POST request sent to the servlet, which contains a DeviceResponse message
+     *
+     * @param request encoded CBOR message
+     * @return (1) response, containing a DeviceRequest message as an encoded byte array;
+     * (2) response, containing a termination message with status code 20
+     */
+    @Override
+    public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String[] pathArr = parsePathInfo(request);
+        Key key = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathArr[0]);
+        if (getNumPostRequests(key) == 0) {
+            byte[] sessionData;
+            try {
+                sessionData = createDeviceRequest(getBytesFromRequest(request), key);
+            } catch (Exception e) {
+                log(key, String.format("[%s] Check: Provide \"RestApi\" request: Failed\n",
+                        millisToSec(System.currentTimeMillis())));
+                log(key, String.format("[%s] Comment: %s\n", millisToSec(System.currentTimeMillis()), e));
+                throw e;
+            }
+            log(key, String.format("[%s] Check: Provide \"RestApi\" request: OK\n",
+                    millisToSec(System.currentTimeMillis())));
+            setNumPostRequests(1, key);
+            response.getOutputStream().write(sessionData);
+
+        } else if (getNumPostRequests(key) == 1) {
+            log(key, String.format("[%s] Check: Receive \"RestApi\" response: OK\n",
+                    millisToSec(System.currentTimeMillis())));
+            byte[] terminationMessage = parseDeviceResponse(getBytesFromRequest(request), key);
+            setNumPostRequests(2, key);
+            response.getOutputStream().write(terminationMessage);
+
+        } else {
+            log(key, String.format("[%s] Check: Receive \"RestApi\" response: FAILED\n",
+                    millisToSec(System.currentTimeMillis())));
+            log(key, String.format("[%s] Comment: Received more than one POST request\n",
+                    millisToSec(System.currentTimeMillis())));
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Set whether the logs generated should be stored in cloud storage
+     *
+     * @param storeLogs whether logs should be stored
+     */
+    public void setStoreLogs(boolean storeLogs) {
+        mStoreLogs = storeLogs;
     }
 
     /**
@@ -116,19 +198,38 @@ public class RequestServlet extends HttpServlet {
 
     /**
      * Creates a new Entity in Datastore for the new session and generates ReaderEngagement.
-     * 
+     *
+     * @param requestedAttributes either "SCE_REST_1" or "SCE_REST_2", in order to indicate what
+     *                            attributes should be included in the request
      * @return String containing the generated mdoc URL and the unique key tied to the
      * new session's entry in Datastore, separated with a comma
      */
-    public static String createNewSession() {
+    public static String createNewSession(String requestedAttributes) {
         Entity entity = new Entity(ServletConsts.ENTITY_TYPE);
         entity.setProperty(ServletConsts.TIMESTAMP_PROP,
             new java.sql.Timestamp(System.currentTimeMillis()).toString());
+        entity.setUnindexedProperty(ServletConsts.REQ_ATTR_PROP, requestedAttributes);
         ds.put(entity);
         Key key = entity.getKey();
+        
         String keyStr = com.google.appengine.api.datastore.KeyFactory.keyToString(key);
         setNumPostRequests(0, key);
-        return createMdocUri(key) + ServletConsts.SESSION_SEPARATOR + keyStr;
+        String toReturn = createMdocUri(key) + ServletConsts.SESSION_SEPARATOR + keyStr;
+
+        log(key, "Verifier: RO-16\n");
+        log(key, "Protocol: RestApi\n");
+        log(key, "Transaction: " + key.getId() + "\n");
+        log(key, "Started: " + millisToSec(System.currentTimeMillis()) + "\n");
+        String scenario = requestedAttributes.equals("all")? "SCE_REST_1" : "SCE_REST_2";
+        log(key, "Scenario: " + scenario + "\n");
+
+        return toReturn;
+    }
+
+    private static String millisToSec(long timeMillis) {
+        String millisString = Long.toString(timeMillis);
+        int len = millisString.length();
+        return millisString.substring(0, len-3) + "." + millisString.substring(len-3, len);
     }
 
     /**
@@ -151,32 +252,6 @@ public class RequestServlet extends HttpServlet {
         return ServletConsts.MDOC_PREFIX + reStr;
     }
 
-    /**
-     * Handles two distinct POST requests:
-     * (1) The first POST request sent to the servlet, which contains a MessageData message
-     * (2) The second POST request sent to the servlet, which contains a DeviceResponse message
-     * 
-     * @param request encoded CBOR message
-     * @return (1) response, containing a DeviceRequest message as an encoded byte array; 
-     * (2) response, containing a termination message with status code 20
-     */
-    @Override
-    public void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String[] pathArr = parsePathInfo(request);
-        Key key = com.google.appengine.api.datastore.KeyFactory.stringToKey(pathArr[0]);
-        if (getNumPostRequests(key) == 0) {
-            byte[] sessionData = createDeviceRequest(getBytesFromRequest(request), key);
-            setNumPostRequests(1, key);
-            response.getOutputStream().write(sessionData);
-        } else if (getNumPostRequests(key) == 1) {
-            byte[] terminationMessage = parseDeviceResponse(getBytesFromRequest(request), key);
-            setNumPostRequests(2, key);
-            response.getOutputStream().write(terminationMessage);
-        } else {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
-        }
-    }
-
      /**
       * Parses the MessageData CBOR message to isolate DeviceEngagement. DeviceEngagement
       * is then used to create a DeviceRequest CBOR message.
@@ -188,6 +263,8 @@ public class RequestServlet extends HttpServlet {
     private static byte[] createDeviceRequest(byte[] messageData, Key key) {
         byte[] encodedEngagement = Util.cborMapExtractByteString(Util.cborDecode(messageData),
             ServletConsts.DE_KEY);
+        log(key, String.format("[%s] Comment: Received Engagement CBOR %s\n", 
+            millisToSec(System.currentTimeMillis()), cborPrettyPrint(encodedEngagement)));
         PublicKey eReaderKeyPublic = getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
         PrivateKey eReaderKeyPrivate = getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
 
@@ -204,15 +281,16 @@ public class RequestServlet extends HttpServlet {
         ser.setSendSessionEstablishment(false);
         byte[] dr = new DeviceRequestGenerator()
             .setSessionTranscript(sessionTranscript)
-            .addDocumentRequest(ServletConsts.MDL_DOCTYPE, createMdlItemsToRequest(), null, null, null)
+            .addDocumentRequest(ServletConsts.MDL_DOCTYPE, createMdlItemsToRequest(key), null, null, null)
             .generate();
         return ser.encryptMessage(dr, OptionalLong.empty());
     }
 
     /**
-     * Generates session transcript using the device engagement @param de , the
-     * reader key @param eReaderKeyPublic , and the reader engagement, which is accessed via
-     * the datastore key @param key .
+     * Generates session transcript using the device engagement
+     * @param de the reader key
+     * @param eReaderKeyPublic the reader engagement
+     * @param key the datastore key
      */
     public static byte[] buildSessionTranscript(byte[] de, PublicKey eReaderKeyPublic, Key key) {
         byte[] re = getDatastoreProp(ServletConsts.RE_PROP, key);
@@ -225,8 +303,10 @@ public class RequestServlet extends HttpServlet {
     }
 
     /**
-     * Verify that the base URL of the origin info found in @param oiList matches
+     * Verify that the base URL of the origin info found in the given origin infos matches
      * the base URL of the website (ServletConsts.BASE_URL).
+     *
+     * @param oiList list of origin info objects
      * @param key Unique identifier corresponding to the current session
      */
     private static void verifyOriginInfo(List<OriginInfo> oiList, Key key) {
@@ -235,19 +315,35 @@ public class RequestServlet extends HttpServlet {
             if (!oiUrl.equals(ServletConsts.BASE_URL)) {
                 setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
                     oiUrl + ServletConsts.OI_FAILURE_END, key);
+                log(key, String.format("[%s] Comment: OriginInfo URL %s\n",
+                        millisToSec(System.currentTimeMillis()), oiUrl));
             } else {
                 setOriginInfoStatus(ServletConsts.OI_SUCCESS, key);
             }
         } else {
             setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
                 ServletConsts.OI_FAILURE_END.trim(), key);
+            log(key, String.format("[%s] Comment: OriginInfo is incorrectly formatted. " +
+                    "We expect OriginInfo = {\"cat\": uint, \"type\": uint, \"details\": tstr} in " +
+                    "accordance with the recent CD consultation of 18013-7.\n",
+                    millisToSec(System.currentTimeMillis())));
         }
     }
 
     /**
      * @return Map of items to request from the mDL app
      */
-    private static Map<String, Map<String, Boolean>> createMdlItemsToRequest() {
+    private static Map<String, Map<String, Boolean>> createMdlItemsToRequest(Key key) {
+        Entity entity = getEntity(key);
+        String requestedAttributes = (String) entity.getProperty(ServletConsts.REQ_ATTR_PROP);
+        if (requestedAttributes.equals("age")){
+            return createMdlItemsToRequestAge18();
+        } 
+        return createMdlItemsToRequestFull();
+        
+    }
+
+    private static Map<String, Map<String, Boolean>> createMdlItemsToRequestFull() {
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
         Map<String, Boolean> mdlNsItems = new HashMap<>();
         mdlNsItems.put("sex", false);
@@ -258,11 +354,25 @@ public class RequestServlet extends HttpServlet {
         mdlNsItems.put("family_name", false);
         mdlNsItems.put("document_number", false);
         mdlNsItems.put("issuing_authority", false);
+        mdlNsItems.put("birth_date", false);
+        mdlNsItems.put("issuing_country", false);
+        mdlNsItems.put("driving_privileges", false);
+        mdlNsItems.put("un_distinguishing_sign", false);
         mdlItemsToRequest.put(ServletConsts.MDL_NAMESPACE, mdlNsItems);
+
         Map<String, Boolean> aamvaNsItems = new HashMap<>();
         aamvaNsItems.put("DHS_compliance", false);
         aamvaNsItems.put("EDL_credential", false);
         mdlItemsToRequest.put(ServletConsts.AAMVA_NAMESPACE, aamvaNsItems);
+
+        return mdlItemsToRequest;
+    }
+
+    private static Map<String, Map<String, Boolean>> createMdlItemsToRequestAge18() {
+        Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
+        Map<String, Boolean> mdlNsItems = new HashMap<>();
+        mdlNsItems.put("age_over_18", false);
+        mdlItemsToRequest.put(ServletConsts.MDL_NAMESPACE, mdlNsItems);
         return mdlItemsToRequest;
     }
 
@@ -316,7 +426,7 @@ public class RequestServlet extends HttpServlet {
      * @return byte array containing an empty SessionData message with status code 20
      * to indicate termination.
      */
-    private static byte[] parseDeviceResponse(byte[] messageData, Key key) {
+    private static byte[] parseDeviceResponse(byte[] messageData, Key key) throws IOException {
         PublicKey eReaderKeyPublic =
             getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
         PrivateKey eReaderKeyPrivate =
@@ -325,15 +435,26 @@ public class RequestServlet extends HttpServlet {
             getPublicKey(getDatastoreProp(ServletConsts.DEVKEY_PROP, key));
         byte[] sessionTranscript = getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, key);
 
-        SessionEncryption ser = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
-                new KeyPair(eReaderKeyPublic, eReaderKeyPrivate), eDeviceKeyPublic, sessionTranscript);
-        ser.setSendSessionEstablishment(false);
-        
-        DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
-            .setDeviceResponse(ser.decryptMessage(messageData).getData())
-            .setSessionTranscript(sessionTranscript)
-            .setEphemeralReaderKey(eReaderKeyPrivate)
-            .parse();
+        SessionEncryption ser;
+        DeviceResponseParser.DeviceResponse dr;
+        try {
+            ser = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+                    new KeyPair(eReaderKeyPublic, eReaderKeyPrivate), eDeviceKeyPublic, sessionTranscript);
+            ser.setSendSessionEstablishment(false);
+            
+            dr = new DeviceResponseParser()
+                .setDeviceResponse(ser.decryptMessage(messageData).getData())
+                .setSessionTranscript(sessionTranscript)
+                .setEphemeralReaderKey(eReaderKeyPrivate)
+                .parse(); 
+        } catch (Exception e) {
+            log(key, String.format("[%s] Check: Decrypt response: FAILED\n",
+                    millisToSec(System.currentTimeMillis())));
+            log(key, String.format("[%s] Comment: %s\n", millisToSec(System.currentTimeMillis()), e));
+            throw new IOException(e);
+        }
+        log(key, String.format("[%s] Check: Decrypt response: OK\n",
+                millisToSec(System.currentTimeMillis())));
         String json = new Gson().toJson(buildArrayFromDocuments(dr.getDocuments(), key));
         setDeviceResponse(json, key);
 
@@ -350,7 +471,9 @@ public class RequestServlet extends HttpServlet {
      * on the website
      */
     private static ArrayList<String> buildArrayFromDocuments(List<DeviceResponseParser.Document> docs, Key key) {
-        ArrayList<String> arr = new ArrayList<String>();
+        ArrayList<String> arr = new ArrayList<>();
+        List<String> entriesForVData3Check = new ArrayList<>();
+
         arr.add(getOriginInfoStatus(key));
         arr.add("Number of documents returned: " + docs.size());
         for (DeviceResponseParser.Document doc : docs) {
@@ -358,11 +481,13 @@ public class RequestServlet extends HttpServlet {
             if (doc.getIssuerSignedAuthenticated()) {
                 arr.add(ServletConsts.CHECKMARK + "Issuer Signed Authenticated");
             }
+
             if (doc.getDeviceSignedAuthenticatedViaSignature()) {
                 arr.add(ServletConsts.CHECKMARK + "Device Signed Authenticated (ECDSA)");
             } else if (doc.getDeviceSignedAuthenticated()) {
                 arr.add(ServletConsts.CHECKMARK + "Device Signed Authenticated");
             }
+
             arr.add("MSO");
             arr.add(ServletConsts.CHECKMARK + "Signed: "
                 + timestampToString(doc.getValidityInfoSigned()));
@@ -381,6 +506,9 @@ public class RequestServlet extends HttpServlet {
                     switch (entry) {
                         case "portrait":
                             val = numBytesAsString(doc.getIssuerEntryByteString(namespace, entry));
+                            byte[] byteArr = doc.getIssuerEntryByteString(namespace, entry);
+                            String bytes = Base64.getEncoder().withoutPadding().encodeToString(byteArr);
+                            arr.add("portraitBytes" + ": " + bytes);
                             break;
                         case "family_name":
                         case "given_name":
@@ -390,18 +518,53 @@ public class RequestServlet extends HttpServlet {
                         case "DHS_compliance":
                         case "EDL_credential":
                         case "document_number":
+                        case "un_distinguishing_sign":
+                        case "birth_date":
+                        case "issuing_country":
                             val = doc.getIssuerEntryString(namespace, entry);
                             break;
                         case "sex":
                             val = Long.toString(doc.getIssuerEntryNumber(namespace, entry));
+                            break;
+                        case "age_over_18":
+                            val = doc.getIssuerEntryBoolean(namespace, entry)? "True" : "False";
                             break;
                         default:
                             val = Base64.getEncoder().encodeToString(
                                 doc.getIssuerEntryData(namespace, entry));
                     }
                     arr.add(ServletConsts.CHECKMARK + entry + ": " + val);
+                    entriesForVData3Check.add(entry);
                 }
             }
+        }
+
+        Entity entity = getEntity(key);
+        String requestedAttributes = (String) entity.getProperty(ServletConsts.REQ_ATTR_PROP);
+        List<String> requestedAll = Arrays.asList("sex", "portrait", "given_name", "issue_date",
+                "expiry_date", "family_name", "document_number", "issuing_authority", "birth_date",
+                "issuing_country", "driving_privileges", "un_distinguishing_sign", "DHS_compliance",
+                "EDL_credential");
+        List<String> expected = requestedAttributes.equals("age")?
+                Collections.singletonList("age_over_18") : requestedAll;
+
+        boolean vData3Check;
+        if (requestedAttributes.equals("age")){
+            vData3Check = entriesForVData3Check.contains("age_over_18");
+            vData3Check &= entriesForVData3Check.size() == 1;
+        } else {
+            vData3Check = entriesForVData3Check.containsAll(requestedAll);
+            vData3Check &= entriesForVData3Check.size() == requestedAll.size();
+        }
+
+        if (!vData3Check) {
+            log(key, String.format("[%s] Check: Receive expected data set: FAILED\n",
+                    millisToSec(System.currentTimeMillis())));
+            log(key, String.format("[%s] Comment: Received %s, Expected %s\n",
+                millisToSec(System.currentTimeMillis()), entriesForVData3Check, expected));
+        } else {
+            log(key, String.format("[%s] Check: Receive expected data set: OK\n",
+                    millisToSec(System.currentTimeMillis())));
         }
         return arr;
     }
@@ -411,7 +574,7 @@ public class RequestServlet extends HttpServlet {
      * in @param arr
      */
     private static String numBytesAsString(byte[] arr) {
-        return "(" + Integer.toString(arr.length) + " bytes)";
+        return "(" + arr.length + " bytes)";
     }
 
     /**
@@ -510,6 +673,67 @@ public class RequestServlet extends HttpServlet {
     }
 
     /**
+     * Appends to a log for a particular key
+     * 
+     * @param key key corresponding to an entity in Datastore
+     * @param textToLog the text to be appended to the log
+     */
+    public static void log(Key key, String textToLog) {
+        Entity entity = getEntity(key);
+        
+        if (entity.hasProperty(ServletConsts.LOGS_PROP)) {
+            String existingLog = ((Text) entity.getProperty(ServletConsts.LOGS_PROP)).getValue();
+            textToLog = existingLog + textToLog;
+        } 
+        entity.setUnindexedProperty(ServletConsts.LOGS_PROP, new Text(textToLog));
+        ds.put(entity);
+
+        try {
+            uploadObjectFromMemory(String.format("M-2-%d.txt", key.getId()), textToLog);
+        } catch (IOException ignored) { }
+    }
+
+    /**
+     * Retrieves logs from Datastore.
+     * 
+     * @param key key corresponding to an entity in Datastore
+     * @return String containing logs, or an empty string if it does not exist
+     */
+    public static String getLogs(Key key) {
+        Entity entity = getEntity(key);
+        if (entity.hasProperty(ServletConsts.LOGS_PROP)) {
+            Text log = (Text) entity.getProperty(ServletConsts.LOGS_PROP);
+            return log.getValue().replaceAll("\\\\u0027", "'"); // render apostrophe
+        }
+        return "";
+    }
+
+    private static String cborPrettyPrint(byte[] encodedCbor) {
+        return CborUtil.toDiagnostics(encodedCbor,
+                        CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT | CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR);
+    }
+
+    /**
+     * Uploads data to Google Cloud storage bucket
+     * 
+     * @param objectName The ID of your GCS object
+     * @param contents The string of contents you wish to upload
+     * @throws IOException When creating a new blob encounters an I/O error
+     */
+    public static void uploadObjectFromMemory(String objectName, String contents) throws IOException {
+        if (mStoreLogs) {
+            // The ID of your GCP project
+            String projectId = System.getenv("GOOGLE_CLOUD_PROJECT");
+
+            Storage storage = StorageOptions.newBuilder().setProjectId(projectId).build().getService();
+            BlobId blobId = BlobId.of(bucketName, objectName);
+            BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+            byte[] content = contents.getBytes(StandardCharsets.UTF_8);
+            storage.createFrom(blobInfo, new ByteArrayInputStream(content));
+        }
+    }
+
+    /**
      * Retrieves DeviceResponse message from Datastore.
      * 
      * @param key key corresponding to an entity in Datastore
@@ -521,7 +745,7 @@ public class RequestServlet extends HttpServlet {
             Text deviceResponse = (Text) entity.getProperty(ServletConsts.DEV_RESPONSE_PROP);
             return deviceResponse.getValue().replaceAll("\\\\u0027", "'"); // render apostrophe
         }
-        return new String();
+        return "";
     }
 
     /**

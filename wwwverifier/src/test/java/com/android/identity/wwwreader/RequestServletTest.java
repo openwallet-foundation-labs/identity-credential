@@ -105,6 +105,7 @@ public class RequestServletTest {
     public void setUp() throws IOException {
         MockitoAnnotations.initMocks(this);
         servlet = new RequestServlet();
+        servlet.setStoreLogs(false);
         helper.setUp();
     }
 
@@ -388,7 +389,7 @@ public class RequestServletTest {
      * Creates a new session, and returns a unique identifier associated with it
      */
     private String createSessionKey() {
-        return RequestServlet.createNewSession().split(",")[1];
+        return RequestServlet.createNewSession("all").split(",")[1];
     }
 
     /**
