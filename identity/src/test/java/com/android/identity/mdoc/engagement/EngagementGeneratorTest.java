@@ -23,7 +23,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.origininfo.OriginInfo;
-import com.android.identity.mdoc.origininfo.OriginInfoWebsite;
+import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -69,7 +69,7 @@ public class EngagementGeneratorTest {
         connectionMethods.add(new ConnectionMethodHttp("http://www.example.com/verifier/123"));
         eg.setConnectionMethods(connectionMethods);
         List<OriginInfo> originInfos = new ArrayList<>();
-        originInfos.add(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, "http://www.example.com/verifier"));
+        originInfos.add(new OriginInfoReferrerUrl("http://www.example.com/verifier"));
         eg.setOriginInfos(originInfos);
         byte[] encodedEngagement = eg.generate();
 
@@ -82,8 +82,8 @@ public class EngagementGeneratorTest {
         ConnectionMethodHttp cm = (ConnectionMethodHttp) engagement.getConnectionMethods().get(0);
         Assert.assertEquals("http://www.example.com/verifier/123", cm.getUri());
         Assert.assertEquals(1, engagement.getOriginInfos().size());
-        OriginInfoWebsite oi = (OriginInfoWebsite) engagement.getOriginInfos().get(0);
-        Assert.assertEquals("http://www.example.com/verifier", oi.getBaseUrl());
+        OriginInfoReferrerUrl oi = (OriginInfoReferrerUrl) engagement.getOriginInfos().get(0);
+        Assert.assertEquals("http://www.example.com/verifier", oi.getUrl());
     }
 
     @Test

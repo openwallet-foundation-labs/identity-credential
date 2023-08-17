@@ -23,29 +23,20 @@ import com.android.identity.internal.Util;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.SimpleValue;
-import co.nstant.in.cbor.model.UnicodeString;
-import com.android.identity.util.Logger;
+import co.nstant.in.cbor.model.Map;
 
-public class OriginInfoNfc extends OriginInfo {
-    private static final String TAG = "OriginInfoNfc";
+public class OriginInfoBaseUrl extends OriginInfo {
+    private static final String TAG = "OriginInfoBaseUrl";
 
-    static final int TYPE = 3;
-    private final long mCat;
+    static final int TYPE = 2;
+    private final String mUrl;
 
-    public OriginInfoNfc(long cat) {
-        mCat = cat;
+    public OriginInfoBaseUrl(String url) {
+        mUrl = url;
     }
 
-    /**
-     * Specifies whether the OriginInfoOptions are about this engagement or the one
-     * received previously
-     *
-     * @return one of {@link #CAT_DELIVERY} or {@link #CAT_RECEIVE}.
-     */
-    @Override
-    public long getCat() {
-        return mCat;
+    public String getUrl() {
+        return mUrl;
     }
 
     @NonNull
@@ -53,24 +44,26 @@ public class OriginInfoNfc extends OriginInfo {
     public DataItem encode() {
         return new CborBuilder()
                 .addMap()
-                .put("cat", mCat)
+                .put("cat", CAT)
                 .put("type", TYPE)
-                .put(new UnicodeString("Details"), SimpleValue.NULL)
+                .put("details", mUrl)
                 .end()
                 .build().get(0);
     }
 
     @Nullable
-    public static OriginInfoNfc decode(@NonNull DataItem oiDataItem) {
-        if (!(oiDataItem instanceof co.nstant.in.cbor.model.Map)) {
+    public static OriginInfoBaseUrl decode(@NonNull DataItem oiDataItem) {
+        if (!(oiDataItem instanceof Map)) {
             throw new IllegalArgumentException("Top-level CBOR is not an map");
         }
         long cat = Util.cborMapExtractNumber(oiDataItem, "cat");
-        long type = Util.cborMapExtractNumber(oiDataItem, "type");
-        if (type != TYPE) {
-            Logger.w(TAG, "Unexpected type " + type);
-            return null;
+        int type = (int) Util.cborMapExtractNumber(oiDataItem, "type");
+        if (!(cat == 1 && type == 2)) {
+            throw new IllegalArgumentException(String.format("This CBOR object has the wrong " +
+                    "category or type. Expected cat = 1, type = 2 for baseURL type but got " +
+                    "cat = %d, type = %d", cat, type));
         }
-        return new OriginInfoNfc(cat);
+        String url = Util.cborMapExtractString(oiDataItem, "details");
+        return new OriginInfoBaseUrl(url);
     }
 }

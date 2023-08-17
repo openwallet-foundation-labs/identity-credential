@@ -1,12 +1,39 @@
+/*
+ * Copyright 2023 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.android.identity.wwwreader;
 
 import co.nstant.in.cbor.CborBuilder;
+
+import com.android.identity.internal.Util;
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
+import com.android.identity.mdoc.engagement.EngagementGenerator;
+import com.android.identity.mdoc.engagement.EngagementParser;
+import com.android.identity.mdoc.origininfo.OriginInfo;
+import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl;
+import com.android.identity.mdoc.request.DeviceRequestGenerator;
+import com.android.identity.mdoc.response.DeviceResponseParser;
+import com.android.identity.mdoc.sessionencryption.SessionEncryption;
+import com.android.identity.util.Timestamp;
 import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.OptionalInt;
 import java.util.List;
 import java.util.Map;
 import java.text.DateFormat;
@@ -27,6 +54,8 @@ import java.security.PrivateKey;
 
 // Java servlet imports
 import java.io.IOException;
+import java.util.OptionalLong;
+
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -170,14 +199,14 @@ public class RequestServlet extends HttpServlet {
         byte[] sessionTranscript = buildSessionTranscript(encodedEngagement, eReaderKeyPublic, key);
         setDatastoreProp(ServletConsts.TRANSCRIPT_PROP, sessionTranscript, key);
 
-        SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate,
-            eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
+        SessionEncryption ser = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+                new KeyPair(eReaderKeyPublic, eReaderKeyPrivate), eDeviceKeyPublic, sessionTranscript);
         ser.setSendSessionEstablishment(false);
         byte[] dr = new DeviceRequestGenerator()
             .setSessionTranscript(sessionTranscript)
             .addDocumentRequest(ServletConsts.MDL_DOCTYPE, createMdlItemsToRequest(), null, null, null)
             .generate();
-        return ser.encryptMessageToDevice(dr, OptionalInt.empty());
+        return ser.encryptMessage(dr, OptionalLong.empty());
     }
 
     /**
@@ -202,7 +231,7 @@ public class RequestServlet extends HttpServlet {
      */
     private static void verifyOriginInfo(List<OriginInfo> oiList, Key key) {
         if (oiList.size() > 0) {
-            String oiUrl = ((OriginInfoWebsite) oiList.get(0)).getBaseUrl();
+            String oiUrl = ((OriginInfoReferrerUrl) oiList.get(0)).getUrl();
             if (!oiUrl.equals(ServletConsts.BASE_URL)) {
                 setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
                     oiUrl + ServletConsts.OI_FAILURE_END, key);
@@ -243,8 +272,10 @@ public class RequestServlet extends HttpServlet {
     public static byte[] generateReaderEngagement(PublicKey publicKey, Key key) {
         EngagementGenerator eg = new EngagementGenerator(publicKey,
             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" 
-            + com.google.appengine.api.datastore.KeyFactory.keyToString(key)));
+        List<ConnectionMethod> connectionMethods = new ArrayList<>();
+        connectionMethods.add(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/"
+                + com.google.appengine.api.datastore.KeyFactory.keyToString(key)));
+        eg.setConnectionMethods(connectionMethods);
         return eg.generate();
     }
 
@@ -294,19 +325,19 @@ public class RequestServlet extends HttpServlet {
             getPublicKey(getDatastoreProp(ServletConsts.DEVKEY_PROP, key));
         byte[] sessionTranscript = getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, key);
 
-        SessionEncryptionReader ser = new SessionEncryptionReader(eReaderKeyPrivate,
-            eReaderKeyPublic, eDeviceKeyPublic, sessionTranscript);
+        SessionEncryption ser = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+                new KeyPair(eReaderKeyPublic, eReaderKeyPrivate), eDeviceKeyPublic, sessionTranscript);
         ser.setSendSessionEstablishment(false);
         
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
-            .setDeviceResponse(ser.decryptMessageFromDevice(messageData))
+            .setDeviceResponse(ser.decryptMessage(messageData).getData())
             .setSessionTranscript(sessionTranscript)
             .setEphemeralReaderKey(eReaderKeyPrivate)
             .parse();
         String json = new Gson().toJson(buildArrayFromDocuments(dr.getDocuments(), key));
         setDeviceResponse(json, key);
 
-        return ser.encryptMessageToDevice(null, OptionalInt.of(20));
+        return ser.encryptMessage(null, OptionalLong.of(20L));
     }
 
     /**
@@ -398,8 +429,8 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return String converted from a Timestamp object @param ts
      */
-    private static String timestampToString(com.android.identity.wwwreader.Timestamp ts) {
-        DateFormat df = new SimpleDateFormat("MM/dd/yyyy");
+    private static String timestampToString(Timestamp ts) {
+        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
         return df.format(new Date(ts.toEpochMilli()));
     }
 

@@ -30,23 +30,7 @@ import com.android.identity.util.Logger;
 public abstract class OriginInfo {
     private static final String TAG = "OriginInfo";
 
-    /**
-     * The constant used to specify how the current engagement structure is delivered.
-     */
-    public static final long CAT_DELIVERY = 0;
-
-    /**
-     * The constant used to specify how the other party engagement structure has been received.
-     */
-    public static final long CAT_RECEIVE = 1;
-
-    /**
-     * Specifies whether the OriginInfoOptions are about this engagement or the one
-     * received previously
-     *
-     * @return one of {@link #CAT_DELIVERY} or {@link #CAT_RECEIVE}.
-     */
-    public abstract long getCat();
+    protected static final long CAT = 1;
 
     public abstract @NonNull DataItem encode();
 
@@ -56,12 +40,10 @@ public abstract class OriginInfo {
         }
         long type = Util.cborMapExtractNumber(oiDataItem, "type");
         switch ((int) type) {
-            case OriginInfoQr.TYPE:
-                return OriginInfoQr.decode(oiDataItem);
-            case OriginInfoNfc.TYPE:
-                return OriginInfoNfc.decode(oiDataItem);
-            case OriginInfoWebsite.TYPE:
-                return OriginInfoWebsite.decode(oiDataItem);
+            case OriginInfoReferrerUrl.TYPE:
+                return OriginInfoReferrerUrl.decode(oiDataItem);
+            case OriginInfoBaseUrl.TYPE:
+                return OriginInfoBaseUrl.decode(oiDataItem);
         }
         Logger.w(TAG, "Unsupported type " + type);
         return null;

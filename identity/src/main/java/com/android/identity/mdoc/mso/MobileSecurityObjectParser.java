@@ -24,6 +24,7 @@ import com.android.identity.internal.Util;
 
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -305,7 +306,7 @@ public class MobileSecurityObjectParser {
             }
 
             mDigestAlgorithm = Util.cborMapExtractString(mso, "digestAlgorithm");
-            final List<String> allowableDigestAlgorithms = List.of("SHA-256", "SHA-384", "SHA-512");
+            final List<String> allowableDigestAlgorithms = Arrays.asList("SHA-256", "SHA-384", "SHA-512");
             if (!allowableDigestAlgorithms.contains(mDigestAlgorithm)) {
                 throw new IllegalArgumentException("Given digest algorithm '" + mDigestAlgorithm +
                         "' one of " + allowableDigestAlgorithms);

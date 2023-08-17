@@ -38,6 +38,7 @@ import com.android.identity.internal.Util;
 
 import java.security.KeyPair;
 import java.security.PublicKey;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.OptionalLong;

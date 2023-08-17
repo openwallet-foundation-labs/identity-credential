@@ -41,7 +41,7 @@ public final class EngagementGenerator {
     private static final String TAG = "EngagementGenerator";
     private final String mVersion;
     final private PublicKey mESenderKey;
-    private ArrayBuilder<CborBuilder> mConnectionMethodsArrayBuilder;
+    private ArrayBuilder<CborBuilder> mDeviceRetrievalMethodsArrayBuilder;
     private ArrayBuilder<CborBuilder> mOriginInfoArrayBuilder;
 
     public static final String ENGAGEMENT_VERSION_1_0 = "1.0";
@@ -75,9 +75,9 @@ public final class EngagementGenerator {
      */
     public @NonNull
     EngagementGenerator setConnectionMethods(@NonNull List<ConnectionMethod> connectionMethods) {
-        mConnectionMethodsArrayBuilder = new CborBuilder().addArray();
+        mDeviceRetrievalMethodsArrayBuilder = new CborBuilder().addArray();
         for (ConnectionMethod connectionMethod : connectionMethods) {
-            mConnectionMethodsArrayBuilder.add(Util.cborDecode(connectionMethod.toDeviceEngagement()));
+            mDeviceRetrievalMethodsArrayBuilder.add(Util.cborDecode(connectionMethod.toDeviceEngagement()));
         }
         return this;
     }
@@ -118,8 +118,8 @@ public final class EngagementGenerator {
         MapBuilder<CborBuilder> map = builder.addMap();
         map.put(0, mVersion);
         map.put(new UnsignedInteger(1), securityDataItem);
-        if (mConnectionMethodsArrayBuilder != null) {
-            map.put(new UnsignedInteger(2), mConnectionMethodsArrayBuilder.end().build().get(0));
+        if (mDeviceRetrievalMethodsArrayBuilder != null) {
+            map.put(new UnsignedInteger(2), mDeviceRetrievalMethodsArrayBuilder.end().build().get(0));
         }
         if (mOriginInfoArrayBuilder != null) {
             map.put(new UnsignedInteger(5), mOriginInfoArrayBuilder.end().build().get(0));
