@@ -14,19 +14,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
 import com.android.mdl.app.theme.HolderAppTheme
+import com.android.mdl.app.transfer.AddDocumentToResponseResult
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.log
 import com.android.mdl.app.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import kotlinx.coroutines.launch
 
 class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private val viewModel: TransferDocumentViewModel by activityViewModels()
+    private val passphraseViewModel: PassphrasePromptViewModel by activityViewModels()
     private val arguments by navArgs<AuthConfirmationFragmentArgs>()
     private var isSendingInProgress = mutableStateOf(false)
 
@@ -54,6 +60,19 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                             cancelAuthorization()
                         }
                     )
+                }
+            }
+        }
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
+                passphraseViewModel.authorizationState.collect { value ->
+                    if (value is PassphraseAuthResult.Success) {
+                        authenticationSucceeded(value.userPassphrase)
+                        passphraseViewModel.reset()
+                    }
                 }
             }
         }
@@ -93,11 +112,10 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private fun sendResponse() {
         isSendingInProgress.value = true
-        // Will return false if authentication is needed
-        if (!viewModel.sendResponseForSelection()) {
-            requestUserAuth(false)
-        } else {
-            findNavController().navigateUp()
+        when (viewModel.sendResponseForSelection()) {
+            is AddDocumentToResponseResult.UserAuthRequired -> requestUserAuth(false)
+            is AddDocumentToResponseResult.PassphraseRequired -> requestPassphrase()
+            else -> findNavController().navigateUp()
         }
     }
 
@@ -128,9 +146,14 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         }
     }
 
+    private fun authenticationSucceeded(passphrase: String) {
+        viewModel.sendResponseForSelection(true, passphrase)
+        findNavController().navigateUp()
+    }
+
     private fun authenticationSucceeded() {
         try {
-            viewModel.sendResponseForSelection()
+            viewModel.sendResponseForSelection(true)
             findNavController().navigateUp()
         } catch (e: Exception) {
             val message = "Send response error: ${e.message}"
@@ -147,5 +170,11 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private fun authenticationFailed() {
         viewModel.closeConnection()
+    }
+
+    private fun requestPassphrase() {
+        val destination = AuthConfirmationFragmentDirections
+            .openPassphrasePrompt()
+        findNavController().navigate(destination)
     }
 }

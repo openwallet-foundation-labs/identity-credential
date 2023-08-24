@@ -1,7 +1,9 @@
-package com.android.mdl.app.util
+package com.android.mdl.app.selfsigned
 
 import android.graphics.Bitmap
 import android.os.Parcelable
+import com.android.mdl.app.document.SecureAreaImplementationState
+import com.android.mdl.app.util.Field
 import kotlinx.parcelize.Parcelize
 
 data class SelfSignedDocumentData(
@@ -34,8 +36,10 @@ data class ProvisionInfo(
     val docType: String,
     var docName: String,
     var docColor: Int,
-    val storageImplementationType: String,
+    val secureAreaImplementationStateType: SecureAreaImplementationState,
     val userAuthentication: Boolean,
+    val userAuthenticationTimeoutSeconds: Int,
+    val passphrase: String?,
     val numberMso: Int,
     val maxUseMso: Int
 ) : Parcelable

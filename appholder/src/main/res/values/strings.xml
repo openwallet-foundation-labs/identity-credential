@@ -113,6 +113,7 @@
     <string name="txt_document_type">Document type</string>
     <string name="txt_document_name">Document name</string>
     <string name="txt_storage_implementation">Storage implementation</string>
+    <string name="txt_keystore_implementation">Keystore implementation</string>
     <string name="txt_user_authentication">Use user authentication</string>
     <string name="txt_number_mso">Number of MSOs</string>
     <string name="txt_max_use_mso">Max use of MSO</string>
@@ -149,4 +150,35 @@
     <string name="age_over_60">Age over 60?</string>
     <string name="age_over_65">Age over 65?</string>
     <string name="age_over_68">Age pver 68?</string>
+
+    <string name="document_type_mdl">mDL</string>
+    <string name="document_type_mvr">mVR</string>
+    <string name="document_type_micov">micov</string>
+    <string name="document_type_eu_pid">euPid</string>
+
+    <string name="document_color_green">Green</string>
+    <string name="document_color_yellow">Yellow</string>
+    <string name="document_color_blue">Blue</string>
+    <string name="document_color_red">Red</string>
+
+    <string name="keystore_android">Android Keystore</string>
+    <string name="keystore_bouncy_castle">BouncyCastle Keystore</string>
+    <string name="keystore_android_user_auth_timeout">Timeout seconds</string>
+    <string name="keystore_bouncy_castle_passphrase_hint">Passphrase (optional)</string>
+
+    <string name="user_authentication_on">User authentication on</string>
+    <string name="user_authentication_off">User authentication off</string>
+
+    <string name="document_info_alias">Alias</string>
+    <string name="document_info_valid_from">Valid from</string>
+    <string name="document_info_valid_until">Valid until</string>
+    <string name="document_info_issuer_data">Issuer data</string>
+    <string name="document_info_usage_count">Usage count</string>
+    <string name="delete_document_prompt_title">Delete Confirmation</string>
+    <string name="delete_document_prompt_message">Are you sure you want to delete the document?</string>
+    <string name="delete_document_deleted_message">Document Deleted!</string>
+
+    <string name="passphrase_prompt_title">Passphrase</string>
+    <string name="passphrase_prompt_message">We need your consent to show the document data</string>
+
 </resources>

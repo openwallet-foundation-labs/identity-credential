@@ -35,6 +35,10 @@ class Communication private constructor(
         } ?: throw IllegalStateException("Request not received")
     }
 
+    fun getSessionTranscript(): ByteArray? {
+        return deviceRetrievalHelper?.sessionTranscript
+    }
+
     fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
         val progressListener: (Long, Long) -> Unit = { progress, max ->
             log("Progress: $progress of $max")

@@ -3,6 +3,7 @@ package com.android.mdl.app.viewmodel
 import android.app.Application
 import android.view.View
 import android.widget.Toast
+import androidx.biometric.BiometricPrompt
 import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
@@ -16,8 +17,9 @@ import com.android.mdl.app.R
 import com.android.mdl.app.authconfirmation.RequestedDocumentData
 import com.android.mdl.app.authconfirmation.RequestedElement
 import com.android.mdl.app.authconfirmation.SignedElementsCollection
-import com.android.mdl.app.document.Document
+import com.android.mdl.app.document.DocumentInformation
 import com.android.mdl.app.document.DocumentManager
+import com.android.mdl.app.transfer.AddDocumentToResponseResult
 import com.android.mdl.app.transfer.TransferManager
 import com.android.mdl.app.util.TransferStatus
 import com.android.mdl.app.util.logWarning
@@ -30,7 +32,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     private val signedElements = SignedElementsCollection()
     private val requestedElements = mutableListOf<RequestedDocumentData>()
     private val closeConnectionMutableLiveData = MutableLiveData<Boolean>()
-    private val selectedDocuments = mutableListOf<Document>()
+    private val selectedDocuments = mutableListOf<DocumentInformation>()
 
     var inProgress = ObservableInt(View.GONE)
     var documentsSent = ObservableField<String>()
@@ -85,8 +87,8 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 result.add(
                     RequestedDocumentData(
                         ownDocument.userVisibleName,
-                        ownDocument.identityCredentialName,
-                        false,
+                        ownDocument.docType,
+                        false, //TODO
                         issuerSignedEntriesToRequest,
                         requestedDocument
                     )
@@ -98,23 +100,23 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         requestedElements.addAll(result)
     }
 
-    // Returns true if a response was sent, false if additional auth is needed
-    fun sendResponseForSelection(): Boolean {
+    fun sendResponseForSelection(
+        didUserAuthorize: Boolean = false,
+        passphrase: String? = null
+    ): AddDocumentToResponseResult {
         val elementsToSend = signedElements.collect()
-        val response = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
+        val responseGenerator = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
         elementsToSend.forEach { signedDocument ->
             try {
                 val issuerSignedEntries = signedDocument.issuerSignedEntries()
-                val authNeeded = transferManager.addDocumentToResponse(
+                val result = transferManager.addDocumentToResponse(
                     signedDocument.identityCredentialName,
                     signedDocument.documentType,
                     issuerSignedEntries,
-                    response,
-                    signedDocument.readerAuth,
-                    signedDocument.itemsRequest
+                    responseGenerator,
                 )
-                if (authNeeded) {
-                    return false
+                if (result != AddDocumentToResponseResult.DocumentAdded) {
+                    return result
                 }
             } catch (e: CredentialInvalidatedException) {
                 logWarning("Credential '${signedDocument.identityCredentialName}' is invalid. Deleting.")
@@ -126,12 +128,12 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 logWarning("No requestedDocument for " + signedDocument.documentType)
             }
         }
-        transferManager.sendResponse(response.generate(), PreferencesHelper.isConnectionAutoCloseEnabled())
+        transferManager.sendResponse(responseGenerator.generate(), PreferencesHelper.isConnectionAutoCloseEnabled())
         transferManager.setResponseServed()
         val documentsCount = elementsToSend.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
         cleanUp()
-        return true
+        return AddDocumentToResponseResult.DocumentAdded
     }
 
     fun cancelPresentation(

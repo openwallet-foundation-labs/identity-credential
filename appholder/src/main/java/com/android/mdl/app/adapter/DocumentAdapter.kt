@@ -26,14 +26,13 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.android.mdl.app.R
 import com.android.mdl.app.databinding.ListItemDocumentBinding
-import com.android.mdl.app.document.Document
+import com.android.mdl.app.document.DocumentInformation
 import com.android.mdl.app.wallet.SelectDocumentFragmentDirections
 
 /**
  * Adapter for the [RecyclerView].
  */
-class DocumentAdapter :
-    ListAdapter<Document, RecyclerView.ViewHolder>(DocumentDiffCallback()) {
+class DocumentAdapter : ListAdapter<DocumentInformation, RecyclerView.ViewHolder>(DocumentDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return DocumentViewHolder(
@@ -51,6 +50,7 @@ class DocumentAdapter :
     class DocumentViewHolder(
         private val binding: ListItemDocumentBinding
     ) : RecyclerView.ViewHolder(binding.root) {
+
         init {
             binding.setClickDetailListener {
                 binding.document?.let { doc ->
@@ -59,16 +59,16 @@ class DocumentAdapter :
             }
         }
 
-        private fun navigateToDetail(document: Document, view: View) {
-            val direction = SelectDocumentFragmentDirections.toDocumentDetail(document)
+        private fun navigateToDetail(document: DocumentInformation, view: View) {
+            val direction = SelectDocumentFragmentDirections.toDocumentDetail(document.userVisibleName)
             if (view.findNavController().currentDestination?.id == R.id.wallet) {
                 view.findNavController().navigate(direction)
             }
         }
 
-        fun bind(item: Document) {
+        fun bind(item: DocumentInformation) {
             binding.apply {
-                val cardArt = cardArtFor(item.cardArt)
+                val cardArt = cardArtFor(item.documentColor)
                 binding.llItemContainer.setBackgroundResource(cardArt)
                 document = item
                 executePendingBindings()
@@ -77,22 +77,23 @@ class DocumentAdapter :
 
         @DrawableRes
         private fun cardArtFor(cardArt: Int): Int {
-            return when(cardArt) {
+            return when (cardArt) {
                 1 -> R.drawable.yellow_gradient
                 2 -> R.drawable.blue_gradient
+                3 -> R.drawable.gradient_red
                 else -> R.drawable.green_gradient
             }
         }
     }
 }
 
-private class DocumentDiffCallback : DiffUtil.ItemCallback<Document>() {
+private class DocumentDiffCallback : DiffUtil.ItemCallback<DocumentInformation>() {
 
-    override fun areItemsTheSame(oldItem: Document, newItem: Document): Boolean {
-        return oldItem.identityCredentialName == newItem.identityCredentialName
+    override fun areItemsTheSame(oldItem: DocumentInformation, newItem: DocumentInformation): Boolean {
+        return oldItem.userVisibleName == newItem.userVisibleName
     }
 
-    override fun areContentsTheSame(oldItem: Document, newItem: Document): Boolean {
+    override fun areContentsTheSame(oldItem: DocumentInformation, newItem: DocumentInformation): Boolean {
         return oldItem == newItem
     }
 }

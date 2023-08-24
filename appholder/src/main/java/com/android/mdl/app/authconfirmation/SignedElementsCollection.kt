@@ -20,7 +20,7 @@ class SignedElementsCollection {
             val document = requestedDocuments.getValue(namespace)
             SignedDocumentData(
                 signedElements,
-                document.identityCredentialName,
+                document.userReadableName,
                 document.requestedDocument.docType,
                 document.requestedDocument.readerAuth,
                 document.requestedDocument.itemsRequest

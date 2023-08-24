@@ -6,5 +6,7 @@ data class DocumentElements(
     val text: String = "",
     val portrait: Bitmap? = null,
     val signature: Bitmap? = null,
-    val requestUserAuthorization: Boolean = false
+    val fingerprint: Bitmap? = null,
+    val requestUserAuthorization: Boolean = false,
+    val passphrase: String = ""
 )

@@ -6,28 +6,27 @@ import android.graphics.Bitmap
 import android.graphics.Color.BLACK
 import android.graphics.Color.WHITE
 import android.nfc.cardemulation.HostApduService
-import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import androidx.biometric.BiometricPrompt
-import androidx.core.util.component1
-import androidx.core.util.component2
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
-import com.android.identity.mdoc.request.DeviceRequestParser
-import com.android.identity.android.legacy.Utility
 import com.android.identity.android.legacy.*
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.credential.CredentialRequest
+import com.android.identity.credential.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
-import com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData
 import com.android.identity.mdoc.origininfo.OriginInfo
+import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.mdl.app.document.Document
-import com.android.mdl.app.documentdata.RequestEuPid
-import com.android.mdl.app.documentdata.RequestMdl
-import com.android.mdl.app.documentdata.RequestMicovAtt
-import com.android.mdl.app.documentdata.RequestMicovVtr
-import com.android.mdl.app.documentdata.RequestMvr
+import com.android.identity.mdoc.response.DocumentGenerator
+import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.securearea.SecureArea
+import com.android.identity.util.Timestamp
+import com.android.mdl.app.document.DocumentManager
+import com.android.mdl.app.documentdata.DocumentDataReader
+import com.android.mdl.app.documentdata.DocumentElements
 import com.android.mdl.app.util.*
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -172,64 +171,55 @@ class TransferManager private constructor(private val context: Context) {
         credentialName: String,
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
-        response: DeviceResponseGenerator,
-        readerAuth: ByteArray?,
-        requestMessage: ByteArray?
-    ): Boolean {
+        deviceResponseGenerator: DeviceResponseGenerator,
+    ): AddDocumentToResponseResult {
         session?.let {
-            val credentialDataRequestBuilder = CredentialDataRequest.Builder()
-                .setIssuerSignedEntriesToRequest(issuerSignedEntriesToRequest)
-                .setAllowUsingExhaustedKeys(true)
-                .setAllowUsingExpiredKeys(true)
-            if (readerAuth != null && requestMessage != null) {
-                credentialDataRequestBuilder.setReaderSignature(readerAuth)
-                credentialDataRequestBuilder.setRequestMessage(requestMessage)
-            }
-            try {
-                it.getCredentialData(
-                    credentialName,
-                    credentialDataRequestBuilder.build()
-                )?.let { c ->
-                    try {
-                        if (c.deviceSignedEntries.isUserAuthenticationNeeded ||
-                            c.issuerSignedEntries.isUserAuthenticationNeeded
-                        ) {
-                            return true
-                        }
-                        val staticAuthData: ByteArray = c.staticAuthenticationData
-                        val parsedStaticAuthData: StaticAuthData =
-                            StaticAuthDataParser(staticAuthData).parse()
-                        val issuerSignedMapping: Map<String, List<ByteArray>> =
-                            parsedStaticAuthData.digestIdMapping
-                        val encodedIssuerAuth: ByteArray = parsedStaticAuthData.issuerAuth
+            val documentManager = DocumentManager.getInstance(context)
+            val documentInformation = documentManager.getDocumentInformation(credentialName)
+            requireValidProperty(documentInformation) { "Document not found!" }
 
-                        log("StaticAuthData " + FormatUtil.encodeToString(staticAuthData))
-                        Utility.addDocument(
-                            response,
-                            docType,
-                            c,
-                            issuerSignedMapping,
-                            null,
-                            encodedIssuerAuth
-                        )
-                    } catch (e: IllegalArgumentException) {
-                        e.printStackTrace()
-                    } catch (e: NoAuthenticationKeyAvailableException) {
-                        e.printStackTrace()
-                    } catch (e: InvalidReaderSignatureException) {
-                        e.printStackTrace()
-                    } catch (e: EphemeralPublicKeyNotFoundException) {
-                        e.printStackTrace()
-                    } catch (e: InvalidRequestMessageException) {
-                        e.printStackTrace()
-                    }
+            val credential = requireNotNull(documentManager.getCredentialByName(credentialName))
+            val dataElements = issuerSignedEntriesToRequest.keys.flatMap { key ->
+                issuerSignedEntriesToRequest.getOrDefault(key, emptyList()).map { value ->
+                    CredentialRequest.DataElement(key, value, false)
                 }
-            } catch (e: NullPointerException) {
-                Log.e(LOG_TAG, "Error to get credential from session", e)
-                throw NoSuchElementException("Error to get credential from session - ${e.message}")
+            }
+
+            val request = CredentialRequest(dataElements)
+            val authKey = credential.findAuthenticationKey(Timestamp.now())
+                ?: throw IllegalStateException("No auth key available")
+            if (authKey.usageCount >= documentInformation.maxUsagesPerKey) {
+                throw IllegalStateException("No auth key available")
+            }
+
+            val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
+            val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
+                request, credential.nameSpacedData, staticAuthData
+            )
+
+            val transcript = communication.getSessionTranscript() ?: byteArrayOf()
+            try {
+                deviceResponseGenerator.addDocument(
+                    DocumentGenerator(docType, staticAuthData.issuerAuth, transcript)
+                        .setIssuerNamespaces(mergedIssuerNamespaces)
+                        .setDeviceNamespacesSignature(
+                            NameSpacedData.Builder().build(),
+                            authKey.secureArea,
+                            authKey.alias,
+                            null,
+                            SecureArea.ALGORITHM_ES256
+                        ).generate()
+                )
+                authKey.increaseUsageCount()
+            } catch (lockedException: SecureArea.KeyLockedException) {
+                return if (credential.credentialSecureArea is AndroidKeystoreSecureArea) {
+                    AddDocumentToResponseResult.UserAuthRequired
+                } else {
+                    AddDocumentToResponseResult.PassphraseRequired
+                }
             }
         }
-        return false
+        return AddDocumentToResponseResult.DocumentAdded
     }
 
     fun stopPresentation(
@@ -274,52 +264,13 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    fun readDocumentEntries(document: Document): CredentialDataResult.Entries? {
-        // Request all data items based on docType
-        val entriesToRequest = if (DocumentData.MDL_DOCTYPE == document.docType) {
-            RequestMdl.getFullItemsToRequest()
-        } else if (DocumentData.MVR_DOCTYPE == document.docType) {
-            RequestMvr.getFullItemsToRequest()
-        } else if (DocumentData.MICOV_DOCTYPE == document.docType) {
-            RequestMicovAtt.getFullItemsToRequest().plus(RequestMicovVtr.getFullItemsToRequest())
-        } else if (DocumentData.EU_PID_DOCTYPE == document.docType) {
-            RequestEuPid.getFullItemsToRequest()
-        } else {
-            throw IllegalArgumentException("Invalid docType to create request details ${document.docType}")
-        }
+    fun readDocumentEntries(documentName: String): DocumentElements {
+        val documentManager = DocumentManager.getInstance(context)
+        val documentInformation = documentManager.getDocumentInformation(documentName)
 
-        // Create identity credential store from hardware or software implementation depending on
-        // what was used on each document provisioned
-        val mStore = if (document.hardwareBacked)
-            IdentityCredentialStore.getHardwareInstance(context)
-                ?: IdentityCredentialStore.getKeystoreInstance(
-                    context,
-                    PreferencesHelper.getKeystoreBackedStorageLocation(context)
-                )
-        else
-            IdentityCredentialStore.getKeystoreInstance(
-                context,
-                PreferencesHelper.getKeystoreBackedStorageLocation(context)
-            )
-
-        try {
-            val mSession = mStore.createPresentationSession(
-                IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256
-            )
-
-            val credentialRequest = CredentialDataRequest.Builder()
-                .setIncrementUseCount(false)
-                .setIssuerSignedEntriesToRequest(entriesToRequest)
-                .build()
-
-            // It can display data if user consent is not required
-            val credentialData =
-                mSession.getCredentialData(document.identityCredentialName, credentialRequest)
-            return credentialData?.issuerSignedEntries
-        } catch (e: UnsupportedOperationException) {
-            log("Presentation session not supported in this device - ${e.message}", e)
-            return null
-        }
+        val credential = requireNotNull(documentManager.getCredentialByName(documentName))
+        val nameSpacedData = credential.nameSpacedData
+        return DocumentDataReader(documentInformation?.docType ?: "").read(nameSpacedData)
     }
 
     fun setResponseServed() {

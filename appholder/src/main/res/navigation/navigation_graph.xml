@@ -30,31 +30,19 @@
             app:destination="@id/documentDetailFragment" />
         <action
             android:id="@+id/toAddSelfSigned"
-            app:popUpTo="@id/wallet"
-            app:destination="@id/addSelfSignedDocument"/>
+            app:destination="@id/addSelfSignedDocument"
+            app:popUpTo="@id/wallet" />
         <action
             android:id="@+id/toTransferDocument"
             app:destination="@id/transferDocumentFragment" />
         <action
             android:id="@+id/toShowQR"
-            app:popUpTo="@id/wallet"
-            app:destination="@id/share_document"/>
-    </fragment>
-    <fragment
-        android:id="@+id/add"
-        android:name="com.android.mdl.app.fragment.ProvisioningFragment"
-        android:label="Select a Document to Share"
-        tools:layout="@layout/fragment_provisioning">
-        <action
-            android:id="@+id/action_provisioningFragment_to_selectDocumentFragment"
-            app:destination="@id/wallet" />
-        <action
-            android:id="@+id/action_provisioningFragment_to_refreshAuthKeyFragment"
-            app:destination="@id/refreshAuthKeyFragment" />
+            app:destination="@id/share_document"
+            app:popUpTo="@id/wallet" />
     </fragment>
     <fragment
         android:id="@+id/addSelfSignedDocument"
-        android:name="com.android.mdl.app.fragment.AddSelfSignedFragment"
+        android:name="com.android.mdl.app.selfsigned.AddSelfSignedFragment"
         android:label="Add Self Signed Document"
         tools:layout="@layout/fragment_add_self_signed">
         <action
@@ -84,20 +72,10 @@
     <fragment
         android:id="@+id/documentDetailFragment"
         android:name="com.android.mdl.app.fragment.DocumentDetailFragment"
-        android:label="Document detail"
-        tools:layout="@layout/fragment_document_detail">
+        android:label="Document detail">
         <argument
-            android:name="document"
-            app:argType="com.android.mdl.app.document.Document" />
-        <action
-            android:id="@+id/action_documentDetailFragment_to_refreshAuthKeyFragment"
-            app:destination="@id/refreshAuthKeyFragment" />
-        <action
-            android:id="@+id/action_documentDetailFragment_to_updateCheckFragment"
-            app:destination="@id/updateCheckFragment" />
-        <action
-            android:id="@+id/action_documentDetailFragment_to_deleteDocumentFragment"
-            app:destination="@id/deleteDocumentFragment" />
+            android:name="documentName"
+            app:argType="string" />
         <action
             android:id="@+id/action_documentDetailFragment_to_selectDocumentFragment"
             app:destination="@id/wallet" />
@@ -110,52 +88,9 @@
         android:id="@+id/showDocumentData"
         android:name="com.android.mdl.app.documentdata.ShowDocumentDataFragment"
         android:label="Document Data">
-
         <argument
-            android:name="document"
-            app:argType="com.android.mdl.app.document.Document" />
-    </fragment>
-    <fragment
-        android:id="@+id/updateCheckFragment"
-        android:name="com.android.mdl.app.fragment.UpdateCheckFragment"
-        android:label="Document update check"
-        tools:layout="@layout/fragment_update_check">
-        <argument
-            android:name="document"
-            app:argType="com.android.mdl.app.document.Document" />
-        <action
-            android:id="@+id/action_updateCheckFragment_to_deleteDocumentFragment"
-            app:destination="@id/deleteDocumentFragment" />
-        <action
-            android:id="@+id/action_updateCheckFragment_to_documentDetailFragment"
-            app:destination="@id/documentDetailFragment" />
-    </fragment>
-    <fragment
-        android:id="@+id/deleteDocumentFragment"
-        android:name="com.android.mdl.app.fragment.DeleteDocumentFragment"
-        android:label="Document deletion"
-        tools:layout="@layout/fragment_update_check">
-        <argument
-            android:name="document"
-            app:argType="com.android.mdl.app.document.Document" />
-        <action
-            android:id="@+id/action_deleteDocumentFragment_to_selectDocumentFragment"
-            app:destination="@id/wallet" />
-    </fragment>
-    <fragment
-        android:id="@+id/refreshAuthKeyFragment"
-        android:name="com.android.mdl.app.fragment.RefreshAuthKeyFragment"
-        android:label="Document refresh auth keys certification"
-        tools:layout="@layout/fragment_refresh_auth_key">
-        <argument
-            android:name="serverUrl"
+            android:name="documentName"
             app:argType="string" />
-        <argument
-            android:name="document"
-            app:argType="com.android.mdl.app.document.Document" />
-        <action
-            android:id="@+id/action_refreshAuthKeyFragment_to_selectDocumentFragment"
-            app:destination="@id/wallet" />
     </fragment>
     <fragment
         android:id="@+id/share_document"
@@ -182,16 +117,18 @@
         android:id="@+id/authConfirmation"
         android:name="com.android.mdl.app.authconfirmation.AuthConfirmationFragment"
         android:label="Confirmation">
-
         <argument
             android:name="readerCommonName"
             android:defaultValue=""
             app:argType="string" />
-
         <argument
             android:name="readerIsTrusted"
             android:defaultValue="false"
             app:argType="boolean" />
+        <action
+            android:id="@+id/openPassphrasePrompt"
+            app:destination="@id/promptPassphrase"
+            app:popUpTo="@id/authConfirmation"/>
     </dialog>
     <fragment
         android:id="@+id/selfSignedDetails"
@@ -200,9 +137,12 @@
         tools:layout="@layout/fragment_self_signed_details">
         <argument
             android:name="provisionInfo"
-            app:argType="com.android.mdl.app.util.ProvisionInfo" />
+            app:argType="com.android.mdl.app.selfsigned.ProvisionInfo" />
         <action
             android:id="@+id/action_selfSignedDetails_to_selectDocumentFragment"
             app:destination="@id/wallet" />
     </fragment>
+    <dialog
+        android:id="@+id/promptPassphrase"
+        android:name="com.android.mdl.app.authconfirmation.PassphrasePrompt"/>
 </navigation>

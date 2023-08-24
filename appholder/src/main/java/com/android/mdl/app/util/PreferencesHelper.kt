@@ -23,6 +23,7 @@ object PreferencesHelper {
 
     fun initialize(context: Context) {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+        setHardwareBacked(false)
     }
 
     fun setHardwareBacked(isHardwareBacked: Boolean) {
