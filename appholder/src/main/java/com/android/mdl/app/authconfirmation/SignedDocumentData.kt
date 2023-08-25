@@ -4,8 +4,6 @@ class SignedDocumentData(
     private val signedElements: List<RequestedElement>,
     val identityCredentialName: String,
     val documentType: String,
-    val readerAuth: ByteArray?,
-    val itemsRequest: ByteArray
 ) {
 
     fun issuerSignedEntries(): MutableMap<String, Collection<String>> {

@@ -3,7 +3,6 @@ package com.android.mdl.app.viewmodel
 import android.app.Application
 import android.view.View
 import android.widget.Toast
-import androidx.biometric.BiometricPrompt
 import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
@@ -13,6 +12,7 @@ import com.android.identity.util.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.android.legacy.CredentialInvalidatedException
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.request.DeviceRequestParser
+import com.android.identity.securearea.SecureArea
 import com.android.mdl.app.R
 import com.android.mdl.app.authconfirmation.RequestedDocumentData
 import com.android.mdl.app.authconfirmation.RequestedElement
@@ -86,11 +86,10 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 val issuerSignedEntriesToRequest = requestedElementsFrom(requestedDocument)
                 result.add(
                     RequestedDocumentData(
-                        ownDocument.userVisibleName,
-                        ownDocument.docType,
-                        false, //TODO
-                        issuerSignedEntriesToRequest,
-                        requestedDocument
+                        userReadableName = ownDocument.userVisibleName,
+                        identityCredentialName = ownDocument.docName,
+                        requestedElements = issuerSignedEntriesToRequest,
+                        requestedDocument = requestedDocument
                     )
                 )
             } catch (e: NoSuchElementException) {
@@ -101,11 +100,11 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     }
 
     fun sendResponseForSelection(
-        didUserAuthorize: Boolean = false,
-        passphrase: String? = null
+        keyUnlockData: SecureArea.KeyUnlockData? = null
     ): AddDocumentToResponseResult {
         val elementsToSend = signedElements.collect()
         val responseGenerator = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
+        var signingKeyOverused = false
         elementsToSend.forEach { signedDocument ->
             try {
                 val issuerSignedEntries = signedDocument.issuerSignedEntries()
@@ -114,9 +113,12 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                     signedDocument.documentType,
                     issuerSignedEntries,
                     responseGenerator,
+                    keyUnlockData
                 )
-                if (result != AddDocumentToResponseResult.DocumentAdded) {
+                if (result !is AddDocumentToResponseResult.DocumentAdded) {
                     return result
+                } else {
+                    signingKeyOverused = result.signingKeyUsageLimitPassed
                 }
             } catch (e: CredentialInvalidatedException) {
                 logWarning("Credential '${signedDocument.identityCredentialName}' is invalid. Deleting.")
@@ -133,7 +135,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         val documentsCount = elementsToSend.count()
         documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
         cleanUp()
-        return AddDocumentToResponseResult.DocumentAdded
+        return AddDocumentToResponseResult.DocumentAdded(signingKeyOverused)
     }
 
     fun cancelPresentation(

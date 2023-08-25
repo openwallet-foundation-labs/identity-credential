@@ -32,7 +32,7 @@ class DocumentDetailFragment : Fragment() {
                     DocumentInfoScreen(
                         viewModel = viewModel,
                         onNavigateUp = { findNavController().navigateUp() },
-                        onNavigateToDocumentDetails = { documentName -> onShowData(documentName) }
+                        onNavigateToDocumentDetails = { onShowData(args.documentName) }
                     )
                 }
             }

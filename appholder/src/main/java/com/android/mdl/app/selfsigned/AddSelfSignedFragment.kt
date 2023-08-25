@@ -40,6 +40,13 @@ class AddSelfSignedFragment : Fragment() {
             secureAreaImplementationStateType = state.secureAreaImplementationState,
             userAuthentication = state.userAuthentication,
             userAuthenticationTimeoutSeconds = state.userAuthenticationTimeoutSeconds,
+            allowLskfUnlocking = state.allowLSKFUnlocking.isEnabled,
+            allowBiometricUnlocking = state.allowBiometricUnlocking.isEnabled,
+            useStrongBox = state.useStrongBox.isEnabled,
+            mDocAuthenticationOption = state.androidMdocAuthState.mDocAuthentication,
+            androidAuthKeyCurveOption = state.androidAuthKeyCurveState.authCurve,
+            validityInDays = state.validityInDays,
+            minValidityInDays = state.minValidityInDays,
             passphrase = state.passphrase.ifBlank { null },
             numberMso = state.numberOfMso,
             maxUseMso = state.maxUseOfMso
