@@ -14,6 +14,7 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.BouncyCastleSecureArea
 import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.SecureArea.KeyPurpose
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Timestamp
 import com.android.mdl.app.document.DocumentInformation
@@ -242,13 +243,8 @@ class ProvisioningUtil private constructor(
         ecCurve: Int,
         validUntil: Timestamp
     ): AndroidKeystoreSecureArea.CreateKeySettings {
-        val keyPurpose = if (mDocAuthOption == AddSelfSignedScreenState.MdocAuthStateOption.ECDSA) {
-            SecureArea.KEY_PURPOSE_SIGN
-        } else {
-            SecureArea.KEY_PURPOSE_AGREE_KEY
-        }
         return AndroidKeystoreSecureArea.CreateKeySettings.Builder(CHALLENGE)
-            .setKeyPurposes(keyPurpose)
+            .setKeyPurposes(mDocAuthOption.toKeyPurpose())
             .setUseStrongBox(useStrongBox)
             .setEcCurve(ecCurve)
             .setValidityPeriod(Timestamp.now(), validUntil)
@@ -264,9 +260,18 @@ class ProvisioningUtil private constructor(
         passphrase: String? = null
     ): BouncyCastleSecureArea.CreateKeySettings {
         return BouncyCastleSecureArea.CreateKeySettings.Builder()
-            .setPassphraseRequired(passphrase != null, passphrase)
             .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN or SecureArea.KEY_PURPOSE_AGREE_KEY)
+            .setPassphraseRequired(passphrase != null, passphrase)
             .build()
+    }
+
+    @KeyPurpose
+    private fun AddSelfSignedScreenState.MdocAuthStateOption.toKeyPurpose(): Int {
+        return if (this == AddSelfSignedScreenState.MdocAuthStateOption.ECDSA) {
+            SecureArea.KEY_PURPOSE_SIGN
+        } else {
+            SecureArea.KEY_PURPOSE_AGREE_KEY
+        }
     }
 
     companion object {
