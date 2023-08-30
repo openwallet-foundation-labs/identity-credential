@@ -88,11 +88,6 @@ public class NfcEnagementHelperTest {
             public void onError(@NonNull Throwable error) {
 
             }
-
-            @Override
-            public void onTwoWayEngagementDetected() {
-
-            }
         };
 
         Executor executor = Executors.newSingleThreadExecutor();
@@ -228,11 +223,6 @@ public class NfcEnagementHelperTest {
 
             @Override
             public void onError(@NonNull Throwable error) {
-            }
-
-            @Override
-            public void onTwoWayEngagementDetected() {
-
             }
         };
 
