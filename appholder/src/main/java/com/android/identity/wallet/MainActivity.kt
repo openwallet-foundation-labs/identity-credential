@@ -18,6 +18,7 @@ import com.android.identity.mdoc.origininfo.OriginInfoDomain
 import com.android.identity.util.Logger
 import com.android.identity.wallet.databinding.ActivityMainBinding
 import com.android.identity.wallet.util.PreferencesHelper
+import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
 import com.android.identity.wallet.util.logInfo
@@ -43,6 +44,7 @@ class MainActivity : AppCompatActivity() {
         window.navigationBarColor = color
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        DocumentManager.getInstance(this).registerDocuments()
         setupDrawerLayout()
         setupNfc()
         onNewIntent(intent)

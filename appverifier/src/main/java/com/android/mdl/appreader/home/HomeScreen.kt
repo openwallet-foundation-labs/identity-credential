@@ -50,7 +50,8 @@ fun HomeScreen(
     state: RequestingDocumentState,
     onSelectionUpdated: (elements: DocumentElementsRequest) -> Unit,
     onRequestConfirm: (request: RequestingDocumentState) -> Unit,
-    onRequestQRCodePreview: (request: RequestingDocumentState) -> Unit
+    onRequestQRCodePreview: (request: RequestingDocumentState) -> Unit,
+    onRequestViaCredman: (request: RequestingDocumentState) -> Unit
 ) {
     Box(modifier = modifier) {
         NfcLabel(
@@ -109,13 +110,24 @@ fun HomeScreen(
                 dropDownOpened = false
             }
         )
-        Button(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(24.dp),
-            onClick = { onRequestQRCodePreview(state) }
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Scan QR Code")
+            Button(
+                modifier = Modifier
+                    .padding(8.dp),
+                onClick = { onRequestQRCodePreview(state) }
+            ) {
+                Text(text = "Scan QR Code")
+            }
+            Button(
+                modifier = Modifier
+                    .padding(8.dp),
+                onClick = { onRequestViaCredman(state) }
+            ) {
+                Text(text = "Request via Credman")
+            }
         }
     }
 }
@@ -181,7 +193,8 @@ private fun HomeScreenPreview() {
             state = RequestingDocumentState(),
             onSelectionUpdated = {},
             onRequestConfirm = {},
-            onRequestQRCodePreview = {}
+            onRequestQRCodePreview = {},
+            onRequestViaCredman = {},
         )
     }
 }

@@ -6,7 +6,10 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Bundle
+import android.os.ResultReceiver
 import android.provider.Settings
+import android.util.Base64
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,12 +30,18 @@ import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.home.CreateRequestViewModel
+import com.android.mdl.appreader.home.RequestingDocumentState
 import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
+import com.google.android.gms.identitycredentials.CredentialOption
+import com.google.android.gms.identitycredentials.GetCredentialRequest
+import com.google.android.gms.identitycredentials.IdentityCredentialManager
+import com.google.android.gms.identitycredentials.IntentHelper
+import java.security.SecureRandom
 
-class RequestOptionsFragment : Fragment() {
+class RequestOptionsFragment() : Fragment() {
 
     private val createRequestViewModel: CreateRequestViewModel by activityViewModels()
     private val args: RequestOptionsFragmentArgs by navArgs()
@@ -71,10 +80,99 @@ class RequestOptionsFragment : Fragment() {
                         state = state,
                         onSelectionUpdated = createRequestViewModel::onRequestUpdate,
                         onRequestConfirm = { onRequestConfirmed(it.isCustomMdlRequest) },
-                        onRequestQRCodePreview = { navigateToQRCodeScan(it.isCustomMdlRequest) }
+                        onRequestQRCodePreview = { navigateToQRCodeScan(it.isCustomMdlRequest) },
+                        onRequestViaCredman = {onRequestViaCredman(it)}
                     )
                 }
             }
+        }
+    }
+
+
+    private fun onRequestViaCredman(state: RequestingDocumentState) {
+        val client = IdentityCredentialManager.Companion.getClient(this.requireContext())
+        val nonce = ByteArray(16)
+        SecureRandom().nextBytes(nonce)
+        val nonceBase64 = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
+        val requestIdentityKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256)
+        val requesterIdentityBase64 = Base64.encodeToString(Util.publicKeyToUncompressed(requestIdentityKeyPair.public), Base64.NO_WRAP or Base64.URL_SAFE)
+        val requestJson = (
+                "{\n" +
+                "  \"providers\": [\n" +
+                "    {\n" +
+                "      \"responseFormat\": \"mdoc\",\n" +
+                "      \"selector\": {\n" +
+                "        \"fields\": [\n" +
+                "          {\n" +
+                "            \"name\": \"doctype\",\n" +
+                "            \"equal\": \"org.iso.18013.5.1.mDL\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.portrait\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.family_name\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.given_name\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.document_number\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.expiry_date\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.issue_date\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.age_over_18\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.aamva.DHS_compliance\"\n" +
+                "          },\n" +
+                "          {\n" +
+                "            \"name\": \"org.iso.18013.5.1.aamva.EDL_credential\"\n" +
+                "          }\n" +
+                "        ]\n" +
+                "      },\n" +
+                "      \"params\": {\n" +
+                "        \"nonce\": \"$nonceBase64\",\n" +
+                "        \"requesterIdentity\": \"$requesterIdentityBase64\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  ]\n" +
+                "}")
+        val option = CredentialOption(
+            type = "com.credman.IdentityCredential",
+            credentialRetrievalData = Bundle(),
+            candidateQueryData = Bundle(),
+            requestMatcher = requestJson,
+        )
+        client.getCredential(GetCredentialRequest(
+            credentialOptions = listOf(option),
+            data = Bundle(),
+            origin = null,
+            resultReceiver = object: ResultReceiver(null) {
+                override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                    super.onReceiveResult(resultCode, resultData)
+                    Log.i("TAG", "Got a result $resultCode $resultData")
+
+                    val response = IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
+                    val identityToken = Base64.decode(
+                        String(response.credential.data.getByteArray("identityToken")!!),
+                        Base64.NO_WRAP or Base64.URL_SAFE)
+                    Logger.dCbor("TAG", "identityToken", identityToken!!)
+
+                    val bundle = Bundle()
+                    bundle.putByteArray("identityToken", identityToken)
+                    bundle.putByteArray("nonce", nonce)
+                    findNavController().navigate(RequestOptionsFragmentDirections.toShowDeviceResponse(
+                        bundle, requestIdentityKeyPair))
+                }
+            }
+        )).addOnSuccessListener {result ->
+            startIntentSenderForResult(result.pendingIntent.intentSender, 777, null, 0, 0, 0, null)
         }
     }
 
