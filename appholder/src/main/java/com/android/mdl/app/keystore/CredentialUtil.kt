@@ -17,8 +17,11 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Timestamp
 import com.android.mdl.app.document.DocumentInformation
+import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.document.SecureAreaImplementationState
 import com.android.mdl.app.selfsigned.ProvisionInfo
+import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
+import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
 import com.android.mdl.app.util.PreferencesHelper
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
@@ -153,8 +156,17 @@ class CredentialUtil private constructor(
             val mso = msoGenerator.generate()
             val taggedEncodedMso = Util.cborEncode(Util.cborBuildTaggedByteString(mso))
 
-            val issuerKeyPair = generateIssuingAuthorityKeyPair()
-            val issuerCert = getSelfSignedIssuerAuthorityCertificate(issuerKeyPair)
+            val issuerKeyPair = when (documentType) {
+                MVR_DOCTYPE -> KeysAndCertificates.getMekbDsKeyPair(context)
+                MICOV_DOCTYPE -> KeysAndCertificates.getMicovDsKeyPair(context)
+                else -> KeysAndCertificates.getMdlDsKeyPair(context)
+            }
+
+            val issuerCert = when (documentType) {
+                MVR_DOCTYPE -> KeysAndCertificates.getMekbDsCertificate(context)
+                MICOV_DOCTYPE -> KeysAndCertificates.getMicovDsCertificate(context)
+                else -> KeysAndCertificates.getMdlDsCertificate(context)
+            }
 
             val issuerCertChain = ArrayList<X509Certificate>()
             issuerCertChain.add(issuerCert)
