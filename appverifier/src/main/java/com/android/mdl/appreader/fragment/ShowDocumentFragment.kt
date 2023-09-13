@@ -200,7 +200,7 @@ class ShowDocumentFragment : Fragment() {
             val commonName = StringBuffer()
             for (issuerItem in issuerItems) {
                 when {
-                    issuerItem.contains("O=") -> {
+                    issuerItem.contains("CN=") -> {
                         val (key, value) = issuerItem.split("=", limit = 2)
                         commonName.append(value)
                         cnFound = true
