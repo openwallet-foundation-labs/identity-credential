@@ -59,6 +59,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.android.identity.securearea.SecureArea
 import com.android.mdl.app.R
 import com.android.mdl.app.composables.PreviewLightDark
 import com.android.mdl.app.composables.gradientFor
@@ -66,8 +67,7 @@ import com.android.mdl.app.composables.keystoreNameFor
 import com.android.mdl.app.document.DocumentColor
 import com.android.mdl.app.document.DocumentType
 import com.android.mdl.app.document.SecureAreaImplementationState
-import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.AndroidAuthKeyCurveOption
-import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.MdocAuthStateOption
+import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.*
 import com.android.mdl.app.theme.HolderAppTheme
 
 @Composable
@@ -94,6 +94,7 @@ fun AddSelfSignedDocumentScreen(
         onBiometricAuthChanged = viewModel::updateBiometricUnlocking,
         onMdocAuthOptionChange = viewModel::updateMdocAuthOption,
         onAndroidAuthKeyCurveChanged = viewModel::updateAndroidAuthKeyCurve,
+        onBouncyCastleAuthKeyCurveChanged = viewModel::updateBouncyCastleAuthKeyCurve,
         onStrongBoxChanged = viewModel::updateStrongBox,
         onPassphraseChanged = viewModel::updatePassphrase,
         onNumberOfMsoChanged = viewModel::updateNumberOfMso,
@@ -119,6 +120,7 @@ private fun AddSelfSignedDocumentScreenContent(
     onBiometricAuthChanged: (newValue: Boolean) -> Unit,
     onMdocAuthOptionChange: (newValue: MdocAuthStateOption) -> Unit,
     onAndroidAuthKeyCurveChanged: (newValue: AndroidAuthKeyCurveOption) -> Unit,
+    onBouncyCastleAuthKeyCurveChanged: (newValue: BouncyCastleAuthKeyCurveOption) -> Unit,
     onPassphraseChanged: (newValue: String) -> Unit,
     onNumberOfMsoChanged: (newValue: Int) -> Unit,
     onMaxUseOfMsoChanged: (newValue: Int) -> Unit,
@@ -179,7 +181,7 @@ private fun AddSelfSignedDocumentScreenContent(
                     onBiometricAuthChanged = onBiometricAuthChanged,
                     onStrongBoxChanged = onStrongBoxChanged,
                 )
-                MdocAuthenticationAndroid(
+                MdocAuthentication(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
@@ -201,6 +203,21 @@ private fun AddSelfSignedDocumentScreenContent(
                         .padding(horizontal = 16.dp),
                     state = screenState,
                     onPassphraseChanged = onPassphraseChanged
+                )
+                MdocAuthentication(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    state = screenState.androidMdocAuthState,
+                    onMdocAuthOptionChange = onMdocAuthOptionChange
+                )
+                AuthenticationKeyCurveBouncyCastle(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    state = screenState.bouncyCastleAuthKeyCurveState,
+                    mDocAuthState = screenState.androidMdocAuthState,
+                    onBouncyCastleAuthKeyCurveChanged = onBouncyCastleAuthKeyCurveChanged
                 )
             }
             CounterInput(
@@ -501,9 +518,9 @@ private fun AndroidSetupContainer(
     modifier: Modifier = Modifier,
     isOn: Boolean,
     timeoutSeconds: Int,
-    lskfAuthTypeState: AddSelfSignedScreenState.AuthTypeState,
-    biometricAuthTypeState: AddSelfSignedScreenState.AuthTypeState,
-    useStrongBox: AddSelfSignedScreenState.AuthTypeState,
+    lskfAuthTypeState: AuthTypeState,
+    biometricAuthTypeState: AuthTypeState,
+    useStrongBox: AuthTypeState,
     onUserAuthenticationChanged: (isOn: Boolean) -> Unit,
     onAuthTimeoutChanged: (authTimeout: Int) -> Unit,
     onLskfAuthChanged: (isOn: Boolean) -> Unit,
@@ -606,9 +623,9 @@ private fun AndroidSetupContainer(
 
 
 @Composable
-private fun MdocAuthenticationAndroid(
+private fun MdocAuthentication(
     modifier: Modifier = Modifier,
-    state: AddSelfSignedScreenState.MdocAuthOptionState,
+    state: MdocAuthOptionState,
     onMdocAuthOptionChange: (newValue: MdocAuthStateOption) -> Unit
 ) {
     LabeledUserInput(
@@ -657,12 +674,11 @@ private fun MdocAuthenticationAndroid(
     }
 }
 
-
 @Composable
 private fun AuthenticationKeyCurveAndroid(
     modifier: Modifier = Modifier,
-    state: AddSelfSignedScreenState.AndroidAuthKeyCurveState,
-    mDocAuthState: AddSelfSignedScreenState.MdocAuthOptionState,
+    state: AndroidAuthKeyCurveState,
+    mDocAuthState: MdocAuthOptionState,
     onAndroidAuthKeyCurveChanged: (newValue: AndroidAuthKeyCurveOption) -> Unit
 ) {
     LabeledUserInput(
@@ -684,7 +700,7 @@ private fun AuthenticationKeyCurveAndroid(
         ) {
             ValueLabel(
                 modifier = Modifier.weight(1f),
-                label = curveLabelFor(state.authCurve)
+                label = curveLabelFor(state.authCurve.toEcCurve())
             )
             DropDownIndicator()
         }
@@ -698,19 +714,74 @@ private fun AuthenticationKeyCurveAndroid(
                 AndroidAuthKeyCurveOption.X25519
             }
             TextDropDownRow(
-                label = curveLabelFor(curveOption = AndroidAuthKeyCurveOption.P_256),
+                label = curveLabelFor(curveOption = AndroidAuthKeyCurveOption.P_256.toEcCurve()),
                 onSelected = {
                     onAndroidAuthKeyCurveChanged(AndroidAuthKeyCurveOption.P_256)
                     keyCurveDropDownExpanded = false
                 }
             )
             TextDropDownRow(
-                label = curveLabelFor(curveOption = ecCurveOption),
+                label = curveLabelFor(curveOption = ecCurveOption.toEcCurve()),
                 onSelected = {
                     onAndroidAuthKeyCurveChanged(ecCurveOption)
                     keyCurveDropDownExpanded = false
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun AuthenticationKeyCurveBouncyCastle(
+    modifier: Modifier = Modifier,
+    state: BouncyCastleAuthKeyCurveState,
+    mDocAuthState: MdocAuthOptionState,
+    onBouncyCastleAuthKeyCurveChanged: (newValue: BouncyCastleAuthKeyCurveOption) -> Unit
+) {
+    LabeledUserInput(
+        modifier = modifier,
+        label = stringResource(id = R.string.authentication_key_curve_label)
+    ) {
+        var keyCurveDropDownExpanded by remember { mutableStateOf(false) }
+        val clickModifier = if (state.isEnabled) {
+            Modifier.clickable { keyCurveDropDownExpanded = true }
+        } else {
+            Modifier
+        }
+        val alpha = if (state.isEnabled) 1f else .5f
+        OutlinedContainerHorizontal(
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(alpha)
+                .then(clickModifier)
+        ) {
+            ValueLabel(
+                modifier = Modifier.weight(1f),
+                label = curveLabelFor(state.authCurve.toEcCurve())
+            )
+            DropDownIndicator()
+        }
+        val entries = BouncyCastleAuthKeyCurveOption.values().toMutableList()
+        if (mDocAuthState.mDocAuthentication == MdocAuthStateOption.ECDSA) {
+            entries.remove(BouncyCastleAuthKeyCurveOption.X448)
+            entries.remove(BouncyCastleAuthKeyCurveOption.X25519)
+        } else {
+            entries.remove(BouncyCastleAuthKeyCurveOption.Ed448)
+            entries.remove(BouncyCastleAuthKeyCurveOption.Ed25519)
+        }
+        DropdownMenu(
+            expanded = keyCurveDropDownExpanded,
+            onDismissRequest = { keyCurveDropDownExpanded = false }
+        ) {
+            for (entry in entries) {
+                TextDropDownRow(
+                    label = curveLabelFor(curveOption = entry.toEcCurve()),
+                    onSelected = {
+                        onBouncyCastleAuthKeyCurveChanged(entry)
+                        keyCurveDropDownExpanded = false
+                    }
+                )
+            }
         }
     }
 }
@@ -922,17 +993,21 @@ private fun mdocAuthOptionLabelFor(
 
 @Composable
 private fun curveLabelFor(
-    curveOption: AndroidAuthKeyCurveOption
+    @SecureArea.EcCurve curveOption: Int
 ): String {
     return when (curveOption) {
-        AndroidAuthKeyCurveOption.P_256 ->
-            stringResource(id = R.string.curve_p_256)
-
-        AndroidAuthKeyCurveOption.Ed25519 ->
-            stringResource(id = R.string.curve_ed25519)
-
-        AndroidAuthKeyCurveOption.X25519 ->
-            stringResource(id = R.string.curve_x25519)
+        SecureArea.EC_CURVE_P256 -> stringResource(id = R.string.curve_p_256)
+        SecureArea.EC_CURVE_P384 -> stringResource(id = R.string.curve_p_384)
+        SecureArea.EC_CURVE_P521 -> stringResource(id = R.string.curve_p_521)
+        SecureArea.EC_CURVE_BRAINPOOLP256R1 -> stringResource(id = R.string.curve_brain_pool_p_256R1)
+        SecureArea.EC_CURVE_BRAINPOOLP320R1 -> stringResource(id = R.string.curve_brain_pool_p_320R1)
+        SecureArea.EC_CURVE_BRAINPOOLP384R1 -> stringResource(id = R.string.curve_brain_pool_p_384R1)
+        SecureArea.EC_CURVE_BRAINPOOLP512R1 -> stringResource(id = R.string.curve_brain_pool_p_512R1)
+        SecureArea.EC_CURVE_ED25519 -> stringResource(id = R.string.curve_ed25519)
+        SecureArea.EC_CURVE_X25519 -> stringResource(id = R.string.curve_x25519)
+        SecureArea.EC_CURVE_ED448 -> stringResource(id = R.string.curve_ed448)
+        SecureArea.EC_CURVE_X448 -> stringResource(id = R.string.curve_X448)
+        else -> ""
     }
 }
 
@@ -974,6 +1049,7 @@ private fun PreviewAddSelfSignedDocumentScreenAndroidKeystore() {
             onStrongBoxChanged = {},
             onMdocAuthOptionChange = {},
             onAndroidAuthKeyCurveChanged = {},
+            onBouncyCastleAuthKeyCurveChanged = {},
             onPassphraseChanged = {},
             onNumberOfMsoChanged = {},
             onMaxUseOfMsoChanged = {},
@@ -992,11 +1068,11 @@ private fun PreviewAddSelfSignedDocumentScreenAndroidKeystoreAuthOn() {
             modifier = Modifier.fillMaxSize(),
             screenState = AddSelfSignedScreenState(
                 userAuthentication = true,
-                allowLSKFUnlocking = AddSelfSignedScreenState.AuthTypeState(
+                allowLSKFUnlocking = AuthTypeState(
                     isEnabled = true,
                     canBeModified = true
                 ),
-                allowBiometricUnlocking = AddSelfSignedScreenState.AuthTypeState(
+                allowBiometricUnlocking = AuthTypeState(
                     isEnabled = true,
                     canBeModified = false
                 ),
@@ -1012,6 +1088,7 @@ private fun PreviewAddSelfSignedDocumentScreenAndroidKeystoreAuthOn() {
             onStrongBoxChanged = {},
             onMdocAuthOptionChange = {},
             onAndroidAuthKeyCurveChanged = {},
+            onBouncyCastleAuthKeyCurveChanged = {},
             onPassphraseChanged = {},
             onNumberOfMsoChanged = {},
             onMaxUseOfMsoChanged = {},
@@ -1042,6 +1119,7 @@ private fun PreviewAddSelfSignedDocumentScreenBouncyCastleKeystore() {
             onStrongBoxChanged = {},
             onMdocAuthOptionChange = {},
             onAndroidAuthKeyCurveChanged = {},
+            onBouncyCastleAuthKeyCurveChanged = {},
             onPassphraseChanged = {},
             onNumberOfMsoChanged = {},
             onMaxUseOfMsoChanged = {},

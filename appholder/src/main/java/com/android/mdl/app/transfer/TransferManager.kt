@@ -278,16 +278,6 @@ class TransferManager private constructor(private val context: Context) {
         hasStarted = false
     }
 
-    fun getCryptoObject(): BiometricPrompt.CryptoObject? {
-        try {
-            return session?.cryptoObject
-        } catch (e: RuntimeException) {
-            // Error when device doesn't have secure unlock
-            log("getCryptoObject: ${e.message}", e)
-        }
-        return null
-    }
-
     fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
         communication.sendResponse(deviceResponse, closeAfterSending)
         if (closeAfterSending) {

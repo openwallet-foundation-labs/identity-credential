@@ -59,8 +59,6 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun getSelectedDocuments() = selectedDocuments
 
-    fun getCryptoObject() = transferManager.getCryptoObject()
-
     fun requestedElements() = requestedElements
 
     fun closeConnection() {

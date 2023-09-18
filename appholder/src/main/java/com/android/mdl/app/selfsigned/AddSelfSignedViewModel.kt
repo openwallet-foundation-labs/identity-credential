@@ -10,6 +10,7 @@ import com.android.mdl.app.document.SecureAreaImplementationState
 import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.AndroidAuthKeyCurveOption
 import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.AndroidAuthKeyCurveState
 import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.AuthTypeState
+import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.BouncyCastleAuthKeyCurveOption
 import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.MdocAuthOptionState
 import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.MdocAuthStateOption
 import com.android.mdl.app.util.getState
@@ -31,8 +32,14 @@ class AddSelfSignedViewModel(
         capabilities = KeystoreUtil(context).getDeviceCapabilities()
         savedStateHandle.updateState<AddSelfSignedScreenState> {
             it.copy(
-                allowLSKFUnlocking = AuthTypeState(true, capabilities.configureUserAuthenticationType),
-                allowBiometricUnlocking = AuthTypeState(true, capabilities.configureUserAuthenticationType),
+                allowLSKFUnlocking = AuthTypeState(
+                    true,
+                    capabilities.configureUserAuthenticationType
+                ),
+                allowBiometricUnlocking = AuthTypeState(
+                    true,
+                    capabilities.configureUserAuthenticationType
+                ),
                 useStrongBox = AuthTypeState(false, capabilities.strongBox),
                 androidMdocAuthState = MdocAuthOptionState(
                     isEnabled = if (it.useStrongBox.isEnabled) capabilities.strongBoxEcdh else capabilities.ecdh
@@ -113,7 +120,8 @@ class AddSelfSignedViewModel(
         savedStateHandle.updateState<AddSelfSignedScreenState> {
             it.copy(
                 androidMdocAuthState = it.androidMdocAuthState.copy(mDocAuthentication = newValue),
-                androidAuthKeyCurveState = it.androidAuthKeyCurveState.copy(authCurve = AndroidAuthKeyCurveOption.P_256)
+                androidAuthKeyCurveState = it.androidAuthKeyCurveState.copy(authCurve = AndroidAuthKeyCurveOption.P_256),
+                bouncyCastleAuthKeyCurveState = it.bouncyCastleAuthKeyCurveState.copy(authCurve = BouncyCastleAuthKeyCurveOption.P256)
             )
         }
     }
@@ -121,6 +129,12 @@ class AddSelfSignedViewModel(
     fun updateAndroidAuthKeyCurve(newValue: AndroidAuthKeyCurveOption) {
         savedStateHandle.updateState<AddSelfSignedScreenState> {
             it.copy(androidAuthKeyCurveState = it.androidAuthKeyCurveState.copy(authCurve = newValue))
+        }
+    }
+
+    fun updateBouncyCastleAuthKeyCurve(newValue: BouncyCastleAuthKeyCurveOption) {
+        savedStateHandle.updateState<AddSelfSignedScreenState> {
+            it.copy(bouncyCastleAuthKeyCurveState = it.bouncyCastleAuthKeyCurveState.copy(authCurve = newValue))
         }
     }
 

@@ -66,12 +66,14 @@ class ProvisioningUtil private constructor(
                 authTimeoutMillis = provisionInfo.userAuthenticationTimeoutSeconds * 1000L,
                 userAuthenticationType = provisionInfo.userAuthType(),
                 useStrongBox = provisionInfo.useStrongBox,
-                ecCurve = provisionInfo.androidAuthKeyCurveOption.toEcCurve(),
+                ecCurve = provisionInfo.authKeyCurve,
                 validUntil = provisionInfo.validityInDays.toTimestampFromNow()
             )
 
             SecureAreaImplementationState.BouncyCastle -> createBouncyCastleKeystoreSettings(
-                passphrase = provisionInfo.passphrase
+                passphrase = provisionInfo.passphrase,
+                mDocAuthOption = provisionInfo.mDocAuthenticationOption,
+                ecCurve = provisionInfo.authKeyCurve
             )
         }
 
@@ -200,9 +202,9 @@ class ProvisioningUtil private constructor(
     }
 
     private fun manageKeysFor(credential: Credential): Int {
+        val mDocAuthOption = credential.applicationData.getString(MDOC_AUTHENTICATION)
         val settings = when (credential.credentialSecureArea) {
             is AndroidKeystoreSecureArea -> {
-                val mDocAuthOption = credential.applicationData.getString(MDOC_AUTHENTICATION)
                 val keyInfo = credential.credentialSecureArea.getKeyInfo(credential.credentialKeyAlias) as AndroidKeystoreSecureArea.KeyInfo
                 createAndroidKeystoreSettings(
                     keyInfo.isUserAuthenticationRequired,
@@ -216,7 +218,11 @@ class ProvisioningUtil private constructor(
             }
 
             is BouncyCastleSecureArea -> {
-                createBouncyCastleKeystoreSettings()
+                val keyInfo = credential.credentialSecureArea.getKeyInfo(credential.credentialKeyAlias) as BouncyCastleSecureArea.KeyInfo
+                createBouncyCastleKeystoreSettings(
+                    mDocAuthOption = AddSelfSignedScreenState.MdocAuthStateOption.valueOf(mDocAuthOption),
+                    ecCurve = keyInfo.ecCurve
+                )
             }
 
             else -> throw IllegalStateException("Unknown keystore secure area implementation")
@@ -257,11 +263,15 @@ class ProvisioningUtil private constructor(
     }
 
     private fun createBouncyCastleKeystoreSettings(
-        passphrase: String? = null
+        passphrase: String? = null,
+        mDocAuthOption: AddSelfSignedScreenState.MdocAuthStateOption,
+        ecCurve: Int
     ): BouncyCastleSecureArea.CreateKeySettings {
+        val keyPurpose = mDocAuthOption.toKeyPurpose()
         return BouncyCastleSecureArea.CreateKeySettings.Builder()
-            .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN or SecureArea.KEY_PURPOSE_AGREE_KEY)
             .setPassphraseRequired(passphrase != null, passphrase)
+            .setKeyPurposes(keyPurpose)
+            .setEcCurve(ecCurve)
             .build()
     }
 
@@ -330,9 +340,18 @@ class ProvisioningUtil private constructor(
                     selfSigned = it.applicationData.getBoolean(IS_SELF_SIGNED),
                     maxUsagesPerKey = it.applicationData.getNumber(MAX_USAGES_PER_KEY).toInt(),
                     mDocAuthOption = it.applicationData.getString(MDOC_AUTHENTICATION),
+                    secureAreaImplementationState = it.credentialSecureArea.toSecureAreaState(),
                     lastTimeUsed = lastTimeUsed,
                     authKeys = authKeys
                 )
+            }
+        }
+
+        private fun SecureArea.toSecureAreaState(): SecureAreaImplementationState {
+            return when (this) {
+                is AndroidKeystoreSecureArea -> SecureAreaImplementationState.Android
+                is BouncyCastleSecureArea -> SecureAreaImplementationState.BouncyCastle
+                else -> throw IllegalStateException("Unknown Secure Area Implementation")
             }
         }
 

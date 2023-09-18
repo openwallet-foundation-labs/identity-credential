@@ -20,6 +20,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.BouncyCastleSecureArea
 import com.android.identity.securearea.SecureArea.ALGORITHM_ES256
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
@@ -161,8 +162,9 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun authenticationSucceeded(passphrase: String) {
-        viewModel.sendResponseForSelection()
-        findNavController().navigateUp()
+        val unlockData = BouncyCastleSecureArea.KeyUnlockData(passphrase)
+        val result = viewModel.sendResponseForSelection(unlockData)
+        onSendResponseResult(result)
     }
 
     private fun authenticationSucceeded() {
@@ -211,8 +213,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun requestPassphrase() {
-        val destination = AuthConfirmationFragmentDirections
-            .openPassphrasePrompt()
+        val destination = AuthConfirmationFragmentDirections.openPassphrasePrompt()
         findNavController().navigate(destination)
     }
 

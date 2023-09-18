@@ -193,8 +193,16 @@
     <string name="mdoc_auth_ecdsa">mdoc ECDSA authentication</string>
     <string name="mdoc_auth_mac">mdoc MAC authentication</string>
     <string name="curve_p_256">P-256</string>
+    <string name="curve_p_384">P-384</string>
+    <string name="curve_p_521">P-521</string>
+    <string name="curve_brain_pool_p_256R1">BrainPoolP256R1</string>
+    <string name="curve_brain_pool_p_320R1">BrainPoolP320R1</string>
+    <string name="curve_brain_pool_p_384R1">BrainPoolP384R1</string>
+    <string name="curve_brain_pool_p_512R1">BrainPoolP512R1</string>
     <string name="curve_ed25519">Ed25519</string>
+    <string name="curve_ed448">Ed448</string>
     <string name="curve_x25519">X25519</string>
+    <string name="curve_X448">X448</string>
     <string name="validity_in_days">Validity time in days</string>
     <string name="minimum_validity_in_days">Minimum validity in days</string>
 
