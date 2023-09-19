@@ -24,33 +24,19 @@ import com.android.identity.internal.Util;
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
-import com.android.identity.util.Logger;
 
-public class OriginInfoWebsite extends OriginInfo {
-    private static final String TAG = "OriginInfoWebsite";
+public class OriginInfoReferrerUrl extends OriginInfo {
+    private static final String TAG = "OriginInfoReferrerUrl";
 
     static final int TYPE = 1;
-    private final long mCat;
-    private final String mBaseUrl;
+    private final String mUrl;
 
-    public OriginInfoWebsite(long cat, String baseUrl) {
-        mCat = cat;
-        mBaseUrl = baseUrl;
+    public OriginInfoReferrerUrl(String url) {
+        mUrl = url;
     }
 
-    /**
-     * Specifies whether the OriginInfoOptions are about this engagement or the one
-     * received previously
-     *
-     * @return one of {@link #CAT_DELIVERY} or {@link #CAT_RECEIVE}.
-     */
-    @Override
-    public long getCat() {
-        return mCat;
-    }
-
-    public String getBaseUrl() {
-        return mBaseUrl;
+    public String getUrl() {
+        return mUrl;
     }
 
     @NonNull
@@ -58,31 +44,26 @@ public class OriginInfoWebsite extends OriginInfo {
     public DataItem encode() {
         return new CborBuilder()
                 .addMap()
-                .put("cat", mCat)
+                .put("cat", CAT)
                 .put("type", TYPE)
-                .putMap("Details")
-                .put("baseUrl", mBaseUrl)
-                .end()
+                .put("details", mUrl)
                 .end()
                 .build().get(0);
     }
 
     @Nullable
-    public static OriginInfoWebsite decode(@NonNull DataItem oiDataItem) {
+    public static OriginInfoReferrerUrl decode(@NonNull DataItem oiDataItem) {
         if (!(oiDataItem instanceof Map)) {
             throw new IllegalArgumentException("Top-level CBOR is not an map");
         }
         long cat = Util.cborMapExtractNumber(oiDataItem, "cat");
-        long type = Util.cborMapExtractNumber(oiDataItem, "type");
-        DataItem details = Util.cborMapExtractMap(oiDataItem, "Details");
-        if (!(details instanceof Map)) {
-            throw new IllegalArgumentException("Details is not a map");
+        int type = (int) Util.cborMapExtractNumber(oiDataItem, "type");
+        if (!(cat == 1 && type == 1)) {
+            throw new IllegalArgumentException(String.format("This CBOR object has the wrong " +
+                    "category or type. Expected cat = 1, type = 1 for baseURL type but got " +
+                    "cat = %d, type = %d", cat, type));
         }
-        String baseUrl = Util.cborMapExtractString(details, "baseUrl");
-        if (type != TYPE) {
-            Logger.w(TAG, "Unexpected type " + type);
-            return null;
-        }
-        return new OriginInfoWebsite(cat, baseUrl);
+        String url = Util.cborMapExtractString(oiDataItem, "details");
+        return new OriginInfoReferrerUrl(url);
     }
 }

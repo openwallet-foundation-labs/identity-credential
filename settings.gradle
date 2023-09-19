@@ -19,9 +19,10 @@ dependencyResolutionManagement {
             content {
                 includeGroup("org.jetbrains.anko")
                 includeGroup("com.budiyev.android")
+                includeGroup("org.gretty")
             }
         }
     }
 }
-include ':appholder', ':appverifier', ':identity', ':identity-android', ':testapp'
+include ':appholder', ':appverifier', ':identity', ':identity-android', ':testapp', ':wwwverifier'
 rootProject.name = 'Identity Credential'

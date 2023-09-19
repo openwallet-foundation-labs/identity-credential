@@ -20,8 +20,6 @@ import androidx.annotation.NonNull;
 
 import com.android.identity.internal.Util;
 
-import java.security.cert.X509Certificate;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

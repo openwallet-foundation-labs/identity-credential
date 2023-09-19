@@ -15,7 +15,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.android.identity.mdoc.origininfo.OriginInfo
-import com.android.identity.mdoc.origininfo.OriginInfoQr
 import com.android.mdl.app.databinding.FragmentReverseEngagementBinding
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.logWarning
@@ -53,9 +52,7 @@ class ReverseEngagementFragment : Fragment() {
                 log("qrText: $qrText")
                 val uri = Uri.parse(qrText)
                 if (uri.scheme.equals("mdoc")) {
-                    val originInfos = ArrayList<OriginInfo>()
-                    originInfos.add(OriginInfoQr(1))
-                    vm.startPresentationReverseEngagement(qrText, originInfos)
+                    vm.startPresentationReverseEngagement(qrText, emptyList<OriginInfo>())
                     findNavController().navigate(
                         ReverseEngagementFragmentDirections.actionReverseEngagementFragmentToTransferDocumentFragment()
                     )

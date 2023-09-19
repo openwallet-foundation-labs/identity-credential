@@ -1,7 +1,22 @@
+/*
+ * Copyright 2023 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.android.identity.wwwreader;
 
 // imports for CBOR encoding/decoding
-import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.Array;
 import co.nstant.in.cbor.model.ByteString;
@@ -20,6 +35,7 @@ import javax.servlet.ReadListener;
 import javax.servlet.WriteListener;
 
 // key generation imports
+import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 
@@ -35,12 +51,18 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import static org.mockito.Mockito.doReturn;
 
+// identity credential logic imports
+import com.android.identity.internal.Util;
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
+import com.android.identity.mdoc.engagement.EngagementGenerator;
+import com.android.identity.mdoc.engagement.EngagementParser;
+import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl;
+import com.android.identity.mdoc.request.DeviceRequestParser;
+import com.android.identity.mdoc.sessionencryption.SessionEncryption;
+
 // imports from Datastore
-import com.google.appengine.api.datastore.DatastoreService;
-import com.google.appengine.api.datastore.DatastoreServiceFactory;
-import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
-import com.google.appengine.api.datastore.Text;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 
@@ -48,8 +70,8 @@ import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 import java.math.BigInteger;
 import java.io.IOException;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.OptionalLong;
 
 @RunWith(JUnit4.class)
@@ -112,7 +134,7 @@ public class RequestServletTest {
         List<ConnectionMethod> connectionMethods = engagement.getConnectionMethods();
         Assert.assertEquals(connectionMethods.size(), 1);
         ConnectionMethodHttp connectionMethod = (ConnectionMethodHttp) connectionMethods.get(0);
-        String generatedUriWebsite = connectionMethod.getUriWebsite();
+        String generatedUriWebsite = connectionMethod.getUri();
         Assert.assertEquals(generatedUriWebsite.trim(),
             ServletConsts.ABSOLUTE_URL + "/" + generatedKeyString.trim());
     }
@@ -154,9 +176,11 @@ public class RequestServletTest {
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
+        eg.setConnectionMethods(Collections.singletonList(new ConnectionMethodHttp(
+                ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
         String fakeBaseUrl = "https://fake-mdoc-reader.appspot.com/";
-        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, fakeBaseUrl));
+        eg.setOriginInfos(Collections.singletonList(
+                new OriginInfoReferrerUrl(fakeBaseUrl)));
         byte[] encodedDeviceEngagement = eg.generate();
         byte[] messageDataBytes = createMessageData(encodedDeviceEngagement);
 
@@ -167,10 +191,13 @@ public class RequestServletTest {
         // parse sessionData to extract DeviceRequest
         byte[] generatedTranscript =
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
-        SessionEncryptionDevice sed =
-            new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
+        SessionEncryption sed =
+            new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                    new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
+                    eReaderKeyPublic,
+                    generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
-            .setDeviceRequest(sed.decryptMessageFromReader(sessionData).getKey())
+            .setDeviceRequest(sed.decryptMessage(sessionData).getData())
             .setSessionTranscript(generatedTranscript)
             .parse();
 
@@ -200,8 +227,10 @@ public class RequestServletTest {
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        eg.addConnectionMethod(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr));
-        eg.addOriginInfo(new OriginInfoWebsite(OriginInfo.CAT_DELIVERY, ServletConsts.BASE_URL));
+        eg.setConnectionMethods(Collections.singletonList(
+                new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
+        eg.setOriginInfos(Collections.singletonList(
+                new OriginInfoReferrerUrl(ServletConsts.BASE_URL)));
         byte[] encodedDeviceEngagement = eg.generate();
         byte[] messageDataBytes = createMessageData(encodedDeviceEngagement);
 
@@ -212,12 +241,15 @@ public class RequestServletTest {
         // parse sessionData to extract DeviceRequest
         byte[] generatedTranscript =
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
-        SessionEncryptionDevice sed =
-            new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
+        SessionEncryption sed =
+                new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                        new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
+                        eReaderKeyPublic,
+                        generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
-            .setDeviceRequest(sed.decryptMessageFromReader(sessionData).getKey())
-            .setSessionTranscript(generatedTranscript)
-            .parse();
+                .setDeviceRequest(sed.decryptMessage(sessionData).getData())
+                .setSessionTranscript(generatedTranscript)
+                .parse();
 
         Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
         List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
@@ -251,12 +283,15 @@ public class RequestServletTest {
         // parse sessionData to extract DeviceRequest
         byte[] generatedTranscript =
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
-        SessionEncryptionDevice sed =
-            new SessionEncryptionDevice(eDeviceKeyPrivate, eReaderKeyPublic, generatedTranscript);
+        SessionEncryption sed =
+                new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                        new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
+                        eReaderKeyPublic,
+                        generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
-            .setDeviceRequest(sed.decryptMessageFromReader(sessionData).getKey())
-            .setSessionTranscript(generatedTranscript)
-            .parse();
+                .setDeviceRequest(sed.decryptMessage(sessionData).getData())
+                .setSessionTranscript(generatedTranscript)
+                .parse();
 
         Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
         List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
@@ -291,12 +326,15 @@ public class RequestServletTest {
 
         // process response
         byte[] responseMessage = byteWriter.toByteArray();
-        SessionEncryptionDevice sed = new SessionEncryptionDevice(eDeviceKeyPrivate,
-            eReaderKeyPublic, Util.cborEncode(sessionTranscript));
-        Map.Entry<byte[], OptionalLong> responseMessageDecrypted =
-            sed.decryptMessageFromReader(responseMessage);
-        Assert.assertEquals(responseMessageDecrypted.getKey(), null);
-        Assert.assertEquals(responseMessageDecrypted.getValue(), OptionalLong.of(20));
+        SessionEncryption sed =
+                new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                        new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
+                        eReaderKeyPublic,
+                        Util.cborEncode(sessionTranscript));
+        SessionEncryption.DecryptedMessage responseMessageDecrypted =
+            sed.decryptMessage(responseMessage);
+        Assert.assertEquals(responseMessageDecrypted.getData(), null);
+        Assert.assertEquals(responseMessageDecrypted.getStatus(), OptionalLong.of(20));
         String devResponseJSON = RequestServlet.getDeviceResponse(dKey);
         Assert.assertTrue(devResponseJSON.length() > 0);
     }

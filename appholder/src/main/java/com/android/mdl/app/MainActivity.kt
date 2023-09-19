@@ -14,7 +14,7 @@ import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.NavigationUI.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.android.identity.mdoc.origininfo.OriginInfo
-import com.android.identity.mdoc.origininfo.OriginInfoWebsite
+import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl
 import com.android.mdl.app.databinding.ActivityMainBinding
 import com.android.mdl.app.util.log
 import com.android.mdl.app.util.logError
@@ -105,7 +105,9 @@ class MainActivity : AppCompatActivity() {
             // TODO: maybe bail in the future if this isn't set.
         } else {
             logInfo("referrer: $mdocReferrerUri")
-            originInfos.add(OriginInfoWebsite(1, mdocReferrerUri))
+            originInfos.add(
+                OriginInfoReferrerUrl(mdocReferrerUri)
+            )
         }
 
         viewModel.startPresentationReverseEngagement(mdocUri, originInfos)
