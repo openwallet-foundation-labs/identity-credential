@@ -4,6 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import com.android.mdl.app.document.DocumentColor
 import com.android.mdl.app.document.DocumentType
 import com.android.mdl.app.document.SecureAreaImplementationState
+import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.AndroidAuthKeyCurveState
+import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.AuthTypeState
+import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.MdocAuthOptionState
 import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
 
@@ -101,6 +104,140 @@ class SelfSignedScreenStateTest {
 
         assertThat(viewModel.screenState.value)
             .isEqualTo(AddSelfSignedScreenState(userAuthenticationTimeoutSeconds = newValue))
+    }
+
+    @Test
+    fun updateUserAuthenticationTimeoutSecondsInvalidValue() {
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateUserAuthenticationTimeoutSeconds(1)
+        viewModel.updateUserAuthenticationTimeoutSeconds(0)
+        viewModel.updateUserAuthenticationTimeoutSeconds(-1)
+
+        assertThat(viewModel.screenState.value)
+            .isEqualTo(AddSelfSignedScreenState(userAuthenticationTimeoutSeconds = 0))
+    }
+
+    @Test
+    fun updateAllowedLskfUnlocking() {
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateLskfUnlocking(false)
+
+        assertThat(viewModel.screenState.value.allowLSKFUnlocking)
+            .isEqualTo(AuthTypeState(isEnabled = false, canBeModified = false))
+    }
+
+    @Test
+    fun updateAllowedLskfUnlockingWhenBiometricIsOff() {
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+        viewModel.updateBiometricUnlocking(false)
+
+        viewModel.updateLskfUnlocking(false)
+
+        assertThat(viewModel.screenState.value.allowLSKFUnlocking)
+            .isEqualTo(AuthTypeState(isEnabled = true, canBeModified = false))
+    }
+
+    @Test
+    fun updateAllowedBiometricUnlocking() {
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateBiometricUnlocking(false)
+
+        assertThat(viewModel.screenState.value.allowBiometricUnlocking)
+            .isEqualTo(AuthTypeState(isEnabled = false, canBeModified = false))
+    }
+
+    @Test
+    fun updateAllowedBiometricUnlockingWhenLskfIsOff() {
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+        viewModel.updateLskfUnlocking(false)
+
+        viewModel.updateBiometricUnlocking(false)
+
+        assertThat(viewModel.screenState.value.allowBiometricUnlocking)
+            .isEqualTo(AuthTypeState(isEnabled = true, canBeModified = false))
+    }
+
+    @Test
+    fun updateStrongBox() {
+        val enabled = true
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateStrongBox(enabled)
+
+        assertThat(viewModel.screenState.value.useStrongBox)
+            .isEqualTo(AuthTypeState(isEnabled = enabled, canBeModified = false))
+    }
+
+    @Test
+    fun updateMdocAuthOption() {
+        val authOption = AddSelfSignedScreenState.MdocAuthStateOption.MAC
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateMdocAuthOption(authOption)
+
+        assertThat(viewModel.screenState.value.androidMdocAuthState)
+            .isEqualTo(MdocAuthOptionState(isEnabled = true, mDocAuthentication = authOption))
+    }
+
+    @Test
+    fun updateAndroidAuthKeyCurve() {
+        val x25519 = AddSelfSignedScreenState.AndroidAuthKeyCurveOption.X25519
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateAndroidAuthKeyCurve(x25519)
+
+        assertThat(viewModel.screenState.value.androidAuthKeyCurveState)
+            .isEqualTo(AndroidAuthKeyCurveState(isEnabled = true, authCurve = x25519))
+    }
+
+    @Test
+    fun updateValidityInDays() {
+        val newValue = 15
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateValidityInDays(newValue)
+
+        assertThat(viewModel.screenState.value.validityInDays)
+            .isEqualTo(newValue)
+    }
+
+    @Test
+    fun updateValidityInDaysBelowMinValidityDays() {
+        val defaultMinValidity = 10
+        val belowMinValidity = 9
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateValidityInDays(defaultMinValidity)
+        viewModel.updateValidityInDays(belowMinValidity)
+
+        assertThat(viewModel.screenState.value.validityInDays)
+            .isEqualTo(defaultMinValidity)
+    }
+
+    @Test
+    fun updateMinValidityInDays() {
+        val newMinValidity = 15
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateMinValidityInDays(newMinValidity)
+
+        assertThat(viewModel.screenState.value.minValidityInDays)
+            .isEqualTo(newMinValidity)
+    }
+
+    @Test
+    fun updateMinValidityInDaysAboveValidityInDays() {
+        val defaultValidityInDays = 30
+        val minValidityInDays = defaultValidityInDays + 5
+        val viewModel = AddSelfSignedViewModel(savedStateHandle)
+
+        viewModel.updateMinValidityInDays(minValidityInDays)
+
+        assertThat(viewModel.screenState.value.validityInDays)
+            .isEqualTo(minValidityInDays)
     }
 
     @Test

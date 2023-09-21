@@ -28,11 +28,13 @@
     <string name="bio_auth_failed">User authentication has failed</string>
     <string name="fingerprint_removed_error">Biometric Authentication Error</string>
     <string name="fingerprint_removed_error_desc">Fingerprint was removed from the device so the credential cannot be shared anymore.</string>
+    <string name="label_credential_shape">Credential Shape</string>
     <string name="label_document_name">Name</string>
-    <string name="label_document_type">Document type</string>
+    <string name="label_document_type">DocType</string>
     <string name="bt_check_for_update">Check for Update</string>
     <string name="bt_delete">Delete</string>
     <string name="label_date_provisioned">Date Provisioned</string>
+    <string name="label_last_time_used">Last Time Used</string>
     <string name="label_mso_usage_count">MSO Usage Count</string>
     <string name="label_date_check_update">Last Update Check</string>
     <string name="toast_press_back_twice">Tap back button again to exit</string>
@@ -113,11 +115,11 @@
     <string name="txt_document_type">Document type</string>
     <string name="txt_document_name">Document name</string>
     <string name="txt_storage_implementation">Storage implementation</string>
-    <string name="txt_keystore_implementation">Keystore implementation</string>
+    <string name="txt_keystore_implementation">Secure Area</string>
     <string name="txt_user_authentication">Use user authentication</string>
-    <string name="txt_number_mso">Number of MSOs</string>
-    <string name="txt_max_use_mso">Max use of MSO</string>
-    <string name="label_self_signed">Self Signed</string>
+    <string name="txt_number_mso">Number of Authentication Keys</string>
+    <string name="txt_max_use_mso">Max use per Authentication Key</string>
+    <string name="label_issuer">Issuer</string>
     <string name="label_user_auth">User Auth</string>
     <string name="label_hardware_backed">Hardware Backed</string>
     <string name="bt_show_data">Show Data Elements</string>
@@ -162,23 +164,38 @@
     <string name="document_color_red">Red</string>
 
     <string name="keystore_android">Android Keystore</string>
-    <string name="keystore_bouncy_castle">BouncyCastle Keystore</string>
+    <string name="keystore_bouncy_castle">Bouncy Castle Keystore</string>
     <string name="keystore_android_user_auth_timeout">Timeout seconds</string>
     <string name="keystore_bouncy_castle_passphrase_hint">Passphrase (optional)</string>
 
-    <string name="user_authentication_on">User authentication on</string>
-    <string name="user_authentication_off">User authentication off</string>
+    <string name="user_authentication_on">Require User Authentication</string>
+    <string name="user_authentication_off">No User Authentication</string>
+    <string name="user_auth_type_allow_lskf">Allow LSKF unlocking</string>
+    <string name="user_auth_type_allow_biometric">Allow biometric unlocking</string>
+    <string name="user_auth_use_strong_box">Use StrongBox</string>
+    <string name="mdoc_authentication_label">mdoc authentication</string>
+    <string name="authentication_key_curve_label">Authentication Key Curve</string>
 
     <string name="document_info_alias">Alias</string>
     <string name="document_info_valid_from">Valid from</string>
     <string name="document_info_valid_until">Valid until</string>
     <string name="document_info_issuer_data">Issuer data</string>
+    <string name="document_info_issuer_data_bytes">%1$d bytes</string>
     <string name="document_info_usage_count">Usage count</string>
+    <string name="document_info_key_purposes">Key Purposes</string>
+    <string name="document_info_ec_curve">EcCurve</string>
     <string name="delete_document_prompt_title">Delete Confirmation</string>
     <string name="delete_document_prompt_message">Are you sure you want to delete the document?</string>
     <string name="delete_document_deleted_message">Document Deleted!</string>
 
     <string name="passphrase_prompt_title">Passphrase</string>
     <string name="passphrase_prompt_message">We need your consent to show the document data</string>
+    <string name="mdoc_auth_ecdsa">mdoc ECDSA authentication</string>
+    <string name="mdoc_auth_mac">mdoc MAC authentication</string>
+    <string name="curve_p_256">P-256</string>
+    <string name="curve_ed25519">Ed25519</string>
+    <string name="curve_x25519">X25519</string>
+    <string name="validity_in_days">Validity time in days</string>
+    <string name="minimum_validity_in_days">Minimum validity in days</string>
 
 </resources>

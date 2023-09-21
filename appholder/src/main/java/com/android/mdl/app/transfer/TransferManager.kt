@@ -14,6 +14,8 @@ import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
 import com.android.identity.android.legacy.*
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -27,6 +29,7 @@ import com.android.identity.util.Timestamp
 import com.android.mdl.app.document.DocumentManager
 import com.android.mdl.app.documentdata.DocumentDataReader
 import com.android.mdl.app.documentdata.DocumentElements
+import com.android.mdl.app.selfsigned.AddSelfSignedScreenState
 import com.android.mdl.app.util.*
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -172,7 +175,9 @@ class TransferManager private constructor(private val context: Context) {
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
         deviceResponseGenerator: DeviceResponseGenerator,
+        keyUnlockData: SecureArea.KeyUnlockData?
     ): AddDocumentToResponseResult {
+        var signingKeyUsageLimitPassed = false
         session?.let {
             val documentManager = DocumentManager.getInstance(context)
             val documentInformation = documentManager.getDocumentInformation(credentialName)
@@ -189,7 +194,8 @@ class TransferManager private constructor(private val context: Context) {
             val authKey = credential.findAuthenticationKey(Timestamp.now())
                 ?: throw IllegalStateException("No auth key available")
             if (authKey.usageCount >= documentInformation.maxUsagesPerKey) {
-                throw IllegalStateException("No auth key available")
+                logWarning("Using Auth Key previously used ${authKey.usageCount} times, and maxUsagesPerKey is ${documentInformation.maxUsagesPerKey}")
+                signingKeyUsageLimitPassed = true
             }
 
             val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
@@ -198,28 +204,53 @@ class TransferManager private constructor(private val context: Context) {
             )
 
             val transcript = communication.getSessionTranscript() ?: byteArrayOf()
+            val authOption = AddSelfSignedScreenState.MdocAuthStateOption.valueOf(documentInformation.mDocAuthOption)
             try {
-                deviceResponseGenerator.addDocument(
-                    DocumentGenerator(docType, staticAuthData.issuerAuth, transcript)
-                        .setIssuerNamespaces(mergedIssuerNamespaces)
-                        .setDeviceNamespacesSignature(
-                            NameSpacedData.Builder().build(),
-                            authKey.secureArea,
-                            authKey.alias,
-                            null,
-                            SecureArea.ALGORITHM_ES256
-                        ).generate()
-                )
+                val generator = DocumentGenerator(docType, staticAuthData.issuerAuth, transcript)
+                    .setIssuerNamespaces(mergedIssuerNamespaces)
+                if (authOption == AddSelfSignedScreenState.MdocAuthStateOption.ECDSA) {
+                    generator.setDeviceNamespacesSignature(NameSpacedData.Builder().build(),
+                        authKey.secureArea,
+                        authKey.alias,
+                        keyUnlockData,
+                        SecureArea.ALGORITHM_ES256
+                    )
+                } else {
+                    generator.setDeviceNamespacesMac(NameSpacedData.Builder().build(),
+                        authKey.secureArea,
+                        authKey.alias,
+                        keyUnlockData,
+                        authKey.attestation.first().publicKey
+                    )
+                }
+                val data = generator.generate()
+                keyUnlockData?.let {
+                    if (authOption == AddSelfSignedScreenState.MdocAuthStateOption.ECDSA) {
+                        credential.credentialSecureArea.sign(authKey.alias, SecureArea.ALGORITHM_ES256, data, it)
+                    } else {
+                        credential.credentialSecureArea.keyAgreement(authKey.alias, authKey.attestation.first().publicKey, it)
+                    }
+                }
+                deviceResponseGenerator.addDocument(data)
                 authKey.increaseUsageCount()
+                ProvisioningUtil.getInstance(context).trackUsageTimestamp(credential)
             } catch (lockedException: SecureArea.KeyLockedException) {
                 return if (credential.credentialSecureArea is AndroidKeystoreSecureArea) {
-                    AddDocumentToResponseResult.UserAuthRequired
+                    val keyInfo = credential.credentialSecureArea.getKeyInfo(authKey.alias) as AndroidKeystoreSecureArea.KeyInfo
+                    val allowLskf = keyInfo.userAuthenticationType == USER_AUTHENTICATION_TYPE_LSKF
+                    val allowBiometric = keyInfo.userAuthenticationType == USER_AUTHENTICATION_TYPE_BIOMETRIC
+                    val allowBoth = keyInfo.userAuthenticationType == USER_AUTHENTICATION_TYPE_LSKF or USER_AUTHENTICATION_TYPE_BIOMETRIC
+                    AddDocumentToResponseResult.UserAuthRequired(
+                        keyAlias = authKey.alias,
+                        allowLSKFUnlocking = allowLskf || allowBoth,
+                        allowBiometricUnlocking = allowBiometric || allowBoth
+                    )
                 } else {
                     AddDocumentToResponseResult.PassphraseRequired
                 }
             }
         }
-        return AddDocumentToResponseResult.DocumentAdded
+        return AddDocumentToResponseResult.DocumentAdded(signingKeyUsageLimitPassed)
     }
 
     fun stopPresentation(

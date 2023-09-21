@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -49,6 +48,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.android.identity.securearea.SecureArea.EC_CURVE_ED25519
+import com.android.identity.securearea.SecureArea.EC_CURVE_ED448
+import com.android.identity.securearea.SecureArea.EC_CURVE_P256
+import com.android.identity.securearea.SecureArea.EC_CURVE_P384
+import com.android.identity.securearea.SecureArea.EC_CURVE_P521
+import com.android.identity.securearea.SecureArea.EC_CURVE_X25519
+import com.android.identity.securearea.SecureArea.EC_CURVE_X448
+import com.android.identity.securearea.SecureArea.KEY_PURPOSE_AGREE_KEY
+import com.android.identity.securearea.SecureArea.KEY_PURPOSE_SIGN
 import com.android.mdl.app.R
 import com.android.mdl.app.composables.LoadingIndicator
 import com.android.mdl.app.composables.ShowToast
@@ -60,7 +68,7 @@ import com.android.mdl.app.theme.HolderAppTheme
 fun DocumentInfoScreen(
     viewModel: DocumentInfoViewModel,
     onNavigateUp: () -> Unit,
-    onNavigateToDocumentDetails: (documentName: String) -> Unit
+    onNavigateToDocumentDetails: () -> Unit
 ) {
     val state by viewModel.screenState.collectAsState()
     if (state.isDeleted) {
@@ -70,10 +78,10 @@ fun DocumentInfoScreen(
 
     DocumentInfoScreenContent(
         screenState = state,
-        onRefreshAuthKeys = { viewModel.refreshAuthKeys(state.documentName) },
-        onShowDocumentElements = { onNavigateToDocumentDetails(state.documentName) },
+        onRefreshAuthKeys = viewModel::refreshAuthKeys,
+        onShowDocumentElements = { onNavigateToDocumentDetails() },
         onDeleteDocument = { viewModel.promptDocumentDelete() },
-        onConfirmDocumentDelete = { viewModel.confirmDocumentDelete(state.documentName) },
+        onConfirmDocumentDelete = viewModel::confirmDocumentDelete,
         onCancelDocumentDelete = viewModel::cancelDocumentDelete
     )
 }
@@ -86,7 +94,7 @@ private fun DocumentInfoScreenContent(
     onRefreshAuthKeys: () -> Unit,
     onShowDocumentElements: () -> Unit,
     onDeleteDocument: () -> Unit,
-    onConfirmDocumentDelete: (documentName: String) -> Unit,
+    onConfirmDocumentDelete: () -> Unit,
     onCancelDocumentDelete: () -> Unit,
 ) {
     Scaffold(
@@ -95,7 +103,7 @@ private fun DocumentInfoScreenContent(
         Column(
             modifier = Modifier.padding(paddingValues),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = CenterHorizontally
         ) {
             if (screenState.isLoading) {
                 LoadingIndicator(
@@ -119,6 +127,10 @@ private fun DocumentInfoScreenContent(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 LabeledValue(
+                                    label = stringResource(id = R.string.label_credential_shape),
+                                    value = "mdoc"
+                                )
+                                LabeledValue(
                                     label = stringResource(id = R.string.label_document_name),
                                     value = screenState.documentName
                                 )
@@ -131,8 +143,12 @@ private fun DocumentInfoScreenContent(
                                     value = screenState.provisioningDate
                                 )
                                 LabeledValue(
-                                    label = stringResource(id = R.string.label_self_signed),
-                                    value = if (screenState.isSelfSigned) "Yes" else "No"
+                                    label = stringResource(id = R.string.label_last_time_used),
+                                    value = screenState.lastTimeUsedDate.ifBlank { "N/A" }
+                                )
+                                LabeledValue(
+                                    label = stringResource(id = R.string.label_issuer),
+                                    value = if (screenState.isSelfSigned) "Self-Signed on Device" else "N/A"
                                 )
                                 LabeledValue(
                                     label = stringResource(id = R.string.txt_keystore_implementation),
@@ -150,8 +166,10 @@ private fun DocumentInfoScreenContent(
                             val key = screenState.authKeys[page]
                             AuthenticationKeyInfo(
                                 modifier = Modifier
-                                    .wrapContentWidth()
-                                    .padding(16.dp),
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
                                 authKeyInfo = key
                             )
                         }
@@ -175,11 +193,11 @@ private fun DocumentInfoScreenContent(
                                     .clip(RoundedCornerShape(8.dp))
                                     .weight(1f)
                                     .clickable { onRefreshAuthKeys() },
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                horizontalAlignment = CenterHorizontally
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                    horizontalAlignment = CenterHorizontally
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Refresh,
@@ -197,11 +215,11 @@ private fun DocumentInfoScreenContent(
                                     .clip(RoundedCornerShape(8.dp))
                                     .weight(1f)
                                     .clickable { onShowDocumentElements() },
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                horizontalAlignment = CenterHorizontally
                             ) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                    horizontalAlignment = CenterHorizontally
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.RemoveRedEye,
@@ -241,7 +259,7 @@ private fun DocumentInfoScreenContent(
                     }
                     if (screenState.isDeletingPromptShown) {
                         DeleteDocumentPrompt(
-                            onConfirm = { onConfirmDocumentDelete(screenState.documentName) },
+                            onConfirm = onConfirmDocumentDelete,
                             onCancel = onCancelDocumentDelete
                         )
                     }
@@ -286,24 +304,21 @@ private fun AuthenticationKeyInfo(
     authKeyInfo: DocumentInfoScreenState.KeyInformation
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceEvenly
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             modifier = Modifier
-                .size(64.dp)
+                .size(48.dp)
                 .padding(horizontal = 8.dp),
             imageVector = Icons.Default.Key,
             contentDescription = authKeyInfo.alias,
-            tint = MaterialTheme.colorScheme.primary
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = .5f)
         )
         Column(
-            modifier = modifier,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             LabeledValue(
@@ -320,13 +335,47 @@ private fun AuthenticationKeyInfo(
             )
             LabeledValue(
                 label = stringResource(id = R.string.document_info_issuer_data),
-                value = "${authKeyInfo.issuerDataBytesCount}"
+                value = stringResource(
+                    id = R.string.document_info_issuer_data_bytes,
+                    authKeyInfo.issuerDataBytesCount
+                )
             )
             LabeledValue(
                 label = stringResource(id = R.string.document_info_usage_count),
                 value = "${authKeyInfo.usagesCount}"
             )
+            LabeledValue(
+                label = stringResource(id = R.string.document_info_key_purposes),
+                value = authKeyInfo.keyPurposes.keyPurposesReadableValue()
+            )
+            LabeledValue(
+                label = stringResource(id = R.string.document_info_ec_curve),
+                value = authKeyInfo.ecCurve.ecCurveReadableValue()
+            )
         }
+    }
+}
+
+@Composable
+private fun Int.keyPurposesReadableValue() : String {
+    return when (this) {
+        KEY_PURPOSE_SIGN -> "KEY_PURPOSE_SIGN"
+        KEY_PURPOSE_AGREE_KEY -> "KEY_PURPOSE_AGREE"
+        else -> this.toString()
+    }
+}
+
+@Composable
+private fun Int.ecCurveReadableValue(): String {
+    return when (this) {
+        EC_CURVE_P256 -> "P-256"
+        EC_CURVE_P384 -> "P-384"
+        EC_CURVE_P521 -> "P-512"
+        EC_CURVE_ED25519 -> "Ed25519"
+        EC_CURVE_X25519 -> "X25519"
+        EC_CURVE_ED448 -> "ED448"
+        EC_CURVE_X448 -> "X448"
+        else -> this.toString()
     }
 }
 
@@ -411,14 +460,20 @@ private fun PreviewDocumentInfoScreen() {
                         validFrom = "16-07-2023",
                         validUntil = "23-07-2023",
                         usagesCount = 1,
-                        issuerDataBytesCount = "Issuer 1".toByteArray().count()
+                        issuerDataBytesCount = "Issuer 1".toByteArray().count(),
+                        keyPurposes = KEY_PURPOSE_AGREE_KEY,
+                        ecCurve = EC_CURVE_P256,
+                        isHardwareBacked = false
                     ),
                     DocumentInfoScreenState.KeyInformation(
                         alias = "Key Alias 2",
                         validFrom = "16-07-2023",
                         validUntil = "23-07-2023",
                         usagesCount = 0,
-                        issuerDataBytesCount = "Issuer 2".toByteArray().count()
+                        issuerDataBytesCount = "Issuer 2".toByteArray().count(),
+                        keyPurposes = KEY_PURPOSE_SIGN,
+                        ecCurve = EC_CURVE_ED25519,
+                        isHardwareBacked = true
                     )
                 )
             ),

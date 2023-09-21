@@ -11,8 +11,8 @@ import com.android.identity.*
 import com.android.identity.android.legacy.*
 import com.android.identity.credential.Credential
 import com.android.identity.credential.NameSpacedData
-import com.android.mdl.app.keystore.CredentialUtil
-import com.android.mdl.app.keystore.CredentialUtil.Companion.toDocumentInformation
+import com.android.mdl.app.util.ProvisioningUtil
+import com.android.mdl.app.util.ProvisioningUtil.Companion.toDocumentInformation
 import com.android.mdl.app.selfsigned.SelfSignedDocumentData
 import com.android.mdl.app.util.DocumentData
 import com.android.mdl.app.util.DocumentData.EU_PID_DOCTYPE
@@ -40,7 +40,7 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun getDocumentInformation(documentName: String): DocumentInformation? {
-        val credentialStore = CredentialUtil.getInstance(context).credentialStore
+        val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
         val credential = credentialStore.lookupCredential(documentName)
         return credential.toDocumentInformation()
     }
@@ -48,14 +48,14 @@ class DocumentManager private constructor(private val context: Context) {
     fun getCredentialByName(documentName: String): Credential? {
         val documentInfo = getDocumentInformation(documentName)
         documentInfo?.let {
-            val credentialStore = CredentialUtil.getInstance(context).credentialStore
+            val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
             return credentialStore.lookupCredential(documentName)
         }
         return null
     }
 
     fun getDocuments(): List<DocumentInformation> {
-        val credentialStore = CredentialUtil.getInstance(context).credentialStore
+        val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
         return credentialStore.listCredentials().mapNotNull { documentName ->
             val credential = credentialStore.lookupCredential(documentName)
             credential.toDocumentInformation()
@@ -65,7 +65,7 @@ class DocumentManager private constructor(private val context: Context) {
     fun deleteCredentialByName(documentName: String) {
         val document = getDocumentInformation(documentName)
         document?.let {
-            val credentialStore = CredentialUtil.getInstance(context).credentialStore
+            val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
             credentialStore.deleteCredential(documentName)
         }
     }
@@ -95,7 +95,7 @@ class DocumentManager private constructor(private val context: Context) {
         docName: String = documentData.provisionInfo.docName,
         count: Int = 1
     ): String {
-        val store = CredentialUtil.getInstance(context).credentialStore
+        val store = ProvisioningUtil.getInstance(context).credentialStore
         store.listCredentials().forEach { name ->
             if (name == docName) {
                 return getUniqueDocumentName(documentData, "$docName ($count)", count + 1)
@@ -246,7 +246,7 @@ class DocumentManager private constructor(private val context: Context) {
             )
             .build()
 
-        CredentialUtil.getInstance(context)
+        ProvisioningUtil.getInstance(context)
             .provisionSelfSigned(nameSpacedData, documentData.provisionInfo)
     }
 
@@ -304,7 +304,7 @@ class DocumentManager private constructor(private val context: Context) {
             .putEntryString(MVR_NAMESPACE, "vin", "1M8GDM9AXKP042788")
             .build()
 
-        CredentialUtil.getInstance(context)
+        ProvisioningUtil.getInstance(context)
             .provisionSelfSigned(nameSpacedData, documentData.provisionInfo)
     }
 
@@ -468,7 +468,7 @@ class DocumentManager private constructor(private val context: Context) {
             )
             .build()
 
-        CredentialUtil.getInstance(context)
+        ProvisioningUtil.getInstance(context)
             .provisionSelfSigned(nameSpacedData, documentData.provisionInfo)
     }
 
@@ -630,7 +630,7 @@ class DocumentManager private constructor(private val context: Context) {
             )
             .build()
 
-        CredentialUtil.getInstance(context)
+        ProvisioningUtil.getInstance(context)
             .provisionSelfSigned(nameSpacedData, documentData.provisionInfo)
     }
 
@@ -643,6 +643,6 @@ class DocumentManager private constructor(private val context: Context) {
     fun refreshAuthKeys(documentName: String) {
         val documentInformation = requireNotNull(getDocumentInformation(documentName))
         val credential = requireNotNull(getCredentialByName(documentName))
-        CredentialUtil.getInstance(context).refreshAuthKeys(credential, documentInformation)
+        ProvisioningUtil.getInstance(context).refreshAuthKeys(credential, documentInformation)
     }
 }

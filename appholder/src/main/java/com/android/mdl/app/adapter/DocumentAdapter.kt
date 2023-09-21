@@ -60,7 +60,7 @@ class DocumentAdapter : ListAdapter<DocumentInformation, RecyclerView.ViewHolder
         }
 
         private fun navigateToDetail(document: DocumentInformation, view: View) {
-            val direction = SelectDocumentFragmentDirections.toDocumentDetail(document.userVisibleName)
+            val direction = SelectDocumentFragmentDirections.toDocumentDetail(document.docName)
             if (view.findNavController().currentDestination?.id == R.id.wallet) {
                 view.findNavController().navigate(direction)
             }

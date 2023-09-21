@@ -1,4 +1,4 @@
-package com.android.mdl.app.keystore
+package com.android.mdl.app.util
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -19,29 +19,19 @@ import com.android.identity.util.Timestamp
 import com.android.mdl.app.document.DocumentInformation
 import com.android.mdl.app.document.KeysAndCertificates
 import com.android.mdl.app.document.SecureAreaImplementationState
+import com.android.mdl.app.selfsigned.AddSelfSignedScreenState
 import com.android.mdl.app.selfsigned.ProvisionInfo
 import com.android.mdl.app.util.DocumentData.MICOV_DOCTYPE
 import com.android.mdl.app.util.DocumentData.MVR_DOCTYPE
-import com.android.mdl.app.util.PreferencesHelper
-import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.io.File
-import java.math.BigInteger
-import java.security.KeyPair
-import java.security.KeyPairGenerator
 import java.security.cert.X509Certificate
-import java.security.spec.ECGenParameterSpec
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.util.ArrayList
-import java.util.Date
 import java.util.Random
 
-class CredentialUtil private constructor(
+class ProvisioningUtil private constructor(
     private val context: Context
 ) {
 
@@ -70,25 +60,28 @@ class CredentialUtil private constructor(
     ) {
         val settings = when (provisionInfo.secureAreaImplementationStateType) {
             SecureAreaImplementationState.Android -> createAndroidKeystoreSettings(
-                provisioningChallenge = CHALLENGE,
                 userAuthenticationRequired = provisionInfo.userAuthentication,
-                authTimeoutSeconds = provisionInfo.userAuthenticationTimeoutSeconds.toLong()
+                mDocAuthOption = provisionInfo.mDocAuthenticationOption,
+                authTimeoutMillis = provisionInfo.userAuthenticationTimeoutSeconds * 1000L,
+                userAuthenticationType = provisionInfo.userAuthType(),
+                useStrongBox = provisionInfo.useStrongBox,
+                ecCurve = provisionInfo.androidAuthKeyCurveOption.toEcCurve(),
+                validUntil = provisionInfo.validityInDays.toTimestampFromNow()
             )
 
             SecureAreaImplementationState.BouncyCastle -> createBouncyCastleKeystoreSettings(
                 passphrase = provisionInfo.passphrase
             )
         }
-        if (provisionInfo.userAuthentication) {
-            createAndroidKey(provisionInfo.userAuthenticationTimeoutSeconds.toLong())
-        } else if (provisionInfo.passphrase != null) {
-            createBouncyCastleKey(provisionInfo.passphrase)
-        }
 
-        val credential = credentialStore.createCredential(provisionInfo.docName, settings)
+        val credential = credentialStore.createCredential(provisionInfo.credentialName(), settings)
         credential.nameSpacedData = nameSpacedData
 
-        provisionAuthKeys(credential, provisionInfo.docType, settings, provisionInfo.numberMso)
+        repeat(provisionInfo.numberMso) {
+            val pendingKey = credential.createPendingAuthenticationKey(settings, null)
+            pendingKey.applicationData.setBoolean(AUTH_KEY_DOMAIN, true)
+        }
+        provisionAuthKeys(credential, provisionInfo.docType, provisionInfo.validityInDays)
 
         credential.applicationData.setString(USER_VISIBLE_NAME, provisionInfo.docName)
         credential.applicationData.setString(DOCUMENT_TYPE, provisionInfo.docType)
@@ -96,40 +89,52 @@ class CredentialUtil private constructor(
         credential.applicationData.setNumber(CARD_ART, provisionInfo.docColor.toLong())
         credential.applicationData.setBoolean(IS_SELF_SIGNED, true)
         credential.applicationData.setNumber(MAX_USAGES_PER_KEY, provisionInfo.maxUseMso.toLong())
+        credential.applicationData.setNumber(VALIDITY_IN_DAYS, provisionInfo.validityInDays.toLong())
+        credential.applicationData.setNumber(MIN_VALIDITY_IN_DAYS, provisionInfo.minValidityInDays.toLong())
+        credential.applicationData.setString(MDOC_AUTHENTICATION, provisionInfo.mDocAuthenticationOption.name)
+        credential.applicationData.setNumber(LAST_TIME_USED, -1)
     }
 
-    fun refreshAuthKeys(
-        credential: Credential,
-        documentInformation: DocumentInformation
-    ) {
-        val keySettings = when (credential.credentialSecureArea) {
-            is AndroidKeystoreSecureArea -> {
-                createAndroidKeystoreSettings(CHALLENGE, false)
-            }
+    private fun Int.toTimestampFromNow(): Timestamp {
+        val now = Timestamp.now().toEpochMilli()
+        val validityDuration = this * 24 * 60 * 60 * 1000L
+        return Timestamp.ofEpochMilli(now + validityDuration)
+    }
 
-            is BouncyCastleSecureArea -> {
-                createBouncyCastleKeystoreSettings()
-            }
+    private fun ProvisionInfo.credentialName(): String {
+        val regex = Regex("[^A-Za-z0-9 ]")
+        return regex.replace(docName, "").replace(" ", "_").lowercase()
+    }
 
-            else -> throw IllegalStateException("Unknown keystore secure area implementation")
+    private fun ProvisionInfo.userAuthType(): Int {
+        var userAuthenticationType = 0
+        if (allowLskfUnlocking) {
+            userAuthenticationType = userAuthenticationType or AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
         }
-        val pendingKeysCount = manageKeysFor(documentInformation, credential)
-        if (pendingKeysCount <= 0) return
-        provisionAuthKeys(credential, documentInformation.docType, keySettings, pendingKeysCount)
+        if (allowBiometricUnlocking) {
+            userAuthenticationType = userAuthenticationType or AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
+        }
+        return userAuthenticationType
     }
 
-    private fun provisionAuthKeys(
-        credential: Credential,
-        documentType: String,
-        keySettings: SecureArea.CreateKeySettings,
-        msoCount: Int
-    ) {
+    fun trackUsageTimestamp(credential: Credential) {
+        val now = Timestamp.now()
+        credential.applicationData.setNumber(LAST_TIME_USED, now.toEpochMilli())
+    }
+
+    fun refreshAuthKeys(credential: Credential, documentInformation: DocumentInformation) {
+        val pendingKeysCount = manageKeysFor(credential)
+        if (pendingKeysCount <= 0) return
+        val minValidityInDays = credential.applicationData.getNumber(MIN_VALIDITY_IN_DAYS).toInt()
+        provisionAuthKeys(credential, documentInformation.docType, minValidityInDays)
+    }
+
+    private fun provisionAuthKeys(credential: Credential, documentType: String, validityInDays: Int) {
         val nowMillis = Timestamp.now().toEpochMilli()
         val timeSigned = Timestamp.now()
         val timeValidityBegin = Timestamp.ofEpochMilli(nowMillis)
-        val timeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        repeat(msoCount) {
-            val pendingAuthKey = credential.createPendingAuthenticationKey(keySettings, null)
+        val timeValidityEnd = validityInDays.toTimestampFromNow()
+        for (pendingAuthKey in credential.pendingAuthenticationKeys) {
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 documentType,
@@ -193,46 +198,20 @@ class CredentialUtil private constructor(
         }
     }
 
-    private fun generateIssuingAuthorityKeyPair(): KeyPair {
-        val keyPairGenerator = KeyPairGenerator.getInstance("EC")
-        val ecSpec = ECGenParameterSpec("secp256r1")
-        keyPairGenerator.initialize(ecSpec)
-        return keyPairGenerator.generateKeyPair()
-    }
-
-    private fun getSelfSignedIssuerAuthorityCertificate(
-        issuerAuthorityKeyPair: KeyPair
-    ): X509Certificate {
-        val issuer = X500Name("CN=State Of Utopia")
-        val subject = X500Name("CN=State Of Utopia Issuing Authority Signing Key")
-
-        val now = Date()
-        val milliSecsInOneYear = 365L * 24 * 60 * 60 * 1000
-        val expirationDate = Date(now.time + 5 * milliSecsInOneYear)
-        val serial = BigInteger("42")
-        val builder = JcaX509v3CertificateBuilder(
-            issuer,
-            serial,
-            now,
-            expirationDate,
-            subject,
-            issuerAuthorityKeyPair.public
-        )
-
-        val signer = JcaContentSignerBuilder("SHA256withECDSA")
-            .build(issuerAuthorityKeyPair.private)
-
-        val certHolder = builder.build(signer)
-        return JcaX509CertificateConverter().getCertificate(certHolder)
-    }
-
-    fun manageKeysFor(
-        documentInformation: DocumentInformation?,
-        credential: Credential
-    ): Int {
+    private fun manageKeysFor(credential: Credential): Int {
         val settings = when (credential.credentialSecureArea) {
             is AndroidKeystoreSecureArea -> {
-                createAndroidKeystoreSettings(CHALLENGE, false)
+                val mDocAuthOption = credential.applicationData.getString(MDOC_AUTHENTICATION)
+                val keyInfo = credential.credentialSecureArea.getKeyInfo(credential.credentialKeyAlias) as AndroidKeystoreSecureArea.KeyInfo
+                createAndroidKeystoreSettings(
+                    keyInfo.isUserAuthenticationRequired,
+                    AddSelfSignedScreenState.MdocAuthStateOption.valueOf(mDocAuthOption),
+                    keyInfo.userAuthenticationTimeoutMillis,
+                    keyInfo.userAuthenticationType,
+                    keyInfo.isStrongBoxBacked,
+                    keyInfo.ecCurve,
+                    keyInfo.validUntil ?: Timestamp.now()
+                )
             }
 
             is BouncyCastleSecureArea -> {
@@ -241,30 +220,44 @@ class CredentialUtil private constructor(
 
             else -> throw IllegalStateException("Unknown keystore secure area implementation")
         }
+        val minValidTimeDays = credential.applicationData.getNumber(MIN_VALIDITY_IN_DAYS)
+        val maxUsagesPerKey = credential.applicationData.getNumber(MAX_USAGES_PER_KEY)
         return CredentialUtil.managedAuthenticationKeyHelper(
             credential,
             settings,
-            "some_hardcoded_string",
+            AUTH_KEY_DOMAIN,
             Timestamp.now(),
             credential.authenticationKeys.size,
-            documentInformation?.maxUsagesPerKey ?: 1,
-            1000
+            maxUsagesPerKey.toInt(),
+            minValidTimeDays * 24 * 60 * 60 * 1000L
         )
     }
 
     private fun createAndroidKeystoreSettings(
-        provisioningChallenge: ByteArray,
         userAuthenticationRequired: Boolean,
-        authTimeoutSeconds: Long = 10
+        mDocAuthOption: AddSelfSignedScreenState.MdocAuthStateOption,
+        authTimeoutMillis: Long,
+        userAuthenticationType: Int,
+        useStrongBox: Boolean,
+        ecCurve: Int,
+        validUntil: Timestamp
     ): AndroidKeystoreSecureArea.CreateKeySettings {
-
-        return AndroidKeystoreSecureArea.CreateKeySettings.Builder(provisioningChallenge)
-            .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN or SecureArea.KEY_PURPOSE_AGREE_KEY)
+        val keyPurpose = if (mDocAuthOption == AddSelfSignedScreenState.MdocAuthStateOption.ECDSA) {
+            SecureArea.KEY_PURPOSE_SIGN
+        } else {
+            SecureArea.KEY_PURPOSE_AGREE_KEY
+        }
+        return AndroidKeystoreSecureArea.CreateKeySettings.Builder(CHALLENGE)
+            .setKeyPurposes(keyPurpose)
+            .setUseStrongBox(useStrongBox)
+            .setEcCurve(ecCurve)
+            .setValidityPeriod(Timestamp.now(), validUntil)
             .setUserAuthenticationRequired(
                 userAuthenticationRequired,
-                authTimeoutSeconds * 1000,
-                AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
-            ).build()
+                authTimeoutMillis,
+                userAuthenticationType
+            )
+            .build()
     }
 
     private fun createBouncyCastleKeystoreSettings(
@@ -276,68 +269,63 @@ class CredentialUtil private constructor(
             .build()
     }
 
-    private fun createAndroidKey(timeoutSeconds: Long) {
-        androidKeystoreSecureArea.createKey(
-            ANDROID_KEY_BIOMETRIC,
-            AndroidKeystoreSecureArea.CreateKeySettings.Builder(CHALLENGE)
-                .setUserAuthenticationRequired(
-                    true,
-                    timeoutSeconds * 1000,
-                    AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
-                ).build()
-        )
-    }
-
-    private fun createBouncyCastleKey(passphrase: String) {
-        bouncyCastleSecureArea.createKey(
-            BOUNCY_CASTLE_KEY_PASSPHRASE,
-            BouncyCastleSecureArea.CreateKeySettings.Builder()
-                .setPassphraseRequired(true, passphrase)
-                .build()
-        )
-    }
-
     companion object {
 
+        private const val AUTH_KEY_DOMAIN = "some_hardcoded_string"
         private const val USER_VISIBLE_NAME = "userVisibleName"
         private const val DOCUMENT_TYPE = "documentType"
         private const val DATE_PROVISIONED = "dateProvisioned"
         private const val CARD_ART = "cardArt"
         private const val IS_SELF_SIGNED = "isSelfSigned"
         private const val MAX_USAGES_PER_KEY = "maxUsagesPerKey"
+        private const val VALIDITY_IN_DAYS = "validityInDays"
+        private const val MIN_VALIDITY_IN_DAYS = "minValidityInDays"
+        private const val MDOC_AUTHENTICATION = "mDocAuthentication"
+        private const val LAST_TIME_USED = "lastTimeUsed"
 
-        private const val ANDROID_KEY_BIOMETRIC = "user_auth_key_with_timeout"
-        private const val BOUNCY_CASTLE_KEY_PASSPHRASE = "bouncy_castle_auth_key"
         private val CHALLENGE = "challenge".toByteArray()
 
-        private val dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        private val dateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
         @SuppressLint("StaticFieldLeak")
         @Volatile
-        private var instance: com.android.mdl.app.keystore.CredentialUtil? = null
+        private var instance: ProvisioningUtil? = null
 
         fun getInstance(context: Context) = instance ?: synchronized(this) {
-            instance ?: CredentialUtil(context).also { instance = it }
+            instance ?: ProvisioningUtil(context).also { instance = it }
         }
 
         fun Credential?.toDocumentInformation(): DocumentInformation? {
             return this?.let {
                 val authKeys = authenticationKeys.map { key ->
+                    val info = credentialSecureArea.getKeyInfo(key.alias)
                     DocumentInformation.KeyData(
                         alias = key.alias,
                         validFrom = key.validFrom.formatted(),
                         validUntil = key.validUntil.formatted(),
                         issuerDataBytesCount = key.issuerProvidedData.size,
-                        usagesCount = key.usageCount
+                        usagesCount = key.usageCount,
+                        keyPurposes = info.keyPurposes,
+                        ecCurve = info.ecCurve,
+                        isHardwareBacked = info.isHardwareBacked
                     )
+                }
+                val lastTimeUsedMillis = it.applicationData.getNumber(LAST_TIME_USED)
+                val lastTimeUsed = if (lastTimeUsedMillis == -1L) {
+                    ""
+                } else {
+                    Timestamp.ofEpochMilli(lastTimeUsedMillis).formatted()
                 }
                 DocumentInformation(
                     userVisibleName = it.applicationData.getString(USER_VISIBLE_NAME),
+                    docName = name,
                     docType = it.applicationData.getString(DOCUMENT_TYPE),
                     dateProvisioned = it.applicationData.getString(DATE_PROVISIONED),
                     documentColor = it.applicationData.getNumber(CARD_ART).toInt(),
                     selfSigned = it.applicationData.getBoolean(IS_SELF_SIGNED),
                     maxUsagesPerKey = it.applicationData.getNumber(MAX_USAGES_PER_KEY).toInt(),
+                    mDocAuthOption = it.applicationData.getString(MDOC_AUTHENTICATION),
+                    lastTimeUsed = lastTimeUsed,
                     authKeys = authKeys
                 )
             }

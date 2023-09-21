@@ -2,11 +2,14 @@ package com.android.mdl.app.document
 
 data class DocumentInformation(
     val userVisibleName: String,
+    val docName: String,
     val docType: String,
     val dateProvisioned: String,
     val selfSigned: Boolean,
     val documentColor: Int,
     val maxUsagesPerKey: Int,
+    val lastTimeUsed: String,
+    val mDocAuthOption: String,
     val authKeys: List<KeyData>
 ) {
 
@@ -15,7 +18,10 @@ data class DocumentInformation(
         val validFrom: String,
         val validUntil: String,
         val issuerDataBytesCount: Int,
-        val usagesCount: Int
+        val usagesCount: Int,
+        val keyPurposes: Int,
+        val ecCurve: Int,
+        val isHardwareBacked: Boolean
     )
 }
 

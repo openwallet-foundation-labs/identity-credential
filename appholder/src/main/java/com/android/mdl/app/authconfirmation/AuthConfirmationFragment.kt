@@ -19,6 +19,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.SecureArea.ALGORITHM_ES256
 import com.android.mdl.app.R
 import com.android.mdl.app.authprompt.UserAuthPromptBuilder
 import com.android.mdl.app.theme.HolderAppTheme
@@ -112,25 +114,37 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private fun sendResponse() {
         isSendingInProgress.value = true
-        when (viewModel.sendResponseForSelection()) {
-            is AddDocumentToResponseResult.UserAuthRequired -> requestUserAuth(false)
-            is AddDocumentToResponseResult.PassphraseRequired -> requestPassphrase()
-            else -> findNavController().navigateUp()
-        }
+        val result = viewModel.sendResponseForSelection()
+        onSendResponseResult(result)
     }
 
-    private fun requestUserAuth(forceLskf: Boolean) {
+    private fun requestUserAuth(
+        allowLskfUnlock: Boolean,
+        allowBiometricUnlock: Boolean,
+        forceLskf: Boolean = !allowBiometricUnlock
+    ) {
         val userAuthRequest = UserAuthPromptBuilder.requestUserAuth(this)
             .withTitle(getString(R.string.bio_auth_title))
-            .withNegativeButton(getString(R.string.bio_auth_use_pin))
             .withSuccessCallback { authenticationSucceeded() }
-            .withCancelledCallback { retryForcingPinUse() }
+            .withCancelledCallback {
+                if (allowLskfUnlock) {
+                    retryForcingPinUse(allowLskfUnlock, allowBiometricUnlock)
+                } else {
+                    cancelAuthorization()
+                }
+            }
             .withFailureCallback { authenticationFailed() }
             .setForceLskf(forceLskf)
-            .build()
-        val cryptoObject = viewModel.getCryptoObject()
-        userAuthRequest.authenticate(cryptoObject)
+        if (allowLskfUnlock) {
+            userAuthRequest.withNegativeButton(getString(R.string.bio_auth_use_pin))
+        } else {
+            userAuthRequest.withNegativeButton("Cancel")
+        }
+        val cryptoObject = androidKeyUnlockData?.getCryptoObjectForSigning(ALGORITHM_ES256)
+        userAuthRequest.build().authenticate(cryptoObject)
     }
+
+    private var androidKeyUnlockData: AndroidKeystoreSecureArea.KeyUnlockData? = null
 
     private fun getSubtitle(): String {
         val readerCommonName = arguments.readerCommonName
@@ -147,23 +161,47 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun authenticationSucceeded(passphrase: String) {
-        viewModel.sendResponseForSelection(true, passphrase)
+        viewModel.sendResponseForSelection()
         findNavController().navigateUp()
     }
 
     private fun authenticationSucceeded() {
         try {
-            viewModel.sendResponseForSelection(true)
-            findNavController().navigateUp()
+            val result = viewModel.sendResponseForSelection(keyUnlockData = androidKeyUnlockData)
+            onSendResponseResult(result)
         } catch (e: Exception) {
             val message = "Send response error: ${e.message}"
             log(message, e)
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            toast(message)
         }
     }
 
-    private fun retryForcingPinUse() {
-        val runnable = { requestUserAuth(true) }
+    private fun onSendResponseResult(result: AddDocumentToResponseResult) {
+        when (result) {
+            is AddDocumentToResponseResult.UserAuthRequired -> {
+                val keyUnlockData = AndroidKeystoreSecureArea.KeyUnlockData(result.keyAlias)
+                androidKeyUnlockData = keyUnlockData
+                requestUserAuth(
+                    result.allowLSKFUnlocking,
+                    result.allowBiometricUnlocking
+                )
+            }
+
+            is AddDocumentToResponseResult.PassphraseRequired -> {
+                requestPassphrase()
+            }
+
+            is AddDocumentToResponseResult.DocumentAdded -> {
+                if (result.signingKeyUsageLimitPassed) {
+                    toast("Using previously used Auth Key")
+                }
+                findNavController().navigateUp()
+            }
+        }
+    }
+
+    private fun retryForcingPinUse(allowLsfk: Boolean, allowBiometric: Boolean) {
+        val runnable = { requestUserAuth(allowLsfk, allowBiometric, true) }
         // Without this delay, the prompt won't reshow
         Handler(Looper.getMainLooper()).postDelayed(runnable, 100)
     }
@@ -176,5 +214,9 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         val destination = AuthConfirmationFragmentDirections
             .openPassphrasePrompt()
         findNavController().navigate(destination)
+    }
+
+    private fun toast(message: String, duration: Int = Toast.LENGTH_SHORT) {
+        Toast.makeText(requireContext(), message, duration).show()
     }
 }

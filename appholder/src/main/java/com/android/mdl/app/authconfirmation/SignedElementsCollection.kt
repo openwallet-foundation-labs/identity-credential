@@ -19,11 +19,9 @@ class SignedElementsCollection {
         return requestedDocuments.keys.map { namespace ->
             val document = requestedDocuments.getValue(namespace)
             SignedDocumentData(
-                signedElements,
-                document.userReadableName,
-                document.requestedDocument.docType,
-                document.requestedDocument.readerAuth,
-                document.requestedDocument.itemsRequest
+                signedElements = signedElements,
+                identityCredentialName = document.identityCredentialName,
+                documentType = document.requestedDocument.docType,
             )
         }
     }
