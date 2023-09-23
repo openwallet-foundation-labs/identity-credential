@@ -38,6 +38,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     private val passphraseViewModel: PassphrasePromptViewModel by activityViewModels()
     private val arguments by navArgs<AuthConfirmationFragmentArgs>()
     private var isSendingInProgress = mutableStateOf(false)
+    private var androidKeyUnlockData: AndroidKeystoreSecureArea.KeyUnlockData? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -73,7 +74,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                 passphraseViewModel.authorizationState.collect { value ->
                     if (value is PassphraseAuthResult.Success) {
-                        authenticationSucceeded(value.userPassphrase)
+                        onPassphraseProvided(value.userPassphrase)
                         passphraseViewModel.reset()
                     }
                 }
@@ -145,8 +146,6 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         userAuthRequest.build().authenticate(cryptoObject)
     }
 
-    private var androidKeyUnlockData: AndroidKeystoreSecureArea.KeyUnlockData? = null
-
     private fun getSubtitle(): String {
         val readerCommonName = arguments.readerCommonName
         val readerIsTrusted = arguments.readerIsTrusted
@@ -161,7 +160,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         }
     }
 
-    private fun authenticationSucceeded(passphrase: String) {
+    private fun onPassphraseProvided(passphrase: String) {
         val unlockData = BouncyCastleSecureArea.KeyUnlockData(passphrase)
         val result = viewModel.sendResponseForSelection(unlockData)
         onSendResponseResult(result)
@@ -181,8 +180,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     private fun onSendResponseResult(result: AddDocumentToResponseResult) {
         when (result) {
             is AddDocumentToResponseResult.UserAuthRequired -> {
-                val keyUnlockData = AndroidKeystoreSecureArea.KeyUnlockData(result.keyAlias)
-                androidKeyUnlockData = keyUnlockData
+                androidKeyUnlockData = AndroidKeystoreSecureArea.KeyUnlockData(result.keyAlias)
                 requestUserAuth(
                     result.allowLSKFUnlocking,
                     result.allowBiometricUnlocking
@@ -190,7 +188,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
             }
 
             is AddDocumentToResponseResult.PassphraseRequired -> {
-                requestPassphrase()
+                requestPassphrase(result.attemptedWithIncorrectPassword)
             }
 
             is AddDocumentToResponseResult.DocumentAdded -> {
@@ -212,9 +210,13 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         viewModel.closeConnection()
     }
 
-    private fun requestPassphrase() {
-        val destination = AuthConfirmationFragmentDirections.openPassphrasePrompt()
-        findNavController().navigate(destination)
+    private fun requestPassphrase(attemptedWithIncorrectPassword: Boolean) {
+        val destination = AuthConfirmationFragmentDirections.openPassphrasePrompt(
+            showIncorrectPassword = attemptedWithIncorrectPassword
+        )
+        val runnable = { findNavController().navigate(destination) }
+        // The system needs a little time to get back to this screen
+        Handler(Looper.getMainLooper()).postDelayed(runnable, 500)
     }
 
     private fun toast(message: String, duration: Int = Toast.LENGTH_SHORT) {

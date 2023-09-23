@@ -14,7 +14,7 @@ data class AddSelfSignedScreenState(
     val documentName: String = "Driving License",
     val secureAreaImplementationState: SecureAreaImplementationState = SecureAreaImplementationState.Android,
     val userAuthentication: Boolean = true,
-    val userAuthenticationTimeoutSeconds: Int = 10,
+    val userAuthenticationTimeoutSeconds: Int = 0,
     val allowLSKFUnlocking: AuthTypeState = AuthTypeState(
         isEnabled = true,
         canBeModified = false

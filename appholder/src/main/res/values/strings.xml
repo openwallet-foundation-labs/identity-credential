@@ -189,6 +189,8 @@
     <string name="delete_document_deleted_message">Document Deleted!</string>
 
     <string name="passphrase_prompt_title">Passphrase</string>
+    <string name="passphrase_prompt_hint">Type Passphrase</string>
+    <string name="passphrase_prompt_incorrect_passphrase">Incorrect Password. Try again!</string>
     <string name="passphrase_prompt_message">We need your consent to show the document data</string>
     <string name="mdoc_auth_ecdsa">mdoc ECDSA authentication</string>
     <string name="mdoc_auth_mac">mdoc MAC authentication</string>

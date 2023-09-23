@@ -268,11 +268,12 @@ class ProvisioningUtil private constructor(
         ecCurve: Int
     ): BouncyCastleSecureArea.CreateKeySettings {
         val keyPurpose = mDocAuthOption.toKeyPurpose()
-        return BouncyCastleSecureArea.CreateKeySettings.Builder()
+        val builder = BouncyCastleSecureArea.CreateKeySettings.Builder()
             .setPassphraseRequired(passphrase != null, passphrase)
             .setKeyPurposes(keyPurpose)
             .setEcCurve(ecCurve)
-            .build()
+            .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN or SecureArea.KEY_PURPOSE_AGREE_KEY)
+        return builder.build()
     }
 
     @KeyPurpose
