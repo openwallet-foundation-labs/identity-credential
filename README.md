@@ -1,43 +1,113 @@
 # Identity Credential
 
-This repository contains libraries and applications related to the
-[Android Identity Credential API](https://developer.android.com/reference/android/security/identity/IdentityCredentialStore)
-provided in the Android Framework as of Android 11 as well as
-[ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html)
-and related standards.
+This repository contains libraries and applications for working
+with *Real-World Identity*. The initial focus for this work
+was mdoc/mDL according to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html)
+and related standards (mainly ISO 23220 series and ISO 18013-7)
+but the current scope also include other credential formats.
 
-## Android Identity Credential Library
+## Identity Credential Libraries
 
-This library has two goals. The first goal is to provide a compatibility-layer for the
-Android Identity Credential API when running on a device where this API is not implemented (for
-example, a device running an older Android version). This is achieved by using
-[Android Keystore APIs](https://developer.android.com/training/articles/keystore)
-when the hardware-backed Identity Credential APIs are not available.
+The project includes two libraries written in Java and Kotlin. The
+first is `identity` which provides the core building blocks and which
+can also be used on server-side environments. The other is `identity-android`
+which provides Android-specific extensions to the former. It is designed to
+run on Android (API 24 or later) and will take advantage of
+Android-specific features including hardware-backed Keystore, NFC, Bluetooth
+Low Energy, and so on.
 
-The other goal of the library is to provide high-level primitives that any *mdoc* or
-*mdoc reader* application is anticipated to need.
+The libraries are intended to be used by Wallet Applications (mobile
+applications on the credential holder's device), Reader Applications (applications
+operated on device controlled by the verifier), and Issuance Systems (applications
+operated by the credential issuer or their agent). They provide the following
+building blocks
 
-### Versioning and releases
+- A light-weight _Secure Area_ abstraction for hardware-backed keystore
+  - Applications can create hardware-backed Elliptic Curve Cryptography
+    keys which can be used for creating Signatures or performing Key Agreement.
+    Each key will have an attestation which can be used to prove to Relying Parties
+    (such as a credential issuer) that the private part of the key only exists
+    in a Secure Area.
+  - The `identity-android` library includes an implementation based on
+    [Android Keystore](https://developer.android.com/training/articles/keystore)
+    with support for requiring user authentication (biometric or lock-screen knowledge
+    factor, e.g. system PIN) for unlocking the key and also can use
+    [StrongBox](https://source.android.com/docs/compatibility/13/android-13-cdd#9112_strongbox)
+    if available on the device. This is appropriate to use in Android applications
+    implementing ISO/IEC 18013-5:2021 for storing `DeviceKey`.
+  - The `identity` library includes an implementation backed by BouncyCastle
+    with support for passphrase-protected keys. This isn't suitable for use
+    in Mobile Applications as its not backed by Secure Hardware.
+  - Applications can supply their own _Secure Area_ implementations for e.g.
+    externally attached dongles, cloud based HSMs, or whatever the issuer
+    deems appropriate to protect key material associated with their credential.
+- A _Credential Store_ for storage of one or more _Credentials_
+  - Each Credential has a _Credential Key_ which can be used by the issuer
+    to bind a credential to a specific device which is useful when
+    issuing updates or refreshing a credential.
+  - Additionally, each Credential has one or more _Authentication Keys_ which
+    can be endorsed by the issuer and used at presentation time.
+  - Finally, namespaced data and arbritrary key/value pairs can be stored
+    in a _Credential_ which can be used for credential data and claims. This
+    data is stored encrypted at rest.
+- Data structures and code for provisioning of mdoc/mDLs
+  - This code can can be used both on the device and issuer side. No networking
+    protocol is defined, the application has to define its own.
+- Parsers and generators for all data structures used in ISO/IEC 18013-5:2021
+  presentations, including `DeviceResponse`, `DeviceRequest`,  `MobileSecurityObject`
+  and many other CBOR data structures.
+- An implementation of the ISO/IEC 18013-5:2021 presentation flows including
+  QR engagement, NFC engagement (both static and negotiated), device retrieval
+  (BLE, Wifi Aware, and NFC)
 
-We intend to release library artifacts to GMaven (available at maven.google.com) as needed and at least every two months if new changes have landed since the last release. Version numbers will be encoded as YYYYMMDD. With each release, we will also publish the Javadocs for that release on our Github Page (available at https://google.github.io/identity-credential/).
+### Library releases, Versioning, and Documentation
 
-### API Stability
+Libraries are released on [GMaven](https://maven.google.com/) as needed and version
+numbers are encoded as YYYYMMDD. With each release, we also publish documentation at
+https://google.github.io/identity-credential/.
 
-TODO: Write me.
+## Wallet and Reader Android applications
 
-### Getting involved
+This repository also contains two Android applications using this library
+in the `appholder` and `appverifier` modules. The Wallet application is a simple
+self-contained application which allows  creating a number of mdoc credentials
+using four different mdoc Document Types:
 
-TODO: Write me.
+- `org.iso.18013.5.1.mDL`: Mobile Driving License
+- `org.micov.1`: mdoc for eHealth ([link](https://github.com/18013-5/micov))
+- `nl.rdw.mekb.1`: mdoc for Vehicle Registration ([link](https://github.com/18013-5/mVR))
+- `eu.europa.ec.eudiw.pid.1`: mdoc for Personal Identification
 
-### Running the MDL Reader Website
+and their associated mdoc name spaces. The first one is defined in 
+ISO/IEC 18013-5:2021 and the other three have been used at mdoc/mDL
+test events organized by participants of the ISO/IEC JTC1 SC17 WG10
+working group.
 
-To run the MDL reader website (located at identity-credential/wwwverifier), a project must first be created at console.cloud.google.com. Afterwards, navigate to Cloud Shell (shell.cloud.google.com), and clone the Identity Credential Library repository:
+## ISO 18013-7 Reader Website
+
+The `wwwverifier` module contains the source code for a website acting as an
+mdoc reader according to the latest ISO 18013-7 working draft (as of Sep 2023)
+and it's implementing  the so-called REST API. There is currently a test instance
+of this application available at https://mdoc-reader-external.uc.r.appspot.com/.
+The Wallet Android  application also has support for the REST API and registers
+on Android for the `mdoc://` URI scheme. This can be tested end-to-end by going
+to the reader  website (URL above) and clicking on one of the "Request" buttons,
+and then  hitting the `mdoc://` link presented on the site. This will cause the
+browser  to invoke the Wallet app which will then connect to the reader and send
+the credential after user consent.
+
+### Building and deploying the ISO 18013-7 Reader Website
+
+First, a project must first be created at https://console.cloud.google.com. Afterwards,
+navigate to Cloud Shell (https://shell.cloud.google.com), and clone the Identity Credential
+Library repository:
 
 ```
 git clone https://github.com/google/identity-credential.git
 ```
 
-Open the file identity-credential/wwwverifier/build.gradle, and set the property ```projectId``` to the project ID that you used to create your Cloud project:
+Open the file `wwwverifier/build.gradle`, and set the property `projectId` to the
+project ID that you used to create your Cloud project:
 
 ```
 appengine {
@@ -55,7 +125,7 @@ gcloud projects add-iam-policy-binding <YOUR_PROJECT_ID> \
     --role="roles/datastore.owner"
 ```
 
-Then, navigate to wwwverifier:
+Then, navigate to `wwwverifier`:
 
 ```
 cd ~/identity-credential/wwwverifier
@@ -73,28 +143,13 @@ To deploy the website on a live server, execute the command:
 gradle appengineDeploy
 ```
 
-The above command will create a link to a live website. Then, navigate to the file identity-credential/wwwverifier/src/main/java/com/google/sps/servlet/ServletConsts.java, and replace the following field with your website URL:
+The above command will create a link to a live website. Then, navigate to the file 
+`~/identity-credential/wwwverifier/src/main/java/com/android/identity/wwwreader/ServletConsts.java`,
+and replace the following field with your website URL:
 
 ```
     public static final String BASE_URL = "<YOUR_WEBSITE_URL>";
 ```
-
-There is currently a test instance of this application available at https://mdoc-reader-external.uc.r.appspot.com/.
-
-## Reference Applications
-
-This repository also contains two applications to show how to use the library.
-This includes a prover app (*mdoc*) and a reader app (*mdoc reader*). These
-applications are not meant to be production quality and are provided only to
-demonstrate how the library APIs work and best practices. The applications
-implement the published version of ISO/IEC 18013-5:2021.
-
-Currently hard-coded data is used -- the *mdoc* application contains an mDL
-(document type `org.iso.18013.5.1.mDL`), a vaccination certificate (document
-type `org.micov.1`), and a vehicle registration (document type `nl.rdw.mekb.1`).
-The code also has experimental support for provisioning, including dynamically
-obtaining MSOs, PII updates, de-provisioning, server protocols, and an
-experimental provisioning server.
 
 # Support
 
