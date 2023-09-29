@@ -1,6 +1,5 @@
 plugins {
     id("com.android.library")
-    id("maven-publish")
     alias libs.plugins.kotlin.android
     alias libs.plugins.dokka
 }
@@ -29,13 +28,6 @@ android {
     lint {
         lintConfig file('lint.xml')
     }
-
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
 }
 
 dependencies {
@@ -62,23 +54,14 @@ tasks.withType(Test) {
     }
 }
 
+apply from: '../publish-helper.gradle'
 afterEvaluate {
-
     publishing {
         publications {
             release(MavenPublication) {
-                from components.release
-                groupId 'com.android.identity'
-                artifactId 'identity-credential'
-
-                pom {
-                    licenses {
-                        license {
-                            name = 'Apache 2.0'
-                            url = 'https://opensource.org/licenses/Apache-2.0'
-                        }
-                    }
-                }
+                // Specify custom artifactId if needed,
+                // otherwise it will use module's name by default.
+                artifactId = "identity-credential-android"
             }
         }
     }

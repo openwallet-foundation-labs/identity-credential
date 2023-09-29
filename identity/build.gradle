@@ -5,14 +5,8 @@ plugins {
 }
 
 java {
-    apply plugin: 'org.jetbrains.dokka'
-
-    withSourcesJar()
-    withJavadocJar()
-
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
-
 }
 
 dependencies {
@@ -23,4 +17,17 @@ dependencies {
 
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.bouncycastle:bcprov-jdk15on:1.69"
+}
+
+apply from: '../publish-helper.gradle'
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                // Specify custom artifactId if needed,
+                // otherwise it will use module's name by default.
+                artifactId = "identity-credential"
+            }
+        }
+    }
 }
