@@ -145,6 +145,35 @@ public class Credential {
         return credential;
     }
 
+    // Called by CredentialStore.createCredentialWithExistingKey().
+    static @NonNull Credential createWithExistingKey(
+            @NonNull StorageEngine storageEngine,
+            @NonNull SecureAreaRepository keystoreEngineRepository,
+            @NonNull String name,
+            @NonNull SecureArea.CreateKeySettings credentialKeySettings,
+            @NonNull String existingKeyAlias) {
+
+        Credential credential = new Credential(storageEngine, keystoreEngineRepository);
+        credential.mName = name;
+
+        String keystoreEngineClassName = credentialKeySettings.getSecureAreaClass().getName();
+        if (!keystoreEngineClassName.equals("com.android.identity.android.securearea.AndroidKeystoreSecureArea")) {
+            throw new IllegalStateException("The function must only be called for credentials in " +
+                    "AndroidKeystoreSecureArea, not " + keystoreEngineClassName);
+        }
+
+        credential.mSecureArea = keystoreEngineRepository.getImplementation(keystoreEngineClassName);
+        if (credential.mSecureArea == null) {
+            throw new IllegalStateException("No KeystoreEngine with name " + keystoreEngineClassName);
+        }
+
+        credential.mCredentialKeyAlias = existingKeyAlias;
+
+        credential.mSecureArea.createKey(credential.mCredentialKeyAlias, credentialKeySettings);
+
+        return credential;
+    }
+
     private void saveCredential() {
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();

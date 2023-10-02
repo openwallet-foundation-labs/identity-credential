@@ -655,6 +655,59 @@ class CredentialData {
         return signature;
     }
 
+    static boolean deleteForMigration(@NonNull Context context, @NonNull File storageDirectory,
+                         @NonNull String credentialName) {
+        String filename = getFilenameForCredentialData(credentialName);
+        AtomicFile file = new AtomicFile(new File(storageDirectory, filename));
+        try {
+            file.openRead();
+        } catch (FileNotFoundException e) {
+            return false;
+        }
+
+        CredentialData data = new CredentialData(context, storageDirectory, credentialName);
+        String dataKeyAlias = getDataKeyAliasFromCredentialName(credentialName);
+        try {
+            data.loadFromDisk(dataKeyAlias);
+        } catch (RuntimeException e) {
+            Log.e(TAG, "Error parsing file on disk (old version?). Deleting anyway.");
+        }
+        file.delete();
+
+        KeyStore ks;
+        try {
+            ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+        } catch (CertificateException
+                 | IOException
+                 | NoSuchAlgorithmException
+                 | KeyStoreException e) {
+            throw new RuntimeException("Error loading keystore", e);
+        }
+
+        // Nuke all keys.
+        try {
+            if (!data.mPerReaderSessionKeyAlias.isEmpty()) {
+                ks.deleteEntry(data.mPerReaderSessionKeyAlias);
+            }
+            for (String alias : data.mAcpTimeoutKeyAliases.values()) {
+                ks.deleteEntry(alias);
+            }
+            for (AuthKeyData authKeyData : data.mAuthKeyDatas) {
+                if (!authKeyData.mAlias.isEmpty()) {
+                    ks.deleteEntry(authKeyData.mAlias);
+                }
+                if (!authKeyData.mPendingAlias.isEmpty()) {
+                    ks.deleteEntry(authKeyData.mPendingAlias);
+                }
+            }
+        } catch (KeyStoreException e) {
+            throw new RuntimeException("Error deleting key", e);
+        }
+
+        return true;
+    }
+
     private void createDataEncryptionKey() {
         // TODO: it could maybe be nice to encrypt data with the appropriate auth-bound
         //  key (the one associated with the ACP with the longest timeout), if it doesn't

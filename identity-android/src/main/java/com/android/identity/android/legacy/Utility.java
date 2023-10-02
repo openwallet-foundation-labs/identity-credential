@@ -20,32 +20,38 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.content.Context;
 import android.icu.util.Calendar;
+import android.os.Build;
+import android.security.keystore.KeyInfo;
 import android.security.keystore.KeyProperties;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
-import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator;
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
-import com.android.identity.util.Constants;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
 
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
+import java.io.IOException;
+import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.security.spec.ECGenParameterSpec;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -57,12 +63,7 @@ import java.util.Map;
 import java.util.Random;
 
 import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.SimpleValue;
-import co.nstant.in.cbor.model.SimpleValueType;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
@@ -355,5 +356,71 @@ public class Utility {
         //
         //return IdentityCredentialStore.getHardwareInstance(context);
         return IdentityCredentialStore.getKeystoreInstance(context, context.getNoBackupFilesDir());
+    }
+
+    private static @SecureArea.KeyPurpose int convertKeyPurpose(KeyInfo keyInfo) {
+        @SecureArea.KeyPurpose int keyPurposeIC = 0;
+        int keyPurposesAndroid = keyInfo.getPurposes();
+
+        if ((keyPurposesAndroid & KeyProperties.PURPOSE_AGREE_KEY) == KeyProperties.PURPOSE_AGREE_KEY) {
+            keyPurposeIC = keyPurposeIC | SecureArea.KEY_PURPOSE_AGREE_KEY;
+        }
+        if ((keyPurposesAndroid & KeyProperties.PURPOSE_SIGN) == KeyProperties.PURPOSE_SIGN) {
+            keyPurposeIC = keyPurposeIC | SecureArea.KEY_PURPOSE_SIGN;
+        }
+        return keyPurposeIC;
+    }
+
+    public static @NonNull AndroidKeystoreSecureArea.CreateKeySettings.Builder extractKeySettings(String keyAlias) {
+        KeyStore ks;
+        PrivateKey privateKey;
+        try {
+            ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+            privateKey = (PrivateKey) ks.getKey(keyAlias, null);
+        } catch (CertificateException
+                 | KeyStoreException
+                 | IOException
+                 | NoSuchAlgorithmException e) {
+            throw new IllegalStateException("Error generate certificate chain", e);
+        } catch (UnrecoverableKeyException e) {
+            throw new IllegalStateException("Error retrieving key", e);
+        }
+
+        KeyInfo keyInfo;
+        try {
+            KeyFactory factory = KeyFactory.getInstance(privateKey.getAlgorithm(), "AndroidKeyStore");
+            keyInfo = factory.getKeySpec(privateKey, KeyInfo.class);
+        } catch (InvalidKeySpecException e) {
+            throw new IllegalStateException("Unrecoverable Key: Not an Android KeyStore key", e);
+        } catch (NoSuchAlgorithmException
+                 | NoSuchProviderException e) {
+            throw new RuntimeException(e);
+        }
+
+        // attestation challenge will have no impact since a key will not be created with these settings
+        byte[] credentialKeyAttestationChallenge = new byte[] {10, 11, 12};
+        AndroidKeystoreSecureArea.CreateKeySettings.Builder keySettingsBuilder =
+                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(credentialKeyAttestationChallenge);
+
+        keySettingsBuilder.setExistingKeyAlias(keyAlias);
+        keySettingsBuilder.setKeyPurposes(convertKeyPurpose(keyInfo));
+        if (keyInfo.isUserAuthenticationRequired()) {
+            long userAuthenticationTimeoutMillis = keyInfo.getUserAuthenticationValidityDurationSeconds() * 1000L;
+            keySettingsBuilder.setUserAuthenticationRequired(true, userAuthenticationTimeoutMillis, AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if ((keyInfo.getSecurityLevel() & KeyProperties.SECURITY_LEVEL_STRONGBOX) ==
+                    KeyProperties.SECURITY_LEVEL_STRONGBOX) {
+                keySettingsBuilder.setUseStrongBox(true);
+            }
+        }
+        if (keyInfo.getKeyValidityStart() != null & keyInfo.getKeyValidityForOriginationEnd() != null) {
+            Timestamp validFrom = Timestamp.ofEpochMilli(keyInfo.getKeyValidityStart().getTime());
+            Timestamp validUntil = Timestamp.ofEpochMilli(keyInfo.getKeyValidityForOriginationEnd().getTime());
+            keySettingsBuilder.setValidityPeriod(validFrom, validUntil);
+        }
+
+        return keySettingsBuilder;
     }
 }
