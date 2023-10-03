@@ -8,10 +8,11 @@ plugins {
 }
 
 android {
+    namespace "com.android.identity.wallet"
     compileSdk libs.versions.compile.sdk.get() as int
 
     defaultConfig {
-        applicationId "com.android.mdl.app"
+        applicationId "com.android.identity.wallet"
         minSdkVersion libs.versions.min.sdk.get() as int
         targetSdkVersion libs.versions.compile.sdk.get() as int
         versionCode 1
@@ -24,6 +25,17 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    flavorDimensions.addAll("standard")
+    productFlavors {
+        wallet {
+            dimension "standard"
+        }
+        purse {
+            dimension "standard"
+            applicationIdSuffix ".purse"
         }
     }
 
@@ -46,7 +58,6 @@ android {
         kotlinCompilerExtensionVersion libs.versions.kotlin.compiler.extension.get()
     }
 
-
     testOptions.unitTests.all {
         useJUnitPlatform()
         testLogging {
@@ -54,7 +65,6 @@ android {
         }
     }
 
-    namespace 'com.android.mdl.app'
     lint {
         lintConfig file('lint.xml')
     }

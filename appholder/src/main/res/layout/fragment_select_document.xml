@@ -7,7 +7,7 @@
 
         <variable
             name="fragment"
-            type="com.android.mdl.app.wallet.SelectDocumentFragment" />
+            type="com.android.identity.wallet.wallet.SelectDocumentFragment" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

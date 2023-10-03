@@ -1,5 +1,4 @@
 <resources>
-    <string name="app_name">App Holder</string>
     <string name="bt_cancel">Cancel</string>
     <string name="bt_show_qr_code">Show QR Code</string>
     <string name="bt_done">Done</string>

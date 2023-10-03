@@ -8,11 +8,11 @@
 
         <variable
             name="fragment"
-            type="com.android.mdl.app.fragment.TransferDocumentFragment" />
+            type="com.android.identity.wallet.fragment.TransferDocumentFragment" />
 
         <variable
             name="vm"
-            type="com.android.mdl.app.viewmodel.TransferDocumentViewModel" />
+            type="com.android.identity.wallet.viewmodel.TransferDocumentViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

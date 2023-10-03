@@ -7,11 +7,11 @@
 
         <variable
             name="vm"
-            type="com.android.mdl.app.viewmodel.ShareDocumentViewModel" />
+            type="com.android.identity.wallet.viewmodel.ShareDocumentViewModel" />
 
         <variable
             name="fragment"
-            type="com.android.mdl.app.fragment.ShareDocumentFragment" />
+            type="com.android.identity.wallet.fragment.ShareDocumentFragment" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

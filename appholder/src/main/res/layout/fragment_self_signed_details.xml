@@ -5,7 +5,7 @@
 
         <variable
             name="fragment"
-            type="com.android.mdl.app.fragment.SelfSignedDetailsFragment" />
+            type="com.android.identity.wallet.fragment.SelfSignedDetailsFragment" />
     </data>
 
 
