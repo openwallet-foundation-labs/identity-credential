@@ -23,7 +23,7 @@
     <fragment
         android:id="@+id/wallet"
         android:name="com.android.identity.wallet.wallet.SelectDocumentFragment"
-        android:label="@string/menu_wallet"
+        android:label="@string/app_name"
         tools:layout="@layout/fragment_select_document">
         <action
             android:id="@+id/toDocumentDetail"

@@ -83,6 +83,14 @@ ISO/IEC 18013-5:2021 and the other three have been used at mdoc/mDL
 test events organized by participants of the ISO/IEC JTC1 SC17 WG10
 working group.
 
+The `appholder` offers two flavors: `wallet` and `purse`. There is not much difference between
+the two, except they have different application id, so they can coexist in a single device.
+They also have different labels and icon color. To select the desired flavor when running the app
+on a device/emulator, inside the Android Studio open the `Build Variants` panel. It should be easily 
+reachable on the left side bar of the Android Studio, or by selecting: _View -> Tool Windows -> Build Variants_.
+Inside the `Build Variants` panel, at the `appholder` row, the desired flavor can be chosen. Once a
+flavor is selected, by running the app it will install it on the target device/emulator.
+
 ## ISO 18013-7 Reader Website
 
 The `wwwverifier` module contains the source code for a website acting as an
