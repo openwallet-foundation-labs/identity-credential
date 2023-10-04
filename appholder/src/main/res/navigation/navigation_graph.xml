@@ -22,7 +22,7 @@
 
     <fragment
         android:id="@+id/wallet"
-        android:name="com.android.mdl.app.wallet.SelectDocumentFragment"
+        android:name="com.android.identity.wallet.wallet.SelectDocumentFragment"
         android:label="@string/menu_wallet"
         tools:layout="@layout/fragment_select_document">
         <action
@@ -42,7 +42,7 @@
     </fragment>
     <fragment
         android:id="@+id/addSelfSignedDocument"
-        android:name="com.android.mdl.app.selfsigned.AddSelfSignedFragment"
+        android:name="com.android.identity.wallet.selfsigned.AddSelfSignedFragment"
         android:label="Add Self Signed Document"
         tools:layout="@layout/fragment_add_self_signed">
         <action
@@ -51,7 +51,7 @@
     </fragment>
     <fragment
         android:id="@+id/reverseEngagement"
-        android:name="com.android.mdl.app.fragment.ReverseEngagementFragment"
+        android:name="com.android.identity.wallet.fragment.ReverseEngagementFragment"
         android:label="Reverse Engagement"
         tools:layout="@layout/fragment_reverse_engagement">
         <action
@@ -63,7 +63,7 @@
     </fragment>
     <fragment
         android:id="@+id/settings"
-        android:name="com.android.mdl.app.settings.SettingsFragment"
+        android:name="com.android.identity.wallet.settings.SettingsFragment"
         android:label="Settings">
         <action
             android:id="@+id/action_settingsFragment_to_selectDocumentFragment"
@@ -71,7 +71,7 @@
     </fragment>
     <fragment
         android:id="@+id/documentDetailFragment"
-        android:name="com.android.mdl.app.fragment.DocumentDetailFragment"
+        android:name="com.android.identity.wallet.fragment.DocumentDetailFragment"
         android:label="Document detail">
         <argument
             android:name="documentName"
@@ -86,7 +86,7 @@
     </fragment>
     <fragment
         android:id="@+id/showDocumentData"
-        android:name="com.android.mdl.app.documentdata.ShowDocumentDataFragment"
+        android:name="com.android.identity.wallet.documentdata.ShowDocumentDataFragment"
         android:label="Document Data">
         <argument
             android:name="documentName"
@@ -94,7 +94,7 @@
     </fragment>
     <fragment
         android:id="@+id/share_document"
-        android:name="com.android.mdl.app.fragment.ShareDocumentFragment"
+        android:name="com.android.identity.wallet.fragment.ShareDocumentFragment"
         android:label="Sharing Document"
         tools:layout="@layout/fragment_share_document">
         <action
@@ -105,7 +105,7 @@
     </fragment>
     <fragment
         android:id="@+id/transferDocumentFragment"
-        android:name="com.android.mdl.app.fragment.TransferDocumentFragment"
+        android:name="com.android.identity.wallet.fragment.TransferDocumentFragment"
         android:label="Transferring"
         tools:layout="@layout/fragment_transfer_document">
         <action
@@ -115,7 +115,7 @@
     </fragment>
     <dialog
         android:id="@+id/authConfirmation"
-        android:name="com.android.mdl.app.authconfirmation.AuthConfirmationFragment"
+        android:name="com.android.identity.wallet.authconfirmation.AuthConfirmationFragment"
         android:label="Confirmation">
         <argument
             android:name="readerCommonName"
@@ -132,19 +132,19 @@
     </dialog>
     <fragment
         android:id="@+id/selfSignedDetails"
-        android:name="com.android.mdl.app.fragment.SelfSignedDetailsFragment"
+        android:name="com.android.identity.wallet.fragment.SelfSignedDetailsFragment"
         android:label="Self Signed Document Details"
         tools:layout="@layout/fragment_self_signed_details">
         <argument
             android:name="provisionInfo"
-            app:argType="com.android.mdl.app.selfsigned.ProvisionInfo" />
+            app:argType="com.android.identity.wallet.selfsigned.ProvisionInfo" />
         <action
             android:id="@+id/action_selfSignedDetails_to_selectDocumentFragment"
             app:destination="@id/wallet" />
     </fragment>
     <dialog
         android:id="@+id/promptPassphrase"
-        android:name="com.android.mdl.app.authconfirmation.PassphrasePrompt">
+        android:name="com.android.identity.wallet.authconfirmation.PassphrasePrompt">
 
         <argument
             android:name="showIncorrectPassword"
