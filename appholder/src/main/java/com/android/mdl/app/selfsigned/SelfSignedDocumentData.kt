@@ -3,7 +3,6 @@ package com.android.mdl.app.selfsigned
 import android.graphics.Bitmap
 import android.os.Parcelable
 import com.android.mdl.app.document.SecureAreaImplementationState
-import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.AndroidAuthKeyCurveOption
 import com.android.mdl.app.selfsigned.AddSelfSignedScreenState.MdocAuthStateOption
 import com.android.mdl.app.util.Field
 import kotlinx.parcelize.Parcelize
@@ -45,7 +44,7 @@ data class ProvisionInfo(
     val allowBiometricUnlocking: Boolean,
     val useStrongBox: Boolean,
     val mDocAuthenticationOption: MdocAuthStateOption,
-    val androidAuthKeyCurveOption: AndroidAuthKeyCurveOption,
+    val authKeyCurve: Int,
     val validityInDays: Int,
     val minValidityInDays: Int,
     val passphrase: String?,

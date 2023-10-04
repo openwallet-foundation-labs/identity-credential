@@ -10,6 +10,7 @@ data class DocumentInformation(
     val maxUsagesPerKey: Int,
     val lastTimeUsed: String,
     val mDocAuthOption: String,
+    val secureAreaImplementationState: SecureAreaImplementationState,
     val authKeys: List<KeyData>
 ) {
 

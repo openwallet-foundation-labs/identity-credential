@@ -44,7 +44,7 @@ class AddSelfSignedFragment : Fragment() {
             allowBiometricUnlocking = state.allowBiometricUnlocking.isEnabled,
             useStrongBox = state.useStrongBox.isEnabled,
             mDocAuthenticationOption = state.androidMdocAuthState.mDocAuthentication,
-            androidAuthKeyCurveOption = state.androidAuthKeyCurveState.authCurve,
+            authKeyCurve = state.ecCurve,
             validityInDays = state.validityInDays,
             minValidityInDays = state.minValidityInDays,
             passphrase = state.passphrase.ifBlank { null },

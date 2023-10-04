@@ -12,5 +12,7 @@ sealed class AddDocumentToResponseResult {
         val allowBiometricUnlocking: Boolean
     ) : AddDocumentToResponseResult()
 
-    object PassphraseRequired : AddDocumentToResponseResult()
+    data class PassphraseRequired(
+        val attemptedWithIncorrectPassword: Boolean = false
+    ) : AddDocumentToResponseResult()
 }

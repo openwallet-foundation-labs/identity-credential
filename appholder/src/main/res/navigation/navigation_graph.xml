@@ -144,5 +144,12 @@
     </fragment>
     <dialog
         android:id="@+id/promptPassphrase"
-        android:name="com.android.mdl.app.authconfirmation.PassphrasePrompt"/>
+        android:name="com.android.mdl.app.authconfirmation.PassphrasePrompt">
+
+        <argument
+            android:name="showIncorrectPassword"
+            app:argType="boolean"
+            android:defaultValue="false"/>
+
+    </dialog>
 </navigation>

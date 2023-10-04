@@ -1,7 +1,7 @@
 package com.android.mdl.app.selfsigned
 
 import android.os.Parcelable
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.securearea.SecureArea
 import com.android.mdl.app.document.DocumentColor
 import com.android.mdl.app.document.DocumentType
 import com.android.mdl.app.document.SecureAreaImplementationState
@@ -14,7 +14,7 @@ data class AddSelfSignedScreenState(
     val documentName: String = "Driving License",
     val secureAreaImplementationState: SecureAreaImplementationState = SecureAreaImplementationState.Android,
     val userAuthentication: Boolean = true,
-    val userAuthenticationTimeoutSeconds: Int = 10,
+    val userAuthenticationTimeoutSeconds: Int = 0,
     val allowLSKFUnlocking: AuthTypeState = AuthTypeState(
         isEnabled = true,
         canBeModified = false
@@ -29,6 +29,7 @@ data class AddSelfSignedScreenState(
     ),
     val androidMdocAuthState: MdocAuthOptionState = MdocAuthOptionState(),
     val androidAuthKeyCurveState: AndroidAuthKeyCurveState = AndroidAuthKeyCurveState(),
+    val bouncyCastleAuthKeyCurveState: BouncyCastleAuthKeyCurveState = BouncyCastleAuthKeyCurveState(),
     val passphrase: String = "",
     val numberOfMso: Int = 10,
     val maxUseOfMso: Int = 1,
@@ -38,6 +39,13 @@ data class AddSelfSignedScreenState(
 
     val isAndroidKeystoreSelected: Boolean
         get() = secureAreaImplementationState == SecureAreaImplementationState.Android
+
+    val ecCurve: Int
+        get() = if (secureAreaImplementationState == SecureAreaImplementationState.Android) {
+            androidAuthKeyCurveState.authCurve.toEcCurve()
+        } else {
+            bouncyCastleAuthKeyCurveState.authCurve.toEcCurve()
+        }
 
     @Parcelize
     data class AuthTypeState(
@@ -58,6 +66,12 @@ data class AddSelfSignedScreenState(
     ) : Parcelable
 
     @Parcelize
+    data class BouncyCastleAuthKeyCurveState(
+        val isEnabled: Boolean = true,
+        val authCurve: BouncyCastleAuthKeyCurveOption = BouncyCastleAuthKeyCurveOption.P256
+    ) : Parcelable
+
+    @Parcelize
     enum class MdocAuthStateOption : Parcelable {
         ECDSA, MAC
     }
@@ -68,9 +82,40 @@ data class AddSelfSignedScreenState(
 
         fun toEcCurve(): Int {
             return when (this) {
-                P_256 -> AndroidKeystoreSecureArea.EC_CURVE_P256
-                Ed25519 -> AndroidKeystoreSecureArea.EC_CURVE_ED25519
-                X25519 -> AndroidKeystoreSecureArea.EC_CURVE_X25519
+                P_256 -> SecureArea.EC_CURVE_P256
+                Ed25519 -> SecureArea.EC_CURVE_ED25519
+                X25519 -> SecureArea.EC_CURVE_X25519
+            }
+        }
+    }
+
+    @Parcelize
+    enum class BouncyCastleAuthKeyCurveOption : Parcelable {
+        P256,
+        P384,
+        P521,
+        BrainPoolP256R1,
+        BrainPoolP320R1,
+        BrainPoolP384R1,
+        BrainPoolP512R1,
+        Ed25519,
+        Ed448,
+        X25519,
+        X448;
+
+        fun toEcCurve(): Int {
+            return when (this) {
+                P256 -> SecureArea.EC_CURVE_P256
+                P384 -> SecureArea.EC_CURVE_P384
+                P521 -> SecureArea.EC_CURVE_P521
+                BrainPoolP256R1 -> SecureArea.EC_CURVE_BRAINPOOLP256R1
+                BrainPoolP320R1 -> SecureArea.EC_CURVE_BRAINPOOLP320R1
+                BrainPoolP384R1 -> SecureArea.EC_CURVE_BRAINPOOLP384R1
+                BrainPoolP512R1 -> SecureArea.EC_CURVE_BRAINPOOLP512R1
+                Ed25519 -> SecureArea.EC_CURVE_ED25519
+                Ed448 -> SecureArea.EC_CURVE_ED448
+                X25519 -> SecureArea.EC_CURVE_X25519
+                X448 -> SecureArea.EC_CURVE_X448
             }
         }
     }
