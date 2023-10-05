@@ -22,28 +22,30 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import androidx.navigation.NavDeepLinkBuilder
-import com.android.identity.android.mdoc.transport.DataTransport
-import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
-import com.android.identity.android.legacy.PresentationSession
-import com.android.identity.wallet.MainActivity
+import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
+import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.internal.Util
 import com.android.identity.wallet.R
 import com.android.identity.wallet.transfer.Communication
 import com.android.identity.wallet.transfer.ConnectionSetup
-import com.android.identity.wallet.transfer.CredentialStore
-import com.android.identity.wallet.transfer.SessionSetup
 import com.android.identity.wallet.transfer.TransferManager
 import java.security.PublicKey
-
 
 class NfcEngagementHandler : HostApduService() {
 
     private lateinit var engagementHelper: NfcEngagementHelper
-    private lateinit var session: PresentationSession
     private lateinit var communication: Communication
     private lateinit var transferManager: TransferManager
+
     private var presentation: DeviceRetrievalHelper? = null
 
+    private val settings by lazy {
+        PreferencesHelper.apply { initialize(applicationContext) }
+    }
+    private val eDeviceKeyPair by lazy {
+        Util.createEphemeralKeyPair(settings.getEphemeralKeyCurveOption())
+    }
     private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
 
         override fun onTwoWayEngagementDetected() {
@@ -52,7 +54,8 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onDeviceConnecting() {
             log("Engagement Listener: Device Connecting. Launching Transfer Screen")
-            val launchAppIntent = Intent(applicationContext, com.android.identity.wallet.MainActivity::class.java)
+            val launchAppIntent =
+                Intent(applicationContext, com.android.identity.wallet.MainActivity::class.java)
             launchAppIntent.action = Intent.ACTION_VIEW
             launchAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             launchAppIntent.addCategory(Intent.CATEGORY_DEFAULT)
@@ -75,11 +78,12 @@ class NfcEngagementHandler : HostApduService() {
             }
 
             log("Engagement Listener: Device Connected via NFC")
+
             val builder = DeviceRetrievalHelper.Builder(
                 applicationContext,
                 presentationListener,
                 applicationContext.mainExecutor(),
-                session.ephemeralKeyPair
+                eDeviceKeyPair
             )
             builder.useForwardEngagement(
                 transport,
@@ -100,10 +104,9 @@ class NfcEngagementHandler : HostApduService() {
     }
 
     private val presentationListener = object : DeviceRetrievalHelper.Listener {
+
         override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
             log("DeviceRetrievalHelper Listener (NFC): OnEReaderKeyReceived")
-            session.setSessionTranscript(presentation!!.sessionTranscript)
-            session.setReaderEphemeralPublicKey(eReaderKey)
         }
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
@@ -126,17 +129,17 @@ class NfcEngagementHandler : HostApduService() {
     override fun onCreate() {
         super.onCreate()
         log("onCreate")
-        session = SessionSetup(CredentialStore(applicationContext)).createSession()
         communication = Communication.getInstance(applicationContext)
         transferManager = TransferManager.getInstance(applicationContext)
-        transferManager.setCommunication(session, communication)
+        transferManager.setCommunication(communication)
         val connectionSetup = ConnectionSetup(applicationContext)
         val builder = NfcEngagementHelper.Builder(
             applicationContext,
-            session.ephemeralKeyPair.public,
+            eDeviceKeyPair.public,
             connectionSetup.getConnectionOptions(),
             nfcEngagementListener,
-            applicationContext.mainExecutor())
+            applicationContext.mainExecutor()
+        )
         if (PreferencesHelper.shouldUseStaticHandover()) {
             builder.useStaticHandover(connectionSetup.getConnectionMethods())
         } else {
@@ -171,6 +174,7 @@ class NfcEngagementHandler : HostApduService() {
                 logWarning("reader didn't connect inside $timeoutSeconds seconds, closing")
                 engagementHelper.close()
             }
-        }, timeoutSeconds*1000L)
+        }, timeoutSeconds * 1000L)
     }
 }
+

@@ -14,6 +14,9 @@ class SettingsViewModel : ViewModel() {
     fun loadSettings() {
         val settingsState = SettingsScreenState(
             autoCloseEnabled = PreferencesHelper.isConnectionAutoCloseEnabled(),
+            ephemeralKeyCurveOption = SettingsScreenState.EphemeralKeyCurveOption.fromEcCurve(
+                PreferencesHelper.getEphemeralKeyCurveOption()
+            ),
             useStaticHandover = PreferencesHelper.shouldUseStaticHandover(),
             isL2CAPEnabled = PreferencesHelper.isBleL2capEnabled(),
             isBleClearCacheEnabled = PreferencesHelper.isBleClearCacheEnabled(),
@@ -29,6 +32,13 @@ class SettingsViewModel : ViewModel() {
     fun onConnectionAutoCloseChanged(newValue: Boolean) {
         PreferencesHelper.setConnectionAutoCloseEnabled(newValue)
         mutableSettingsState.update { it.copy(autoCloseEnabled = newValue) }
+    }
+
+    fun onEphemeralKeyCurveChanged(
+        ephemeralKeyCurveOption: SettingsScreenState.EphemeralKeyCurveOption
+    ) {
+        PreferencesHelper.setEphemeralKeyCurveOption(ephemeralKeyCurveOption.toEcCurve())
+        mutableSettingsState.update { it.copy(ephemeralKeyCurveOption = ephemeralKeyCurveOption) }
     }
 
     fun onUseStaticHandoverChanged(newValue: Boolean) {

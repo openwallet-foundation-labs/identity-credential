@@ -4,10 +4,11 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
+import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.SecureArea.EcCurve
 import java.io.File
 
 object PreferencesHelper {
-    private const val HARDWARE_BACKED_PREFERENCE = "com.android.mdl.app.HARDWARE_BACKED"
     private const val BLE_DATA_RETRIEVAL = "ble_transport"
     private const val BLE_DATA_RETRIEVAL_PERIPHERAL_MODE = "ble_transport_peripheral_mode"
     private const val BLE_DATA_L2CAP = "ble_l2cap"
@@ -17,30 +18,12 @@ object PreferencesHelper {
     private const val DEBUG_LOG = "debug_log"
     private const val CONNECTION_AUTO_CLOSE = "connection_auto_close"
     private const val STATIC_HANDOVER = "static_handover"
-//    const val USE_READER_AUTH = "use_reader_authentication"
+    private const val EPHEMERAL_KEY_CURVE_OPTION = "ephemeral_key_curve"
 
     private lateinit var sharedPreferences: SharedPreferences
 
     fun initialize(context: Context) {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-        setHardwareBacked(false)
-    }
-
-    fun setHardwareBacked(isHardwareBacked: Boolean) {
-        sharedPreferences.edit {
-            putBoolean(HARDWARE_BACKED_PREFERENCE, isHardwareBacked)
-        }
-    }
-
-    fun hasHardwareBackedPreference(): Boolean {
-        return sharedPreferences.contains(HARDWARE_BACKED_PREFERENCE)
-    }
-
-    fun isHardwareBacked(): Boolean {
-        if (!hasHardwareBackedPreference()) {
-            throw IllegalStateException("No preference set for used implementation.")
-        }
-        return sharedPreferences.getBoolean(HARDWARE_BACKED_PREFERENCE, false)
     }
 
     fun getKeystoreBackedStorageLocation(context: Context): File {
@@ -122,9 +105,12 @@ object PreferencesHelper {
         sharedPreferences.edit { putBoolean(DEBUG_LOG, enabled) }
     }
 
-    fun isReaderAuthenticationEnabled(context: Context): Boolean {
-        // return sharedPreferences.getBoolean(USE_READER_AUTH, false)
-        // Just returning false now as we are not using ACP to control the reader authentication
-        return false
+    @EcCurve
+    fun getEphemeralKeyCurveOption(): Int {
+        return sharedPreferences.getInt(EPHEMERAL_KEY_CURVE_OPTION, SecureArea.EC_CURVE_P256)
+    }
+
+    fun setEphemeralKeyCurveOption(@EcCurve newValue: Int) {
+        sharedPreferences.edit { putInt(EPHEMERAL_KEY_CURVE_OPTION, newValue) }
     }
 }

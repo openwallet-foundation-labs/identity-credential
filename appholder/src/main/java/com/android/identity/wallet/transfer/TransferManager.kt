@@ -51,14 +51,13 @@ class TransferManager private constructor(private val context: Context) {
 
     private var reversedQrCommunicationSetup: ReverseQrCommunicationSetup? = null
     private var qrCommunicationSetup: QrCommunicationSetup? = null
-    private var hostApduService: HostApduService? = null
     private var hasStarted = false
 
     private lateinit var communication: Communication
 
     private var transferStatusLd = MutableLiveData<TransferStatus>()
 
-    fun setCommunication(session: PresentationSession, communication: Communication) {
+    fun setCommunication(communication: Communication) {
         this.communication = communication
     }
 
@@ -82,7 +81,7 @@ class TransferManager private constructor(private val context: Context) {
         communication = Communication.getInstance(context)
         reversedQrCommunicationSetup = ReverseQrCommunicationSetup(
             context = context,
-            onPresentationReady = { session, presentation ->
+            onPresentationReady = { presentation ->
                 communication.setupPresentation(presentation)
             },
             onNewRequest = { request ->
@@ -109,7 +108,7 @@ class TransferManager private constructor(private val context: Context) {
             context = context,
             onConnecting = { transferStatusLd.value = TransferStatus.CONNECTING },
             onQrEngagementReady = { transferStatusLd.value = TransferStatus.QR_ENGAGEMENT_READY },
-            onDeviceRetrievalHelperReady = { session, deviceRetrievalHelper ->
+            onDeviceRetrievalHelperReady = { deviceRetrievalHelper ->
                 communication.setupPresentation(deviceRetrievalHelper)
                 transferStatusLd.value = TransferStatus.CONNECTED
             },
@@ -117,13 +116,11 @@ class TransferManager private constructor(private val context: Context) {
                 communication.setDeviceRequest(deviceRequest)
                 transferStatusLd.value = TransferStatus.REQUEST
             },
-            onSendResponseApdu = { responseApdu -> hostApduService?.sendResponseApdu(responseApdu) },
-            onDisconnected = { transferStatusLd.value = TransferStatus.DISCONNECTED },
-            onCommunicationError = { error ->
-                log("onError: ${error.message}")
-                transferStatusLd.value = TransferStatus.ERROR
-            }
-        ).apply {
+            onDisconnected = { transferStatusLd.value = TransferStatus.DISCONNECTED }
+        ) { error ->
+            log("onError: ${error.message}")
+            transferStatusLd.value = TransferStatus.ERROR
+        }.apply {
             configure()
         }
         hasStarted = true
