@@ -21,7 +21,7 @@ import com.android.identity.credential.CredentialRequest;
 import com.android.identity.credential.CredentialStore;
 import com.android.identity.credential.NameSpacedData;
 import com.android.identity.internal.Util;
-import com.android.identity.securearea.BouncyCastleSecureArea;
+import com.android.identity.securearea.SoftwareSecureArea;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
@@ -109,7 +109,7 @@ public class DeviceResponseGeneratorTest {
         mStorageEngine = new EphemeralStorageEngine();
 
         mSecureAreaRepository = new SecureAreaRepository();
-        mSecureArea = new BouncyCastleSecureArea(mStorageEngine);
+        mSecureArea = new SoftwareSecureArea(mStorageEngine);
         mSecureAreaRepository.addImplementation(mSecureArea);
 
         provisionCredential();
@@ -123,7 +123,7 @@ public class DeviceResponseGeneratorTest {
         // Create the credential...
         mCredential = credentialStore.createCredential(
                 "testCredential",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
         NameSpacedData nameSpacedData = new NameSpacedData.Builder()
                 .putEntryString("ns1", "foo1", "bar1")
                 .putEntryString("ns1", "foo2", "bar2")
@@ -141,7 +141,7 @@ public class DeviceResponseGeneratorTest {
         mTimeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000);
         Credential.PendingAuthenticationKey pendingAuthKey =
                 mCredential.createPendingAuthenticationKey(
-                        new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                        new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                                 .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN
                                         | SecureArea.KEY_PURPOSE_AGREE_KEY)
                                 .build(),

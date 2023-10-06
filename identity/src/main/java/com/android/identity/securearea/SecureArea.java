@@ -227,7 +227,7 @@ public interface SecureArea {
     /**
      * Class with information about a key.
      *
-     * <p>Concrete {@link SecureArea} implementations may subclass this to provide
+     * <p>Concrete {@link SecureArea} implementations may subclass this to provide additional
      * implementation-specific information about the key.
      */
     class KeyInfo {
@@ -247,7 +247,7 @@ public interface SecureArea {
         }
 
         /**
-         * Gets the attestation for a key.
+         * Gets the attestation for the key.
          *
          * @return A list of certificates representing a certificate chain.
          */

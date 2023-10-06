@@ -16,6 +16,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureArea.EcCurve
@@ -262,6 +263,7 @@ class ShowDocumentFragment : Fragment() {
             // Just show the SHA-1 of DeviceKey since all we're interested in here is whether
             // we saw the same key earlier.
             sb.append("<h6>DeviceKey</h6>")
+            sb.append("${getFormattedCheck(true)}Curve: <b>${curveNameFor(Util.getCurve(doc.deviceKey))}</b><br>")
             val deviceKeySha1 = FormatUtil.encodeToString(
                 MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.encoded)
             )

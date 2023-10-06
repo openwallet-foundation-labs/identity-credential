@@ -24,7 +24,9 @@ import androidx.annotation.Nullable;
 
 import com.android.identity.internal.Util;
 import com.android.identity.storage.StorageEngine;
+import com.android.identity.util.Timestamp;
 
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -79,8 +81,7 @@ import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
- * An implementation of {@link SecureArea} using the
- * <a href="https://www.bouncycastle.org/">Bouncy Castle</a> library.
+ * An implementation of {@link SecureArea} in software.
  *
  * <p>This implementation supports all the curves and algorithms defined by {@link SecureArea}
  * and also supports passphrase-protected keys. Key material is stored using the
@@ -88,20 +89,24 @@ import co.nstant.in.cbor.model.UnicodeString;
  * <a href="https://en.wikipedia.org/wiki/Galois/Counter_Mode">AES-GCM</a>
  * with 256-bit keys with the key derived from the passphrase using
  * <a href="https://en.wikipedia.org/wiki/HKDF">HKDF</a>.
+ *
+ * <p>This is currently implemented using the
+ * <a href="https://www.bouncycastle.org/">Bouncy Castle</a> library but this implementation
+ * detail may change in the future.
  */
-public class BouncyCastleSecureArea implements SecureArea {
-    private static final String TAG = "BouncyCastleSA";  // limit to <= 23 chars
+public class SoftwareSecureArea implements SecureArea {
+    private static final String TAG = "SoftwareSecureArea";
     private final StorageEngine mStorageEngine;
 
     // Prefix for storage items.
-    private static final String PREFIX = "IC_BouncyCastleSA_";
+    private static final String PREFIX = "IC_SoftwareSecureArea_key_";
 
     /**
-     * Creates a new Bouncy Castle secure area.
+     * Creates a new software-backed secure area.
      *
      * @param storageEngine the storage engine to use for storing key material.
      */
-    public BouncyCastleSecureArea(@NonNull StorageEngine storageEngine) {
+    public SoftwareSecureArea(@NonNull StorageEngine storageEngine) {
         mStorageEngine = storageEngine;
     }
 
@@ -109,56 +114,55 @@ public class BouncyCastleSecureArea implements SecureArea {
     public void createKey(@NonNull String alias,
                           @NonNull SecureArea.CreateKeySettings createKeySettings) {
         CreateKeySettings settings = (CreateKeySettings) createKeySettings;
-        ArrayList<X509Certificate> certificateChain = new ArrayList<>();
 
         KeyPairGenerator kpg;
-        String certSigningSignatureAlgorithm;
         try {
             kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
+            String selfSigningSignatureAlgorithm;
             switch (settings.getEcCurve()) {
                 case EC_CURVE_P256:
                     kpg.initialize(new ECGenParameterSpec("secp256r1"));
-                    certSigningSignatureAlgorithm = "SHA256withECDSA";
+                    selfSigningSignatureAlgorithm = "SHA256withECDSA";
                     break;
                 case EC_CURVE_P384:
                     kpg.initialize(new ECGenParameterSpec("secp384r1"));
-                    certSigningSignatureAlgorithm = "SHA384withECDSA";
+                    selfSigningSignatureAlgorithm = "SHA384withECDSA";
                     break;
                 case EC_CURVE_P521:
                     kpg.initialize(new ECGenParameterSpec("secp521r1"));
-                    certSigningSignatureAlgorithm = "SHA512withECDSA";
+                    selfSigningSignatureAlgorithm = "SHA512withECDSA";
                     break;
                 case EC_CURVE_BRAINPOOLP256R1:
                     kpg.initialize(new ECGenParameterSpec("brainpoolP256r1"));
-                    certSigningSignatureAlgorithm = "SHA256withECDSA";
+                    selfSigningSignatureAlgorithm = "SHA256withECDSA";
                     break;
                 case EC_CURVE_BRAINPOOLP320R1:
                     kpg.initialize(new ECGenParameterSpec("brainpoolP320r1"));
-                    certSigningSignatureAlgorithm = "SHA256withECDSA";
+                    selfSigningSignatureAlgorithm = "SHA256withECDSA";
                     break;
                 case EC_CURVE_BRAINPOOLP384R1:
                     kpg.initialize(new ECGenParameterSpec("brainpoolP384r1"));
-                    certSigningSignatureAlgorithm = "SHA384withECDSA";
+                    selfSigningSignatureAlgorithm = "SHA384withECDSA";
                     break;
                 case EC_CURVE_BRAINPOOLP512R1:
                     kpg.initialize(new ECGenParameterSpec("brainpoolP512r1"));
-                    certSigningSignatureAlgorithm = "SHA512withECDSA";
+                    selfSigningSignatureAlgorithm = "SHA512withECDSA";
                     break;
                 case EC_CURVE_ED25519:
                     kpg = KeyPairGenerator.getInstance("Ed25519", new BouncyCastleProvider());
-                    certSigningSignatureAlgorithm = "Ed25519";
+                    selfSigningSignatureAlgorithm = "Ed25519";
                     break;
                 case EC_CURVE_ED448:
                     kpg = KeyPairGenerator.getInstance("Ed448", new BouncyCastleProvider());
-                    certSigningSignatureAlgorithm = "Ed448";
+                    selfSigningSignatureAlgorithm = "Ed448";
                     break;
                 case EC_CURVE_X25519:
                     kpg = KeyPairGenerator.getInstance("x25519", new BouncyCastleProvider());
-                    certSigningSignatureAlgorithm = "Ed25519";
+                    selfSigningSignatureAlgorithm = null;  // Not possible to self-sign
                     break;
                 case EC_CURVE_X448:
                     kpg = KeyPairGenerator.getInstance("x448", new BouncyCastleProvider());
-                    certSigningSignatureAlgorithm = "Ed448";
+                    selfSigningSignatureAlgorithm = null;  // Not possible to self-sign
                     break;
                 default:
                     throw new IllegalArgumentException(
@@ -170,10 +174,6 @@ public class BouncyCastleSecureArea implements SecureArea {
             MapBuilder<CborBuilder> map = builder.addMap();
             map.put("curve", settings.getEcCurve());
             map.put("keyPurposes", settings.getKeyPurposes());
-            String attestationKeyAlias = settings.getAttestationKeyAlias();
-            if (attestationKeyAlias != null) {
-                map.put("attestationKeyAlias", attestationKeyAlias);
-            }
             map.put("passphraseRequired", settings.getPassphraseRequired());
             if (!settings.getPassphraseRequired()) {
                 map.put("privateKey", keyPair.getPrivate().getEncoded());
@@ -198,35 +198,59 @@ public class BouncyCastleSecureArea implements SecureArea {
                 }
             }
 
-            X500Name issuer = new X500Name("CN=Android Identity Credential BC KS Impl");
-            X500Name subject = new X500Name("CN=Android Identity Credential BC KS Impl");
-            Date now = new Date();
-            Date expirationDate = new Date(now.getTime() + MILLISECONDS.convert(365, DAYS));
+            X500Name subject = new X500Name(settings.getSubject() != null ? settings.getSubject() :
+                    "CN=SoftwareSecureArea Key");
+            X500Name issuer;
+            PrivateKey certSigningKey;
+            String signatureAlgorithm;
+
+            // If an attestation key isn't available, self-sign the certificate (if possible)
+            if (settings.getAttestationKey() != null) {
+                issuer = new X500Name(settings.getAttestationKeyCertification().get(0).getSubjectX500Principal().getName());
+                certSigningKey = settings.getAttestationKey();
+                signatureAlgorithm = settings.getAttestationKeySignatureAlgorithm();
+            } else {
+                issuer = subject;
+                certSigningKey = keyPair.getPrivate();
+                if (selfSigningSignatureAlgorithm == null) {
+                    throw new IllegalStateException(
+                            "Self-signing not possible with this curve, use an attestation key");
+                }
+                signatureAlgorithm = selfSigningSignatureAlgorithm;
+            }
+
+            Date validFrom = new Date();
+            if (settings.getValidFrom() != null) {
+                validFrom = new Date(settings.getValidFrom().toEpochMilli());
+            }
+            Date validUntil = new Date(new Date().getTime() + MILLISECONDS.convert(365, DAYS));
+            if (settings.getValidUntil() != null) {
+                validUntil = new Date(settings.getValidUntil().toEpochMilli());
+            }
             BigInteger serial = BigInteger.ONE;
             JcaX509v3CertificateBuilder certBuilder =
                     new JcaX509v3CertificateBuilder(issuer,
                             serial,
-                            now,
-                            expirationDate,
+                            validFrom,
+                            validUntil,
                             subject,
                             keyPair.getPublic());
+            certBuilder.addExtension(
+                    new ASN1ObjectIdentifier(AttestationExtension.ATTESTATION_OID),
+                    false,
+                    AttestationExtension.encode(settings.getAttestationChallenge()));
             ContentSigner signer;
-            if (attestationKeyAlias == null) {
-                if ((settings.getKeyPurposes() & KEY_PURPOSE_SIGN) == 0) {
-                    throw new IllegalArgumentException(
-                            "Cannot self-sign certificate for a key without signing purpose. "
-                            + "Use an attestation key.");
-                }
-                signer = new JcaContentSignerBuilder(certSigningSignatureAlgorithm)
-                        .build(keyPair.getPrivate());
-            } else {
-                signer = getSignerForAlias(attestationKeyAlias);
-            }
+            signer = new JcaContentSignerBuilder(signatureAlgorithm)
+                    .build(certSigningKey);
             byte[] encodedCert = certBuilder.build(signer).getEncoded();
 
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             ByteArrayInputStream bais = new ByteArrayInputStream(encodedCert);
+            ArrayList<X509Certificate> certificateChain = new ArrayList<>();
             certificateChain.add((X509Certificate) cf.generateCertificate(bais));
+            if (settings.getAttestationKeyCertification() != null) {
+                certificateChain.addAll(settings.getAttestationKeyCertification());
+            }
 
             ArrayBuilder<MapBuilder<CborBuilder>> attestationBuilder = map.putArray("attestation");
             for (X509Certificate certificate : certificateChain) {
@@ -248,70 +272,8 @@ public class BouncyCastleSecureArea implements SecureArea {
         }
     }
 
-    private @NonNull ContentSigner getSignerForAlias(@NonNull String attestationKeyAlias) {
-        KeyData attestationKeyData;
-        try {
-            attestationKeyData = loadKey(attestationKeyAlias, null);
-        } catch (KeyLockedException e) {
-            // TODO: we might revisit this and make it possible to pass KeyUnlockData
-            //  for the attestation key through CreateKeySettings and make ecKeyCreate
-            //  throw.
-            throw new IllegalArgumentException("Attestation key cannot be locked");
-        }
-
-        if ((attestationKeyData.keyPurposes & KEY_PURPOSE_SIGN) == 0) {
-            throw new IllegalArgumentException(
-                    "Cannot sign certificate using a key without signing purpose.");
-        }
-
-        // Use the "natural" signature algorithm for the curve...
-        String signatureAlgorithmName;
-        switch (attestationKeyData.curve) {
-            case SecureArea.EC_CURVE_P256:
-                signatureAlgorithmName = "SHA256withECDSA";
-                break;
-            case SecureArea.EC_CURVE_P384:
-                signatureAlgorithmName = "SHA384withECDSA";
-                break;
-            case SecureArea.EC_CURVE_P521:
-                signatureAlgorithmName = "SHA512withECDSA";
-                break;
-            case SecureArea.EC_CURVE_BRAINPOOLP256R1:
-                signatureAlgorithmName = "SHA256withECDSA";
-                break;
-            case SecureArea.EC_CURVE_BRAINPOOLP320R1:
-                signatureAlgorithmName = "SHA256withECDSA";
-                break;
-            case SecureArea.EC_CURVE_BRAINPOOLP384R1:
-                signatureAlgorithmName = "SHA384withECDSA";
-                break;
-            case SecureArea.EC_CURVE_BRAINPOOLP512R1:
-                signatureAlgorithmName = "SHA512withECDSA";
-                break;
-            case SecureArea.EC_CURVE_ED25519:
-                signatureAlgorithmName = "EdDSA";
-                break;
-            case SecureArea.EC_CURVE_ED448:
-                signatureAlgorithmName = "EdDSA";
-                break;
-
-            default:
-            case SecureArea.EC_CURVE_X25519:
-            case SecureArea.EC_CURVE_X448:
-                throw new IllegalStateException("Invalid curve " + attestationKeyData.curve
-                        + "for attestation signing");
-        }
-        try {
-            return new JcaContentSignerBuilder(signatureAlgorithmName)
-                    .build(attestationKeyData.privateKey);
-        } catch (OperatorCreationException e) {
-            throw new IllegalStateException("Unexpected exception", e);
-        }
-    }
-
     private SecretKey derivePrivateKeyEncryptionKey(@NonNull byte[] encodedPublicKey,
                                                     @NonNull String passphrase) {
-        // TODO: replace with Argon2
         byte[] info = "ICPrivateKeyEncryption1".getBytes(StandardCharsets.UTF_8);
         byte[] derivedKey = Util.computeHkdf("HmacSha256",
                 passphrase.getBytes(StandardCharsets.UTF_8),
@@ -332,18 +294,19 @@ public class BouncyCastleSecureArea implements SecureArea {
         PrivateKey privateKey;
     }
 
-    private @NonNull KeyData loadKey(@NonNull String alias,
+    private @NonNull KeyData loadKey(@NonNull String prefix,
+                                     @NonNull String alias,
                                      @Nullable SecureArea.KeyUnlockData keyUnlockData)
             throws KeyLockedException {
         KeyData ret = new KeyData();
 
         String passphrase = null;
         if (keyUnlockData != null) {
-            BouncyCastleSecureArea.KeyUnlockData unlockData = (BouncyCastleSecureArea.KeyUnlockData) keyUnlockData;
+            SoftwareSecureArea.KeyUnlockData unlockData = (SoftwareSecureArea.KeyUnlockData) keyUnlockData;
             passphrase = unlockData.mPassphrase;
         }
 
-        byte[] data = mStorageEngine.get(PREFIX + alias);
+        byte[] data = mStorageEngine.get(prefix + alias);
         if (data == null) {
             throw new IllegalArgumentException("No key with given alias");
         }
@@ -409,6 +372,22 @@ public class BouncyCastleSecureArea implements SecureArea {
         return ret;
     }
 
+    /**
+     * Gets the underlying private key.
+     *
+     * @param alias the alias for the key.
+     * @param keyUnlockData unlock data, or {@code null}.
+     * @return a {@link PrivateKey}.
+     * @throws SecureArea.KeyLockedException
+     */
+    @NonNull
+    public PrivateKey getPrivateKey(@NonNull String alias,
+                                    @Nullable SecureArea.KeyUnlockData keyUnlockData)
+            throws SecureArea.KeyLockedException {
+        KeyData keyData = loadKey(PREFIX, alias, keyUnlockData);
+        return keyData.privateKey;
+    }
+
     @NonNull
     @Override
     public byte[] sign(@NonNull String alias,
@@ -416,7 +395,7 @@ public class BouncyCastleSecureArea implements SecureArea {
                        @NonNull byte[] dataToSign,
                        @Nullable SecureArea.KeyUnlockData keyUnlockData)
             throws SecureArea.KeyLockedException {
-        KeyData keyData = loadKey(alias, keyUnlockData);
+        KeyData keyData = loadKey(PREFIX, alias, keyUnlockData);
         if ((keyData.keyPurposes & KEY_PURPOSE_SIGN) == 0) {
             throw new IllegalArgumentException("Key does not have purpose KEY_PURPOSE_SIGN");
         }
@@ -448,7 +427,7 @@ public class BouncyCastleSecureArea implements SecureArea {
         }
 
         try {
-            Signature s = Signature.getInstance(signatureAlgorithmName);
+            Signature s = Signature.getInstance(signatureAlgorithmName, new BouncyCastleProvider());
             s.initSign(keyData.privateKey);
             s.update(dataToSign);
             return s.sign();
@@ -464,7 +443,7 @@ public class BouncyCastleSecureArea implements SecureArea {
                                         @NonNull PublicKey otherKey,
                                         @Nullable SecureArea.KeyUnlockData keyUnlockData)
             throws KeyLockedException {
-        KeyData keyData = loadKey(alias, keyUnlockData);
+        KeyData keyData = loadKey(PREFIX, alias, keyUnlockData);
         if ((keyData.keyPurposes & KEY_PURPOSE_AGREE_KEY) == 0) {
             throw new IllegalArgumentException("Key does not have purpose KEY_PURPOSE_AGREE_KEY");
         }
@@ -481,19 +460,17 @@ public class BouncyCastleSecureArea implements SecureArea {
     }
 
     /**
-     * Bouncy Castle specific class for information about an EC key.
+     * Specialization of {@link SecureArea.KeyInfo} specific to software-backed keys.
      */
     public static class KeyInfo extends SecureArea.KeyInfo {
 
         private final boolean mIsPassphraseProtected;
-        private final @Nullable String mAttestationKeyAlias;
 
         KeyInfo(@NonNull List<X509Certificate> attestation,
                 @KeyPurpose int keyPurposes, @EcCurve int ecCurve, boolean isHardwareBacked,
-                boolean isPassphraseProtected, @Nullable String attestationKeyAlias) {
+                boolean isPassphraseProtected) {
             super(attestation, keyPurposes, ecCurve, isHardwareBacked);
             mIsPassphraseProtected = isPassphraseProtected;
-            mAttestationKeyAlias = attestationKeyAlias;
         }
 
         /**
@@ -503,15 +480,6 @@ public class BouncyCastleSecureArea implements SecureArea {
          */
         public boolean isPassphraseProtected() {
             return mIsPassphraseProtected;
-        }
-
-        /**
-         * Gets the attestation key alias, if any.
-         *
-         * @return the attestation key alias or {@code null} if not using an attestation key.
-         */
-        public @Nullable String getAttestationKeyAlias() {
-            return mAttestationKeyAlias;
         }
     }
 
@@ -539,10 +507,6 @@ public class BouncyCastleSecureArea implements SecureArea {
         @EcCurve int ecCurve = (int) Util.cborMapExtractNumber(map, "curve");
         @KeyPurpose int keyPurposes = (int) Util.cborMapExtractNumber(map, "keyPurposes");
         boolean passphraseRequired = Util.cborMapExtractBoolean(map, "passphraseRequired");
-        String attestationKeyAlias = null;
-        if (Util.cborMapHasKey(map, "attestationKeyAlias")) {
-            attestationKeyAlias = Util.cborMapExtractString(map, "attestationKeyAlias");
-        }
 
         DataItem attestationDataItem = map.get(new UnicodeString("attestation"));
         if (!(attestationDataItem instanceof Array)) {
@@ -561,7 +525,7 @@ public class BouncyCastleSecureArea implements SecureArea {
         }
 
         return new KeyInfo(attestation, keyPurposes, ecCurve, false,
-                passphraseRequired, attestationKeyAlias);
+                passphraseRequired);
     }
 
     /**
@@ -586,23 +550,41 @@ public class BouncyCastleSecureArea implements SecureArea {
      * Class used to indicate key creation settings.
      */
     public static class CreateKeySettings extends SecureArea.CreateKeySettings {
-        private final String mAttestationKeyAlias;
-        private @KeyPurpose int mKeyPurposes;
+        private final @KeyPurpose int mKeyPurposes;
         private final @EcCurve int mEcCurve;
         private final boolean mPassphraseRequired;
         private final String mPassphrase;
+        private final String mSubject;
+        private final Timestamp mValidFrom;
+        private final Timestamp mValidUntil;
+        private final byte[] mAttestationChallenge;
+        private PrivateKey mAttestationKey;
+        private String mAttestationKeySignatureAlgorithm;
+        private List<X509Certificate> mAttestationKeyCertification;
 
         private CreateKeySettings(boolean passphraseRequired,
                                   @NonNull String passphrase,
                                   @EcCurve int ecCurve,
                                   @KeyPurpose int keyPurposes,
-                                  @Nullable String attestationKeyAlias) {
-            super(BouncyCastleSecureArea.class);
+                                  @NonNull byte[] attestationChallenge,
+                                  @Nullable String subject,
+                                  @Nullable Timestamp validFrom,
+                                  @Nullable Timestamp validUntil,
+                                  @Nullable PrivateKey attestationKey,
+                                  @Nullable String attestationKeySignatureAlgorithm,
+                                  @Nullable List<X509Certificate> attestationKeyCertification) {
+            super(SoftwareSecureArea.class);
             mPassphraseRequired = passphraseRequired;
             mPassphrase = passphrase;
             mEcCurve = ecCurve;
             mKeyPurposes = keyPurposes;
-            mAttestationKeyAlias = attestationKeyAlias;
+            mAttestationChallenge = attestationChallenge;
+            mSubject = subject;
+            mValidFrom = validFrom;
+            mValidUntil = validUntil;
+            mAttestationKey = attestationKey;
+            mAttestationKeySignatureAlgorithm = attestationKeySignatureAlgorithm;
+            mAttestationKeyCertification = attestationKeyCertification;
         }
 
         /**
@@ -642,14 +624,67 @@ public class BouncyCastleSecureArea implements SecureArea {
         }
 
         /**
-         * Gets the attestation key alias, if any.
+         * Gets the attestation challenge.
          *
-         * @return The attestation key alias or {@code null}.
+         * @return the attestation challenge.
          */
-        public @Nullable String getAttestationKeyAlias() {
-            return mAttestationKeyAlias;
+        public @NonNull byte[] getAttestationChallenge() {
+            return mAttestationChallenge;
         }
 
+        /**
+         * Gets the subject for the key.
+         *
+         * @return The subject for the key or {@code null} if not set.
+         */
+        public @Nullable String getSubject() {
+            return mSubject;
+        }
+
+        /**
+         * Gets the point in time before which the key is not valid.
+         *
+         * @return the point in time before which the key is not valid or {@code null} if not set.
+         */
+        public @Nullable Timestamp getValidFrom() {
+            return mValidFrom;
+        }
+
+        /**
+         * Gets the point in time after which the key is not valid.
+         *
+         * @return the point in time after which the key is not valid or {@code null} if not set.
+         */
+        public @Nullable Timestamp getValidUntil() {
+            return mValidUntil;
+        }
+
+        /**
+         * Gets the attestation key to use to attest to the key, if any.
+         *
+         * @return the attestation key or {@code null} if not set.
+         */
+        public @Nullable PrivateKey getAttestationKey() {
+            return mAttestationKey;
+        }
+
+        /**
+         * Gets the signature algorithmto use to attest to the key, if any.
+         *
+         * @return the signature algorithm or {@code null} if not set.
+         */
+        public @Nullable String getAttestationKeySignatureAlgorithm() {
+            return mAttestationKeySignatureAlgorithm;
+        }
+
+        /**
+         * Gets the certification for the attestation key, if any.
+         *
+         * @return the certification for the attestation key or {@code null} if not set.
+         */
+        public @Nullable List<X509Certificate> getAttestationKeyCertification() {
+            return mAttestationKeyCertification;
+        }
 
         /**
          * A builder for {@link CreateKeySettings}.
@@ -659,7 +694,42 @@ public class BouncyCastleSecureArea implements SecureArea {
             private @EcCurve int mEcCurve = EC_CURVE_P256;
             private boolean mPassphraseRequired;
             private String mPassphrase = "";
-            private String mAttestationKeyAlias;
+            private String mSubject;
+            private Timestamp mValidFrom;
+            private Timestamp mValidUntil;
+            private final byte[] mAttestationChallenge;
+            private PrivateKey mAttestationKey;
+            private String mAttestationKeySignatureAlgorithm;
+            private List<X509Certificate> mAttestationKeyCertification;
+
+            /**
+             * Constructor.
+             *
+             * @param attestationChallenge challenge to include in attestation for the key.
+             */
+            public Builder(@NonNull byte[] attestationChallenge) {
+                mAttestationChallenge = attestationChallenge;
+            }
+
+            /**
+             * Sets the attestation key to use for attesting to the key.
+             *
+             * <p>If not set, the attestation will be a single self-signed certificate.
+             *
+             * @param attestationKey the attestation key.
+             * @param attestationKeySignatureAlgorithm the signature algorithm to use.
+             * @param attestationKeyCertification the certification for the attestation key.
+             * @return the builder.
+             */
+            public @NonNull
+            Builder setAttestationKey(@NonNull PrivateKey attestationKey,
+                                      @NonNull String attestationKeySignatureAlgorithm,
+                                      @NonNull List<X509Certificate> attestationKeyCertification) {
+                mAttestationKey = attestationKey;
+                mAttestationKeySignatureAlgorithm = attestationKeySignatureAlgorithm;
+                mAttestationKeyCertification = attestationKeyCertification;
+                return this;
+            }
 
             /**
              * Sets the key purpose.
@@ -709,18 +779,29 @@ public class BouncyCastleSecureArea implements SecureArea {
             }
 
             /**
-             * Sets the alias of a key to use sign the returned X509 certificate.
+             * Sets the subject of the key, to be included in the attestation.
              *
-             * <p>If this is not set, the key itself will be used to sign the X509 certificate
-             * which will only work if the curve used can be used for signing.
-             *
-             * <p>By default this isn't set.
-             *
-             * @param attestationKeyAlias the attest key alias or {@code null}.
+             * @param subject subject field
              * @return the builder.
              */
-            public @NonNull Builder setAttestationKeyAlias(@Nullable String attestationKeyAlias) {
-                mAttestationKeyAlias = attestationKeyAlias;
+            public @NonNull Builder setSubject(@Nullable String subject) {
+                mSubject = subject;
+                return this;
+            }
+
+            /**
+             * Sets the key validity period.
+             *
+             * <p>By default the key validity period is unbounded.
+             *
+             * @param validFrom the point in time before which the key is not valid.
+             * @param validUntil the point in time after which the key is not valid.
+             * @return the builder.
+             */
+            public @NonNull Builder setValidityPeriod(@NonNull Timestamp validFrom,
+                                                      @NonNull Timestamp validUntil) {
+                mValidFrom = validFrom;
+                mValidUntil = validUntil;
                 return this;
             }
 
@@ -731,7 +812,10 @@ public class BouncyCastleSecureArea implements SecureArea {
              */
             public @NonNull CreateKeySettings build() {
                 return new CreateKeySettings(mPassphraseRequired, mPassphrase, mEcCurve,
-                        mKeyPurposes, mAttestationKeyAlias);
+                        mKeyPurposes, mAttestationChallenge,
+                        mSubject, mValidFrom, mValidUntil,
+                        mAttestationKey, mAttestationKeySignatureAlgorithm,
+                        mAttestationKeyCertification);
             }
         }
     }
