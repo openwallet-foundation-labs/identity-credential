@@ -89,7 +89,7 @@ dependencies {
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
 
-    implementation 'com.google.android.gms:play-services-identity-credentials:0.0.1'
+    implementation 'com.google.android.gms:play-services-identity-credentials:0.0.1-eap01'
 
     implementation platform(libs.compose.bom)
     implementation libs.bundles.androidx.core

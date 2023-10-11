@@ -86,7 +86,7 @@
             android:enabled="true"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.google.android.gms.identitycredentials.action.GET_CREDENTIALS" />
+                <action android:name="androidx.identitycredentials.action.GET_CREDENTIALS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
