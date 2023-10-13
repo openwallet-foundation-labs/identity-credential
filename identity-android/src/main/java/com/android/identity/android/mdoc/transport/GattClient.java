@@ -547,6 +547,7 @@ class GattClient extends BluetoothGattCallback {
             Logger.d(TAG, "Chunk is length 0, shutting down GattClient");
             try {
                 mGatt.disconnect();
+                mGatt.close();
             } catch (SecurityException e) {
                 Logger.e(TAG, "Caught SecurityException while shutting down: " + e);
             }
