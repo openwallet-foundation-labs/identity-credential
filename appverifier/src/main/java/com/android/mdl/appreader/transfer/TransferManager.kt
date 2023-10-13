@@ -16,6 +16,7 @@ import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
+import com.android.identity.internal.Util
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -351,10 +352,14 @@ class TransferManager private constructor(private val context: Context) {
                 val parser =
                     DeviceResponseParser()
                 parser.setSessionTranscript(v.sessionTranscript)
-                parser.setEphemeralReaderKey(v.ephemeralReaderKey)
+                parser.setEphemeralReaderKey(v.eReaderKeyPair.private)
                 parser.setDeviceResponse(rb)
                 return parser.parse()
             } ?: throw IllegalStateException("Verification is null")
         } ?: throw IllegalStateException("Response not received")
+    }
+
+    fun getMdocSessionEncryptionCurve(): Int {
+        return Util.getCurve(verification!!.eReaderKeyPair.public)
     }
 }

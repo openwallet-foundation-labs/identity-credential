@@ -268,19 +268,6 @@ public class DeviceRetrievalHelper {
             }
         }
         DataItem eReaderKeyDataItem = Util.cborDecode(encodedEReaderKey);
-        @SecureArea.EcCurve int curve;
-        try {
-            curve = Util.coseKeyGetCurve(eReaderKeyDataItem);
-        } catch (IllegalArgumentException e) {
-            Logger.w(TAG, "No curve identifier in COSE_Key", e);
-            return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION);
-        }
-        if (curve != SecureArea.EC_CURVE_P256) {
-            Logger.w(TAG,
-                    String.format(Locale.US, "Expected curve P-256 (%d) but got %d",
-                            SecureArea.EC_CURVE_P256, curve));
-            return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION);
-        }
         try {
             mEReaderKey = Util.coseKeyDecode(eReaderKeyDataItem);
         } catch (IllegalArgumentException

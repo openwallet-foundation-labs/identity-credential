@@ -100,32 +100,6 @@ public class Constants {
      */
     public static final long SESSION_DATA_STATUS_SESSION_TERMINATION = 20;
 
-    /** The curve identifier for P-256 */
-    public static final int EC_CURVE_P256 = 1;
-
-    /** The curve identifier for P-384 */
-    public static final int EC_CURVE_P384 = 2;
-
-    /** The curve identifier for P-521 */
-    public static final int EC_CURVE_P521 = 3;
-
-    /** The curve identifier for brainpoolP256r1 */
-    public static final int EC_CURVE_BRAINPOOLP256R1 = -65537;
-
-    /** The curve identifier for brainpoolP320r1 */
-    public static final int EC_CURVE_BRAINPOOLP320R1 = -65538;
-
-    /** The curve identifier for brainpoolP384r1 */
-    public static final int EC_CURVE_BRAINPOOLP384R1 = -65539;
-
-    /** The curve identifier for brainpoolP512r1 */
-    public static final int EC_CURVE_BRAINPOOLP512R1 = -65540;
-
-    /** The curve identifier for Ed25519 */
-    public static final int EC_CURVE_ED25519 = 6;
-
-    /** The curve identifier for Ed448 */
-    public static final int EC_CURVE_ED448 = 7;
 
     /**
      * The status code used for session data exchange.

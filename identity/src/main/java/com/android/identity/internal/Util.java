@@ -31,6 +31,10 @@ import org.bouncycastle.asn1.ASN1OctetString;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.DERSequenceGenerator;
+import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPublicKey;
+import org.bouncycastle.jcajce.provider.asymmetric.edec.BCXDHPublicKey;
+import org.bouncycastle.jcajce.spec.XDHParameterSpec;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.BigIntegers;
 
 import java.io.ByteArrayInputStream;
@@ -60,6 +64,7 @@ import java.security.cert.CertificateEncodingException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.ECKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECParameterSpec;
@@ -68,6 +73,7 @@ import java.security.spec.ECPrivateKeySpec;
 import java.security.spec.ECPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.InvalidParameterSpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
@@ -121,11 +127,12 @@ public class Util {
     private static final long COSE_ALG_HMAC_256_256 = 5;
     private static final long CBOR_SEMANTIC_TAG_ENCODED_CBOR = 24;
     private static final long COSE_KEY_KTY = 1;
+    private static final long COSE_KEY_TYPE_OKP = 1;
     private static final long COSE_KEY_TYPE_EC2 = 2;
-    private static final long COSE_KEY_EC2_CRV = -1;
-    private static final long COSE_KEY_EC2_X = -2;
-    private static final long COSE_KEY_EC2_Y = -3;
-    private static final long COSE_KEY_EC2_CRV_P256 = 1;
+    private static final long COSE_KEY_PARAM_CRV = -1;
+    private static final long COSE_KEY_PARAM_X = -2;
+    private static final long COSE_KEY_PARAM_Y = -3;
+    private static final long COSE_KEY_PARAM_CRV_P256 = 1;
 
     // Not called.
     private Util() {
@@ -1011,20 +1018,144 @@ public class Util {
         return BigIntegers.asUnsignedByteArray(octetStringSize, fieldValue);
     }
 
+    public static
+    @SecureArea.EcCurve int getCurve(@NonNull PublicKey publicKey) {
+        String curveName;
+        try {
+            if (publicKey instanceof BCXDHPublicKey) {
+                curveName = ((BCXDHPublicKey) publicKey).getAlgorithm();
+            } else if (publicKey instanceof BCEdDSAPublicKey) {
+                curveName = ((BCEdDSAPublicKey) publicKey).getAlgorithm();
+            } else if (publicKey instanceof ECKey) {
+                AlgorithmParameters params = AlgorithmParameters.getInstance("EC",
+                        new BouncyCastleProvider());
+                params.init(((ECKey) publicKey).getParams());
+                curveName = params.getParameterSpec(ECGenParameterSpec.class).getName();
+            } else {
+                throw new IllegalArgumentException(
+                        "No support for PublicKey of class " + publicKey.getClass().getName());
+            }
+        } catch (InvalidParameterSpecException | NoSuchAlgorithmException e) {
+            throw new IllegalArgumentException(e);
+        }
+        switch (curveName) {
+            case "secp256r1":
+            case "prime256v1":
+            case "1.2.840.10045.3.1.7":
+                return SecureArea.EC_CURVE_P256;
+            case "1.3.132.0.34":
+            case "secp384r1":
+                return SecureArea.EC_CURVE_P384;
+            case "1.3.132.0.35":
+            case "secp521r1":
+                return SecureArea.EC_CURVE_P521;
+            case "1.3.36.3.3.2.8.1.1.7":
+            case "brainpoolP256r1":
+                return SecureArea.EC_CURVE_BRAINPOOLP256R1;
+            case "1.3.36.3.3.2.8.1.1.9":
+            case "brainpoolP320r1":
+                return SecureArea.EC_CURVE_BRAINPOOLP320R1;
+            case "1.3.36.3.3.2.8.1.1.11":
+            case "brainpoolP384r1":
+                return SecureArea.EC_CURVE_BRAINPOOLP384R1;
+            case "1.3.36.3.3.2.8.1.1.13":
+            case "brainpoolP512r1":
+                return SecureArea.EC_CURVE_BRAINPOOLP512R1;
+            case "X448":
+                return SecureArea.EC_CURVE_X448;
+            case "X25519":
+                return SecureArea.EC_CURVE_X25519;
+            case "Ed448":
+                return SecureArea.EC_CURVE_ED448;
+            case "Ed25519":
+                return SecureArea.EC_CURVE_ED25519;
+            default:
+                throw new IllegalArgumentException("Unknown curve name '" + curveName + "'");
+        }
+    }
+
+    private static
+    int getCurveBitSize(@SecureArea.EcCurve int curve) {
+        switch (curve) {
+            case SecureArea.EC_CURVE_P256: return 256;
+            case SecureArea.EC_CURVE_P384: return 384;
+            case SecureArea.EC_CURVE_P521: return 521;
+            case SecureArea.EC_CURVE_BRAINPOOLP256R1: return 256;
+            case SecureArea.EC_CURVE_BRAINPOOLP320R1: return 320;
+            case SecureArea.EC_CURVE_BRAINPOOLP384R1: return 384;
+            case SecureArea.EC_CURVE_BRAINPOOLP512R1: return 512;
+            case SecureArea.EC_CURVE_X25519: return 256;
+            case SecureArea.EC_CURVE_ED25519: return 256;
+            case SecureArea.EC_CURVE_X448: return 448;
+            case SecureArea.EC_CURVE_ED448: return 448;
+            default:
+                throw new IllegalArgumentException("Unknown curve with id " + curve);
+        }
+    }
+
+    private static
+    @NonNull String getCurveNameSECG(@SecureArea.EcCurve int curve) {
+        switch (curve) {
+            case SecureArea.EC_CURVE_P256: return "secp256r1";
+            case SecureArea.EC_CURVE_P384: return "secp384r1";
+            case SecureArea.EC_CURVE_P521: return "secp521r1";
+            case SecureArea.EC_CURVE_BRAINPOOLP256R1: return "brainpoolP256r1";
+            case SecureArea.EC_CURVE_BRAINPOOLP320R1: return "brainpoolP320r1";
+            case SecureArea.EC_CURVE_BRAINPOOLP384R1: return "brainpoolP384r1";
+            case SecureArea.EC_CURVE_BRAINPOOLP512R1: return "brainpoolP512r1";
+            default:
+                throw new IllegalArgumentException("Unknown curve with id " + curve);
+        }
+    }
+
     public static @NonNull
     DataItem cborBuildCoseKey(@NonNull PublicKey key) {
-        ECPublicKey ecKey = (ECPublicKey) key;
-        ECPoint w = ecKey.getW();
-        byte[] x = sec1EncodeFieldElementAsOctetString(32, w.getAffineX());
-        byte[] y = sec1EncodeFieldElementAsOctetString(32, w.getAffineY());
-        DataItem item = new CborBuilder()
-                .addMap()
-                .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
-                .put(COSE_KEY_EC2_CRV, COSE_KEY_EC2_CRV_P256)
-                .put(COSE_KEY_EC2_X, x)
-                .put(COSE_KEY_EC2_Y, y)
-                .end()
-                .build().get(0);
+        @SecureArea.EcCurve int coseCurveIdentifier = getCurve(key);
+        int keySizeBits = getCurveBitSize(coseCurveIdentifier);
+        byte[] x;
+        byte[] y;
+        DataItem item;
+        switch (coseCurveIdentifier) {
+            case SecureArea.EC_CURVE_ED25519:
+            case SecureArea.EC_CURVE_ED448:
+                x = ((BCEdDSAPublicKey) key).getPointEncoding();
+                item = new CborBuilder()
+                        .addMap()
+                        .put(COSE_KEY_KTY, COSE_KEY_TYPE_OKP)
+                        .put(COSE_KEY_PARAM_CRV, coseCurveIdentifier)
+                        .put(COSE_KEY_PARAM_X, x)
+                        .end()
+                        .build().get(0);
+                break;
+
+            case SecureArea.EC_CURVE_X25519:
+            case SecureArea.EC_CURVE_X448:
+                x = ((BCXDHPublicKey) key).getUEncoding();
+                item = new CborBuilder()
+                        .addMap()
+                        .put(COSE_KEY_KTY, COSE_KEY_TYPE_OKP)
+                        .put(COSE_KEY_PARAM_CRV, coseCurveIdentifier)
+                        .put(COSE_KEY_PARAM_X, x)
+                        .end()
+                        .build().get(0);
+                break;
+
+            default:
+                ECPublicKey ecKey = (ECPublicKey) key;
+                ECPoint w = ecKey.getW();
+                keySizeBits = getCurveBitSize(coseCurveIdentifier);
+                x = sec1EncodeFieldElementAsOctetString((keySizeBits + 7)/8, w.getAffineX());
+                y = sec1EncodeFieldElementAsOctetString((keySizeBits + 7)/8, w.getAffineY());
+                item = new CborBuilder()
+                        .addMap()
+                        .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
+                        .put(COSE_KEY_PARAM_CRV, coseCurveIdentifier)
+                        .put(COSE_KEY_PARAM_X, x)
+                        .put(COSE_KEY_PARAM_Y, y)
+                        .end()
+                        .build().get(0);
+                break;
+        }
         return item;
     }
 
@@ -1039,9 +1170,9 @@ public class Util {
         DataItem item = new CborBuilder()
                 .addMap()
                 .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
-                .put(COSE_KEY_EC2_CRV, COSE_KEY_EC2_CRV_P256)
-                .put(COSE_KEY_EC2_X, x)
-                .put(COSE_KEY_EC2_Y, y)
+                .put(COSE_KEY_PARAM_CRV, COSE_KEY_PARAM_CRV_P256)
+                .put(COSE_KEY_PARAM_X, x)
+                .put(COSE_KEY_PARAM_Y, y)
                 .end()
                 .build().get(0);
         return item;
@@ -1165,35 +1296,36 @@ public class Util {
 
     public static
     @SecureArea.EcCurve int coseKeyGetCurve(@NonNull DataItem coseKey) {
-        return (int) cborMapExtractNumber(coseKey, COSE_KEY_EC2_CRV);
+        return (int) cborMapExtractNumber(coseKey, COSE_KEY_PARAM_CRV);
     }
 
-    public static @NonNull
-    PublicKey coseKeyDecode(@NonNull DataItem coseKey) {
-        long kty = cborMapExtractNumber(coseKey, COSE_KEY_KTY);
-        if (kty != COSE_KEY_TYPE_EC2) {
-            throw new IllegalArgumentException("Expected COSE_KEY_TYPE_EC2, got " + kty);
-        }
-        long crv = cborMapExtractNumber(coseKey, COSE_KEY_EC2_CRV);
-        if (crv != COSE_KEY_EC2_CRV_P256) {
-            throw new IllegalArgumentException("Expected COSE_KEY_EC2_CRV_P256, got " + crv);
-        }
-        byte[] encodedX = cborMapExtractByteString(coseKey, COSE_KEY_EC2_X);
-        byte[] encodedY = cborMapExtractByteString(coseKey, COSE_KEY_EC2_Y);
+    private static @NonNull
+    PublicKey coseKeyDecodeEc2(@NonNull DataItem coseKey) {
+        long crv = cborMapExtractNumber(coseKey, COSE_KEY_PARAM_CRV);
 
-        if (encodedX.length != 32) {
-            Logger.w(TAG, "Expected 32 bytes for X in COSE_Key, found " + encodedX.length);
+        int keySizeOctets = (getCurveBitSize((int) crv) + 7) / 8;
+        String curveName = getCurveNameSECG((int) crv);
+
+        byte[] encodedX = cborMapExtractByteString(coseKey, COSE_KEY_PARAM_X);
+        byte[] encodedY = cborMapExtractByteString(coseKey, COSE_KEY_PARAM_Y);
+
+        if (encodedX.length != keySizeOctets) {
+            Logger.w(TAG,
+                    String.format(Locale.US, "Expected %d bytes for X in COSE_Key, found %d",
+                            keySizeOctets, encodedX.length));
         }
-        if (encodedY.length != 32) {
-            Logger.w(TAG, "Expected 32 bytes for Y in COSE_Key, found " + encodedY.length);
+        if (encodedY.length != keySizeOctets) {
+            Logger.w(TAG,
+                    String.format(Locale.US, "Expected %d bytes for Y in COSE_Key, found %d",
+                            keySizeOctets, encodedY.length));
         }
 
         BigInteger x = new BigInteger(1, encodedX);
         BigInteger y = new BigInteger(1, encodedY);
 
         try {
-            AlgorithmParameters params = AlgorithmParameters.getInstance("EC");
-            params.init(new ECGenParameterSpec("secp256r1"));
+            AlgorithmParameters params = AlgorithmParameters.getInstance("EC", new BouncyCastleProvider());
+            params.init(new ECGenParameterSpec(curveName));
             ECParameterSpec ecParameters = params.getParameterSpec(ECParameterSpec.class);
 
             ECPoint ecPoint = new ECPoint(x, y);
@@ -1203,9 +1335,85 @@ public class Util {
             return ecPublicKey;
 
         } catch (NoSuchAlgorithmException
-                | InvalidParameterSpecException
-                | InvalidKeySpecException e) {
+                 | InvalidParameterSpecException
+                 | InvalidKeySpecException e) {
             throw new IllegalStateException("Unexpected error", e);
+        }
+    }
+
+    private static @NonNull
+    PublicKey coseKeyDecodeOkp(@NonNull DataItem coseKey) {
+        long crv = cborMapExtractNumber(coseKey, COSE_KEY_PARAM_CRV);
+
+        int keySizeOctets = (getCurveBitSize((int) crv) + 7) / 8;
+
+        byte[] encodedX = cborMapExtractByteString(coseKey, COSE_KEY_PARAM_X);
+
+        if (encodedX.length != keySizeOctets) {
+            Logger.w(TAG,
+                    String.format(Locale.US, "Expected %d bytes for X in COSE_Key, found %d",
+                            keySizeOctets, encodedX.length));
+        }
+
+        try {
+            // Unfortunately we need to create an X509 encoded version of the public
+            // key material, for simplicity we just use prefixes.
+            byte[] prefix;
+            KeyFactory kf;
+            switch ((int) crv) {
+                case SecureArea.EC_CURVE_ED448:
+                    kf = KeyFactory.getInstance("EdDSA", new BouncyCastleProvider());
+                    prefix = ED448_X509_ENCODED_PREFIX;
+                    break;
+
+                case SecureArea.EC_CURVE_ED25519:
+                    kf = KeyFactory.getInstance("EdDSA", new BouncyCastleProvider());
+                    prefix = ED25519_X509_ENCODED_PREFIX;
+                    break;
+
+                case SecureArea.EC_CURVE_X25519:
+                    kf = KeyFactory.getInstance("XDH", new BouncyCastleProvider());
+                    prefix = X25519_X509_ENCODED_PREFIX;
+                    break;
+
+                case SecureArea.EC_CURVE_X448:
+                    kf = KeyFactory.getInstance("XDH", new BouncyCastleProvider());
+                    prefix = X448_X509_ENCODED_PREFIX;
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Unsupported curve with id " + crv);
+            }
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            baos.write(prefix);
+            baos.write(encodedX);
+            return kf.generatePublic(new X509EncodedKeySpec(baos.toByteArray()));
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
+            throw new IllegalStateException("Unexpected error", e);
+        }
+    }
+
+    private static final byte[] ED25519_X509_ENCODED_PREFIX =
+            new byte[] {0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00};
+
+    private static final byte[] X25519_X509_ENCODED_PREFIX =
+            new byte[] {0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x6e, 0x03, 0x21, 0x00};
+
+    private static final byte[] ED448_X509_ENCODED_PREFIX =
+            new byte[] {0x30, 0x43, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x71, 0x03, 0x3a, 0x00};
+
+    private static final byte[] X448_X509_ENCODED_PREFIX =
+            new byte[] {0x30, 0x42, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x6f, 0x03, 0x39, 0x00};
+
+    public static @NonNull
+    PublicKey coseKeyDecode(@NonNull DataItem coseKey) {
+        long kty = cborMapExtractNumber(coseKey, COSE_KEY_KTY);
+        if (kty == COSE_KEY_TYPE_EC2) {
+            return coseKeyDecodeEc2(coseKey);
+        } else if (kty == COSE_KEY_TYPE_OKP) {
+            return coseKeyDecodeOkp(coseKey);
+        } else {
+            throw new IllegalArgumentException("Expected COSE_KEY_TYPE_EC2 or COSE_KEY_TYPE_OKP, got " + kty);
         }
     }
 
@@ -1970,14 +2178,38 @@ public class Util {
             case SecureArea.EC_CURVE_BRAINPOOLP512R1:
                 stdName = "brainpoolP512r1";
                 break;
+            case SecureArea.EC_CURVE_X25519:
+                stdName = "X25519";
+                break;
+            case SecureArea.EC_CURVE_ED25519:
+                stdName = "Ed25519";
+                break;
+            case SecureArea.EC_CURVE_X448:
+                stdName = "X448";
+                break;
+            case SecureArea.EC_CURVE_ED448:
+                stdName = "Ed448";
+                break;
             default:
                 throw new IllegalArgumentException("curve provided is not one of the supported curves");
         }
 
         try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-            ECGenParameterSpec ecSpec = new ECGenParameterSpec(stdName);
-            kpg.initialize(ecSpec);
+            KeyPairGenerator kpg;
+            if (stdName.equals("X25519")) {
+                kpg = KeyPairGenerator.getInstance("X25519", new BouncyCastleProvider());
+                kpg.initialize(new XDHParameterSpec(XDHParameterSpec.X25519));
+            } else if (stdName.equals("Ed25519")) {
+                kpg = KeyPairGenerator.getInstance("Ed25519", new BouncyCastleProvider());
+            } else if (stdName.equals("X448")) {
+                kpg = KeyPairGenerator.getInstance("X448", new BouncyCastleProvider());
+                kpg.initialize(new XDHParameterSpec(XDHParameterSpec.X448));
+            } else if (stdName.equals("Ed448")) {
+                kpg = KeyPairGenerator.getInstance("Ed448", new BouncyCastleProvider());
+            } else {
+                kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
+                kpg.initialize(new ECGenParameterSpec(stdName));
+            }
             KeyPair keyPair = kpg.generateKeyPair();
             return keyPair;
         } catch (NoSuchAlgorithmException

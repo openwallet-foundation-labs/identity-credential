@@ -14,7 +14,7 @@ class Communication private constructor(
 ) {
 
     private var request: DeviceRequest? = null
-    private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
+    var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
     fun setupPresentation(deviceRetrievalHelper: DeviceRetrievalHelper) {
         this.deviceRetrievalHelper = deviceRetrievalHelper

@@ -11,7 +11,7 @@ import kotlinx.parcelize.Parcelize
 @Immutable
 data class SettingsScreenState(
     val autoCloseEnabled: Boolean = true,
-    val ephemeralKeyCurveOption: EphemeralKeyCurveOption = EphemeralKeyCurveOption.P256,
+    val sessionEncryptionCurveOption: SessionEncryptionCurveOption = SessionEncryptionCurveOption.P256,
     val useStaticHandover: Boolean = true,
     val isL2CAPEnabled: Boolean = false,
     val isBleClearCacheEnabled: Boolean = false,
@@ -55,14 +55,16 @@ data class SettingsScreenState(
     }
 
     @Parcelize
-    enum class EphemeralKeyCurveOption : Parcelable {
+    enum class SessionEncryptionCurveOption : Parcelable {
         P256,
         P384,
         P521,
         BrainPoolP256R1,
         BrainPoolP320R1,
         BrainPoolP384R1,
-        BrainPoolP512R1;
+        BrainPoolP512R1,
+        X25519,
+        X448;
 
         fun toEcCurve(): Int {
 
@@ -74,11 +76,13 @@ data class SettingsScreenState(
                 BrainPoolP320R1 -> SecureArea.EC_CURVE_BRAINPOOLP320R1
                 BrainPoolP384R1 -> SecureArea.EC_CURVE_BRAINPOOLP384R1
                 BrainPoolP512R1 -> SecureArea.EC_CURVE_BRAINPOOLP512R1
+                X25519 -> SecureArea.EC_CURVE_X25519
+                X448 -> SecureArea.EC_CURVE_X448
             }
         }
 
         companion object {
-            fun fromEcCurve(@EcCurve curve: Int): EphemeralKeyCurveOption {
+            fun fromEcCurve(@EcCurve curve: Int): SessionEncryptionCurveOption {
                 return when (curve) {
                     SecureArea.EC_CURVE_P256 -> P256
                     SecureArea.EC_CURVE_P384 -> P384
@@ -87,6 +91,8 @@ data class SettingsScreenState(
                     SecureArea.EC_CURVE_BRAINPOOLP320R1 -> BrainPoolP320R1
                     SecureArea.EC_CURVE_BRAINPOOLP384R1 -> BrainPoolP384R1
                     SecureArea.EC_CURVE_BRAINPOOLP512R1 -> BrainPoolP512R1
+                    SecureArea.EC_CURVE_X25519 -> X25519
+                    SecureArea.EC_CURVE_X448 -> X448
                     else -> throw IllegalStateException("Unknown EcCurve")
                 }
             }

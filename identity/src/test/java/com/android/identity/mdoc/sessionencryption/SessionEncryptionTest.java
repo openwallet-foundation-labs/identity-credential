@@ -221,49 +221,46 @@ public class SessionEncryptionTest {
 
     @Test
     public void testP256() {
-        testCurve(Constants.EC_CURVE_P256);
+        testCurve(SecureArea.EC_CURVE_P256);
     }
 
     @Test
     public void testP384() {
-        testCurve(Constants.EC_CURVE_P384);
+        testCurve(SecureArea.EC_CURVE_P384);
     }
 
     @Test
     public void testP521() {
-        testCurve(Constants.EC_CURVE_P521);
+        testCurve(SecureArea.EC_CURVE_P521);
     }
 
     @Test
     public void testBrainpool256() {
-        testCurve(Constants.EC_CURVE_BRAINPOOLP256R1);
+        testCurve(SecureArea.EC_CURVE_BRAINPOOLP256R1);
     }
 
     @Test
     public void testBrainpool320() {
-        testCurve(Constants.EC_CURVE_BRAINPOOLP320R1);
+        testCurve(SecureArea.EC_CURVE_BRAINPOOLP320R1);
     }
 
     @Test
     public void testBrainpool384() {
-        testCurve(Constants.EC_CURVE_BRAINPOOLP384R1);
+        testCurve(SecureArea.EC_CURVE_BRAINPOOLP384R1);
     }
 
     @Test
     public void testBrainpool521() {
-        testCurve(Constants.EC_CURVE_BRAINPOOLP512R1);
+        testCurve(SecureArea.EC_CURVE_BRAINPOOLP512R1);
     }
 
-    // TODO: remove @Ignore once ED25519 / ED448 is no longer buggy
-    @Ignore
     @Test
-    public void testEd25519() {
-        testCurve(Constants.EC_CURVE_ED25519);
+    public void testX25519() {
+        testCurve(SecureArea.EC_CURVE_X25519);
     }
 
-    @Ignore
     @Test
-    public void testEd448() {
-        testCurve(Constants.EC_CURVE_ED448);
+    public void testX448() {
+        testCurve(SecureArea.EC_CURVE_X448);
     }
 }

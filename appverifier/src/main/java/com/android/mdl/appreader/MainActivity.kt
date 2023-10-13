@@ -46,8 +46,6 @@ class MainActivity : AppCompatActivity() {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
         mPendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
-
-        Security.addProvider(BouncyCastleProvider())
     }
 
     private fun setupDrawerLayout() {
