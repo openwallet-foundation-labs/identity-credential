@@ -182,7 +182,7 @@ class ShowDocumentFragment : Fragment() {
             // Get primary color from theme to use in the HTML formatted document.
             val color = String.format(
                 "#%06X",
-                0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data
+                0xFFFFFF and requireContext().theme.attr(androidx.appcompat.R.attr.colorPrimary).data
             )
             sb.append("<h3>Doctype: <font color=\"$color\">${doc.docType}</font></h3>")
             val certPath =

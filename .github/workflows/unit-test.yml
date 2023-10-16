@@ -35,10 +35,10 @@ jobs:
           jcenter.bintray.com:443
 
     - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3
-    - name: set up JDK 11
+    - name: set up JDK 17
       uses: actions/setup-java@860f60056505705214d223b91ed7a30f173f6142  # v3
       with:
-        java-version: '11'
+        java-version: '17'
         distribution: 'temurin'
         cache: gradle
 
