@@ -162,7 +162,7 @@ class RequestOptionsFragment() : Fragment() {
                     val identityToken = Base64.decode(
                         String(response.credential.data.getByteArray("identityToken")!!),
                         Base64.NO_WRAP or Base64.URL_SAFE)
-                    Logger.dCbor("TAG", "identityToken", identityToken!!)
+                    //Logger.dCbor("TAG", "identityToken", identityToken!!)
 
                     val bundle = Bundle()
                     bundle.putByteArray("identityToken", identityToken)

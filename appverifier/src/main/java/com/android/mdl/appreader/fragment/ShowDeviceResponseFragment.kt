@@ -99,7 +99,7 @@ class ShowDeviceResponseFragment : Fragment() {
             encapsulatedPublicKey as ECPublicKey,
             encodedSessionTranscript)
 
-        Logger.dCbor("TAG", "encodedDeviceResponse", encodedDeviceResponse)
+        //Logger.dCbor("TAG", "encodedDeviceResponse", encodedDeviceResponse)
 
         val parser = DeviceResponseParser()
         parser.setDeviceResponse(encodedDeviceResponse)

@@ -116,7 +116,7 @@ class GetCredentialActivity : FragmentActivity() {
         val request = extractGetCredentialRequest(intent)
         val credentialId = intent.getLongExtra(EXTRA_CREDENTIAL_ID, -1)
         val callingAppInfo = extractCallingAppInfo(intent)
-        log("CredId: $credentialId ${request!!.credentialOptions.get(0).requestMatcher}")
+        //log("CredId: $credentialId ${request!!.credentialOptions.get(0).requestMatcher}")
 
         val dataElements = mutableListOf<CredentialRequest.DataElement>()
 
@@ -200,8 +200,8 @@ class GetCredentialActivity : FragmentActivity() {
 
         deviceResponseGenerator.addDocument(documentGenerator.generate())
         val encodedDeviceResponse = deviceResponseGenerator.generate()
-        log("Response: " + CborUtil.toDiagnostics(encodedDeviceResponse,
-            CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT + CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR))
+        //log("Response: " + CborUtil.toDiagnostics(encodedDeviceResponse,
+        //    CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT + CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR))
 
         val credmanUtil = CredmanUtil(requesterIdentity, null)
         val (cipherText, encapsulatedPublicKey) = credmanUtil.encrypt(encodedDeviceResponse, encodedSessionTranscript)
