@@ -171,7 +171,7 @@ class GetCredentialActivity : FragmentActivity() {
         )
         val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
         var documentGenerator = DocumentGenerator(
-            "org.iso.18013.5.1.mDL",
+            credential.applicationData.getString(ProvisioningUtil.DOCUMENT_TYPE),
             staticAuthData.issuerAuth,
             encodedSessionTranscript
         )

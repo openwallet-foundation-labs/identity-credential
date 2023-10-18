@@ -256,7 +256,7 @@ class ProvisioningUtil private constructor(
 
         const val AUTH_KEY_DOMAIN = "mdoc/MSO"
         private const val USER_VISIBLE_NAME = "userVisibleName"
-        private const val DOCUMENT_TYPE = "documentType"
+        const val DOCUMENT_TYPE = "documentType"
         private const val DATE_PROVISIONED = "dateProvisioned"
         private const val CARD_ART = "cardArt"
         private const val IS_SELF_SIGNED = "isSelfSigned"

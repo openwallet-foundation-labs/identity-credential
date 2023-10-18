@@ -39,6 +39,7 @@ import com.google.android.gms.identitycredentials.CredentialOption
 import com.google.android.gms.identitycredentials.GetCredentialRequest
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
 import com.google.android.gms.identitycredentials.IntentHelper
+import java.security.PublicKey
 import java.security.SecureRandom
 
 class RequestOptionsFragment() : Fragment() {
@@ -88,16 +89,12 @@ class RequestOptionsFragment() : Fragment() {
         }
     }
 
+    private fun buildJsonRequest(requestDocument: RequestDocument,
+                                 nonce: ByteArray,
+                                 requesterIdentityPublicKey: PublicKey): String {
+        val sb = StringBuilder();
 
-    private fun onRequestViaCredman(state: RequestingDocumentState) {
-        val client = IdentityCredentialManager.Companion.getClient(this.requireContext())
-        val nonce = ByteArray(16)
-        SecureRandom().nextBytes(nonce)
-        val nonceBase64 = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
-        val requestIdentityKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256)
-        val requesterIdentityBase64 = Base64.encodeToString(Util.publicKeyToUncompressed(requestIdentityKeyPair.public), Base64.NO_WRAP or Base64.URL_SAFE)
-        val requestJson = (
-                "{\n" +
+        sb.append("{\n" +
                 "  \"providers\": [\n" +
                 "    {\n" +
                 "      \"responseFormat\": \"mdoc\",\n" +
@@ -105,44 +102,49 @@ class RequestOptionsFragment() : Fragment() {
                 "        \"fields\": [\n" +
                 "          {\n" +
                 "            \"name\": \"doctype\",\n" +
-                "            \"equal\": \"org.iso.18013.5.1.mDL\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.portrait\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.family_name\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.given_name\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.document_number\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.expiry_date\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.issue_date\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.age_over_18\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.aamva.DHS_compliance\"\n" +
-                "          },\n" +
-                "          {\n" +
-                "            \"name\": \"org.iso.18013.5.1.aamva.EDL_credential\"\n" +
-                "          }\n" +
+                "            \"equal\": \"${requestDocument.docType}\"\n" +
+                "          }")
+        val itemsToRequest = requestDocument.getItemsToRequest()
+        itemsToRequest.forEach { (nameSpaceName, dataElementNamesToIntentToRetainMap) ->
+            dataElementNamesToIntentToRetainMap.forEach { (dataElementName, intentToRetain) ->
+                sb.append(",\n" +
+                        "          {\n" +
+                        "            \"name\": \"${nameSpaceName}.${dataElementName}\"\n" +
+                        "          }"
+                )
+            }
+        }
+
+        val nonceBase64 = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
+        val requesterIdentityBase64 = Base64.encodeToString(Util.publicKeyToUncompressed(requesterIdentityPublicKey), Base64.NO_WRAP or Base64.URL_SAFE)
+        sb.append("\n" +
                 "        ]\n" +
                 "      },\n" +
                 "      \"params\": {\n" +
-                "        \"nonce\": \"$nonceBase64\",\n" +
-                "        \"requesterIdentity\": \"$requesterIdentityBase64\"\n" +
+                "        \"nonce\": \"${nonceBase64}\",\n" +
+                "        \"requesterIdentity\": \"${requesterIdentityBase64}\"\n" +
                 "      }\n" +
                 "    }\n" +
                 "  ]\n" +
                 "}")
+        return sb.toString()
+    }
+
+    private fun onRequestViaCredman(state: RequestingDocumentState) {
+
+        val client = IdentityCredentialManager.Companion.getClient(this.requireContext())
+        val nonce = ByteArray(16)
+        SecureRandom().nextBytes(nonce)
+        val requestIdentityKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256)
+
+        // TODO: Right now we just request the first of potentially multiple documents, it
+        //  would be nice to request each document in sequence and then display all the
+        //  results. The only case where this applies is the "Request mDL + micov with linkage"
+        //  option in the reader.
+        val requestedDocuments = calcRequestDocumentList()
+        val requestedDocument = requestedDocuments.getAll().get(0)
+        val requestJson = buildJsonRequest(requestedDocument, nonce, requestIdentityKeyPair.public)
+
         val option = CredentialOption(
             type = "com.credman.IdentityCredential",
             credentialRetrievalData = Bundle(),
