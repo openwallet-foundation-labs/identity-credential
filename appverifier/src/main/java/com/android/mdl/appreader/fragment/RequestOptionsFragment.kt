@@ -167,8 +167,11 @@ class RequestOptionsFragment() : Fragment() {
                     val bundle = Bundle()
                     bundle.putByteArray("identityToken", identityToken)
                     bundle.putByteArray("nonce", nonce)
-                    findNavController().navigate(RequestOptionsFragmentDirections.toShowDeviceResponse(
-                        bundle, requestIdentityKeyPair))
+
+                    requireActivity().runOnUiThread {
+                        findNavController().navigate(RequestOptionsFragmentDirections.toShowDeviceResponse(
+                            bundle, requestIdentityKeyPair))
+                    }
                 }
             }
         )).addOnSuccessListener {result ->
