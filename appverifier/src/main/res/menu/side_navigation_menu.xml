@@ -14,7 +14,12 @@
         android:enabled="true"
         android:icon="@drawable/ic_present_document"
         android:title="@string/menu_reverse_engagement" />
-
+    <item
+        android:id="@+id/viewTruststore"
+        android:checkable="true"
+        android:enabled="true"
+        android:icon="@drawable/ic_truststore"
+        android:title="@string/menu_view_truststore" />
     <item
         android:id="@+id/settings"
         android:checkable="true"

@@ -135,4 +135,12 @@
             android:id="@+id/action_ShowQr_to_Transfer"
             app:destination="@id/transfer" />
     </fragment>
+    <fragment
+        android:id="@+id/viewTruststore"
+        android:name="com.android.mdl.appreader.fragment.ViewTruststoreFragment"
+        android:label="View Truststore">
+        <action
+            android:id="@+id/action_viewTruststoreFragment_to_RequestOptions"
+            app:destination="@id/requestOptions" />
+    </fragment>
 </navigation>
