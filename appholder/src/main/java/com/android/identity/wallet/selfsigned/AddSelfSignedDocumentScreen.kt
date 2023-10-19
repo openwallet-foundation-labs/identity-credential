@@ -1,12 +1,6 @@
 package com.android.identity.wallet.selfsigned
 
 import androidx.annotation.StringRes
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.with
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,22 +19,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,37 +33,35 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.android.identity.wallet.R
-import com.android.identity.wallet.composables.PreviewLightDark
-import com.android.identity.wallet.composables.curveLabelFor
+import com.android.identity.wallet.composables.CounterInput
+import com.android.identity.wallet.composables.DropDownIndicator
+import com.android.identity.wallet.composables.LabeledUserInput
+import com.android.identity.wallet.composables.OutlinedContainerHorizontal
+import com.android.identity.wallet.composables.TextDropDownRow
+import com.android.identity.wallet.composables.ValueLabel
 import com.android.identity.wallet.composables.gradientFor
-import com.android.identity.wallet.composables.keystoreNameFor
 import com.android.identity.wallet.document.DocumentColor
 import com.android.identity.wallet.document.DocumentType
-import com.android.identity.wallet.document.SecureAreaImplementationState
-import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState.*
-import com.android.identity.wallet.theme.HolderAppTheme
+import com.android.identity.wallet.support.CurrentSecureArea
+import com.android.identity.wallet.support.SecureAreaSupport
+import com.android.identity.wallet.support.SecureAreaSupportState
+import com.android.identity.wallet.support.toSecureAreaState
+import com.android.identity.wallet.util.ProvisioningUtil
 
 @Composable
 fun AddSelfSignedDocumentScreen(
     viewModel: AddSelfSignedViewModel,
     onNext: () -> Unit
 ) {
-    val context = LocalContext.current
     val screenState by viewModel.screenState.collectAsState()
-    LaunchedEffect(Unit) {
-        viewModel.loadConfiguration(context)
-    }
 
     AddSelfSignedDocumentScreenContent(
         modifier = Modifier.fillMaxSize(),
@@ -88,15 +70,7 @@ fun AddSelfSignedDocumentScreen(
         onCardArtSelected = viewModel::updateCardArt,
         onDocumentNameChanged = viewModel::updateDocumentName,
         onKeystoreImplementationChanged = viewModel::updateKeystoreImplementation,
-        onUserAuthenticationChanged = viewModel::updateUserAuthentication,
-        onAuthTimeoutChanged = viewModel::updateUserAuthenticationTimeoutSeconds,
-        onLskfAuthChanged = viewModel::updateLskfUnlocking,
-        onBiometricAuthChanged = viewModel::updateBiometricUnlocking,
-        onMdocAuthOptionChange = viewModel::updateMdocAuthOption,
-        onAndroidAuthKeyCurveChanged = viewModel::updateAndroidAuthKeyCurve,
-        onBouncyCastleAuthKeyCurveChanged = viewModel::updateBouncyCastleAuthKeyCurve,
-        onStrongBoxChanged = viewModel::updateStrongBox,
-        onPassphraseChanged = viewModel::updatePassphrase,
+        onSecureAreaSupportStateUpdated = viewModel::updateSecureAreaSupportState,
         onNumberOfMsoChanged = viewModel::updateNumberOfMso,
         onMaxUseOfMsoChanged = viewModel::updateMaxUseOfMso,
         onValidityInDaysChanged = viewModel::updateValidityInDays,
@@ -112,16 +86,8 @@ private fun AddSelfSignedDocumentScreenContent(
     onDocumentTypeChanged: (newType: DocumentType) -> Unit,
     onCardArtSelected: (newCardArt: DocumentColor) -> Unit,
     onDocumentNameChanged: (newValue: String) -> Unit,
-    onKeystoreImplementationChanged: (newImplementation: SecureAreaImplementationState) -> Unit,
-    onUserAuthenticationChanged: (isOn: Boolean) -> Unit,
-    onAuthTimeoutChanged: (newValue: Int) -> Unit,
-    onLskfAuthChanged: (newValue: Boolean) -> Unit,
-    onStrongBoxChanged: (newValue: Boolean) -> Unit,
-    onBiometricAuthChanged: (newValue: Boolean) -> Unit,
-    onMdocAuthOptionChange: (newValue: MdocAuthStateOption) -> Unit,
-    onAndroidAuthKeyCurveChanged: (newValue: AndroidAuthKeyCurveOption) -> Unit,
-    onBouncyCastleAuthKeyCurveChanged: (newValue: BouncyCastleAuthKeyCurveOption) -> Unit,
-    onPassphraseChanged: (newValue: String) -> Unit,
+    onKeystoreImplementationChanged: (newImplementation: CurrentSecureArea) -> Unit,
+    onSecureAreaSupportStateUpdated: (newState: SecureAreaSupportState) -> Unit,
     onNumberOfMsoChanged: (newValue: Int) -> Unit,
     onMaxUseOfMsoChanged: (newValue: Int) -> Unit,
     onValidityInDaysChanged: (newValue: Int) -> Unit,
@@ -162,64 +128,13 @@ private fun AddSelfSignedDocumentScreenContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                currentImplementation = screenState.secureAreaImplementationState,
+                currentImplementation = screenState.currentSecureArea,
                 onKeystoreImplementationChanged = onKeystoreImplementationChanged
             )
-            if (screenState.isAndroidKeystoreSelected) {
-                AndroidSetupContainer(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    isOn = screenState.userAuthentication,
-                    timeoutSeconds = screenState.userAuthenticationTimeoutSeconds,
-                    lskfAuthTypeState = screenState.allowLSKFUnlocking,
-                    biometricAuthTypeState = screenState.allowBiometricUnlocking,
-                    useStrongBox = screenState.useStrongBox,
-                    onUserAuthenticationChanged = onUserAuthenticationChanged,
-                    onAuthTimeoutChanged = onAuthTimeoutChanged,
-                    onLskfAuthChanged = onLskfAuthChanged,
-                    onBiometricAuthChanged = onBiometricAuthChanged,
-                    onStrongBoxChanged = onStrongBoxChanged,
-                )
-                MdocAuthentication(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    state = screenState.androidMdocAuthState,
-                    onMdocAuthOptionChange = onMdocAuthOptionChange
-                )
-                AuthenticationKeyCurveAndroid(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    state = screenState.androidAuthKeyCurveState,
-                    mDocAuthState = screenState.androidMdocAuthState,
-                    onAndroidAuthKeyCurveChanged = onAndroidAuthKeyCurveChanged
-                )
-            } else {
-                BouncyCastleSetupContainer(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    state = screenState,
-                    onPassphraseChanged = onPassphraseChanged
-                )
-                MdocAuthentication(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    state = screenState.androidMdocAuthState,
-                    onMdocAuthOptionChange = onMdocAuthOptionChange
-                )
-                AuthenticationKeyCurveBouncyCastle(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    state = screenState.bouncyCastleAuthKeyCurveState,
-                    mDocAuthState = screenState.androidMdocAuthState,
-                    onBouncyCastleAuthKeyCurveChanged = onBouncyCastleAuthKeyCurveChanged
-                )
-            }
+            SecureAreaSupport.getInstance(
+                LocalContext.current,
+                screenState.currentSecureArea
+            ).SecureAreaAuthUi(onUiStateUpdated = onSecureAreaSupportStateUpdated)
             CounterInput(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -420,58 +335,10 @@ private fun DocumentNameInput(
 }
 
 @Composable
-private fun BouncyCastleSetupContainer(
-    modifier: Modifier = Modifier,
-    state: AddSelfSignedScreenState,
-    onPassphraseChanged: (newValue: String) -> Unit
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        BouncyCastlePassphraseInput(
-            value = state.passphrase,
-            onValueChanged = onPassphraseChanged
-        )
-    }
-}
-
-@Composable
-private fun BouncyCastlePassphraseInput(
-    modifier: Modifier = Modifier,
-    value: String,
-    onValueChanged: (newValue: String) -> Unit
-) {
-    OutlinedContainerHorizontal(modifier = modifier) {
-        Box(contentAlignment = Alignment.CenterStart) {
-            BasicTextField(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 10.dp),
-                textStyle = MaterialTheme.typography.labelMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurface,
-                ),
-                value = value,
-                onValueChange = onValueChanged,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface)
-            )
-            if (value.isEmpty()) {
-                Text(
-                    text = stringResource(id = R.string.keystore_bouncy_castle_passphrase_hint),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = .5f)
-                    ),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun KeystoreImplementationChooser(
     modifier: Modifier = Modifier,
-    currentImplementation: SecureAreaImplementationState,
-    onKeystoreImplementationChanged: (newImplementation: SecureAreaImplementationState) -> Unit
+    currentImplementation: CurrentSecureArea,
+    onKeystoreImplementationChanged: (newImplementation: CurrentSecureArea) -> Unit
 ) {
     LabeledUserInput(
         modifier = modifier,
@@ -485,7 +352,7 @@ private fun KeystoreImplementationChooser(
         ) {
             ValueLabel(
                 modifier = Modifier.weight(1f),
-                label = stringResource(id = keystoreNameFor(currentImplementation))
+                label = currentImplementation.displayName
             )
             DropDownIndicator()
         }
@@ -495,331 +362,18 @@ private fun KeystoreImplementationChooser(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            TextDropDownRow(
-                label = stringResource(id = keystoreNameFor(SecureAreaImplementationState.Android)),
-                onSelected = {
-                    onKeystoreImplementationChanged(SecureAreaImplementationState.Android)
-                    expanded = false
+            ProvisioningUtil.getInstance(LocalContext.current)
+                .secureAreaRepository.implementations.forEach { implementation ->
+                    TextDropDownRow(
+                        label = implementation.displayName,
+                        onSelected = {
+                            onKeystoreImplementationChanged(implementation.toSecureAreaState())
+                            expanded = false
+                        }
+                    )
                 }
-            )
-            TextDropDownRow(
-                label = stringResource(id = keystoreNameFor(SecureAreaImplementationState.BouncyCastle)),
-                onSelected = {
-                    onKeystoreImplementationChanged(SecureAreaImplementationState.BouncyCastle)
-                    expanded = false
-                }
-            )
         }
     }
-}
-
-@Composable
-private fun AndroidSetupContainer(
-    modifier: Modifier = Modifier,
-    isOn: Boolean,
-    timeoutSeconds: Int,
-    lskfAuthTypeState: AuthTypeState,
-    biometricAuthTypeState: AuthTypeState,
-    useStrongBox: AuthTypeState,
-    onUserAuthenticationChanged: (isOn: Boolean) -> Unit,
-    onAuthTimeoutChanged: (authTimeout: Int) -> Unit,
-    onLskfAuthChanged: (isOn: Boolean) -> Unit,
-    onBiometricAuthChanged: (isOn: Boolean) -> Unit,
-    onStrongBoxChanged: (isOn: Boolean) -> Unit
-) {
-    Column(modifier = modifier) {
-        OutlinedContainerVertical(modifier = Modifier.fillMaxWidth()) {
-            val labelOn = stringResource(id = R.string.user_authentication_on)
-            val labelOff = stringResource(id = R.string.user_authentication_off)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ValueLabel(
-                    modifier = Modifier.weight(1f),
-                    label = if (isOn) labelOn else labelOff,
-                )
-                Switch(
-                    modifier = Modifier.padding(start = 8.dp),
-                    checked = isOn,
-                    onCheckedChange = onUserAuthenticationChanged
-                )
-            }
-            AnimatedVisibility(
-                modifier = Modifier.fillMaxWidth(),
-                visible = isOn
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        ValueLabel(
-                            modifier = Modifier.weight(1f),
-                            label = stringResource(id = R.string.keystore_android_user_auth_timeout)
-                        )
-                        NumberChanger(
-                            number = timeoutSeconds,
-                            onNumberChanged = onAuthTimeoutChanged,
-                            counterTextStyle = MaterialTheme.typography.titleLarge
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val alpha = if (lskfAuthTypeState.canBeModified) 1f else .5f
-                        ValueLabel(
-                            modifier = Modifier
-                                .weight(1f)
-                                .alpha(alpha),
-                            label = stringResource(id = R.string.user_auth_type_allow_lskf)
-                        )
-                        Checkbox(
-                            checked = lskfAuthTypeState.isEnabled,
-                            onCheckedChange = onLskfAuthChanged,
-                            enabled = lskfAuthTypeState.canBeModified
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val alpha = if (biometricAuthTypeState.canBeModified) 1f else .5f
-                        ValueLabel(
-                            modifier = Modifier
-                                .weight(1f)
-                                .alpha(alpha),
-                            label = stringResource(id = R.string.user_auth_type_allow_biometric)
-                        )
-                        Checkbox(
-                            checked = biometricAuthTypeState.isEnabled,
-                            onCheckedChange = onBiometricAuthChanged,
-                            enabled = biometricAuthTypeState.canBeModified
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val alpha = if (useStrongBox.canBeModified) 1f else .5f
-                        ValueLabel(
-                            modifier = Modifier
-                                .weight(1f)
-                                .alpha(alpha),
-                            label = stringResource(id = R.string.user_auth_use_strong_box)
-                        )
-                        Checkbox(
-                            checked = useStrongBox.isEnabled,
-                            onCheckedChange = onStrongBoxChanged,
-                            enabled = useStrongBox.canBeModified
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-private fun MdocAuthentication(
-    modifier: Modifier = Modifier,
-    state: MdocAuthOptionState,
-    onMdocAuthOptionChange: (newValue: MdocAuthStateOption) -> Unit
-) {
-    LabeledUserInput(
-        modifier = modifier,
-        label = stringResource(id = R.string.mdoc_authentication_label)
-    ) {
-        var expanded by remember { mutableStateOf(false) }
-        val alpha = if (state.isEnabled) 1f else .5f
-        val clickModifier = if (state.isEnabled) {
-            Modifier.clickable { expanded = true }
-        } else {
-            Modifier
-        }
-        OutlinedContainerHorizontal(
-            modifier = Modifier
-                .fillMaxWidth()
-                .alpha(alpha)
-                .then(clickModifier)
-        ) {
-            ValueLabel(
-                modifier = Modifier.weight(1f),
-                label = mdocAuthOptionLabelFor(state.mDocAuthentication)
-            )
-            DropDownIndicator()
-        }
-        DropdownMenu(
-            modifier = Modifier.fillMaxWidth(0.8f),
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            TextDropDownRow(
-                label = stringResource(id = R.string.mdoc_auth_ecdsa),
-                onSelected = {
-                    onMdocAuthOptionChange(MdocAuthStateOption.ECDSA)
-                    expanded = false
-                }
-            )
-            TextDropDownRow(
-                label = stringResource(id = R.string.mdoc_auth_mac),
-                onSelected = {
-                    onMdocAuthOptionChange(MdocAuthStateOption.MAC)
-                    expanded = false
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun AuthenticationKeyCurveAndroid(
-    modifier: Modifier = Modifier,
-    state: AndroidAuthKeyCurveState,
-    mDocAuthState: MdocAuthOptionState,
-    onAndroidAuthKeyCurveChanged: (newValue: AndroidAuthKeyCurveOption) -> Unit
-) {
-    LabeledUserInput(
-        modifier = modifier,
-        label = stringResource(id = R.string.authentication_key_curve_label)
-    ) {
-        var keyCurveDropDownExpanded by remember { mutableStateOf(false) }
-        val clickModifier = if (state.isEnabled) {
-            Modifier.clickable { keyCurveDropDownExpanded = true }
-        } else {
-            Modifier
-        }
-        val alpha = if (state.isEnabled) 1f else .5f
-        OutlinedContainerHorizontal(
-            modifier = Modifier
-                .fillMaxWidth()
-                .alpha(alpha)
-                .then(clickModifier)
-        ) {
-            ValueLabel(
-                modifier = Modifier.weight(1f),
-                label = curveLabelFor(state.authCurve.toEcCurve())
-            )
-            DropDownIndicator()
-        }
-        DropdownMenu(
-            expanded = keyCurveDropDownExpanded,
-            onDismissRequest = { keyCurveDropDownExpanded = false }
-        ) {
-            val ecCurveOption = if (mDocAuthState.mDocAuthentication == MdocAuthStateOption.ECDSA) {
-                AndroidAuthKeyCurveOption.Ed25519
-            } else {
-                AndroidAuthKeyCurveOption.X25519
-            }
-            TextDropDownRow(
-                label = curveLabelFor(curveOption = AndroidAuthKeyCurveOption.P_256.toEcCurve()),
-                onSelected = {
-                    onAndroidAuthKeyCurveChanged(AndroidAuthKeyCurveOption.P_256)
-                    keyCurveDropDownExpanded = false
-                }
-            )
-            TextDropDownRow(
-                label = curveLabelFor(curveOption = ecCurveOption.toEcCurve()),
-                onSelected = {
-                    onAndroidAuthKeyCurveChanged(ecCurveOption)
-                    keyCurveDropDownExpanded = false
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun AuthenticationKeyCurveBouncyCastle(
-    modifier: Modifier = Modifier,
-    state: BouncyCastleAuthKeyCurveState,
-    mDocAuthState: MdocAuthOptionState,
-    onBouncyCastleAuthKeyCurveChanged: (newValue: BouncyCastleAuthKeyCurveOption) -> Unit
-) {
-    LabeledUserInput(
-        modifier = modifier,
-        label = stringResource(id = R.string.authentication_key_curve_label)
-    ) {
-        var keyCurveDropDownExpanded by remember { mutableStateOf(false) }
-        val clickModifier = if (state.isEnabled) {
-            Modifier.clickable { keyCurveDropDownExpanded = true }
-        } else {
-            Modifier
-        }
-        val alpha = if (state.isEnabled) 1f else .5f
-        OutlinedContainerHorizontal(
-            modifier = Modifier
-                .fillMaxWidth()
-                .alpha(alpha)
-                .then(clickModifier)
-        ) {
-            ValueLabel(
-                modifier = Modifier.weight(1f),
-                label = curveLabelFor(state.authCurve.toEcCurve())
-            )
-            DropDownIndicator()
-        }
-        val entries = BouncyCastleAuthKeyCurveOption.values().toMutableList()
-        if (mDocAuthState.mDocAuthentication == MdocAuthStateOption.ECDSA) {
-            entries.remove(BouncyCastleAuthKeyCurveOption.X448)
-            entries.remove(BouncyCastleAuthKeyCurveOption.X25519)
-        } else {
-            entries.remove(BouncyCastleAuthKeyCurveOption.Ed448)
-            entries.remove(BouncyCastleAuthKeyCurveOption.Ed25519)
-        }
-        DropdownMenu(
-            expanded = keyCurveDropDownExpanded,
-            onDismissRequest = { keyCurveDropDownExpanded = false }
-        ) {
-            for (entry in entries) {
-                TextDropDownRow(
-                    label = curveLabelFor(curveOption = entry.toEcCurve()),
-                    onSelected = {
-                        onBouncyCastleAuthKeyCurveChanged(entry)
-                        keyCurveDropDownExpanded = false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CounterInput(
-    modifier: Modifier = Modifier,
-    label: String,
-    value: Int,
-    onValueChange: (newValue: Int) -> Unit
-) {
-    Column(modifier = modifier) {
-        OutlinedContainerHorizontal(modifier = Modifier.fillMaxWidth()) {
-            ValueLabel(
-                modifier = Modifier.weight(1f),
-                label = label
-            )
-            NumberChanger(number = value, onNumberChanged = onValueChange)
-        }
-    }
-}
-
-@Composable
-private fun TextDropDownRow(
-    modifier: Modifier = Modifier,
-    label: String,
-    onSelected: () -> Unit
-) {
-    DropdownMenuItem(
-        modifier = modifier,
-        text = {
-            ValueLabel(
-                modifier = Modifier.fillMaxWidth(),
-                label = label
-            )
-        },
-        onClick = onSelected
-    )
 }
 
 @Composable
@@ -849,48 +403,6 @@ private fun CardArtDropDownRow(
 }
 
 @Composable
-private fun LabeledUserInput(
-    modifier: Modifier = Modifier,
-    label: String,
-    content: @Composable () -> Unit
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            ValueLabel(label = label)
-        }
-        content()
-    }
-}
-
-@Composable
-fun OutlinedContainerHorizontal(
-    modifier: Modifier = Modifier,
-    outlineBorderWidth: Dp = 2.dp,
-    outlineBrush: Brush? = null,
-    content: @Composable RowScope.() -> Unit
-) {
-    val brush = outlineBrush ?: SolidColor(MaterialTheme.colorScheme.outline)
-    Row(
-        modifier = modifier
-            .heightIn(48.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .border(outlineBorderWidth, brush, RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.inverseOnSurface),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
 fun OutlinedContainerVertical(
     modifier: Modifier = Modifier,
     outlineBorderWidth: Dp = 2.dp,
@@ -915,82 +427,6 @@ fun OutlinedContainerVertical(
     }
 }
 
-@Composable
-private fun ValueLabel(
-    modifier: Modifier = Modifier,
-    label: String
-) {
-    Text(
-        modifier = modifier,
-        text = label,
-        color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.labelMedium
-    )
-}
-
-@Composable
-private fun DropDownIndicator(
-    modifier: Modifier = Modifier
-) {
-    Icon(
-        modifier = modifier,
-        imageVector = Icons.Default.ArrowDropDown,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurface
-    )
-}
-
-@OptIn(ExperimentalAnimationApi::class)
-@Composable
-private fun NumberChanger(
-    modifier: Modifier = Modifier,
-    number: Int,
-    onNumberChanged: (newValue: Int) -> Unit,
-    counterTextStyle: TextStyle = MaterialTheme.typography.bodyLarge
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = { onNumberChanged(number - 1) }) {
-            Icon(imageVector = Icons.Default.Remove, contentDescription = null)
-        }
-        AnimatedContent(
-            targetState = number,
-            label = "",
-            transitionSpec = {
-                if (targetState > initialState) {
-                    slideInVertically { -it } with slideOutVertically { it }
-                } else {
-                    slideInVertically { it } with slideOutVertically { -it }
-                }
-            }
-        ) { count ->
-            Text(
-                text = "$count",
-                textAlign = TextAlign.Center,
-                style = counterTextStyle
-            )
-        }
-        IconButton(onClick = { onNumberChanged(number + 1) }) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = null)
-        }
-    }
-}
-
-@Composable
-private fun mdocAuthOptionLabelFor(
-    state: MdocAuthStateOption
-): String {
-    return when (state) {
-        MdocAuthStateOption.ECDSA ->
-            stringResource(id = R.string.mdoc_auth_ecdsa)
-
-        MdocAuthStateOption.MAC ->
-            stringResource(id = R.string.mdoc_auth_mac)
-    }
-}
-
 @StringRes
 private fun documentNameFor(documentType: DocumentType): Int {
     return when (documentType) {
@@ -1008,104 +444,5 @@ private fun colorNameFor(cardArt: DocumentColor): Int {
         is DocumentColor.Yellow -> R.string.document_color_yellow
         is DocumentColor.Blue -> R.string.document_color_blue
         is DocumentColor.Red -> R.string.document_color_red
-    }
-}
-
-@Composable
-@PreviewLightDark
-private fun PreviewAddSelfSignedDocumentScreenAndroidKeystore() {
-    HolderAppTheme {
-        AddSelfSignedDocumentScreenContent(
-            modifier = Modifier.fillMaxSize(),
-            screenState = AddSelfSignedScreenState(),
-            onDocumentTypeChanged = {},
-            onCardArtSelected = {},
-            onDocumentNameChanged = {},
-            onKeystoreImplementationChanged = {},
-            onUserAuthenticationChanged = {},
-            onAuthTimeoutChanged = {},
-            onLskfAuthChanged = {},
-            onBiometricAuthChanged = {},
-            onStrongBoxChanged = {},
-            onMdocAuthOptionChange = {},
-            onAndroidAuthKeyCurveChanged = {},
-            onBouncyCastleAuthKeyCurveChanged = {},
-            onPassphraseChanged = {},
-            onNumberOfMsoChanged = {},
-            onMaxUseOfMsoChanged = {},
-            onValidityInDaysChanged = {},
-            onMinValidityInDaysChanged = {},
-            onNext = {}
-        )
-    }
-}
-
-@Composable
-@PreviewLightDark
-private fun PreviewAddSelfSignedDocumentScreenAndroidKeystoreAuthOn() {
-    HolderAppTheme {
-        AddSelfSignedDocumentScreenContent(
-            modifier = Modifier.fillMaxSize(),
-            screenState = AddSelfSignedScreenState(
-                userAuthentication = true,
-                allowLSKFUnlocking = AuthTypeState(
-                    isEnabled = true,
-                    canBeModified = true
-                ),
-                allowBiometricUnlocking = AuthTypeState(
-                    isEnabled = true,
-                    canBeModified = false
-                ),
-            ),
-            onDocumentTypeChanged = {},
-            onCardArtSelected = {},
-            onDocumentNameChanged = {},
-            onKeystoreImplementationChanged = {},
-            onUserAuthenticationChanged = {},
-            onAuthTimeoutChanged = {},
-            onLskfAuthChanged = {},
-            onBiometricAuthChanged = {},
-            onStrongBoxChanged = {},
-            onMdocAuthOptionChange = {},
-            onAndroidAuthKeyCurveChanged = {},
-            onBouncyCastleAuthKeyCurveChanged = {},
-            onPassphraseChanged = {},
-            onNumberOfMsoChanged = {},
-            onMaxUseOfMsoChanged = {},
-            onValidityInDaysChanged = {},
-            onMinValidityInDaysChanged = {},
-            onNext = {}
-        )
-    }
-}
-
-@Composable
-@PreviewLightDark
-private fun PreviewAddSelfSignedDocumentScreenBouncyCastleKeystore() {
-    HolderAppTheme {
-        AddSelfSignedDocumentScreenContent(
-            modifier = Modifier.fillMaxSize(),
-            screenState = AddSelfSignedScreenState(
-                secureAreaImplementationState = SecureAreaImplementationState.BouncyCastle
-            ),
-            onDocumentTypeChanged = {},
-            onCardArtSelected = {},
-            onDocumentNameChanged = {},
-            onKeystoreImplementationChanged = {},
-            onUserAuthenticationChanged = {},
-            onAuthTimeoutChanged = {},
-            onLskfAuthChanged = {},
-            onBiometricAuthChanged = {},
-            onStrongBoxChanged = {},
-            onMdocAuthOptionChange = {},
-            onAndroidAuthKeyCurveChanged = {},
-            onBouncyCastleAuthKeyCurveChanged = {},
-            onPassphraseChanged = {},
-            onNumberOfMsoChanged = {},
-            onMaxUseOfMsoChanged = {},
-            onValidityInDaysChanged = {},
-            onMinValidityInDaysChanged = {},
-            onNext = {}
-        )
     }
 }

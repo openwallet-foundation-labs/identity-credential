@@ -61,7 +61,6 @@ import com.android.identity.wallet.R
 import com.android.identity.wallet.composables.LoadingIndicator
 import com.android.identity.wallet.composables.ShowToast
 import com.android.identity.wallet.composables.gradientFor
-import com.android.identity.wallet.composables.keystoreNameFor
 import com.android.identity.wallet.theme.HolderAppTheme
 
 @Composable
@@ -152,7 +151,7 @@ private fun DocumentInfoScreenContent(
                                 )
                                 LabeledValue(
                                     label = stringResource(id = R.string.txt_keystore_implementation),
-                                    value = stringResource(id = keystoreNameFor(screenState.secureAreaImplementationState))
+                                    value = screenState.currentSecureArea.displayName
                                 )
                             }
                         }

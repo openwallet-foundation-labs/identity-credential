@@ -94,7 +94,7 @@
     compose = ["compose-ui", "compose-foundation", "compose-material", "compose-ui-tooling", "compose-preview", "compose-icons"]
     androidx-crypto = ["androidx-biometrics", "androidx-zxing-core"]
     bouncy-castle = ["bouncy-castle-bcprov", "bouncy-castle-bcpkix"]
-    ui-testing = ["androidx-test-ext-junit", "androidx-test-espresso"]
+    ui-testing = ["androidx-test-ext-junit", "androidx-test-espresso", "truth"]
     unit-testing = ["jupiter", "kotlinx-coroutine-test", "truth"]
 
 [plugins]

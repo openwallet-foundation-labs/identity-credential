@@ -1,10 +1,17 @@
 package com.android.identity.wallet
 
 import android.app.Application
+import android.content.Context
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
+import com.android.identity.credential.CredentialStore
+import com.android.identity.securearea.SecureAreaRepository
+import com.android.identity.securearea.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity.wallet.util.PeriodicKeysRefreshWorkRequest
 import com.android.identity.wallet.util.PreferencesHelper
+import com.android.identity.wallet.util.ProvisioningUtil
 import com.google.android.material.color.DynamicColors
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
@@ -21,5 +28,22 @@ class HolderApp: Application() {
         DynamicColors.applyToActivitiesIfAvailable(this)
         PreferencesHelper.initialize(this)
         PeriodicKeysRefreshWorkRequest(this).schedulePeriodicKeysRefreshing()
+    }
+
+    companion object {
+        fun createCredentialStore(
+            context: Context,
+            keystoreEngineRepository: SecureAreaRepository
+        ): CredentialStore {
+            val storageDir = PreferencesHelper.getKeystoreBackedStorageLocation(context)
+            val storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+
+            val androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine)
+            val softwareSecureArea = SoftwareSecureArea(storageEngine)
+
+            keystoreEngineRepository.addImplementation(androidKeystoreSecureArea)
+            keystoreEngineRepository.addImplementation(softwareSecureArea)
+            return CredentialStore(storageEngine, keystoreEngineRepository)
+        }
     }
 }

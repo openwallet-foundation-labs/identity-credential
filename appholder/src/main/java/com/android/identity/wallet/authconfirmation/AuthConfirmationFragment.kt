@@ -2,8 +2,6 @@ package com.android.identity.wallet.authconfirmation
 
 import android.content.DialogInterface
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,31 +12,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.securearea.SoftwareSecureArea
-import com.android.identity.securearea.SecureArea.ALGORITHM_ES256
 import com.android.identity.wallet.R
-import com.android.identity.wallet.authprompt.UserAuthPromptBuilder
+import com.android.identity.wallet.support.SecureAreaSupport
 import com.android.identity.wallet.theme.HolderAppTheme
 import com.android.identity.wallet.transfer.AddDocumentToResponseResult
 import com.android.identity.wallet.util.DocumentData
-import com.android.identity.wallet.util.log
 import com.android.identity.wallet.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import kotlinx.coroutines.launch
 
 class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private val viewModel: TransferDocumentViewModel by activityViewModels()
-    private val passphraseViewModel: PassphrasePromptViewModel by activityViewModels()
     private val arguments by navArgs<AuthConfirmationFragmentArgs>()
     private var isSendingInProgress = mutableStateOf(false)
-    private var androidKeyUnlockData: AndroidKeystoreSecureArea.KeyUnlockData? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -64,19 +52,6 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                             cancelAuthorization()
                         }
                     )
-                }
-            }
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
-                passphraseViewModel.authorizationState.collect { value ->
-                    if (value is PassphraseAuthResult.Success) {
-                        onPassphraseProvided(value.userPassphrase)
-                        passphraseViewModel.reset()
-                    }
                 }
             }
         }
@@ -120,32 +95,6 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         onSendResponseResult(result)
     }
 
-    private fun requestUserAuth(
-        allowLskfUnlock: Boolean,
-        allowBiometricUnlock: Boolean,
-        forceLskf: Boolean = !allowBiometricUnlock
-    ) {
-        val userAuthRequest = UserAuthPromptBuilder.requestUserAuth(this)
-            .withTitle(getString(R.string.bio_auth_title))
-            .withSuccessCallback { authenticationSucceeded() }
-            .withCancelledCallback {
-                if (allowLskfUnlock) {
-                    retryForcingPinUse(allowLskfUnlock, allowBiometricUnlock)
-                } else {
-                    cancelAuthorization()
-                }
-            }
-            .withFailureCallback { authenticationFailed() }
-            .setForceLskf(forceLskf)
-        if (allowLskfUnlock) {
-            userAuthRequest.withNegativeButton(getString(R.string.bio_auth_use_pin))
-        } else {
-            userAuthRequest.withNegativeButton("Cancel")
-        }
-        val cryptoObject = androidKeyUnlockData?.getCryptoObjectForSigning(ALGORITHM_ES256)
-        userAuthRequest.build().authenticate(cryptoObject)
-    }
-
     private fun getSubtitle(): String {
         val readerCommonName = arguments.readerCommonName
         val readerIsTrusted = arguments.readerIsTrusted
@@ -160,35 +109,29 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
         }
     }
 
-    private fun onPassphraseProvided(passphrase: String) {
-        val unlockData = SoftwareSecureArea.KeyUnlockData(passphrase)
-        val result = viewModel.sendResponseForSelection(unlockData)
-        onSendResponseResult(result)
-    }
-
-    private fun authenticationSucceeded() {
-        try {
-            val result = viewModel.sendResponseForSelection(keyUnlockData = androidKeyUnlockData)
-            onSendResponseResult(result)
-        } catch (e: Exception) {
-            val message = "Send response error: ${e.message}"
-            log(message, e)
-            toast(message)
-        }
-    }
-
     private fun onSendResponseResult(result: AddDocumentToResponseResult) {
         when (result) {
-            is AddDocumentToResponseResult.UserAuthRequired -> {
-                androidKeyUnlockData = AndroidKeystoreSecureArea.KeyUnlockData(result.keyAlias)
-                requestUserAuth(
-                    result.allowLSKFUnlocking,
-                    result.allowBiometricUnlocking
+            is AddDocumentToResponseResult.DocumentLocked -> {
+                val secureAreaSupport = SecureAreaSupport.getInstance(
+                    requireContext(),
+                    result.credential
                 )
-            }
-
-            is AddDocumentToResponseResult.PassphraseRequired -> {
-                requestPassphrase(result.attemptedWithIncorrectPassword)
+                with(secureAreaSupport) {
+                    unlockKey(
+                        credential = result.credential,
+                        onKeyUnlocked = { keyUnlockData ->
+                            val responseResult = viewModel.sendResponseForSelection(keyUnlockData)
+                            onSendResponseResult(responseResult)
+                        },
+                        onUnlockFailure = { wasCancelled ->
+                            if (wasCancelled) {
+                                cancelAuthorization()
+                            } else {
+                                viewModel.closeConnection()
+                            }
+                        }
+                    )
+                }
             }
 
             is AddDocumentToResponseResult.DocumentAdded -> {
@@ -198,25 +141,6 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                 findNavController().navigateUp()
             }
         }
-    }
-
-    private fun retryForcingPinUse(allowLsfk: Boolean, allowBiometric: Boolean) {
-        val runnable = { requestUserAuth(allowLsfk, allowBiometric, true) }
-        // Without this delay, the prompt won't reshow
-        Handler(Looper.getMainLooper()).postDelayed(runnable, 100)
-    }
-
-    private fun authenticationFailed() {
-        viewModel.closeConnection()
-    }
-
-    private fun requestPassphrase(attemptedWithIncorrectPassword: Boolean) {
-        val destination = AuthConfirmationFragmentDirections.openPassphrasePrompt(
-            showIncorrectPassword = attemptedWithIncorrectPassword
-        )
-        val runnable = { findNavController().navigate(destination) }
-        // The system needs a little time to get back to this screen
-        Handler(Looper.getMainLooper()).postDelayed(runnable, 500)
     }
 
     private fun toast(message: String, duration: Int = Toast.LENGTH_SHORT) {

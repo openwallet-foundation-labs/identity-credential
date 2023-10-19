@@ -1,11 +1,12 @@
 package com.android.identity.wallet.documentinfo
 
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.Stable
 import com.android.identity.securearea.SecureArea.EcCurve
 import com.android.identity.securearea.SecureArea.KeyPurpose
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.document.SecureAreaImplementationState
+import com.android.identity.wallet.support.CurrentSecureArea
+import com.android.identity.wallet.support.toSecureAreaState
+import com.android.identity.wallet.util.ProvisioningUtil
 
 @Immutable
 data class DocumentInfoScreenState(
@@ -16,7 +17,7 @@ data class DocumentInfoScreenState(
     val provisioningDate: String = "",
     val lastTimeUsedDate: String = "",
     val isSelfSigned: Boolean = false,
-    val secureAreaImplementationState: SecureAreaImplementationState = SecureAreaImplementationState.Android,
+    val currentSecureArea: CurrentSecureArea = ProvisioningUtil.defaultSecureArea.toSecureAreaState(),
     val authKeys: List<KeyInformation> = emptyList(),
     val isDeletingPromptShown: Boolean = false,
     val isDeleted: Boolean = false

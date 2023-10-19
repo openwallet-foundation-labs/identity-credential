@@ -2,9 +2,9 @@ package com.android.identity.wallet.selfsigned
 
 import android.graphics.Bitmap
 import android.os.Parcelable
-import com.android.identity.wallet.document.SecureAreaImplementationState
-import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState.MdocAuthStateOption
+import com.android.identity.wallet.support.CurrentSecureArea
 import com.android.identity.wallet.util.Field
+import com.android.identity.wallet.support.SecureAreaSupportState
 import kotlinx.parcelize.Parcelize
 
 data class SelfSignedDocumentData(
@@ -37,17 +37,10 @@ data class ProvisionInfo(
     val docType: String,
     var docName: String,
     var docColor: Int,
-    val secureAreaImplementationStateType: SecureAreaImplementationState,
-    val userAuthentication: Boolean,
-    val userAuthenticationTimeoutSeconds: Int,
-    val allowLskfUnlocking: Boolean,
-    val allowBiometricUnlocking: Boolean,
-    val useStrongBox: Boolean,
-    val mDocAuthenticationOption: MdocAuthStateOption,
-    val authKeyCurve: Int,
+    val currentSecureArea: CurrentSecureArea,
+    val secureAreaSupportState: SecureAreaSupportState,
     val validityInDays: Int,
     val minValidityInDays: Int,
-    val passphrase: String?,
     val numberMso: Int,
     val maxUseMso: Int
 ) : Parcelable
