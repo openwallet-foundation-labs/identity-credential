@@ -26,6 +26,7 @@
     sonar-gradle-plugin = "3.4.0.2513"
     jacoco = "0.47.0"
     navigation = "2.6.0"
+    work-version = "2.8.1"
     navigation_plugin = "2.5.3"
     code_scanner = "2.1.0"
     junit-android-test = "1.1.5"
@@ -41,6 +42,7 @@
     androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragment" }
     androidx-legacy-v4 = { module = "androidx.legacy:legacy-support-v4", version.ref = "legacy-support-v4" }
     androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "androidx-preference" }
+    androidx-work = { module = "androidx.work:work-runtime-ktx", version.ref = "work-version"}
 
     androidx-lifecycle-extensions = { module = "androidx.lifecycle:lifecycle-extensions", version.ref = "lifecycle" }
     androidx-lifecycle-livedata = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "lifecycle-ktx" }
@@ -83,7 +85,7 @@
     truth = { module = "com.google.truth:truth", version.ref = "truth" }
 
 [bundles]
-    androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx"]
+    androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]
     androidx-lifecycle = ["androidx-lifecycle-extensions", "androidx-lifecycle-livedata", "androidx-lifecycle-viewmodel"]
     androidx-navigation = ["androidx-navigation-ktx", "androidx-navigation-ui-ktx"]
     compose = ["compose-ui", "compose-foundation", "compose-material", "compose-ui-tooling", "compose-preview", "compose-icons"]
