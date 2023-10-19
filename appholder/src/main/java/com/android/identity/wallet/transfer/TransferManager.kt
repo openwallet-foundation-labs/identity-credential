@@ -212,7 +212,7 @@ class TransferManager private constructor(private val context: Context) {
                     authKey.secureArea,
                     authKey.alias,
                     keyUnlockData,
-                    authKey.attestation.first().publicKey
+                    communication.deviceRetrievalHelper!!.eReaderKey
                 )
             }
             val data = generator.generate()

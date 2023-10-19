@@ -13,9 +13,12 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.NavigationUI.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
+import androidx.preference.PreferenceManager
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl
+import com.android.identity.util.Logger
 import com.android.identity.wallet.databinding.ActivityMainBinding
+import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
 import com.android.identity.wallet.util.logInfo
@@ -46,8 +49,7 @@ class MainActivity : AppCompatActivity() {
         setupDrawerLayout()
         setupNfc()
         onNewIntent(intent)
-
-        Security.addProvider(BouncyCastleProvider())
+        Logger.setDebugEnabled(PreferencesHelper.isDebugLoggingEnabled())
     }
 
     private fun setupNfc() {

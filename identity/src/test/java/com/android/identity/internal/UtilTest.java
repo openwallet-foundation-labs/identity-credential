@@ -25,11 +25,13 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.identity.TestUtilities;
 
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Timestamp;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -39,6 +41,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.cert.X509Certificate;
@@ -997,5 +1000,69 @@ public class UtilTest {
         assertEquals(0, Util.mdocVersionCompare("1.0", "1.0"));
         assertTrue(Util.mdocVersionCompare("1.0", "1.1") < 0);
         assertTrue(Util.mdocVersionCompare("1.1", "1.0") > 0);
+    }
+
+    // Checks that our COSE_Key encode and decode functions work as expected
+    // for an EC key of a given curve.
+    static private void testCoseKey(@SecureArea.EcCurve int curve) {
+        KeyPair kp = Util.createEphemeralKeyPair(curve);
+        DataItem coseKey = Util.cborBuildCoseKey(kp.getPublic());
+        PublicKey decoded = Util.coseKeyDecode(coseKey);
+        Assert.assertEquals(kp.getPublic(), decoded);
+    }
+
+    @Test
+    public void testCoseKeyP256() {
+        testCoseKey(SecureArea.EC_CURVE_P256);
+    }
+
+    @Test
+    public void testCoseKeyP384() {
+        testCoseKey(SecureArea.EC_CURVE_P384);
+    }
+
+    @Test
+    public void testCoseKeyP521() {
+        testCoseKey(SecureArea.EC_CURVE_P521);
+    }
+
+    @Test
+    public void testCoseKeyBrainpool256() {
+        testCoseKey(SecureArea.EC_CURVE_BRAINPOOLP256R1);
+    }
+
+    @Test
+    public void testCoseKeyBrainpool320() {
+        testCoseKey(SecureArea.EC_CURVE_BRAINPOOLP320R1);
+    }
+
+    @Test
+    public void testCoseKeyBrainpool384() {
+        testCoseKey(SecureArea.EC_CURVE_BRAINPOOLP384R1);
+    }
+
+    @Test
+    public void testCoseKeyBrainpool521() {
+        testCoseKey(SecureArea.EC_CURVE_BRAINPOOLP512R1);
+    }
+
+    @Test
+    public void testCoseKeyX25519() {
+        testCoseKey(SecureArea.EC_CURVE_X25519);
+    }
+
+    @Test
+    public void testCoseKeyX448() {
+        testCoseKey(SecureArea.EC_CURVE_X448);
+    }
+
+    @Test
+    public void testCoseKeyEd25519() {
+        testCoseKey(SecureArea.EC_CURVE_ED25519);
+    }
+
+    @Test
+    public void testCoseKeyEd448() {
+        testCoseKey(SecureArea.EC_CURVE_ED448);
     }
 }

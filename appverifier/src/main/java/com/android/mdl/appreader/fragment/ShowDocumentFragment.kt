@@ -17,6 +17,8 @@ import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.identity.mdoc.response.DeviceResponseParser
+import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.SecureArea.EcCurve
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
 import com.android.mdl.appreader.issuerauth.SimpleIssuerTrustStore
@@ -155,6 +157,23 @@ class ShowDocumentFragment : Fragment() {
         binding.btNewRequest.visibility = View.GONE
     }
 
+    private fun curveNameFor(ecCurve: Int): String {
+        return when (ecCurve) {
+            SecureArea.EC_CURVE_P256 -> "P-256"
+            SecureArea.EC_CURVE_P384 -> "P-384"
+            SecureArea.EC_CURVE_P521 -> "P-521"
+            SecureArea.EC_CURVE_BRAINPOOLP256R1 -> "BrainpoolP256R1"
+            SecureArea.EC_CURVE_BRAINPOOLP320R1 -> "BrainpoolP320R1"
+            SecureArea.EC_CURVE_BRAINPOOLP384R1 -> "BrainpoolP384R1"
+            SecureArea.EC_CURVE_BRAINPOOLP512R1 -> "BrainpoolP512R1"
+            SecureArea.EC_CURVE_ED25519 -> "Ed25519"
+            SecureArea.EC_CURVE_X25519 -> "X25519"
+            SecureArea.EC_CURVE_ED448 -> "Ed448"
+            SecureArea.EC_CURVE_X448 -> "X448"
+            else -> throw IllegalArgumentException("Unknown curve $ecCurve")
+        }
+    }
+
     private fun formatTextResult(documents: Collection<DeviceResponseParser.Document>): String {
         // Create the trustManager to validate the DS Certificate against the list of known
         // certificates in the app
@@ -177,6 +196,7 @@ class ShowDocumentFragment : Fragment() {
 
         sb.append("Number of documents returned: <b>${documents.size}</b><br>")
         sb.append("Address: <b>" + transferManager.mdocConnectionMethod + "</b><br>")
+        sb.append("Session encryption curve: <b>" + curveNameFor(transferManager.getMdocSessionEncryptionCurve()) + "</b><br>")
         sb.append("<br>")
         for (doc in documents) {
             // Get primary color from theme to use in the HTML formatted document.

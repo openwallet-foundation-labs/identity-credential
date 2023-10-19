@@ -6,6 +6,7 @@ import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureArea.EcCurve
+import com.android.identity.util.Logger
 import java.io.File
 
 object PreferencesHelper {
@@ -103,6 +104,7 @@ object PreferencesHelper {
 
     fun setDebugLoggingEnabled(enabled: Boolean) {
         sharedPreferences.edit { putBoolean(DEBUG_LOG, enabled) }
+        Logger.setDebugEnabled(enabled)
     }
 
     @EcCurve

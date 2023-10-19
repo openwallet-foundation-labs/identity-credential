@@ -14,7 +14,7 @@ class SettingsViewModel : ViewModel() {
     fun loadSettings() {
         val settingsState = SettingsScreenState(
             autoCloseEnabled = PreferencesHelper.isConnectionAutoCloseEnabled(),
-            ephemeralKeyCurveOption = SettingsScreenState.EphemeralKeyCurveOption.fromEcCurve(
+            sessionEncryptionCurveOption = SettingsScreenState.SessionEncryptionCurveOption.fromEcCurve(
                 PreferencesHelper.getEphemeralKeyCurveOption()
             ),
             useStaticHandover = PreferencesHelper.shouldUseStaticHandover(),
@@ -35,10 +35,10 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun onEphemeralKeyCurveChanged(
-        ephemeralKeyCurveOption: SettingsScreenState.EphemeralKeyCurveOption
+        sessionEncryptionCurveOption: SettingsScreenState.SessionEncryptionCurveOption
     ) {
-        PreferencesHelper.setEphemeralKeyCurveOption(ephemeralKeyCurveOption.toEcCurve())
-        mutableSettingsState.update { it.copy(ephemeralKeyCurveOption = ephemeralKeyCurveOption) }
+        PreferencesHelper.setEphemeralKeyCurveOption(sessionEncryptionCurveOption.toEcCurve())
+        mutableSettingsState.update { it.copy(sessionEncryptionCurveOption = sessionEncryptionCurveOption) }
     }
 
     fun onUseStaticHandoverChanged(newValue: Boolean) {

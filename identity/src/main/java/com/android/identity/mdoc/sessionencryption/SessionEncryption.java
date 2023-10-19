@@ -23,6 +23,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.identity.internal.Util;
+import com.android.identity.securearea.SecureArea;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.ByteArrayInputStream;
 import java.lang.annotation.Retention;
@@ -110,7 +113,18 @@ public final class SessionEncryption {
 
         SecretKeySpec deviceSK, readerSK;
         try {
-            KeyAgreement ka = KeyAgreement.getInstance("ECDH");
+            KeyAgreement ka;
+            switch (Util.getCurve(remotePublicKey)) {
+                case SecureArea.EC_CURVE_X25519:
+                    ka = KeyAgreement.getInstance("X25519", new BouncyCastleProvider());
+                    break;
+                case SecureArea.EC_CURVE_X448:
+                    ka = KeyAgreement.getInstance("X448", new BouncyCastleProvider());
+                    break;
+                default:
+                    ka = KeyAgreement.getInstance("ECDH", new BouncyCastleProvider());
+                    break;
+            }
             ka.init(mESelfKeyPrivate);
             ka.doPhase(remotePublicKey, true);
             byte[] sharedSecret = ka.generateSecret();

@@ -29,7 +29,7 @@ class SettingsFragment : Fragment() {
                         modifier = Modifier.fillMaxSize(),
                         screenState = state,
                         onAutoCloseChanged = settingsViewModel::onConnectionAutoCloseChanged,
-                        onEphemeralKeyCurveChanged = settingsViewModel::onEphemeralKeyCurveChanged,
+                        onSessionEncryptionCurveChanged = settingsViewModel::onEphemeralKeyCurveChanged,
                         onUseStaticHandoverChanged = settingsViewModel::onUseStaticHandoverChanged,
                         onUseL2CAPChanged = settingsViewModel::onL2CAPChanged,
                         onBLEDataRetrievalModeChanged = settingsViewModel::onBleDataRetrievalChanged,

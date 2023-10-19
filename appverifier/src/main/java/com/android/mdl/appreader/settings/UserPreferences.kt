@@ -2,6 +2,7 @@ package com.android.mdl.appreader.settings
 
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.android.identity.util.Logger
 
 class UserPreferences(
     private val preferences: SharedPreferences
@@ -77,6 +78,7 @@ class UserPreferences(
 
     fun setDebugLoggingEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(LOG_ENABLED, enabled) }
+        Logger.setDebugEnabled(enabled)
     }
 
     fun getReaderAuthentication(): Int {

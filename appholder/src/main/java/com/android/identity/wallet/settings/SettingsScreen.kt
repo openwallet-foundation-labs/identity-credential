@@ -36,7 +36,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     screenState: SettingsScreenState,
     onAutoCloseChanged: (Boolean) -> Unit,
-    onEphemeralKeyCurveChanged: (newValue: SettingsScreenState.EphemeralKeyCurveOption) -> Unit,
+    onSessionEncryptionCurveChanged: (newValue: SettingsScreenState.SessionEncryptionCurveOption) -> Unit,
     onUseStaticHandoverChanged: (Boolean) -> Unit,
     onUseL2CAPChanged: (Boolean) -> Unit,
     onBLEServiceCacheChanged: (Boolean) -> Unit,
@@ -63,9 +63,9 @@ fun SettingsScreen(
                 onCheckedChange = onAutoCloseChanged
             )
             SettingsDropDown(
-                title = "Ephemeral Key Curve",
-                description = curveLabelFor(screenState.ephemeralKeyCurveOption.toEcCurve()),
-                onCurveChanged = onEphemeralKeyCurveChanged
+                title = "Session Encryption Curve",
+                description = curveLabelFor(screenState.sessionEncryptionCurveOption.toEcCurve()),
+                onCurveChanged = onSessionEncryptionCurveChanged
             )
             SettingSectionTitle(title = "NFC Engagement")
             SettingToggle(
@@ -185,7 +185,7 @@ private fun SettingsDropDown(
     modifier: Modifier = Modifier,
     title: String,
     description: String,
-    onCurveChanged: (selection: SettingsScreenState.EphemeralKeyCurveOption) -> Unit
+    onCurveChanged: (selection: SettingsScreenState.SessionEncryptionCurveOption) -> Unit
 ) {
     var dropDownExpanded by remember { mutableStateOf(false) }
     val expandDropDown = { dropDownExpanded = true }
@@ -212,7 +212,7 @@ private fun SettingsDropDown(
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
-        val entries = SettingsScreenState.EphemeralKeyCurveOption.values().toList()
+        val entries = SettingsScreenState.SessionEncryptionCurveOption.values().toList()
         DropdownMenu(
             expanded = dropDownExpanded,
             onDismissRequest = { dropDownExpanded = false }
@@ -246,7 +246,7 @@ private fun SettingsScreenPreview() {
             modifier = Modifier.fillMaxSize(),
             screenState = SettingsScreenState(),
             onAutoCloseChanged = {},
-            onEphemeralKeyCurveChanged = {},
+            onSessionEncryptionCurveChanged = {},
             onUseStaticHandoverChanged = {},
             onUseL2CAPChanged = {},
             onBLEServiceCacheChanged = {},

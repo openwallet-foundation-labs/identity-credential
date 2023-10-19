@@ -727,6 +727,10 @@ public class VerificationHelper {
         EngagementParser.Engagement engagement = engagementParser.parse();
         PublicKey eDeviceKey = engagement.getESenderKey();
 
+        // Create reader ephemeral key with key to match device ephemeral key's curve.
+        int curveToUse = Util.getCurve(eDeviceKey);
+        mEphemeralKeyPair = Util.createEphemeralKeyPair(curveToUse);
+
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()));
         mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -1103,8 +1107,8 @@ public class VerificationHelper {
      * @return the ephemeral key used by the reader for session encryption.
      */
     public @NonNull
-    PrivateKey getEphemeralReaderKey() {
-        return mEphemeralKeyPair.getPrivate();
+    KeyPair getEReaderKeyPair() {
+        return mEphemeralKeyPair;
     }
 
     /**
@@ -1264,7 +1268,6 @@ public class VerificationHelper {
             mHelper.mContext = context;
             mHelper.mListener = listener;
             mHelper.mListenerExecutor = executor;
-            mHelper.mEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         }
 
         /**

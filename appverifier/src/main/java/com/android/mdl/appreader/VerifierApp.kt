@@ -19,6 +19,7 @@ class VerifierApp : Application() {
         Logger.setLogPrinter(AndroidLogPrinter())
         DynamicColors.applyToActivitiesIfAvailable(this)
         userPreferencesInstance = userPreferences
+        Logger.setDebugEnabled(userPreferences.isDebugLoggingEnabled())
     }
 
     companion object {
