@@ -1,21 +1,18 @@
-package com.android.mdl.appreader.readercertgen;
+package com.android.mdl.appreader.readercertgen
 
-import java.math.BigInteger;
-import java.util.Date;
-import java.util.Optional;
+import java.math.BigInteger
+import java.util.Date
+import java.util.Optional
 
-public interface CertificateMaterial {
-    int PATHLENGTH_NOT_A_CA = -1;
+interface CertificateMaterial {
+    fun serialNumber(): BigInteger
+    fun startDate(): Date
+    fun endDate(): Date
+    fun keyUsage(): Int
+    fun extendedKeyUsage(): Optional<String>
+    fun pathLengthConstraint(): Int
 
-    BigInteger serialNumber();
-
-    Date startDate();
-
-    Date endDate();
-
-    int keyUsage();
-
-    Optional<String> extendedKeyUsage();
-
-    int pathLengthConstraint();
-}	
+    companion object {
+        const val PATHLENGTH_NOT_A_CA = -1
+    }
+}

@@ -1,12 +1,9 @@
-package com.android.mdl.appreader.readercertgen;
+package com.android.mdl.appreader.readercertgen
 
-import java.util.Optional;
+import java.util.Optional
 
-public interface DataMaterial {
-	String subjectDN();
-
-	String issuerDN();
-
-	Optional<String> issuerAlternativeName();
+interface DataMaterial {
+    fun subjectDN(): String
+    fun issuerDN(): String
+    fun issuerAlternativeName(): Optional<String>
 }
-

@@ -1,139 +1,121 @@
-package com.android.mdl.appreader.readercertgen;
+package com.android.mdl.appreader.readercertgen
 
-import org.bouncycastle.asn1.x509.KeyUsage;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
-import java.math.BigInteger;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
-import java.security.spec.ECGenParameterSpec;
-import java.util.Date;
-import java.util.Optional;
+import org.bouncycastle.asn1.x509.KeyUsage
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.math.BigInteger
+import java.security.InvalidAlgorithmParameterException
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.NoSuchAlgorithmException
+import java.security.PrivateKey
+import java.security.PublicKey
+import java.security.cert.X509Certificate
+import java.security.spec.ECGenParameterSpec
+import java.util.Date
+import java.util.Optional
 
 /**
  * Generates a key pair for a specific curve, creates a reader certificate around it using
  * the given issuing CA certificate and private key to sign it.
- * <p>
+ *
+ *
  * Usage:
- * final KeyPair readerKeyPair = generateECDSAKeyPair(curve);
- * X509Certificate dsCertificate = createReaderCertificate(readerKeyPair, iacaCertificate, iacaKeyPair.getPrivate());
+ * val readerKeyPair = generateECDSAKeyPair(curve)
+ * val dsCertificate = createReaderCertificate(readerKeyPair, iacaCertificate, iacaKeyPair.getPrivate())
  */
-public final class ReaderCertificateGenerator {
+object ReaderCertificateGenerator {
+    fun generateECDSAKeyPair(curve: String): KeyPair {
+        return try {
+            // NOTE older devices may not have the right BC installed for this to work
+            val kpg: KeyPairGenerator
+            if (curve.equals("Ed25519", ignoreCase = true) || curve.equals(
+                    "Ed448",
+                    ignoreCase = true
+                )
+            ) {
+                kpg = KeyPairGenerator.getInstance(curve, BouncyCastleProvider())
+            } else {
+                kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider())
+                kpg.initialize(ECGenParameterSpec(curve))
+            }
+            println(kpg.provider.info)
+            kpg.generateKeyPair()
+        } catch (e: NoSuchAlgorithmException) {
+            throw RuntimeException(e)
+        } catch (e: InvalidAlgorithmParameterException) {
+            throw RuntimeException(e)
+        }
+    }
 
-	private ReaderCertificateGenerator() {
-		// avoid instantiation
-	}
+    fun createReaderCertificate(
+        dsKeyPair: KeyPair, issuerCert: X509Certificate,
+        issuerPrivateKey: PrivateKey
+    ): X509Certificate {
+        val data: DataMaterial = object : DataMaterial {
+            override fun subjectDN(): String {
+                return "C=UT, CN=Google mDoc Reader"
+            }
 
-	public static KeyPair generateECDSAKeyPair(String curve) {
-		try {
-			// NOTE older devices may not have the right BC installed for this to work
-			KeyPairGenerator kpg;
-			if (curve.equalsIgnoreCase("Ed25519") || curve.equalsIgnoreCase("Ed448")) {
-				kpg = KeyPairGenerator.getInstance(curve, new BouncyCastleProvider());
-			} else {
-				kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
-				kpg.initialize(new ECGenParameterSpec(curve));
-			}
-			System.out.println(kpg.getProvider().getInfo());
-			return kpg.generateKeyPair();
-		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
-			throw new RuntimeException(e);
-		}
-	}
+            override fun issuerDN(): String {
+                // must match DN of issuer character-by-character
+                // TODO change for other generators
+                return issuerCert.subjectX500Principal.name
 
-	public static X509Certificate createReaderCertificate(KeyPair dsKeyPair, X509Certificate issuerCert,
-														  PrivateKey issuerPrivateKey) throws Exception {
-		DataMaterial data = new DataMaterial() {
+                // reorders string, do not use
+                // return issuerCert.getSubjectX500Principal().getName();
+            }
 
-			@Override
-			public String subjectDN() {
-				return "C=UT, CN=Google mDoc Reader";
-			}
+            override fun issuerAlternativeName(): Optional<String> {
+                // NOTE always interpreted as URL for now
+                return Optional.of("https://www.google.com/")
+            }
+        }
+        val certData: CertificateMaterial = object : CertificateMaterial {
+            override fun serialNumber(): BigInteger {
+                // TODO change
+                return BigInteger("476f6f676c655f546573745f44535f31", 16)
+            }
 
-			@Override
-			public String issuerDN() {
-				// must match DN of issuer character-by-character
-				// TODO change for other generators
-				return issuerCert.getSubjectX500Principal().getName();
+            override fun startDate(): Date {
+                return EncodingUtil.parseShortISODate("2023-01-01")
+            }
 
-				// reorders string, do not use
-				// return issuerCert.getSubjectX500Principal().getName();
-			}
+            override fun endDate(): Date {
+                return EncodingUtil.parseShortISODate("2024-01-01")
+            }
 
-			@Override
-			public Optional<String> issuerAlternativeName() {
-				// NOTE always interpreted as URL for now
-				return Optional.of("https://www.google.com/");
-			}
-		};
+            override fun pathLengthConstraint(): Int {
+                return CertificateMaterial.PATHLENGTH_NOT_A_CA
+            }
 
-		CertificateMaterial certData = new CertificateMaterial() {
+            override fun keyUsage(): Int {
+                return KeyUsage.digitalSignature
+            }
 
-			@Override
-			public BigInteger serialNumber() {
-				// TODO change
-				return new BigInteger("476f6f676c655f546573745f44535f31", 16);
-			}
+            override fun extendedKeyUsage(): Optional<String> {
+                // TODO change for reader cert
+                return Optional.of("1.0.18013.5.1.6")
+            }
+        }
+        val keyData: KeyMaterial = object : KeyMaterial {
+            override fun publicKey(): PublicKey {
+                return dsKeyPair.public
+            }
 
-			@Override
-			public Date startDate() {
-				return EncodingUtil.parseShortISODate("2023-01-01");
-			}
+            override fun signingAlgorithm(): String {
+                return "SHA384WithECDSA"
+            }
 
-			@Override
-			public Date endDate() {
-				return EncodingUtil.parseShortISODate("2024-01-01");
-			}
+            override fun signingKey(): PrivateKey {
+                return issuerPrivateKey
+            }
 
-			@Override
-			public int pathLengthConstraint() {
-				return CertificateMaterial.PATHLENGTH_NOT_A_CA;
-			}
+            override fun issuerCertificate(): Optional<X509Certificate> {
+                return Optional.of(issuerCert)
+            }
+        }
 
-			@Override
-			public int keyUsage() {
-				return KeyUsage.digitalSignature;
-			}
-
-			@Override
-			public Optional<String> extendedKeyUsage() {
-				// TODO change for reader cert
-				return Optional.of("1.0.18013.5.1.6");
-			}
-		};
-
-		KeyMaterial keyData = new KeyMaterial() {
-
-			@Override
-			public PublicKey publicKey() {
-				return dsKeyPair.getPublic();
-			}
-
-			@Override
-			public String signingAlgorithm() {
-				return "SHA384WithECDSA";
-			}
-
-			@Override
-			public PrivateKey signingKey() {
-				return issuerPrivateKey;
-			}
-
-			@Override
-			public Optional<X509Certificate> issuerCertificate() {
-				return Optional.of(issuerCert);
-			}
-		};
-
-		// C.1.7.2
-
-		X509Certificate readerCert = CertificateGenerator.generateCertificate(data, certData, keyData);
-
-		return readerCert;
-	}
+        // C.1.7.2
+        return CertificateGenerator.generateCertificate(data, certData, keyData)
+    }
 }
