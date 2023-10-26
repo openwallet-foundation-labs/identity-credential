@@ -2,8 +2,8 @@ package com.android.mdl.appreader.readercertgen
 
 import java.util.Optional
 
-interface DataMaterial {
-    fun subjectDN(): String
-    fun issuerDN(): String
-    fun issuerAlternativeName(): Optional<String>
-}
+data class DataMaterial(
+    val subjectDN: String,
+    val issuerDN: String,
+    val issuerAlternativeName: Optional<String>
+)

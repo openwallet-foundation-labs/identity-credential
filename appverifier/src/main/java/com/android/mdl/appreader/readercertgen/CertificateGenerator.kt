@@ -31,19 +31,20 @@ object CertificateGenerator {
     ): X509Certificate {
         val bcProvider: Provider = BouncyCastleProvider()
         Security.addProvider(bcProvider)
-        val issuerCert = keyMaterial.issuerCertificate()
-        val subjectDN = X500Name(data.subjectDN())
+        val issuerCert = keyMaterial.issuerCertificate
+        val subjectDN = X500Name(data.subjectDN)
         // doesn't work, get's reordered
         // issuerCert.isPresent() ? new X500Name(issuerCert.get().getSubjectX500Principal().getName()) : subjectDN;
-        val issuerDN = X500Name(data.issuerDN())
+        val issuerDN = X500Name(data.issuerDN)
         val contentSigner =
-            JcaContentSignerBuilder(keyMaterial.signingAlgorithm()).build(keyMaterial.signingKey())
+            JcaContentSignerBuilder(keyMaterial.signingAlgorithm).build(keyMaterial.signingKey)
         val certBuilder = JcaX509v3CertificateBuilder(
             issuerDN,
-            certMaterial.serialNumber(),
-            certMaterial.startDate(), certMaterial.endDate(),
+            certMaterial.serialNumber,
+            certMaterial.startDate,
+            certMaterial.endDate,
             subjectDN,
-            keyMaterial.publicKey()
+            keyMaterial.publicKey
         )
 
 
@@ -70,13 +71,13 @@ object CertificateGenerator {
             }
         }
         val subjectKeyIdentifier =
-            jcaX509ExtensionUtils.createSubjectKeyIdentifier(keyMaterial.publicKey())
+            jcaX509ExtensionUtils.createSubjectKeyIdentifier(keyMaterial.publicKey)
         certBuilder.addExtension(Extension.subjectKeyIdentifier, NOT_CRITICAL, subjectKeyIdentifier)
-        val keyUsage = KeyUsage(certMaterial.keyUsage())
+        val keyUsage = KeyUsage(certMaterial.keyUsage)
         certBuilder.addExtension(Extension.keyUsage, CRITICAL, keyUsage)
 
         // IssuerAlternativeName
-        val issuerAlternativeName = data.issuerAlternativeName()
+        val issuerAlternativeName = data.issuerAlternativeName
         if (issuerAlternativeName.isPresent) {
             val issuerAltName = GeneralNames(
                 GeneralName(
@@ -88,13 +89,13 @@ object CertificateGenerator {
         }
 
         // Basic Constraints
-        val pathLengthConstraint = certMaterial.pathLengthConstraint()
+        val pathLengthConstraint = certMaterial.pathLengthConstraint
         if (pathLengthConstraint != CertificateMaterial.PATHLENGTH_NOT_A_CA) {
             // TODO doesn't work for certificate chains != 2 in size
             val basicConstraints = BasicConstraints(pathLengthConstraint)
             certBuilder.addExtension(Extension.basicConstraints, CRITICAL, basicConstraints)
         }
-        val extendedKeyUsage = certMaterial.extendedKeyUsage()
+        val extendedKeyUsage = certMaterial.extendedKeyUsage
         if (extendedKeyUsage.isPresent) {
             val keyPurpose = KeyPurposeId.getInstance(ASN1ObjectIdentifier(extendedKeyUsage.get()))
             val extKeyUsage = ExtendedKeyUsage(arrayOf(keyPurpose))
