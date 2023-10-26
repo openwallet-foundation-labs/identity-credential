@@ -16,7 +16,10 @@
 
 package com.android.identity.android.securearea;
 
+import android.app.KeyguardManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.pm.FeatureInfo;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
@@ -105,29 +108,8 @@ import co.nstant.in.cbor.model.UnicodeString;
  *
  * <p>Other optional features may be available depending on the version of the underlying
  * software (called <a href="https://source.android.com/docs/security/features/keystore">Keymint</a>)
- * running in the Secure Area. The application may examine the
- * <a href="https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE">
- * FEATURE_HARDWARE_KEYSTORE</a> and
- * <a href="https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_STRONGBOX_KEYSTORE">
- * FEATURE_STRONGBOX_KEYSTORE</a> to determine the KeyMint version for either
- * the normal hardware-backed keystore and - if available - the StrongBox-backed keystore.
- *
- * <p>For Keymint 1.0 (version 100 and up), ECDH is also supported when using
- * {@link SecureArea#EC_CURVE_P256}. Additionally, this version also supports
- * the use of
- * <a href="https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder#setAttestKeyAlias(java.lang.String)">
- * attest keys</a>.
- *
- * <p>For Keymint 2.0 (version 200 and up), curves {@link #EC_CURVE_ED25519} is available
- * for {@link #KEY_PURPOSE_SIGN} keys and curve {@link #EC_CURVE_X25519} is available for
- * {@link #KEY_PURPOSE_AGREE_KEY} keys.
- *
- * <p>If the device has a secure lock screen (either PIN, pattern, or password) this can
- * be used to protect keys using
- * {@link CreateKeySettings.Builder#setUserAuthenticationRequired(boolean, long, int)}.
- * The application can test for whether the lock screen is configured using
- * <a href="https://developer.android.com/reference/android/app/KeyguardManager#isDeviceSecure()">
- * KeyGuardManager.isDeviceSecure()</a>.
+ * running in the Secure Area. The {@link Capabilities} helper class can be used to determine
+ * what the device supports.
  *
  * <p>This implementation works only on Android and requires API level 24 or later.
  */
@@ -289,7 +271,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             try {
                 kpg.initialize(builder.build());
             } catch (InvalidAlgorithmParameterException e) {
-                throw new IllegalStateException("Unexpected exception", e);
+                throw new IllegalStateException(e.getMessage(), e);
             }
             kpg.generateKeyPair();
 
@@ -370,6 +352,9 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             case ALGORITHM_ES512:
                 return "SHA512withECDSA";
 
+            case ALGORITHM_EDDSA:
+                return "Ed25519";
+
             default:
                 throw new IllegalArgumentException(
                         "Unsupported signing algorithm with id " + signatureAlgorithm);
@@ -403,7 +388,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                     unlockData.mSignature.update(dataToSign);
                     return unlockData.mSignature.sign();
                 } catch (SignatureException e) {
-                    throw new IllegalStateException("Unexpected exception while signing", e);
+                    throw new IllegalStateException(e.getMessage(), e);
                 }
             }
         }
@@ -436,7 +421,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                             "android.security.KeyStoreException: Key user not authenticated")) {
                 throw new KeyLockedException("User not authenticated", e);
             }
-            throw new IllegalStateException("Unexpected exception while signing", e);
+            throw new IllegalStateException(e.getMessage(), e);
         } catch (InvalidKeyException e) {
             throw new IllegalArgumentException("Key does not have purpose KEY_PURPOSE_SIGN", e);
         }
@@ -467,7 +452,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                  | IOException
                  | NoSuchAlgorithmException
                  | NoSuchProviderException e) {
-            throw new IllegalStateException("Unexpected exception while doing key agreement", e);
+            throw new IllegalStateException(e.getMessage(), e);
         } catch (ProviderException e) {
             // This is a work-around for Android Keystore throwing a ProviderException
             // when it should be throwing UserNotAuthenticatedException instead. b/282174161
@@ -476,7 +461,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                 && e.getCause().getMessage().startsWith("Key user not authenticated")) {
                 throw new KeyLockedException("User not authenticated", e);
             }
-            throw new IllegalStateException("Unexpected exception while doing key agreement", e);
+            throw new IllegalStateException(e.getMessage(), e);
         } catch (InvalidKeyException e) {
             throw new IllegalArgumentException("Key does not have purpose KEY_PURPOSE_AGREE_KEY", e);
         }
@@ -554,7 +539,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                      | NoSuchAlgorithmException
                      | InvalidKeyException
                      | NoSuchProviderException e) {
-                throw new IllegalStateException("Unexpected exception", e);
+                throw new IllegalStateException(e.getMessage(), e);
             }
         }
 
@@ -608,7 +593,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                      | IOException
                      | NoSuchAlgorithmException
                      | NoSuchProviderException e) {
-                throw new IllegalStateException("Unexpected exception", e);
+                throw new IllegalStateException(e.getMessage(), e);
             }
         }
     }
@@ -814,7 +799,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                  | NoSuchAlgorithmException
                  | NoSuchProviderException
                  | InvalidKeySpecException e) {
-            throw new IllegalStateException("Unexpected exception", e);
+            throw new IllegalStateException(e.getMessage(), e);
         }
     }
 
@@ -1164,5 +1149,167 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             }
         }
 
+    }
+
+    /**
+     * Helper class to determine capabilities of the device.
+     *
+     * <p>This class can be used by applications to determine the extent of
+     * Android Keystore support on the device the application is running on.
+     */
+    public static class Capabilities {
+        private final KeyguardManager mKeyguardManager;
+        private final int mApiLevel;
+        private final int mTeeFeatureLevel;
+        private final int mSbFeatureLevel;
+
+        private static int getFeatureVersionKeystore(@NonNull Context appContext, boolean useStrongbox) {
+            String feature = PackageManager.FEATURE_HARDWARE_KEYSTORE;
+            if (useStrongbox) {
+                feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE;
+            }
+            PackageManager pm = appContext.getPackageManager();
+            int featureVersionFromPm = 0;
+            if (pm.hasSystemFeature(feature)) {
+                FeatureInfo info = null;
+                FeatureInfo[] infos = pm.getSystemAvailableFeatures();
+                for (int n = 0; n < infos.length; n++) {
+                    FeatureInfo i = infos[n];
+                    if (i.name.equals(feature)) {
+                        info = i;
+                        break;
+                    }
+                }
+                if (info != null) {
+                    featureVersionFromPm = info.version;
+                }
+            }
+            return featureVersionFromPm;
+        }
+
+        /**
+         * Construct a new Capabilities object.
+         *
+         * <p>Once constructed, the application may query this object to determine
+         * which Android Keystore features are available.
+         *
+         * <p>In general this is implemented by examining
+         * <a href="https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_HARDWARE_KEYSTORE">
+         * FEATURE_HARDWARE_KEYSTORE</a> and
+         * <a href="https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_STRONGBOX_KEYSTORE">
+         * FEATURE_STRONGBOX_KEYSTORE</a> to determine the KeyMint version for both
+         * the normal hardware-backed keystore and - if available - the StrongBox-backed keystore.
+         *
+         * @param context the application context.
+         */
+        public Capabilities(@NonNull Context context) {
+            mKeyguardManager = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+            mTeeFeatureLevel = getFeatureVersionKeystore(context, false);
+            mSbFeatureLevel = getFeatureVersionKeystore(context, true);
+            mApiLevel = Build.VERSION.SDK_INT;
+        }
+
+        /**
+         * Gets whether a Secure Lock Screen has been set up.
+         *
+         * <p>This checks whether the device currently has a secure lock
+         * screen (either PIN, pattern, or password).
+         *
+         * @return {@code true} if Secure Lock Screen has been set up, {@link false} otherwise.
+         */
+        public boolean getSecureLockScreenSetup() {
+            return mKeyguardManager.isDeviceSecure();
+        }
+
+        /**
+         * Gets whether it's possible to specify multiple authentication types.
+         *
+         * <p>On Android versions before API 30 (Android 11), it's not possible to specify whether
+         * LSKF or Biometric or both can be used to unlock a key (both are always possible).
+         * Starting with Android 11, it's possible to specify all three combinations (LSKF only,
+         * Biometric only, or both).
+         *
+         * @return {@code true} if possible to use multiple authentication types, {@link false} otherwise.
+         */
+        public boolean getMultipleAuthenticationTypesSupported() {
+            return mApiLevel >= Build.VERSION_CODES.R;
+        }
+
+        /**
+         * Gets whether Attest Keys are supported.
+         *
+         * <p>This is only supported in KeyMint 1.0 (version 100) and higher.
+         *
+         * @return {@code true} if supported, {@link false} otherwise.
+         */
+        public boolean getAttestKeySupported() {
+            return mTeeFeatureLevel >= 100;
+        }
+
+        /**
+         * Gets whether Key Agreement is supported.
+         *
+         * <p>This is only supported in KeyMint 1.0 (version 100) and higher.
+         *
+         * @return {@code true} if supported, {@link false} otherwise.
+         */
+        public boolean getKeyAgreementSupported() {
+            return mTeeFeatureLevel >= 100;
+        }
+
+        /**
+         * Gets whether Curve25519 is supported.
+         *
+         * <p>This is only supported in KeyMint 2.0 (version 200) and higher.
+         *
+         * @return {@code true} if supported, {@link false} otherwise.
+         */
+        public boolean getCurve25519Supported() {
+            return mTeeFeatureLevel >= 200;
+        }
+
+        /**
+         * Gets whether StrongBox is supported.
+         *
+         * <p>StrongBox requires dedicated hardware and is not available on all devices.
+         *
+         * @return {@code true} if supported, {@link false} otherwise.
+         */
+        public boolean getStrongBoxSupported() {
+            return mSbFeatureLevel > 0;
+        }
+
+        /**
+         * Gets whether StrongBox Attest Keys are supported.
+         *
+         * <p>This is only supported in StrongBox KeyMint 1.0 (version 100) and higher.
+         *
+         * @return {@code true} if supported, {@link false} otherwise.
+         */
+        public boolean getStrongBoxAttestKeySupported() {
+            return mSbFeatureLevel >= 100;
+        }
+
+        /**
+         * Gets whether StrongBox Key Agreement is supported.
+         *
+         * <p>This is only supported in StrongBox KeyMint 1.0 (version 100) and higher.
+         *
+         * @return {@code true} if supported, {@link false} otherwise.
+         */
+        public boolean getStrongBoxKeyAgreementSupported() {
+            return mSbFeatureLevel >= 100;
+        }
+
+        /**
+         * Gets whether StrongBox Curve25519 is supported.
+         *
+         * <p>This is only supported in StrongBox KeyMint 2.0 (version 200) and higher.
+         *
+         * @return {@code true} if supported, {@link false} otherwise.
+         */
+        public boolean getStrongBoxCurve25519Supported() {
+            return mSbFeatureLevel >= 200;
+        }
     }
 }
