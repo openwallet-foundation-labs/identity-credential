@@ -38,8 +38,6 @@ public final class CertificateGenerator {
 
 	static X509Certificate generateCertificate(DataMaterial data, CertificateMaterial certMaterial, KeyMaterial keyMaterial)
 			throws CertIOException, CertificateException, OperatorCreationException {
-		Provider bcProvider = new BouncyCastleProvider();
-		Security.addProvider(bcProvider);
 
 		Optional<X509Certificate> issuerCert = keyMaterial.issuerCertificate();
 

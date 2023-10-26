@@ -20,7 +20,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.securearea.BouncyCastleSecureArea
+import com.android.identity.securearea.SoftwareSecureArea
 import com.android.identity.securearea.SecureArea.ALGORITHM_ES256
 import com.android.identity.wallet.R
 import com.android.identity.wallet.authprompt.UserAuthPromptBuilder
@@ -161,7 +161,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun onPassphraseProvided(passphrase: String) {
-        val unlockData = BouncyCastleSecureArea.KeyUnlockData(passphrase)
+        val unlockData = SoftwareSecureArea.KeyUnlockData(passphrase)
         val result = viewModel.sendResponseForSelection(unlockData)
         onSendResponseResult(result)
     }

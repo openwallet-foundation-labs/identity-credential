@@ -12,10 +12,12 @@ import com.android.identity.internal.Util
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.securearea.BouncyCastleSecureArea
 import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.SecureArea.KeyLockedException
 import com.android.identity.securearea.SecureArea.KeyPurpose
 import com.android.identity.securearea.SecureAreaRepository
+import com.android.identity.securearea.SoftwareSecureArea
+import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet.document.DocumentInformation
 import com.android.identity.wallet.document.KeysAndCertificates
@@ -25,6 +27,8 @@ import com.android.identity.wallet.selfsigned.ProvisionInfo
 import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
 import com.android.identity.wallet.util.DocumentData.MVR_DOCTYPE
 import java.io.File
+import java.security.KeyPair
+import java.security.PrivateKey
 import java.security.cert.X509Certificate
 import java.time.Instant
 import java.time.ZoneId
@@ -45,14 +49,38 @@ class ProvisioningUtil private constructor(
     private val androidKeystoreSecureArea: SecureArea
         get() = AndroidKeystoreSecureArea(context, storageEngine)
 
-    private val bouncyCastleSecureArea: SecureArea
-        get() = BouncyCastleSecureArea(storageEngine)
+    private val softwareSecureArea: SecureArea
+        get() = SoftwareSecureArea(storageEngine)
 
     val credentialStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         val keystoreEngineRepository = SecureAreaRepository()
         keystoreEngineRepository.addImplementation(androidKeystoreSecureArea)
-        keystoreEngineRepository.addImplementation(bouncyCastleSecureArea)
+        keystoreEngineRepository.addImplementation(softwareSecureArea)
         CredentialStore(storageEngine, keystoreEngineRepository)
+    }
+
+    private lateinit var softwareAttestationKey: PrivateKey
+    private lateinit var softwareAttestationKeySignatureAlgorithm: String
+    private lateinit var softwareAttestationKeyCertification: List<X509Certificate>
+
+    private fun initSoftwareAttestationKey() {
+        val secureArea = SoftwareSecureArea(EphemeralStorageEngine())
+            val now = Timestamp.now()
+            secureArea.createKey(
+                "SoftwareAttestationRoot",
+                SoftwareSecureArea.CreateKeySettings.Builder("".toByteArray())
+                    .setEcCurve(SecureArea.EC_CURVE_P256)
+                    .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN)
+                    .setSubject("CN=Software Attestation Root")
+                    .setValidityPeriod(
+                        now,
+                        Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000)
+                    )
+                    .build()
+            )
+        softwareAttestationKey = secureArea.getPrivateKey("SoftwareAttestationRoot", null)
+        softwareAttestationKeySignatureAlgorithm = "SHA256withECDSA"
+        softwareAttestationKeyCertification = secureArea.getKeyInfo("SoftwareAttestationRoot").attestation
     }
 
     fun provisionSelfSigned(
@@ -217,8 +245,8 @@ class ProvisioningUtil private constructor(
                 )
             }
 
-            is BouncyCastleSecureArea -> {
-                val keyInfo = credential.credentialSecureArea.getKeyInfo(credential.credentialKeyAlias) as BouncyCastleSecureArea.KeyInfo
+            is SoftwareSecureArea -> {
+                val keyInfo = credential.credentialSecureArea.getKeyInfo(credential.credentialKeyAlias) as SoftwareSecureArea.KeyInfo
                 createBouncyCastleKeystoreSettings(
                     mDocAuthOption = AddSelfSignedScreenState.MdocAuthStateOption.valueOf(mDocAuthOption),
                     ecCurve = keyInfo.ecCurve
@@ -266,13 +294,18 @@ class ProvisioningUtil private constructor(
         passphrase: String? = null,
         mDocAuthOption: AddSelfSignedScreenState.MdocAuthStateOption,
         ecCurve: Int
-    ): BouncyCastleSecureArea.CreateKeySettings {
+    ): SoftwareSecureArea.CreateKeySettings {
+        if (!this::softwareAttestationKey.isInitialized) {
+            initSoftwareAttestationKey()
+        }
         val keyPurpose = mDocAuthOption.toKeyPurpose()
-        val builder = BouncyCastleSecureArea.CreateKeySettings.Builder()
+        val builder = SoftwareSecureArea.CreateKeySettings.Builder("DoNotCare".toByteArray())
+            .setAttestationKey(softwareAttestationKey,
+                softwareAttestationKeySignatureAlgorithm, softwareAttestationKeyCertification)
             .setPassphraseRequired(passphrase != null, passphrase)
             .setKeyPurposes(keyPurpose)
             .setEcCurve(ecCurve)
-            .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN or SecureArea.KEY_PURPOSE_AGREE_KEY)
+            .setKeyPurposes(mDocAuthOption.toKeyPurpose())
         return builder.build()
     }
 
@@ -351,7 +384,7 @@ class ProvisioningUtil private constructor(
         private fun SecureArea.toSecureAreaState(): SecureAreaImplementationState {
             return when (this) {
                 is AndroidKeystoreSecureArea -> SecureAreaImplementationState.Android
-                is BouncyCastleSecureArea -> SecureAreaImplementationState.BouncyCastle
+                is SoftwareSecureArea -> SecureAreaImplementationState.BouncyCastle
                 else -> throw IllegalStateException("Unknown Secure Area Implementation")
             }
         }

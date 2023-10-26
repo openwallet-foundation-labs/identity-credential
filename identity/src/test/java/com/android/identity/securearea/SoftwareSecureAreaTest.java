@@ -16,46 +16,96 @@
 
 package com.android.identity.securearea;
 
+import androidx.annotation.NonNull;
+
 import com.android.identity.storage.EphemeralStorageEngine;
 
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import javax.crypto.KeyAgreement;
 
-public class BouncyCastleSecureAreaTest {
+public class SoftwareSecureAreaTest {
 
     private static final String TAG = "BouncyCastleSATest";  // limit to <= 23 chars
+
+    PrivateKey mAttestationKey;
+    String mAttestationKeySignatureAlgorithm;
+    List<X509Certificate> mAttestationKeyCertification;
 
     @Before
     public void setup() {
         Security.insertProviderAt(new BouncyCastleProvider(), 1);
+
+        // Create an attestation key...
+        try {
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
+            kpg.initialize(new ECGenParameterSpec("secp256r1"));
+            KeyPair attestationKeyPair = kpg.generateKeyPair();
+            mAttestationKey = attestationKeyPair.getPrivate();
+            mAttestationKeySignatureAlgorithm = "SHA256withECDSA";
+
+            long nowMillis = System.currentTimeMillis();
+            JcaX509v3CertificateBuilder certBuilder =
+                    new JcaX509v3CertificateBuilder(new X500Name("CN=Test Attestation Key"),
+                            BigInteger.ONE,
+                            new Date(nowMillis),
+                            new Date(nowMillis + 24*3600*1000),
+                            new X500Name("CN=Test Attestation Key"),
+                            attestationKeyPair.getPublic());
+            ContentSigner signer;
+            signer = new JcaContentSignerBuilder("SHA256withECDSA")
+                    .build(attestationKeyPair.getPrivate());
+            byte[] encodedCert = certBuilder.build(signer).getEncoded();
+            CertificateFactory cf = CertificateFactory.getInstance("X.509");
+            ByteArrayInputStream certBais = new ByteArrayInputStream(encodedCert);
+            mAttestationKeyCertification = new ArrayList<>();
+            mAttestationKeyCertification.add((X509Certificate) cf.generateCertificate(certBais));
+
+        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | IOException |
+                 CertificateException | OperatorCreationException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
     public void testEcKeyDeletion() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         // First create the key...
-        ks.createKey("testKey", new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
-        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        ks.createKey("testKey", new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         List<X509Certificate> certChain = keyInfo.getAttestation();
         Assert.assertTrue(certChain.size() >= 1);
 
@@ -79,18 +129,17 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcKeySigning() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        ks.createKey("testKey", new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
+        ks.createKey("testKey", new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
 
-        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
         Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
         Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
-        Assert.assertNull(keyInfo.getAttestationKeyAlias());
 
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
@@ -115,18 +164,17 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcKeyCreate() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        ks.createKey("testKey", new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
+        ks.createKey("testKey", new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
 
-        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
         Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
         Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
-        Assert.assertNull(keyInfo.getAttestationKeyAlias());
 
         // Check the leaf certificate is self-signed.
         try {
@@ -140,34 +188,45 @@ public class BouncyCastleSecureAreaTest {
         }
     }
 
+    public static @NonNull
+    byte[] getChallenge(@NonNull X509Certificate cert) {
+        byte[] octetString = cert.getExtensionValue(AttestationExtension.ATTESTATION_OID);
+        try {
+            ASN1InputStream asn1InputStream = new ASN1InputStream(octetString);
+            byte[] encodedCbor = ((ASN1OctetString) asn1InputStream.readObject()).getOctets();
+            return AttestationExtension.decode(encodedCbor);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Test
-    public void testEcKeyCreateWithAttestationKey() {
+    public void testEcKeyCreateWithAttestationKey() throws SecureArea.KeyLockedException {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        ks.createKey("attestationKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
-        BouncyCastleSecureArea.KeyInfo aKeyInfo = ks.getKeyInfo("attestationKey");
-        List<X509Certificate> attestationKeyCertChain = aKeyInfo.getAttestation();
-        Assert.assertTrue(attestationKeyCertChain.size() >= 1);
-
+        byte[] challenge = new byte[] {1, 2, 3};
         ks.createKey("testKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
-                        .setAttestationKeyAlias("attestationKey")
+                new SoftwareSecureArea.CreateKeySettings.Builder(challenge)
+                        .setAttestationKey(mAttestationKey,
+                                mAttestationKeySignatureAlgorithm,
+                                mAttestationKeyCertification)
                         .build());
 
-        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertTrue(keyInfo.getAttestation().size() >= 2);
         Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
         Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
-        Assert.assertEquals("attestationKey", keyInfo.getAttestationKeyAlias());
 
-        // Check the leaf certificate is signed by attestationKey.
+        // Check challenge.
+        Assert.assertArrayEquals(challenge, getChallenge(keyInfo.getAttestation().get(0)));
+
+        // Check the leaf certificate is signed by mAttestationKey.
         try {
-            keyInfo.getAttestation().get(0).verify(attestationKeyCertChain.get(0).getPublicKey());
+            keyInfo.getAttestation().get(0).verify(mAttestationKeyCertification.get(0).getPublicKey());
         } catch (CertificateException
                  | InvalidKeyException
                  | NoSuchAlgorithmException
@@ -180,16 +239,11 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcKeySigningWithKeyWithoutCorrectPurpose() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
-
-        ks.createKey("attestationKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
-                        .build());
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         ks.createKey("testKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                         .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
-                        .setAttestationKeyAlias("attestationKey")
                         .build());
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
@@ -205,7 +259,7 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcdh() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         KeyPair otherKeyPair;
         try {
@@ -216,24 +270,18 @@ public class BouncyCastleSecureAreaTest {
             throw new AssertionError("Unexpected exception", e);
         }
 
-        ks.createKey("attestationKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
-                        .build());
-
         ks.createKey("testKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                         .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
-                        .setAttestationKeyAlias("attestationKey")
                         .build());
 
-        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
         Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
         Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
-        Assert.assertEquals("attestationKey", keyInfo.getAttestationKeyAlias());
 
         // First do the ECDH from the perspective of our side...
         byte[] ourSharedSecret;
@@ -262,7 +310,7 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcdhAndSigning() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         KeyPair otherKeyPair;
         try {
@@ -274,12 +322,12 @@ public class BouncyCastleSecureAreaTest {
         }
 
         ks.createKey("testKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                         .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY
                                 | SecureArea.KEY_PURPOSE_SIGN)
                         .build());
 
-        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
         Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN
@@ -287,7 +335,6 @@ public class BouncyCastleSecureAreaTest {
         Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
-        Assert.assertNull(keyInfo.getAttestationKeyAlias());
 
         // First do the ECDH from the perspective of our side...
         byte[] ourSharedSecret;
@@ -335,7 +382,7 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcdhWithoutCorrectPurpose() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         KeyPair otherKeyPair;
         try {
@@ -347,7 +394,7 @@ public class BouncyCastleSecureAreaTest {
         }
 
         ks.createKey("testKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                         //.setKeyPurpose(SecureArea.KEY_PURPOSE_AGREE_KEY)
                         .build());
 
@@ -365,22 +412,21 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcKeySigningWithLockedKey() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         String passphrase = "verySekrit";
         ks.createKey("testKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                         .setPassphraseRequired(true, passphrase)
                         .build());
 
-        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
         Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
         Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertTrue(keyInfo.isPassphraseProtected());
-        Assert.assertNull(keyInfo.getAttestationKeyAlias());
 
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature = new byte[0];
@@ -399,7 +445,7 @@ public class BouncyCastleSecureAreaTest {
             derSignature = ks.sign("testKey",
                     SecureArea.ALGORITHM_ES256,
                     dataToSign,
-                    new BouncyCastleSecureArea.KeyUnlockData("wrongPassphrase"));
+                    new SoftwareSecureArea.KeyUnlockData("wrongPassphrase"));
             Assert.fail();
         } catch (SecureArea.KeyLockedException e) {
             // This is the expected path.
@@ -410,7 +456,7 @@ public class BouncyCastleSecureAreaTest {
             derSignature = ks.sign("testKey",
                     SecureArea.ALGORITHM_ES256,
                     dataToSign,
-                    new BouncyCastleSecureArea.KeyUnlockData(passphrase));
+                    new SoftwareSecureArea.KeyUnlockData(passphrase));
         } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
@@ -431,17 +477,17 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcKeyCreationOverridesExistingAlias() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         ks.createKey("testKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
-        BouncyCastleSecureArea.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+        SoftwareSecureArea.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
         List<X509Certificate> certChainOld = keyInfoOld.getAttestation();
         Assert.assertTrue(certChainOld.size() >= 1);
 
         ks.createKey("testKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
-        BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         List<X509Certificate> certChain = keyInfo.getAttestation();
         Assert.assertTrue(certChain.size() >= 1);
         byte[] dataToSign = new byte[] {4, 5, 6};
@@ -473,7 +519,7 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcKeySigningAllCurves() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         int[] knownEcCurves = new int[] {
                 SecureArea.EC_CURVE_P256,
@@ -490,18 +536,17 @@ public class BouncyCastleSecureAreaTest {
 
         for (@SecureArea.EcCurve int ecCurve : knownEcCurves) {
             ks.createKey("testKey",
-                    new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                    new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                             .setEcCurve(ecCurve)
                             .build());
 
-            BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+            SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
             Assert.assertNotNull(keyInfo);
             Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
             Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
             Assert.assertEquals(ecCurve, keyInfo.getEcCurve());
             Assert.assertFalse(keyInfo.isHardwareBacked());
             Assert.assertFalse(keyInfo.isPassphraseProtected());
-            Assert.assertNull(keyInfo.getAttestationKeyAlias());
 
             @SecureArea.Algorithm int[] signatureAlgorithms = new int[0];
             switch (ecCurve) {
@@ -578,13 +623,7 @@ public class BouncyCastleSecureAreaTest {
     @Test
     public void testEcKeyEcdhAllCurves() {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
-        BouncyCastleSecureArea ks = new BouncyCastleSecureArea(storage);
-
-        // Because we're using curves that cannot be used for signatures we need to
-        // create an key used to sign the key attestations
-        ks.createKey("attestationKey",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
-                        .build());
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         int[] knownEcCurves = new int[] {
                 SecureArea.EC_CURVE_P256,
@@ -641,20 +680,18 @@ public class BouncyCastleSecureAreaTest {
             }
 
             ks.createKey("testKey",
-                    new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                    new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                             .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
                             .setEcCurve(ecCurve)
-                            .setAttestationKeyAlias("attestationKey")
                             .build());
 
-            BouncyCastleSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+            SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
             Assert.assertNotNull(keyInfo);
             Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
             Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
             Assert.assertEquals(ecCurve, keyInfo.getEcCurve());
             Assert.assertFalse(keyInfo.isHardwareBacked());
             Assert.assertFalse(keyInfo.isPassphraseProtected());
-            Assert.assertEquals("attestationKey", keyInfo.getAttestationKeyAlias());
 
             // First do the ECDH from the perspective of our side...
             byte[] ourSharedSecret;

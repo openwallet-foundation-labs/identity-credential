@@ -16,7 +16,7 @@
 
 package com.android.identity.credential;
 
-import com.android.identity.securearea.BouncyCastleSecureArea;
+import com.android.identity.securearea.SoftwareSecureArea;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.EphemeralStorageEngine;
@@ -39,7 +39,7 @@ public class CredentialUtilTest {
         mStorageEngine = new EphemeralStorageEngine();
 
         mSecureAreaRepository = new SecureAreaRepository();
-        mSecureArea = new BouncyCastleSecureArea(mStorageEngine);
+        mSecureArea = new SoftwareSecureArea(mStorageEngine);
         mSecureAreaRepository.addImplementation(mSecureArea);
     }
 
@@ -51,13 +51,13 @@ public class CredentialUtilTest {
 
         Credential credential = credentialStore.createCredential(
                 "testCredential",
-                new BouncyCastleSecureArea.CreateKeySettings.Builder().build());
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
 
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
         SecureArea.CreateKeySettings authKeySettings =
-                new BouncyCastleSecureArea.CreateKeySettings.Builder()
+                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                         .build();
 
         int numAuthKeys = 10;
