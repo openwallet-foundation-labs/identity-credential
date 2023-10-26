@@ -19,6 +19,8 @@ package com.android.identity.wwwreader;
 public class ServletConsts {
     // Datastore constants
     public static final String DEV_RESPONSE_PROP = "Device Response";
+    public static final String REQ_ATTR_PROP = "Requested Attributes";
+    public static final String LOGS_PROP = "Logs";
     public static final String ENTITY_TYPE = "Main";
     public static final String PUBKEY_PROP = "Reader Key Public";
     public static final String PRIVKEY_PROP = "Reader Key Private";
@@ -33,6 +35,9 @@ public class ServletConsts {
     public static final String SESSION_URL = "create-new-session";
     public static final String RESPONSE_URL = "display-response";
     public static final String DE_KEY = "deviceEngagementBytes";
+    public static final String DISPLAY_LOGS_URL = "display-logs";
+
+    public static final String REQUESTED_ATTRIBUTES_QUERY = "requested_attributes";
 
     // website URL constants
     public static final String MDOC_PREFIX = "mdoc://";
