@@ -5,9 +5,9 @@ import java.security.PublicKey
 import java.security.cert.X509Certificate
 import java.util.Optional
 
-interface KeyMaterial {
-    fun publicKey(): PublicKey
-    fun signingAlgorithm(): String
-    fun issuerCertificate(): Optional<X509Certificate>
-    fun signingKey(): PrivateKey
-}
+data class KeyMaterial(
+    val publicKey: PublicKey,
+    val signingAlgorithm: String,
+    val issuerCertificate: Optional<X509Certificate>,
+    val signingKey: PrivateKey
+)
