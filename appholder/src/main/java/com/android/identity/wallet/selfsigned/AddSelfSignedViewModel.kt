@@ -3,7 +3,7 @@ package com.android.identity.wallet.selfsigned
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.android.identity.android.securearea.KeystoreUtil
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.wallet.document.DocumentColor
 import com.android.identity.wallet.document.DocumentType
 import com.android.identity.wallet.document.SecureAreaImplementationState
@@ -22,30 +22,30 @@ class AddSelfSignedViewModel(
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private var capabilities = KeystoreUtil.DeviceCapabilities()
+    private var capabilities: AndroidKeystoreSecureArea.Capabilities? = null
 
     val screenState: StateFlow<AddSelfSignedScreenState> = savedStateHandle.getState(
         AddSelfSignedScreenState()
     )
 
     fun loadConfiguration(context: Context) {
-        capabilities = KeystoreUtil(context).getDeviceCapabilities()
+        capabilities = AndroidKeystoreSecureArea.Capabilities(context)
         savedStateHandle.updateState<AddSelfSignedScreenState> {
             it.copy(
                 allowLSKFUnlocking = AuthTypeState(
                     true,
-                    capabilities.configureUserAuthenticationType
+                    capabilities!!.multipleAuthenticationTypesSupported
                 ),
                 allowBiometricUnlocking = AuthTypeState(
                     true,
-                    capabilities.configureUserAuthenticationType
+                    capabilities!!.multipleAuthenticationTypesSupported
                 ),
-                useStrongBox = AuthTypeState(false, capabilities.strongBox),
+                useStrongBox = AuthTypeState(false, capabilities!!.strongBoxSupported),
                 androidMdocAuthState = MdocAuthOptionState(
-                    isEnabled = if (it.useStrongBox.isEnabled) capabilities.strongBoxEcdh else capabilities.ecdh
+                    isEnabled = if (it.useStrongBox.isEnabled) capabilities!!.strongBoxKeyAgreementSupported else capabilities!!.keyAgreementSupported
                 ),
                 androidAuthKeyCurveState = AndroidAuthKeyCurveState(
-                    isEnabled = if (it.useStrongBox.isEnabled) capabilities.strongBox25519 else capabilities.curve25519
+                    isEnabled = if (it.useStrongBox.isEnabled) capabilities!!.strongBoxCurve25519Supported else capabilities!!.curve25519Supported
                 )
             )
         }
@@ -107,10 +107,24 @@ class AddSelfSignedViewModel(
             it.copy(
                 useStrongBox = it.useStrongBox.copy(isEnabled = newValue),
                 androidMdocAuthState = MdocAuthOptionState(
-                    isEnabled = if (newValue) capabilities.strongBoxEcdh else capabilities.ecdh
+                    isEnabled = if (capabilities != null) {
+                        if (newValue)
+                            capabilities!!.strongBoxKeyAgreementSupported
+                        else
+                            capabilities!!.keyAgreementSupported
+                    } else {
+                        false
+                    }
                 ),
                 androidAuthKeyCurveState = AndroidAuthKeyCurveState(
-                    isEnabled = if (newValue) capabilities.strongBox25519 else capabilities.curve25519
+                    isEnabled = if (capabilities != null) {
+                        if (newValue)
+                            capabilities!!.strongBoxCurve25519Supported
+                        else
+                            capabilities!!.curve25519Supported
+                    } else {
+                        false
+                    }
                 )
             )
         }
