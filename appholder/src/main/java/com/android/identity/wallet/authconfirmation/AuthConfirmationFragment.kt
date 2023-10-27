@@ -151,6 +151,12 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
                 }
                 findNavController().navigateUp()
             }
+
+            is AddDocumentToResponseResult.ErrorAddingDocument -> {
+                toast("Error: ${result.throwable.message!!}")
+                viewModel.closeConnection()
+                findNavController().navigateUp()
+            }
         }
     }
 

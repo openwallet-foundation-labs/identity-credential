@@ -11,4 +11,8 @@ sealed class AddDocumentToResponseResult {
     data class DocumentLocked(
         val authKey: AuthenticationKey
     ) : AddDocumentToResponseResult()
+
+    data class ErrorAddingDocument(
+        val throwable: Throwable
+    ) : AddDocumentToResponseResult()
 }

@@ -1,17 +1,13 @@
-package com.android.identity.securearea
+package com.android.identity.android.securearea
 
 /**
- * Exception thrown when trying to use a key which hasn't been unlocked.
+ * Cloud Secure Area specific exception.
  */
-open class KeyLockedException : Exception {
-    /**
-     * Construct a new exception.
-     */
-    constructor()
-
+class CloudException : Exception {
     /**
      * Construct a new exception.
      *
+     * @param message the message.
      */
     constructor(message: String) : super(message)
 

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.identity
+package com.android.identity.util
 
 import org.bouncycastle.asn1.ASN1Boolean
 import org.bouncycastle.asn1.ASN1Encodable
@@ -23,9 +23,9 @@ import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1OctetString
 import org.bouncycastle.asn1.ASN1Primitive
 import org.bouncycastle.asn1.ASN1Sequence
+import org.bouncycastle.asn1.ASN1Set
 import org.bouncycastle.asn1.ASN1TaggedObject
 import java.security.cert.X509Certificate
-import java.util.Optional
 
 // This code is based on https://github.com/google/android-key-attestation
 class AndroidAttestationExtensionParser(cert: X509Certificate) {
@@ -35,36 +35,119 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
         STRONG_BOX
     }
 
-    var attestationVersion = 0
-    var keymasterSecurityLevel = SecurityLevel.SOFTWARE
-    var keymasterVersion = 0
+    enum class VerifiedBootState {
+        UNKNOWN,
+        GREEN,
+        YELLOW,
+        ORANGE,
+        RED
+    }
+
+    val attestationSecurityLevel: SecurityLevel
+    val attestationVersion: Int
+
+    val keymasterSecurityLevel: SecurityLevel
+    val keymasterVersion: Int
 
     val attestationChallenge: ByteArray
     val uniqueId: ByteArray
 
+    val verifiedBootState: VerifiedBootState
+
+    val applicationSignatureDigests: List<ByteArray>
+
     private val softwareEnforcedAuthorizations: Map<Int, ASN1Primitive?>
     private val teeEnforcedAuthorizations: Map<Int, ASN1Primitive?>
+
+    init {
+        val attestationExtensionBytes = cert.getExtensionValue(KEY_DESCRIPTION_OID)
+        require(attestationExtensionBytes != null && attestationExtensionBytes.size > 0) {
+            "Couldn't find keystore attestation extension."
+        }
+        var seq: ASN1Sequence
+        ASN1InputStream(attestationExtensionBytes).use { asn1InputStream ->
+            // The extension contains one object, a sequence, in the
+            // Distinguished Encoding Rules (DER)-encoded form. Get the DER
+            // bytes.
+            val derSequenceBytes = (asn1InputStream.readObject() as ASN1OctetString).octets
+            ASN1InputStream(derSequenceBytes).use { seqInputStream ->
+                seq = seqInputStream.readObject() as ASN1Sequence
+            }
+        }
+
+        attestationVersion = getIntegerFromAsn1(seq.getObjectAt(ATTESTATION_VERSION_INDEX))
+        this.attestationSecurityLevel = securityLevelToEnum(
+            getIntegerFromAsn1(
+                seq.getObjectAt(ATTESTATION_SECURITY_LEVEL_INDEX)
+            )
+        )
+
+        keymasterVersion = getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_VERSION_INDEX))
+        this.keymasterSecurityLevel = securityLevelToEnum(
+            getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_SECURITY_LEVEL_INDEX))
+        )
+        attestationChallenge =
+            (seq.getObjectAt(ATTESTATION_CHALLENGE_INDEX) as ASN1OctetString).octets
+        uniqueId = (seq.getObjectAt(UNIQUE_ID_INDEX) as ASN1OctetString).octets
+
+        softwareEnforcedAuthorizations = getAuthorizationMap(
+            (seq.getObjectAt(SW_ENFORCED_INDEX) as ASN1Sequence).toArray()
+        )
+        teeEnforcedAuthorizations = getAuthorizationMap(
+            (seq.getObjectAt(TEE_ENFORCED_INDEX) as ASN1Sequence).toArray()
+        )
+
+        val rootOfTrustSeq = findAuthorizationListEntry(teeEnforcedAuthorizations, 704) as ASN1Sequence?
+        verifiedBootState =
+            if (rootOfTrustSeq != null) {
+                when (getIntegerFromAsn1(rootOfTrustSeq.getObjectAt(2))) {
+                    0 -> VerifiedBootState.GREEN
+                    1 -> VerifiedBootState.YELLOW
+                    2 -> VerifiedBootState.ORANGE
+                    3 -> VerifiedBootState.RED
+                    else -> VerifiedBootState.UNKNOWN
+                }
+            } else {
+                VerifiedBootState.UNKNOWN
+            }
+
+        val encodedAttestationApplicationId = getSoftwareAuthorizationByteString(709)
+
+        val attestationApplicationIdSeq =
+            ASN1InputStream(encodedAttestationApplicationId).readObject() as ASN1Sequence
+
+        val signatureDigestSet = attestationApplicationIdSeq.getObjectAt(1) as ASN1Set
+        val digests = mutableListOf<ByteArray>()
+        for (n in 0 until signatureDigestSet.size()) {
+            val octetString = signatureDigestSet.getObjectAt(n) as ASN1OctetString
+            digests.add(octetString.octets)
+        }
+        applicationSignatureDigests = digests
+    }
+
     val softwareEnforcedAuthorizationTags: Set<Int>
         get() = softwareEnforcedAuthorizations.keys
     val teeEnforcedAuthorizationTags: Set<Int>
         get() = teeEnforcedAuthorizations.keys
 
-    fun getSoftwareAuthorizationInteger(tag: Int): Optional<Int> {
+    fun getSoftwareAuthorizationInteger(tag: Int): Int? {
         val entry = findAuthorizationListEntry(softwareEnforcedAuthorizations, tag)
-        return Optional.ofNullable(entry)
-            .map { asn1Value: ASN1Primitive -> getIntegerFromAsn1(asn1Value) }
+        return entry?.let { getIntegerFromAsn1(it) }
     }
 
-    fun getSoftwareAuthorizationLong(tag: Int): Optional<Long> {
+    fun getSoftwareAuthorizationLong(tag: Int): Long? {
         val entry = findAuthorizationListEntry(softwareEnforcedAuthorizations, tag)
-        return Optional.ofNullable(entry)
-            .map { asn1Value: ASN1Primitive -> getLongFromAsn1(asn1Value) }
+        return entry?.let { getLongFromAsn1(it) }
     }
 
-    fun getTeeAuthorizationInteger(tag: Int): Optional<Int> {
+    fun getTeeAuthorizationInteger(tag: Int): Int? {
         val entry = findAuthorizationListEntry(teeEnforcedAuthorizations, tag)
-        return Optional.ofNullable(entry)
-            .map { asn1Value: ASN1Primitive -> getIntegerFromAsn1(asn1Value) }
+        return entry?.let { getIntegerFromAsn1(it) }
+    }
+
+    fun getTeeAuthorizationLong(tag: Int): Long? {
+        val entry = findAuthorizationListEntry(teeEnforcedAuthorizations, tag)
+        return entry?.let { getLongFromAsn1(it) }
     }
 
     fun getSoftwareAuthorizationBoolean(tag: Int): Boolean {
@@ -77,49 +160,15 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
         return entry != null
     }
 
-    fun getSoftwareAuthorizationByteString(tag: Int): Optional<ByteArray> {
+    fun getSoftwareAuthorizationByteString(tag: Int): ByteArray? {
         val entry =
             findAuthorizationListEntry(softwareEnforcedAuthorizations, tag) as ASN1OctetString?
-        return Optional.ofNullable(entry).map { obj: ASN1OctetString -> obj.octets }
+        return entry?.octets
     }
 
-    fun getTeeAuthorizationByteString(tag: Int): Optional<ByteArray> {
+    fun getTeeAuthorizationByteString(tag: Int): ByteArray? {
         val entry = findAuthorizationListEntry(teeEnforcedAuthorizations, tag) as ASN1OctetString?
-        return Optional.ofNullable(entry).map { obj: ASN1OctetString -> obj.octets }
-    }
-
-    init {
-        val attestationExtensionBytes = cert.getExtensionValue(KEY_DESCRIPTION_OID)
-        require(!(attestationExtensionBytes == null || attestationExtensionBytes.size == 0)) { "Couldn't find keystore attestation extension." }
-        var seq: ASN1Sequence
-        ASN1InputStream(attestationExtensionBytes).use { asn1InputStream ->
-            // The extension contains one object, a sequence, in the
-            // Distinguished Encoding Rules (DER)-encoded form. Get the DER
-            // bytes.
-            val derSequenceBytes = (asn1InputStream.readObject() as ASN1OctetString).octets
-            ASN1InputStream(derSequenceBytes).use { seqInputStream ->
-                seq = seqInputStream.readObject() as ASN1Sequence
-            }
-        }
-        attestationVersion = getIntegerFromAsn1(seq.getObjectAt(ATTESTATION_VERSION_INDEX))
-        this.keymasterSecurityLevel = securityLevelToEnum(
-            getIntegerFromAsn1(
-                seq.getObjectAt(ATTESTATION_SECURITY_LEVEL_INDEX)
-            )
-        )
-        keymasterVersion = getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_VERSION_INDEX))
-        this.keymasterSecurityLevel = securityLevelToEnum(
-            getIntegerFromAsn1(seq.getObjectAt(KEYMASTER_SECURITY_LEVEL_INDEX))
-        )
-        attestationChallenge =
-            (seq.getObjectAt(ATTESTATION_CHALLENGE_INDEX) as ASN1OctetString).octets
-        uniqueId = (seq.getObjectAt(UNIQUE_ID_INDEX) as ASN1OctetString).octets
-        softwareEnforcedAuthorizations = getAuthorizationMap(
-            (seq.getObjectAt(SW_ENFORCED_INDEX) as ASN1Sequence).toArray()
-        )
-        teeEnforcedAuthorizations = getAuthorizationMap(
-            (seq.getObjectAt(TEE_ENFORCED_INDEX) as ASN1Sequence).toArray()
-        )
+        return entry?.octets
     }
 
     companion object {

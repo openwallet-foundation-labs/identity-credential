@@ -65,6 +65,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -83,6 +84,9 @@ import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.securearea.CloudCreateKeySettings
+import com.android.identity.android.securearea.CloudKeyLockedException
+import com.android.identity.android.securearea.CloudKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.secure_area_test_app.ui.theme.IdentityCredentialTheme
@@ -91,7 +95,6 @@ import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.X509v3Extension
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
@@ -113,7 +116,15 @@ import kotlin.time.Duration.Companion.days
 class MainActivity :  FragmentActivity() {
     companion object {
         private const val TAG = "MainActivity"
+
+        // On the Android Emulator, 10.0.2.2 points to the host so this will work
+        // nicely if you are running cloudsa-server on the same machine you are running
+        // Android Studio on.
+        //
+        var CSA_URL_DEFAULT: String = "http://10.0.2.2:8080/cloudsa-server/"
     }
+
+    private var cloudSecureArea: com.android.identity.android.securearea.CloudSecureArea? = null
 
     private lateinit var softwareSecureArea: SoftwareSecureArea
 
@@ -246,6 +257,16 @@ class MainActivity :  FragmentActivity() {
         val description: String
     )
 
+    data class CsaPassphraseTestConfiguration(
+        val keyPurpose: KeyPurpose,
+        val curve: EcCurve,
+        val authRequired: Boolean,
+        val authTimeoutMillis: Long,
+        val userAuthType: Set<UserAuthenticationType>,
+        val biometricConfirmationRequired: Boolean,
+        val passphrase: String?
+    )
+
     @Preview
     @Composable
     private fun ListOfSecureAreaTests() {
@@ -259,6 +280,10 @@ class MainActivity :  FragmentActivity() {
                 val showCapabilitiesDialog = remember { mutableStateOf<AndroidKeystoreSecureArea.Capabilities?>(null) }
                 val showCertificateDialog = remember { mutableStateOf<CertificateChain?>(null) }
                 val swShowPassphraseDialog = remember { mutableStateOf<swPassphraseTestConfiguration?>(null) }
+                var csaConnectText by remember { mutableStateOf("Click to connect to CloudSA") }
+                var csaConnectColor by remember { mutableStateOf(Color.Red) }
+                val csaShowConnectDialog = remember { mutableStateOf(false) }
+                val csaShowPassphraseDialog = remember { mutableStateOf<CsaPassphraseTestConfiguration?>(null) }
 
                 if (showCapabilitiesDialog.value != null) {
                     ShowCapabilitiesDialog(
@@ -278,7 +303,7 @@ class MainActivity :  FragmentActivity() {
                 if (swShowPassphraseDialog.value != null) {
                     ShowPassphraseDialog(
                         onDismissRequest = {
-                            swShowPassphraseDialog.value = null;
+                            swShowPassphraseDialog.value = null
                         },
                         onContinueButtonClicked = { passphraseEnteredByUser: String ->
                             val configuration = swShowPassphraseDialog.value!!
@@ -294,7 +319,84 @@ class MainActivity :  FragmentActivity() {
                                     passphraseEnteredByUser
                                 )
                             })
-                            swShowPassphraseDialog.value = null;
+                            swShowPassphraseDialog.value = null
+                        }
+                    )
+                }
+
+                if (csaShowPassphraseDialog.value != null) {
+                    ShowPassphraseDialog(
+                        onDismissRequest = {
+                            csaShowPassphraseDialog.value = null
+                        },
+                        onContinueButtonClicked = { passphraseEnteredByUser: String ->
+                            val configuration = csaShowPassphraseDialog.value!!
+                            // Does a lot of I/O, cannot run on UI thread
+                            executorService.execute(kotlinx.coroutines.Runnable {
+                                if (Looper.myLooper() == null) {
+                                    Looper.prepare()
+                                }
+                                csaTest(
+                                    configuration.keyPurpose,
+                                    configuration.curve,
+                                    configuration.authRequired,
+                                    configuration.authTimeoutMillis,
+                                    configuration.userAuthType,
+                                    configuration.biometricConfirmationRequired,
+                                    configuration.passphrase,
+                                    passphraseEnteredByUser
+                                )
+                            })
+                            csaShowPassphraseDialog.value = null
+                        }
+                    )
+                }
+
+
+                if (csaShowConnectDialog.value) {
+                    CsaConnectDialog(
+                        sharedPreferences.getString("csaUrl", CSA_URL_DEFAULT)!!,
+                        onDismissRequest = {
+                            csaShowConnectDialog.value = false
+                        },
+                        onConnectButtonClicked = { url: String ->
+                            sharedPreferences.edit().putString("csaUrl", url).apply()
+                            csaShowConnectDialog.value = false
+                            // Does a lot of I/O, cannot run on UI thread
+                            executorService.execute(kotlinx.coroutines.Runnable {
+                                if (Looper.myLooper() == null) {
+                                    Looper.prepare()
+                                }
+                                if (cloudSecureArea == null) {
+                                    val storage = EphemeralStorageEngine()
+                                    cloudSecureArea =
+                                        com.android.identity.android.securearea.CloudSecureArea(
+                                            applicationContext,
+                                            storage,
+                                            url,
+                                            { true })
+                                    try {
+                                        cloudSecureArea!!.register()
+                                        Toast.makeText(
+                                            applicationContext,
+                                            "Registered with CSA",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        csaConnectText =
+                                            "Connected to ${cloudSecureArea!!.cloudUri}"
+                                        csaConnectColor = Color.Green
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        Toast.makeText(applicationContext, "${e.message}",
+                                            Toast.LENGTH_SHORT).show()
+                                        cloudSecureArea = null
+                                    }
+                                } else {
+                                    cloudSecureArea = null
+                                    csaConnectText = "Click to connect to CSA"
+                                    csaConnectColor = Color.Red
+                                }
+                            })
                         }
                     )
                 }
@@ -488,7 +590,7 @@ class MainActivity :  FragmentActivity() {
                                 // For brevity, only do passphrase for first item (P-256 Signature)
                                 if (!(keyPurpose == KeyPurpose.SIGN && curve == EcCurve.P256)) {
                                     if (passphraseRequired) {
-                                        continue;
+                                        continue
                                     }
                                 }
 
@@ -496,7 +598,7 @@ class MainActivity :  FragmentActivity() {
                                     TextButton(onClick = {
 
                                         if (passphraseRequired) {
-                                            swShowPassphraseDialog.value =
+                                            swShowPassphraseDialog.value = 
                                                 swPassphraseTestConfiguration(keyPurpose, curve, description)
                                         } else {
                                             // Does a lot of I/O, cannot run on UI thread
@@ -524,6 +626,139 @@ class MainActivity :  FragmentActivity() {
                         }
                     }
 
+                    item {
+                        Text(
+                            text = "Cloud Secure Area",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    item {
+                        TextButton(onClick = {
+                            if (cloudSecureArea != null) {
+                                cloudSecureArea = null
+                                csaConnectText = "Click to connect to CSA"
+                                csaConnectColor = Color.Red
+                            } else {
+                                csaShowConnectDialog.value = true
+                            }
+                        })
+                        {
+                            Text(
+                                text = csaConnectText,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = csaConnectColor
+                            )
+                        }
+                    }
+
+                    item {
+                        TextButton(onClick = {
+                            // Does a lot of I/O, cannot run on UI thread
+                            executorService.execute(kotlinx.coroutines.Runnable {
+                                if (Looper.myLooper() == null) {
+                                    Looper.prepare()
+                                }
+                                val attestation = csaAttestation()
+                                if (attestation.certificates.size > 0) {
+                                    Logger.d(TAG, "attestation: " + attestation)
+                                    showCertificateDialog.value = attestation
+                                }
+                            })
+                        })
+                        {
+                            Text(
+                                text = "CSA Attestation",
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
+
+                    for ((keyPurpose, keyPurposeDesc) in arrayOf(
+                        Pair(KeyPurpose.SIGN, "Signature"),
+                        Pair(KeyPurpose.AGREE_KEY, "Key Agreement")
+                    )) {
+                        for ((curve, curveName, purposes) in arrayOf(
+                            Triple(EcCurve.P256, "P-256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.P384, "P-384", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.P521, "P-521", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.BRAINPOOLP256R1, "Brainpool 256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.BRAINPOOLP320R1, "Brainpool 320", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.BRAINPOOLP384R1, "Brainpool 384", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.BRAINPOOLP512R1, "Brainpool 512", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.ED25519, "Ed25519", setOf(KeyPurpose.SIGN)),
+                            Triple(EcCurve.X25519, "X25519", setOf(KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.ED448, "Ed448", setOf(KeyPurpose.SIGN)),
+                            Triple(EcCurve.X448, "X448", setOf(KeyPurpose.AGREE_KEY)),
+                        )) {
+                            if (!purposes.contains(keyPurpose)) {
+                                // No common purpose
+                                continue
+                            }
+
+                            for ((passphraseRequired, passphraseDescription) in arrayOf(
+                                Pair(false, ""),
+                                Pair(true, "- Passphrase ")
+                            )) {
+                                for ((userAuthType, authTimeout, authDesc) in arrayOf(
+                                    Triple(setOf<UserAuthenticationType>(), 0L, ""),
+                                    Triple(setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC), 0L, "- Auth"),
+                                    Triple(setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC), 10 * 1000L, "- Auth (10 sec)"),
+                                    Triple(setOf(UserAuthenticationType.LSKF), 0L, "- Auth (LSKF Only)"),
+                                    Triple(setOf(UserAuthenticationType.BIOMETRIC), 0L, "- Auth (Biometric Only)"),
+                                    Triple(setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC), -1L, "- Auth (No Confirmation)"),
+                                )) {
+                                    // For brevity, only do passphrase and auth for first item (P-256 Signature)
+                                    if (!(curve == EcCurve.P256 && keyPurpose == KeyPurpose.SIGN)) {
+                                        if (!userAuthType.isEmpty() || passphraseRequired) {
+                                            continue
+                                        }
+                                    }
+
+                                    item {
+                                        TextButton(onClick = {
+                                            if (passphraseRequired) {
+                                                csaShowPassphraseDialog.value =
+                                                    CsaPassphraseTestConfiguration(
+                                                        keyPurpose,
+                                                        curve,
+                                                        !userAuthType.isEmpty(),
+                                                        if (authTimeout < 0L) 0L else authTimeout,
+                                                        userAuthType,
+                                                        authTimeout >= 0L,
+                                                        if (passphraseRequired) "1111" else null)
+                                            } else {
+                                                // Does a lot of I/O, cannot run on UI thread
+                                                executorService.execute(kotlinx.coroutines.Runnable {
+                                                    if (Looper.myLooper() == null) {
+                                                        Looper.prepare()
+                                                    }
+                                                    csaTest(
+                                                        keyPurpose,
+                                                        curve,
+                                                        !userAuthType.isEmpty(),
+                                                        if (authTimeout < 0L) 0L else authTimeout,
+                                                        userAuthType,
+                                                        authTimeout >= 0L,
+                                                        null,
+                                                        null
+                                                    )
+                                                })
+                                            }
+                                        })
+                                        {
+                                            Text(
+                                                text = "$curveName $keyPurposeDesc $passphraseDescription$authDesc",
+                                                fontSize = 15.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -738,6 +973,70 @@ class MainActivity :  FragmentActivity() {
     }
 
     @Composable
+    fun CsaConnectDialog(
+        url: String,
+        onDismissRequest: () -> Unit,
+        onConnectButtonClicked: (url: String) -> Unit,
+    ) {
+        var urlTextField by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+            mutableStateOf(TextFieldValue(url))
+        }
+        Dialog(onDismissRequest = { onDismissRequest() }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(275.dp)
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = "Cloud Secure Area",
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Text(
+                        text = "Enter the URL for the Cloud Secure Area to connect to.",
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Start,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    TextField(
+                        value = urlTextField,
+                        maxLines = 3,
+                        onValueChange = { urlTextField = it },
+                        textStyle = MaterialTheme.typography.bodySmall
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        TextButton(
+                            onClick = { onDismissRequest() },
+                        ) {
+                            Text("Cancel")
+                        }
+                        TextButton(
+                            onClick = { onConnectButtonClicked(urlTextField.text) },
+                        ) {
+                            Text("Connect")
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+
+    @Composable
     fun ShowPassphraseDialog(
         onDismissRequest: () -> Unit,
         onContinueButtonClicked: (passphrase: String) -> Unit,
@@ -858,7 +1157,7 @@ class MainActivity :  FragmentActivity() {
         try {
             aksTestUnguarded(keyPurpose, curve, authRequired, authTimeoutMillis, userAuthType, biometricConfirmationRequired, strongBox)
         } catch (e: Exception) {
-            e.printStackTrace();
+            e.printStackTrace()
             Toast.makeText(
                 applicationContext, "${e.message}",
                 Toast.LENGTH_SHORT
@@ -1018,7 +1317,7 @@ class MainActivity :  FragmentActivity() {
         try {
             swTestUnguarded(keyPurpose, curve, passphrase, passphraseEnteredByUser)
         } catch (e: Exception) {
-            e.printStackTrace();
+            e.printStackTrace()
             Toast.makeText(applicationContext, "${e.message}",
                 Toast.LENGTH_SHORT).show()
         }
@@ -1096,6 +1395,202 @@ class MainActivity :  FragmentActivity() {
         }
     }
 
+    private fun csaAttestation(): CertificateChain {
+        if (cloudSecureArea == null) {
+            Toast.makeText(applicationContext, "First connect to the CSA",
+                Toast.LENGTH_SHORT).show()
+            return CertificateChain(listOf())
+        }
+
+        val now = Clock.System.now()
+        val thirtyDaysFromNow = now + 30.days
+        cloudSecureArea!!.createKey(
+            "testKey",
+            CloudCreateKeySettings.Builder("Challenge".toByteArray())
+                .setUserAuthenticationRequired(
+                    true, 
+                    10*1000,
+                    setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
+                )
+                .setValidityPeriod(
+                    Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
+                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()))
+                .build()
+        )
+        return cloudSecureArea!!.getKeyInfo("testKey").attestation
+    }
+
+    private fun csaTest(
+        keyPurpose: KeyPurpose,
+        curve: EcCurve,
+        authRequired: Boolean,
+        authTimeoutMillis: Long,
+        userAuthType: Set<UserAuthenticationType>,
+        biometricConfirmationRequired: Boolean,
+        passphrase: String?,
+        passphraseEnteredByUser: String?) {
+        Logger.d(
+            TAG,
+            "cksTest keyPurpose:$keyPurpose curve:$curve authRequired:$authRequired authTimeout:$authTimeoutMillis"
+        )
+        try {
+            csaTestUnguarded(keyPurpose, curve, authRequired, authTimeoutMillis, userAuthType, biometricConfirmationRequired, passphrase, passphraseEnteredByUser)
+        } catch (e: Exception) {
+            e.printStackTrace();
+            Toast.makeText(applicationContext, "${e.message}",
+                Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun csaTestUnguarded(
+        keyPurpose: KeyPurpose,
+        curve: EcCurve,
+        authRequired: Boolean,
+        authTimeoutMillis: Long,
+        userAuthType: Set<UserAuthenticationType>,
+        biometricConfirmationRequired: Boolean,
+        passphrase: String?,
+        passphraseEnteredByUser: String?) {
+
+        if (cloudSecureArea == null) {
+            Toast.makeText(applicationContext, "First connect to the CSA",
+                Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val builder = CloudCreateKeySettings.Builder("Challenge".toByteArray())
+            .setEcCurve(curve)
+            .setKeyPurposes(setOf(keyPurpose))
+            .setUserAuthenticationRequired(authRequired, authTimeoutMillis, userAuthType)
+        if (passphrase != null) {
+            builder.setPassphraseRequired(true, passphrase)
+        }
+        cloudSecureArea!!.createKey("testKey", builder.build())
+        
+        var unlockData = CloudKeyUnlockData("testKey")
+        if (passphraseEnteredByUser != null) {
+            unlockData.passphrase = passphraseEnteredByUser
+        }
+
+        if (keyPurpose == KeyPurpose.SIGN) {
+            val signingAlgorithm = curve.defaultSigningAlgorithm
+            try {
+                val t0 = System.currentTimeMillis()
+                val derSignature = cloudSecureArea!!.sign(
+                    "testKey",
+                    signingAlgorithm,
+                    "data".toByteArray(),
+                    unlockData)
+                val t1 = System.currentTimeMillis()
+                Logger.dHex(
+                    TAG,
+                    "Made signature with key without authentication",
+                    derSignature
+                )
+                Toast.makeText(applicationContext, "Signed w/o authn (${t1 - t0} msec)",
+                    Toast.LENGTH_SHORT).show()
+            } catch (e: CloudKeyLockedException) {
+                if (e.reason == CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED) {
+                    doUserAuth(
+                        "Unlock to sign with key",
+                        unlockData.cryptoObject,
+                        false,
+                        biometricConfirmationRequired,
+                        onAuthSuccees = {
+                            Logger.d(TAG, "onAuthSuccess")
+
+                            val t0 = System.currentTimeMillis()
+                            val derSignature = cloudSecureArea!!.sign(
+                                "testKey",
+                                signingAlgorithm,
+                                "data".toByteArray(),
+                                unlockData
+                            )
+                            val t1 = System.currentTimeMillis()
+                            Logger.dHex(
+                                TAG,
+                                "Made signature with key after authentication",
+                                derSignature
+                            )
+                            Toast.makeText(
+                                applicationContext, "Signed after authn (${t1 - t0} msec)",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        onAuthFailure = {
+                            Logger.d(TAG, "onAuthFailure")
+                        },
+                        onDismissed = {
+                            Logger.d(TAG, "onDismissed")
+                        })
+                } else {
+                    e.printStackTrace()
+                    Toast.makeText(
+                        applicationContext, "${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        } else {
+            val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
+            try {
+                val t0 = System.currentTimeMillis()
+                val Zab = cloudSecureArea!!.keyAgreement(
+                    "testKey",
+                    otherKeyPairForEcdh.publicKey,
+                    unlockData)
+                val t1 = System.currentTimeMillis()
+                Logger.dHex(
+                    TAG,
+                    "Calculated ECDH without authentication",
+                    Zab)
+                Toast.makeText(applicationContext, "ECDH w/o authn (${t1 - t0} msec)",
+                    Toast.LENGTH_SHORT).show()
+            } catch (e: CloudKeyLockedException) {
+                if (e.reason == CloudKeyLockedException.Reason.USER_NOT_AUTHENTICATED) {
+                    doUserAuth(
+                        "Unlock to ECDH with key",
+                        unlockData.cryptoObject,
+                        false,
+                        biometricConfirmationRequired,
+                        onAuthSuccees = {
+                            Logger.d(TAG, "onAuthSuccess")
+
+                            val t0 = System.currentTimeMillis()
+                            val Zab = cloudSecureArea!!.keyAgreement(
+                                "testKey",
+                                otherKeyPairForEcdh.publicKey,
+                                unlockData
+                            )
+                            val t1 = System.currentTimeMillis()
+                            Logger.dHex(
+                                TAG,
+                                "Calculated ECDH after authentication",
+                                Zab
+                            )
+                            Toast.makeText(
+                                applicationContext, "ECDH after authn (${t1 - t0} msec)",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                        onAuthFailure = {
+                            Logger.d(TAG, "onAuthFailure")
+                        },
+                        onDismissed = {
+                            Logger.d(TAG, "onDismissed")
+                        })
+                } else {
+                    e.printStackTrace()
+                    Toast.makeText(
+                        applicationContext, "${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+        }
+    }
+
     private fun doUserAuth(
         title: String,
         cryptoObject: CryptoObject?,
@@ -1106,7 +1601,7 @@ class MainActivity :  FragmentActivity() {
         onDismissed: () -> Unit
     ) {
         if (Looper.getMainLooper().getThread() == Thread.currentThread()) {
-            throw IllegalStateException("Cannot be called from UI thread");
+            throw IllegalStateException("Cannot be called from UI thread")
         }
         val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Authentication required")

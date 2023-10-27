@@ -24,7 +24,7 @@ import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.test.InstrumentationRegistry
-import com.android.identity.AndroidAttestationExtensionParser
+import com.android.identity.util.AndroidAttestationExtensionParser
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto

@@ -76,6 +76,7 @@ dependencies {
     implementation project(':identity-doctypes')
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
+    implementation project(':identity-android-cloudsa')
 
     implementation files('../third-party/play-services-identity-credentials-0.0.1-eap01.aar')
     implementation libs.bundles.google.play.services

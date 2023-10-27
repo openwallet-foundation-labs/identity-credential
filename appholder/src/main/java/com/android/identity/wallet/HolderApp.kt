@@ -3,6 +3,7 @@ package com.android.identity.wallet
 import android.app.Application
 import android.content.Context
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.securearea.CloudSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.credential.CredentialStore
@@ -22,6 +23,9 @@ import com.android.identity.wallet.document.KeysAndCertificates
 import com.android.identity.wallet.util.PeriodicKeysRefreshWorkRequest
 import com.android.identity.wallet.util.PreferencesHelper
 import com.google.android.material.color.DynamicColors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.ByteArrayInputStream
 import java.security.Security
@@ -85,6 +89,24 @@ class HolderApp: Application() {
 
             secureAreaRepository.addImplementation(androidKeystoreSecureArea)
             secureAreaRepository.addImplementation(softwareSecureArea)
+
+            // TODO: replace this with where you are running your own instance of the CSA.
+            //  This hard-coded address will eventually be replaced with UI in settings
+            //  to set up one or more CSAs including having the user confirm the root
+            //  of trust (aka Cloud Binding Key) at registration time.
+            //
+            val cloudSecureArea = CloudSecureArea(
+                context,
+                storageEngine,
+                "http://10.0.2.2:8080/cloudsa-server/"
+            ) { cloudBindingKey -> true }
+            if (!cloudSecureArea.isRegistered) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    cloudSecureArea.register()
+                }
+            }
+            secureAreaRepository.addImplementation(cloudSecureArea)
+
             return CredentialStore(storageEngine, secureAreaRepository)
         }
     }

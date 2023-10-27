@@ -1,0 +1,33 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'org.gretty:gretty:+'
+    }
+}
+
+plugins {
+    id "war"
+    id "org.jetbrains.kotlin.jvm"
+    id "org.jetbrains.kotlin.plugin.serialization"
+}
+
+apply plugin: 'war'
+apply plugin: 'org.gretty'
+
+dependencies {
+    implementation 'javax.servlet:javax.servlet-api:4.0.1'
+    implementation project(path: ':identity')
+    implementation project(path: ':identity-cloudsa')
+    implementation libs.kotlinx.datetime
+    implementation libs.kotlinx.serialization
+    implementation libs.bouncy.castle.bcprov
+    implementation libs.bouncy.castle.bcpkix
+
+    testImplementation 'junit:junit:4.12'
+}
+
+gretty {
+}

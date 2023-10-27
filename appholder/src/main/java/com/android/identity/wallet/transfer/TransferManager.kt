@@ -232,6 +232,14 @@ class TransferManager private constructor(private val context: Context) {
             result = AddDocumentToResponseResult.DocumentAdded(signingKeyUsageLimitPassed)
         } catch (lockedException: KeyLockedException) {
             result = AddDocumentToResponseResult.DocumentLocked(authKeyToUse)
+        } catch (throwable: Throwable) {
+            // This can happen, for example when using CloudSecureArea and there's no
+            // Internet connection or the CSA is down. In this case we'll get a
+            // CloudSecureAreaException. Just convey this to the caller so the
+            // UI can report the error.
+            log("Error generating DeviceResponse")
+            throwable.printStackTrace()
+            result = AddDocumentToResponseResult.ErrorAddingDocument(throwable)
         }
         continuation.resume(result)
     }
