@@ -32,6 +32,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import com.android.identity.internal.Util;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 
 import org.junit.Test;
@@ -200,7 +201,7 @@ public class DynamicAuthTest {
                         + "}",
                 pretty);
 
-        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
 
         credential = store.getCredentialByName(credentialName,
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
@@ -647,7 +648,7 @@ public class DynamicAuthTest {
             IdentityCredential tc = store.getCredentialByName(credentialName,
                     IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
             KeyPair ekp = tc.createEphemeralKeyPair();
-            KeyPair rekp = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            KeyPair rekp = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
             tc.setReaderEphemeralPublicKey(rekp.getPublic());
             tc.setSessionTranscript(Util.buildSessionTranscript(ekp));
             Map<String, Collection<String>> etr = new LinkedHashMap<>();
@@ -676,7 +677,7 @@ public class DynamicAuthTest {
             IdentityCredential tc = store.getCredentialByName(credentialName,
                     IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
             KeyPair ekp = tc.createEphemeralKeyPair();
-            KeyPair rekp = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            KeyPair rekp = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
             tc.setReaderEphemeralPublicKey(rekp.getPublic());
             tc.setSessionTranscript(Util.buildSessionTranscript(ekp));
             Map<String, Collection<String>> etr = new LinkedHashMap<>();
@@ -704,7 +705,7 @@ public class DynamicAuthTest {
                     IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
             tc.setAllowUsingExpiredKeys(true);   // <-- this is the call that makes the difference!
             KeyPair ekp = tc.createEphemeralKeyPair();
-            KeyPair rekp = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            KeyPair rekp = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
             tc.setReaderEphemeralPublicKey(rekp.getPublic());
             tc.setSessionTranscript(Util.buildSessionTranscript(ekp));
             Map<String, Collection<String>> etr = new LinkedHashMap<>();
@@ -776,7 +777,7 @@ public class DynamicAuthTest {
             IdentityCredential tc = store.getCredentialByName(credentialName,
                     IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
             KeyPair ekp = tc.createEphemeralKeyPair();
-            KeyPair rekp = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            KeyPair rekp = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
             tc.setReaderEphemeralPublicKey(rekp.getPublic());
             tc.setSessionTranscript(Util.buildSessionTranscript(ekp));
             Map<String, Collection<String>> etr = new LinkedHashMap<>();
@@ -808,7 +809,7 @@ public class DynamicAuthTest {
             IdentityCredential tc = store.getCredentialByName(credentialName,
                     IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
             KeyPair ekp = tc.createEphemeralKeyPair();
-            KeyPair rekp = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            KeyPair rekp = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
             tc.setReaderEphemeralPublicKey(rekp.getPublic());
             tc.setSessionTranscript(Util.buildSessionTranscript(ekp));
             Map<String, Collection<String>> etr = new LinkedHashMap<>();
@@ -857,7 +858,7 @@ public class DynamicAuthTest {
             IdentityCredential tc = store.getCredentialByName(credentialName,
                     IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
             KeyPair ekp = tc.createEphemeralKeyPair();
-            KeyPair rekp = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            KeyPair rekp = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
             tc.setReaderEphemeralPublicKey(rekp.getPublic());
             tc.setSessionTranscript(Util.buildSessionTranscript(ekp));
             Map<String, Collection<String>> etr = new LinkedHashMap<>();
@@ -888,7 +889,7 @@ public class DynamicAuthTest {
             IdentityCredential tc = store.getCredentialByName(credentialName,
                     IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
             KeyPair ekp = tc.createEphemeralKeyPair();
-            KeyPair rekp = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            KeyPair rekp = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
             tc.setReaderEphemeralPublicKey(rekp.getPublic());
             tc.setSessionTranscript(Util.buildSessionTranscript(ekp));
             Map<String, Collection<String>> etr = new LinkedHashMap<>();
@@ -916,7 +917,7 @@ public class DynamicAuthTest {
                     IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
             tc.setAllowUsingExpiredKeys(true);   // <-- this is the call that makes the difference!
             KeyPair ekp = tc.createEphemeralKeyPair();
-            KeyPair rekp = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+            KeyPair rekp = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
             tc.setReaderEphemeralPublicKey(rekp.getPublic());
             tc.setSessionTranscript(Util.buildSessionTranscript(ekp));
             Map<String, Collection<String>> etr = new LinkedHashMap<>();
@@ -1040,7 +1041,7 @@ public class DynamicAuthTest {
         Map<String, Collection<String>> entriesToRequest = new LinkedHashMap<>();
         entriesToRequest.put("org.iso.18013-5.2019", Arrays.asList("First name", "Last name"));
         KeyPair ephemeralKeyPair = credential.createEphemeralKeyPair();
-        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         byte[] sessionTranscript = Util.buildSessionTranscript(ephemeralKeyPair);
         credential.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
         credential.setSessionTranscript(sessionTranscript);
@@ -1101,7 +1102,7 @@ public class DynamicAuthTest {
         Map<String, Collection<String>> entriesToRequest = new LinkedHashMap<>();
         entriesToRequest.put("org.iso.18013-5.2019", Arrays.asList("First name", "Last name"));
         KeyPair ephemeralKeyPair = credential.createEphemeralKeyPair();
-        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         byte[] sessionTranscript = Util.buildSessionTranscript(ephemeralKeyPair);
         credential.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
         credential.setSessionTranscript(sessionTranscript);
@@ -1124,7 +1125,7 @@ public class DynamicAuthTest {
         credential = store.getCredentialByName(credentialName,
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
         ephemeralKeyPair = credential.createEphemeralKeyPair();
-        readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         sessionTranscript = Util.buildSessionTranscript(ephemeralKeyPair);
         credential.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
         credential.setSessionTranscript(sessionTranscript);
@@ -1145,7 +1146,7 @@ public class DynamicAuthTest {
         credential = store.getCredentialByName(credentialName,
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
         ephemeralKeyPair = credential.createEphemeralKeyPair();
-        readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         sessionTranscript = Util.buildSessionTranscript(ephemeralKeyPair);
         credential.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
         credential.setSessionTranscript(sessionTranscript);
