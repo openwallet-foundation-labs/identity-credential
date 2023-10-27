@@ -34,6 +34,7 @@ import com.android.identity.android.legacy.PresentationSession;
 import com.android.identity.android.legacy.Utility;
 import com.android.identity.android.legacy.WritableIdentityCredential;
 import com.android.identity.mdoc.mso.StaticAuthDataParser;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.CborUtil;
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
@@ -244,7 +245,7 @@ public class DeviceResponseGeneratorOnAndroidTest {
                 Arrays.asList("given_name", "family_name", "some_number", "raw_cbor_1", "raw_cbor_2"));
         issuerSignedEntriesToRequest.put(AAMVA_NAMESPACE, Collections.singletonList("real_id"));
 
-        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
 
         PresentationSession session = store.createPresentationSession(
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);

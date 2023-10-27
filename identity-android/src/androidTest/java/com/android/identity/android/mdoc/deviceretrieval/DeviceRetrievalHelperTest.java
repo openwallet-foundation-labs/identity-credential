@@ -50,6 +50,7 @@ import com.android.identity.mdoc.request.DeviceRequestParser;
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
 import com.android.identity.util.Logger;
@@ -221,7 +222,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -502,7 +503,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -679,7 +680,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         DataItem handover = SimpleValue.NULL;
-        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -860,7 +861,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
-        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()

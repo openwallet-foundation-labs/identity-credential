@@ -42,6 +42,7 @@ import com.android.identity.android.legacy.ResultData;
 import com.android.identity.android.legacy.Utility;
 import com.android.identity.android.legacy.WritableIdentityCredential;
 import com.android.identity.internal.Util;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 
 import org.junit.Test;
@@ -601,7 +602,7 @@ public class ProvisioningTest {
         }
 
         KeyPair ephemeralKeyPair = credential.createEphemeralKeyPair();
-        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         credential.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
         byte[] sessionTranscript = Util.buildSessionTranscript(ephemeralKeyPair);
 
@@ -621,7 +622,7 @@ public class ProvisioningTest {
 
         // Now try with a different (but still valid) sessionTranscript - this should fail with
         // a RuntimeException
-        KeyPair otherEphemeralKeyPair = Util.createEphemeralKeyPair(Constants.EC_CURVE_P256);
+        KeyPair otherEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
         byte[] otherSessionTranscript = Util.buildSessionTranscript(otherEphemeralKeyPair);
         try {
             credential.setSessionTranscript(otherSessionTranscript);
