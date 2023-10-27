@@ -1,6 +1,6 @@
-package com.android.mdl.appreader.readercertgen;
+package com.android.mdl.appreader.readercertgen
 
-public enum SupportedCurves {
+enum class SupportedCurves {
     SECP256R1,
     SECP384R1,
     SECP521R1,
