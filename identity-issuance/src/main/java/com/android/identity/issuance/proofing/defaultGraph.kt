@@ -14,6 +14,7 @@ import com.android.identity.securearea.toDataItem
 import kotlinx.io.bytestring.ByteString
 
 fun defaultGraph(
+    documentId: String,
     resources: Resources,
     developerModeEnabled: Boolean,
     tosText: String,
@@ -156,6 +157,28 @@ fun defaultGraph(
                         on(id = "devmode_sa_software_mdoc_auth_x448", text = "XDH w/ X448") {}
                     }
                 }
+
+                on(id = "devmode_sa_cloud", text = "Cloud Secure Area") {
+                    setupCloudSecureArea(
+                        "devmode_sa_cloud_setup_csa",
+                        cloudSecureAreaIdentifier = "CloudSecureArea?id=${documentId}&url=/csa",
+                        passphraseConstraints = PassphraseConstraints.PIN_SIX_DIGITS,
+                        message = "## Choose 6-digit PIN\n\nChoose the PIN to use for the document.\n\nThis is asked every time the document is presented so make sure you memorize it and don't share it with anyone else. $devNotice",
+                        verifyMessage = "## Verify PIN\n\nEnter the PIN you chose in the previous screen. $devNotice",
+                        assets = devAssets,
+                    )
+                    choice(
+                        id = "devmode_sa_cloud_user_auth",
+                        message = "Choose whether to also require user authentication $devNotice",
+                        assets = devAssets,
+                        acceptButtonText = "Continue"
+                    ) {
+                        on(id = "devmode_sa_cloud_user_auth_lskf_biometrics", text = "LSKF or Biometrics") {}
+                        on(id = "devmode_sa_cloud_user_auth_lskf", text = "Only LSKF") {}
+                        on(id = "devmode_sa_cloud_user_auth_biometrics", text = "Only Biometrics") {}
+                        on(id = "devmode_sa_cloud_user_auth_none", text = "None") {}
+                    }
+                }
             }
         }
         if (developerModeEnabled) {
@@ -201,7 +224,10 @@ fun defaultGraph(
     }
 }
 
-fun defaultCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration {
+fun defaultCredentialConfiguration(
+    documentId: String,
+    collectedEvidence: Map<String, EvidenceResponse>
+): CredentialConfiguration {
     val challenge = byteArrayOf(1, 2, 3)
     if (!collectedEvidence.containsKey("devmode_sa")) {
         return CredentialConfiguration(
@@ -416,6 +442,33 @@ fun defaultCredentialConfiguration(collectedEvidence: Map<String, EvidenceRespon
                 "SoftwareSecureArea",
                 Cbor.encode(builder.end().build())
             )
+        }
+
+        "devmode_sa_cloud" -> {
+            val userAuthType = when ((collectedEvidence["devmode_sa_cloud_user_auth"]
+                    as EvidenceResponseQuestionMultipleChoice).answerId) {
+                "devmode_sa_cloud_user_auth_lskf_biometrics" -> 3
+                "devmode_sa_cloud_user_auth_lskf" -> 1
+                "devmode_sa_cloud_user_auth_biometrics" -> 2
+                "devmode_sa_cloud_user_auth_none" -> 0
+                else -> throw IllegalStateException()
+            }
+            // Cloud can do both ECDSA and ECDH
+            val purposes = setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)
+            return CredentialConfiguration(
+                challenge,
+                "CloudSecureArea?id=${documentId}&url=/csa",
+                Cbor.encode(
+                    CborMap.builder()
+                        .put("passphraseRequired", true)
+                        .put("userAuthenticationRequired", (userAuthType != 0))
+                        .put("userAuthenticationTimeoutMillis", 0L)
+                        .put("userAuthenticationTypes", userAuthType)
+                        .put("purposes", KeyPurpose.encodeSet(purposes))
+                        .end().build()
+                )
+            )
+
         }
 
         else -> {

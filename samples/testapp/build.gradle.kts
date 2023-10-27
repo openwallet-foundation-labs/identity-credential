@@ -45,6 +45,7 @@ kotlin {
             implementation(libs.bouncy.castle.bcprov)
             implementation(libs.androidx.biometrics)
             implementation(project(":identity-android"))
+            implementation(project(":identity-android-csa"))
         }
 
         commonMain.dependencies {
@@ -92,6 +93,12 @@ android {
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
+            setProguardFiles(
+                listOf(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+                )
+            )
         }
     }
     compileOptions {

@@ -22,4 +22,4 @@ class SecureEnclaveKeyInfo internal constructor(
      */
     val userAuthenticationTypes: Set<SecureEnclaveUserAuthType>
 
-): KeyInfo(publicKey, keyPurposes, KeyAttestation(publicKey))
+): KeyInfo(publicKey, keyPurposes, KeyAttestation(publicKey, null))

@@ -47,6 +47,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.appsupport.ui.PassphraseEntryField
+import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestGermanEid
@@ -58,6 +59,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleCho
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
 import com.android.identity.issuance.evidence.EvidenceResponseGermanEid
+import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
@@ -70,6 +72,7 @@ import com.android.identity_credential.wallet.ui.SelfieRecorder
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.FaceImageClassifier
+import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -79,6 +82,10 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.async
+import io.ktor.client.request.request
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -364,6 +371,176 @@ fun EvidenceRequestCreatePassphraseView(
 
     val matchErrorText = if (showMatchErrorText) {
         if (constraints.requireNumerical) {
+            context.getString(R.string.evidence_create_passphrase_no_match_pin)
+        } else {
+            context.getString(R.string.evidence_create_passphrase_no_match)
+        }
+    } else ""
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = matchErrorText,
+            color = Color.Red
+        )
+    }
+}
+
+@Composable
+fun EvidenceRequestSetupCloudSecureAreaView(
+    context: Context,
+    secureAreaRepository: SecureAreaRepository,
+    evidenceRequest: EvidenceRequestSetupCloudSecureArea,
+    onAccept: () -> Unit,
+    onError: (error: Throwable) -> Unit
+) {
+    println("secureAreaRepository: $secureAreaRepository")
+    val cloudSecureArea = secureAreaRepository.getImplementation(
+        evidenceRequest.cloudSecureAreaIdentifier
+    )
+    if (cloudSecureArea == null) {
+        throw IllegalStateException("Cannot create Secure Area with id ${evidenceRequest.cloudSecureAreaIdentifier}")
+    }
+    if (cloudSecureArea !is CloudSecureArea) {
+        throw IllegalStateException("Expected type CloudSecureArea, got $cloudSecureArea")
+    }
+    if (cloudSecureArea.isRegistered) {
+        println("CSA already registered")
+        onAccept()
+        return
+    }
+
+    val scope = rememberCoroutineScope()
+    var chosenPassphrase by remember { mutableStateOf("") }
+    var verifiedPassphrase by remember { mutableStateOf("") }
+    var showMatchErrorText by remember { mutableStateOf(false) }
+
+    val constraints = evidenceRequest.passphraseConstraints
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (chosenPassphrase.isEmpty()) {
+            RichTextSnippet(
+                modifier = Modifier.padding(8.dp),
+                content = evidenceRequest.message,
+                assets = evidenceRequest.assets
+            )
+        } else {
+            RichTextSnippet(
+                modifier = Modifier.padding(8.dp),
+                content = evidenceRequest.verifyMessage,
+                assets = evidenceRequest.assets
+            )
+        }
+    }
+
+    if (chosenPassphrase.isEmpty()) {
+        // Choose PIN
+        var currentPassphraseMeetsRequirements by remember { mutableStateOf(false) }
+        var currentPassphrase by remember { mutableStateOf("") }
+        PassphraseEntryField(
+            constraints = constraints,
+            checkWeakPassphrase = true,
+            onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                currentPassphrase = passphrase
+                currentPassphraseMeetsRequirements = passphraseMeetsRequirements
+                val isFixedLength = (constraints.minLength == constraints.maxLength)
+                if (isFixedLength && currentPassphraseMeetsRequirements) {
+                    chosenPassphrase = passphrase
+                } else if (donePressed) {
+                    chosenPassphrase = passphrase
+                }
+            }
+        )
+
+        if (constraints.minLength != constraints.maxLength) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Button(
+                    enabled = currentPassphraseMeetsRequirements,
+                    onClick = { chosenPassphrase = currentPassphrase }
+                ) {
+                    Text(stringResource(id = R.string.evidence_create_passphrase_next))
+                }
+            }
+        }
+    } else if (verifiedPassphrase.isEmpty()) {
+        // Verify PIN
+        var currentPassphrase by remember { mutableStateOf("") }
+        PassphraseEntryField(
+            constraints = constraints,
+            checkWeakPassphrase = false,
+            onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                currentPassphrase = passphrase
+                val isFixedLength = (constraints.minLength == constraints.maxLength)
+                if (isFixedLength && currentPassphrase.length == constraints.minLength) {
+                    verifiedPassphrase = passphrase
+                } else if (donePressed) {
+                    verifiedPassphrase = passphrase
+                }
+            }
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Spacer(modifier = Modifier.weight(1.0f))
+            if (constraints.minLength != constraints.maxLength) {
+                Button(
+                    onClick = { verifiedPassphrase = currentPassphrase },
+                ) {
+                    Text(stringResource(id = R.string.evidence_create_passphrase_confirm))
+                }
+            }
+        }
+    } else {
+        if (chosenPassphrase == verifiedPassphrase) {
+            SideEffect {
+                scope.launch {
+                    try {
+                        cloudSecureArea.register(
+                            chosenPassphrase,
+                            evidenceRequest.passphraseConstraints,
+                        ) { true }
+                        onAccept()
+                    } catch (e: Throwable) {
+                        Logger.e(TAG, "Error registering with Cloud Secure Area", e)
+                        onError(e)
+                    }
+                }
+            }
+        } else {
+            showMatchErrorText = true
+            PassphraseEntryField(
+                constraints = constraints,
+                checkWeakPassphrase = false,
+                onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                }
+            )
+            SideEffect {
+                scope.launch {
+                    delay(2000)
+                    verifiedPassphrase = ""
+                    showMatchErrorText = false
+                }
+            }
+        }
+    }
+
+    val matchErrorText = if (showMatchErrorText) {
+        if (constraints.requireNumerical) {
              context.getString(R.string.evidence_create_passphrase_no_match_pin)
         } else {
             context.getString(R.string.evidence_create_passphrase_no_match)
@@ -380,7 +557,6 @@ fun EvidenceRequestCreatePassphraseView(
             color = Color.Red
         )
     }
-
 }
 
 @Composable

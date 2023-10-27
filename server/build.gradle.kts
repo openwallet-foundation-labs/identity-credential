@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":identity-flow"))
     implementation(project(":processor-annotations"))
     implementation(project(":identity-issuance"))
+    implementation(project(":identity-csa"))
 
     implementation(libs.javax.servlet.api)
     implementation(libs.kotlinx.datetime)

@@ -42,7 +42,7 @@ object AttestationExtension {
     /**
      * The OID for the attestation extension.
      */
-    const val ATTESTATION_OID = "1.3.6.1.4.1.11129.2.1.39"
+    const val ATTESTATION_OID = "1.3.6.1.4.1.11129.2.1.49"
 
     /**
      * Generates the payload of the attestation extension.

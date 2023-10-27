@@ -36,6 +36,15 @@ data class CredentialConfiguration(
      * - `userAuthenticationTimeoutMillis`: a number with the user authentication timeout in milliseconds
      *   or 0 to require authentication on every use.
      * - `userAuthenticationTypes`: the value is a number like in [UserAuthenticationType.Companion.encodeSet].
+     *
+     * For [CloudSecureArea] the following keys are recognized
+     * - `purposes`: the value is a number encoded like in [Keypurpose.Companion.encodeSet].
+     * - `curve`: the value is a number encoded like [EcCurve.coseCurveIdentifier].
+     * - `userAuthenticationRequired`: a boolean specifying whether to require user authentication.
+     * - `userAuthenticationTimeoutMillis`: a number with the user authentication timeout in milliseconds
+     *   or 0 to require authentication on every use.
+     * - `userAuthenticationTypes`: the value is a number like in [UserAuthenticationType.Companion.encodeSet].
+     * - `passphraseRequired`: a boolean specifying whether to require passphrase authentication.
      */
     val secureAreaConfiguration: ByteArray
 )

@@ -15,6 +15,10 @@
  */
 package com.android.identity.storage
 
+import com.android.identity.cbor.Bstr
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
+
 /**
  * An storage engine implementing by storing data in memory.
  *
@@ -38,4 +42,23 @@ class EphemeralStorageEngine : StorageEngine {
     }
 
     override fun enumerate(): Collection<String> = data.keys
+
+    fun toCbor(): ByteArray {
+        val builder = CborMap.builder()
+        data.forEach() { (key, value) ->
+            builder.put(key, Bstr(value))
+        }
+        return Cbor.encode(builder.end().build())
+    }
+
+    companion object {
+        fun fromCbor(encodedData: ByteArray): EphemeralStorageEngine {
+            val engine = EphemeralStorageEngine()
+            val map = Cbor.decode(encodedData)
+            map.asMap.forEach() { (keyDataItem, valueDataItem) ->
+                engine.data.put(keyDataItem.asTstr, valueDataItem.asBstr)
+            }
+            return engine
+        }
+    }
 }

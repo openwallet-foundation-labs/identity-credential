@@ -30,6 +30,8 @@ The project includes libraries written in Kotlin:
    claims / data elements and also sample data. This is packaged separately from
    the core `identity` library because its size is non-negligible and not all
    applications need this or they may bring their own.
+- `identity-csa` and `identity-android-csa` are libraries for implementing and
+   communicating with a Cloud-based Secure Area. This is discussed more in-depth below.
 
 These libraries are intended to be used by Wallet Applications (mobile
 applications on the credential holder's device), Reader Applications (applications
@@ -53,6 +55,25 @@ building blocks
   - The `identity` library includes an implementation backed by BouncyCastle
     with support for passphrase-protected keys. This isn't suitable for use
     in Mobile Applications as its not backed by Secure Hardware.
+  - A protocol for a Cloud Secure Area is provided along with production quality
+    client-side implementation in the `identity-android-csa` library and a reference
+    implementation of the server side in the `identity-csa` library with the caveat
+    that the provided server implementation isn't suitable for production use.
+    - The point of this is to provide a secure and privacy-preserving protocol
+      with end-to-end encryption directly from the app to a Secure Area
+      in the server, with messages being exchanged via HTTPS. Consequently, this
+      allows server implementations to terminate TLS outside the server's Secure Area
+      without sacrificing privacy.
+    - Key material created by applications is designed to never leave the Secure Area
+      on the server.
+    - The protocol has support for requiring user authentication (biometric or lock-screen
+      knowledge factor, e.g. system PIN) and/or passphrase for unlocking the key material.
+    - The way the protocol works is that the Cloud Secure Area learns very little about the
+      user (only which Android application is requesting service) so if the Cloud Secure Area is
+      run by another entity than the credential issuer (and no collusion exists between
+      the two), this can provide the same level of privacy as when the Secure Area is local
+      on the device.
+    - This protocol is currently marked as experimental and may change in the future.
   - Applications can supply their own _Secure Area_ implementations for e.g.
     externally attached dongles, cloud based HSMs, or whatever the issuer
     deems appropriate to protect key material associated with their credential.

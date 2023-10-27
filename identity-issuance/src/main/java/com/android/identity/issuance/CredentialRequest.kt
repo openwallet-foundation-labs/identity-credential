@@ -9,8 +9,8 @@ import com.android.identity.securearea.KeyAttestation
 @CborSerializable
 data class CredentialRequest(
     /**
-     * The attestation for the secure-area bound credential that was created and to be referenced
-     * in the minted credential.
+     * The certificate chain in the attestation for the secure-area bound credential that
+     * was created and to be referenced in the minted credential.
      */
     val secureAreaBoundKeyAttestation: KeyAttestation,
 

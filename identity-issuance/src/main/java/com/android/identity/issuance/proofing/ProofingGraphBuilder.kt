@@ -8,6 +8,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermiss
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceRequestSelfieVideo
+import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.issuance.proofing.ProofingGraph.Node
@@ -65,6 +66,24 @@ class ProofingGraphBuilder {
         passphraseConstraints: PassphraseConstraints,
     ) {
         val evidenceRequest = EvidenceRequestCreatePassphrase(
+            passphraseConstraints = passphraseConstraints,
+            message = message,
+            verifyMessage = verifyMessage,
+            assets = assets)
+        chain.add { followUp -> ProofingGraph.SimpleNode(id, followUp, evidenceRequest) }
+    }
+
+    /** Sends [EvidenceRequestSetupCloudSecureArea]. */
+    fun setupCloudSecureArea(
+        id: String,
+        cloudSecureAreaIdentifier: String,
+        passphraseConstraints: PassphraseConstraints,
+        message: String,
+        verifyMessage: String,
+        assets: Map<String, ByteString>,
+    ) {
+        val evidenceRequest = EvidenceRequestSetupCloudSecureArea(
+            cloudSecureAreaIdentifier = cloudSecureAreaIdentifier,
             passphraseConstraints = passphraseConstraints,
             message = message,
             verifyMessage = verifyMessage,

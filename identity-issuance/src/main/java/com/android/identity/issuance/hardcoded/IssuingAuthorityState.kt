@@ -249,7 +249,10 @@ class IssuingAuthorityState(
         val issuerDocument = loadIssuerDocument(env, documentId)
         check(issuerDocument.state == DocumentCondition.READY)
 
-        val credentialConfiguration = defaultCredentialConfiguration(issuerDocument.collectedEvidence)
+        val credentialConfiguration = defaultCredentialConfiguration(
+            documentId,
+            issuerDocument.collectedEvidence
+        )
         return RequestCredentialsState(
             documentId,
             credentialConfiguration)
