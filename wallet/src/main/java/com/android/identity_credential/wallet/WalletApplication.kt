@@ -26,6 +26,7 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
 import com.android.identity.crypto.javaX509Certificate
@@ -40,8 +41,10 @@ import com.android.identity.issuance.WalletApplicationCapabilities
 import com.android.identity.issuance.remote.WalletServerProvider
 import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.sdjwt.credential.SdJwtVcCredential
+import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
+import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
@@ -95,14 +98,15 @@ class WalletApplication : Application() {
     }
 
     // late instantiations
+    lateinit var storageEngine: StorageEngine
     lateinit var documentTypeRepository: DocumentTypeRepository
     lateinit var secureAreaRepository: SecureAreaRepository
     lateinit var credentialFactory: CredentialFactory
     lateinit var documentStore: DocumentStore
     lateinit var settingsModel: SettingsModel
     lateinit var documentModel: DocumentModel
-    lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
-    lateinit var softwareSecureArea: SoftwareSecureArea
+    private lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
+    private lateinit var softwareSecureArea: SoftwareSecureArea
     lateinit var walletServerProvider: WalletServerProvider
 
     override fun onCreate() {
@@ -127,7 +131,7 @@ class WalletApplication : Application() {
 
         // init storage
         val storageFile = Path(applicationContext.noBackupFilesDir.path, "identity.bin")
-        val storageEngine = AndroidStorageEngine.Builder(applicationContext, storageFile).build()
+        storageEngine = AndroidStorageEngine.Builder(applicationContext, storageFile).build()
 
         // init AndroidKeyStoreSecureArea
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(applicationContext, storageEngine)
@@ -140,6 +144,31 @@ class WalletApplication : Application() {
         secureAreaRepository = SecureAreaRepository()
         secureAreaRepository.addImplementation(androidKeystoreSecureArea)
         secureAreaRepository.addImplementation(softwareSecureArea)
+        secureAreaRepository.addImplementationFactory(
+            identifierPrefix = CloudSecureArea.IDENTIFIER_PREFIX,
+            factoryFunc = { identifier ->
+                val queryString = identifier.substring(CloudSecureArea.IDENTIFIER_PREFIX.length + 1)
+                val params = queryString.split("&").map {
+                    val parts = it.split("=", ignoreCase = false, limit = 2)
+                    parts[0] to parts[1]
+                }.toMap()
+                val givenUrl = params["url"]!!
+                val cloudSecureAreaUrl =
+                    if (givenUrl.startsWith("/")) {
+                        settingsModel.walletServerUrl.value + givenUrl
+                    } else {
+                        givenUrl
+                    }
+                Logger.i(TAG, "Creating CSA with url $cloudSecureAreaUrl for $identifier")
+                val cloudSecureArea = CloudSecureArea(
+                    applicationContext,
+                    storageEngine,
+                    identifier,
+                    cloudSecureAreaUrl
+                )
+                return@addImplementationFactory cloudSecureArea
+            }
+        )
 
         // init credentialFactory
         credentialFactory = CredentialFactory()

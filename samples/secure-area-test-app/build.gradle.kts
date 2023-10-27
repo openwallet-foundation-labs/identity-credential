@@ -35,6 +35,7 @@ kotlin {
             implementation(libs.bouncy.castle.bcprov)
             implementation(libs.androidx.biometrics)
             implementation(project(":identity-android"))
+            implementation(project(":identity-android-csa"))
         }
 
         commonMain.dependencies {

@@ -18,7 +18,6 @@ package com.android.identity.android.document
 import androidx.test.InstrumentationRegistry
 import com.android.identity.android.TestUtil
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialFactory
@@ -84,9 +83,9 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
             AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge).build(),
         )
         Assert.assertFalse(pendingCredential.isCertified)
-        val attestation = pendingCredential.attestation as AndroidKeystoreKeyAttestation
+        val attestation = pendingCredential.attestation
         val parser =
-            AndroidAttestationExtensionParser(attestation.certificateChain.certificates[0].javaX509Certificate)
+            AndroidAttestationExtensionParser(attestation.certChain!!.certificates[0].javaX509Certificate)
         Assert.assertArrayEquals(
             authKeyChallenge,
             parser.attestationChallenge

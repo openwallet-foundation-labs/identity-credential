@@ -408,16 +408,6 @@ sealed class DataItem(
         get() = CoseLabel.fromDataItem(this)
 
     /**
-     * The value of a data item containing a key attestation.
-     *
-     * This is equivalent to calling [KeyAttestation.fromDataItem].
-     *
-     * @throws IllegalArgumentException if not the data item isn't a Key Attestation.
-     */
-    val asKeyAttestation: KeyAttestation
-        get() = KeyAttestation.fromDataItem(this)
-
-    /**
      * The value of a data item containing a certificate.
      *
      * This is equivalent to calling [X509Cert.fromDataItem].

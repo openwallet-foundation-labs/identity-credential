@@ -112,6 +112,16 @@ class SoftwareCreateKeySettings internal constructor(
         }
 
         /**
+         * Sets the subject of the key, to be included in the attestation.
+         *
+         * @param subject subject field
+         * @return the builder.
+         */
+        fun setSubject(subject: String?) = apply {
+            this.subject = subject
+        }
+
+        /**
          * Sets the key validity period.
          *
          * By default the key validity period is unbounded.

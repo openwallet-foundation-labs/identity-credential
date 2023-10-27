@@ -135,7 +135,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                 },
                 onCanceled = {},
                 onError = {
-                    Logger.i(TAG, "Biometric auth failed", e)
+                    Logger.i(TAG, "Biometric auth failed", it)
                 }
             )
         }
@@ -340,7 +340,7 @@ class CredmanPresentationActivity : FragmentActivity() {
             }
 
         } catch (e: Exception) {
-            Logger.i(TAG, "Exception $e")
+            Logger.i(TAG, "Exception caught while generating response", e)
             val resultData = Intent()
             IntentHelper.setGetCredentialException(resultData, e.toString(), e.message)
             setResult(RESULT_OK, resultData)

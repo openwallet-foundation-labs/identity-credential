@@ -2,7 +2,7 @@ package com.android.identity.issuance.remote
 
 import android.content.Context
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreKeyAttestation
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.Algorithm
@@ -51,7 +51,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 class WalletServerProvider(
     private val context: Context,
-    private val secureArea: SecureArea,
+    private val secureArea: AndroidKeystoreSecureArea,
     private val settingsModel: SettingsModel,
     private val storageEngine: StorageEngine,
     private val getWalletApplicationCapabilities: suspend () -> WalletApplicationCapabilities
@@ -216,8 +216,8 @@ class WalletServerProvider(
             challenge = authentication.requestChallenge("")
         }
         if (keyInfo != null) {
-            val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
-            val seq = extractAttestationSequence(attestation.certificateChain)
+            val attestation = keyInfo.attestation
+            val seq = extractAttestationSequence(attestation.certChain!!)
             val clientId = String(ASN1OctetString.getInstance(seq.getObjectAt(4)).octets)
             challenge = authentication.requestChallenge(clientId)
             if (clientId != challenge.clientId) {
@@ -238,7 +238,7 @@ class WalletServerProvider(
         _walletServerCapabilities = authentication.authenticate(ClientAuthentication(
             secureArea.sign(alias, Algorithm.ES256, message.toByteArray(), null),
             if (newClient) {
-                (keyInfo!!.attestation as AndroidKeystoreKeyAttestation).certificateChain
+                keyInfo!!.attestation.certChain!!
             } else null,
             getWalletApplicationCapabilities()
         ))

@@ -197,6 +197,7 @@ fun DocumentInfoScreen(
                             } catch (e: ScreenLockRequiredException) {
                                 showErrorMessage = context.getString(R.string.document_info_screen_refresh_error_missing_screenlock)
                             } catch (e: Throwable) {
+                                e.printStackTrace()
                                 showErrorMessage = "Unexpected exception while refreshing: $e"
                             }
                         }

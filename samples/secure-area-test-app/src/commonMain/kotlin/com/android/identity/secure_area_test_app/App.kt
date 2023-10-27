@@ -24,12 +24,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.secure_area_test_app.ui.AndroidKeystoreSecureAreaScreen
+import com.android.identity.secure_area_test_app.ui.CloudSecureAreaScreen
 import com.android.identity.secure_area_test_app.ui.SecureEnclaveSecureAreaScreen
 import com.android.identity.secure_area_test_app.ui.SoftwareSecureAreaScreen
 import com.android.identity.secure_area_test_app.ui.StartScreen
 import identitycredential.samples.secure_area_test_app.generated.resources.Res
 import identitycredential.samples.secure_area_test_app.generated.resources.android_keystore_secure_area_screen_title
 import identitycredential.samples.secure_area_test_app.generated.resources.back_button
+import identitycredential.samples.secure_area_test_app.generated.resources.cloud_secure_area_screen_title
 import identitycredential.samples.secure_area_test_app.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.secure_area_test_app.generated.resources.software_secure_area_screen_title
 import identitycredential.samples.secure_area_test_app.generated.resources.start_screen_title
@@ -45,6 +47,7 @@ enum class Screen(val title: StringResource) {
     SoftwareSecureArea(title = Res.string.software_secure_area_screen_title),
     AndroidKeystoreSecureArea(title = Res.string.android_keystore_secure_area_screen_title),
     SecureEnclaveSecureArea(title = Res.string.secure_enclave_secure_area_screen_title),
+    CloudSecureArea(title = Res.string.cloud_secure_area_screen_title),
 }
 
 class App {
@@ -99,6 +102,9 @@ class App {
                     }
                     composable(route = Screen.SecureEnclaveSecureArea.name) {
                         SecureEnclaveSecureAreaScreen(showToast = { message -> showToast(message) })
+                    }
+                    composable(route = Screen.CloudSecureArea.name) {
+                        CloudSecureAreaScreen(showToast = { message -> showToast(message) })
                     }
                 }
             }

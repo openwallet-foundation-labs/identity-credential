@@ -35,6 +35,7 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcSignature
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInvalidatedException
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
@@ -533,8 +534,8 @@ class AndroidKeystoreSecureArea(
                     keyInfo.keyValidityForOriginationEnd!!.time
                 )
             }
-            val attestation = map["attestation"].asX509CertChain
-            val publicKey = attestation.certificates.first().ecPublicKey
+            val attestationCertChain = map["attestation"].asX509CertChain
+            val publicKey = attestationCertChain.certificates.first().ecPublicKey
 
             val userAuthenticationTypes = mutableSetOf<UserAuthenticationType>()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -551,7 +552,7 @@ class AndroidKeystoreSecureArea(
             }
             AndroidKeystoreKeyInfo(
                 publicKey,
-                AndroidKeystoreKeyAttestation(attestation),
+                KeyAttestation(publicKey, attestationCertChain),
                 keyPurposes,
                 attestKeyAlias,
                 userAuthenticationRequired,

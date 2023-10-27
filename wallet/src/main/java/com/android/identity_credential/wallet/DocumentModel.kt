@@ -7,6 +7,9 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.securearea.cloud.CloudCreateKeySettings
+import com.android.identity.android.securearea.cloud.CloudKeyInfo
+import com.android.identity.android.securearea.cloud.CloudSecureArea
 import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credential.SecureAreaBoundCredential
@@ -259,6 +262,31 @@ class DocumentModel(
                         "No"
                     }
                 kvPairs.put("In StrongBox", isStrongBoxBacked)
+            } else if (deviceKeyInfo is CloudKeyInfo) {
+                kvPairs.put("Cloud Secure Area URL", (credential.secureArea as CloudSecureArea).serverUrl)
+                val userAuthString =
+                    if (!deviceKeyInfo.isUserAuthenticationRequired) {
+                        "None"
+                    } else {
+                        val authTimeoutString =
+                            if (deviceKeyInfo.userAuthenticationTimeoutMillis > 0) {
+                                String.format(
+                                    "Timeout %.1f Seconds",
+                                    deviceKeyInfo.userAuthenticationTimeoutMillis / 1000
+                                )
+                            } else {
+                                "Every use"
+                            }
+                        deviceKeyInfo.userAuthenticationTypes.toString() + " ($authTimeoutString)"
+                    }
+                kvPairs.put("User Authentication", userAuthString)
+                val isPassphraseRequired =
+                    if (deviceKeyInfo.isPassphraseRequired) {
+                        "Yes"
+                    } else {
+                        "No"
+                    }
+                kvPairs.put("Passphrase Required", isPassphraseRequired)
             } else if (deviceKeyInfo is SoftwareKeyInfo) {
                 val passphraseProtected =
                     if (deviceKeyInfo.isPassphraseProtected) {
@@ -714,6 +742,12 @@ class DocumentModel(
 
                 is SoftwareSecureArea -> {
                     SoftwareCreateKeySettings.Builder()
+                        .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
+                        .build()
+                }
+
+                is CloudSecureArea -> {
+                    CloudCreateKeySettings.Builder(credConfig.challenge)
                         .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
                         .build()
                 }

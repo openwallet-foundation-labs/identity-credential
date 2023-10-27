@@ -16,6 +16,7 @@ import com.android.identity.secure_area_test_app.Screen
 import com.android.identity.secure_area_test_app.platform
 import identitycredential.samples.secure_area_test_app.generated.resources.Res
 import identitycredential.samples.secure_area_test_app.generated.resources.android_keystore_secure_area_screen_title
+import identitycredential.samples.secure_area_test_app.generated.resources.cloud_secure_area_screen_title
 import identitycredential.samples.secure_area_test_app.generated.resources.secure_enclave_secure_area_screen_title
 import identitycredential.samples.secure_area_test_app.generated.resources.software_secure_area_screen_title
 import org.jetbrains.compose.resources.stringResource
@@ -48,6 +49,15 @@ fun StartScreen(navController: NavHostController) {
                             }
                         ) {
                             Text(stringResource(Res.string.android_keystore_secure_area_screen_title))
+                        }
+
+                        // This is Android-only for now.
+                        TextButton(
+                            onClick = {
+                                navController.navigate(route = Screen.CloudSecureArea.name)
+                            }
+                        ) {
+                            Text(stringResource(Res.string.cloud_secure_area_screen_title))
                         }
                     }
                 }

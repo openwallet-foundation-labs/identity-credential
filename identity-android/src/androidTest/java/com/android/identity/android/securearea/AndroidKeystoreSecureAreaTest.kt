@@ -117,8 +117,8 @@ class AndroidKeystoreSecureAreaTest {
             .build()
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestation.certificateChain.certificates.size >= 1)
+        val attestation = keyInfo.attestation
+        Assert.assertTrue(attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
@@ -287,8 +287,7 @@ class AndroidKeystoreSecureAreaTest {
             .build()
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestation.certificateChain.certificates.size >= 1)
+        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.ED25519, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
@@ -378,8 +377,7 @@ class AndroidKeystoreSecureAreaTest {
                 .build()
         )
         val keyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestation.certificateChain.certificates.size >= 1)
+        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
@@ -423,8 +421,7 @@ class AndroidKeystoreSecureAreaTest {
                 .build()
         )
         val keyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestation.certificateChain.certificates.size >= 1)
+        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.X25519, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isStrongBoxBacked)
@@ -486,8 +483,7 @@ class AndroidKeystoreSecureAreaTest {
                 .build()
         )
         val keyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestation.certificateChain.certificates.size >= 1)
+        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY, KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
@@ -566,12 +562,10 @@ class AndroidKeystoreSecureAreaTest {
         val settings = AndroidKeystoreCreateKeySettings.Builder(challenge).build()
         ks.createKey("testKey", settings)
         val keyInfoOld: KeyInfo = ks.getKeyInfo("testKey")
-        val attestationOld = keyInfoOld.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestationOld.certificateChain.certificates.size >= 1)
+        Assert.assertTrue(keyInfoOld.attestation.certChain!!.certificates.size >= 1)
         ks.createKey("testKey", settings)
         val keyInfo: KeyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfoOld.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestation.certificateChain.certificates.size >= 1)
+        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         val dataToSign = byteArrayOf(4, 5, 6)
         val signature = try {
             ks.sign("testKey", Algorithm.ES256, dataToSign, null)
@@ -581,8 +575,8 @@ class AndroidKeystoreSecureAreaTest {
 
         // Check new key is a different cert chain.
         Assert.assertNotEquals(
-            (keyInfoOld.attestation as AndroidKeystoreKeyAttestation).certificateChain.certificates[0].ecPublicKey,
-            (keyInfo.attestation as AndroidKeystoreKeyAttestation).certificateChain.certificates[0].ecPublicKey
+            keyInfoOld.attestation.certChain!!.certificates[0].ecPublicKey,
+            keyInfo.attestation.certChain!!.certificates[0].ecPublicKey
         )
 
         // Check new key is used to sign.
@@ -628,8 +622,7 @@ class AndroidKeystoreSecureAreaTest {
 
         // On Android, at least three certificates are present in the chain.
         val keyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestation.certificateChain.certificates.size >= 3)
+        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 3)
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
@@ -642,7 +635,7 @@ class AndroidKeystoreSecureAreaTest {
 
         // Check the attestation extension
         val parser = AndroidAttestationExtensionParser(
-            attestation.certificateChain.certificates[0].javaX509Certificate
+            keyInfo.attestation.certChain!!.certificates[0].javaX509Certificate
         )
         Assert.assertArrayEquals(challenge, parser.attestationChallenge)
         val securityLevel = parser.keymasterSecurityLevel
@@ -728,8 +721,7 @@ class AndroidKeystoreSecureAreaTest {
         ks.deleteKey("testKey")
         ks.createKey("testKey", settings)
         val keyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
-        Assert.assertTrue(attestation.certificateChain.certificates.size >= 1)
+        Assert.assertTrue(keyInfo.attestation.certChain!!.certificates.size >= 1)
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked)
@@ -741,10 +733,10 @@ class AndroidKeystoreSecureAreaTest {
         Assert.assertNull(keyInfo.validUntil)
 
         // When using an attest key, only one certificate is returned ...
-        Assert.assertEquals(1, attestation.certificateChain.certificates.size.toLong())
+        Assert.assertEquals(1, keyInfo.attestation.certChain!!.certificates.size.toLong())
         // ... and this certificate is signed by the attest key. Check that.
         try {
-            attestation.certificateChain.certificates[0].javaX509Certificate.verify(
+            keyInfo.attestation.certChain!!.certificates[0].javaX509Certificate.verify(
                 attestKeyCertificates[0].publicKey
             )
             // expected path
@@ -754,8 +746,7 @@ class AndroidKeystoreSecureAreaTest {
 
         // Check the attestation extension
         val parser = AndroidAttestationExtensionParser(
-            (keyInfo.attestation as AndroidKeystoreKeyAttestation).certificateChain
-                .certificates[0].javaX509Certificate
+            keyInfo.attestation.certChain!!.certificates[0].javaX509Certificate
         )
         Assert.assertArrayEquals(challenge, parser.attestationChallenge)
         val securityLevel = parser.keymasterSecurityLevel
@@ -778,12 +769,11 @@ class AndroidKeystoreSecureAreaTest {
         val challenge = byteArrayOf()
         ks.createKey("testKey", CreateKeySettings(setOf(KeyPurpose.SIGN), EcCurve.P256))
         val keyInfo = ks.getKeyInfo("testKey")
-        val attestation = keyInfo.attestation as AndroidKeystoreKeyAttestation
         Assert.assertNotNull(keyInfo)
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         val parser = AndroidAttestationExtensionParser(
-            attestation.certificateChain.certificates[0].javaX509Certificate
+            keyInfo.attestation.certChain!!.certificates[0].javaX509Certificate
         )
         Assert.assertArrayEquals(challenge, parser.attestationChallenge)
 

@@ -25,10 +25,13 @@ import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
+import com.android.identity.issuance.evidence.EvidenceRequestSetupCloudSecureArea
 import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
+import com.android.identity.issuance.evidence.EvidenceResponseSetupCloudSecureArea
 import com.android.identity.issuance.remote.WalletServerProvider
+import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
@@ -39,6 +42,7 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 @Composable
 fun ProvisionDocumentScreen(
     context: Context,
+    secureAreaRepository: SecureAreaRepository,
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
     permissionTracker: PermissionTracker,
@@ -110,6 +114,21 @@ fun ProvisionDocumentScreen(
                             onAccept = { inputString ->
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseCreatePassphrase(inputString),
+                                    walletServerProvider = walletServerProvider,
+                                    documentStore = documentStore
+                                )
+                            }
+                        )
+                    }
+
+                    is EvidenceRequestSetupCloudSecureArea -> {
+                        EvidenceRequestSetupCloudSecureAreaView(
+                            context = context,
+                            secureAreaRepository = secureAreaRepository,
+                            evidenceRequest,
+                            onAccept = {
+                                provisioningViewModel.provideEvidence(
+                                    evidence = EvidenceResponseSetupCloudSecureArea(true),
                                     walletServerProvider = walletServerProvider,
                                     documentStore = documentStore
                                 )

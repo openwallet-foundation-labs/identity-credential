@@ -1,6 +1,7 @@
 package com.android.identity.android.securearea
 
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.securearea.KeyAttestation
 import com.android.identity.securearea.KeyInfo
 import com.android.identity.securearea.KeyPurpose
 import kotlinx.datetime.Instant
@@ -10,7 +11,7 @@ import kotlinx.datetime.Instant
  */
 class AndroidKeystoreKeyInfo internal constructor(
     publicKey: EcPublicKey,
-    attestation: AndroidKeystoreKeyAttestation,
+    attestation: KeyAttestation,
     keyPurposes: Set<KeyPurpose>,
 
     /**
