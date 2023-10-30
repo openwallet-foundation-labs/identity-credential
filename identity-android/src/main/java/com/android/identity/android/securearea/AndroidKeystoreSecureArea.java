@@ -444,7 +444,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             }
             throw new IllegalStateException(e.getMessage(), e);
         } catch (InvalidKeyException e) {
-            throw new IllegalArgumentException("Key does not have purpose KEY_PURPOSE_SIGN", e);
+            throw new IllegalArgumentException(e);
         }
     }
 
@@ -484,7 +484,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             }
             throw new IllegalStateException(e.getMessage(), e);
         } catch (InvalidKeyException e) {
-            throw new IllegalArgumentException("Key does not have purpose KEY_PURPOSE_AGREE_KEY", e);
+            throw new IllegalArgumentException(e);
         }
     }
 
