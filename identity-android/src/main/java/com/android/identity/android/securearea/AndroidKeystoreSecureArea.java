@@ -43,6 +43,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
+import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -130,6 +131,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
      * Flag indicating that authentication is needed using the user's biometric.
      */
     public static final int USER_AUTHENTICATION_TYPE_BIOMETRIC = 1<<1;
+    private final int mKeymintTeeFeatureLevel;
+    private final int mKeymintSbFeatureLevel;
 
     /**
      * An annotation used to indicate different types of user authentication.
@@ -152,6 +155,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                                      @NonNull StorageEngine storageEngine) {
         mContext = context;
         mStorageEngine = storageEngine;
+        mKeymintTeeFeatureLevel = getFeatureVersionKeystore(context, false);
+        mKeymintSbFeatureLevel = getFeatureVersionKeystore(context, true);
     }
 
     @Override
@@ -178,6 +183,23 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                 } else {
                     throw new IllegalArgumentException(
                             "PURPOSE_AGREE_KEY not supported on this device");
+                }
+
+                // Android KeyStore tries to be "helpful" by creating keys in Software if
+                // the Secure World (Keymint) lacks support for the requested feature, for
+                // example ECDH. This will never work (for RWI, the credential issuer will
+                // detect it when examining the attestation) so just bail early if this
+                // is the case.
+                if (aSettings.getUseStrongBox()) {
+                    if (mKeymintSbFeatureLevel < 100) {
+                        throw new IllegalArgumentException("PURPOSE_AGREE_KEY not supported on " +
+                                "this StrongBox KeyMint version");
+                    }
+                } else {
+                    if (mKeymintTeeFeatureLevel < 100) {
+                        throw new IllegalArgumentException("PURPOSE_AGREE_KEY not supported on " +
+                                "this KeyMint version");
+                    }
                 }
             }
 
@@ -274,7 +296,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                 throw new IllegalStateException(e.getMessage(), e);
             }
             kpg.generateKeyPair();
-
         } catch (NoSuchAlgorithmException
                  | NoSuchProviderException e) {
             throw new IllegalStateException("Error creating key", e);
@@ -1151,6 +1172,42 @@ public class AndroidKeystoreSecureArea implements SecureArea {
 
     }
 
+    private static int getFeatureVersionKeystore(@NonNull Context appContext, boolean useStrongbox) {
+        String feature = PackageManager.FEATURE_HARDWARE_KEYSTORE;
+        if (useStrongbox) {
+            feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE;
+        }
+        PackageManager pm = appContext.getPackageManager();
+        if (pm.hasSystemFeature(feature)) {
+            FeatureInfo info = null;
+            FeatureInfo[] infos = pm.getSystemAvailableFeatures();
+            for (int n = 0; n < infos.length; n++) {
+                FeatureInfo i = infos[n];
+                if (i.name.equals(feature)) {
+                    info = i;
+                    break;
+                }
+            }
+            int version = 0;
+            if (info != null) {
+                version = info.version;
+            }
+            // It's entirely possible that the feature exists but the version number hasn't
+            // been set. In that case, assume it's at least KeyMaster 4.1.
+            if (version < 41) {
+                version = 41;
+            }
+            return version;
+        }
+        // It's only a requirement to set PackageManager.FEATURE_HARDWARE_KEYSTORE since
+        // Android 12 so for old devices this isn't set. However all devices since Android
+        // 8.1 has had HW-backed keystore so in this case we can report KeyMaster 4.1
+        if (!useStrongbox) {
+            return 41;
+        }
+        return 0;
+    }
+
     /**
      * Helper class to determine capabilities of the device.
      *
@@ -1162,30 +1219,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         private final int mApiLevel;
         private final int mTeeFeatureLevel;
         private final int mSbFeatureLevel;
-
-        private static int getFeatureVersionKeystore(@NonNull Context appContext, boolean useStrongbox) {
-            String feature = PackageManager.FEATURE_HARDWARE_KEYSTORE;
-            if (useStrongbox) {
-                feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE;
-            }
-            PackageManager pm = appContext.getPackageManager();
-            int featureVersionFromPm = 0;
-            if (pm.hasSystemFeature(feature)) {
-                FeatureInfo info = null;
-                FeatureInfo[] infos = pm.getSystemAvailableFeatures();
-                for (int n = 0; n < infos.length; n++) {
-                    FeatureInfo i = infos[n];
-                    if (i.name.equals(feature)) {
-                        info = i;
-                        break;
-                    }
-                }
-                if (info != null) {
-                    featureVersionFromPm = info.version;
-                }
-            }
-            return featureVersionFromPm;
-        }
 
         /**
          * Construct a new Capabilities object.

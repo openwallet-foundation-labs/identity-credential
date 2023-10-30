@@ -163,7 +163,6 @@ class MainActivity :  FragmentActivity() {
             feature = PackageManager.FEATURE_STRONGBOX_KEYSTORE
         }
         val pm = appContext.packageManager
-        var featureVersionFromPm = 0
         if (pm.hasSystemFeature(feature)) {
             var info: FeatureInfo? = null
             val infos = pm.systemAvailableFeatures
@@ -174,11 +173,24 @@ class MainActivity :  FragmentActivity() {
                     break
                 }
             }
+            var version = 0
             if (info != null) {
-                featureVersionFromPm = info.version
+                version = info.version
             }
+            // It's entirely possible that the feature exists but the version number hasn't
+            // been set. In that case, assume it's at least KeyMaster 4.1.
+            if (version < 41) {
+                version = 41
+            }
+            return version
         }
-        return featureVersionFromPm
+        // It's only a requirement to set PackageManager.FEATURE_HARDWARE_KEYSTORE since
+        // Android 12 so for old devices this isn't set. However all devices since Android
+        // 8.1 has had HW-backed keystore so in this case we can report KeyMaster 4.1
+        if (!useStrongbox) {
+            return 41
+        }
+        return 0
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -504,6 +516,28 @@ class MainActivity :  FragmentActivity() {
         }
     }
 
+    // Unfortunately this is API is only available to system apps so we
+    // have to use reflection to use it.
+    private fun getFirstApiLevel(): Int {
+        try {
+            val c = Class.forName("android.os.SystemProperties")
+            val get = c.getMethod("get", String::class.java)
+            val firstApiLevelString = get.invoke(c, "ro.product.first_api_level") as String
+            return firstApiLevelString.toInt()
+        } catch (e: java.lang.Exception) {
+            Logger.w(TAG, "Error getting ro.product.first_api_level", e)
+            return 0
+        }
+    }
+
+    private fun getNameForApiLevel(apiLevel: Int): String {
+        val fields = Build.VERSION_CODES::class.java.fields
+        var codeName = "UNKNOWN"
+        fields.filter { it.getInt(Build.VERSION_CODES::class) == apiLevel }
+            .forEach { codeName = it.name }
+        return codeName
+    }
+
     @Composable
     fun ShowCapabilitiesDialog(capabilities: AndroidKeystoreSecureArea.Capabilities,
                                onDismissRequest: () -> Unit) {
@@ -530,9 +564,12 @@ class MainActivity :  FragmentActivity() {
                             .size(400.dp)
                             .verticalScroll(rememberScrollState())
                     ) {
+                        val apiLevel = Build.VERSION.SDK_INT
+                        val firstApiLevel = getFirstApiLevel()
                         // Would be nice to show first API level but that's only available to tests.
                         Text(
-                            text = "API Level: ${Build.VERSION.SDK_INT}\n" +
+                            text = "API Level: ${apiLevel} (${getNameForApiLevel(apiLevel)})\n" +
+                                    "First API Level: ${firstApiLevel} (${getNameForApiLevel(firstApiLevel)})\n" +
                                     "TEE KeyMint version: ${keymintVersionTee}\n" +
                                     "StrongBox KeyMint version: ${keymintVersionStrongBox}",
                             modifier = Modifier.padding(8.dp),
