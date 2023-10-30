@@ -17,7 +17,6 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.OperatorCreationException
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.io.IOException
-import java.security.NoSuchAlgorithmException
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.Optional
@@ -49,12 +48,7 @@ object CertificateGenerator {
 
 
         // Extensions --------------------------
-        val jcaX509ExtensionUtils: JcaX509ExtensionUtils
-        jcaX509ExtensionUtils = try {
-            JcaX509ExtensionUtils()
-        } catch (e: NoSuchAlgorithmException) {
-            throw RuntimeException(e)
-        }
+        val jcaX509ExtensionUtils = JcaX509ExtensionUtils()
         if (issuerCert.isPresent) {
             try {
                 // adds 3 more fields, not present in other cert

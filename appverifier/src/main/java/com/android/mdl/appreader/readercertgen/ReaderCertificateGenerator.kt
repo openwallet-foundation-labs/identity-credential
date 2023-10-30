@@ -27,11 +27,7 @@ object ReaderCertificateGenerator {
         return try {
             // NOTE older devices may not have the right BC installed for this to work
             val kpg: KeyPairGenerator
-            if (curve.equals("Ed25519", ignoreCase = true) || curve.equals(
-                    "Ed448",
-                    ignoreCase = true
-                )
-            ) {
+            if (listOf("Ed25519", "Ed448").any { it.equals(curve, ignoreCase = true) }) {
                 kpg = KeyPairGenerator.getInstance(curve, BouncyCastleProvider())
             } else {
                 kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider())
@@ -46,7 +42,6 @@ object ReaderCertificateGenerator {
         }
     }
 
-    @Throws(Exception::class)
     fun createReaderCertificate(
         dsKeyPair: KeyPair, issuerCert: X509Certificate,
         issuerPrivateKey: PrivateKey
