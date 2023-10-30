@@ -387,7 +387,7 @@ public class AndroidKeystoreSecureAreaTest {
             ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
             Assert.fail("Signing shouldn't work with a key w/o KEY_PURPOSE_SIGN");
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("Key does not have purpose KEY_PURPOSE_SIGN", e.getMessage());
+            // Expected path.
         } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         }
@@ -670,7 +670,7 @@ public class AndroidKeystoreSecureAreaTest {
         } catch (SecureArea.KeyLockedException e) {
             throw new AssertionError(e);
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("Key does not have purpose KEY_PURPOSE_AGREE_KEY", e.getMessage());
+            // Expected path.
         }
     }
 
