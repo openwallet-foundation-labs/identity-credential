@@ -29,6 +29,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,10 +51,21 @@ public class MdocUtilTest {
                 .putEntryString("ns2", "bar1", "foo1")
                 .putEntryString("ns2", "bar2", "foo2")
                 .build();
+
+        Map<String, Map<String, byte[]>> overrides = new HashMap<>();
+        Map<String, byte[]> overridesForNs1 = new HashMap<>();
+        overridesForNs1.put("foo3", Util.cborEncodeString("bar3_override"));
+        overrides.put("ns1", overridesForNs1);
+
+        Map<String, List<String>> exceptions = new HashMap<>();
+        exceptions.put("ns1", Arrays.asList("foo3"));
+        exceptions.put("ns2", Arrays.asList("bar2"));
+
         Map<String, List<byte[]>> issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
                 nameSpacedData,
                 deterministicRandomProvider,
-                16);
+                16,
+                overrides);
 
         Assert.assertEquals(2, issuerNameSpaces.size());
 
@@ -85,7 +98,7 @@ public class MdocUtilTest {
                         "  \"digestID\": 3,\n" +
                         "  \"random\": h'998e685e885cb361f86c974620bebfb0',\n" +
                         "  \"elementIdentifier\": \"foo3\",\n" +
-                        "  \"elementValue\": \"bar3\"\n" +
+                        "  \"elementValue\": \"bar3_override\"\n" +
                         "} >>)",
                 CborUtil.toDiagnostics(
                         ns1Values.get(2),
@@ -122,7 +135,7 @@ public class MdocUtilTest {
                 Util.toHex(digests.get(1L)));
         Assert.assertEquals("1acacd599066a8408afcbba6d5ea87a03317a7a84ac5ac0d186a5e0a7ac53ca9",
                 Util.toHex(digests.get(2L)));
-        Assert.assertEquals("1607f36c8f84817d1db82ad685be4ac47d0345c2a8cec5f8e7785c9527723a07",
+        Assert.assertEquals("4b21f1b63a88d0d741fb10efea46e2c5d294d4e824f5c12d1f990f7b091e64ae",
                 Util.toHex(digests.get(3L)));
 
         digests = MdocUtil.calculateDigestsForNameSpace("ns2", issuerNameSpaces, "SHA-256");
@@ -134,7 +147,7 @@ public class MdocUtilTest {
 
         // Check stripping
         Map<String, List<byte[]>> issuerNameSpacesStripped =
-                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces);
+                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, exceptions);
         ns1Values = issuerNameSpacesStripped.get("ns1");
         Assert.assertEquals(3, ns1Values.size());
         ns2Values = issuerNameSpacesStripped.get("ns2");
@@ -163,7 +176,7 @@ public class MdocUtilTest {
                         "  \"digestID\": 3,\n" +
                         "  \"random\": h'998e685e885cb361f86c974620bebfb0',\n" +
                         "  \"elementIdentifier\": \"foo3\",\n" +
-                        "  \"elementValue\": null\n" +
+                        "  \"elementValue\": \"bar3_override\"\n" +
                         "} >>)",
                 CborUtil.toDiagnostics(
                         ns1Values.get(2),
@@ -183,7 +196,7 @@ public class MdocUtilTest {
                         "  \"digestID\": 0,\n" +
                         "  \"random\": h'f11059eb6fbce62655dfbd6f83b89670',\n" +
                         "  \"elementIdentifier\": \"bar2\",\n" +
-                        "  \"elementValue\": null\n" +
+                        "  \"elementValue\": \"foo2\"\n" +
                         "} >>)",
                 CborUtil.toDiagnostics(
                         ns2Values.get(1),

@@ -104,17 +104,6 @@ public class StaticAuthDataParser {
                     if (innerKey.getTag().getValue() != 24) {
                         throw new IllegalArgumentException("Inner key does not have tag 24");
                     }
-                    // Strictly not necessary but check that elementValue is NULL. This is to
-                    // avoid applications (or issuers) sending the value in issuerSignedMapping
-                    // which is part of staticAuthData.
-                    DataItem issuerSignedItem = Util.cborExtractTaggedAndEncodedCbor(innerKey);
-                    DataItem value = Util.cborMapExtract(issuerSignedItem, "elementValue");
-                    if (!(value instanceof SimpleValue)
-                            || ((SimpleValue) value).getSimpleValueType() != SimpleValueType.NULL) {
-                        String name = Util.cborMapExtractString(issuerSignedItem, "elementIdentifier");
-                        throw new IllegalArgumentException("elementValue for nameSpace " + namespace
-                                + " elementName " + name + " is not NULL");
-                    }
                     innerArray.add(Util.cborEncode(innerKey));
                 }
 

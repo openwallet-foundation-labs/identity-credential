@@ -38,6 +38,8 @@ import java.util.Random;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.SimpleValue;
+import co.nstant.in.cbor.model.SimpleValueType;
 import co.nstant.in.cbor.model.UnicodeString;
 
 /**
@@ -85,13 +87,16 @@ public class MdocUtil {
      * @param randomProvider A random provider used for generating digest identifiers and salts.
      * @param dataElementRandomSize The number of bytes to use for the salt for each data elements,
      *                              must be at least 16.
+     * @param overrides Optionally, a map of namespaces into data element names into values for
+     *                  overriding data in the provided {@link NameSpacedData} parameter.
      * @return The data described above.
      * @throws IllegalArgumentException if {@code dataElementRandomSize} is less than 16.
      */
     public static @NonNull Map<String, List<byte[]>> generateIssuerNameSpaces(
-            NameSpacedData data,
-            Random randomProvider,
-            int dataElementRandomSize) {
+            @NonNull NameSpacedData data,
+            @NonNull Random randomProvider,
+            int dataElementRandomSize,
+            @Nullable Map<String, Map<String, byte[]>> overrides) {
 
         if (dataElementRandomSize < 16) {
             // ISO 18013-5 section 9.1.2.5 Message digest function says that random must
@@ -114,6 +119,12 @@ public class MdocUtil {
 
         Iterator<Long> digestIt = digestIds.iterator();
         for (String nsName : data.getNameSpaceNames()) {
+
+            Map<String, byte[]> overridesByNameSpace = null;
+            if (overrides != null) {
+                overridesByNameSpace = overrides.get(nsName);
+            }
+
             List<byte[]> list = new ArrayList<>();
             for (String elemName : data.getDataElementNames(nsName)) {
 
@@ -121,6 +132,14 @@ public class MdocUtil {
                 long digestId = digestIt.next();
                 byte[] random = new byte[dataElementRandomSize];
                 randomProvider.nextBytes(random);
+
+                if (overridesByNameSpace != null) {
+                    byte[] overriddenValue = overridesByNameSpace.get(elemName);
+                    if (overriddenValue != null) {
+                        encodedValue = overriddenValue;
+                    }
+                }
+
                 DataItem value = Util.cborDecode(encodedValue);
 
                 DataItem issuerSignedItem = new CborBuilder()
@@ -147,23 +166,41 @@ public class MdocUtil {
     /**
      * Strips issuer name spaces.
      *
-     * This takes a {@code IssuerNameSpaces} value calculated by
+     * <p>This takes a {@code IssuerNameSpaces} value calculated by
      * {@link #generateIssuerNameSpaces(NameSpacedData, Random, int)}
      * and returns a similar structure except where all {@code elementValue} values
      * in {@code IssuerSignedItem} are set to {@code null}.
      *
      * @param issuerNameSpaces a map from name spaces into a list of {@code IssuerSignedItemBytes}.
+     * @param exceptions a map from name spaces into a list of data element names for where
+     *                   the {@code elementValue} should not be removed.
      * @return A copy of the passed-in structure where data element value is set to {@code null}.
      *         for every data element.
      */
     public static @NonNull Map<String, List<byte[]>> stripIssuerNameSpaces(
-            @NonNull Map<String, List<byte[]>> issuerNameSpaces) {
+            @NonNull Map<String, List<byte[]>> issuerNameSpaces,
+            @Nullable Map<String, List<String>> exceptions) {
         Map<String, List<byte[]>> ret = new LinkedHashMap<>();
 
         for (String nameSpaceName : issuerNameSpaces.keySet()) {
             List<byte[]> list = new ArrayList<>();
+
+            List<String> exceptionsForNamespace = null;
+            if (exceptions != null) {
+                exceptionsForNamespace = exceptions.get(nameSpaceName);
+            }
             for (byte[] encodedIssuerSignedItemBytes : issuerNameSpaces.get(nameSpaceName)) {
                 byte[] encodedIssuerSignedItem = Util.cborExtractTaggedCbor(encodedIssuerSignedItemBytes);
+
+                if (exceptionsForNamespace != null) {
+                    DataItem item = Util.cborDecode(encodedIssuerSignedItem);
+                    String elementIdentifier = Util.cborMapExtractString(item, "elementIdentifier");
+                    if (exceptionsForNamespace.contains(elementIdentifier)) {
+                        list.add(encodedIssuerSignedItemBytes);
+                        continue;
+                    }
+                }
+
                 byte[] modifiedEncodedIssuerSignedItem = Util.issuerSignedItemClearValue(encodedIssuerSignedItem);
                 byte[] modifiedEncodedIssuerSignedItemBytes = Util.cborEncode(
                         Util.cborBuildTaggedByteString(modifiedEncodedIssuerSignedItem));
@@ -277,14 +314,19 @@ public class MdocUtil {
             }
             byte[] value = credentialData.getDataElement(nameSpaceName, dataElementName);
 
-            byte[] encodedIssuerSignedItemWithoutValue =
+            byte[] encodedIssuerSignedItemMaybeWithoutValue =
                     lookupIssuerSignedMap(issuerSignedItemMap, nameSpaceName, dataElementName);
-            if (encodedIssuerSignedItemWithoutValue == null) {
+            if (encodedIssuerSignedItemMaybeWithoutValue == null) {
                 Logger.w(TAG, "No IssuerSignedItem for " + nameSpaceName + " " + dataElementName);
                 continue;
             }
 
-            byte[] encodedIssuerSignedItem = Util.issuerSignedItemSetValue(encodedIssuerSignedItemWithoutValue, value);
+            byte[] encodedIssuerSignedItem;
+            if (hasElementValue(encodedIssuerSignedItemMaybeWithoutValue)) {
+                encodedIssuerSignedItem = encodedIssuerSignedItemMaybeWithoutValue;
+            } else {
+                encodedIssuerSignedItem = Util.issuerSignedItemSetValue(encodedIssuerSignedItemMaybeWithoutValue, value);
+            }
 
             List<byte[]> list = issuerSignedData.computeIfAbsent(element.getNameSpaceName(), k -> new ArrayList<>());
 
@@ -293,6 +335,18 @@ public class MdocUtil {
             list.add(taggedEncodedIssuerSignedItem);
         }
         return issuerSignedData;
+    }
+
+    private static boolean hasElementValue(byte[] encodedIssuerSignedItem) {
+        DataItem issuerSignedItem = Util.cborDecode(encodedIssuerSignedItem);
+        DataItem elementValue = Util.cborMapExtract(issuerSignedItem, "elementValue");
+        if (elementValue instanceof SimpleValue) {
+            SimpleValue simpleValue = (SimpleValue) elementValue;
+            if (simpleValue.getSimpleValueType() == SimpleValueType.NULL) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

@@ -60,67 +60,23 @@ public class StaticAuthDataTest {
                 Util.cborBuildTaggedByteString(Util.cborEncode(issuerSignedItemMetadata2));
         byte[] encodedIsiMetadata2Bytes = Util.cborEncode(isiMetadata2Bytes);
 
-        Map<String, List<byte[]>> issuerSignedMapping = new HashMap<>();
-        issuerSignedMapping.put("org.namespace",
-                Arrays.asList(encodedIsiMetadataBytes, encodedIsiMetadata2Bytes));
-        return issuerSignedMapping;
-    }
-
-    private Map<String, List<byte[]>> createInvalidElementValueDigestIdMapping() {
-        DataItem issuerSignedItemMetadata = new CborBuilder()
+        DataItem issuerSignedItemMetadata3 = new CborBuilder()
                 .addMap()
-                .put("random", new byte[] {0x50, 0x51, 0x52})
-                .put("digestID", 42)
-                .put("elementIdentifier", "dataElementName")
-                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
-                .end()
-                .build().get(0);
-        DataItem isiMetadataBytes =
-                Util.cborBuildTaggedByteString(Util.cborEncode(issuerSignedItemMetadata));
-        byte[] encodedIsiMetadataBytes = Util.cborEncode(isiMetadataBytes);
-
-        DataItem issuerSignedItemMetadata2 = new CborBuilder()
-                .addMap()
-                .put("digestID", 43)
+                .put("digestID", 44)
                 .put("random", new byte[] {0x53, 0x54, 0x55})
-                .put("elementIdentifier", "dataElementName2")
-                .put(new UnicodeString("elementValue"), SimpleValue.TRUE)
+                .put("elementIdentifier", "portrait")
+                .put("elementValue", Util.cborEncodeBytestring(new byte[] {0x20, 0x21, 0x22, 0x23}))
                 .end()
                 .build().get(0);
-        DataItem isiMetadata2Bytes =
-                Util.cborBuildTaggedByteString(Util.cborEncode(issuerSignedItemMetadata2));
-        byte[] encodedIsiMetadata2Bytes = Util.cborEncode(isiMetadata2Bytes);
+        DataItem isiMetadata3Bytes =
+                Util.cborBuildTaggedByteString(Util.cborEncode(issuerSignedItemMetadata3));
+        byte[] encodedIsiMetadata3Bytes = Util.cborEncode(isiMetadata3Bytes);
 
         Map<String, List<byte[]>> issuerSignedMapping = new HashMap<>();
         issuerSignedMapping.put("org.namespace",
-                Arrays.asList(encodedIsiMetadataBytes, encodedIsiMetadata2Bytes));
-        return issuerSignedMapping;
-    }
-
-    private Map<String, List<byte[]>> createInvalidFormatDigestIdMapping() {
-        DataItem issuerSignedItemMetadata = new CborBuilder()
-                .addMap()
-                .put("random", new byte[] {0x50, 0x51, 0x52})
-                .put("digestID", 42)
-                .put("elementIdentifier", "dataElementName")
-                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
-                .end()
-                .build().get(0);
-        byte[] encodedIsiMetadata = Util.cborEncode(issuerSignedItemMetadata);
-
-        DataItem issuerSignedItemMetadata2 = new CborBuilder()
-                .addMap()
-                .put("digestID", 43)
-                .put("random", new byte[] {0x53, 0x54, 0x55})
-                .put("elementIdentifier", "dataElementName2")
-                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
-                .end()
-                .build().get(0);
-        byte[] encodedIsiMetadata2 = Util.cborEncode(issuerSignedItemMetadata2);
-
-        Map<String, List<byte[]>> issuerSignedMapping = new HashMap<>();
-        issuerSignedMapping.put("org.namespace",
-                Arrays.asList(encodedIsiMetadata, encodedIsiMetadata2));
+                Arrays.asList(encodedIsiMetadataBytes,
+                        encodedIsiMetadata2Bytes,
+                        encodedIsiMetadata3Bytes));
         return issuerSignedMapping;
     }
 
@@ -164,6 +120,12 @@ public class StaticAuthDataTest {
                         "        \"random\": h'535455',\n" +
                         "        \"elementIdentifier\": \"dataElementName2\",\n" +
                         "        \"elementValue\": null\n" +
+                        "      } >>),\n" +
+                        "      24(<< {\n" +
+                        "        \"digestID\": 44,\n" +
+                        "        \"random\": h'535455',\n" +
+                        "        \"elementIdentifier\": \"portrait\",\n" +
+                        "        \"elementValue\": h'4420212223'\n" +
                         "      } >>)\n" +
                         "    ]\n" +
                         "  },\n" +
@@ -186,7 +148,7 @@ public class StaticAuthDataTest {
         Assert.assertEquals(1, digestIdMapping.size());
         List<byte[]> list = digestIdMapping.get("org.namespace");
         Assert.assertNotNull(list);
-        Assert.assertEquals(2, list.size());
+        Assert.assertEquals(3, list.size());
         Assert.assertEquals(
                 "24(<< {\n" +
                         "  \"random\": h'505152',\n" +
@@ -216,18 +178,5 @@ public class StaticAuthDataTest {
                 IllegalArgumentException.class,
                 () -> new StaticAuthDataGenerator(new HashMap<>(), createValidIssuerAuth())
                         .generate());
-
-        Assert.assertThrows("expect exception for invalid digestIDMapping, where " +
-                        "elementValue is non-NULL",
-                IllegalArgumentException.class,
-                () -> new StaticAuthDataGenerator(createInvalidElementValueDigestIdMapping(),
-                        createValidIssuerAuth()).generate());
-
-        Assert.assertThrows("expect exception for invalid digestIDMapping, where " +
-                        "issuerSignedItemMetadata is not encoded as tagged bytestring",
-                IllegalArgumentException.class,
-                () -> new StaticAuthDataGenerator(createInvalidFormatDigestIdMapping(),
-                        createValidIssuerAuth()).generate());
     }
-
 }

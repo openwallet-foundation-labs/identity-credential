@@ -51,13 +51,19 @@ import co.nstant.in.cbor.model.UnicodeString;
  *       "digestID" : uint,                           ; Digest ID for issuer data auth
  *       "random" : bstr,                             ; Random value for issuer data auth
  *       "elementIdentifier" : DataElementIdentifier, ; Data element identifier
- *       "elementValue" : NULL                        ; Placeholder for Data element value
+ *       "elementValue" : DataElementValueOrNull      ; Placeholder for Data element value
  *     }
+ *
+ *     ; Set to null to use value previously provisioned or non-null
+ *     ; to use a per-MSO value
+ *     ;
+ *     DataElementValueOrNull = null // DataElementValue   ; "//" means or in CDDL
  *
  *     ; Defined in ISO 18013-5
  *     ;
  *     NameSpace = String
  *     DataElementIdentifier = String
+ *     DataElementValue = any
  *     DigestID = uint
  *     IssuerAuth = COSE_Sign1 ; The payload is MobileSecurityObjectBytes
  * </pre>
@@ -100,19 +106,6 @@ public class StaticAuthDataGenerator {
             ArrayBuilder<MapBuilder<CborBuilder>> innerBuilder = outerBuilder.putArray(namespace);
 
             for (byte[] encodedIssuerSignedItemMetadata : mDigestIDMapping.get(namespace)) {
-                // Ensure that elementValue is NULL to avoid applications or issuers that send
-                // the raw DataElementValue in the IssuerSignedItem. If we allowed non-NULL
-                // values, then PII would be exposed that would otherwise be guarded by
-                // access control checks.
-                DataItem issuerSignedItemMetadata = Util.cborDecode(Util.cborExtractTaggedCbor(encodedIssuerSignedItemMetadata));
-                DataItem value = Util.cborMapExtract(issuerSignedItemMetadata, "elementValue");
-                if (!(value instanceof SimpleValue)
-                        || ((SimpleValue) value).getSimpleValueType() != SimpleValueType.NULL) {
-                    String name = Util.cborMapExtractString(issuerSignedItemMetadata, "elementIdentifier");
-                    throw new IllegalArgumentException("elementValue for nameSpace " + namespace
-                            + " elementName " + name + " is not NULL");
-                }
-
                 innerBuilder.add(Util.cborDecode(encodedIssuerSignedItemMetadata));
             }
         }

@@ -402,6 +402,18 @@ public class Credential {
     }
 
     /**
+     * Gets the authentication key counter.
+     *
+     * <p>This is a number which starts at 0 and is increased by one for every call
+     * to {@link #createPendingAuthenticationKey(SecureArea.CreateKeySettings, AuthenticationKey)}.
+     *
+     * @return the authentication key counter.
+     */
+    public long getAuthenticationKeyCounter() {
+        return mAuthenticationKeyCounter;
+    }
+
+    /**
      * A certified authentication key.
      *
      * <p>To create an instance of this type, an application must first use
@@ -419,6 +431,7 @@ public class Credential {
         private String mSecureAreaName;
         private String mReplacementAlias;
         private SimpleApplicationData mApplicationData;
+        private long mAuthenticationKeyCounter;
 
         static AuthenticationKey create(
                 @NonNull PendingAuthenticationKey pendingAuthenticationKey,
@@ -434,6 +447,7 @@ public class Credential {
             ret.mCredential = credential;
             ret.mSecureAreaName = pendingAuthenticationKey.mSecureAreaName;
             ret.mApplicationData = pendingAuthenticationKey.mApplicationData;
+            ret.mAuthenticationKeyCounter = pendingAuthenticationKey.mAuthenticationKeyCounter;
             return ret;
         }
 
@@ -471,6 +485,19 @@ public class Credential {
          */
         public @NonNull Timestamp getValidUntil() {
             return mValidUntil;
+        }
+
+        /**
+         * Gets the authentication key counter.
+         *
+         * <p>This is the value of the Credential's Authentication Key Counter
+         * at the time the pending authentication key for this authentication key
+         * was created.
+         *
+         * @return the authentication key counter.
+         */
+        public long getAuthenticationKeyCounter() {
+            return mAuthenticationKeyCounter;
         }
 
         /**
@@ -549,7 +576,8 @@ public class Credential {
                     .put("data", mData)
                     .put("validFrom", mValidFrom.toEpochMilli())
                     .put("validUntil", mValidUntil.toEpochMilli())
-                    .put("applicationData", mApplicationData.encodeAsCbor());
+                    .put("applicationData", mApplicationData.encodeAsCbor())
+                    .put("authenticationKeyCounter", mAuthenticationKeyCounter);
             if (mReplacementAlias != null) {
                 mapBuilder.put("replacementAlias", mReplacementAlias);
             }
@@ -576,6 +604,9 @@ public class Credential {
             ret.mApplicationData = SimpleApplicationData.decodeFromCbor(
                     ((ByteString) applicationDataDataItem).getBytes(),
                     () -> ret.mCredential.saveCredential());
+            if (Util.cborMapHasKey(dataItem, "authenticationKeyCounter")) {
+                ret.mAuthenticationKeyCounter = Util.cborMapExtractNumber(dataItem, "authenticationKeyCounter");
+            }
             return ret;
         }
 
@@ -640,6 +671,7 @@ public class Credential {
         Credential mCredential;
         private String mReplacementForAlias;
         private SimpleApplicationData mApplicationData;
+        private long mAuthenticationKeyCounter;
 
         static @NonNull PendingAuthenticationKey create(
                 @NonNull String alias,
@@ -660,6 +692,7 @@ public class Credential {
             }
             ret.mCredential = credential;
             ret.mApplicationData = new SimpleApplicationData(() -> ret.mCredential.saveCredential());
+            ret.mAuthenticationKeyCounter = credential.mAuthenticationKeyCounter;
             return ret;
         }
 
@@ -711,6 +744,18 @@ public class Credential {
         }
 
         /**
+         * Gets the authentication key counter.
+         *
+         * <p>This is the value of the Credential's Authentication Key Counter
+         * at the time this pending authentication key was created.
+         *
+         * @return the authentication key counter.
+         */
+        public long getAuthenticationKeyCounter() {
+            return mAuthenticationKeyCounter;
+        }
+
+        /**
          * Deletes the pending authentication key.
          */
         public void delete() {
@@ -754,7 +799,8 @@ public class Credential {
             if (mReplacementForAlias != null) {
                 mapBuilder.put("replacementForAlias", mReplacementForAlias);
             }
-            mapBuilder.put("applicationData", mApplicationData.encodeAsCbor());
+            mapBuilder.put("applicationData", mApplicationData.encodeAsCbor())
+                    .put("authenticationKeyCounter", mAuthenticationKeyCounter);
             return builder.build().get(0);
         }
 
@@ -774,6 +820,9 @@ public class Credential {
             ret.mApplicationData = SimpleApplicationData.decodeFromCbor(
                     ((ByteString) applicationDataDataItem).getBytes(),
                     () -> ret.mCredential.saveCredential());
+            if (Util.cborMapHasKey(dataItem, "authenticationKeyCounter")) {
+                ret.mAuthenticationKeyCounter = Util.cborMapExtractNumber(dataItem, "authenticationKeyCounter");
+            }
             return ret;
         }
 
