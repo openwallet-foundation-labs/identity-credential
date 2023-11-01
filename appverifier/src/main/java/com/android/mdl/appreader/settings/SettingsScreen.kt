@@ -51,7 +51,9 @@ fun SettingsScreen(
     onWifiAwareTransferChanged: (enabled: Boolean) -> Unit,
     onNfcTransferChanged: (enabled: Boolean) -> Unit,
     onDebugLoggingChanged: (enabled: Boolean) -> Unit,
-    onChangeReaderAuthentication: (which: Int) -> Unit
+    onChangeReaderAuthentication: (which: Int) -> Unit,
+    onOpenCaCertificates: () -> Unit,
+    onOpenVicals: () -> Unit
 ) {
     Column(modifier = modifier) {
         val scrollState = rememberScrollState()
@@ -149,6 +151,32 @@ fun SettingsScreen(
                     .padding(16.dp),
                 title = "Use Reader Authentication",
                 subtitle = readerAuthenticationFor(screenState.readerAuthentication)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            SettingSectionTitle(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                title = "CA Certificates"
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            SettingItem(
+                modifier = Modifier
+                    .clickable { onOpenCaCertificates() }
+                    .padding(16.dp),
+                title = "Show CA Certificates",
+                subtitle = "Click here to show the CA Certificates"
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            SettingSectionTitle(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                title = "Vicals"
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            SettingItem(
+                modifier = Modifier
+                    .clickable { onOpenVicals() }
+                    .padding(16.dp),
+                title = "Show Vicals",
+                subtitle = "Click here to show the Vicals"
             )
         }
         ReaderAuthenticationOptions(
@@ -335,7 +363,9 @@ private fun SettingsScreenPreview() {
             onWifiAwareTransferChanged = {},
             onNfcTransferChanged = {},
             onDebugLoggingChanged = {},
-            onChangeReaderAuthentication = {}
+            onChangeReaderAuthentication = {},
+            onOpenCaCertificates = {},
+            onOpenVicals = {}
         )
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.preference.PreferenceManager
 import com.android.mdl.appreader.theme.ReaderAppTheme
 
@@ -45,10 +46,22 @@ class SettingsFragment : Fragment() {
                         onWifiAwareTransferChanged = viewModel::onWifiAwareUpdated,
                         onNfcTransferChanged = viewModel::onNfcTransferUpdated,
                         onDebugLoggingChanged = viewModel::onDebugLoggingUpdated,
-                        onChangeReaderAuthentication = viewModel::onReaderAuthenticationUpdated
+                        onChangeReaderAuthentication = viewModel::onReaderAuthenticationUpdated,
+                        onOpenCaCertificates = {openCaCertificates()},
+                        onOpenVicals = {openVicals()}
                     )
                 }
             }
         }
+    }
+
+    private fun openCaCertificates(){
+        val destination = SettingsFragmentDirections.toCaCertificates()
+        findNavController().navigate(destination)
+    }
+
+    private fun openVicals(){
+        val destination = SettingsFragmentDirections.toVicals()
+        findNavController().navigate(destination)
     }
 }

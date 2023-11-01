@@ -19,13 +19,13 @@ import androidx.navigation.fragment.findNavController
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.EcCurve
 import com.android.mdl.appreader.R
+import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
-import com.android.mdl.appreader.issuerauth.SimpleIssuerTrustStore
+import com.android.mdl.appreader.issuerauth.CustomValidators
+import com.android.mdl.appreader.issuerauth.getCommonName
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.FormatUtil
-import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import java.security.MessageDigest
@@ -178,8 +178,6 @@ class ShowDocumentFragment : Fragment() {
     private fun formatTextResult(documents: Collection<DeviceResponseParser.Document>): String {
         // Create the trustManager to validate the DS Certificate against the list of known
         // certificates in the app
-        val simpleIssuerTrustStore =
-            SimpleIssuerTrustStore(KeysAndCertificates.getTrustedIssuerCertificates(requireContext()))
 
         val sb = StringBuffer()
 
@@ -206,35 +204,29 @@ class ShowDocumentFragment : Fragment() {
                 0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data
             )
             sb.append("<h3>Doctype: <font color=\"$color\">${doc.docType}</font></h3>")
-            val certPath =
-                simpleIssuerTrustStore.createCertificationTrustPath(doc.issuerCertificateChain.toList())
-            val isDSTrusted = simpleIssuerTrustStore.validateCertificationTrustPath(certPath)
-            // Use the issuer certificate chain if we could not build the certificate trust path
-            val certChain = if (certPath?.isNotEmpty() == true) {
-                certPath
-            } else {
-                doc.issuerCertificateChain.toList()
-            }
 
-            val issuerItems = certChain.last().issuerX500Principal.name.split(",")
-            var cnFound = false
-            val commonName = StringBuffer()
-            for (issuerItem in issuerItems) {
-                when {
-                    issuerItem.contains("CN=") -> {
-                        val (key, value) = issuerItem.split("=", limit = 2)
-                        commonName.append(value)
-                        cnFound = true
-                    }
-                    // Common Name value with ',' symbols would be treated as set of items
-                    // Append all parts of CN field if any before next issuer item
-                    cnFound && !issuerItem.contains("=") -> commonName.append(", $issuerItem")
-                    // Ignore any next issuer items only after we've collected required
-                    cnFound -> break
+            var certChain = doc.issuerCertificateChain.toList()
+            val customValidators = CustomValidators.getByDocType(doc.docType)
+            val result = VerifierApp.trustManagerInstance.verify(
+                chain = certChain,
+                mdocType = doc.docType,
+                customValidators = customValidators
+            )
+            if (result.trustChain.any()){
+                certChain = result.trustChain
+            }
+            if (!result.isTrusted) {
+                sb.append("${getFormattedCheck(false)}Error in certificate chain validation: ${result.error}<br>")
+            }
+            val commonName = certChain.last().issuerX500Principal.getCommonName("")
+            sb.append("${getFormattedCheck(result.isTrusted)}Issuer’s DS Key Recognized: ($commonName)<br>")
+            if (result.vicals.isNotEmpty()){
+                result.vicals.forEach {
+                    val vicalName = VerifierApp.vicalStoreInstance.determineFileName(it)
+                    sb.append("${getFormattedCheck(true)}Root Ca trusted by vical: ($vicalName.)<br>")
                 }
             }
 
-            sb.append("${getFormattedCheck(isDSTrusted)}Issuer’s DS Key Recognized: ($commonName)<br>")
             sb.append("${getFormattedCheck(doc.issuerSignedAuthenticated)}Issuer Signed Authenticated<br>")
             var macOrSignatureString = "MAC"
             if (doc.deviceSignedAuthenticatedViaSignature)
