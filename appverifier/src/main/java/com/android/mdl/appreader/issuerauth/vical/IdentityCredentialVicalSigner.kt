@@ -47,11 +47,15 @@ class IdentityCredentialVicalSigner(
 ) : VicalSigner {
     @Throws(CertificateEncodingException::class)
     override fun createCose1Signature(vicalData: ByteArray): ByteArray {
-        val signedData: DataItem = IdentityUtil.coseSign1Sign(
-            signKey, signatureAlgorithm, vicalData, null, listOf(
-                signCert
-            )
-        )
+
+        val signedData = com.android.identity.internal.Util.coseSign1Sign(
+            signKey, signatureAlgorithm,
+            vicalData, null, listOf(signCert))
+//        val signedData: DataItem = IdentityUtil.coseSign1Sign(
+//            signKey, signatureAlgorithm, vicalData, null, listOf(
+//                signCert
+//            )
+//        )
         try {
             ByteArrayOutputStream().use { outStream ->
                 val enc = CborEncoder(outStream)

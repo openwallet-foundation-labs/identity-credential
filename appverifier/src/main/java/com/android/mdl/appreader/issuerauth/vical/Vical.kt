@@ -1,12 +1,16 @@
 package com.android.mdl.appreader.issuerauth.vical
 
+import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.model.Array
+import co.nstant.`in`.cbor.model.ByteString
 import co.nstant.`in`.cbor.model.DataItem
+import co.nstant.`in`.cbor.model.MajorType
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
 import com.android.mdl.appreader.issuerauth.vical.Vical.Builder
 import com.android.mdl.appreader.issuerauth.vical.Vical.Decoder
 import com.android.mdl.appreader.issuerauth.vical.Vical.Encoder
+import java.io.ByteArrayInputStream
 import java.security.cert.X509Certificate
 import java.text.ParseException
 import java.text.SimpleDateFormat
@@ -360,14 +364,24 @@ class Vical {
         fun verifyAndDecodeSignedBytes(encodedAndSignedBytes: ByteArray, verifier: VicalVerifier): Vical {
             val verificationResult = verifier.verifyCose1Signature(encodedAndSignedBytes)
             // TODO something with verificationResult.code()?
-            val code = verificationResult.code();
+            val code = verificationResult.code;
             if (code != VicalVerificationResult.Code.VERIFICATION_SUCCEEDED) {
                 // TODO think about this higher level exception
                 throw RuntimeException("Verification did not succeed, result : " + code);
             }
 
-            val content = verificationResult.content()
-            return decode(content!! as co.nstant.`in`.cbor.model.Map)
+            val map = payloadToMap(verificationResult.payload!!)
+            return decode(map)
+        }
+
+        fun payloadToMap(payload: ByteString): co.nstant.`in`.cbor.model.Map {
+            val payloadData = (payload).bytes
+            val decoder = CborDecoder(ByteArrayInputStream(payloadData))
+            val payloadItems = decoder.decode()
+            require(payloadItems.size == 1)
+            val map = payloadItems[0]
+            require(map.majorType == MajorType.MAP)
+            return map as co.nstant.`in`.cbor.model.Map
         }
     }
 

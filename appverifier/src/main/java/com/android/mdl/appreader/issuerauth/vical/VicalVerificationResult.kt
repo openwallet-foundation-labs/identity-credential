@@ -2,7 +2,9 @@ package com.android.mdl.appreader.issuerauth.vical
 
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.CborException
+import co.nstant.`in`.cbor.model.ByteString
 import co.nstant.`in`.cbor.model.DataItem
+import org.bouncycastle.asn1.ess.OtherSigningCertificate
 import org.bouncycastle.util.encoders.Hex
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -27,27 +29,9 @@ import java.security.cert.X509Certificate
  *
  * @author UL TS BV
  */
-class VicalVerificationResult internal constructor(
-    private val code: Code,
-    private val signingCertificate: X509Certificate?,
-    content: DataItem?
-) {
+data class VicalVerificationResult (val code: Code, val signingCertificate: X509Certificate?, val payload: ByteString?) {
     enum class Code {
         VERIFICATION_SUCCEEDED, DECODING_ERROR, CERTIFICATE_NOT_FOUND, DATA_NOT_INCLUDED, VERIFICATION_FAILED, UNKNOWN_SIGNING_ALGORITHM, PUBLIC_KEY_DOESNT_MATCH_ALGORITHM
-    }
-
-    // TODO check if CBOR level data is more efficient
-    private val content: DataItem?
-    fun code(): Code {
-        return code
-    }
-
-    fun signingCertificate(): X509Certificate? {
-        return signingCertificate
-    }
-
-    fun content(): DataItem? {
-        return content
     }
 
     override fun toString(): String {
@@ -75,11 +59,12 @@ class VicalVerificationResult internal constructor(
             "[No certificate available]"
         }
         var hashOverContent: String?
-        if (content != null) {
+        if (payload != null) {
             try {
+                // TODO should probably be over payload.bytes
                 ByteArrayOutputStream(SHA1_HASH_OUTPUT_SIZE).use { hashOutput ->
                     val encoder = CborEncoder(DigestOutputStream(hashOutput, sha1))
-                    encoder.encode(content)
+                    encoder.encode(payload)
                     hashOverContent = Hex.toHexString(sha1.digest())
                 }
             } catch (e: IOException) {
@@ -98,9 +83,5 @@ class VicalVerificationResult internal constructor(
 
     companion object {
         private const val SHA1_HASH_OUTPUT_SIZE = 20
-    }
-
-    init {
-        this.content = content
     }
 }

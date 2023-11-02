@@ -5,15 +5,9 @@ import co.nstant.`in`.cbor.model.Map
 import co.nstant.`in`.cbor.model.UnicodeString
 import org.bouncycastle.util.encoders.Hex
 import org.junit.Assert
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
-import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.EnumSet
-import java.util.LinkedList
-import java.util.Set
 
 class BuildEncodeDecodeVical {
     @org.junit.jupiter.api.Test
