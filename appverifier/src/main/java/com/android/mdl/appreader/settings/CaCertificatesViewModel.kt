@@ -1,6 +1,5 @@
 package com.android.mdl.appreader.settings
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
@@ -11,7 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class CaCertificatesViewModel(val context: Context) : ViewModel() {
+class CaCertificatesViewModel() : ViewModel() {
 
     private val _screenState = MutableStateFlow(CaCertificatesScreenState())
     val screenState: StateFlow<CaCertificatesScreenState> = _screenState.asStateFlow()
@@ -32,9 +31,9 @@ class CaCertificatesViewModel(val context: Context) : ViewModel() {
     }
 
     companion object {
-        fun factory(context: Context): ViewModelProvider.Factory {
+        fun factory(): ViewModelProvider.Factory {
             return viewModelFactory {
-                initializer { CaCertificatesViewModel(context) }
+                initializer { CaCertificatesViewModel() }
             }
         }
     }

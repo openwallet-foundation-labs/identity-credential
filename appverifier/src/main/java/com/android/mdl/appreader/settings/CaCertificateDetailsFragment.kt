@@ -15,7 +15,7 @@ import com.android.mdl.appreader.theme.ReaderAppTheme
 
 class CaCertificateDetailsFragment : Fragment() {
     private val viewModel: CaCertificatesViewModel by activityViewModels {
-        CaCertificatesViewModel.factory(requireContext())
+        CaCertificatesViewModel.factory()
     }
 
     override fun onCreateView(

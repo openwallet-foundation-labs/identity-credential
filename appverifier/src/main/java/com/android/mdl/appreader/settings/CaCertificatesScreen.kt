@@ -30,6 +30,7 @@ fun CaCertificatesScreen(
     screenState: CaCertificatesScreenState,
     onSelectCertificate: (item: CertificateItem) -> Unit,
     onImportCertificate: () -> Unit,
+    onPasteCertificate: () -> Unit,
     onCopyCertificatesFromResources: () -> Unit,
     onDeleteAllCertificates: () -> Unit
 ) {
@@ -79,6 +80,9 @@ fun CaCertificatesScreen(
         Button(onClick = onImportCertificate) {
             Text(text = "Import")
         }
+        Button(onClick = onPasteCertificate) {
+            Text(text = "Paste")
+        }
         Button(onClick = onCopyCertificatesFromResources) {
             Text(text = "Copy resources")
         }
@@ -91,7 +95,7 @@ fun CaCertificatesScreen(
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-private fun previewCaCertificatesScreen() {
+private fun PreviewCaCertificatesScreen() {
     ReaderAppTheme {
         CaCertificatesScreen(
             screenState = CaCertificatesScreenState(
@@ -140,6 +144,7 @@ private fun previewCaCertificatesScreen() {
             ),
             onSelectCertificate = {},
             onImportCertificate = {},
+            onPasteCertificate = {},
             onCopyCertificatesFromResources = {},
             onDeleteAllCertificates = {}
         )

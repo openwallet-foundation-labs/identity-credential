@@ -1,5 +1,7 @@
 package com.android.mdl.appreader.settings
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -23,12 +25,13 @@ import java.security.cert.CertificateException
 class CaCertificatesFragment : Fragment() {
 
     private val viewModel: CaCertificatesViewModel by activityViewModels {
-        CaCertificatesViewModel.factory(requireContext())
+        CaCertificatesViewModel.factory()
     }
 
     private val browseCertificateLauncher =
         registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
             uris.forEach { uri -> importCertificate(uri) }
+            reload()
         }
 
 
@@ -48,10 +51,8 @@ class CaCertificatesFragment : Fragment() {
                             viewModel.setCurrentCertificateItem(it)
                             openDetails()
                         },
-                        onImportCertificate = {
-                            fileDialog()
-                            viewModel.loadCertificates()
-                        },
+                        onImportCertificate = { fileDialog() },
+                        onPasteCertificate = { pasteCertificate() },
                         onCopyCertificatesFromResources = { copyCertificatesFromResources() },
                         onDeleteAllCertificates = { deleteAllCertificates() }
                     )
@@ -71,21 +72,39 @@ class CaCertificatesFragment : Fragment() {
 
     private fun importCertificate(uri: Uri) {
         try {
-            val inputStream = this.requireContext().contentResolver.openInputStream(uri)
-            if (inputStream != null) {
-                VerifierApp.caCertificateStoreInstance.save(inputStream.readBytes())
-                // force the trust manager to reload the certificates and vicals
-                VerifierApp.trustManagerInstance.reset()
-                viewModel.loadCertificates()
+            this.requireContext().contentResolver.openInputStream(uri).use { inputStream ->
+                if (inputStream != null) {
+                    VerifierApp.caCertificateStoreInstance.save(inputStream.readBytes())
+                }
             }
         } catch (e: Throwable) {
-            showMessage(e.message.toString())
+            showException(e)
+        }
+    }
+
+    private fun pasteCertificate() {
+        try {
+            val clipboard =
+                activity?.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            if (!clipboard.hasPrimaryClip()
+                || clipboard.primaryClip?.itemCount == 0
+                || clipboard.primaryClip?.getItemAt(0)?.text == null
+            ) {
+                showMessage("Nothing found to paste")
+                return
+            }
+            val text = clipboard.primaryClip?.getItemAt(0)?.text!!
+            VerifierApp.caCertificateStoreInstance.save(text.toString().toByteArray())
+        } catch (e: Throwable) {
+            showException(e)
+        } finally {
+            reload()
         }
     }
 
     private fun copyCertificatesFromResources() {
         val certificates = KeysAndCertificates.getTrustedIssuerCertificates(requireContext())
-        var imported: Int = 0
+        var imported = 0
         try {
             certificates.forEach {
                 if (!VerifierApp.caCertificateStoreInstance.exists(it)) {
@@ -97,25 +116,38 @@ class CaCertificatesFragment : Fragment() {
                     }
                 }
             }
-            VerifierApp.trustManagerInstance.reset()
-            viewModel.loadCertificates()
             showMessage("$imported certificates were imported")
         } catch (e: Throwable) {
-            showMessage(e.message.toString())
+            showException(e)
+        } finally {
+            reload()
         }
     }
 
-    private fun deleteAllCertificates(){
-        var deleted = 0
-        viewModel.screenState.value.certificates.forEach{
-            if (it.certificate != null) {
-                VerifierApp.caCertificateStoreInstance.delete(it.certificate)
-                deleted++
+    private fun deleteAllCertificates() {
+        try {
+            var deleted = 0
+            viewModel.screenState.value.certificates.forEach {
+                if (it.certificate != null) {
+                    VerifierApp.caCertificateStoreInstance.delete(it.certificate)
+                    deleted++
+                }
             }
+            showMessage("$deleted certificates were deleted")
+        } catch (e: Throwable) {
+            showException(e)
+        } finally {
+            reload()
         }
-        VerifierApp.trustManagerInstance.reset()
-        viewModel.loadCertificates()
-        showMessage("$deleted certificates were deleted")
+    }
+
+    private fun showException(exception: Throwable) {
+        val message = when (exception) {
+            is FileAlreadyExistsException -> "The certificate is already in the mDoc Issuer Trust Store"
+            is CertificateException -> "The certificate could not be parsed and/or validated correctly"
+            else -> exception.message
+        }
+        showMessage(message.toString())
     }
 
     private fun showMessage(message: String) {
@@ -127,5 +159,12 @@ class CaCertificatesFragment : Fragment() {
         val snackTextView = snackbar.view.findViewById<View>(R.id.snackbar_text) as TextView
         snackTextView.maxLines = 4
         snackbar.show()
+    }
+
+    private fun reload() {
+
+        // force the trust manager to reload the certificates and vicals
+        VerifierApp.trustManagerInstance.reset()
+        viewModel.loadCertificates()
     }
 }
