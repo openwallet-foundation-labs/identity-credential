@@ -62,7 +62,7 @@ import co.nstant.in.cbor.model.UnicodeString;
  * credential creation and when data in the credential has changed. Additionally,
  * the application can set/get any data of data it wants by using
  * {@link #getApplicationData()} and modifying the returned {@link ApplicationData}.
- * Both kinds of data is persisted for the life-time of the application.
+ * Both kinds of data is persisted for the life-time of the credential.
  *
  * <p>Each credential may have a number of <em>Authentication Keys</em>
  * associated with it. These keys are intended to be used in ways specified by the
@@ -74,7 +74,7 @@ import co.nstant.in.cbor.model.UnicodeString;
  * data includes the <em>Mobile Security Object</em> which includes the authentication
  * key and is signed by the issuer. This is used for anti-cloning and to return data signed
  * by the device. The way it works in this API is that the application can use
- * {@link #createPendingAuthenticationKey(SecureArea.CreateKeySettings, AuthenticationKey)}
+ * {@link #createPendingAuthenticationKey(SecureArea, SecureArea.CreateKeySettings, AuthenticationKey)}
  * to get a {@link PendingAuthenticationKey}. With this in hand, the application can use
  * {@link PendingAuthenticationKey#getAttestation()} and send the attestation
  * to the issuer for certification. The issuer will then craft credential-shape
@@ -127,15 +127,12 @@ public class Credential {
     static Credential create(@NonNull StorageEngine storageEngine,
                              @NonNull SecureAreaRepository secureAreaRepository,
                              @NonNull String name,
+                             @NonNull SecureArea secureArea,
                              @NonNull SecureArea.CreateKeySettings credentialKeySettings) {
 
         Credential credential = new Credential(storageEngine, secureAreaRepository);
         credential.mName = name;
-        String secureAreaClassName = credentialKeySettings.getSecureAreaClass().getName();
-        credential.mSecureArea = secureAreaRepository.getImplementation(secureAreaClassName);
-        if (credential.mSecureArea == null) {
-            throw new IllegalStateException("No SecureArea with name " + secureAreaClassName);
-        }
+        credential.mSecureArea = secureArea;
         credential.mCredentialKeyAlias = CREDENTIAL_KEY_ALIAS_PREFIX + name;
 
         credential.mSecureArea.createKey(credential.mCredentialKeyAlias, credentialKeySettings);
@@ -148,25 +145,15 @@ public class Credential {
     // Called by CredentialStore.createCredentialWithExistingKey().
     static @NonNull Credential createWithExistingKey(
             @NonNull StorageEngine storageEngine,
-            @NonNull SecureAreaRepository keystoreEngineRepository,
+            @NonNull SecureAreaRepository secureAreaRepository,
             @NonNull String name,
+            @NonNull SecureArea secureArea,
             @NonNull SecureArea.CreateKeySettings credentialKeySettings,
             @NonNull String existingKeyAlias) {
 
-        Credential credential = new Credential(storageEngine, keystoreEngineRepository);
+        Credential credential = new Credential(storageEngine, secureAreaRepository);
         credential.mName = name;
-
-        String keystoreEngineClassName = credentialKeySettings.getSecureAreaClass().getName();
-        if (!keystoreEngineClassName.equals("com.android.identity.android.securearea.AndroidKeystoreSecureArea")) {
-            throw new IllegalStateException("The function must only be called for credentials in " +
-                    "AndroidKeystoreSecureArea, not " + keystoreEngineClassName);
-        }
-
-        credential.mSecureArea = keystoreEngineRepository.getImplementation(keystoreEngineClassName);
-        if (credential.mSecureArea == null) {
-            throw new IllegalStateException("No KeystoreEngine with name " + keystoreEngineClassName);
-        }
-
+        credential.mSecureArea = secureArea;
         credential.mCredentialKeyAlias = existingKeyAlias;
 
         credential.mSecureArea.createKey(credential.mCredentialKeyAlias, credentialKeySettings);
@@ -177,7 +164,7 @@ public class Credential {
     private void saveCredential() {
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
-        map.put("secureAreaClassName", mSecureArea.getClass().getName());
+        map.put("secureAreaIdentifier", mSecureArea.getIdentifier());
         map.put("credentialKeyAlias", mCredentialKeyAlias);
         map.put(new UnicodeString("nameSpacedData"), mNameSpacedData.toCbor());
 
@@ -233,9 +220,8 @@ public class Credential {
         }
         co.nstant.in.cbor.model.Map map = (co.nstant.in.cbor.model.Map) dataItems.get(0);
 
-        String secureAreaImplementationClassName =
-                Util.cborMapExtractString(map, "secureAreaClassName");
-        mSecureArea = secureAreaRepository.getImplementation(secureAreaImplementationClassName);
+        String secureAreaIdentifier = Util.cborMapExtractString(map, "secureAreaIdentifier");
+        mSecureArea = secureAreaRepository.getImplementation(secureAreaIdentifier);
 
         mCredentialKeyAlias = Util.cborMapExtractString(map, "credentialKeyAlias");
 
@@ -405,7 +391,7 @@ public class Credential {
      * Gets the authentication key counter.
      *
      * <p>This is a number which starts at 0 and is increased by one for every call
-     * to {@link #createPendingAuthenticationKey(SecureArea.CreateKeySettings, AuthenticationKey)}.
+     * to {@link #createPendingAuthenticationKey(SecureArea, SecureArea.CreateKeySettings, AuthenticationKey)}.
      *
      * @return the authentication key counter.
      */
@@ -417,7 +403,7 @@ public class Credential {
      * A certified authentication key.
      *
      * <p>To create an instance of this type, an application must first use
-     * {@link Credential#createPendingAuthenticationKey(SecureArea.CreateKeySettings, AuthenticationKey)}
+     * {@link Credential#createPendingAuthenticationKey(SecureArea, SecureArea.CreateKeySettings, AuthenticationKey)}
      * to create a {@link PendingAuthenticationKey} and after issuer certification
      * has been received it can be upgraded to a {@link AuthenticationKey}.
      */
@@ -428,7 +414,7 @@ public class Credential {
         private Timestamp mValidFrom;
         private Timestamp mValidUntil;
         private Credential mCredential;
-        private String mSecureAreaName;
+        private SecureArea mSecureArea;
         private String mReplacementAlias;
         private SimpleApplicationData mApplicationData;
         private long mAuthenticationKeyCounter;
@@ -445,7 +431,7 @@ public class Credential {
             ret.mValidFrom = validFrom;
             ret.mValidUntil = validUntil;
             ret.mCredential = credential;
-            ret.mSecureAreaName = pendingAuthenticationKey.mSecureAreaName;
+            ret.mSecureArea = pendingAuthenticationKey.mSecureArea;
             ret.mApplicationData = pendingAuthenticationKey.mApplicationData;
             ret.mAuthenticationKeyCounter = pendingAuthenticationKey.mAuthenticationKeyCounter;
             return ret;
@@ -506,12 +492,7 @@ public class Credential {
          * <p>After deletion, this object should no longer be used.
          */
         public void delete() {
-            SecureArea secureArea = mCredential.mSecureAreaRepository
-                    .getImplementation(mSecureAreaName);
-            if (secureArea == null) {
-                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
-            }
-            secureArea.deleteKey(mAlias);
+            mSecureArea.deleteKey(mAlias);
             mCredential.removeAuthenticationKey(this);
         }
 
@@ -529,12 +510,7 @@ public class Credential {
          * @return An X.509 certificate chain for the authentication key.
          */
         public @NonNull List<X509Certificate> getAttestation() {
-            SecureArea secureArea = mCredential.mSecureAreaRepository
-                    .getImplementation(mSecureAreaName);
-            if (secureArea == null) {
-                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
-            }
-            SecureArea.KeyInfo keyInfo = secureArea.getKeyInfo(mAlias);
+            SecureArea.KeyInfo keyInfo = mSecureArea.getKeyInfo(mAlias);
             return keyInfo.getAttestation();
         }
 
@@ -559,19 +535,14 @@ public class Credential {
          * @return The {@link SecureArea} used for <em>CredentialKey</em>.
          */
         public @NonNull SecureArea getSecureArea() {
-            SecureArea secureArea = mCredential.mSecureAreaRepository
-                    .getImplementation(mSecureAreaName);
-            if (secureArea == null) {
-                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
-            }
-            return secureArea;
+            return mSecureArea;
         }
 
         DataItem toCbor() {
             CborBuilder builder = new CborBuilder();
             MapBuilder<CborBuilder> mapBuilder = builder.addMap();
             mapBuilder.put("alias", mAlias)
-                    .put("secureAreaName", mSecureAreaName)
+                    .put("secureAreaIdentifier", mSecureArea.getIdentifier())
                     .put("usageCount", mUsageCount)
                     .put("data", mData)
                     .put("validFrom", mValidFrom.toEpochMilli())
@@ -588,7 +559,11 @@ public class Credential {
                                           @NonNull Credential credential) {
             AuthenticationKey ret = new AuthenticationKey();
             ret.mAlias = Util.cborMapExtractString(dataItem, "alias");
-            ret.mSecureAreaName = Util.cborMapExtractString(dataItem, "secureAreaName");
+            String secureAreaIdentifier = Util.cborMapExtractString(dataItem, "secureAreaIdentifier");
+            ret.mSecureArea = credential.mSecureAreaRepository.getImplementation(secureAreaIdentifier);
+            if (ret.mSecureArea == null) {
+                throw new IllegalArgumentException("Unknown Secure Area " + secureAreaIdentifier);
+            }
             ret.mUsageCount = (int) Util.cborMapExtractNumber(dataItem, "usageCount");
             ret.mData = Util.cborMapExtractByteString(dataItem, "data");
             ret.mValidFrom = Timestamp.ofEpochMilli(Util.cborMapExtractNumber(dataItem, "validFrom"));
@@ -654,7 +629,7 @@ public class Credential {
      * An authentication key pending certification.
      *
      * <p>To create a pending authentication key, use
-     * {@link Credential#createPendingAuthenticationKey(SecureArea.CreateKeySettings, AuthenticationKey)}.
+     * {@link Credential#createPendingAuthenticationKey(SecureArea, SecureArea.CreateKeySettings, AuthenticationKey)}.
      *
      * <p>Because issuer certification of authentication could take a long time, pending
      * authentication keys are persisted and {@link Credential#getPendingAuthenticationKeys()}
@@ -665,7 +640,7 @@ public class Credential {
      * to upgrade to a {@link AuthenticationKey}.
      */
     public static class PendingAuthenticationKey {
-        String mSecureAreaName;
+        SecureArea mSecureArea;
 
         String mAlias;
         Credential mCredential;
@@ -675,18 +650,14 @@ public class Credential {
 
         static @NonNull PendingAuthenticationKey create(
                 @NonNull String alias,
+                @NonNull SecureArea secureArea,
                 @NonNull SecureArea.CreateKeySettings createKeySettings,
                 @Nullable AuthenticationKey asReplacementFor,
                 @NonNull Credential credential) {
             PendingAuthenticationKey ret = new PendingAuthenticationKey();
             ret.mAlias = alias;
-            ret.mSecureAreaName = createKeySettings.getSecureAreaClass().getName();
-            SecureArea secureArea = credential.mSecureAreaRepository
-                    .getImplementation(ret.mSecureAreaName);
-            if (secureArea == null) {
-                throw new IllegalArgumentException("Unknown engine " + ret.mSecureAreaName);
-            }
-            secureArea.createKey(alias, createKeySettings);
+            ret.mSecureArea = secureArea;
+            ret.mSecureArea.createKey(alias, createKeySettings);
             if (asReplacementFor != null) {
                 ret.mReplacementForAlias = asReplacementFor.getAlias();
             }
@@ -705,12 +676,7 @@ public class Credential {
          * @return An X.509 certificate chain for the pending authentication key.
          */
         public @NonNull List<X509Certificate> getAttestation() {
-            SecureArea secureArea = mCredential.mSecureAreaRepository
-                    .getImplementation(mSecureAreaName);
-            if (secureArea == null) {
-                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
-            }
-            SecureArea.KeyInfo keyInfo = secureArea.getKeyInfo(mAlias);
+            SecureArea.KeyInfo keyInfo = mSecureArea.getKeyInfo(mAlias);
             return keyInfo.getAttestation();
         }
 
@@ -735,12 +701,7 @@ public class Credential {
          * @return The {@link SecureArea} used for <em>CredentialKey</em>.
          */
         public @NonNull SecureArea getSecureArea() {
-            SecureArea secureArea = mCredential.mSecureAreaRepository
-                    .getImplementation(mSecureAreaName);
-            if (secureArea == null) {
-                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
-            }
-            return secureArea;
+            return mSecureArea;
         }
 
         /**
@@ -759,12 +720,7 @@ public class Credential {
          * Deletes the pending authentication key.
          */
         public void delete() {
-            SecureArea secureArea = mCredential.mSecureAreaRepository
-                    .getImplementation(mSecureAreaName);
-            if (secureArea == null) {
-                throw new IllegalArgumentException("Unknown engine " + mSecureAreaName);
-            }
-            secureArea.deleteKey(mAlias);
+            mSecureArea.deleteKey(mAlias);
             mCredential.removePendingAuthenticationKey(this);
         }
 
@@ -795,7 +751,7 @@ public class Credential {
             CborBuilder builder = new CborBuilder();
             MapBuilder<CborBuilder> mapBuilder = builder.addMap();
             mapBuilder.put("alias", mAlias)
-                    .put("secureAreaName", mSecureAreaName);
+                    .put("secureAreaIdentifier", mSecureArea.getIdentifier());
             if (mReplacementForAlias != null) {
                 mapBuilder.put("replacementForAlias", mReplacementForAlias);
             }
@@ -808,7 +764,12 @@ public class Credential {
                                                  @NonNull Credential credential) {
             PendingAuthenticationKey ret = new PendingAuthenticationKey();
             ret.mAlias = Util.cborMapExtractString(dataItem, "alias");
-            ret.mSecureAreaName = Util.cborMapExtractString(dataItem, "secureAreaName");
+            ret.mCredential = credential;
+            String secureAreaIdentifier = Util.cborMapExtractString(dataItem, "secureAreaIdentifier");
+            ret.mSecureArea = credential.mSecureAreaRepository.getImplementation(secureAreaIdentifier);
+            if (ret.mSecureArea == null) {
+                throw new IllegalArgumentException("Unknown Secure Area " + secureAreaIdentifier);
+            }
             if (Util.cborMapHasKey(dataItem, "replacementForAlias")) {
                 ret.mReplacementForAlias = Util.cborMapExtractString(dataItem, "replacementForAlias");
             }
@@ -816,7 +777,6 @@ public class Credential {
             if (!(applicationDataDataItem instanceof co.nstant.in.cbor.model.ByteString)) {
                 throw new IllegalStateException("applicationData not found or not byte[]");
             }
-            ret.mCredential = credential;
             ret.mApplicationData = SimpleApplicationData.decodeFromCbor(
                     ((ByteString) applicationDataDataItem).getBytes(),
                     () -> ret.mCredential.saveCredential());
@@ -871,6 +831,7 @@ public class Credential {
      * <p>For a higher-level way of managing authentication keys, see
      * {@link CredentialUtil#managedAuthenticationKeyHelper(Credential, SecureArea.CreateKeySettings, String, Timestamp, int, int, long)}.
      *
+     * @param secureArea the secure area to use for the authentication key.
      * @param createKeySettings settings for the authentication key.
      * @param asReplacementFor if not {@code null}, replace the given authentication key
      *                         with this one, once it has been certified.
@@ -879,6 +840,7 @@ public class Credential {
      *   key already has a pending key intending to replace it.
      */
     public @NonNull PendingAuthenticationKey createPendingAuthenticationKey(
+            @NonNull SecureArea secureArea,
             @NonNull SecureArea.CreateKeySettings createKeySettings,
             @Nullable AuthenticationKey asReplacementFor) {
         if (asReplacementFor != null && asReplacementFor.getReplacement() != null) {
@@ -889,6 +851,7 @@ public class Credential {
         PendingAuthenticationKey pendingAuthenticationKey =
                 PendingAuthenticationKey.create(
                         alias,
+                        secureArea,
                         createKeySettings,
                         asReplacementFor,
                         this);

@@ -32,6 +32,7 @@ import androidx.biometric.BiometricPrompt;
 
 import com.android.identity.internal.Util;
 import com.android.identity.securearea.SecureArea;
+import com.android.identity.securearea.SoftwareSecureArea;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
@@ -159,10 +160,31 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         mKeymintSbFeatureLevel = getFeatureVersionKeystore(context, true);
     }
 
+    @NonNull
+    @Override
+    public String getIdentifier() {
+        return "AndroidKeystoreSecureArea";
+    }
+
+    @NonNull
+    @Override
+    public String getDisplayName() {
+        return "Android Keystore Secure Area";
+    }
+
     @Override
     public void createKey(@NonNull String alias,
                           @NonNull SecureArea.CreateKeySettings createKeySettings) {
-        CreateKeySettings aSettings = (CreateKeySettings) createKeySettings;
+        CreateKeySettings aSettings;
+        if (createKeySettings instanceof CreateKeySettings) {
+            aSettings = (CreateKeySettings) createKeySettings;
+        } else {
+            // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
+            aSettings = new AndroidKeystoreSecureArea.CreateKeySettings.Builder(
+                    createKeySettings.getAttestationChallenge())
+                    .build();
+        }
+
         if (aSettings.getExistingKeyAlias() != null) {
             createFromExistingKey(aSettings.getExistingKeyAlias(), aSettings);
             return;
@@ -858,7 +880,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
     public static class CreateKeySettings extends SecureArea.CreateKeySettings {
         private final @KeyPurpose int mKeyPurposes;
         private final @EcCurve int mEcCurve;
-        private final byte[] mAttestationChallenge;
         private final boolean mUserAuthenticationRequired;
         private final long mUserAuthenticationTimeoutMillis;
         private final @UserAuthenticationType int mUserAuthenticationType;
@@ -879,10 +900,9 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                                   @Nullable Timestamp validFrom,
                                   @Nullable Timestamp validUntil,
                                   @Nullable String existingKeyAlias) {
-            super(AndroidKeystoreSecureArea.class);
+            super(attestationChallenge);
             mKeyPurposes = keyPurpose;
             mEcCurve = ecCurve;
-            mAttestationChallenge = attestationChallenge;
             mUserAuthenticationRequired = userAuthenticationRequired;
             mUserAuthenticationTimeoutMillis = userAuthenticationTimeoutMillis;
             mUserAuthenticationType = userAuthenticationType;
@@ -891,15 +911,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             mValidFrom = validFrom;
             mValidUntil = validUntil;
             mExistingKeyAlias = existingKeyAlias;
-        }
-
-        /**
-         * Gets the attestation challenge.
-         *
-         * @return the attestation challenge.
-         */
-        public @NonNull byte[] getAttestationChallenge() {
-            return mAttestationChallenge;
         }
 
         /**

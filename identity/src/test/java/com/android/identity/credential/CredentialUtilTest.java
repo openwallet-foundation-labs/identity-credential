@@ -51,14 +51,14 @@ public class CredentialUtilTest {
 
         Credential credential = credentialStore.createCredential(
                 "testCredential",
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+                mSecureArea,
+                new SecureArea.CreateKeySettings(new byte[0]));
 
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
         SecureArea.CreateKeySettings authKeySettings =
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
-                        .build();
+                new SecureArea.CreateKeySettings(new byte[0]);
 
         int numAuthKeys = 10;
         int maxUsesPerKey = 5;
@@ -71,6 +71,7 @@ public class CredentialUtilTest {
         // valid until time 200.
         numKeysCreated = CredentialUtil.managedAuthenticationKeyHelper(
                 credential,
+                mSecureArea,
                 authKeySettings,
                 managedKeyDomain,
                 Timestamp.ofEpochMilli(100),
@@ -93,6 +94,7 @@ public class CredentialUtilTest {
         // Certifying again at this point should not make a difference.
         numKeysCreated = CredentialUtil.managedAuthenticationKeyHelper(
                 credential,
+                mSecureArea,
                 authKeySettings,
                 managedKeyDomain,
                 Timestamp.ofEpochMilli(100),
@@ -110,6 +112,7 @@ public class CredentialUtilTest {
         }
         numKeysCreated = CredentialUtil.managedAuthenticationKeyHelper(
                 credential,
+                mSecureArea,
                 authKeySettings,
                 managedKeyDomain,
                 Timestamp.ofEpochMilli(100),
@@ -130,6 +133,7 @@ public class CredentialUtilTest {
         }
         numKeysCreated = CredentialUtil.managedAuthenticationKeyHelper(
                 credential,
+                mSecureArea,
                 authKeySettings,
                 managedKeyDomain,
                 Timestamp.ofEpochMilli(100),
@@ -172,6 +176,7 @@ public class CredentialUtilTest {
         // This should trigger just them for replacement
         numKeysCreated = CredentialUtil.managedAuthenticationKeyHelper(
                 credential,
+                mSecureArea,
                 authKeySettings,
                 managedKeyDomain,
                 Timestamp.ofEpochMilli(195),

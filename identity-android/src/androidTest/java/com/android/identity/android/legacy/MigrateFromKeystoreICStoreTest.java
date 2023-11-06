@@ -83,9 +83,9 @@ public class MigrateFromKeystoreICStoreTest {
     IdentityCredentialStore mICStore;
     StorageEngine mStorageEngine;
 
-    AndroidKeystoreSecureArea mKeystoreEngine;
+    AndroidKeystoreSecureArea mAndroidKeystoreSecureArea;
 
-    SecureAreaRepository mKeystoreEngineRepository;
+    SecureAreaRepository mSecureAreaRepository;
 
     @Before
     public void setup() {
@@ -93,9 +93,9 @@ public class MigrateFromKeystoreICStoreTest {
         File storageDir = new File(context.getDataDir(), "ic-testing");
         mStorageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
 
-        mKeystoreEngineRepository = new SecureAreaRepository();
-        mKeystoreEngine = new AndroidKeystoreSecureArea(context, mStorageEngine);
-        mKeystoreEngineRepository.addImplementation(mKeystoreEngine);
+        mSecureAreaRepository = new SecureAreaRepository();
+        mAndroidKeystoreSecureArea = new AndroidKeystoreSecureArea(context, mStorageEngine);
+        mSecureAreaRepository.addImplementation(mAndroidKeystoreSecureArea);
 
         mICStore = Utility.getIdentityCredentialStore(context);
     }
@@ -240,8 +240,8 @@ public class MigrateFromKeystoreICStoreTest {
         // migrate
         CredentialStore credentialStore = new CredentialStore(
                 mStorageEngine,
-                mKeystoreEngineRepository);
-        Credential migratedCred = keystoreCred.migrateToCredentialStore(credentialStore);
+                mSecureAreaRepository);
+        Credential migratedCred = keystoreCred.migrateToCredentialStore(mAndroidKeystoreSecureArea, credentialStore);
 
         // check deletion
         assertNull(mICStore.getCredentialByName(
@@ -302,9 +302,12 @@ public class MigrateFromKeystoreICStoreTest {
         assertNull(migratedCred.findAuthenticationKey(Timestamp.ofEpochMilli(100)));
         byte[] authKeyChallenge = new byte[] {20, 21, 22};
         Credential.PendingAuthenticationKey pendingAuthenticationKey =
-                migratedCred.createPendingAuthenticationKey(new AndroidKeystoreSecureArea.CreateKeySettings.Builder(authKeyChallenge)
+                migratedCred.createPendingAuthenticationKey(
+                        mAndroidKeystoreSecureArea,
+                        new AndroidKeystoreSecureArea.CreateKeySettings.Builder(authKeyChallenge)
                                 .setUserAuthenticationRequired(true, 30*1000,
-                                        AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF)
+                                        AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF |
+                                                AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC)
                                 .build(),
                         null);
         parser = new AndroidAttestationExtensionParser(pendingAuthenticationKey.getAttestation().get(0));
@@ -547,8 +550,8 @@ public class MigrateFromKeystoreICStoreTest {
         mICStore.deleteCredentialByName(credName);
         CredentialStore credentialStore = new CredentialStore(
                 mStorageEngine,
-                mKeystoreEngineRepository);
+                mSecureAreaRepository);
         assertNull(mICStore.getCredentialByName(credName, IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256));
-        assertThrows(IllegalStateException.class, () -> keystoreCred.migrateToCredentialStore(credentialStore));
+        assertThrows(IllegalStateException.class, () -> keystoreCred.migrateToCredentialStore(mAndroidKeystoreSecureArea, credentialStore));
     }
 }

@@ -101,6 +101,8 @@ public class SoftwareSecureArea implements SecureArea {
     // Prefix for storage items.
     private static final String PREFIX = "IC_SoftwareSecureArea_key_";
 
+
+
     /**
      * Creates a new software-backed secure area.
      *
@@ -110,10 +112,30 @@ public class SoftwareSecureArea implements SecureArea {
         mStorageEngine = storageEngine;
     }
 
+    @NonNull
+    @Override
+    public String getIdentifier() {
+        return "SoftwareSecureArea";
+    }
+
+    @NonNull
+    @Override
+    public String getDisplayName() {
+        return "Software Secure Area";
+    }
+
     @Override
     public void createKey(@NonNull String alias,
                           @NonNull SecureArea.CreateKeySettings createKeySettings) {
-        CreateKeySettings settings = (CreateKeySettings) createKeySettings;
+        CreateKeySettings settings;
+        if (createKeySettings instanceof CreateKeySettings) {
+            settings = (CreateKeySettings) createKeySettings;
+        } else {
+            // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
+            settings = new SoftwareSecureArea.CreateKeySettings.Builder(
+                    createKeySettings.getAttestationChallenge())
+                    .build();
+        }
 
         KeyPairGenerator kpg;
         try {
@@ -557,7 +579,6 @@ public class SoftwareSecureArea implements SecureArea {
         private final String mSubject;
         private final Timestamp mValidFrom;
         private final Timestamp mValidUntil;
-        private final byte[] mAttestationChallenge;
         private PrivateKey mAttestationKey;
         private String mAttestationKeySignatureAlgorithm;
         private List<X509Certificate> mAttestationKeyCertification;
@@ -573,12 +594,11 @@ public class SoftwareSecureArea implements SecureArea {
                                   @Nullable PrivateKey attestationKey,
                                   @Nullable String attestationKeySignatureAlgorithm,
                                   @Nullable List<X509Certificate> attestationKeyCertification) {
-            super(SoftwareSecureArea.class);
+            super(attestationChallenge);
             mPassphraseRequired = passphraseRequired;
             mPassphrase = passphrase;
             mEcCurve = ecCurve;
             mKeyPurposes = keyPurposes;
-            mAttestationChallenge = attestationChallenge;
             mSubject = subject;
             mValidFrom = validFrom;
             mValidUntil = validUntil;
@@ -621,15 +641,6 @@ public class SoftwareSecureArea implements SecureArea {
          */
         public @KeyPurpose int getKeyPurposes() {
             return mKeyPurposes;
-        }
-
-        /**
-         * Gets the attestation challenge.
-         *
-         * @return the attestation challenge.
-         */
-        public @NonNull byte[] getAttestationChallenge() {
-            return mAttestationChallenge;
         }
 
         /**
