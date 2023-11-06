@@ -2,6 +2,12 @@ package com.android.identity.wallet.util
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.Credential
@@ -13,7 +19,6 @@ import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.KeyLockedException
 import com.android.identity.securearea.SecureArea.KeyPurpose
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.SoftwareSecureArea
@@ -26,8 +31,8 @@ import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState
 import com.android.identity.wallet.selfsigned.ProvisionInfo
 import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
 import com.android.identity.wallet.util.DocumentData.MVR_DOCTYPE
+import java.io.ByteArrayOutputStream
 import java.io.File
-import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.cert.X509Certificate
 import java.time.Instant
@@ -165,6 +170,7 @@ class ProvisioningUtil private constructor(
         val timeSigned = Timestamp.now()
         val timeValidityBegin = Timestamp.ofEpochMilli(nowMillis)
         val timeValidityEnd = validityInDays.toTimestampFromNow()
+
         for (pendingAuthKey in credential.pendingAuthenticationKeys) {
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
@@ -173,11 +179,29 @@ class ProvisioningUtil private constructor(
             )
             msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
 
+            // For mDLs, override the portrait with AuthenticationKeyCounter on top
+            //
+            var dataElementExceptions: Map<String, List<String>>? = null
+            var dataElementOverrides: Map<String, Map<String, ByteArray>>? = null
+            if (documentType.equals("org.iso.18013.5.1.mDL")) {
+                val portrait = credential.nameSpacedData.getDataElementByteString(
+                    "org.iso.18013.5.1", "portrait")
+                val portrait_override = overridePortrait(portrait,
+                    pendingAuthKey.authenticationKeyCounter)
+
+                dataElementExceptions =
+                    mapOf("org.iso.18013.5.1" to listOf("given_name", "portrait"))
+                dataElementOverrides =
+                    mapOf("org.iso.18013.5.1" to mapOf(
+                        "portrait" to Util.cborEncodeBytestring(portrait_override)))
+            }
+
             val deterministicRandomProvider = Random(42)
             val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
                 credential.nameSpacedData,
                 deterministicRandomProvider,
-                16
+                16,
+                dataElementOverrides
             )
 
             for (nameSpaceName in issuerNameSpaces.keys) {
@@ -217,7 +241,7 @@ class ProvisioningUtil private constructor(
             )
 
             val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces),
+                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, dataElementExceptions),
                 encodedIssuerAuth
             ).generate()
 
@@ -227,6 +251,35 @@ class ProvisioningUtil private constructor(
                 timeValidityEnd
             )
         }
+    }
+
+    // Puts the string "MSO ${counter}" on top of the portrait image.
+    private fun overridePortrait(encodedPortrait: ByteArray, counter: Number): ByteArray {
+        val options = BitmapFactory.Options()
+        options.inMutable = true
+        val bitmap = BitmapFactory.decodeByteArray(
+            encodedPortrait,
+            0,
+            encodedPortrait.size,
+            options)
+
+        val text = "MSO ${counter}"
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.setColor(Color.WHITE)
+        paint.textSize = bitmap.width / 5.0f
+        paint.setShadowLayer(2.0f, 1.0f, 1.0f, Color.BLACK)
+        val bounds = Rect()
+        paint.getTextBounds(text, 0, text.length, bounds)
+        val x: Float = (bitmap.width - bounds.width()) / 2.0f
+        val y: Float = (bitmap.height - bounds.height()) / 4.0f
+        canvas.drawText(text, x, y, paint)
+
+        val baos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
+        val encodedModifiedPortrait: ByteArray = baos.toByteArray()
+
+        return encodedModifiedPortrait
     }
 
     private fun manageKeysFor(credential: Credential): Int {

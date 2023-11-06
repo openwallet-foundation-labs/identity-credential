@@ -330,7 +330,8 @@ public class MigrateFromKeystoreICStoreTest {
         Map<String, List<byte[]>> issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
                 nsData,
                 deterministicRandomProvider,
-                16);
+                16,
+                null);
 
         for (String nameSpaceName : issuerNameSpaces.keySet()) {
             Map<Long, byte[]> digests = MdocUtil.calculateDigestsForNameSpace(
@@ -358,7 +359,7 @@ public class MigrateFromKeystoreICStoreTest {
                 issuerCertChain));
 
         byte[] issuerProvidedAuthenticationData = new StaticAuthDataGenerator(
-                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces),
+                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, null),
                 encodedIssuerAuth).generate();
 
         // Now that we have issuer-provided authentication data we certify the authentication key.

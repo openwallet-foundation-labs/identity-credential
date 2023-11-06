@@ -171,6 +171,7 @@ public class CredentialStoreTest {
         // By default, we don't have any auth keys nor any pending auth keys.
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
+        Assert.assertEquals(0, credential.getAuthenticationKeyCounter());
 
         // Since none are certified or even pending yet, we can't present anything.
         Assert.assertNull(credential.findAuthenticationKey(timeDuringValidity));
@@ -183,6 +184,7 @@ public class CredentialStoreTest {
         }
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(10, credential.getPendingAuthenticationKeys().size());
+        Assert.assertEquals(10, credential.getAuthenticationKeyCounter());
 
         // ... and certify all of them
         int n = 0;
@@ -193,6 +195,7 @@ public class CredentialStoreTest {
                     issuerProvidedAuthenticationData,
                     timeValidityBegin,
                     timeValidityEnd);
+            Assert.assertEquals(n, pendingAuthenticationKey.getAuthenticationKeyCounter());
         }
         Assert.assertEquals(10, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
@@ -254,12 +257,16 @@ public class CredentialStoreTest {
         }
         Assert.assertEquals(10, credential.getAuthenticationKeys().size());
         Assert.assertEquals(5, credential.getPendingAuthenticationKeys().size());
+        Assert.assertEquals(15, credential.getAuthenticationKeyCounter());
+        n = 11;
         for (Credential.PendingAuthenticationKey pendingAuthenticationKey :
                 credential.getPendingAuthenticationKeys()) {
             pendingAuthenticationKey.certify(
                     new byte[0],
                     timeValidityBegin,
                     timeValidityEnd);
+            Assert.assertEquals(n, pendingAuthenticationKey.getAuthenticationKeyCounter());
+            n++;
         }
         Assert.assertEquals(15, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
