@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.identity.android.mdoc.document.DataElement
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentRequestCustomBinding
 import com.android.mdl.appreader.document.RequestDocument
@@ -58,12 +59,10 @@ class RequestCustomFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         // Dynamically creates the list of checkbox
-        requestDocument.dataItems.forEach { dataItem ->
+        requestDocument.elements.forEach { dataItem ->
             binding.llRequestItems.addView(
                 newCheckBox(
-                    dataItem.identifier,
-                    getString(dataItem.stringResourceId),
-                    vm.isSelectedDataItem(dataItem.identifier)
+                    dataItem, getString(dataItem.stringResourceId), vm.isSelectedDataItem(dataItem)
                 )
             )
         }
@@ -72,9 +71,9 @@ class RequestCustomFragment : Fragment() {
             // TODO: get intent to retain from user
             //requestDocument.setSelectedDataItems(vm.getSelectedDataItems(false))
             requestDocumentList.getAll()
-                .find { it.docType == requestDocument.docType && it.nameSpace == requestDocument.nameSpace }
+                .find { it.requestType == requestDocument.requestType }
                 .also {
-                    it?.setSelectedDataItems(vm.getSelectedDataItems(false))
+                    it?.setSelectedDataElements(vm.getSelectedDataItems(), false)
                 }
             findNavController().navigate(
                 RequestCustomFragmentDirections.actionRequestCustomToScanDeviceEngagement(
@@ -88,7 +87,7 @@ class RequestCustomFragment : Fragment() {
     }
 
     @SuppressLint("WrongConstant")
-    private fun newCheckBox(identifier: String, text: String, isSelected: Boolean): CheckBox {
+    private fun newCheckBox(dataElement: DataElement, text: String, isSelected: Boolean): CheckBox {
         val checkBox = CheckBox(requireContext())
         checkBox.let {
             it.text = text
@@ -98,7 +97,7 @@ class RequestCustomFragment : Fragment() {
             )
             it.isChecked = isSelected
             it.setOnClickListener {
-                vm.dataItemSelected(identifier)
+                vm.dataItemSelected(dataElement)
             }
             it.layoutDirection = RTL
         }

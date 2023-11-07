@@ -21,7 +21,6 @@ import static org.junit.Assume.assumeTrue;
 import android.content.Context;
 import android.os.ConditionVariable;
 import android.security.keystore.KeyProperties;
-import androidx.core.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.test.InstrumentationRegistry;
@@ -40,6 +39,8 @@ import com.android.identity.android.legacy.NoAuthenticationKeyAvailableException
 import com.android.identity.android.legacy.PersonalizationData;
 import com.android.identity.android.legacy.PresentationSession;
 import com.android.identity.android.legacy.Utility;
+import com.android.identity.android.mdoc.document.Namespace;
+import com.android.identity.android.mdoc.document.DocumentType;
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper;
 import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
@@ -53,7 +54,6 @@ import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
-import com.android.identity.util.Logger;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -93,11 +93,6 @@ import co.nstant.in.cbor.model.UnicodeString;
 @SuppressWarnings("deprecation")
 @RunWith(AndroidJUnit4.class)
 public class DeviceRetrievalHelperTest {
-
-    private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
-    private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
-    private static final String AAMVA_NAMESPACE = "org.aamva.18013.5.1";  // TODO: verify
-
     private KeyPair generateIssuingAuthorityKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
         ECGenParameterSpec ecSpec = new ECGenParameterSpec("prime256v1");
@@ -152,9 +147,9 @@ public class DeviceRetrievalHelperTest {
         PersonalizationData personalizationData =
                 new PersonalizationData.Builder()
                         .addAccessControlProfile(noAuthProfile)
-                        .putEntryString(MDL_NAMESPACE, "given_name", idsNoAuth, "Erika")
-                        .putEntryString(MDL_NAMESPACE, "family_name", idsNoAuth, "Mustermann")
-                        .putEntryBoolean(AAMVA_NAMESPACE, "real_id", idsNoAuth, true)
+                        .putEntryString(Namespace.MDL.getValue(), "given_name", idsNoAuth, "Erika")
+                        .putEntryString(Namespace.MDL.getValue(), "family_name", idsNoAuth, "Mustermann")
+                        .putEntryBoolean(Namespace.MDL_AAMVA.getValue(), "real_id", idsNoAuth, true)
                         .build();
 
         // Generate Issuing Authority keypair and X509 certificate.
@@ -166,7 +161,7 @@ public class DeviceRetrievalHelperTest {
                 "test",
                 issuerAuthorityKeyPair.getPrivate(),
                 issuerAuthorityCertificate,
-                MDL_DOCTYPE,
+                DocumentType.MDL.getValue(),
                 personalizationData,
                 1,
                 2);
@@ -240,13 +235,13 @@ public class DeviceRetrievalHelperTest {
         Map<String, Boolean> mdlNsItems = new HashMap<>();
         mdlNsItems.put("family_name", true);
         mdlNsItems.put("portrait", false);
-        mdlItemsToRequest.put(MDL_NAMESPACE, mdlNsItems);
+        mdlItemsToRequest.put(Namespace.MDL.getValue(), mdlNsItems);
         Map<String, Boolean> aamvaNsItems = new HashMap<>();
         aamvaNsItems.put("real_id", false);
-        mdlItemsToRequest.put(AAMVA_NAMESPACE, aamvaNsItems);
+        mdlItemsToRequest.put(Namespace.MDL_AAMVA.getValue(), aamvaNsItems);
 
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
-                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
+                .addDocumentRequest(DocumentType.MDL.getValue(), mdlItemsToRequest, null, null, null)
                 .generate();
         byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
@@ -293,16 +288,16 @@ public class DeviceRetrievalHelperTest {
                 Collection<DeviceResponseParser.Document> documents = dr.getDocuments();
                 Assert.assertEquals(1, documents.size());
                 DeviceResponseParser.Document d = documents.iterator().next();
-                Assert.assertEquals(MDL_DOCTYPE, d.getDocType());
+                Assert.assertEquals(DocumentType.MDL.getValue(), d.getDocType());
                 Assert.assertEquals(0, d.getDeviceNamespaces().size());
                 Assert.assertEquals(2, d.getIssuerNamespaces().size());
-                Assert.assertEquals(2, d.getIssuerEntryNames(MDL_NAMESPACE).size());
+                Assert.assertEquals(2, d.getIssuerEntryNames(Namespace.MDL.getValue()).size());
                 Assert.assertEquals("Erika",
-                        d.getIssuerEntryString(MDL_NAMESPACE, "given_name"));
+                        d.getIssuerEntryString(Namespace.MDL.getValue(), "given_name"));
                 Assert.assertEquals("Mustermann",
-                        d.getIssuerEntryString(MDL_NAMESPACE, "family_name"));
-                Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size());
-                Assert.assertTrue(d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"));
+                        d.getIssuerEntryString(Namespace.MDL.getValue(), "family_name"));
+                Assert.assertEquals(1, d.getIssuerEntryNames(Namespace.MDL_AAMVA.getValue()).size());
+                Assert.assertTrue(d.getIssuerEntryBoolean(Namespace.MDL_AAMVA.getValue(), "real_id"));
 
                 // Send a close message (status 20 is "session termination")
                 verifierTransport.sendMessage(
@@ -340,21 +335,21 @@ public class DeviceRetrievalHelperTest {
                                 deviceRequest.getDocumentRequests();
                         Assert.assertEquals(1, docRequests.size());
                         DeviceRequestParser.DocumentRequest request = docRequests.iterator().next();
-                        Assert.assertEquals(MDL_DOCTYPE, request.getDocType());
+                        Assert.assertEquals(DocumentType.MDL.getValue(), request.getDocType());
                         Assert.assertEquals(2, request.getNamespaces().size());
-                        Assert.assertTrue(request.getNamespaces().contains(MDL_NAMESPACE));
-                        Assert.assertTrue(request.getNamespaces().contains(AAMVA_NAMESPACE));
-                        Assert.assertEquals(1, request.getEntryNames(AAMVA_NAMESPACE).size());
-                        Assert.assertFalse(request.getIntentToRetain(AAMVA_NAMESPACE, "real_id"));
-                        Assert.assertEquals(2, request.getEntryNames(MDL_NAMESPACE).size());
-                        Assert.assertTrue(request.getIntentToRetain(MDL_NAMESPACE, "family_name"));
-                        Assert.assertFalse(request.getIntentToRetain(MDL_NAMESPACE, "portrait"));
+                        Assert.assertTrue(request.getNamespaces().contains(Namespace.MDL.getValue()));
+                        Assert.assertTrue(request.getNamespaces().contains(Namespace.MDL_AAMVA.getValue()));
+                        Assert.assertEquals(1, request.getEntryNames(Namespace.MDL_AAMVA.getValue()).size());
+                        Assert.assertFalse(request.getIntentToRetain(Namespace.MDL_AAMVA.getValue(), "real_id"));
+                        Assert.assertEquals(2, request.getEntryNames(Namespace.MDL.getValue()).size());
+                        Assert.assertTrue(request.getIntentToRetain(Namespace.MDL.getValue(), "family_name"));
+                        Assert.assertFalse(request.getIntentToRetain(Namespace.MDL.getValue(), "portrait"));
 
                         Map<String, Collection<String>> issuerSignedEntriesToRequest =
                                 new HashMap<>();
-                        issuerSignedEntriesToRequest.put(MDL_NAMESPACE,
+                        issuerSignedEntriesToRequest.put(Namespace.MDL.getValue(),
                                 Arrays.asList("given_name", "family_name"));
-                        issuerSignedEntriesToRequest.put(AAMVA_NAMESPACE, Collections.singletonList("real_id"));
+                        issuerSignedEntriesToRequest.put(Namespace.MDL_AAMVA.getValue(), Collections.singletonList("real_id"));
                         Map<String, Collection<String>> deviceSignedEntriesToRequest =
                                 new HashMap<>();
                         try {
@@ -521,13 +516,13 @@ public class DeviceRetrievalHelperTest {
         Map<String, Boolean> mdlNsItems = new HashMap<>();
         mdlNsItems.put("family_name", true);
         mdlNsItems.put("portrait", false);
-        mdlItemsToRequest.put(MDL_NAMESPACE, mdlNsItems);
+        mdlItemsToRequest.put(Namespace.MDL.getValue(), mdlNsItems);
         Map<String, Boolean> aamvaNsItems = new HashMap<>();
         aamvaNsItems.put("real_id", false);
-        mdlItemsToRequest.put(AAMVA_NAMESPACE, aamvaNsItems);
+        mdlItemsToRequest.put(Namespace.MDL_AAMVA.getValue(), aamvaNsItems);
 
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
-                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
+                .addDocumentRequest(DocumentType.MDL.getValue(), mdlItemsToRequest, null, null, null)
                 .generate();
         byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
@@ -698,13 +693,13 @@ public class DeviceRetrievalHelperTest {
         Map<String, Boolean> mdlNsItems = new HashMap<>();
         mdlNsItems.put("family_name", true);
         mdlNsItems.put("portrait", false);
-        mdlItemsToRequest.put(MDL_NAMESPACE, mdlNsItems);
+        mdlItemsToRequest.put(Namespace.MDL.getValue(), mdlNsItems);
         Map<String, Boolean> aamvaNsItems = new HashMap<>();
         aamvaNsItems.put("real_id", false);
-        mdlItemsToRequest.put(AAMVA_NAMESPACE, aamvaNsItems);
+        mdlItemsToRequest.put(Namespace.MDL_AAMVA.getValue(), aamvaNsItems);
 
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
-                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
+                .addDocumentRequest(DocumentType.MDL.getValue(), mdlItemsToRequest, null, null, null)
                 .generate();
         // NOTE! This creates a SessionEstablishment where EReaderKey's Y coordinate is negated
         // and thus the key is not valid. This is to check that DeviceRetrievalHelper correctly
@@ -829,26 +824,26 @@ public class DeviceRetrievalHelperTest {
                 DataTransport.ROLE_MDOC_READER,
                 new DataTransportOptions.Builder().build());
         QrEngagementHelper.Listener qrHelperListener = new QrEngagementHelper.Listener() {
-                    @Override
-                    public void onDeviceEngagementReady() {
-                        condVarDeviceEngagementReady.open();
-                    }
+            @Override
+            public void onDeviceEngagementReady() {
+                condVarDeviceEngagementReady.open();
+            }
 
-                    @Override
-                    public void onDeviceConnecting() {
-                    }
+            @Override
+            public void onDeviceConnecting() {
+            }
 
-                    @Override
-                    public void onDeviceConnected(DataTransport transport) {
-                        condVarDeviceConnected.open();
-                        Assert.assertEquals(proverTransport, transport);
-                    }
+            @Override
+            public void onDeviceConnected(DataTransport transport) {
+                condVarDeviceConnected.open();
+                Assert.assertEquals(proverTransport, transport);
+            }
 
-                    @Override
-                    public void onError(@NonNull Throwable error) {
-                        throw new AssertionError(error);
-                    }
-                };
+            @Override
+            public void onError(@NonNull Throwable error) {
+                throw new AssertionError(error);
+            }
+        };
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
@@ -878,7 +873,7 @@ public class DeviceRetrievalHelperTest {
         // Just make an empty request since the verifier will disconnect immediately anyway.
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
-                .addDocumentRequest(MDL_DOCTYPE, mdlItemsToRequest, null, null, null)
+                .addDocumentRequest(DocumentType.MDL.getValue(), mdlItemsToRequest, null, null, null)
                 .generate();
         byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
@@ -954,8 +949,8 @@ public class DeviceRetrievalHelperTest {
                 context.getMainExecutor(),
                 session.getEphemeralKeyPair())
                 .useForwardEngagement(proverTransport,
-                    qrHelper.getDeviceEngagement(),
-                    qrHelper.getHandover())
+                        qrHelper.getDeviceEngagement(),
+                        qrHelper.getHandover())
                 .build();
 
         verifierTransport.sendMessage(sessionEstablishment);

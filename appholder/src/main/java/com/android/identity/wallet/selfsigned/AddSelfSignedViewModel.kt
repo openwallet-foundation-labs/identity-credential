@@ -3,9 +3,9 @@ package com.android.identity.wallet.selfsigned
 import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.android.identity.android.mdoc.document.DocumentType
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.document.DocumentType
 import com.android.identity.wallet.document.SecureAreaImplementationState
 import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState.AndroidAuthKeyCurveOption
 import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState.AndroidAuthKeyCurveState
@@ -190,10 +190,10 @@ class AddSelfSignedViewModel(
 
     private fun documentNameFor(documentType: DocumentType): String {
         return when (documentType) {
-            is DocumentType.MDL -> "Driving License"
-            is DocumentType.MVR -> "Vehicle Registration"
-            is DocumentType.MICOV -> "Vaccination Document"
-            is DocumentType.EUPID -> "EU Personal ID"
+            DocumentType.MDL -> "Driving License"
+            DocumentType.MVR -> "Vehicle Registration"
+            DocumentType.MICOV -> "Vaccination Document"
+            DocumentType.EUPID -> "EU Personal ID"
         }
     }
 }

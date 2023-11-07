@@ -315,8 +315,8 @@ class TransferManager private constructor(private val context: Context) {
             generator.setSessionTranscript(it.sessionTranscript)
             requestDocumentList.getAll().forEach { requestDocument ->
                 generator.addDocumentRequest(
-                    requestDocument.docType,
-                    requestDocument.getItemsToRequest(),
+                    requestDocument.documentType,
+                    requestDocument.getDataElementsToRequest(),
                     null,
                     signature,
                     readerKeyCertificateChain

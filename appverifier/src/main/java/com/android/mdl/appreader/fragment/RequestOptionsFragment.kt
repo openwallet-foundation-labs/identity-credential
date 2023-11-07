@@ -22,8 +22,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
-import com.android.mdl.appreader.document.RequestMdl
+import com.android.mdl.appreader.document.RequestDocumentType
 import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.home.CreateRequestViewModel
 import com.android.mdl.appreader.theme.ReaderAppTheme
@@ -189,7 +190,7 @@ class RequestOptionsFragment : Fragment() {
     }
 
     private fun getCustomMdlDestination() = RequestOptionsFragmentDirections.toRequestCustom(
-        RequestMdl,
+        RequestDocument(RequestDocumentType.MDL),
         calcRequestDocumentList(),
         args.keepConnection
     )

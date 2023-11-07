@@ -9,17 +9,13 @@ import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.*
 import com.android.identity.android.legacy.*
+import com.android.identity.android.mdoc.document.Document
+import com.android.identity.android.mdoc.document.DocumentType
 import com.android.identity.credential.Credential
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDocumentInformation
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
-import com.android.identity.wallet.util.DocumentData
-import com.android.identity.wallet.util.DocumentData.EU_PID_DOCTYPE
-import com.android.identity.wallet.util.DocumentData.MDL_DOCTYPE
-import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
-import com.android.identity.wallet.util.DocumentData.MVR_DOCTYPE
-import com.android.identity.wallet.util.DocumentData.MVR_NAMESPACE
 import com.android.identity.wallet.util.FormatUtil
 import java.io.ByteArrayOutputStream
 import java.util.*
@@ -74,13 +70,13 @@ class DocumentManager private constructor(private val context: Context) {
         val docName = getUniqueDocumentName(documentData)
         documentData.provisionInfo.docName = docName
         try {
-            if (MDL_DOCTYPE == documentData.provisionInfo.docType) {
+            if (DocumentType.MDL.value == documentData.provisionInfo.docType) {
                 provisionSelfSignedMdl(documentData)
-            } else if (MVR_DOCTYPE == documentData.provisionInfo.docType) {
+            } else if (DocumentType.MVR.value == documentData.provisionInfo.docType) {
                 provisionSelfSignedMvr(documentData)
-            } else if (MICOV_DOCTYPE == documentData.provisionInfo.docType) {
+            } else if (DocumentType.MICOV.value == documentData.provisionInfo.docType) {
                 provisionSelfSignedMicov(documentData)
-            } else if (EU_PID_DOCTYPE == documentData.provisionInfo.docType) {
+            } else if (DocumentType.EUPID.value == documentData.provisionInfo.docType) {
                 provisionSelfSignedEuPid(documentData)
             } else {
                 throw IllegalArgumentException("Invalid docType to create self signed document ${documentData.provisionInfo.docType}")
@@ -144,105 +140,109 @@ class DocumentManager private constructor(private val context: Context) {
 
         val nameSpacedData = NameSpacedData.Builder()
             .putEntryString(
-                DocumentData.MDL_NAMESPACE,
-                "given_name",
-                documentData.getValueString("given_name")
+                Document.Mdl.Element.GIVEN_NAME.nameSpace.value,
+                Document.Mdl.Element.GIVEN_NAME.elementName,
+                documentData.getValueString(Document.Mdl.Element.GIVEN_NAME.elementName)
             )
             .putEntryString(
-                DocumentData.MDL_NAMESPACE,
-                "family_name",
-                documentData.getValueString("family_name")
+                Document.Mdl.Element.FAMILY_NAME.nameSpace.value,
+                Document.Mdl.Element.FAMILY_NAME.elementName,
+                documentData.getValueString(Document.Mdl.Element.FAMILY_NAME.elementName)
             )
             .putEntry(
-                DocumentData.MDL_NAMESPACE,
-                "birth_date",
+                Document.Mdl.Element.BIRTH_DATE.nameSpace.value,
+                Document.Mdl.Element.BIRTH_DATE.elementName,
                 FormatUtil.cborEncode(birthDate)
             )
-            .putEntryByteString(DocumentData.MDL_NAMESPACE, "portrait", portrait)
+            .putEntryByteString(
+                Document.Mdl.Element.PORTRAIT.nameSpace.value,
+                Document.Mdl.Element.PORTRAIT.elementName, portrait
+            )
             .putEntry(
-                DocumentData.MDL_NAMESPACE,
-                "issue_date",
+                Document.Mdl.Element.ISSUE_DATE.nameSpace.value,
+                Document.Mdl.Element.ISSUE_DATE.elementName,
                 FormatUtil.cborEncode(issueDate)
             )
             .putEntry(
-                DocumentData.MDL_NAMESPACE,
-                "expiry_date",
+                Document.Mdl.Element.EXPIRY_DATE.nameSpace.value,
+                Document.Mdl.Element.EXPIRY_DATE.elementName,
                 FormatUtil.cborEncode(expiryDate)
             )
             .putEntryString(
-                DocumentData.MDL_NAMESPACE,
-                "issuing_country",
-                documentData.getValueString("issuing_country")
+                Document.Mdl.Element.ISSUING_COUNTRY.nameSpace.value,
+                Document.Mdl.Element.ISSUING_COUNTRY.elementName,
+                documentData.getValueString(Document.Mdl.Element.ISSUING_COUNTRY.elementName)
             )
             .putEntryString(
-                DocumentData.MDL_NAMESPACE,
-                "issuing_authority",
-                documentData.getValueString("issuing_authority")
+                Document.Mdl.Element.ISSUING_AUTHORITY.nameSpace.value,
+                Document.Mdl.Element.ISSUING_AUTHORITY.elementName,
+                documentData.getValueString(Document.Mdl.Element.ISSUING_AUTHORITY.elementName)
             )
             .putEntryString(
-                DocumentData.MDL_NAMESPACE,
-                "document_number",
-                documentData.getValueString("document_number")
+                Document.Mdl.Element.DOCUMENT_NUMBER.nameSpace.value,
+                Document.Mdl.Element.DOCUMENT_NUMBER.elementName,
+                documentData.getValueString(Document.Mdl.Element.DOCUMENT_NUMBER.elementName)
             )
             .putEntry(
-                DocumentData.MDL_NAMESPACE,
-                "driving_privileges",
+                Document.Mdl.Element.DRIVING_PRIVILEGES.nameSpace.value,
+                Document.Mdl.Element.DRIVING_PRIVILEGES.elementName,
                 FormatUtil.cborEncode(drivingPrivileges)
             )
             .putEntryString(
-                DocumentData.MDL_NAMESPACE,
-                "un_distinguishing_sign",
-                documentData.getValueString("un_distinguishing_sign")
+                Document.Mdl.Element.UN_DISTINGUISHING_SIGN.nameSpace.value,
+                Document.Mdl.Element.UN_DISTINGUISHING_SIGN.elementName,
+                documentData.getValueString(Document.Mdl.Element.UN_DISTINGUISHING_SIGN.elementName)
             )
             .putEntryBoolean(
-                DocumentData.MDL_NAMESPACE,
-                "age_over_18",
-                documentData.getValueBoolean("age_over_18")
+                Document.Mdl.Element.AGE_OVER_18.nameSpace.value,
+                Document.Mdl.Element.AGE_OVER_18.elementName,
+                documentData.getValueBoolean(Document.Mdl.Element.AGE_OVER_18.elementName)
             )
             .putEntryBoolean(
-                DocumentData.MDL_NAMESPACE,
-                "age_over_21",
-                documentData.getValueBoolean("age_over_21")
+                Document.Mdl.Element.AGE_OVER_21.nameSpace.value,
+                Document.Mdl.Element.AGE_OVER_21.elementName,
+                documentData.getValueBoolean(Document.Mdl.Element.AGE_OVER_21.elementName)
             )
             .putEntryByteString(
-                DocumentData.MDL_NAMESPACE,
-                "signature_usual_mark",
+                Document.Mdl.Element.SIGNATURE_USUAL_MARK.nameSpace.value,
+                Document.Mdl.Element.SIGNATURE_USUAL_MARK.elementName,
                 signature
             )
             .putEntryNumber(
-                DocumentData.MDL_NAMESPACE,
-                "sex",
-                documentData.getValueString("sex").toLong()
+                Document.Mdl.Element.SEX.nameSpace.value,
+                Document.Mdl.Element.SEX.elementName,
+                documentData.getValueString(Document.Mdl.Element.SEX.elementName).toLong()
             )
             .putEntryString(
-                DocumentData.AAMVA_NAMESPACE,
-                "aamva_version",
-                documentData.getValueString("aamva_version")
+                Document.Mdl.Element.AAMVA_VERSION.nameSpace.value,
+                Document.Mdl.Element.AAMVA_VERSION.elementName,
+                documentData.getValueString(Document.Mdl.Element.AAMVA_VERSION.elementName)
             )
             .putEntryString(
-                DocumentData.AAMVA_NAMESPACE,
-                "EDL_credential",
-                documentData.getValueString("aamva_EDL_credential")
+                Document.Mdl.Element.EDL_CREDENTIAL.nameSpace.value,
+                Document.Mdl.Element.EDL_CREDENTIAL.elementName,
+                documentData.getValueString("aamva_" + Document.Mdl.Element.EDL_CREDENTIAL.elementName)
             )
             .putEntryString(
-                DocumentData.AAMVA_NAMESPACE,
-                "DHS_compliance",
-                documentData.getValueString("aamva_DHS_compliance")
+                Document.Mdl.Element.DHS_COMPLIANCE.nameSpace.value,
+                Document.Mdl.Element.DHS_COMPLIANCE.elementName,
+                documentData.getValueString("aamva_" + Document.Mdl.Element.DHS_COMPLIANCE.elementName)
             )
             .putEntryString(
-                DocumentData.AAMVA_NAMESPACE,
-                "given_name_truncation",
-                documentData.getValueString("aamva_given_name_truncation")
+                Document.Mdl.Element.GIVEN_NAME_TRUNCATION.nameSpace.value,
+                Document.Mdl.Element.GIVEN_NAME_TRUNCATION.elementName,
+                documentData.getValueString("aamva_" + Document.Mdl.Element.GIVEN_NAME_TRUNCATION.elementName)
             )
             .putEntryString(
-                DocumentData.AAMVA_NAMESPACE,
-                "family_name_truncation",
-                documentData.getValueString("aamva_family_name_truncation")
+                Document.Mdl.Element.FAMILY_NAME_TRUNCATION.nameSpace.value,
+                Document.Mdl.Element.FAMILY_NAME_TRUNCATION.elementName,
+                documentData.getValueString("aamva_" + Document.Mdl.Element.FAMILY_NAME_TRUNCATION.elementName)
             )
             .putEntryNumber(
-                DocumentData.AAMVA_NAMESPACE,
-                "sex",
-                documentData.getValueString("aamva_sex").toLong()
+                Document.Mdl.Element.AAMVA_SEX.nameSpace.value,
+                Document.Mdl.Element.AAMVA_SEX.elementName,
+                documentData.getValueString("aamva_" + Document.Mdl.Element.AAMVA_SEX.elementName)
+                    .toLong()
             )
             .build()
 
@@ -293,15 +293,31 @@ class DocumentManager private constructor(private val context: Context) {
             .build()[0]
 
         val nameSpacedData = NameSpacedData.Builder()
-            .putEntry(MVR_NAMESPACE, "registration_info", FormatUtil.cborEncode(registrationInfo))
-            .putEntry(MVR_NAMESPACE, "issue_date", FormatUtil.cborEncode(issueDate))
             .putEntry(
-                MVR_NAMESPACE,
-                "registration_holder",
+                Document.Mvr.Element.REGISTRATION_INFO.nameSpace.value,
+                Document.Mvr.Element.REGISTRATION_INFO.elementName,
+                FormatUtil.cborEncode(registrationInfo)
+            )
+            .putEntry(
+                Document.Mvr.Element.ISSUE_DATE.nameSpace.value,
+                Document.Mvr.Element.ISSUE_DATE.elementName,
+                FormatUtil.cborEncode(issueDate)
+            )
+            .putEntry(
+                Document.Mvr.Element.REGISTRATION_HOLDER.nameSpace.value,
+                Document.Mvr.Element.REGISTRATION_HOLDER.elementName,
                 FormatUtil.cborEncode(registrationHolder)
             )
-            .putEntry(MVR_NAMESPACE, "basic_vehicle_info", FormatUtil.cborEncode(basicVehicleInfo))
-            .putEntryString(MVR_NAMESPACE, "vin", "1M8GDM9AXKP042788")
+            .putEntry(
+                Document.Mvr.Element.BASIC_VEHICLE_INFO.nameSpace.value,
+                Document.Mvr.Element.BASIC_VEHICLE_INFO.elementName,
+                FormatUtil.cborEncode(basicVehicleInfo)
+            )
+            .putEntryString(
+                Document.Mvr.Element.VIN.nameSpace.value,
+                Document.Mvr.Element.VIN.elementName,
+                "1M8GDM9AXKP042788"
+            )
             .build()
 
         ProvisioningUtil.getInstance(context)
@@ -385,86 +401,92 @@ class DocumentManager private constructor(private val context: Context) {
         val portrait: ByteArray = baos.toByteArray()
         val nameSpacedData = NameSpacedData.Builder()
             .putEntryString(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "fn",
-                documentData.getValueString("fn")
+                Document.Micov.Element.FAMILY_NAME.nameSpace.value,
+                Document.Micov.Element.FAMILY_NAME.elementName,
+                documentData.getValueString(Document.Micov.Element.FAMILY_NAME.elementName)
             )
             .putEntryString(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "gn",
-                documentData.getValueString("gn")
-            )
-            .putEntry(DocumentData.MICOV_VTR_NAMESPACE, "dob", FormatUtil.cborEncode(dob))
-            .putEntryNumber(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "sex",
-                documentData.getValueLong("sex")
+                Document.Micov.Element.GIVEN_NAME.nameSpace.value,
+                Document.Micov.Element.GIVEN_NAME.elementName,
+                documentData.getValueString(Document.Micov.Element.GIVEN_NAME.elementName)
             )
             .putEntry(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "v_RA01_1",
+                Document.Micov.Element.DATE_OF_BIRTH.nameSpace.value,
+                Document.Micov.Element.DATE_OF_BIRTH.elementName, FormatUtil.cborEncode(dob)
+            )
+            .putEntryNumber(
+                Document.Micov.Element.SEX.nameSpace.value,
+                Document.Micov.Element.SEX.elementName,
+                documentData.getValueLong(Document.Micov.Element.SEX.elementName)
+            )
+            .putEntry(
+                Document.Micov.Element.FIRST_VACCINATION_AGAINST_RA01.nameSpace.value,
+                Document.Micov.Element.FIRST_VACCINATION_AGAINST_RA01.elementName,
                 FormatUtil.cborEncode(vRA011)
             )
             .putEntry(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "v_RA01_2",
+                Document.Micov.Element.SECOND_VACCINATION_AGAINST_RA01.nameSpace.value,
+                Document.Micov.Element.SECOND_VACCINATION_AGAINST_RA01.elementName,
                 FormatUtil.cborEncode(vRA012)
             )
             .putEntry(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "pid_PPN",
+                Document.Micov.Element.ID_WITH_PASPORT_NUMBER.nameSpace.value,
+                Document.Micov.Element.ID_WITH_PASPORT_NUMBER.elementName,
                 FormatUtil.cborEncode(pidPPN)
             )
             .putEntry(
-                DocumentData.MICOV_VTR_NAMESPACE,
-                "pid_DL",
+                Document.Micov.Element.ID_WITH_DRIVERS_LICENSE_NUMBER.nameSpace.value,
+                Document.Micov.Element.ID_WITH_DRIVERS_LICENSE_NUMBER.elementName,
                 FormatUtil.cborEncode(pidDL)
             )
             .putEntryNumber(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "1D47_vaccinated",
-                documentData.getValueLong("1D47_vaccinated")
+                Document.Micov.Element.INDICATION_OF_VACCINATION_YELLOW_FEVER.nameSpace.value,
+                Document.Micov.Element.INDICATION_OF_VACCINATION_YELLOW_FEVER.elementName,
+                documentData.getValueLong(Document.Micov.Element.INDICATION_OF_VACCINATION_YELLOW_FEVER.elementName)
             )
             .putEntryNumber(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "RA01_vaccinated",
-                documentData.getValueLong("RA01_vaccinated")
+                Document.Micov.Element.INDICATION_OF_VACCINATION_COVID_19.nameSpace.value,
+                Document.Micov.Element.INDICATION_OF_VACCINATION_COVID_19.elementName,
+                documentData.getValueLong(Document.Micov.Element.INDICATION_OF_VACCINATION_COVID_19.elementName)
             )
             .putEntry(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "RA01_test",
+                Document.Micov.Element.INDICATION_OF_TEST_EVENT_COVID_19.nameSpace.value,
+                Document.Micov.Element.INDICATION_OF_TEST_EVENT_COVID_19.elementName,
                 FormatUtil.cborEncode(ra01Test)
             )
             .putEntry(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "safeEntry_Leisure",
+                Document.Micov.Element.SAFE_ENTRY_INDICATION.nameSpace.value,
+                Document.Micov.Element.SAFE_ENTRY_INDICATION.elementName,
                 FormatUtil.cborEncode(safeEntryLeisure)
             )
-            .putEntryByteString(DocumentData.MICOV_ATT_NAMESPACE, "fac", portrait)
-            .putEntryString(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "fni",
-                documentData.getValueString("fni")
+            .putEntryByteString(
+                Document.Micov.Element.FACIAL_IMAGE.nameSpace.value,
+                Document.Micov.Element.FACIAL_IMAGE.elementName, portrait
             )
             .putEntryString(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "gni",
-                documentData.getValueString("gni")
+                Document.Micov.Element.FAMILY_NAME_INITIAL.nameSpace.value,
+                Document.Micov.Element.FAMILY_NAME_INITIAL.elementName,
+                documentData.getValueString(Document.Micov.Element.FAMILY_NAME_INITIAL.elementName)
+            )
+            .putEntryString(
+                Document.Micov.Element.GIVEN_NAME_INITIAL.nameSpace.value,
+                Document.Micov.Element.GIVEN_NAME_INITIAL.elementName,
+                documentData.getValueString(Document.Micov.Element.GIVEN_NAME_INITIAL.elementName)
             )
             .putEntryNumber(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "by",
-                documentData.getValueLong("by")
+                Document.Micov.Element.BIRTH_YEAR.nameSpace.value,
+                Document.Micov.Element.BIRTH_YEAR.elementName,
+                documentData.getValueLong(Document.Micov.Element.BIRTH_YEAR.elementName)
             )
             .putEntryNumber(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "bm",
-                documentData.getValueLong("bm")
+                Document.Micov.Element.BIRTH_MONTH.nameSpace.value,
+                Document.Micov.Element.BIRTH_MONTH.elementName,
+                documentData.getValueLong(Document.Micov.Element.BIRTH_MONTH.elementName)
             )
             .putEntryNumber(
-                DocumentData.MICOV_ATT_NAMESPACE,
-                "bd",
-                documentData.getValueLong("bd")
+                Document.Micov.Element.BIRTH_DAY.nameSpace.value,
+                Document.Micov.Element.BIRTH_DAY.elementName,
+                documentData.getValueLong(Document.Micov.Element.BIRTH_DAY.elementName)
             )
             .build()
 
@@ -478,8 +500,10 @@ class DocumentManager private constructor(private val context: Context) {
         portraitBitmap.compress(Bitmap.CompressFormat.JPEG, 50, outputStream)
         val portrait = outputStream.toByteArray()
         val birthDate = unicodeStringFrom { documentData.getValueString("birth_date") }
-        val portraitTakenDate = unicodeStringFrom { documentData.getValueString("portrait_capture_date") }
-        val fingerprintBitmap = ResourcesCompat.getDrawable(context.resources, R.drawable.img_erika_signature, null)
+        val portraitTakenDate =
+            unicodeStringFrom { documentData.getValueString("portrait_capture_date") }
+        val fingerprintBitmap =
+            ResourcesCompat.getDrawable(context.resources, R.drawable.img_erika_signature, null)
         val drawable = (fingerprintBitmap as BitmapDrawable).bitmap
         val byteArrayOutputStream = ByteArrayOutputStream()
         drawable.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream)
@@ -487,146 +511,152 @@ class DocumentManager private constructor(private val context: Context) {
 
         val nameSpacedData = NameSpacedData.Builder()
             .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "family_name",
-                documentData.getValueString("family_name")
+                Document.EuPid.Element.FAMILY_NAME.nameSpace.value,
+                Document.EuPid.Element.FAMILY_NAME.elementName,
+                documentData.getValueString(Document.EuPid.Element.FAMILY_NAME.elementName)
             )
             .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "family_name_national_characters",
-                documentData.getValueString("family_name_national_characters")
+                Document.EuPid.Element.FAMILY_NAME_NATIONAL_CHARACTERS.nameSpace.value,
+                Document.EuPid.Element.FAMILY_NAME_NATIONAL_CHARACTERS.elementName,
+                documentData.getValueString(Document.EuPid.Element.FAMILY_NAME_NATIONAL_CHARACTERS.elementName)
             )
             .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "given_name",
-                documentData.getValueString("given_name")
+                Document.EuPid.Element.GIVEN_NAME.nameSpace.value,
+                Document.EuPid.Element.GIVEN_NAME.elementName,
+                documentData.getValueString(Document.EuPid.Element.GIVEN_NAME.elementName)
             )
             .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "given_name_national_characters",
-                documentData.getValueString("given_name_national_characters")
+                Document.EuPid.Element.GIVEN_NAME_NATIONAL_CHARACTERS.nameSpace.value,
+                Document.EuPid.Element.GIVEN_NAME_NATIONAL_CHARACTERS.elementName,
+                documentData.getValueString(Document.EuPid.Element.GIVEN_NAME_NATIONAL_CHARACTERS.elementName)
             )
-            .putEntry(DocumentData.EU_PID_NAMESPACE, "birth_date", FormatUtil.cborEncode(birthDate))
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "persistent_id",
-                documentData.getValueString("persistent_id")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "family_name_birth",
-                documentData.getValueString("family_name_birth")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "family_name_birth_national_characters",
-                documentData.getValueString("family_name_birth_national_characters")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "given_name_birth",
-                documentData.getValueString("given_name_birth")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "given_name_birth_national_characters",
-                documentData.getValueString("given_name_birth_national_characters")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "birth_place",
-                documentData.getValueString("birth_place")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "resident_address",
-                documentData.getValueString("resident_address")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "resident_city",
-                documentData.getValueString("resident_city")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "resident_postal_code",
-                documentData.getValueString("resident_postal_code")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "resident_state",
-                documentData.getValueString("resident_state")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "resident_country",
-                documentData.getValueString("resident_country")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "gender",
-                documentData.getValueString("gender")
-            )
-            .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "nationality",
-                documentData.getValueString("nationality")
-            )
-            .putEntryByteString(DocumentData.EU_PID_NAMESPACE, "portrait", portrait)
             .putEntry(
-                DocumentData.EU_PID_NAMESPACE,
-                "portrait_capture_date",
+                Document.EuPid.Element.BIRTH_DATE.nameSpace.value,
+                Document.EuPid.Element.BIRTH_DATE.elementName, FormatUtil.cborEncode(birthDate)
+            )
+            .putEntryString(
+                Document.EuPid.Element.PERSISTENT_ID.nameSpace.value,
+                Document.EuPid.Element.PERSISTENT_ID.elementName,
+                documentData.getValueString(Document.EuPid.Element.PERSISTENT_ID.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.BIRTH_FAMILY_NAME.nameSpace.value,
+                Document.EuPid.Element.BIRTH_FAMILY_NAME.elementName,
+                documentData.getValueString(Document.EuPid.Element.BIRTH_FAMILY_NAME.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.BIRTH_FAMILY_NAME_NATIONAL_CHARACTERS.nameSpace.value,
+                Document.EuPid.Element.BIRTH_FAMILY_NAME_NATIONAL_CHARACTERS.elementName,
+                documentData.getValueString(Document.EuPid.Element.BIRTH_FAMILY_NAME_NATIONAL_CHARACTERS.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.BIRTH_FIRST_NAME.nameSpace.value,
+                Document.EuPid.Element.BIRTH_FIRST_NAME.elementName,
+                documentData.getValueString(Document.EuPid.Element.BIRTH_FIRST_NAME.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.BIRTH_FIRST_NAME_NATIONAL_CHARACTERS.nameSpace.value,
+                Document.EuPid.Element.BIRTH_FIRST_NAME_NATIONAL_CHARACTERS.elementName,
+                documentData.getValueString(Document.EuPid.Element.BIRTH_FIRST_NAME_NATIONAL_CHARACTERS.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.BIRTH_PLACE.nameSpace.value,
+                Document.EuPid.Element.BIRTH_PLACE.elementName,
+                documentData.getValueString(Document.EuPid.Element.BIRTH_PLACE.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.RESIDENT_ADDRESS.nameSpace.value,
+                Document.EuPid.Element.RESIDENT_ADDRESS.elementName,
+                documentData.getValueString(Document.EuPid.Element.RESIDENT_ADDRESS.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.RESIDENT_CITY.nameSpace.value,
+                Document.EuPid.Element.RESIDENT_CITY.elementName,
+                documentData.getValueString(Document.EuPid.Element.RESIDENT_CITY.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.RESIDENT_POSTAL_CODE.nameSpace.value,
+                Document.EuPid.Element.RESIDENT_POSTAL_CODE.elementName,
+                documentData.getValueString(Document.EuPid.Element.RESIDENT_POSTAL_CODE.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.RESIDENT_STATE.nameSpace.value,
+                Document.EuPid.Element.RESIDENT_STATE.elementName,
+                documentData.getValueString(Document.EuPid.Element.RESIDENT_STATE.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.RESIDENT_COUNTRY.nameSpace.value,
+                Document.EuPid.Element.RESIDENT_COUNTRY.elementName,
+                documentData.getValueString(Document.EuPid.Element.RESIDENT_COUNTRY.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.GENDER.nameSpace.value,
+                Document.EuPid.Element.GENDER.elementName,
+                documentData.getValueString(Document.EuPid.Element.GENDER.elementName)
+            )
+            .putEntryString(
+                Document.EuPid.Element.NATIONALITY.nameSpace.value,
+                Document.EuPid.Element.NATIONALITY.elementName,
+                documentData.getValueString(Document.EuPid.Element.NATIONALITY.elementName)
+            )
+            .putEntryByteString(
+                Document.EuPid.Element.PORTRAIT.nameSpace.value,
+                Document.EuPid.Element.PORTRAIT.elementName, portrait
+            )
+            .putEntry(
+                Document.EuPid.Element.PORTRAIT_CAPTURE_DATE.nameSpace.value,
+                Document.EuPid.Element.PORTRAIT_CAPTURE_DATE.elementName,
                 FormatUtil.cborEncode(portraitTakenDate)
             )
             .putEntryByteString(
-                DocumentData.EU_PID_NAMESPACE,
-                "biometric_template_finger",
+                Document.EuPid.Element.BIOMETRIC_TEMPLATE_FINGER.nameSpace.value,
+                Document.EuPid.Element.BIOMETRIC_TEMPLATE_FINGER.elementName,
                 fingerprint
             )
             .putEntryBoolean(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_over_13",
-                documentData.getValueBoolean("age_over_18")
+                Document.EuPid.Element.AGE_OVER_13.nameSpace.value,
+                Document.EuPid.Element.AGE_OVER_13.elementName,
+                documentData.getValueBoolean(Document.EuPid.Element.AGE_OVER_18.elementName)
             )
             .putEntryBoolean(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_over_16",
-                documentData.getValueBoolean("age_over_18")
+                Document.EuPid.Element.AGE_OVER_16.nameSpace.value,
+                Document.EuPid.Element.AGE_OVER_16.elementName,
+                documentData.getValueBoolean(Document.EuPid.Element.AGE_OVER_18.elementName)
             )
             .putEntryBoolean(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_over_18",
-                documentData.getValueBoolean("age_over_18")
+                Document.EuPid.Element.AGE_OVER_18.nameSpace.value,
+                Document.EuPid.Element.AGE_OVER_18.elementName,
+                documentData.getValueBoolean(Document.EuPid.Element.AGE_OVER_18.elementName)
             )
             .putEntryBoolean(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_over_21",
-                documentData.getValueBoolean("age_over_21")
+                Document.EuPid.Element.AGE_OVER_21.nameSpace.value,
+                Document.EuPid.Element.AGE_OVER_21.elementName,
+                documentData.getValueBoolean(Document.EuPid.Element.AGE_OVER_21.elementName)
             )
             .putEntryBoolean(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_over_60",
-                documentData.getValueBoolean("age_over_21")
+                Document.EuPid.Element.AGE_OVER_60.nameSpace.value,
+                Document.EuPid.Element.AGE_OVER_60.elementName,
+                documentData.getValueBoolean(Document.EuPid.Element.AGE_OVER_21.elementName)
             )
             .putEntryBoolean(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_over_65",
-                documentData.getValueBoolean("age_over_21")
+                Document.EuPid.Element.AGE_OVER_65.nameSpace.value,
+                Document.EuPid.Element.AGE_OVER_65.elementName,
+                documentData.getValueBoolean(Document.EuPid.Element.AGE_OVER_21.elementName)
             )
             .putEntryBoolean(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_over_68",
-                documentData.getValueBoolean("age_over_21")
+                Document.EuPid.Element.AGE_OVER_68.nameSpace.value,
+                Document.EuPid.Element.AGE_OVER_68.elementName,
+                documentData.getValueBoolean(Document.EuPid.Element.AGE_OVER_21.elementName)
             )
             .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_in_years",
-                documentData.getValueString("age_in_years")
+                Document.EuPid.Element.AGE_IN_YEARS.nameSpace.value,
+                Document.EuPid.Element.AGE_IN_YEARS.elementName,
+                documentData.getValueString(Document.EuPid.Element.AGE_IN_YEARS.elementName)
             )
             .putEntryString(
-                DocumentData.EU_PID_NAMESPACE,
-                "age_birth_year",
-                documentData.getValueString("age_birth_year")
+                Document.EuPid.Element.AGE_BIRTH_YEAR.nameSpace.value,
+                Document.EuPid.Element.AGE_BIRTH_YEAR.elementName,
+                documentData.getValueString(Document.EuPid.Element.AGE_BIRTH_YEAR.elementName)
             )
             .build()
 

@@ -1,44 +1,37 @@
 package com.android.mdl.appreader.viewModel
 
 import androidx.lifecycle.ViewModel
+import com.android.identity.android.mdoc.document.DataElement
 import com.android.mdl.appreader.document.RequestDocument
 
 class RequestCustomViewModel : ViewModel() {
-    private var selectedDataItems = mutableListOf<String>()
+    private var selectedDataItems = mutableListOf<DataElement>()
     private lateinit var requestDocument: RequestDocument
     private var isInitiated = false
 
     fun init(requestDocument: RequestDocument) {
         if (!isInitiated) {
             this.requestDocument = requestDocument
-            requestDocument.dataItems.forEach { dataItem ->
-                selectedDataItems.add(dataItem.identifier)
-            }
+            requestDocument.elements.forEach { selectedDataItems.add(it) }
             isInitiated = true
         }
     }
 
-    fun isSelectedDataItem(identifier: String) = selectedDataItems.any { it == identifier }
+    fun isSelectedDataItem(dataElement: DataElement) = selectedDataItems.any { it == dataElement }
 
-    fun dataItemSelected(identifier: String) {
-        if (isSelectedDataItem(identifier)) {
-            selectedDataItems.remove(identifier)
+    fun dataItemSelected(dataElement: DataElement) {
+        if (isSelectedDataItem(dataElement)) {
+            selectedDataItems.remove(dataElement)
         } else {
-            selectedDataItems.add(identifier)
+            selectedDataItems.add(dataElement)
         }
     }
 
-    fun getSelectedDataItems(intentToRetain: Boolean): Map<String, Boolean> {
+    fun getSelectedDataItems(): List<DataElement> {
         if (!isInitiated) {
             throw IllegalStateException("Needed to be initiated with a request document")
         }
-
-        val map = mutableMapOf<String, Boolean>()
-        selectedDataItems.forEach {
-            map[it] = intentToRetain
-        }
-
-        return map
+        return selectedDataItems
     }
 
 }

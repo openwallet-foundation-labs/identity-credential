@@ -1,8 +1,8 @@
 package com.android.identity.wallet.selfsigned
 
 import androidx.lifecycle.SavedStateHandle
+import com.android.identity.android.mdoc.document.DocumentType
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.document.DocumentType
 import com.android.identity.wallet.document.SecureAreaImplementationState
 import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState.AndroidAuthKeyCurveState
 import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState.AuthTypeState

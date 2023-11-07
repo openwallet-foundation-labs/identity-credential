@@ -1,9 +1,9 @@
 package com.android.identity.wallet.selfsigned
 
 import android.os.Parcelable
+import com.android.identity.android.mdoc.document.DocumentType
 import com.android.identity.securearea.SecureArea
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.document.DocumentType
 import com.android.identity.wallet.document.SecureAreaImplementationState
 import kotlinx.parcelize.Parcelize
 

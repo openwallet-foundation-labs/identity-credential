@@ -59,13 +59,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.android.identity.android.mdoc.document.DocumentType
 import com.android.identity.wallet.R
 import com.android.identity.wallet.composables.PreviewLightDark
 import com.android.identity.wallet.composables.curveLabelFor
 import com.android.identity.wallet.composables.gradientFor
 import com.android.identity.wallet.composables.keystoreNameFor
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.document.DocumentType
 import com.android.identity.wallet.document.SecureAreaImplementationState
 import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState.*
 import com.android.identity.wallet.theme.HolderAppTheme
@@ -282,7 +282,7 @@ private fun DocumentTypeChooser(
         ) {
             ValueLabel(
                 modifier = Modifier.weight(1f),
-                label = stringResource(id = documentNameFor(currentType))
+                label = stringResource(id = currentType.stringResourceId)
             )
             DropDownIndicator()
         }
@@ -293,28 +293,28 @@ private fun DocumentTypeChooser(
             onDismissRequest = { expanded = false }
         ) {
             TextDropDownRow(
-                label = stringResource(id = documentNameFor(DocumentType.MDL)),
+                label = stringResource(id = DocumentType.MDL.stringResourceId),
                 onSelected = {
                     onDocumentTypeSelected(DocumentType.MDL)
                     expanded = false
                 }
             )
             TextDropDownRow(
-                label = stringResource(id = documentNameFor(DocumentType.MVR)),
+                label = stringResource(id = DocumentType.MVR.stringResourceId),
                 onSelected = {
                     onDocumentTypeSelected(DocumentType.MVR)
                     expanded = false
                 }
             )
             TextDropDownRow(
-                label = stringResource(id = documentNameFor(DocumentType.MICOV)),
+                label = stringResource(id = DocumentType.MICOV.stringResourceId),
                 onSelected = {
                     onDocumentTypeSelected(DocumentType.MICOV)
                     expanded = false
                 }
             )
             TextDropDownRow(
-                label = stringResource(id = documentNameFor(DocumentType.EUPID)),
+                label = stringResource(id = DocumentType.EUPID.stringResourceId),
                 onSelected = {
                     onDocumentTypeSelected(DocumentType.EUPID)
                     expanded = false
@@ -988,16 +988,6 @@ private fun mdocAuthOptionLabelFor(
 
         MdocAuthStateOption.MAC ->
             stringResource(id = R.string.mdoc_auth_mac)
-    }
-}
-
-@StringRes
-private fun documentNameFor(documentType: DocumentType): Int {
-    return when (documentType) {
-        is DocumentType.MDL -> R.string.document_type_mdl
-        is DocumentType.MVR -> R.string.document_type_mvr
-        is DocumentType.MICOV -> R.string.document_type_micov
-        is DocumentType.EUPID -> R.string.document_type_eu_pid
     }
 }
 

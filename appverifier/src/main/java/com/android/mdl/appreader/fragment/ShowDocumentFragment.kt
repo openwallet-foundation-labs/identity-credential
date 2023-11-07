@@ -16,10 +16,13 @@ import androidx.activity.OnBackPressedCallback
 import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.android.identity.android.mdoc.document.DataElement
+import com.android.identity.android.mdoc.document.Document
+import com.android.identity.android.mdoc.document.Namespace
+import com.android.identity.android.mdoc.document.DocumentType
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.EcCurve
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
 import com.android.mdl.appreader.issuerauth.SimpleIssuerTrustStore
@@ -34,15 +37,6 @@ import java.security.MessageDigest
  * A simple [Fragment] subclass as the default destination in the navigation.
  */
 class ShowDocumentFragment : Fragment() {
-
-    companion object {
-        private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        private const val MICOV_DOCTYPE = "org.micov.1"
-        private const val MDL_NAMESPACE = "org.iso.18013.5.1"
-        private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
-        private const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
-        private const val EU_PID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
-    }
 
     private var _binding: FragmentShowDocumentBinding? = null
 
@@ -278,18 +272,18 @@ class ShowDocumentFragment : Fragment() {
                 for (elem in doc.getIssuerEntryNames(ns)) {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
-                    if (isPortraitElement(doc.docType, ns, elem)) {
+                    if (isPortraitElement(ns, elem)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = doc.getIssuerEntryByteString(ns, elem)
-                    } else if (doc.docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && elem == "fac") {
+                    } else if (isElement(ns, elem, Document.Micov.Element.FACIAL_IMAGE)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = doc.getIssuerEntryByteString(ns, elem)
-                    } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "extra") {
+                    } else if (doc.docType == DocumentType.MDL.value && ns == Namespace.MDL.value && elem == "extra") {
                         valueStr = String.format("%d bytes extra data", value.size)
-                    } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "signature_usual_mark") {
+                    } else if (isElement(ns, elem, Document.Mdl.Element.SIGNATURE_USUAL_MARK)) {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
                         signatureBytes = doc.getIssuerEntryByteString(ns, elem)
-                    } else if (doc.docType == EU_PID_DOCTYPE && ns == EU_PID_NAMESPACE && elem == "biometric_template_finger") {
+                    } else if (isElement(ns, elem, Document.EuPid.Element.BIOMETRIC_TEMPLATE_FINGER)) {
                         valueStr = String.format("%d bytes", value.size)
                     } else {
                         valueStr = FormatUtil.cborPrettyPrint(value)
@@ -302,25 +296,26 @@ class ShowDocumentFragment : Fragment() {
         return sb.toString()
     }
 
-    private fun isPortraitApplicable(docType: String, namespace: String?): Boolean{
-        val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
-        val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
-        return hasPortrait && namespaceContainsPortrait
+
+    private fun isElement(namespace: String?,
+                          entryName: String?,
+                          candidate: DataElement
+    ): Boolean{
+        return candidate.nameSpace.value == namespace && candidate.elementName == entryName
     }
 
     private fun isPortraitElement(
-        docType: String,
         namespace: String?,
         entryName: String?
     ): Boolean {
-        val portraitApplicable = isPortraitApplicable(docType, namespace)
-        return portraitApplicable && entryName == "portrait"
+        return isElement(namespace, entryName, Document.Mdl.Element.PORTRAIT) ||
+                isElement(namespace, entryName, Document.EuPid.Element.PORTRAIT)
     }
 
     // ISO/IEC 18013-5 requires the portrait image to be shared if the portrait was requested and if any other data element is released
     private fun checkPortraitPresenceIfRequired(document: DeviceResponseParser.Document): Boolean {
         document.issuerNamespaces.forEach { ns ->
-            val portraitApplicable = isPortraitApplicable(document.docType, ns)
+            val portraitApplicable = listOf(Namespace.MDL.value, Namespace.EUPID.value).contains(ns)
             if (portraitApplicable) {
                 val entries = document.getIssuerEntryNames(ns)
                 val isPortraitMandatory = entries.isNotEmpty()

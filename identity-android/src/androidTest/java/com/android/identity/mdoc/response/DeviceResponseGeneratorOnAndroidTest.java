@@ -33,6 +33,8 @@ import com.android.identity.android.legacy.PersonalizationData;
 import com.android.identity.android.legacy.PresentationSession;
 import com.android.identity.android.legacy.Utility;
 import com.android.identity.android.legacy.WritableIdentityCredential;
+import com.android.identity.android.mdoc.document.DocumentType;
+import com.android.identity.android.mdoc.document.Namespace;
 import com.android.identity.mdoc.mso.StaticAuthDataParser;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.CborUtil;
@@ -65,10 +67,6 @@ import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
 
 public class DeviceResponseGeneratorOnAndroidTest {
-
-    private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
-    private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
-    private static final String AAMVA_NAMESPACE = "org.aamva.18013.5.1";
 
     private KeyPair generateIssuingAuthorityKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
@@ -111,7 +109,7 @@ public class DeviceResponseGeneratorOnAndroidTest {
         assumeTrue(store.getFeatureVersion() >= IdentityCredentialStore.FEATURE_VERSION_202201);
 
         store.deleteCredentialByName("test");
-        WritableIdentityCredential wc = store.createCredential("test", MDL_DOCTYPE);
+        WritableIdentityCredential wc = store.createCredential("test", DocumentType.MDL.getValue());
         Collection<X509Certificate> certificateChain =
                 wc.getCredentialKeyCertificateChain("myChallenge".getBytes(UTF_8));
 
@@ -135,10 +133,10 @@ public class DeviceResponseGeneratorOnAndroidTest {
                         .build().get(0));
         Assert.assertEquals(
                 "{\n" +
-                "  'a' : 'foo',\n" +
-                "  'b' : 'bar',\n" +
-                "  'c' : 'baz'\n" +
-                "}", Util.cborPrettyPrint(rawCbor1));
+                        "  'a' : 'foo',\n" +
+                        "  'b' : 'bar',\n" +
+                        "  'c' : 'baz'\n" +
+                        "}", Util.cborPrettyPrint(rawCbor1));
 
         byte[] rawCbor2 = Util.cborEncode(
                 new CborBuilder()
@@ -158,12 +156,12 @@ public class DeviceResponseGeneratorOnAndroidTest {
         PersonalizationData personalizationData =
                 new PersonalizationData.Builder()
                         .addAccessControlProfile(noAuthProfile)
-                        .putEntryString(MDL_NAMESPACE, "given_name", idsNoAuth, "Erika")
-                        .putEntryString(MDL_NAMESPACE, "family_name", idsNoAuth, "Mustermann")
-                        .putEntryInteger(MDL_NAMESPACE, "some_number", idsNoAuth, 42)
-                        .putEntry(MDL_NAMESPACE, "raw_cbor_1", idsNoAuth, rawCbor1)
-                        .putEntry(MDL_NAMESPACE, "raw_cbor_2", idsNoAuth, rawCbor2)
-                        .putEntryBoolean(AAMVA_NAMESPACE, "real_id", idsNoAuth, true)
+                        .putEntryString(Namespace.MDL.getValue(), "given_name", idsNoAuth, "Erika")
+                        .putEntryString(Namespace.MDL.getValue(), "family_name", idsNoAuth, "Mustermann")
+                        .putEntryInteger(Namespace.MDL.getValue(), "some_number", idsNoAuth, 42)
+                        .putEntry(Namespace.MDL.getValue(), "raw_cbor_1", idsNoAuth, rawCbor1)
+                        .putEntry(Namespace.MDL.getValue(), "raw_cbor_2", idsNoAuth, rawCbor2)
+                        .putEntryBoolean(Namespace.MDL_AAMVA.getValue(), "real_id", idsNoAuth, true)
                         .build();
 
         // Generate Issuing Authority keypair and X509 certificate.
@@ -175,7 +173,7 @@ public class DeviceResponseGeneratorOnAndroidTest {
                 "test",
                 issuerAuthorityKeyPair.getPrivate(),
                 issuerAuthorityCertificate,
-                MDL_DOCTYPE,
+                DocumentType.MDL.getValue(),
                 personalizationData,
                 1,
                 2);
@@ -241,9 +239,9 @@ public class DeviceResponseGeneratorOnAndroidTest {
                 Util.cborPrettyPrint(proofOfProvisioning));
 
         Map<String, Collection<String>> issuerSignedEntriesToRequest = new HashMap<>();
-        issuerSignedEntriesToRequest.put(MDL_NAMESPACE,
+        issuerSignedEntriesToRequest.put(Namespace.MDL.getValue(),
                 Arrays.asList("given_name", "family_name", "some_number", "raw_cbor_1", "raw_cbor_2"));
-        issuerSignedEntriesToRequest.put(AAMVA_NAMESPACE, Collections.singletonList("real_id"));
+        issuerSignedEntriesToRequest.put(Namespace.MDL_AAMVA.getValue(), Collections.singletonList("real_id"));
 
         KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
 
@@ -261,8 +259,8 @@ public class DeviceResponseGeneratorOnAndroidTest {
                         .build());
 
         // Check that credential storage didn't accidentally canonicalize data element values.
-        Assert.assertArrayEquals(rawCbor1, result.getIssuerSignedEntries().getEntry(MDL_NAMESPACE, "raw_cbor_1"));
-        Assert.assertArrayEquals(rawCbor2, result.getIssuerSignedEntries().getEntry(MDL_NAMESPACE, "raw_cbor_2"));
+        Assert.assertArrayEquals(rawCbor1, result.getIssuerSignedEntries().getEntry(Namespace.MDL.getValue(), "raw_cbor_1"));
+        Assert.assertArrayEquals(rawCbor2, result.getIssuerSignedEntries().getEntry(Namespace.MDL.getValue(), "raw_cbor_2"));
 
         byte[] encodedDeviceNamespaces = result.getDeviceNameSpaces();
         byte[] encodedDeviceSignedSignature = result.getDeviceSignature();
@@ -284,13 +282,13 @@ public class DeviceResponseGeneratorOnAndroidTest {
         Map<String, Long> aamvaNsErrors = new HashMap<>();
         aamvaNsErrors.put("yet_another_element_with_error", 1L);
         Map<String, Map<String, Long>> errors = new HashMap<>();
-        errors.put(MDL_NAMESPACE, mdlNsErrors);
-        errors.put(AAMVA_NAMESPACE, aamvaNsErrors);
+        errors.put(Namespace.MDL.getValue(), mdlNsErrors);
+        errors.put(Namespace.MDL_AAMVA.getValue(), aamvaNsErrors);
 
         // Generate DeviceResponse
         byte[] encodedDeviceResponse =
                 new DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-                        .addDocument(MDL_DOCTYPE,
+                        .addDocument(DocumentType.MDL.getValue(),
                                 encodedDeviceNamespaces,
                                 encodedDeviceSignedSignature,
                                 encodedDeviceSignedMac,
@@ -326,18 +324,18 @@ public class DeviceResponseGeneratorOnAndroidTest {
         Assert.assertEquals(1, deviceResponse.getDocuments().size());
         DeviceResponseParser.Document d = deviceResponse.getDocuments().get(0);
 
-        Assert.assertEquals(MDL_DOCTYPE, d.getDocType());
+        Assert.assertEquals(DocumentType.MDL.getValue(), d.getDocType());
         Assert.assertEquals(0, d.getDeviceNamespaces().size());
         Assert.assertEquals(2, d.getIssuerNamespaces().size());
-        Assert.assertEquals(5, d.getIssuerEntryNames(MDL_NAMESPACE).size());
-        Assert.assertEquals("Erika", d.getIssuerEntryString(MDL_NAMESPACE, "given_name"));
-        Assert.assertEquals("Mustermann", d.getIssuerEntryString(MDL_NAMESPACE, "family_name"));
-        Assert.assertEquals(42, d.getIssuerEntryNumber(MDL_NAMESPACE, "some_number"));
-        Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size());
-        Assert.assertTrue(d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"));
+        Assert.assertEquals(5, d.getIssuerEntryNames(Namespace.MDL.getValue()).size());
+        Assert.assertEquals("Erika", d.getIssuerEntryString(Namespace.MDL.getValue(), "given_name"));
+        Assert.assertEquals("Mustermann", d.getIssuerEntryString(Namespace.MDL.getValue(), "family_name"));
+        Assert.assertEquals(42, d.getIssuerEntryNumber(Namespace.MDL.getValue(), "some_number"));
+        Assert.assertEquals(1, d.getIssuerEntryNames(Namespace.MDL_AAMVA.getValue()).size());
+        Assert.assertTrue(d.getIssuerEntryBoolean(Namespace.MDL_AAMVA.getValue(), "real_id"));
         // Check that response encoding/decoding didn't accidentally canonicalize data element values.
-        Assert.assertArrayEquals(rawCbor1, d.getIssuerEntryData(MDL_NAMESPACE, "raw_cbor_1"));
-        Assert.assertArrayEquals(rawCbor2, d.getIssuerEntryData(MDL_NAMESPACE, "raw_cbor_2"));
+        Assert.assertArrayEquals(rawCbor1, d.getIssuerEntryData(Namespace.MDL.getValue(), "raw_cbor_1"));
+        Assert.assertArrayEquals(rawCbor2, d.getIssuerEntryData(Namespace.MDL.getValue(), "raw_cbor_2"));
 
         // TODO: also check |errors| when/if we get DeviceResponseParser API to read it.
     }

@@ -19,6 +19,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.identity.android.mdoc.document.Namespace
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.securearea.SoftwareSecureArea
 import com.android.identity.securearea.SecureArea.ALGORITHM_ES256
@@ -26,7 +27,6 @@ import com.android.identity.wallet.R
 import com.android.identity.wallet.authprompt.UserAuthPromptBuilder
 import com.android.identity.wallet.theme.HolderAppTheme
 import com.android.identity.wallet.transfer.AddDocumentToResponseResult
-import com.android.identity.wallet.util.DocumentData
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
@@ -105,13 +105,18 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun stringValueFor(namespace: String, element: String): String {
-        val requested = if (element == "portrait") portraitFor(namespace) else element
+        val requested = when {
+            element == "portrait" -> portraitFor(namespace)
+            namespace == Namespace.MICOV_ATT.value -> "micov_att_" + element
+            namespace == Namespace.MICOV_VTR.value -> "micov_vtr_" + element
+            else -> element
+        }
         val identifier = resources.getIdentifier(requested, "string", requireContext().packageName)
         return if (identifier != 0) getString(identifier) else element
     }
 
     private fun portraitFor(namespace: String): String {
-        return if (namespace == DocumentData.EU_PID_NAMESPACE) "facial_portrait" else "portrait"
+        return if (namespace == Namespace.EUPID.value) "facial_portrait" else "portrait"
     }
 
     private fun sendResponse() {

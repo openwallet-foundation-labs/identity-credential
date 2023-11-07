@@ -15,13 +15,11 @@ import co.nstant.`in`.cbor.model.SimpleValue
 import co.nstant.`in`.cbor.model.SimpleValueType
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
+import com.android.identity.android.mdoc.document.DataElement
+import com.android.identity.android.mdoc.document.Document
+import com.android.identity.android.mdoc.document.Namespace
+import com.android.identity.android.mdoc.document.DocumentType
 import com.android.identity.credential.NameSpacedData
-import com.android.identity.wallet.util.DocumentData.EU_PID_DOCTYPE
-import com.android.identity.wallet.util.DocumentData.EU_PID_NAMESPACE
-import com.android.identity.wallet.util.DocumentData.MDL_DOCTYPE
-import com.android.identity.wallet.util.DocumentData.MDL_NAMESPACE
-import com.android.identity.wallet.util.DocumentData.MICOV_ATT_NAMESPACE
-import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
 import java.io.ByteArrayInputStream
 import java.math.BigInteger
 import java.text.DecimalFormat
@@ -45,18 +43,18 @@ class DocumentDataReader(private val docType: String) {
                 val byteArray: ByteArray = nameSpacedData.getDataElement(namespace, entryName)
                 byteArray.let { value ->
                     val valueStr: String
-                    if (isPortraitElement(docType, namespace, entryName)) {
+                    if (isPortraitElement(namespace, entryName)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = nameSpacedData.getDataElementByteString(namespace, entryName)
-                    } else if (docType == MICOV_DOCTYPE && namespace == MICOV_ATT_NAMESPACE && entryName == "fac") {
+                    } else if (isElement(namespace, entryName, Document.Micov.Element.FACIAL_IMAGE)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = nameSpacedData.getDataElement(namespace, entryName)
-                    } else if (docType == MDL_DOCTYPE && namespace == MDL_NAMESPACE && entryName == "extra") {
+                    } else if (docType == DocumentType.MDL.value && namespace == Namespace.MDL.value && entryName == "extra") {
                         valueStr = String.format("%d bytes extra data", value.size)
-                    } else if (docType == MDL_DOCTYPE && namespace == MDL_NAMESPACE && entryName == "signature_usual_mark") {
+                    } else if (isElement(namespace, entryName, Document.Mdl.Element.SIGNATURE_USUAL_MARK)) {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
                         signatureBytes = nameSpacedData.getDataElementByteString(namespace, entryName)
-                    } else if (docType == EU_PID_DOCTYPE && namespace == EU_PID_NAMESPACE && entryName == "biometric_template_finger") {
+                    } else if (isElement(namespace, entryName, Document.EuPid.Element.BIOMETRIC_TEMPLATE_FINGER)) {
                         valueStr = String.format("(%d bytes, not shown)", value.size)
                         fingerprintBytes = nameSpacedData.getDataElementByteString(namespace, entryName)
                     } else {
@@ -85,14 +83,18 @@ class DocumentDataReader(private val docType: String) {
         )
     }
 
+    private fun isElement(namespace: String?,
+                          entryName: String?,
+                          candidate: DataElement): Boolean{
+        return candidate.nameSpace.value == namespace && candidate.elementName == entryName
+    }
+
     private fun isPortraitElement(
-        docType: String,
         namespace: String?,
         entryName: String?
     ): Boolean {
-        val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
-        val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
-        return hasPortrait && namespaceContainsPortrait && entryName == "portrait"
+        return isElement(namespace, entryName, Document.Mdl.Element.PORTRAIT) ||
+                isElement(namespace, entryName, Document.EuPid.Element.PORTRAIT)
     }
 
     private fun cborPrettyPrint(encodedBytes: ByteArray): String {

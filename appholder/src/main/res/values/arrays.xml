@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="document_type">
-        <item>@string/document_type_mdl</item>
-        <item>@string/document_type_mvr</item>
-        <item>@string/document_type_micov</item>
-        <item>@string/document_type_eu_pid</item>
-    </string-array>
     <string-array name="storage_implementation">
         <item>Keystore-backed</item>
         <item>Hardware-backed</item>

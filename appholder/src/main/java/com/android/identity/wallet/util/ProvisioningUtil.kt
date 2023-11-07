@@ -2,12 +2,14 @@ package com.android.identity.wallet.util
 
 import android.annotation.SuppressLint
 import android.content.Context
+import com.android.identity.android.mdoc.document.DocumentType
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import com.android.identity.android.mdoc.document.Namespace
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.Credential
@@ -29,8 +31,6 @@ import com.android.identity.wallet.document.KeysAndCertificates
 import com.android.identity.wallet.document.SecureAreaImplementationState
 import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState
 import com.android.identity.wallet.selfsigned.ProvisionInfo
-import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
-import com.android.identity.wallet.util.DocumentData.MVR_DOCTYPE
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.PrivateKey
@@ -70,19 +70,19 @@ class ProvisioningUtil private constructor(
 
     private fun initSoftwareAttestationKey() {
         val secureArea = SoftwareSecureArea(EphemeralStorageEngine())
-            val now = Timestamp.now()
-            secureArea.createKey(
-                "SoftwareAttestationRoot",
-                SoftwareSecureArea.CreateKeySettings.Builder("".toByteArray())
-                    .setEcCurve(SecureArea.EC_CURVE_P256)
-                    .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN)
-                    .setSubject("CN=Software Attestation Root")
-                    .setValidityPeriod(
-                        now,
-                        Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000)
-                    )
-                    .build()
-            )
+        val now = Timestamp.now()
+        secureArea.createKey(
+            "SoftwareAttestationRoot",
+            SoftwareSecureArea.CreateKeySettings.Builder("".toByteArray())
+                .setEcCurve(SecureArea.EC_CURVE_P256)
+                .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN)
+                .setSubject("CN=Software Attestation Root")
+                .setValidityPeriod(
+                    now,
+                    Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000)
+                )
+                .build()
+        )
         softwareAttestationKey = secureArea.getPrivateKey("SoftwareAttestationRoot", null)
         softwareAttestationKeySignatureAlgorithm = "SHA256withECDSA"
         softwareAttestationKeyCertification = secureArea.getKeyInfo("SoftwareAttestationRoot").attestation
@@ -183,16 +183,16 @@ class ProvisioningUtil private constructor(
             //
             var dataElementExceptions: Map<String, List<String>>? = null
             var dataElementOverrides: Map<String, Map<String, ByteArray>>? = null
-            if (documentType.equals("org.iso.18013.5.1.mDL")) {
+            if (documentType.equals(DocumentType.MDL.value)) {
                 val portrait = credential.nameSpacedData.getDataElementByteString(
-                    "org.iso.18013.5.1", "portrait")
+                    Namespace.MDL.value, "portrait")
                 val portrait_override = overridePortrait(portrait,
                     pendingAuthKey.authenticationKeyCounter)
 
                 dataElementExceptions =
-                    mapOf("org.iso.18013.5.1" to listOf("given_name", "portrait"))
+                    mapOf(Namespace.MDL.value to listOf("given_name", "portrait"))
                 dataElementOverrides =
-                    mapOf("org.iso.18013.5.1" to mapOf(
+                    mapOf(Namespace.MDL.value to mapOf(
                         "portrait" to Util.cborEncodeBytestring(portrait_override)))
             }
 
@@ -217,14 +217,14 @@ class ProvisioningUtil private constructor(
             val taggedEncodedMso = Util.cborEncode(Util.cborBuildTaggedByteString(mso))
 
             val issuerKeyPair = when (documentType) {
-                MVR_DOCTYPE -> KeysAndCertificates.getMekbDsKeyPair(context)
-                MICOV_DOCTYPE -> KeysAndCertificates.getMicovDsKeyPair(context)
+                DocumentType.MVR.value -> KeysAndCertificates.getMekbDsKeyPair(context)
+                DocumentType.MICOV.value -> KeysAndCertificates.getMicovDsKeyPair(context)
                 else -> KeysAndCertificates.getMdlDsKeyPair(context)
             }
 
             val issuerCert = when (documentType) {
-                MVR_DOCTYPE -> KeysAndCertificates.getMekbDsCertificate(context)
-                MICOV_DOCTYPE -> KeysAndCertificates.getMicovDsCertificate(context)
+                DocumentType.MVR.value -> KeysAndCertificates.getMekbDsCertificate(context)
+                DocumentType.MICOV.value -> KeysAndCertificates.getMicovDsCertificate(context)
                 else -> KeysAndCertificates.getMdlDsCertificate(context)
             }
 
