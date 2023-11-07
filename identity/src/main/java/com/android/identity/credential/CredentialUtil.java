@@ -35,7 +35,7 @@ public class CredentialUtil {
      *     <li>If a key is used more than {@code maxUsesPerKey} times, a replacement is generated.</li>
      *     <li>If a key expires within {@code minValidTimeMillis} milliseconds, a replacement is generated.</li>
      * </ul>
-     * <p>This is all implemented on top of {@link Credential#createPendingAuthenticationKey(SecureArea.CreateKeySettings, Credential.AuthenticationKey)}
+     * <p>This is all implemented on top of {@link Credential#createPendingAuthenticationKey(SecureArea, SecureArea.CreateKeySettings, Credential.AuthenticationKey)}
      * and {@link Credential.PendingAuthenticationKey#certify(byte[], Timestamp, Timestamp)}.
      * The application should examine the return value and if positive, collect the
      * pending authentication keys via {@link Credential#getPendingAuthenticationKeys()},
@@ -49,6 +49,7 @@ public class CredentialUtil {
      * sets of authentication keys for different purposes and with different strategies.
      *
      * @param credential the credential to manage authentication keys for.
+     * @param secureArea the secure area to use for new pending authentication keys.
      * @param createKeySettings the settings used to create new pending authentication keys.
      * @param managedKeyDomain the identifier to use for created authentication keys.
      * @param now the time right now, used for figuring out when existing should be replaced.
@@ -59,6 +60,7 @@ public class CredentialUtil {
      */
     public static int managedAuthenticationKeyHelper(
             @NonNull Credential credential,
+            @NonNull SecureArea secureArea,
             @NonNull SecureArea.CreateKeySettings createKeySettings,
             @NonNull String managedKeyDomain,
             @NonNull Timestamp now,
@@ -90,7 +92,7 @@ public class CredentialUtil {
             if (keyExceededUseCount || keyBeyondExpirationDate) {
                 if (authKey.getReplacement() == null) {
                     Credential.PendingAuthenticationKey pendingKey =
-                            credential.createPendingAuthenticationKey(createKeySettings, authKey);
+                            credential.createPendingAuthenticationKey(secureArea, createKeySettings, authKey);
                     pendingKey.getApplicationData().setBoolean(managedKeyDomain, true);
                     numReplacementsGenerated++;
                     continue;
@@ -106,7 +108,7 @@ public class CredentialUtil {
         if (numNonReplacementsToGenerate > 0) {
             for (int n = 0; n < numNonReplacementsToGenerate; n++) {
                 Credential.PendingAuthenticationKey pendingKey =
-                        credential.createPendingAuthenticationKey(createKeySettings, null);
+                        credential.createPendingAuthenticationKey(secureArea, createKeySettings, null);
                 pendingKey.getApplicationData().setBoolean(managedKeyDomain, true);
             }
         }

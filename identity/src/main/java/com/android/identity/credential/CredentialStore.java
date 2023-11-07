@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Class for holding real-world identity credentials.
+ * Class for storing real-world identity credentials.
  *
  * <p>This class is designed for storing real-world identity credentials such as
  * Mobile Driving Licenses (mDL) as specified in ISO/IEC 18013-5:2021. It is however
@@ -35,9 +35,9 @@ import java.util.List;
  * credential, regardless of shape, presentation-, or issuance-protocol used.
  *
  * <p>This code relies on a Secure Area for keys and this dependency is abstracted
- * by the {@link SecureArea} interface and allows the use of different implementations
- * on a per-credential basis. Persistent storage of credentials is abstracted via
- * the {@link StorageEngine} interface which provides a simple key/value store.
+ * by the {@link SecureArea} interface and allows the use of different {@link SecureArea}
+ * implementations for <em>Credential Key</em> and <em>Authentication Keys</em>) used
+ * in the credentials stored in the Credential Store.
  *
  * <p>For more details about credentials stored in a {@link CredentialStore} see the
  * {@link Credential} class.
@@ -66,14 +66,17 @@ public class CredentialStore {
      * newly created credential.
      *
      * @param name name of the credential.
-     * @param credentialKeySettings the settings to use for CredentialKey.
+     * @param secureArea the secure area to use for <em>CredentialKey</em>.
+     * @param credentialKeySettings the settings to use for creating <em>CredentialKey</em>.
      * @return A newly created credential.
      */
     public @NonNull Credential createCredential(@NonNull String name,
+                                                @NonNull SecureArea secureArea,
                                                 @NonNull SecureArea.CreateKeySettings credentialKeySettings) {
         return Credential.create(mStorageEngine,
                 mSecureAreaRepository,
                 name,
+                secureArea,
                 credentialKeySettings);
     }
 
@@ -84,17 +87,20 @@ public class CredentialStore {
      * newly created credential.
      *
      * @param name name of the credential.
-     * @param credentialKeySettings the settings to use for CredentialKey.
+     * @param secureArea the secure area to use for CredentialKey.
+     * @param credentialKeySettings the settings to use for creating CredentialKey.
      * @param existingKeyAlias the alias of the existing key.
      * @return A newly created credential.
      */
     public @NonNull Credential createCredentialWithExistingKey(
             @NonNull String name,
+            @NonNull SecureArea secureArea,
             @NonNull SecureArea.CreateKeySettings credentialKeySettings,
             @NonNull String existingKeyAlias) {
         return Credential.createWithExistingKey(mStorageEngine,
                 mSecureAreaRepository,
                 name,
+                secureArea,
                 credentialKeySettings,
                 existingKeyAlias);
     }

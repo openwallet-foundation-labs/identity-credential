@@ -69,6 +69,7 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
 
         Credential credential = credentialStore.createCredential(
                 "testCredential",
+                mSecureArea,
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(credentialKeyAttestationChallenge).build());
         Assert.assertEquals("testCredential", credential.getName());
         List<X509Certificate> certChain = credential.getAttestation();
@@ -82,11 +83,13 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
         // Create pending authentication key and check its attestation
         byte[] authKeyChallenge = new byte[] {20, 21, 22};
         Credential.PendingAuthenticationKey pendingAuthenticationKey =
-                credential.createPendingAuthenticationKey(new AndroidKeystoreSecureArea.CreateKeySettings.Builder(authKeyChallenge)
-                        .setUserAuthenticationRequired(true, 30*1000,
-                                AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
-                                        | AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC)
-                        .build(),
+                credential.createPendingAuthenticationKey(
+                        mSecureArea,
+                        new AndroidKeystoreSecureArea.CreateKeySettings.Builder(authKeyChallenge)
+                                .setUserAuthenticationRequired(true, 30*1000,
+                                        AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
+                                                | AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC)
+                                .build(),
                         null);
         parser = new AndroidAttestationExtensionParser(pendingAuthenticationKey.getAttestation().get(0));
         Assert.assertArrayEquals(authKeyChallenge,
@@ -109,6 +112,7 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
         // Check creating a credential with an existing name overwrites the existing one
         credential = credentialStore.createCredential(
                 "testCredential",
+                mSecureArea,
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(credentialKeyAttestationChallenge).build());
         Assert.assertEquals("testCredential", credential.getName());
         // At least the leaf certificate should be different

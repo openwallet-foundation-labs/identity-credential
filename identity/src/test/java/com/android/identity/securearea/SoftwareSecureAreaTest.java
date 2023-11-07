@@ -57,7 +57,7 @@ import javax.crypto.KeyAgreement;
 
 public class SoftwareSecureAreaTest {
 
-    private static final String TAG = "BouncyCastleSATest";  // limit to <= 23 chars
+    private static final String TAG = "SoftwareSecureAreaTest";
 
     PrivateKey mAttestationKey;
     String mAttestationKeySignatureAlgorithm;
@@ -104,7 +104,7 @@ public class SoftwareSecureAreaTest {
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         // First create the key...
-        ks.createKey("testKey", new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+        ks.createKey("testKey", new SecureArea.CreateKeySettings(new byte[0]));
         SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         List<X509Certificate> certChain = keyInfo.getAttestation();
         Assert.assertTrue(certChain.size() >= 1);
@@ -131,7 +131,7 @@ public class SoftwareSecureAreaTest {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        ks.createKey("testKey", new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+        ks.createKey("testKey", new SecureArea.CreateKeySettings(new byte[0]));
 
         SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
@@ -166,7 +166,7 @@ public class SoftwareSecureAreaTest {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        ks.createKey("testKey", new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+        ks.createKey("testKey", new SecureArea.CreateKeySettings(new byte[0]));
 
         SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
@@ -234,6 +234,26 @@ public class SoftwareSecureAreaTest {
                  | SignatureException e) {
             throw new AssertionError(e);
         }
+    }
+
+    @Test
+    public void testEcKeyWithGenericCreateKeySettings() {
+        EphemeralStorageEngine storage = new EphemeralStorageEngine();
+        SoftwareSecureArea ks = new SoftwareSecureArea(storage);
+
+        byte[] challenge = new byte[] {1, 2, 3};
+        ks.createKey("testKey", new SecureArea.CreateKeySettings(challenge));
+
+        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        Assert.assertNotNull(keyInfo);
+        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertFalse(keyInfo.isHardwareBacked());
+        Assert.assertFalse(keyInfo.isPassphraseProtected());
+
+        // Check challenge.
+        Assert.assertArrayEquals(challenge, getChallenge(keyInfo.getAttestation().get(0)));
     }
 
     @Test
@@ -480,13 +500,13 @@ public class SoftwareSecureAreaTest {
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         ks.createKey("testKey",
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+                new SecureArea.CreateKeySettings(new byte[0]));
         SoftwareSecureArea.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
         List<X509Certificate> certChainOld = keyInfoOld.getAttestation();
         Assert.assertTrue(certChainOld.size() >= 1);
 
         ks.createKey("testKey",
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+                new SecureArea.CreateKeySettings(new byte[0]));
         SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         List<X509Certificate> certChain = keyInfo.getAttestation();
         Assert.assertTrue(certChain.size() >= 1);

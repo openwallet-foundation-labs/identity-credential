@@ -124,6 +124,7 @@ public class DeviceResponseGeneratorTest {
         // Create the credential...
         mCredential = credentialStore.createCredential(
                 "testCredential",
+                mSecureArea,
                 new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
         NameSpacedData nameSpacedData = new NameSpacedData.Builder()
                 .putEntryString("ns1", "foo1", "bar1")
@@ -151,6 +152,7 @@ public class DeviceResponseGeneratorTest {
         mTimeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000);
         Credential.PendingAuthenticationKey pendingAuthKey =
                 mCredential.createPendingAuthenticationKey(
+                        mSecureArea,
                         new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                                 .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN
                                         | SecureArea.KEY_PURPOSE_AGREE_KEY)

@@ -28,6 +28,8 @@ import android.security.keystore.KeyProperties;
 import com.android.identity.AndroidAttestationExtensionParser;
 import com.android.identity.android.storage.AndroidStorageEngine;
 import com.android.identity.securearea.SecureArea;
+import com.android.identity.securearea.SoftwareSecureArea;
+import com.android.identity.storage.EphemeralStorageEngine;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Timestamp;
 
@@ -882,4 +884,27 @@ public class AndroidKeystoreSecureAreaTest {
                         : AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT, securityLevel);
     }
 
+    @Test
+    public void testUsingGenericCreateKeySettings() throws IOException {
+        Context context = androidx.test.InstrumentationRegistry.getTargetContext();
+        File storageDir = new File(context.getDataDir(), "ic-testing");
+        StorageEngine storageEngine = new AndroidStorageEngine.Builder(context, storageDir).build();
+        AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
+
+        byte[] challenge = new byte[] {1, 2, 3, 4};
+        ks.createKey("testKey", new SecureArea.CreateKeySettings(challenge));
+
+        AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        Assert.assertNotNull(keyInfo);
+        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertTrue(keyInfo.isHardwareBacked());
+
+        AndroidAttestationExtensionParser parser =
+                new AndroidAttestationExtensionParser(keyInfo.getAttestation().get(0));
+        Assert.assertArrayEquals(challenge, parser.getAttestationChallenge());
+
+        // Now delete it...
+        ks.deleteKey("testKey");
+    }
 }

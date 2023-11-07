@@ -49,14 +49,16 @@ public class SecureAreaRepository {
     }
 
     /**
-     * Gets a {@link SecureArea} for a specific classname.
+     * Gets a {@link SecureArea} by identifier
      *
-     * @param className the classname for an implementation.
+     * <p>The identifier being used is the one returned by {@link SecureArea#getIdentifier()}.
+     *
+     * @param identifier the identifier for the Secure Area.
      * @return the implementation or {@code null} if no implementation has been registered.
      */
-    public @Nullable SecureArea getImplementation(@NonNull String className) {
+    public @Nullable SecureArea getImplementation(@NonNull String identifier) {
         for (SecureArea implementation : mImplementations) {
-            if (implementation.getClass().getName().equals(className)) {
+            if (implementation.getIdentifier().equals(identifier)) {
                 return implementation;
             }
         }
