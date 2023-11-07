@@ -10,7 +10,7 @@ class IdentityCredentialVicalSignerTests {
         val signer: VicalSigner = IdentityCredentialVicalSigner(
             TestCertificates.signingCert!!,
             TestCertificates.signingKey!!,
-            "SHA256WithECDSA"
+            "SHA256withECDSA"
         )
         val oneZeroVical = byteArrayOf(1)
         val signedZeroVical = signer.createCose1Signature(oneZeroVical)
@@ -54,7 +54,7 @@ class IdentityCredentialVicalSignerTests {
             IdentityCredentialVicalSigner(
                 TestCertificates.signingCert!!,
                 TestCertificates.signingKey!!,
-                "SHA256WithECDSA"
+                "SHA256withECDSA"
             )
 
         // --- create an encoder for the VICAL structure ---
