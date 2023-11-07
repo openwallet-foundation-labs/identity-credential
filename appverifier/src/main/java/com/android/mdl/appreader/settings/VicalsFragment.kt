@@ -17,7 +17,7 @@ import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.google.android.material.R
 import com.google.android.material.snackbar.Snackbar
 
-class VicalsFragment : Fragment(){
+class VicalsFragment : Fragment() {
 
     private val viewModel: VicalsViewModel by activityViewModels {
         VicalsViewModel.factory(requireContext())
@@ -56,7 +56,7 @@ class VicalsFragment : Fragment(){
     }
 
     private fun openDetails() {
-        val destination = CaCertificatesFragmentDirections.toCaCertificateDetails()
+        val destination = VicalsFragmentDirections.toVicalDetails()
         findNavController().navigate(destination)
     }
 
@@ -66,9 +66,10 @@ class VicalsFragment : Fragment(){
 
     private fun importCertificate(uri: Uri) {
         try {
-            val inputStream = this.requireContext().contentResolver.openInputStream(uri)
-            if (inputStream != null) {
-                VerifierApp.vicalStoreInstance.save(inputStream.readBytes())
+            this.requireContext().contentResolver.openInputStream(uri).use { inputStream ->
+                if (inputStream != null) {
+                    VerifierApp.vicalStoreInstance.save(inputStream.readBytes())
+                }
                 // force the trust manager to reload the certificates and vicals
                 VerifierApp.trustManagerInstance.reset()
                 viewModel.loadVicals()

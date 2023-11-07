@@ -4,7 +4,9 @@ import android.content.Context
 import com.android.mdl.appreader.issuerauth.vical.IdentityCredentialVicalVerifier
 import com.android.mdl.appreader.issuerauth.vical.Vical
 import com.android.mdl.appreader.issuerauth.vical.VicalVerifier
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 
 /**
@@ -30,12 +32,13 @@ class VicalStore(context: Context) : Store<Vical>(context) {
     override fun determineFileName(item: Vical): String {
         val nameBuilder = StringBuilder()
         if (item.date() != null){
-            nameBuilder.append(DateTimeFormatter.ofPattern("yyyyMMdd").format(item.date()) + " ")
+            nameBuilder.append(DateTimeFormatter.ofPattern("yyyyMMdd")
+                .withLocale(Locale.ROOT)
+                .withZone(ZoneId.systemDefault())
+                .format(item.date()) + " ")
         }
         nameBuilder.append(item.vicalProvider())
-        if (item.version() != null){
-            nameBuilder.append(" ${item.version()}")
-        }
+        nameBuilder.append(" ${item.version()}")
         return nameBuilder.toString()
     }
 
