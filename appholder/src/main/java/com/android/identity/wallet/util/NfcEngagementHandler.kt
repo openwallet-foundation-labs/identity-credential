@@ -52,6 +52,10 @@ class NfcEngagementHandler : HostApduService() {
             log("Engagement Listener: Two Way Engagement Detected.")
         }
 
+        override fun onHandoverSelectMessageSent() {
+            log("Engagement Listener: Handover Select Message Sent.")
+        }
+
         override fun onDeviceConnecting() {
             log("Engagement Listener: Device Connecting. Launching Transfer Screen")
             val pendingIntent = NavDeepLinkBuilder(applicationContext)

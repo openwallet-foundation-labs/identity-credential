@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <uses-feature android:name="android.hardware.type.watch" />
+
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="true" />
+
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <uses-permission android:name="android.permission.NFC" />
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Legacy bluetooth permissions -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- Bluetooth permissions for Android 12+ -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.DeviceDefault">
+        <uses-library
+            android:name="com.google.android.wearable"
+            android:required="true" />
+
+        <!--
+               Set to true if your app is Standalone, that is, it does not require the handheld
+               app to run.
+        -->
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true" />
+
+        <activity
+            android:name=".presentation.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@android:style/Theme.DeviceDefault">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".presentation.PresentationStartingActivity"
+            android:exported="true"
+            android:label= "@string/app_name_presentation_starting"
+            android:theme="@android:style/Theme.DeviceDefault">
+        </activity>
+
+        <activity
+            android:name=".presentation.PresentationActivity"
+            android:exported="true"
+            android:label="@string/app_name_presentation"
+            android:theme="@android:style/Theme.DeviceDefault">
+        </activity>
+
+        <activity
+            android:name=".presentation.ShowQrCodeActivity"
+            android:exported="true"
+            android:label="@string/app_name_show_qr_code"
+            android:theme="@android:style/Theme.DeviceDefault">
+        </activity>
+
+        <activity
+            android:name="androidx.wear.activity.ConfirmationActivity">
+        </activity>
+
+        <service
+            android:name=".presentation.NfcEngagementHandler"
+            android:exported="true"
+            android:label="@string/nfc_engagement_service_desc"
+            android:permission="android.permission.BIND_NFC_SERVICE">
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.nfc.cardemulation.host_apdu_service"
+                android:resource="@xml/nfc_engagement_apdu_service" />
+        </service>
+
+    </application>
+
+</manifest>

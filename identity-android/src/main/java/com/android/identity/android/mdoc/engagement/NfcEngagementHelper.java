@@ -448,6 +448,11 @@ public class NfcEngagementHelper {
                 Logger.dCbor(TAG, "NFC static DeviceEngagement", mEncodedDeviceEngagement);
                 Logger.dCbor(TAG, "NFC static Handover", mEncodedHandover);
 
+                // TODO: We're reporting this just a bit early, we should move this
+                //  to handleReadBinary() instead and emit it once all bytes from
+                //  mSelectedNfcFile has been read
+                reportHandoverSelectMessageSent();
+
                 // Technically we should ensure the transports are up until sending the response...
                 setupTransports(mStaticHandoverConnectionMethods);
             }
@@ -752,6 +757,11 @@ public class NfcEngagementHelper {
         Logger.dCbor(TAG, "NFC negotiated DeviceEngagement", mEncodedDeviceEngagement);
         Logger.dCbor(TAG, "NFC negotiated Handover", mEncodedHandover);
 
+        // TODO: We're reporting this just a bit early, we should move this
+        //  to handleReadBinary() instead and emit it once all bytes from
+        //  mSelectedNfcFile has been read
+        reportHandoverSelectMessageSent();
+
         // Technically we should ensure the transports are up until sending the response...
         setupTransports(listWithSelectedConnectionMethod);
         return NfcUtil.STATUS_WORD_OK;
@@ -808,6 +818,14 @@ public class NfcEngagementHelper {
         }
     }
 
+    void reportHandoverSelectMessageSent() {
+        Logger.d(TAG, "onHandoverSelectMessageSent");
+        final Listener listener = mListener;
+        final Executor executor = mExecutor;
+        if (!mInhibitCallbacks && listener != null && executor != null) {
+            executor.execute(listener::onHandoverSelectMessageSent);
+        }
+    }
 
     void reportDeviceConnecting() {
         Logger.d(TAG, "reportDeviceConnecting");
@@ -859,6 +877,14 @@ public class NfcEngagementHelper {
          * selected the connection handover service.
          */
         void onTwoWayEngagementDetected();
+
+        /**
+         * Called when the Handover Select message has been sent to the NFC tag reader.
+         *
+         * <p>This is a good point for an app to notify the user that an mdoc transaction
+         * is about to to take place and they can start removing the device from the field.
+         */
+        void onHandoverSelectMessageSent();
 
         /**
          * Called when a remote mdoc reader is starting to connect.

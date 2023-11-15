@@ -76,6 +76,10 @@ public class NfcEnagementHelperTest {
             }
 
             @Override
+            public void onHandoverSelectMessageSent() {
+            }
+
+            @Override
             public void onDeviceConnecting() {
 
             }
@@ -210,6 +214,10 @@ public class NfcEnagementHelperTest {
         NfcEngagementHelper.Listener listener = new NfcEngagementHelper.Listener() {
             @Override
             public void onTwoWayEngagementDetected() {
+            }
+
+            @Override
+            public void onHandoverSelectMessageSent() {
             }
 
             @Override
