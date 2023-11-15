@@ -229,6 +229,9 @@ public class MigrateFromKeystoreICStoreTest {
         return new JcaX509CertificateConverter().getCertificate(certHolder);
     }
 
+    // This isn't really used, we only use a single domain.
+    private final String AUTH_KEY_DOMAIN = "domain";
+
     private void migrateAndCheckResults(String credName,
                                         byte[] challenge,
                                         Map<String, Map<String, byte[]>> expectedNsData) throws Exception {
@@ -248,7 +251,7 @@ public class MigrateFromKeystoreICStoreTest {
                 credName, IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256));
 
         // ensure all namespace data is as expected
-        NameSpacedData nsData = migratedCred.getNameSpacedData();
+        NameSpacedData nsData = migratedCred.getApplicationData().getNameSpacedData("credentialData");
         List<String> resultNamespaces = nsData.getNameSpaceNames();
         assertEquals(resultNamespaces.size(), expectedNsData.keySet().size());
         assertTrue(resultNamespaces.containsAll(expectedNsData.keySet()));
@@ -303,6 +306,7 @@ public class MigrateFromKeystoreICStoreTest {
         byte[] authKeyChallenge = new byte[] {20, 21, 22};
         Credential.PendingAuthenticationKey pendingAuthenticationKey =
                 migratedCred.createPendingAuthenticationKey(
+                        AUTH_KEY_DOMAIN,
                         mAndroidKeystoreSecureArea,
                         new AndroidKeystoreSecureArea.CreateKeySettings.Builder(authKeyChallenge)
                                 .setUserAuthenticationRequired(true, 30*1000,

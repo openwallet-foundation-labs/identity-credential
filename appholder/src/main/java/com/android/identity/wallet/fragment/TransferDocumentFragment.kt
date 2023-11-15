@@ -140,7 +140,10 @@ class TransferDocumentFragment : Fragment() {
                 findNavController().navigate(direction)
             } else {
                 // Send response with 0 documents
-                viewModel.sendResponseForSelection()
+                viewModel.sendResponseForSelection(
+                    onResultReady = {
+                    }
+                )
             }
             // TODO: this is kind of a hack but we really need to move the sending of the
             //  message to here instead of in the auth confirmation dialog

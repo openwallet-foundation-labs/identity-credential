@@ -19,6 +19,7 @@ import com.android.identity.wallet.support.SecureAreaSupport
 import com.android.identity.wallet.theme.HolderAppTheme
 import com.android.identity.wallet.transfer.AddDocumentToResponseResult
 import com.android.identity.wallet.util.DocumentData
+import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
@@ -91,8 +92,10 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
     private fun sendResponse() {
         isSendingInProgress.value = true
-        val result = viewModel.sendResponseForSelection()
-        onSendResponseResult(result)
+        viewModel.sendResponseForSelection(
+            onResultReady = {
+                onSendResponseResult(it)
+            })
     }
 
     private fun getSubtitle(): String {
@@ -112,16 +115,22 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     private fun onSendResponseResult(result: AddDocumentToResponseResult) {
         when (result) {
             is AddDocumentToResponseResult.DocumentLocked -> {
+
                 val secureAreaSupport = SecureAreaSupport.getInstance(
                     requireContext(),
-                    result.credential
+                    result.authKey.secureArea
                 )
                 with(secureAreaSupport) {
                     unlockKey(
-                        credential = result.credential,
+                        authKey = result.authKey,
                         onKeyUnlocked = { keyUnlockData ->
-                            val responseResult = viewModel.sendResponseForSelection(keyUnlockData)
-                            onSendResponseResult(responseResult)
+                            viewModel.sendResponseForSelection(
+                                onResultReady = {
+                                    onSendResponseResult(it)
+                                },
+                                result.authKey,
+                                keyUnlockData
+                            )
                         },
                         onUnlockFailure = { wasCancelled ->
                             if (wasCancelled) {

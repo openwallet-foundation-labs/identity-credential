@@ -19,6 +19,7 @@ package com.android.identity.util;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.credential.NameSpacedData;
 import com.android.identity.internal.Util;
 
 import java.io.ByteArrayInputStream;
@@ -85,6 +86,12 @@ public class SimpleApplicationData implements ApplicationData {
         return this.setData(key, Util.cborEncodeBoolean(value));
     }
 
+    @NonNull
+    @Override
+    public ApplicationData setNameSpacedData(@NonNull String key, @NonNull NameSpacedData value) {
+        return this.setData(key, value.encodeAsCbor());
+    }
+
     @Override
     public boolean keyExists(@NonNull String key) {
         return mApplicationData.get(key) != null;
@@ -95,7 +102,7 @@ public class SimpleApplicationData implements ApplicationData {
     public byte[] getData(@NonNull String key) {
         byte[] value = mApplicationData.get(key);
         if (value == null) {
-            throw new IllegalArgumentException("This key is not present in the ApplicationData.");
+            throw new IllegalArgumentException("Key '" + key + "' is not present");
         }
         return value;
     }
@@ -117,6 +124,12 @@ public class SimpleApplicationData implements ApplicationData {
     public boolean getBoolean(@NonNull String key) {
         byte[] value = this.getData(key);
         return Util.cborDecodeBoolean(value);
+    }
+
+    @Override
+    public @NonNull NameSpacedData getNameSpacedData(@NonNull String key) {
+        byte[] value = this.getData(key);
+        return NameSpacedData.fromEncodedCbor(value);
     }
 
     /**

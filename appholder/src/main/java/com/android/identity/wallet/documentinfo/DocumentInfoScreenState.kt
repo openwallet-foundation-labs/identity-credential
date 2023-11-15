@@ -25,13 +25,15 @@ data class DocumentInfoScreenState(
 
     @Immutable
     data class KeyInformation(
-        val alias: String,
+        val counter: Int,
         val validFrom: String,
         val validUntil: String,
+        val domain: String,
         val issuerDataBytesCount: Int,
         val usagesCount: Int,
         @KeyPurpose val keyPurposes: Int,
         @EcCurve val ecCurve: Int,
-        val isHardwareBacked: Boolean
+        val isHardwareBacked: Boolean,
+        val secureAreaDisplayName: String
     )
 }

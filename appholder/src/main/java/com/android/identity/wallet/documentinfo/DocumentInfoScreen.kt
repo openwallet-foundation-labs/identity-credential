@@ -311,7 +311,7 @@ private fun AuthenticationKeyInfo(
                 .size(48.dp)
                 .padding(horizontal = 8.dp),
             imageVector = Icons.Default.Key,
-            contentDescription = authKeyInfo.alias,
+            contentDescription = "${authKeyInfo.counter}",
             tint = MaterialTheme.colorScheme.primary.copy(alpha = .5f)
         )
         Column(
@@ -321,8 +321,16 @@ private fun AuthenticationKeyInfo(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             LabeledValue(
-                label = stringResource(id = R.string.document_info_alias),
-                value = authKeyInfo.alias
+                label = stringResource(id = R.string.txt_keystore_implementation),
+                value = authKeyInfo.secureAreaDisplayName
+            )
+            LabeledValue(
+                label = stringResource(id = R.string.document_info_counter),
+                value = "${authKeyInfo.counter}"
+            )
+            LabeledValue(
+                label = stringResource(id = R.string.document_info_domain),
+                value = authKeyInfo.domain
             )
             LabeledValue(
                 label = stringResource(id = R.string.document_info_valid_from),
@@ -455,24 +463,29 @@ private fun PreviewDocumentInfoScreen() {
                 isSelfSigned = true,
                 authKeys = listOf(
                     DocumentInfoScreenState.KeyInformation(
-                        alias = "Key Alias 1",
+                        counter = 1,
                         validFrom = "16-07-2023",
                         validUntil = "23-07-2023",
+                        domain = "Domain",
                         usagesCount = 1,
                         issuerDataBytesCount = "Issuer 1".toByteArray().count(),
                         keyPurposes = KEY_PURPOSE_AGREE_KEY,
                         ecCurve = EC_CURVE_P256,
-                        isHardwareBacked = false
+                        isHardwareBacked = false,
+                        secureAreaDisplayName = "Secure Area Name"
                     ),
                     DocumentInfoScreenState.KeyInformation(
-                        alias = "Key Alias 2",
+                        counter = 2,
                         validFrom = "16-07-2023",
                         validUntil = "23-07-2023",
+                        domain = "Domain",
                         usagesCount = 0,
                         issuerDataBytesCount = "Issuer 2".toByteArray().count(),
                         keyPurposes = KEY_PURPOSE_SIGN,
                         ecCurve = EC_CURVE_ED25519,
-                        isHardwareBacked = true
+                        isHardwareBacked = true,
+                        secureAreaDisplayName = "Secure Area Name"
+
                     )
                 )
             ),

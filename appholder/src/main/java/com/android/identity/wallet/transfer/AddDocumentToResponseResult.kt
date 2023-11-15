@@ -9,6 +9,6 @@ sealed class AddDocumentToResponseResult {
     ) : AddDocumentToResponseResult()
 
     data class DocumentLocked(
-        val credential: Credential,
+        val authKey: Credential.AuthenticationKey
     ) : AddDocumentToResponseResult()
 }

@@ -19,12 +19,15 @@ package com.android.identity.credential;
 import androidx.annotation.NonNull;
 
 import com.android.identity.securearea.SecureArea;
+import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
 
 /**
  * A set of utilities and helpers for working with credentials.
  */
 public class CredentialUtil {
+    private static String TAG = "CredentialUtil";
+
     /**
      * A helper for managing a set of authentication keys.
      *
@@ -35,7 +38,7 @@ public class CredentialUtil {
      *     <li>If a key is used more than {@code maxUsesPerKey} times, a replacement is generated.</li>
      *     <li>If a key expires within {@code minValidTimeMillis} milliseconds, a replacement is generated.</li>
      * </ul>
-     * <p>This is all implemented on top of {@link Credential#createPendingAuthenticationKey(SecureArea, SecureArea.CreateKeySettings, Credential.AuthenticationKey)}
+     * <p>This is all implemented on top of {@link Credential#createPendingAuthenticationKey(String, SecureArea, SecureArea.CreateKeySettings, Credential.AuthenticationKey)}
      * and {@link Credential.PendingAuthenticationKey#certify(byte[], Timestamp, Timestamp)}.
      * The application should examine the return value and if positive, collect the
      * pending authentication keys via {@link Credential#getPendingAuthenticationKeys()},
@@ -43,16 +46,11 @@ public class CredentialUtil {
      * {@link Credential.PendingAuthenticationKey#certify(byte[], Timestamp, Timestamp)}
      * when receiving the certification from the issuer.
      *
-     * <p>Authentication keys created using this helper will have application data set for
-     * the with the key given by the {@code managedKeyDomain} and the helper will
-     * only touch keys with this key set. This allows the application to manage multiple
-     * sets of authentication keys for different purposes and with different strategies.
-     *
      * @param credential the credential to manage authentication keys for.
      * @param secureArea the secure area to use for new pending authentication keys.
      * @param createKeySettings the settings used to create new pending authentication keys.
-     * @param managedKeyDomain the identifier to use for created authentication keys.
-     * @param now the time right now, used for figuring out when existing should be replaced.
+     * @param domain the domain to use for created authentication keys.
+     * @param now the time right now, used for determining which existing keys to replace.
      * @param numAuthenticationKeys the number of authentication keys that should be kept.
      * @param maxUsesPerKey the maximum number of uses per key.
      * @param minValidTimeMillis requests a replacement for a key if it expires within this window.
@@ -62,7 +60,7 @@ public class CredentialUtil {
             @NonNull Credential credential,
             @NonNull SecureArea secureArea,
             @NonNull SecureArea.CreateKeySettings createKeySettings,
-            @NonNull String managedKeyDomain,
+            @NonNull String domain,
             @NonNull Timestamp now,
             int numAuthenticationKeys,
             int maxUsesPerKey,
@@ -74,7 +72,7 @@ public class CredentialUtil {
             boolean keyExceededUseCount = false;
             boolean keyBeyondExpirationDate = false;
 
-            if (!authKey.getApplicationData().keyExists(managedKeyDomain)) {
+            if (!authKey.getDomain().equals(domain)) {
                 // not one of ours...
                 continue;
             }
@@ -92,8 +90,7 @@ public class CredentialUtil {
             if (keyExceededUseCount || keyBeyondExpirationDate) {
                 if (authKey.getReplacement() == null) {
                     Credential.PendingAuthenticationKey pendingKey =
-                            credential.createPendingAuthenticationKey(secureArea, createKeySettings, authKey);
-                    pendingKey.getApplicationData().setBoolean(managedKeyDomain, true);
+                            credential.createPendingAuthenticationKey(domain, secureArea, createKeySettings, authKey);
                     numReplacementsGenerated++;
                     continue;
                 }
@@ -108,8 +105,8 @@ public class CredentialUtil {
         if (numNonReplacementsToGenerate > 0) {
             for (int n = 0; n < numNonReplacementsToGenerate; n++) {
                 Credential.PendingAuthenticationKey pendingKey =
-                        credential.createPendingAuthenticationKey(secureArea, createKeySettings, null);
-                pendingKey.getApplicationData().setBoolean(managedKeyDomain, true);
+                        credential.createPendingAuthenticationKey(domain, secureArea, createKeySettings, null);
+                pendingKey.getApplicationData().setBoolean(domain, true);
             }
         }
         return numReplacementsGenerated + numNonReplacementsToGenerate;

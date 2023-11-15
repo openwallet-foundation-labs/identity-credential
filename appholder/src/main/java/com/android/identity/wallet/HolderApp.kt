@@ -11,7 +11,6 @@ import com.android.identity.securearea.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity.wallet.util.PeriodicKeysRefreshWorkRequest
 import com.android.identity.wallet.util.PreferencesHelper
-import com.android.identity.wallet.util.ProvisioningUtil
 import com.google.android.material.color.DynamicColors
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
@@ -33,7 +32,7 @@ class HolderApp: Application() {
     companion object {
         fun createCredentialStore(
             context: Context,
-            keystoreEngineRepository: SecureAreaRepository
+            secureAreaRepository: SecureAreaRepository
         ): CredentialStore {
             val storageDir = PreferencesHelper.getKeystoreBackedStorageLocation(context)
             val storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
@@ -41,9 +40,9 @@ class HolderApp: Application() {
             val androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine)
             val softwareSecureArea = SoftwareSecureArea(storageEngine)
 
-            keystoreEngineRepository.addImplementation(androidKeystoreSecureArea)
-            keystoreEngineRepository.addImplementation(softwareSecureArea)
-            return CredentialStore(storageEngine, keystoreEngineRepository)
+            secureAreaRepository.addImplementation(androidKeystoreSecureArea)
+            secureAreaRepository.addImplementation(softwareSecureArea)
+            return CredentialStore(storageEngine, secureAreaRepository)
         }
     }
 }

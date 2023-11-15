@@ -82,14 +82,16 @@ class DocumentInfoViewModel(
     private fun List<DocumentInformation.KeyData>.asScreenStateKeys(): List<DocumentInfoScreenState.KeyInformation> {
         return map { keyData ->
             DocumentInfoScreenState.KeyInformation(
-                alias = keyData.alias,
+                counter = keyData.counter,
                 validFrom = keyData.validFrom,
                 validUntil = keyData.validUntil,
+                domain = keyData.domain,
                 issuerDataBytesCount = keyData.issuerDataBytesCount,
                 usagesCount = keyData.usagesCount,
                 keyPurposes = keyData.keyPurposes,
                 ecCurve = keyData.ecCurve,
-                isHardwareBacked = keyData.isHardwareBacked
+                isHardwareBacked = keyData.isHardwareBacked,
+                secureAreaDisplayName = keyData.secureAreaDisplayName
             )
         }
     }

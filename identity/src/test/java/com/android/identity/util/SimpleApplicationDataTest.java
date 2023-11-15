@@ -21,6 +21,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 
+import com.android.identity.credential.NameSpacedData;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -41,6 +43,7 @@ public class SimpleApplicationDataTest {
         assertThrows(IllegalArgumentException.class, () -> appData.getString("testkey"));
         assertThrows(IllegalArgumentException.class, () -> appData.getNumber("testkey"));
         assertThrows(IllegalArgumentException.class, () -> appData.getBoolean("testkey"));
+        assertThrows(IllegalArgumentException.class, () -> appData.getNameSpacedData("testkey"));
 
         appData.setData("foo", new byte[] {0x50, 0x51, 0x52});
         assertArrayEquals(new byte[] {0x50, 0x51, 0x52}, appData.getData("foo"));
@@ -61,6 +64,13 @@ public class SimpleApplicationDataTest {
 
         appData.setBoolean("foo", false);
         assertEquals(false, appData.getBoolean("foo"));
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), null));
+
+        appData.setNameSpacedData("foo", new NameSpacedData.Builder()
+                .putEntryString("foo", "bar", "baz")
+                .build());
+        assertEquals("baz", appData.getNameSpacedData("foo")
+                .getDataElementString("foo", "bar"));
         testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), null));
 
         // remove by nulling

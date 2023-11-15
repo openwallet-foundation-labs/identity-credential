@@ -16,7 +16,7 @@ class RefreshKeysWorker(
     override fun doWork(): Result {
         documentManager.getDocuments().forEach { documentInformation ->
             val credential = documentManager.getCredentialByName(documentInformation.docName)
-            credential?.let { provisioningUtil.refreshAuthKeys(it, documentInformation) }
+            credential?.let { provisioningUtil.refreshAuthKeys(it, documentInformation.docType) }
         }
         return Result.success()
     }

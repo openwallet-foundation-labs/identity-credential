@@ -29,6 +29,7 @@ import java.util.Map;
  * <p>Data is not persisted anywhere.
  */
 public class EphemeralStorageEngine implements StorageEngine {
+    private static final String TAG = "EphemeralStorageEngine";
 
     private final Map<String, byte[]> mData = new LinkedHashMap<>();
 

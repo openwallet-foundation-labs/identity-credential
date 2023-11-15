@@ -58,6 +58,9 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
         mSecureAreaRepository.addImplementation(mSecureArea);
     }
 
+    // This isn't really used, we only use a single domain.
+    private final String AUTH_KEY_DOMAIN = "domain";
+
     @Test
     public void testBasic() throws IOException {
 
@@ -84,6 +87,7 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
         byte[] authKeyChallenge = new byte[] {20, 21, 22};
         Credential.PendingAuthenticationKey pendingAuthenticationKey =
                 credential.createPendingAuthenticationKey(
+                        AUTH_KEY_DOMAIN,
                         mSecureArea,
                         new AndroidKeystoreSecureArea.CreateKeySettings.Builder(authKeyChallenge)
                                 .setUserAuthenticationRequired(true, 30*1000,

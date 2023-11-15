@@ -826,17 +826,21 @@ class KeystoreIdentityCredential extends IdentityCredential {
     // tested in identity-android/src/androidTest/java/com/android/identity/android/legacy/MigrateFromKeystoreICStoreTest.java
     /**
      * Gathers all the {@link PersonalizationData.NamespaceData} from this credential and creates a
-     * new {@link Credential} with this data inside the given {@link CredentialStore}. The key used
-     * by the {@link CredentialData} in this credential is preserved, and this method will also pass
-     * metadata for this key to the new {@link Credential} for future usage. Once the new
-     * {@link Credential} is created, this method will delete the file with encrypted
-     * {@link CredentialData} as well as any per reader session keys, acp timeout keys, and auth keys.
+     * new {@link Credential} with this data inside the given {@link CredentialStore}. The data is
+     * stored as a {@link NameSpacedData} value under the key {@code credentialData} in the
+     * associated data available via {@link Credential#getApplicationData()}.
+     * The Credential Key is also preserved and available using
+     * {@link Credential#getCredentialKeyAlias()}.
      *
-     * <p> The returned {@link Credential} will also have the same name as this credential, so it can
-     * be retrieved from the given {@link CredentialStore} using
+     * <p>Once the new {@link Credential} is created, this method will delete the file with
+     * encryptedc{@link CredentialData} as well as any per reader session keys, acp timeout keys,
+     * and auth keys.
+     *
+     * <p>The returned {@link Credential} will also have the same name as this credential, so it
+     * can be retrieved from the given {@link CredentialStore} using
      * {@link CredentialStore#lookupCredential(String)} with the same name.
      *
-     * <p> In total, the data within each namespace and the credential key will be migrated to the
+     * <p>In total, the data within each namespace and the credential key will be migrated to the
      * new {@link Credential}, while the access control profile information, per reader session/acp
      * timeout/auth keys will not be transferred.
      *
@@ -869,7 +873,7 @@ class KeystoreIdentityCredential extends IdentityCredential {
             }
         }
 
-        newCred.setNameSpacedData(nsBuilder.build());
+        newCred.getApplicationData().setNameSpacedData("credentialData", nsBuilder.build());
 
         CredentialData.deleteForMigration(mContext, mStorageDirectory, mCredentialName);
 

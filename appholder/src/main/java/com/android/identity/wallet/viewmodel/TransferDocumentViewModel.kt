@@ -10,6 +10,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.util.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.android.legacy.CredentialInvalidatedException
+import com.android.identity.credential.Credential
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.securearea.SecureArea
@@ -98,26 +99,35 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     }
 
     fun sendResponseForSelection(
-        keyUnlockData: SecureArea.KeyUnlockData? = null
-    ): AddDocumentToResponseResult {
+        onResultReady: (result: AddDocumentToResponseResult) -> Unit,
+        authKey: Credential.AuthenticationKey? = null,
+        authKeyUnlockData: SecureArea.KeyUnlockData? = null
+    ) {
         val elementsToSend = signedElements.collect()
         val responseGenerator = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
-        var signingKeyOverused = false
         elementsToSend.forEach { signedDocument ->
             try {
                 val issuerSignedEntries = signedDocument.issuerSignedEntries()
-                val result = transferManager.addDocumentToResponse(
+                transferManager.addDocumentToResponse(
                     signedDocument.identityCredentialName,
                     signedDocument.documentType,
                     issuerSignedEntries,
                     responseGenerator,
-                    keyUnlockData
+                    authKey,
+                    authKeyUnlockData,
+                    onResultReady = {
+                        if (it !is AddDocumentToResponseResult.DocumentAdded) {
+                            onResultReady(it)
+                            return@addDocumentToResponse
+                        }
+                        transferManager.sendResponse(responseGenerator.generate(), PreferencesHelper.isConnectionAutoCloseEnabled())
+                        transferManager.setResponseServed()
+                        val documentsCount = elementsToSend.count()
+                        documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
+                        cleanUp()
+                        onResultReady(it)
+                    }
                 )
-                if (result !is AddDocumentToResponseResult.DocumentAdded) {
-                    return result
-                } else {
-                    signingKeyOverused = result.signingKeyUsageLimitPassed
-                }
             } catch (e: CredentialInvalidatedException) {
                 logWarning("Credential '${signedDocument.identityCredentialName}' is invalid. Deleting.")
                 documentManager.deleteCredentialByName(signedDocument.identityCredentialName)
@@ -128,12 +138,6 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                 logWarning("No requestedDocument for " + signedDocument.documentType)
             }
         }
-        transferManager.sendResponse(responseGenerator.generate(), PreferencesHelper.isConnectionAutoCloseEnabled())
-        transferManager.setResponseServed()
-        val documentsCount = elementsToSend.count()
-        documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
-        cleanUp()
-        return AddDocumentToResponseResult.DocumentAdded(signingKeyOverused)
     }
 
     fun cancelPresentation(

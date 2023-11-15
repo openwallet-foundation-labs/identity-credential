@@ -20,6 +20,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.identity.credential.Credential;
+import com.android.identity.credential.NameSpacedData;
+
+import co.nstant.in.cbor.model.DataItem;
 
 /**
  * An interface to an object storing application data in a key-value pair manner.
@@ -80,6 +83,19 @@ public interface ApplicationData {
     @NonNull ApplicationData setBoolean(@NonNull String key, boolean value);
 
     /**
+     * Sets application specific data as a {@link NameSpacedData}.
+     *
+     * <p>Like {@link #setData(String, byte[])} but encodes the given value
+     * as <a href="http://cbor.io/">CBOR</a> using {@link NameSpacedData#encodeAsCbor()}
+     * before storing it.
+     *
+     * @param key   the key for the data.
+     * @param value the value.
+     * @return      the modified {@link ApplicationData}.
+     */
+    @NonNull ApplicationData setNameSpacedData(@NonNull String key, @NonNull NameSpacedData value);
+
+    /**
      * Returns whether the {@link ApplicationData} has a value for the key provided.
      *
      * @param key the key for the data.
@@ -133,4 +149,17 @@ public interface ApplicationData {
      * @throws IllegalArgumentException if the data isn't a CBOR encoded {@code boolean}.
      */
     boolean getBoolean(@NonNull String key);
+
+    /**
+     * Gets application specific data as a {@link NameSpacedData}.
+     *
+     * <p>Takes the data returned by {@link #getData(String)} and decodes it as a
+     * {@link NameSpacedData} using {@link NameSpacedData#fromEncodedCbor(byte[])}.
+     *
+     * @param  key the key for the data.
+     * @return the value.
+     * @throws IllegalArgumentException if the data element does not exist.
+     * @throws IllegalArgumentException if the data isn't encoded as a {@link NameSpacedData}.
+     */
+    @NonNull NameSpacedData getNameSpacedData(@NonNull String key);
 }
