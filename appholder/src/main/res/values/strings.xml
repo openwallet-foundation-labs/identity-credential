@@ -163,9 +163,10 @@
     <string name="document_color_red">Red</string>
 
     <string name="keystore_android">Android Keystore</string>
-    <string name="keystore_bouncy_castle">Bouncy Castle Keystore</string>
+    <string name="keystore_software">Software Keystore</string>
+    <string name="secure_area_not_implemented">Secure Area Not Implemented</string>
     <string name="keystore_android_user_auth_timeout">Timeout seconds</string>
-    <string name="keystore_bouncy_castle_passphrase_hint">Passphrase (optional)</string>
+    <string name="keystore_software_passphrase_hint">Passphrase (optional)</string>
 
     <string name="user_authentication_on">Require User Authentication</string>
     <string name="user_authentication_off">No User Authentication</string>

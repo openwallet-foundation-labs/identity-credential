@@ -13,7 +13,6 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.NavigationUI.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
-import androidx.preference.PreferenceManager
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl
 import com.android.identity.util.Logger
@@ -25,8 +24,6 @@ import com.android.identity.wallet.util.logInfo
 import com.android.identity.wallet.util.logWarning
 import com.android.identity.wallet.viewmodel.ShareDocumentViewModel
 import com.google.android.material.elevation.SurfaceColors
-import java.security.Security
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 
 class MainActivity : AppCompatActivity() {
 

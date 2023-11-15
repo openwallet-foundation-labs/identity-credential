@@ -9,9 +9,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialStore
 import com.android.identity.credential.CredentialUtil
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.internal.Util
@@ -19,21 +17,19 @@ import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.KeyPurpose
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.SoftwareSecureArea
-import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.util.Timestamp
+import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.document.DocumentInformation
 import com.android.identity.wallet.document.KeysAndCertificates
-import com.android.identity.wallet.document.SecureAreaImplementationState
-import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState
 import com.android.identity.wallet.selfsigned.ProvisionInfo
+import com.android.identity.wallet.support.SecureAreaSupport
+import com.android.identity.wallet.support.SoftwareKeystoreSecureAreaSupportState
+import com.android.identity.wallet.support.toSecureAreaState
 import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
 import com.android.identity.wallet.util.DocumentData.MVR_DOCTYPE
 import java.io.ByteArrayOutputStream
-import java.io.File
-import java.security.PrivateKey
 import java.security.cert.X509Certificate
 import java.time.Instant
 import java.time.ZoneId
@@ -45,74 +41,19 @@ class ProvisioningUtil private constructor(
     private val context: Context
 ) {
 
-    private val storageDir: File
-        get() = PreferencesHelper.getKeystoreBackedStorageLocation(context)
-
-    private val storageEngine: AndroidStorageEngine
-        get() = AndroidStorageEngine.Builder(context, storageDir).build()
-
-    private val androidKeystoreSecureArea: SecureArea
-        get() = AndroidKeystoreSecureArea(context, storageEngine)
-
-    private val softwareSecureArea: SecureArea
-        get() = SoftwareSecureArea(storageEngine)
-
+    val secureAreaRepository = SecureAreaRepository()
     val credentialStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        val keystoreEngineRepository = SecureAreaRepository()
-        keystoreEngineRepository.addImplementation(androidKeystoreSecureArea)
-        keystoreEngineRepository.addImplementation(softwareSecureArea)
-        CredentialStore(storageEngine, keystoreEngineRepository)
-    }
-
-    private lateinit var softwareAttestationKey: PrivateKey
-    private lateinit var softwareAttestationKeySignatureAlgorithm: String
-    private lateinit var softwareAttestationKeyCertification: List<X509Certificate>
-
-    private fun initSoftwareAttestationKey() {
-        val secureArea = SoftwareSecureArea(EphemeralStorageEngine())
-            val now = Timestamp.now()
-            secureArea.createKey(
-                "SoftwareAttestationRoot",
-                SoftwareSecureArea.CreateKeySettings.Builder("".toByteArray())
-                    .setEcCurve(SecureArea.EC_CURVE_P256)
-                    .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN)
-                    .setSubject("CN=Software Attestation Root")
-                    .setValidityPeriod(
-                        now,
-                        Timestamp.ofEpochMilli(now.toEpochMilli() + 10L * 86400 * 365 * 1000)
-                    )
-                    .build()
-            )
-        softwareAttestationKey = secureArea.getPrivateKey("SoftwareAttestationRoot", null)
-        softwareAttestationKeySignatureAlgorithm = "SHA256withECDSA"
-        softwareAttestationKeyCertification = secureArea.getKeyInfo("SoftwareAttestationRoot").attestation
+        HolderApp.createCredentialStore(context, secureAreaRepository)
     }
 
     fun provisionSelfSigned(
         nameSpacedData: NameSpacedData,
         provisionInfo: ProvisionInfo,
     ) {
-        val (secureArea, settings) = when (provisionInfo.secureAreaImplementationStateType) {
-            SecureAreaImplementationState.Android -> Pair(
-                androidKeystoreSecureArea,
-                createAndroidKeystoreSettings(
-                    userAuthenticationRequired = provisionInfo.userAuthentication,
-                    mDocAuthOption = provisionInfo.mDocAuthenticationOption,
-                    authTimeoutMillis = provisionInfo.userAuthenticationTimeoutSeconds * 1000L,
-                    userAuthenticationType = provisionInfo.userAuthType(),
-                    useStrongBox = provisionInfo.useStrongBox,
-                    ecCurve = provisionInfo.authKeyCurve,
-                    validUntil = provisionInfo.validityInDays.toTimestampFromNow()
-                ))
 
-            SecureAreaImplementationState.BouncyCastle -> Pair(
-                softwareSecureArea,
-                createBouncyCastleKeystoreSettings(
-                    passphrase = provisionInfo.passphrase,
-                    mDocAuthOption = provisionInfo.mDocAuthenticationOption,
-                    ecCurve = provisionInfo.authKeyCurve
-                ))
-        }
+        val secureArea: SecureArea = provisionInfo.currentSecureArea.secureArea
+        val settings = provisionInfo.secureAreaSupportState
+            .createKeystoreSettings(provisionInfo.validityInDays)
 
         val credential = credentialStore.createCredential(provisionInfo.credentialName(), secureArea, settings)
         credential.nameSpacedData = nameSpacedData
@@ -131,30 +72,16 @@ class ProvisioningUtil private constructor(
         credential.applicationData.setNumber(MAX_USAGES_PER_KEY, provisionInfo.maxUseMso.toLong())
         credential.applicationData.setNumber(VALIDITY_IN_DAYS, provisionInfo.validityInDays.toLong())
         credential.applicationData.setNumber(MIN_VALIDITY_IN_DAYS, provisionInfo.minValidityInDays.toLong())
-        credential.applicationData.setString(MDOC_AUTHENTICATION, provisionInfo.mDocAuthenticationOption.name)
+        credential.applicationData.setString(MDOC_AUTHENTICATION, provisionInfo.secureAreaSupportState.mDocAuthOption.mDocAuthentication.name)
         credential.applicationData.setNumber(LAST_TIME_USED, -1)
-    }
-
-    private fun Int.toTimestampFromNow(): Timestamp {
-        val now = Timestamp.now().toEpochMilli()
-        val validityDuration = this * 24 * 60 * 60 * 1000L
-        return Timestamp.ofEpochMilli(now + validityDuration)
+        if (provisionInfo.secureAreaSupportState is SoftwareKeystoreSecureAreaSupportState) {
+            credential.applicationData.setString(PASSPHRASE, provisionInfo.secureAreaSupportState.passphrase)
+        }
     }
 
     private fun ProvisionInfo.credentialName(): String {
         val regex = Regex("[^A-Za-z0-9 ]")
         return regex.replace(docName, "").replace(" ", "_").lowercase()
-    }
-
-    private fun ProvisionInfo.userAuthType(): Int {
-        var userAuthenticationType = 0
-        if (allowLskfUnlocking) {
-            userAuthenticationType = userAuthenticationType or AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
-        }
-        if (allowBiometricUnlocking) {
-            userAuthenticationType = userAuthenticationType or AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
-        }
-        return userAuthenticationType
     }
 
     fun trackUsageTimestamp(credential: Credential) {
@@ -169,7 +96,11 @@ class ProvisioningUtil private constructor(
         provisionAuthKeys(credential, documentInformation.docType, minValidityInDays)
     }
 
-    private fun provisionAuthKeys(credential: Credential, documentType: String, validityInDays: Int) {
+    private fun provisionAuthKeys(
+        credential: Credential,
+        documentType: String,
+        validityInDays: Int
+    ) {
         val nowMillis = Timestamp.now().toEpochMilli()
         val timeSigned = Timestamp.now()
         val timeValidityBegin = Timestamp.ofEpochMilli(nowMillis)
@@ -288,34 +219,22 @@ class ProvisioningUtil private constructor(
 
     private fun manageKeysFor(credential: Credential): Int {
         val mDocAuthOption = credential.applicationData.getString(MDOC_AUTHENTICATION)
-        val (secureArea, settings) = when (credential.credentialSecureArea) {
+        val secureArea = when (credential.credentialSecureArea) {
             is AndroidKeystoreSecureArea -> {
-                val keyInfo = credential.credentialSecureArea.getKeyInfo(credential.credentialKeyAlias) as AndroidKeystoreSecureArea.KeyInfo
-                Pair(
-                    androidKeystoreSecureArea,
-                    createAndroidKeystoreSettings(
-                        keyInfo.isUserAuthenticationRequired,
-                        AddSelfSignedScreenState.MdocAuthStateOption.valueOf(mDocAuthOption),
-                        keyInfo.userAuthenticationTimeoutMillis,
-                        keyInfo.userAuthenticationType,
-                        keyInfo.isStrongBoxBacked,
-                        keyInfo.ecCurve,
-                        keyInfo.validUntil ?: Timestamp.now()
-                    ))
+                secureAreaRepository.implementations.first { it is AndroidKeystoreSecureArea }
             }
 
             is SoftwareSecureArea -> {
-                val keyInfo = credential.credentialSecureArea.getKeyInfo(credential.credentialKeyAlias) as SoftwareSecureArea.KeyInfo
-                Pair(
-                    softwareSecureArea,
-                    createBouncyCastleKeystoreSettings(
-                        mDocAuthOption = AddSelfSignedScreenState.MdocAuthStateOption.valueOf(mDocAuthOption),
-                        ecCurve = keyInfo.ecCurve
-                    ))
+                secureAreaRepository.implementations.first { it is SoftwareSecureArea }
             }
 
             else -> throw IllegalStateException("Unknown keystore secure area implementation")
         }
+
+        val settings = SecureAreaSupport.getInstance(context, credential)
+            .getSecureAreaSupportState()
+            .createKeystoreSettingForCredential(mDocAuthOption, credential)
+
         val minValidTimeDays = credential.applicationData.getNumber(MIN_VALIDITY_IN_DAYS)
         val maxUsagesPerKey = credential.applicationData.getNumber(MAX_USAGES_PER_KEY)
         return CredentialUtil.managedAuthenticationKeyHelper(
@@ -328,56 +247,6 @@ class ProvisioningUtil private constructor(
             maxUsagesPerKey.toInt(),
             minValidTimeDays * 24 * 60 * 60 * 1000L
         )
-    }
-
-    private fun createAndroidKeystoreSettings(
-        userAuthenticationRequired: Boolean,
-        mDocAuthOption: AddSelfSignedScreenState.MdocAuthStateOption,
-        authTimeoutMillis: Long,
-        userAuthenticationType: Int,
-        useStrongBox: Boolean,
-        ecCurve: Int,
-        validUntil: Timestamp
-    ): AndroidKeystoreSecureArea.CreateKeySettings {
-        return AndroidKeystoreSecureArea.CreateKeySettings.Builder(CHALLENGE)
-            .setKeyPurposes(mDocAuthOption.toKeyPurpose())
-            .setUseStrongBox(useStrongBox)
-            .setEcCurve(ecCurve)
-            .setValidityPeriod(Timestamp.now(), validUntil)
-            .setUserAuthenticationRequired(
-                userAuthenticationRequired,
-                authTimeoutMillis,
-                userAuthenticationType
-            )
-            .build()
-    }
-
-    private fun createBouncyCastleKeystoreSettings(
-        passphrase: String? = null,
-        mDocAuthOption: AddSelfSignedScreenState.MdocAuthStateOption,
-        ecCurve: Int
-    ): SoftwareSecureArea.CreateKeySettings {
-        if (!this::softwareAttestationKey.isInitialized) {
-            initSoftwareAttestationKey()
-        }
-        val keyPurpose = mDocAuthOption.toKeyPurpose()
-        val builder = SoftwareSecureArea.CreateKeySettings.Builder("DoNotCare".toByteArray())
-            .setAttestationKey(softwareAttestationKey,
-                softwareAttestationKeySignatureAlgorithm, softwareAttestationKeyCertification)
-            .setPassphraseRequired(passphrase != null, passphrase)
-            .setKeyPurposes(keyPurpose)
-            .setEcCurve(ecCurve)
-            .setKeyPurposes(mDocAuthOption.toKeyPurpose())
-        return builder.build()
-    }
-
-    @KeyPurpose
-    private fun AddSelfSignedScreenState.MdocAuthStateOption.toKeyPurpose(): Int {
-        return if (this == AddSelfSignedScreenState.MdocAuthStateOption.ECDSA) {
-            SecureArea.KEY_PURPOSE_SIGN
-        } else {
-            SecureArea.KEY_PURPOSE_AGREE_KEY
-        }
     }
 
     companion object {
@@ -393,8 +262,7 @@ class ProvisioningUtil private constructor(
         private const val MIN_VALIDITY_IN_DAYS = "minValidityInDays"
         private const val MDOC_AUTHENTICATION = "mDocAuthentication"
         private const val LAST_TIME_USED = "lastTimeUsed"
-
-        private val CHALLENGE = "challenge".toByteArray()
+        const val PASSPHRASE = "passphrase"
 
         private val dateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
 
@@ -405,6 +273,9 @@ class ProvisioningUtil private constructor(
         fun getInstance(context: Context) = instance ?: synchronized(this) {
             instance ?: ProvisioningUtil(context).also { instance = it }
         }
+
+        val defaultSecureArea: SecureArea
+            get() = requireNotNull(instance?.secureAreaRepository?.implementations?.first())
 
         fun Credential?.toDocumentInformation(): DocumentInformation? {
             return this?.let {
@@ -436,18 +307,10 @@ class ProvisioningUtil private constructor(
                     selfSigned = it.applicationData.getBoolean(IS_SELF_SIGNED),
                     maxUsagesPerKey = it.applicationData.getNumber(MAX_USAGES_PER_KEY).toInt(),
                     mDocAuthOption = it.applicationData.getString(MDOC_AUTHENTICATION),
-                    secureAreaImplementationState = it.credentialSecureArea.toSecureAreaState(),
+                    currentSecureArea = it.credentialSecureArea.toSecureAreaState(),
                     lastTimeUsed = lastTimeUsed,
                     authKeys = authKeys
                 )
-            }
-        }
-
-        private fun SecureArea.toSecureAreaState(): SecureAreaImplementationState {
-            return when (this) {
-                is AndroidKeystoreSecureArea -> SecureAreaImplementationState.Android
-                is SoftwareSecureArea -> SecureAreaImplementationState.BouncyCastle
-                else -> throw IllegalStateException("Unknown Secure Area Implementation")
             }
         }
 

@@ -5,16 +5,12 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color.BLACK
 import android.graphics.Color.WHITE
-import android.nfc.cardemulation.HostApduService
 import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
 import com.android.identity.android.legacy.*
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -25,10 +21,10 @@ import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Timestamp
+import com.android.identity.wallet.composables.state.MdocAuthStateOption
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.DocumentDataReader
 import com.android.identity.wallet.documentdata.DocumentElements
-import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState
 import com.android.identity.wallet.util.*
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -194,11 +190,11 @@ class TransferManager private constructor(private val context: Context) {
 
         val transcript = communication.getSessionTranscript() ?: byteArrayOf()
         val authOption =
-            AddSelfSignedScreenState.MdocAuthStateOption.valueOf(documentInformation.mDocAuthOption)
+            MdocAuthStateOption.valueOf(documentInformation.mDocAuthOption)
         try {
             val generator = DocumentGenerator(docType, staticAuthData.issuerAuth, transcript)
                 .setIssuerNamespaces(mergedIssuerNamespaces)
-            if (authOption == AddSelfSignedScreenState.MdocAuthStateOption.ECDSA) {
+            if (authOption == MdocAuthStateOption.ECDSA) {
                 generator.setDeviceNamespacesSignature(
                     NameSpacedData.Builder().build(),
                     authKey.secureArea,
@@ -220,24 +216,7 @@ class TransferManager private constructor(private val context: Context) {
             authKey.increaseUsageCount()
             ProvisioningUtil.getInstance(context).trackUsageTimestamp(credential)
         } catch (lockedException: SecureArea.KeyLockedException) {
-            return if (credential.credentialSecureArea is AndroidKeystoreSecureArea) {
-                val keyInfo =
-                    credential.credentialSecureArea.getKeyInfo(authKey.alias) as AndroidKeystoreSecureArea.KeyInfo
-                val allowLskf = keyInfo.userAuthenticationType == USER_AUTHENTICATION_TYPE_LSKF
-                val allowBiometric =
-                    keyInfo.userAuthenticationType == USER_AUTHENTICATION_TYPE_BIOMETRIC
-                val allowBoth =
-                    keyInfo.userAuthenticationType == USER_AUTHENTICATION_TYPE_LSKF or USER_AUTHENTICATION_TYPE_BIOMETRIC
-                AddDocumentToResponseResult.UserAuthRequired(
-                    keyAlias = authKey.alias,
-                    allowLSKFUnlocking = allowLskf || allowBoth,
-                    allowBiometricUnlocking = allowBiometric || allowBoth
-                )
-            } else {
-                AddDocumentToResponseResult.PassphraseRequired(
-                    attemptedWithIncorrectPassword = keyUnlockData != null
-                )
-            }
+            return AddDocumentToResponseResult.DocumentLocked(credential)
         }
         return AddDocumentToResponseResult.DocumentAdded(signingKeyUsageLimitPassed)
     }

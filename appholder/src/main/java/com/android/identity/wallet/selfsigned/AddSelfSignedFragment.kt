@@ -33,21 +33,15 @@ class AddSelfSignedFragment : Fragment() {
 
     private fun onNext() {
         val state = viewModel.screenState.value
+        val secureAreaScreenState = requireNotNull(state.secureAreaSupportState)
         val provisionInfo = ProvisionInfo(
             docType = state.documentType.value,
             docName = state.documentName,
             docColor = state.cardArt.value,
-            secureAreaImplementationStateType = state.secureAreaImplementationState,
-            userAuthentication = state.userAuthentication,
-            userAuthenticationTimeoutSeconds = state.userAuthenticationTimeoutSeconds,
-            allowLskfUnlocking = state.allowLSKFUnlocking.isEnabled,
-            allowBiometricUnlocking = state.allowBiometricUnlocking.isEnabled,
-            useStrongBox = state.useStrongBox.isEnabled,
-            mDocAuthenticationOption = state.androidMdocAuthState.mDocAuthentication,
-            authKeyCurve = state.ecCurve,
+            currentSecureArea = state.currentSecureArea,
+            secureAreaSupportState = secureAreaScreenState,
             validityInDays = state.validityInDays,
             minValidityInDays = state.minValidityInDays,
-            passphrase = state.passphrase.ifBlank { null },
             numberMso = state.numberOfMso,
             maxUseMso = state.maxUseOfMso
         )
