@@ -1,7 +1,5 @@
 package com.android.identity.wallet.document
 
-import com.android.identity.wallet.support.CurrentSecureArea
-
 data class DocumentInformation(
     val userVisibleName: String,
     val docName: String,
@@ -11,7 +9,6 @@ data class DocumentInformation(
     val documentColor: Int,
     val maxUsagesPerKey: Int,
     val lastTimeUsed: String,
-    val currentSecureArea: CurrentSecureArea,
     val authKeys: List<KeyData>
 ) {
 

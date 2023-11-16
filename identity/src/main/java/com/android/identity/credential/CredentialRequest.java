@@ -29,7 +29,7 @@ import java.util.List;
  * <p>This type is an abstraction of a request from a remote reader requesting one or more
  * pieces of data. Each piece of data is represented by the {@link CredentialRequest.DataElement}
  * type which includes a number of attributes. These abstractions are modeled after MDOC as
- * per ISO/IEC 18013-5:2021 but can be used for other credential shapes organized in a similar
+ * per ISO/IEC 18013-5:2021 but can be used for other credential formats organized in a similar
  * fashion.
  *
  * <p>The intended use of this type is that it's generated when receiving the request from the

@@ -126,10 +126,6 @@ private fun DocumentInfoScreenContent(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 LabeledValue(
-                                    label = stringResource(id = R.string.label_credential_shape),
-                                    value = "mdoc"
-                                )
-                                LabeledValue(
                                     label = stringResource(id = R.string.label_document_name),
                                     value = screenState.documentName
                                 )
@@ -148,10 +144,6 @@ private fun DocumentInfoScreenContent(
                                 LabeledValue(
                                     label = stringResource(id = R.string.label_issuer),
                                     value = if (screenState.isSelfSigned) "Self-Signed on Device" else "N/A"
-                                )
-                                LabeledValue(
-                                    label = stringResource(id = R.string.txt_keystore_implementation),
-                                    value = screenState.currentSecureArea.displayName
                                 )
                             }
                         }
