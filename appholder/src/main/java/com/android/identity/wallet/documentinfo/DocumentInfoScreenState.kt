@@ -17,7 +17,6 @@ data class DocumentInfoScreenState(
     val provisioningDate: String = "",
     val lastTimeUsedDate: String = "",
     val isSelfSigned: Boolean = false,
-    val currentSecureArea: CurrentSecureArea = ProvisioningUtil.defaultSecureArea.toSecureAreaState(),
     val authKeys: List<KeyInformation> = emptyList(),
     val isDeletingPromptShown: Boolean = false,
     val isDeleted: Boolean = false

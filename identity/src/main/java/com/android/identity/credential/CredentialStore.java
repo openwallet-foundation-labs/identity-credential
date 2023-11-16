@@ -33,18 +33,17 @@ import java.util.List;
  *
  * <p>This class is designed for storing real-world identity credentials such as
  * Mobile Driving Licenses (mDL) as specified in ISO/IEC 18013-5:2021. It is however
- * not tied to that specific credential shape and is designed to hold any kind of
- * credential, regardless of shape, presentation-, or issuance-protocol used.
+ * not tied to that specific credential format and is designed to hold any kind of
+ * credential, regardless of format, presentation-, or issuance-protocol used.
  *
  * <p>This code relies on a Secure Area for keys and this dependency is abstracted
  * by the {@link SecureArea} interface and allows the use of different {@link SecureArea}
- * implementations for <em>Credential Key</em> and <em>Authentication Keys</em>) used
- * in the credentials stored in the Credential Store.
+ * implementations for <em>Authentication Keys</em>) associated with credentials stored
+ * in the Credential Store.
  *
- * <p>It is guaranteed that calls to {@link #createCredential(String, SecureArea, SecureArea.CreateKeySettings)},
- * {@link #createCredentialWithExistingKey(String, SecureArea, SecureArea.CreateKeySettings, String)},
- * and {@link #lookupCredential(String)} will return the same {@link Credential} instance
- * if passed the same {@code name}.
+ * <p>It is guaranteed that once a credential is created with {@link #createCredential(String)},
+ * each subsequent call to {@link #lookupCredential(String)} will return the same
+ * {@link Credential} instance.
  *
  * <p>For more details about credentials stored in a {@link CredentialStore} see the
  * {@link Credential} class.
@@ -76,45 +75,12 @@ public class CredentialStore {
      * newly created credential.
      *
      * @param name name of the credential.
-     * @param secureArea the secure area to use for <em>CredentialKey</em>.
-     * @param credentialKeySettings the settings to use for creating <em>CredentialKey</em>.
      * @return A newly created credential.
      */
-    public @NonNull Credential createCredential(@NonNull String name,
-                                                @NonNull SecureArea secureArea,
-                                                @NonNull SecureArea.CreateKeySettings credentialKeySettings) {
+    public @NonNull Credential createCredential(@NonNull String name) {
         Credential result = Credential.create(mStorageEngine,
                 mSecureAreaRepository,
-                name,
-                secureArea,
-                credentialKeySettings);
-        mCredentialCache.put(name, result);
-        return result;
-    }
-
-    /**
-     * Creates a new credential using a key which already exists in some keystore.
-     *
-     * <p>If a credential with the given name already exists, it will be overwritten by the
-     * newly created credential.
-     *
-     * @param name name of the credential.
-     * @param secureArea the secure area to use for CredentialKey.
-     * @param credentialKeySettings the settings to use for creating CredentialKey.
-     * @param existingKeyAlias the alias of the existing key.
-     * @return A newly created credential.
-     */
-    public @NonNull Credential createCredentialWithExistingKey(
-            @NonNull String name,
-            @NonNull SecureArea secureArea,
-            @NonNull SecureArea.CreateKeySettings credentialKeySettings,
-            @NonNull String existingKeyAlias) {
-        Credential result = Credential.createWithExistingKey(mStorageEngine,
-                mSecureAreaRepository,
-                name,
-                secureArea,
-                credentialKeySettings,
-                existingKeyAlias);
+                name);
         mCredentialCache.put(name, result);
         return result;
     }

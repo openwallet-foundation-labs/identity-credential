@@ -823,48 +823,18 @@ class KeystoreIdentityCredential extends IdentityCredential {
         return mData.getAuthKeyExpirations();
     }
 
-    // tested in identity-android/src/androidTest/java/com/android/identity/android/legacy/MigrateFromKeystoreICStoreTest.java
     /**
-     * Gathers all the {@link PersonalizationData.NamespaceData} from this credential and creates a
-     * new {@link Credential} with this data inside the given {@link CredentialStore}. The data is
-     * stored as a {@link NameSpacedData} value under the key {@code credentialData} in the
-     * associated data available via {@link Credential#getApplicationData()}.
-     * The Credential Key is also preserved and available using
-     * {@link Credential#getCredentialKeyAlias()}.
+     * Gets all the {@link PersonalizationData.NamespaceData} as a {@link NameSpacedData}.
      *
-     * <p>Once the new {@link Credential} is created, this method will delete the file with
-     * encryptedc{@link CredentialData} as well as any per reader session keys, acp timeout keys,
-     * and auth keys.
+     * <p>This can be used with {@link #getCredentialKeyAlias()} to migrate this credential
+     * to {@link CredentialStore} without reprovisioning.
      *
-     * <p>The returned {@link Credential} will also have the same name as this credential, so it
-     * can be retrieved from the given {@link CredentialStore} using
-     * {@link CredentialStore#lookupCredential(String)} with the same name.
-     *
-     * <p>In total, the data within each namespace and the credential key will be migrated to the
-     * new {@link Credential}, while the access control profile information, per reader session/acp
-     * timeout/auth keys will not be transferred.
-     *
-     * @param androidKeystoreSecureArea an {@link AndroidKeystoreSecureArea} instance.
-     * @param credentialStore the credential store where the new {@link Credential} should be stored.
-     * @return the new {@link Credential}.
+     * @return the credential data, as a {@link NameSpacedData}.
      */
-    public @NonNull Credential migrateToCredentialStore(
-            @NonNull AndroidKeystoreSecureArea androidKeystoreSecureArea,
-            @NonNull CredentialStore credentialStore) {
-        loadData();
-
-        if (mData == null) {
-            throw new IllegalStateException("The credential has been deleted prior to migration.");
+    public @NonNull NameSpacedData getNameSpacedData() {
+        if (!loadData()) {
+            throw new IllegalStateException("Error loading data");
         }
-        String aliasForOldCredKey = mData.getCredentialKeyAlias();
-        AndroidKeystoreSecureArea.CreateKeySettings.Builder ksSettingsBuilder = Utility.extractKeySettings(aliasForOldCredKey);
-        ksSettingsBuilder.setEcCurve(SecureArea.EC_CURVE_P256);
-
-        Credential newCred = credentialStore.createCredentialWithExistingKey(mCredentialName,
-                androidKeystoreSecureArea,
-                ksSettingsBuilder.build(),
-                aliasForOldCredKey);
-
         NameSpacedData.Builder nsBuilder = new NameSpacedData.Builder();
         for (PersonalizationData.NamespaceData namespaceData : mData.getNamespaceDatas()) {
             for (String entryName : namespaceData.getEntryNames()) {
@@ -872,12 +842,18 @@ class KeystoreIdentityCredential extends IdentityCredential {
                 nsBuilder.putEntry(namespaceData.mNamespace, entryName, value);
             }
         }
-
-        newCred.getApplicationData().setNameSpacedData("credentialData", nsBuilder.build());
-
-        CredentialData.deleteForMigration(mContext, mStorageDirectory, mCredentialName);
-
-        return newCred;
+        return nsBuilder.build();
     }
 
+    /**
+     * Gets the CredentialKey alias.
+     *
+     * @return the alias for CredentialKey.
+     */
+    public @NonNull String getCredentialKeyAlias() {
+        if (!loadData()) {
+            throw new IllegalStateException("Error loading data");
+        }
+        return mData.getCredentialKeyAlias();
+    }
 }
