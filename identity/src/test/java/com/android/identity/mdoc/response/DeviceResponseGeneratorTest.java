@@ -126,9 +126,7 @@ public class DeviceResponseGeneratorTest {
 
         // Create the credential...
         mCredential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0]).build());
+                "testCredential");
         NameSpacedData nameSpacedData = new NameSpacedData.Builder()
                 .putEntryString("ns1", "foo1", "bar1")
                 .putEntryString("ns1", "foo2", "bar2")

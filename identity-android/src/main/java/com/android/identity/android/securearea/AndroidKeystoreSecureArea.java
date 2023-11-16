@@ -32,7 +32,6 @@ import androidx.biometric.BiometricPrompt;
 
 import com.android.identity.internal.Util;
 import com.android.identity.securearea.SecureArea;
-import com.android.identity.securearea.SoftwareSecureArea;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
@@ -41,10 +40,10 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
-import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -188,11 +187,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             aSettings = new AndroidKeystoreSecureArea.CreateKeySettings.Builder(
                     createKeySettings.getAttestationChallenge())
                     .build();
-        }
-
-        if (aSettings.getExistingKeyAlias() != null) {
-            createFromExistingKey(aSettings.getExistingKeyAlias(), aSettings);
-            return;
         }
 
         KeyPairGenerator kpg = null;
@@ -347,12 +341,54 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         saveKeyMetadata(alias, aSettings, attestation);
     }
 
-    private void createFromExistingKey(@NonNull String existingKeyAlias, CreateKeySettings aSettings) {
+    /**
+     * Creates a key for an existing Android KeyStore key.
+     *
+     * <p>This doesn't actually create a key but creates the out-of-band data
+     * structures so an existing Android KeyStore key can be used with e.g.
+     * {@link #getKeyInfo(String)},
+     * {@link #sign(String, int, byte[], SecureArea.KeyUnlockData)},
+     * {@link #keyAgreement(String, PublicKey, SecureArea.KeyUnlockData)}
+     * and other methods.
+     *
+     * @param existingAlias the alias of the existing key.
+     */
+    public void createKeyForExistingAlias(@NonNull String existingAlias) {
+        android.security.keystore.KeyInfo keyInfo = null;
+        try {
+            KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+            ks.load(null);
+            KeyStore.Entry entry = ks.getEntry(existingAlias, null);
+            if (entry == null) {
+                throw new IllegalArgumentException("No entry for alias");
+            }
+            PrivateKey privateKey = ((KeyStore.PrivateKeyEntry) entry).getPrivateKey();
+
+            KeyFactory factory = KeyFactory.getInstance(privateKey.getAlgorithm(), "AndroidKeyStore");
+            try {
+                keyInfo = factory.getKeySpec(privateKey, android.security.keystore.KeyInfo.class);
+            } catch (InvalidKeySpecException e) {
+                throw new IllegalStateException("Given key is not an Android Keystore key", e);
+            }
+        } catch (UnrecoverableEntryException
+                 | CertificateException
+                 | KeyStoreException
+                 | IOException
+                 | NoSuchAlgorithmException
+                 | NoSuchProviderException e) {
+            throw new IllegalStateException(e.getMessage(), e);
+        }
+
+        // Need to generate the data which getKeyInfo() reads from disk.
+        CreateKeySettings.Builder settingsBuilder =
+                new CreateKeySettings.Builder("".getBytes(StandardCharsets.UTF_8));
+
+        // attestation
         List<X509Certificate> attestation = new ArrayList<>();
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
             ks.load(null);
-            Certificate[] certificates = ks.getCertificateChain(existingKeyAlias);
+            Certificate[] certificates = ks.getCertificateChain(existingAlias);
             for (Certificate certificate : certificates) {
                 attestation.add((X509Certificate) certificate);
             }
@@ -363,8 +399,47 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             throw new IllegalStateException("Error generating certificate chain", e);
         }
 
-        saveKeyMetadata(existingKeyAlias, aSettings, attestation);
-        Logger.d(TAG, "EC key with alias '" + existingKeyAlias + "' transferred");
+        // curve - not available in KeyInfo, assume P-256
+
+        // keyPurposes
+        @KeyPurpose int purposes = 0;
+        int ksPurposes = keyInfo.getPurposes();
+        if ((ksPurposes & KeyProperties.PURPOSE_SIGN) != 0) {
+            purposes |= KEY_PURPOSE_SIGN;
+        }
+        if ((ksPurposes & KeyProperties.PURPOSE_AGREE_KEY) != 0) {
+            purposes |= KEY_PURPOSE_AGREE_KEY;
+        }
+        settingsBuilder.setKeyPurposes(purposes);
+
+        // useStrongBox
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            settingsBuilder.setUseStrongBox(keyInfo.getSecurityLevel() == KeyProperties.SECURITY_LEVEL_STRONGBOX);
+        }
+
+        // attestKeyAlias - not available in KeyInfo
+
+        // userAuthentication*
+        @UserAuthenticationType int userAuthenticationType = 0;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            int ksAuthType = keyInfo.getUserAuthenticationType();
+            if ((ksAuthType & KeyProperties.AUTH_DEVICE_CREDENTIAL) != 0) {
+                userAuthenticationType |= USER_AUTHENTICATION_TYPE_LSKF;
+            }
+            if ((ksAuthType & KeyProperties.AUTH_BIOMETRIC_STRONG) != 0) {
+                userAuthenticationType |= USER_AUTHENTICATION_TYPE_BIOMETRIC;
+            }
+        } else {
+            userAuthenticationType = AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF +
+                    AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC;
+        }
+        settingsBuilder.setUserAuthenticationRequired(
+                keyInfo.isUserAuthenticationRequired(),
+                keyInfo.getUserAuthenticationValidityDurationSeconds()*1000L,
+                userAuthenticationType);
+
+        saveKeyMetadata(existingAlias, settingsBuilder.build(), attestation);
+        Logger.d(TAG, "EC existing key with alias '" + existingAlias + "' created");
     }
 
     @Override
@@ -892,7 +967,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         private final String mAttestKeyAlias;
         private final Timestamp mValidFrom;
         private final Timestamp mValidUntil;
-        private final String mExistingKeyAlias;
 
         private CreateKeySettings(@KeyPurpose int keyPurpose,
                                   @EcCurve int ecCurve,
@@ -903,8 +977,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                                   boolean useStrongBox,
                                   @Nullable String attestKeyAlias,
                                   @Nullable Timestamp validFrom,
-                                  @Nullable Timestamp validUntil,
-                                  @Nullable String existingKeyAlias) {
+                                  @Nullable Timestamp validUntil) {
             super(attestationChallenge);
             mKeyPurposes = keyPurpose;
             mEcCurve = ecCurve;
@@ -915,7 +988,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             mAttestKeyAlias = attestKeyAlias;
             mValidFrom = validFrom;
             mValidUntil = validUntil;
-            mExistingKeyAlias = existingKeyAlias;
         }
 
         /**
@@ -1001,14 +1073,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         }
 
         /**
-         * If the CreateKeySettings represents a key which already exists, returns the alias of the
-         * key which it represents. Otherwise, returns {@code null}.
-         *
-         * @return the alias or {@code null} if not set.
-         */
-        public @Nullable String getExistingKeyAlias() { return mExistingKeyAlias; }
-
-        /**
          * A builder for {@link CreateKeySettings}.
          */
         public static class Builder {
@@ -1022,7 +1086,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             private String mAttestKeyAlias;
             private Timestamp mValidFrom;
             private Timestamp mValidUntil;
-            private String mExistingKeyAlias;
 
             /**
              * Constructor.
@@ -1151,21 +1214,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             }
 
             /**
-             * Method to specify both (1) if the {@link CreateKeySettings} should represent a key
-             * which already exists, and (2) the alias of said key.
-             *
-             * <p>By default the alias is <code>null</code>, indicating a new key should be created
-             * rather than repurposing an existing key.
-             *
-             * @param alias the alias of the key.
-             * @return the builder.
-             */
-            public @NonNull Builder setExistingKeyAlias(@NonNull String alias) {
-                mExistingKeyAlias = alias;
-                return this;
-            }
-
-            /**
              * Builds the {@link CreateKeySettings}.
              *
              * @return a new {@link CreateKeySettings}.
@@ -1181,8 +1229,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                         mUseStrongBox,
                         mAttestKeyAlias,
                         mValidFrom,
-                        mValidUntil,
-                        mExistingKeyAlias);
+                        mValidUntil);
             }
         }
 

@@ -48,18 +48,8 @@ class ProvisioningUtil private constructor(
         nameSpacedData: NameSpacedData,
         provisionInfo: ProvisionInfo,
     ) {
-
-        // CredentialKey is never used for self-signed credential (there's no Issuer to
-        // communicate with) so just use Android Keystore and a P-256 key w/o authentication.
-        //
-        val credentialKeySecureArea: SecureArea = secureAreaRepository.getImplementation(
-            AndroidKeystoreSecureArea.SECURE_AREA_IDENTIFIER)!!
-        val credentialKeySettings = SecureArea.CreateKeySettings("".toByteArray())
         val credential = credentialStore.createCredential(
-            provisionInfo.credentialName(),
-            credentialKeySecureArea,
-            credentialKeySettings
-        )
+            provisionInfo.credentialName())
         credential.applicationData.setNameSpacedData("credentialData", nameSpacedData)
 
         val authKeySecureArea: SecureArea = provisionInfo.currentSecureArea.secureArea
@@ -310,7 +300,6 @@ class ProvisioningUtil private constructor(
                     documentColor = it.applicationData.getNumber(CARD_ART).toInt(),
                     selfSigned = it.applicationData.getBoolean(IS_SELF_SIGNED),
                     maxUsagesPerKey = it.applicationData.getNumber(MAX_USAGES_PER_KEY).toInt(),
-                    currentSecureArea = it.credentialSecureArea.toSecureAreaState(),
                     lastTimeUsed = lastTimeUsed,
                     authKeys = authKeys
                 )

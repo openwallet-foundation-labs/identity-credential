@@ -50,9 +50,7 @@ public class CredentialUtilTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
 
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());

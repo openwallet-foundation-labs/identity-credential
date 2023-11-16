@@ -71,17 +71,8 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
         byte[] credentialKeyAttestationChallenge = new byte[] {10, 11, 12};
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(credentialKeyAttestationChallenge).build());
+                "testCredential");
         Assert.assertEquals("testCredential", credential.getName());
-        List<X509Certificate> certChain = credential.getAttestation();
-
-        // Check the attestation extension
-        AndroidAttestationExtensionParser parser = new AndroidAttestationExtensionParser(certChain.get(0));
-        Assert.assertArrayEquals(credentialKeyAttestationChallenge, parser.getAttestationChallenge());
-        AndroidAttestationExtensionParser.SecurityLevel securityLevel = parser.getKeymasterSecurityLevel();
-        Assert.assertEquals(AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT, securityLevel);
 
         // Create pending authentication key and check its attestation
         byte[] authKeyChallenge = new byte[] {20, 21, 22};
@@ -95,7 +86,8 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
                                                 | AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC)
                                 .build(),
                         null);
-        parser = new AndroidAttestationExtensionParser(pendingAuthenticationKey.getAttestation().get(0));
+        AndroidAttestationExtensionParser parser =
+                new AndroidAttestationExtensionParser(pendingAuthenticationKey.getAttestation().get(0));
         Assert.assertArrayEquals(authKeyChallenge,
                 parser.getAttestationChallenge());
         Assert.assertEquals(AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT,
@@ -105,23 +97,13 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
         credential = credentialStore.lookupCredential("testCredential");
         Assert.assertNotNull(credential);
         Assert.assertEquals("testCredential", credential.getName());
-        List<X509Certificate> certChain2 = credential.getAttestation();
-        Assert.assertEquals(certChain.size(), certChain2.size());
-        for (int n = 0; n < certChain.size(); n++) {
-            Assert.assertEquals(certChain.get(n), certChain2.get(n));
-        }
 
         Assert.assertNull(credentialStore.lookupCredential("nonExistingCredential"));
 
         // Check creating a credential with an existing name overwrites the existing one
         credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new AndroidKeystoreSecureArea.CreateKeySettings.Builder(credentialKeyAttestationChallenge).build());
+                "testCredential");
         Assert.assertEquals("testCredential", credential.getName());
-        // At least the leaf certificate should be different
-        List<X509Certificate> certChain3 = credential.getAttestation();
-        Assert.assertNotEquals(certChain3.get(0), certChain2.get(0));
 
         credential = credentialStore.lookupCredential("testCredential");
         Assert.assertNotNull(credential);

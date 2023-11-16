@@ -70,7 +70,6 @@ class DocumentInfoViewModel(
                     documentType = documentInformation.docType,
                     documentColor = documentInformation.documentColor.toCardArt(),
                     provisioningDate = documentInformation.dateProvisioned,
-                    currentSecureArea = documentInformation.currentSecureArea,
                     isSelfSigned = documentInformation.selfSigned,
                     lastTimeUsedDate = documentInformation.lastTimeUsed,
                     authKeys = documentInformation.authKeys.asScreenStateKeys()
