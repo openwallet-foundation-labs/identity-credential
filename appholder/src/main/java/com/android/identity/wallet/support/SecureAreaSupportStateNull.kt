@@ -10,15 +10,4 @@ class SecureAreaSupportStateNull : SecureAreaSupportState {
 
     override val mDocAuthOption: MdocAuthOption
         get() = MdocAuthOption()
-
-    override fun createKeystoreSettings(validityInDays: Int): SecureArea.CreateKeySettings {
-        return SecureArea.CreateKeySettings("challenge".toByteArray())
-    }
-
-    override fun createKeystoreSettingForCredential(
-        mDocAuthOption: String,
-        credential: Credential
-    ): SecureArea.CreateKeySettings {
-        return SecureArea.CreateKeySettings("challenge".toByteArray())
-    }
 }

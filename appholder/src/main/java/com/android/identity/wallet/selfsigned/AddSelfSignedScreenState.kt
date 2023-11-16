@@ -15,7 +15,7 @@ data class AddSelfSignedScreenState(
     val cardArt: DocumentColor = DocumentColor.Green,
     val documentName: String = "Driving License",
     val currentSecureArea: CurrentSecureArea = ProvisioningUtil.defaultSecureArea.toSecureAreaState(),
-    val numberOfMso: Int = 10,
+    val numberOfMso: Int = 3,
     val maxUseOfMso: Int = 1,
     val validityInDays: Int = 30,
     val minValidityInDays: Int = 10,

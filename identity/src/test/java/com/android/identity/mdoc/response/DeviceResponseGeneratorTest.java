@@ -116,6 +116,9 @@ public class DeviceResponseGeneratorTest {
         provisionCredential();
     }
 
+    // This isn't really used, we only use a single domain.
+    private final String AUTH_KEY_DOMAIN = "domain";
+
     private void provisionCredential() throws Exception {
         CredentialStore credentialStore = new CredentialStore(
                 mStorageEngine,
@@ -133,7 +136,7 @@ public class DeviceResponseGeneratorTest {
                 .putEntryString("ns2", "bar1", "foo1")
                 .putEntryString("ns2", "bar2", "foo2")
                 .build();
-        mCredential.setNameSpacedData(nameSpacedData);
+        mCredential.getApplicationData().setNameSpacedData("credentialData", nameSpacedData);
 
         Map<String, Map<String, byte[]>> overrides = new HashMap<>();
         Map<String, byte[]> overridesForNs1 = new HashMap<>();
@@ -152,6 +155,7 @@ public class DeviceResponseGeneratorTest {
         mTimeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000);
         Credential.PendingAuthenticationKey pendingAuthKey =
                 mCredential.createPendingAuthenticationKey(
+                        AUTH_KEY_DOMAIN,
                         mSecureArea,
                         new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
                                 .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN
@@ -232,7 +236,7 @@ public class DeviceResponseGeneratorTest {
 
         Map<String, List<byte[]>> mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
                 request,
-                mCredential.getNameSpacedData(),
+                mCredential.getApplicationData().getNameSpacedData("credentialData"),
                 staticAuthData);
 
         DeviceResponseGenerator deviceResponseGenerator = new DeviceResponseGenerator(0);
@@ -316,7 +320,7 @@ public class DeviceResponseGeneratorTest {
 
         Map<String, List<byte[]>> mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
                 request,
-                mCredential.getNameSpacedData(),
+                mCredential.getApplicationData().getNameSpacedData("credentialData"),
                 staticAuthData);
 
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
@@ -366,7 +370,7 @@ public class DeviceResponseGeneratorTest {
 
         Map<String, List<byte[]>> mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
                 request,
-                mCredential.getNameSpacedData(),
+                mCredential.getApplicationData().getNameSpacedData("credentialData"),
                 staticAuthData);
 
         // Check that DeviceSigned works.
@@ -516,7 +520,7 @@ public class DeviceResponseGeneratorTest {
 
         Map<String, List<byte[]>> mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
                 request,
-                mCredential.getNameSpacedData(),
+                mCredential.getApplicationData().getNameSpacedData("credentialData"),
                 staticAuthData);
 
         DeviceResponseGenerator deviceResponseGenerator = new DeviceResponseGenerator(0);

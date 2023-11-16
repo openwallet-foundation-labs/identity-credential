@@ -7,7 +7,7 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.Credential
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SoftwareSecureArea
-import com.android.identity.wallet.util.ProvisioningUtil
+import com.android.identity.util.Timestamp
 
 interface SecureAreaSupport {
 
@@ -22,16 +22,17 @@ interface SecureAreaSupport {
     fun SecureAreaAuthUi(onUiStateUpdated: (newState: SecureAreaSupportState) -> Unit)
 
     /**
-     * This function should create [SecureArea.KeyUnlockData] based on the incoming [Credential].
-     * It's implementation should decide on the mechanism that will do the unlocking (i.e. present
-     * a biometric prompts or other sort of UI), and the way the [SecureArea.KeyUnlockData] is created.
+     * This function should create [SecureArea.KeyUnlockData] based on the incoming
+     * [Credential.AuthenticationKey]. Its implementation should decide on the mechanism
+     * that will do the unlocking (i.e. present a biometric prompts or other sort of UI),
+     * and the way the [SecureArea.KeyUnlockData] is created.
      *
      * The function is an extension on a [Fragment] due to the nature of Android and the navigation,
      * so in case of rendering a UI specific for unlocking (like a Biometric Prompt, or a Dialog),
      * there is a provided way to navigate using the [findNavController] function.
      */
     fun Fragment.unlockKey(
-        credential: Credential,
+        authKey: Credential.AuthenticationKey,
         onKeyUnlocked: (unlockData: SecureArea.KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     )
@@ -41,6 +42,24 @@ interface SecureAreaSupport {
      * when rendering the composable UI.
      */
     fun getSecureAreaSupportState(): SecureAreaSupportState
+
+    /**
+     * Returns a configuration for creating authentication keys which can be persisted to disk
+     * and passed to [createAuthKeySettingsFromConfiguration] every time new authentication keys
+     * need to be created.
+     */
+    fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray
+
+    /**
+     * Creates a [SecureArea.CreateKeySettings] instead based on the settings previously created
+     * with [createAuthKeySettingsConfiguration] and the given challenge and validity period.
+     */
+    fun createAuthKeySettingsFromConfiguration(
+        encodedConfiguration: ByteArray,
+        challenge: ByteArray,
+        validFrom: Timestamp,
+        validUntil: Timestamp
+    ): SecureArea.CreateKeySettings
 
     companion object {
         fun getInstance(
@@ -61,9 +80,9 @@ interface SecureAreaSupport {
 
         fun getInstance(
             context: Context,
-            credential: Credential
+            secureArea: SecureArea,
         ): SecureAreaSupport {
-            return when (credential.credentialSecureArea) {
+            return when (secureArea) {
                 is AndroidKeystoreSecureArea -> {
                     val capabilities = AndroidKeystoreSecureArea.Capabilities(context)
                     AndroidKeystoreSecureAreaSupport(capabilities)

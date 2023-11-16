@@ -79,7 +79,7 @@ private fun PassphrasePromptUI(
         ) {
             Text(
                 text = stringResource(id = R.string.passphrase_prompt_title),
-                style = MaterialTheme.typography.displaySmall
+                style = MaterialTheme.typography.titleLarge
             )
             Text(
                 text = stringResource(id = R.string.passphrase_prompt_message),

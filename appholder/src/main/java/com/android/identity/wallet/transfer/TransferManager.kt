@@ -5,12 +5,15 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color.BLACK
 import android.graphics.Color.WHITE
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
 import com.android.identity.android.legacy.*
+import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -21,7 +24,6 @@ import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Timestamp
-import com.android.identity.wallet.composables.state.MdocAuthStateOption
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.DocumentDataReader
 import com.android.identity.wallet.documentdata.DocumentElements
@@ -31,6 +33,7 @@ import com.google.zxing.MultiFormatWriter
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 import java.util.*
+import java.util.concurrent.Executors
 
 class TransferManager private constructor(private val context: Context) {
 
@@ -161,64 +164,85 @@ class TransferManager private constructor(private val context: Context) {
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
         deviceResponseGenerator: DeviceResponseGenerator,
-        keyUnlockData: SecureArea.KeyUnlockData?
-    ): AddDocumentToResponseResult {
-        var signingKeyUsageLimitPassed = false
-        val documentManager = DocumentManager.getInstance(context)
-        val documentInformation = documentManager.getDocumentInformation(credentialName)
-        requireValidProperty(documentInformation) { "Document not found!" }
+        authKey: Credential.AuthenticationKey?,
+        authKeyUnlockData: SecureArea.KeyUnlockData?,
+        onResultReady: (result: AddDocumentToResponseResult) -> Unit
+    ) {
+        // Putting together the response involves a bit of work and also potentially
+        // blocking I/O. Do all this on a worker thread.
+        Executors.newSingleThreadExecutor().execute(kotlinx.coroutines.Runnable {
+            var result: AddDocumentToResponseResult
+            var signingKeyUsageLimitPassed = false
+            val documentManager = DocumentManager.getInstance(context)
+            val documentInformation = documentManager.getDocumentInformation(credentialName)
+            requireValidProperty(documentInformation) { "Document not found!" }
 
-        val credential = requireNotNull(documentManager.getCredentialByName(credentialName))
-        val dataElements = issuerSignedEntriesToRequest.keys.flatMap { key ->
-            issuerSignedEntriesToRequest.getOrDefault(key, emptyList()).map { value ->
-                CredentialRequest.DataElement(key, value, false)
+            val credential = requireNotNull(documentManager.getCredentialByName(credentialName))
+            val dataElements = issuerSignedEntriesToRequest.keys.flatMap { key ->
+                issuerSignedEntriesToRequest.getOrDefault(key, emptyList()).map { value ->
+                    CredentialRequest.DataElement(key, value, false)
+                }
             }
-        }
 
-        val request = CredentialRequest(dataElements)
-        val authKey = credential.findAuthenticationKey(Timestamp.now())
-            ?: throw IllegalStateException("No auth key available")
-        if (authKey.usageCount >= documentInformation.maxUsagesPerKey) {
-            logWarning("Using Auth Key previously used ${authKey.usageCount} times, and maxUsagesPerKey is ${documentInformation.maxUsagesPerKey}")
-            signingKeyUsageLimitPassed = true
-        }
+            val request = CredentialRequest(dataElements)
 
-        val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
-        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            request, credential.nameSpacedData, staticAuthData
-        )
-
-        val transcript = communication.getSessionTranscript() ?: byteArrayOf()
-        val authOption =
-            MdocAuthStateOption.valueOf(documentInformation.mDocAuthOption)
-        try {
-            val generator = DocumentGenerator(docType, staticAuthData.issuerAuth, transcript)
-                .setIssuerNamespaces(mergedIssuerNamespaces)
-            if (authOption == MdocAuthStateOption.ECDSA) {
-                generator.setDeviceNamespacesSignature(
-                    NameSpacedData.Builder().build(),
-                    authKey.secureArea,
-                    authKey.alias,
-                    keyUnlockData,
-                    SecureArea.ALGORITHM_ES256
-                )
+            val authKeyToUse : Credential.AuthenticationKey
+            if (authKey != null) {
+                authKeyToUse = authKey
             } else {
-                generator.setDeviceNamespacesMac(
-                    NameSpacedData.Builder().build(),
-                    authKey.secureArea,
-                    authKey.alias,
-                    keyUnlockData,
-                    communication.deviceRetrievalHelper!!.eReaderKey
-                )
+                authKeyToUse = credential.findAuthenticationKey(Timestamp.now())
+                    ?: throw IllegalStateException("No auth key available")
             }
-            val data = generator.generate()
-            deviceResponseGenerator.addDocument(data)
-            authKey.increaseUsageCount()
-            ProvisioningUtil.getInstance(context).trackUsageTimestamp(credential)
-        } catch (lockedException: SecureArea.KeyLockedException) {
-            return AddDocumentToResponseResult.DocumentLocked(credential)
-        }
-        return AddDocumentToResponseResult.DocumentAdded(signingKeyUsageLimitPassed)
+
+            if (authKeyToUse.usageCount >= documentInformation.maxUsagesPerKey) {
+                logWarning("Using Auth Key previously used ${authKeyToUse.usageCount} times, and maxUsagesPerKey is ${documentInformation.maxUsagesPerKey}")
+                signingKeyUsageLimitPassed = true
+            }
+
+            val staticAuthData = StaticAuthDataParser(authKeyToUse.issuerProvidedData).parse()
+            val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
+                request,
+                credential.applicationData.getNameSpacedData("credentialData"),
+                staticAuthData
+            )
+
+            val transcript = communication.getSessionTranscript() ?: byteArrayOf()
+
+            try {
+                val generator = DocumentGenerator(docType, staticAuthData.issuerAuth, transcript)
+                    .setIssuerNamespaces(mergedIssuerNamespaces)
+                val keyInfo = authKeyToUse.secureArea.getKeyInfo(authKeyToUse.alias)
+                if ((keyInfo.keyPurposes and SecureArea.KEY_PURPOSE_SIGN) != 0) {
+                    generator.setDeviceNamespacesSignature(
+                        NameSpacedData.Builder().build(),
+                        authKeyToUse.secureArea,
+                        authKeyToUse.alias,
+                        authKeyUnlockData,
+                        SecureArea.ALGORITHM_ES256
+                    )
+                } else {
+                    generator.setDeviceNamespacesMac(
+                        NameSpacedData.Builder().build(),
+                        authKeyToUse.secureArea,
+                        authKeyToUse.alias,
+                        authKeyUnlockData,
+                        communication.deviceRetrievalHelper!!.eReaderKey
+                    )
+                }
+                val data = generator.generate()
+                deviceResponseGenerator.addDocument(data)
+                log("Increasing usage count on ${authKeyToUse.alias}")
+                authKeyToUse.increaseUsageCount()
+                ProvisioningUtil.getInstance(context).trackUsageTimestamp(credential)
+                result = AddDocumentToResponseResult.DocumentAdded(signingKeyUsageLimitPassed)
+            } catch (lockedException: SecureArea.KeyLockedException) {
+                result = AddDocumentToResponseResult.DocumentLocked(authKeyToUse)
+            }
+            // Post the result on the UI thread
+            Handler(Looper.getMainLooper()).post {
+                onResultReady(result)
+            }
+        })
     }
 
     fun stopPresentation(
@@ -257,7 +281,7 @@ class TransferManager private constructor(private val context: Context) {
         val documentInformation = documentManager.getDocumentInformation(documentName)
 
         val credential = requireNotNull(documentManager.getCredentialByName(documentName))
-        val nameSpacedData = credential.nameSpacedData
+        val nameSpacedData = credential.applicationData.getNameSpacedData("credentialData")
         return DocumentDataReader(documentInformation?.docType ?: "").read(nameSpacedData)
     }
 

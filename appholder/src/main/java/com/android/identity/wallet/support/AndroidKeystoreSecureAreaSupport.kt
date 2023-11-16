@@ -13,10 +13,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
+import co.nstant.`in`.cbor.CborBuilder
+import co.nstant.`in`.cbor.CborDecoder
+import co.nstant.`in`.cbor.model.Map
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
 import com.android.identity.credential.Credential
+import com.android.identity.internal.Util
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet.R
@@ -28,6 +32,8 @@ import com.android.identity.wallet.support.androidkeystore.AndroidAuthKeyCurveOp
 import com.android.identity.wallet.support.androidkeystore.AndroidAuthKeyCurveState
 import com.android.identity.wallet.composables.state.AuthTypeState
 import com.android.identity.wallet.composables.state.MdocAuthOption
+import com.android.identity.wallet.util.FormatUtil
+import java.io.ByteArrayInputStream
 
 class AndroidKeystoreSecureAreaSupport(
     private val capabilities: AndroidKeystoreSecureArea.Capabilities
@@ -42,12 +48,11 @@ class AndroidKeystoreSecureAreaSupport(
     )
 
     override fun Fragment.unlockKey(
-        credential: Credential,
+        authKey: Credential.AuthenticationKey,
         onKeyUnlocked: (unlockData: SecureArea.KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {
-        val authKey = credential.findAuthenticationKey(Timestamp.now()) ?: throw IllegalStateException("No auth key available")
-        val keyInfo = credential.credentialSecureArea.getKeyInfo(authKey.alias) as AndroidKeystoreSecureArea.KeyInfo
+        val keyInfo = authKey.secureArea.getKeyInfo(authKey.alias) as AndroidKeystoreSecureArea.KeyInfo
         val unlockData = AndroidKeystoreSecureArea.KeyUnlockData(authKey.alias)
 
         val allowLskf = keyInfo.userAuthenticationType == USER_AUTHENTICATION_TYPE_LSKF
@@ -65,7 +70,7 @@ class AndroidKeystoreSecureAreaSupport(
             .withCancelledCallback {
                 if (allowLskfUnlock) {
                     val runnable = {
-                        unlockKey(credential, onKeyUnlocked, onUnlockFailure)
+                        unlockKey(authKey, onKeyUnlocked, onUnlockFailure)
                     }
                     // Without this delay, the prompt won't reshow
                     Handler(Looper.getMainLooper()).postDelayed(runnable, 100)
@@ -164,5 +169,54 @@ class AndroidKeystoreSecureAreaSupport(
 
     override fun getSecureAreaSupportState(): SecureAreaSupportState {
         return screenState
+    }
+
+    override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray {
+        val state = secureAreaSupportState as AndroidKeystoreSecureAreaSupportState
+
+        var userAuthSettings = 0
+        if (state.allowLSKFUnlocking.isEnabled) {
+            userAuthSettings += AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
+        }
+        if (state.allowBiometricUnlocking.isEnabled) {
+            userAuthSettings += AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
+        }
+
+        return FormatUtil.cborEncode(CborBuilder()
+            .addMap()
+            .put("curve", state.authKeyCurveState.authCurve.toEcCurve().toLong())
+            .put("purposes", state.mDocAuthOption.mDocAuthentication.toKeyPurpose().toLong())
+            .put("userAuthEnabled", state.userAuthentication)
+            .put("userAuthTimeoutMillis", state.userAuthenticationTimeoutSeconds.toLong() * 1000L)
+            .put("userAuthSettings", userAuthSettings.toLong())
+            .put("useStrongBox", state.useStrongBox.isEnabled)
+            .end()
+            .build().get(0))
+    }
+
+    override fun createAuthKeySettingsFromConfiguration(
+        encodedConfiguration: ByteArray,
+        challenge: ByteArray,
+        validFrom: Timestamp,
+        validUntil: Timestamp
+    ): SecureArea.CreateKeySettings {
+        val map = CborDecoder(ByteArrayInputStream(encodedConfiguration)).decode().get(0) as Map
+        val curve = Util.cborMapExtractNumber(map, "curve").toInt()
+        val purposes = Util.cborMapExtractNumber(map, "purposes").toInt()
+        val userAuthEnabled = Util.cborMapExtractBoolean(map, "userAuthEnabled")
+        val userAuthTimeoutMillis = Util.cborMapExtractNumber(map, "userAuthTimeoutMillis")
+        val userAuthSettings = Util.cborMapExtractNumber(map, "userAuthSettings").toInt()
+        val useStrongBox = Util.cborMapExtractBoolean(map, "useStrongBox")
+        return AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
+            .setEcCurve(curve)
+            .setKeyPurposes(purposes)
+            .setValidityPeriod(validFrom, validUntil)
+            .setUseStrongBox(useStrongBox)
+            .setUserAuthenticationRequired(
+                userAuthEnabled,
+                userAuthTimeoutMillis,
+                userAuthSettings
+            )
+            .build()
     }
 }

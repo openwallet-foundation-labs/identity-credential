@@ -31,8 +31,7 @@ object PreferencesHelper {
         // As per the docs, the credential data contains reference to Keystore aliases so ensure
         // this is stored in a location where it's not automatically backed up and restored by
         // Android Backup as per https://developer.android.com/guide/topics/data/autobackup
-
-        val storageDir = File(context.noBackupFilesDir, "appholder")
+        val storageDir = File(context.noBackupFilesDir, "identity")
         if (!storageDir.exists()) {
             storageDir.mkdir()
         }

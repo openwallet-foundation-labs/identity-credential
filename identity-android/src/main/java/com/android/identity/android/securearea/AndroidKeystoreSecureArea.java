@@ -116,6 +116,11 @@ import co.nstant.in.cbor.model.UnicodeString;
  * <p>This implementation works only on Android and requires API level 24 or later.
  */
 public class AndroidKeystoreSecureArea implements SecureArea {
+    /**
+     * The Secure Area identifier for the Android Keystore Secure Area.
+     */
+    public static final String SECURE_AREA_IDENTIFIER = "AndroidKeystoreSecureArea";
+
     private static final String TAG = "AndroidKeystoreSA";  // limit to <= 23 chars
     private final Context mContext;
     private final StorageEngine mStorageEngine;
@@ -163,7 +168,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
     @NonNull
     @Override
     public String getIdentifier() {
-        return "AndroidKeystoreSecureArea";
+        return SECURE_AREA_IDENTIFIER;
     }
 
     @NonNull

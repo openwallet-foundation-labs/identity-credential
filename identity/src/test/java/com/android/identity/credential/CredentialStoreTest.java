@@ -41,6 +41,9 @@ public class CredentialStoreTest {
 
     SecureAreaRepository mSecureAreaRepository;
 
+    // This isn't really used, we only use a single domain.
+    private final String AUTH_KEY_DOMAIN = "domain";
+
     @Before
     public void setup() {
         mStorageEngine = new EphemeralStorageEngine();
@@ -122,6 +125,46 @@ public class CredentialStoreTest {
         Assert.assertNull(credentialStore.lookupCredential("testCredential"));
     }
 
+    /* Validates that the same instance is returned for the same credential name. This
+     * relies on Credential.equals() not being overridden.
+     */
+    @Test
+    public void testCaching() {
+        CredentialStore credentialStore = new CredentialStore(
+                mStorageEngine,
+                mSecureAreaRepository);
+
+        Credential a = credentialStore.createCredential(
+                "a",
+                mSecureArea,
+                new SecureArea.CreateKeySettings(new byte[0]));
+
+        Credential b = credentialStore.createCredential(
+                "b",
+                mSecureArea,
+                new SecureArea.CreateKeySettings(new byte[0]));
+
+        Assert.assertEquals(a, credentialStore.lookupCredential("a"));
+        Assert.assertEquals(a, credentialStore.lookupCredential("a"));
+        Assert.assertEquals(b, credentialStore.lookupCredential("b"));
+        Assert.assertEquals(b, credentialStore.lookupCredential("b"));
+
+        credentialStore.deleteCredential("a");
+        Assert.assertNull(credentialStore.lookupCredential("a"));
+
+        Credential a_prime = credentialStore.createCredential(
+                "a",
+                mSecureArea,
+                new SecureArea.CreateKeySettings(new byte[0]));
+        Assert.assertEquals(a_prime, credentialStore.lookupCredential("a"));
+        Assert.assertEquals(a_prime, credentialStore.lookupCredential("a"));
+
+        Assert.assertNotEquals(a_prime, a);
+
+        Assert.assertEquals(b, credentialStore.lookupCredential("b"));
+    }
+
+
     @Test
     public void testNameSpacedData() {
         CredentialStore credentialStore = new CredentialStore(
@@ -133,9 +176,6 @@ public class CredentialStoreTest {
                 mSecureArea,
                 new SecureArea.CreateKeySettings(new byte[0]));
 
-        // After creation, NameSpacedData is present but empty.
-        Assert.assertEquals(0, credential.getNameSpacedData().getNameSpaceNames().size());
-
         NameSpacedData nameSpacedData = new NameSpacedData.Builder()
                 .putEntryString("ns1", "foo1", "bar1")
                 .putEntryString("ns1", "foo2", "bar2")
@@ -143,7 +183,7 @@ public class CredentialStoreTest {
                 .putEntryString("ns2", "bar1", "foo1")
                 .putEntryString("ns2", "bar2", "foo2")
                 .build();
-        credential.setNameSpacedData(nameSpacedData);
+        credential.getApplicationData().setNameSpacedData("credentialData", nameSpacedData);
 
         Credential loadedCredential = credentialStore.lookupCredential("testCredential");
         Assert.assertNotNull(loadedCredential);
@@ -152,8 +192,8 @@ public class CredentialStoreTest {
         // We check that NameSpacedData is preserved across loads by simply comparing the
         // encoded data.
         Assert.assertArrayEquals(
-                Util.cborEncode(credential.getNameSpacedData().toCbor()),
-                Util.cborEncode(loadedCredential.getNameSpacedData().toCbor()));
+                Util.cborEncode(credential.getApplicationData().getNameSpacedData("credentialData").toCbor()),
+                Util.cborEncode(loadedCredential.getApplicationData().getNameSpacedData("credentialData").toCbor()));
     }
 
     @Test
@@ -184,6 +224,7 @@ public class CredentialStoreTest {
         // Create ten authentication keys...
         for (int n = 0; n < 10; n++) {
             credential.createPendingAuthenticationKey(
+                    AUTH_KEY_DOMAIN,
                     mSecureArea,
                     new SecureArea.CreateKeySettings(new byte[0]),
                     null);
@@ -258,6 +299,7 @@ public class CredentialStoreTest {
         // Create and certify five replacements
         for (n = 0; n < 5; n++) {
             credential.createPendingAuthenticationKey(
+                    AUTH_KEY_DOMAIN,
                     mSecureArea,
                     new SecureArea.CreateKeySettings(new byte[0]),
                     null);
@@ -327,6 +369,7 @@ public class CredentialStoreTest {
         // Create ten pending auth keys and certify four of them
         for (n = 0; n < 4; n++) {
             credential.createPendingAuthenticationKey(
+                    AUTH_KEY_DOMAIN,
                     mSecureArea,
                     new SecureArea.CreateKeySettings(new byte[0]),
                     null);
@@ -352,6 +395,7 @@ public class CredentialStoreTest {
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
         for (n = 0; n < 6; n++) {
             credential.createPendingAuthenticationKey(
+                    AUTH_KEY_DOMAIN,
                     mSecureArea,
                     new SecureArea.CreateKeySettings(new byte[0]),
                     null);
@@ -420,6 +464,7 @@ public class CredentialStoreTest {
         int n;
         for (n = 0; n < 10; n++) {
             credential.createPendingAuthenticationKey(
+                    AUTH_KEY_DOMAIN,
                     mSecureArea,
                     new SecureArea.CreateKeySettings(new byte[0]),
                     null);
@@ -480,9 +525,6 @@ public class CredentialStoreTest {
                 mSecureArea,
                 new SecureArea.CreateKeySettings(new byte[0]));
 
-        // After creation, NameSpacedData is present but empty.
-        Assert.assertEquals(0, credential.getNameSpacedData().getNameSpaceNames().size());
-
         ApplicationData appData = credential.getApplicationData();
         Assert.assertFalse(appData.keyExists("key1"));
         Assert.assertThrows(IllegalArgumentException.class, () -> appData.getData("key1"));
@@ -534,6 +576,7 @@ public class CredentialStoreTest {
         for (int n = 0; n < 10; n++) {
             Credential.PendingAuthenticationKey pendingAuthKey =
                     credential.createPendingAuthenticationKey(
+                            AUTH_KEY_DOMAIN,
                             mSecureArea,
                             new SecureArea.CreateKeySettings(new byte[0]),
                             null);
@@ -621,6 +664,7 @@ public class CredentialStoreTest {
         for (int n = 0; n < 10; n++) {
             Credential.PendingAuthenticationKey pendingAuthKey =
                     credential.createPendingAuthenticationKey(
+                            AUTH_KEY_DOMAIN,
                             mSecureArea,
                             new SecureArea.CreateKeySettings(new byte[0]),
                             null);
@@ -636,6 +680,7 @@ public class CredentialStoreTest {
         Assert.assertArrayEquals(new byte[] {0, 5}, keyToReplace.getIssuerProvidedData());
         Credential.PendingAuthenticationKey pendingAuthKey =
                 credential.createPendingAuthenticationKey(
+                        AUTH_KEY_DOMAIN,
                         mSecureArea,
                         new SecureArea.CreateKeySettings(new byte[0]),
                         keyToReplace);
@@ -674,6 +719,7 @@ public class CredentialStoreTest {
         Credential.AuthenticationKey toBeReplaced = credential.getAuthenticationKeys().get(0);
         Credential.PendingAuthenticationKey replacement =
                 credential.createPendingAuthenticationKey(
+                        AUTH_KEY_DOMAIN,
                         mSecureArea,
                         new SecureArea.CreateKeySettings(new byte[0]),
                         toBeReplaced);
@@ -685,6 +731,7 @@ public class CredentialStoreTest {
         // Similarly, test the case where the key to be replaced is prematurely deleted.
         // The replacement key should no longer indicate it's a replacement key.
         replacement = credential.createPendingAuthenticationKey(
+                AUTH_KEY_DOMAIN,
                 mSecureArea,
                 new SecureArea.CreateKeySettings(new byte[0]),
                 toBeReplaced);

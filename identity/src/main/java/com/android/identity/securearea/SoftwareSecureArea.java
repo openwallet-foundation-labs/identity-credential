@@ -95,6 +95,10 @@ import co.nstant.in.cbor.model.UnicodeString;
  * detail may change in the future.
  */
 public class SoftwareSecureArea implements SecureArea {
+    /**
+     * The Secure Area identifier for the Software Secure Area.
+     */
+    public static final String SECURE_AREA_IDENTIFIER = "SoftwareSecureArea";
     private static final String TAG = "SoftwareSecureArea";
     private final StorageEngine mStorageEngine;
 
@@ -115,7 +119,7 @@ public class SoftwareSecureArea implements SecureArea {
     @NonNull
     @Override
     public String getIdentifier() {
-        return "SoftwareSecureArea";
+        return SECURE_AREA_IDENTIFIER;
     }
 
     @NonNull

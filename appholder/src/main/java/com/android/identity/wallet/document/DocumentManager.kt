@@ -643,6 +643,6 @@ class DocumentManager private constructor(private val context: Context) {
     fun refreshAuthKeys(documentName: String) {
         val documentInformation = requireNotNull(getDocumentInformation(documentName))
         val credential = requireNotNull(getCredentialByName(documentName))
-        ProvisioningUtil.getInstance(context).refreshAuthKeys(credential, documentInformation)
+        ProvisioningUtil.getInstance(context).refreshAuthKeys(credential, documentInformation.docType)
     }
 }

@@ -24,6 +24,8 @@ import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.StorageEngine;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -39,12 +41,20 @@ import java.util.List;
  * implementations for <em>Credential Key</em> and <em>Authentication Keys</em>) used
  * in the credentials stored in the Credential Store.
  *
+ * <p>It is guaranteed that calls to {@link #createCredential(String, SecureArea, SecureArea.CreateKeySettings)},
+ * {@link #createCredentialWithExistingKey(String, SecureArea, SecureArea.CreateKeySettings, String)},
+ * and {@link #lookupCredential(String)} will return the same {@link Credential} instance
+ * if passed the same {@code name}.
+ *
  * <p>For more details about credentials stored in a {@link CredentialStore} see the
  * {@link Credential} class.
  */
 public class CredentialStore {
     private final StorageEngine mStorageEngine;
     private final SecureAreaRepository mSecureAreaRepository;
+
+    // Use a cache so the same instance is returned by multiple lookupCredential() calls.
+    private final HashMap<String, Credential> mCredentialCache = new LinkedHashMap<>();
 
     /**
      * Creates a new credential store.
@@ -73,11 +83,13 @@ public class CredentialStore {
     public @NonNull Credential createCredential(@NonNull String name,
                                                 @NonNull SecureArea secureArea,
                                                 @NonNull SecureArea.CreateKeySettings credentialKeySettings) {
-        return Credential.create(mStorageEngine,
+        Credential result = Credential.create(mStorageEngine,
                 mSecureAreaRepository,
                 name,
                 secureArea,
                 credentialKeySettings);
+        mCredentialCache.put(name, result);
+        return result;
     }
 
     /**
@@ -97,12 +109,14 @@ public class CredentialStore {
             @NonNull SecureArea secureArea,
             @NonNull SecureArea.CreateKeySettings credentialKeySettings,
             @NonNull String existingKeyAlias) {
-        return Credential.createWithExistingKey(mStorageEngine,
+        Credential result = Credential.createWithExistingKey(mStorageEngine,
                 mSecureAreaRepository,
                 name,
                 secureArea,
                 credentialKeySettings,
                 existingKeyAlias);
+        mCredentialCache.put(name, result);
+        return result;
     }
 
     /**
@@ -112,7 +126,13 @@ public class CredentialStore {
      * @return the credential or {@code null} if not found.
      */
     public @Nullable Credential lookupCredential(@NonNull String name) {
-        return Credential.lookup(mStorageEngine, mSecureAreaRepository, name);
+        Credential result = mCredentialCache.get(name);
+        if (result != null) {
+            return result;
+        }
+        result = Credential.lookup(mStorageEngine, mSecureAreaRepository, name);
+        mCredentialCache.put(name, result);
+        return result;
     }
 
     /**
@@ -142,6 +162,7 @@ public class CredentialStore {
         if (credential == null) {
             return;
         }
+        mCredentialCache.remove(name);
         credential.deleteCredential();
     }
 }

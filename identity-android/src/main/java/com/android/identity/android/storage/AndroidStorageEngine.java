@@ -77,6 +77,7 @@ import co.nstant.in.cbor.model.DataItem;
  * <p>Each file name in the given directory will be prefixed with {@code IC_AndroidStorageEngine_}.
  */
 public class AndroidStorageEngine implements StorageEngine {
+    private static final String TAG = "AndroidStorageEngine";
 
     private static final String PREFIX = "IC_AndroidStorageEngine_";
 

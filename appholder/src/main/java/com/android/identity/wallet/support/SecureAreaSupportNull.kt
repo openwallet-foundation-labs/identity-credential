@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
 import com.android.identity.credential.Credential
 import com.android.identity.securearea.SecureArea
+import com.android.identity.util.Timestamp
 import com.android.identity.wallet.selfsigned.OutlinedContainerVertical
 
 class SecureAreaSupportNull : SecureAreaSupport {
@@ -38,7 +39,7 @@ class SecureAreaSupportNull : SecureAreaSupport {
     }
 
     override fun Fragment.unlockKey(
-        credential: Credential,
+        authKey: Credential.AuthenticationKey,
         onKeyUnlocked: (unlockData: SecureArea.KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {
@@ -48,4 +49,19 @@ class SecureAreaSupportNull : SecureAreaSupport {
     override fun getSecureAreaSupportState(): SecureAreaSupportState {
         return state
     }
+
+    override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray {
+        return ByteArray(0)
+    }
+
+
+    override fun createAuthKeySettingsFromConfiguration(
+        encodedConfiguration: ByteArray,
+        challenge: ByteArray,
+        validFrom: Timestamp,
+        validUntil: Timestamp
+    ): SecureArea.CreateKeySettings {
+        return SecureArea.CreateKeySettings(challenge)
+    }
+
 }

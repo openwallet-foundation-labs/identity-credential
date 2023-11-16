@@ -176,7 +176,7 @@
     <string name="mdoc_authentication_label">mdoc authentication</string>
     <string name="authentication_key_curve_label">Authentication Key Curve</string>
 
-    <string name="document_info_alias">Alias</string>
+    <string name="document_info_counter">Counter</string>
     <string name="document_info_valid_from">Valid from</string>
     <string name="document_info_valid_until">Valid until</string>
     <string name="document_info_issuer_data">Issuer data</string>
@@ -188,10 +188,10 @@
     <string name="delete_document_prompt_message">Are you sure you want to delete the document?</string>
     <string name="delete_document_deleted_message">Document Deleted!</string>
 
-    <string name="passphrase_prompt_title">Passphrase</string>
-    <string name="passphrase_prompt_hint">Type Passphrase</string>
-    <string name="passphrase_prompt_incorrect_passphrase">Incorrect Password. Try again!</string>
-    <string name="passphrase_prompt_message">We need your consent to show the document data</string>
+    <string name="passphrase_prompt_title">Passphrase Required</string>
+    <string name="passphrase_prompt_hint">Credential Passphrase</string>
+    <string name="passphrase_prompt_incorrect_passphrase">Incorrect Passphrase. Try again!</string>
+    <string name="passphrase_prompt_message">A passphrase is required for unlocking the key.</string>
     <string name="mdoc_auth_ecdsa">mdoc ECDSA authentication</string>
     <string name="mdoc_auth_mac">mdoc MAC authentication</string>
     <string name="curve_p_256">P-256</string>
@@ -207,5 +207,6 @@
     <string name="curve_X448">X448</string>
     <string name="validity_in_days">Validity time in days</string>
     <string name="minimum_validity_in_days">Minimum validity in days</string>
+    <string name="document_info_domain">Domain</string>
 
 </resources>

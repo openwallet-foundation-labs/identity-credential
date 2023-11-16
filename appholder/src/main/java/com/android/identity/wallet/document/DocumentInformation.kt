@@ -11,20 +11,21 @@ data class DocumentInformation(
     val documentColor: Int,
     val maxUsagesPerKey: Int,
     val lastTimeUsed: String,
-    val mDocAuthOption: String,
     val currentSecureArea: CurrentSecureArea,
     val authKeys: List<KeyData>
 ) {
 
     data class KeyData(
-        val alias: String,
+        val counter: Int,
         val validFrom: String,
         val validUntil: String,
+        val domain: String,
         val issuerDataBytesCount: Int,
         val usagesCount: Int,
         val keyPurposes: Int,
         val ecCurve: Int,
-        val isHardwareBacked: Boolean
+        val isHardwareBacked: Boolean,
+        val secureAreaDisplayName: String
     )
 }
 
