@@ -8,12 +8,13 @@ import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.util.Constants.DEVICE_RESPONSE_STATUS_OK
+import androidx.lifecycle.viewModelScope
 import com.android.identity.android.legacy.CredentialInvalidatedException
 import com.android.identity.credential.Credential
-import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.request.DeviceRequestParser
+import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.securearea.SecureArea
+import com.android.identity.util.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.wallet.R
 import com.android.identity.wallet.authconfirmation.RequestedDocumentData
 import com.android.identity.wallet.authconfirmation.RequestedElement
@@ -22,9 +23,12 @@ import com.android.identity.wallet.document.DocumentInformation
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.transfer.AddDocumentToResponseResult
 import com.android.identity.wallet.transfer.TransferManager
+import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.TransferStatus
 import com.android.identity.wallet.util.logWarning
-import com.android.identity.wallet.util.PreferencesHelper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
@@ -105,37 +109,44 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     ) {
         val elementsToSend = signedElements.collect()
         val responseGenerator = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)
-        elementsToSend.forEach { signedDocument ->
-            try {
-                val issuerSignedEntries = signedDocument.issuerSignedEntries()
-                transferManager.addDocumentToResponse(
-                    signedDocument.identityCredentialName,
-                    signedDocument.documentType,
-                    issuerSignedEntries,
-                    responseGenerator,
-                    authKey,
-                    authKeyUnlockData,
-                    onResultReady = {
-                        if (it !is AddDocumentToResponseResult.DocumentAdded) {
-                            onResultReady(it)
-                            return@addDocumentToResponse
-                        }
-                        transferManager.sendResponse(responseGenerator.generate(), PreferencesHelper.isConnectionAutoCloseEnabled())
-                        transferManager.setResponseServed()
-                        val documentsCount = elementsToSend.count()
-                        documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
-                        cleanUp()
-                        onResultReady(it)
+        viewModelScope.launch {
+            elementsToSend.forEach { signedDocument ->
+                try {
+                    val issuerSignedEntries = signedDocument.issuerSignedEntries()
+                    val result = withContext(Dispatchers.IO) { //<- Offload from UI thread
+                        transferManager.addDocumentToResponse(
+                            signedDocument.identityCredentialName,
+                            signedDocument.documentType,
+                            issuerSignedEntries,
+                            responseGenerator,
+                            authKey,
+                            authKeyUnlockData,
+                        )
                     }
-                )
-            } catch (e: CredentialInvalidatedException) {
-                logWarning("Credential '${signedDocument.identityCredentialName}' is invalid. Deleting.")
-                documentManager.deleteCredentialByName(signedDocument.identityCredentialName)
-                Toast.makeText(app.applicationContext, "Deleting invalid credential "
-                    + signedDocument.identityCredentialName,
-                    Toast.LENGTH_SHORT).show()
-            } catch (e: NoSuchElementException) {
-                logWarning("No requestedDocument for " + signedDocument.documentType)
+                    if (result !is AddDocumentToResponseResult.DocumentAdded) {
+                        onResultReady(result)
+                        return@forEach
+                    }
+                    transferManager.sendResponse(
+                        responseGenerator.generate(),
+                        PreferencesHelper.isConnectionAutoCloseEnabled()
+                    )
+                    transferManager.setResponseServed()
+                    val documentsCount = elementsToSend.count()
+                    documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
+                    cleanUp()
+                    onResultReady(result)
+                } catch (e: CredentialInvalidatedException) {
+                    logWarning("Credential '${signedDocument.identityCredentialName}' is invalid. Deleting.")
+                    documentManager.deleteCredentialByName(signedDocument.identityCredentialName)
+                    Toast.makeText(
+                        app.applicationContext, "Deleting invalid credential "
+                                + signedDocument.identityCredentialName,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } catch (e: NoSuchElementException) {
+                    logWarning("No requestedDocument for " + signedDocument.documentType)
+                }
             }
         }
     }
