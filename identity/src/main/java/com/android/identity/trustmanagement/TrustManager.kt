@@ -1,3 +1,18 @@
+/*
+ * Copyright 2023 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.android.identity.trustmanagement
 
 import com.android.identity.storage.StorageEngine
@@ -8,14 +23,14 @@ import java.security.cert.PKIXCertPathChecker
 import java.security.cert.X509Certificate
 
 /**
- * [TrustManager] class used for the verification of a certificate chain
+ * This class is used for the verification of a certificate chain
  */
 class TrustManager(val certificateStorage: StorageEngine) {
 
     private val certificates: MutableMap<X500Name, X509Certificate>
 
     /**
-     * Class containing the result of the verification of a certificate chain
+     * Nested class containing the result of the verification of a certificate chain
      */
     class TrustResult(
         var isTrusted: Boolean,
@@ -23,11 +38,17 @@ class TrustManager(val certificateStorage: StorageEngine) {
         var error: String = ""
     )
 
+    /**
+     * Initialize private variables
+     */
     init {
         certificates = getAllCertificates().associateBy { X500Name(it.subjectX500Principal.name) }
             .toMutableMap()
     }
 
+    /**
+     * Save a certificate
+     */
     fun saveCertificate(certificateBytes: ByteArray) {
         val certificate = parseCertificate(certificateBytes)
         if (certificateExists(certificate)) {
@@ -38,17 +59,26 @@ class TrustManager(val certificateStorage: StorageEngine) {
         certificates[name] = certificate
     }
 
+    /**
+     * Check that a certificate exists
+     */
     fun certificateExists(certificate: X509Certificate): Boolean{
         val name = X500Name(certificate.subjectX500Principal.name)
         return certificateStorage.get(name.toString()) != null
     }
 
+    /**
+     * Get all the certificates in the [TrustManager]
+     */
     fun getAllCertificates(): List<X509Certificate> {
         return certificateStorage.enumerate().map {
             parseCertificate(certificateStorage.get(it)!!)
         }
     }
 
+    /**
+     * Delete a certificate
+     */
     fun deleteCertificate(certificate: X509Certificate){
         val name = X500Name(certificate.subjectX500Principal.name)
         certificateStorage.delete(name.toString())
@@ -90,6 +120,9 @@ class TrustManager(val certificateStorage: StorageEngine) {
         }
     }
 
+    /**
+     * Find the trusted root of a certificate chain
+     */
     private fun findTrustedRoot(chain: List<X509Certificate>): X509Certificate? {
         chain.forEach { cert ->
             run {
@@ -102,6 +135,9 @@ class TrustManager(val certificateStorage: StorageEngine) {
         return null
     }
 
+    /**
+     * Validate the certificate trust path
+     */
     private fun validateCertificationTrustPath(
         certificationTrustPath: List<X509Certificate>,
         customValidators: List<PKIXCertPathChecker>
@@ -126,6 +162,9 @@ class TrustManager(val certificateStorage: StorageEngine) {
     }
 
 
+    /**
+     * Parse a byte array an X509 certificate
+     */
     private fun parseCertificate(certificateBytes: ByteArray): X509Certificate {
         return CertificateFactory.getInstance("X509")
             .generateCertificate(ByteArrayInputStream(certificateBytes)) as X509Certificate
