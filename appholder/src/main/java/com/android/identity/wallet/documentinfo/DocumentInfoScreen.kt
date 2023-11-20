@@ -155,12 +155,11 @@ private fun DocumentInfoScreenContent(
                                 )
                             }
                         }
-                        val pagerState = rememberPagerState()
+                        val pagerState = rememberPagerState(pageCount = { screenState.authKeys.size })
                         HorizontalPager(
                             modifier = Modifier
                                 .fillMaxWidth(),
                             state = pagerState,
-                            pageCount = screenState.authKeys.size
                         ) { page ->
                             val key = screenState.authKeys[page]
                             AuthenticationKeyInfo(
