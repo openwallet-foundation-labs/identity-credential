@@ -19,7 +19,10 @@ import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.google.android.material.R
 import com.google.android.material.snackbar.Snackbar
+import java.io.ByteArrayInputStream
 import java.security.cert.CertificateException
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 
 
 class CaCertificatesFragment : Fragment() {
@@ -74,7 +77,9 @@ class CaCertificatesFragment : Fragment() {
         try {
             this.requireContext().contentResolver.openInputStream(uri).use { inputStream ->
                 if (inputStream != null) {
-                    VerifierApp.trustManagerInstance.saveCertificate(inputStream.readBytes())
+                    val certificate = parseCertificate(inputStream.readBytes())
+                    VerifierApp.trustManagerInstance.addCertificate(certificate)
+                    VerifierApp.certificateStorageEngineInstance.put(certificate.subjectX500Principal.name, certificate.encoded)
                 }
             }
         } catch (e: Throwable) {
@@ -94,7 +99,9 @@ class CaCertificatesFragment : Fragment() {
                 return
             }
             val text = clipboard.primaryClip?.getItemAt(0)?.text!!
-            VerifierApp.trustManagerInstance.saveCertificate(text.toString().toByteArray())
+            val certificate = parseCertificate(text.toString().toByteArray())
+            VerifierApp.trustManagerInstance.addCertificate(certificate)
+            VerifierApp.certificateStorageEngineInstance.put(certificate.subjectX500Principal.name, certificate.encoded)
         } catch (e: Throwable) {
             showException(e)
         } finally {
@@ -108,7 +115,8 @@ class CaCertificatesFragment : Fragment() {
         try {
             certificates.forEach {
                 if (!VerifierApp.trustManagerInstance.certificateExists(it)) {
-                    VerifierApp.trustManagerInstance.saveCertificate(it.encoded)
+                    VerifierApp.trustManagerInstance.addCertificate(it)
+                    VerifierApp.certificateStorageEngineInstance.put(it.subjectX500Principal.name, it.encoded)
                     imported++
                 }
             }
@@ -125,7 +133,8 @@ class CaCertificatesFragment : Fragment() {
             var deleted = 0
             viewModel.screenState.value.certificates.forEach {
                 if (it.certificate != null) {
-                    VerifierApp.trustManagerInstance.deleteCertificate(it.certificate)
+                    VerifierApp.trustManagerInstance.removeCertificate(it.certificate)
+                    VerifierApp.certificateStorageEngineInstance.delete(it.certificate.subjectX500Principal.name)
                     deleted++
                 }
             }
@@ -140,7 +149,7 @@ class CaCertificatesFragment : Fragment() {
     private fun showException(exception: Throwable) {
         val message = when (exception) {
             is FileAlreadyExistsException -> "The certificate is already in the mDoc Issuer Trust Store"
-            is CertificateException -> "The certificate could not be parsed and/or validated correctly"
+            is CertificateException -> "The certificate could not be parsed correctly"
             else -> exception.message
         }
         showMessage(message.toString())
@@ -155,5 +164,13 @@ class CaCertificatesFragment : Fragment() {
         val snackTextView = snackbar.view.findViewById<View>(R.id.snackbar_text) as TextView
         snackTextView.maxLines = 4
         snackbar.show()
+    }
+
+    /**
+     * Parse a byte array an X509 certificate
+     */
+    private fun parseCertificate(certificateBytes: ByteArray): X509Certificate {
+        return CertificateFactory.getInstance("X509")
+            .generateCertificate(ByteArrayInputStream(certificateBytes)) as X509Certificate
     }
 }

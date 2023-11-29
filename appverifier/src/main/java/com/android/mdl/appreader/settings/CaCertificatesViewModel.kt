@@ -27,7 +27,10 @@ class CaCertificatesViewModel() : ViewModel() {
     }
 
     fun deleteCertificate() {
-        _currentCertificateItem.value?.certificate?.let { VerifierApp.trustManagerInstance.deleteCertificate(it) }
+        _currentCertificateItem.value?.certificate?.let {
+            VerifierApp.trustManagerInstance.removeCertificate(it)
+            VerifierApp.certificateStorageEngineInstance.delete(it.subjectX500Principal.name)
+        }
     }
 
     companion object {

@@ -27,7 +27,7 @@ import java.security.cert.X509Certificate
 /**
  * Object with validations on X509 certificates
  */
-object CertificateValidations {
+internal object TrustManagerUtil {
 
     /**
      * Check that the key usage is the creation of digital signatures

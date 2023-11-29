@@ -15,19 +15,17 @@
  */
 package com.android.identity.trustmanagement
 
-import com.android.identity.storage.StorageEngine
 import org.bouncycastle.asn1.x500.X500Name
-import java.io.ByteArrayInputStream
-import java.security.cert.CertificateFactory
+import java.security.cert.CertificateException
 import java.security.cert.PKIXCertPathChecker
 import java.security.cert.X509Certificate
 
 /**
  * This class is used for the verification of a certificate chain
  */
-class TrustManager(val certificateStorage: StorageEngine) {
+class TrustManager() {
 
-    private val certificates: MutableMap<X500Name, X509Certificate>
+    private val certificates: MutableMap<X500Name, X509Certificate> = mutableMapOf()
 
     /**
      * Nested class containing the result of the verification of a certificate chain
@@ -35,60 +33,49 @@ class TrustManager(val certificateStorage: StorageEngine) {
     class TrustResult(
         var isTrusted: Boolean,
         var trustChain: List<X509Certificate> = emptyList(),
-        var error: String = ""
+        var error: Throwable? = null
     )
 
     /**
-     * Initialize private variables
+     * Add a certificate to the [TrustManager]
      */
-    init {
-        certificates = getAllCertificates().associateBy { X500Name(it.subjectX500Principal.name) }
-            .toMutableMap()
-    }
-
-    /**
-     * Save a certificate
-     */
-    fun saveCertificate(certificateBytes: ByteArray) {
-        val certificate = parseCertificate(certificateBytes)
+    fun addCertificate(certificate: X509Certificate) {
         if (certificateExists(certificate)) {
-            throw Exception("File already exists")
+            throw Exception("Certificate already exists")
         }
         val name = X500Name(certificate.subjectX500Principal.name)
-        certificateStorage.put(name.toString(), certificate.encoded)
         certificates[name] = certificate
     }
 
     /**
      * Check that a certificate exists
      */
-    fun certificateExists(certificate: X509Certificate): Boolean{
+    fun certificateExists(certificate: X509Certificate): Boolean {
         val name = X500Name(certificate.subjectX500Principal.name)
-        return certificateStorage.get(name.toString()) != null
+        return certificates[name] != null
     }
 
     /**
      * Get all the certificates in the [TrustManager]
      */
     fun getAllCertificates(): List<X509Certificate> {
-        return certificateStorage.enumerate().map {
-            parseCertificate(certificateStorage.get(it)!!)
-        }
+        return certificates.values.toList()
     }
 
     /**
-     * Delete a certificate
+     * Remove a certificate from the [TrustManager]
      */
-    fun deleteCertificate(certificate: X509Certificate){
+    fun removeCertificate(certificate: X509Certificate) {
         val name = X500Name(certificate.subjectX500Principal.name)
-        certificateStorage.delete(name.toString())
         certificates.remove(name)
     }
 
     /**
-     * * Verify a certificate chain (without the self-signed root certificate) by mDoc type with
-     * the possibility of custom validations on the certificates (mdocAndCRLPathCheckers),
-     * for instance the mDL country code
+     * Verify a certificate chain (without the self-signed root certificate) with
+     * the possibility of custom validations on the certificates ([customValidators]),
+     * for instance the country code in certificate chain of the mDL, like implemented in the
+     * CountryValidator in the reader app
+     *
      * @param [chain] the certificate chain without the self-signed root certificate
      * @param [customValidators] optional parameter with custom validators
      * @return [TrustResult] a class that returns a verdict [TrustResult.isTrusted], optionally
@@ -99,40 +86,46 @@ class TrustManager(val certificateStorage: StorageEngine) {
         chain: List<X509Certificate>,
         customValidators: List<PKIXCertPathChecker> = emptyList()
     ): TrustResult {
-        val trustedRoot = findTrustedRoot(chain)
-            ?: return TrustResult(
-                isTrusted = false,
-                error = "Trusted root certificate could not be found"
-            )
-        val completeChain = chain.toMutableList().plus(trustedRoot)
         try {
-            validateCertificationTrustPath(completeChain, customValidators)
-            return TrustResult(
-                isTrusted = true,
-                trustChain = completeChain
-            )
+            val trustedRoot = findTrustedRoot(chain)
+            val completeChain = chain.toMutableList().plus(trustedRoot)
+            try {
+                validateCertificationTrustPath(completeChain, customValidators)
+                return TrustResult(
+                    isTrusted = true,
+                    trustChain = completeChain
+                )
+            } catch (e: Throwable) {
+                // validation errors, but the trust chain could be built
+                return TrustResult(
+                    isTrusted = false,
+                    trustChain = completeChain,
+                    error = e
+                )
+            }
         } catch (e: Throwable) {
+            // no trusted root found
             return TrustResult(
                 isTrusted = false,
-                trustChain = completeChain,
-                error = e.message.toString()
+                error = e
             )
         }
+
     }
 
     /**
      * Find the trusted root of a certificate chain
      */
-    private fun findTrustedRoot(chain: List<X509Certificate>): X509Certificate? {
+    private fun findTrustedRoot(chain: List<X509Certificate>): X509Certificate {
         chain.forEach { cert ->
             run {
                 val name = X500Name(cert.issuerX500Principal.name)
                 if (certificates.containsKey(name)) {
-                    return certificates[name]
+                    return certificates[name]!!
                 }
             }
         }
-        return null
+        throw CertificateException("Trusted root certificate could not be found")
     }
 
     /**
@@ -144,29 +137,20 @@ class TrustManager(val certificateStorage: StorageEngine) {
     ) {
         val certIterator = certificationTrustPath.iterator()
         val leafCertificate = certIterator.next()
-        CertificateValidations.checkKeyUsageDocumentSigner(leafCertificate)
-        CertificateValidations.checkValidity(leafCertificate)
-        CertificateValidations.executeCustomValidations(leafCertificate, customValidators)
+        TrustManagerUtil.checkKeyUsageDocumentSigner(leafCertificate)
+        TrustManagerUtil.checkValidity(leafCertificate)
+        TrustManagerUtil.executeCustomValidations(leafCertificate, customValidators)
 
         // Note that the signature of the trusted certificate itself is not verified even if it is self signed
         var previousCertificate = leafCertificate
         var caCertificate: X509Certificate
         while (certIterator.hasNext()) {
             caCertificate = certIterator.next()
-            CertificateValidations.checkKeyUsageCaCertificate(caCertificate)
-            CertificateValidations.checkCaIsIssuer(previousCertificate, caCertificate)
-            CertificateValidations.verifySignature(previousCertificate, caCertificate)
-            CertificateValidations.executeCustomValidations(caCertificate, customValidators)
+            TrustManagerUtil.checkKeyUsageCaCertificate(caCertificate)
+            TrustManagerUtil.checkCaIsIssuer(previousCertificate, caCertificate)
+            TrustManagerUtil.verifySignature(previousCertificate, caCertificate)
+            TrustManagerUtil.executeCustomValidations(caCertificate, customValidators)
             previousCertificate = caCertificate
         }
-    }
-
-
-    /**
-     * Parse a byte array an X509 certificate
-     */
-    private fun parseCertificate(certificateBytes: ByteArray): X509Certificate {
-        return CertificateFactory.getInstance("X509")
-            .generateCertificate(ByteArrayInputStream(certificateBytes)) as X509Certificate
     }
 }

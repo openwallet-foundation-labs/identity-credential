@@ -19,7 +19,7 @@ import androidx.navigation.fragment.findNavController
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
-import com.android.identity.trustmanagement.CustomValidators
+import com.android.mdl.appreader.trustmanagement.CustomValidators
 import com.android.identity.trustmanagement.getCommonName
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.VerifierApp
@@ -211,7 +211,7 @@ class ShowDocumentFragment : Fragment() {
                 certChain = result.trustChain
             }
             if (!result.isTrusted) {
-                sb.append("${getFormattedCheck(false)}Error in certificate chain validation: ${result.error}<br>")
+                sb.append("${getFormattedCheck(false)}Error in certificate chain validation: ${result.error?.message}<br>")
             }
 
             val commonName = certChain.last().issuerX500Principal.getCommonName("")

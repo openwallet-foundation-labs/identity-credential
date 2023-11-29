@@ -1,6 +1,5 @@
 package com.android.identity.trustmanagement
 
-import com.android.identity.storage.EphemeralStorageEngine
 import org.bouncycastle.asn1.x500.X500Name
 import org.junit.Assert
 import org.junit.Test
@@ -53,52 +52,32 @@ class TrustManagerTest {
     }
 
     @Test
-    fun testTrustManagerHappyFlow1() {
-        // arrange (start with a filled certificate store)
-        val certificateStore = EphemeralStorageEngine()
-        certificateStore.put(mdlCaName.toString(), mdlCaCertificate.encoded)
-        val trustManager = TrustManager(certificateStore)
+    fun testTrustManagerHappyFlow() {
+        // arrange (start with a TrustManager without certificates)
+        val trustManager = TrustManager()
 
-        // act (verify chain)
-        val result = trustManager.verify(listOf(mdlDsCertificate), CustomValidators.getByDocType("org.iso.18013.5.1.mDL"))
-
-        // assert
-        Assert.assertTrue("DS Certificate is trusted", result.isTrusted)
-        Assert.assertEquals("Trust chain contains 2 certificates",2, result.trustChain.size)
-        Assert.assertEquals("Error is empty", result.error, "")
-    }
-
-    @Test
-    fun testTrustManagerHappyFlow2() {
-        // arrange (start with an empty certificate store)
-        val certificateStore = EphemeralStorageEngine()
-        val trustManager = TrustManager(certificateStore)
-
-        // act (save certificate and verify chain)
-        trustManager.saveCertificate(mdlCaCertificate.encoded)
-        val result = trustManager.verify(listOf(mdlDsCertificate), CustomValidators.getByDocType("org.iso.18013.5.1.mDL"))
+        // act (add certificate and verify chain)
+        trustManager.addCertificate(mdlCaCertificate)
+        val result = trustManager.verify(listOf(mdlDsCertificate))
 
         // assert
         Assert.assertTrue("DS Certificate is trusted", result.isTrusted)
         Assert.assertEquals("Trust chain contains 2 certificates",2, result.trustChain.size)
-        Assert.assertEquals("Error is empty", result.error, "")
+        Assert.assertEquals("Error is empty", result.error, null)
     }
 
     @Test
     fun testTrustManagerHappyCaCertificateMissing() {
-        // arrange
-        val certificateStore = EphemeralStorageEngine()
-        certificateStore.put(mdlCaName.toString(), mdlCaCertificate.encoded)
-        val trustManager = TrustManager(certificateStore)
+        // arrange (start with a TrustManager without certificates)
+        val trustManager = TrustManager()
 
-        // act (delete CA certificate and verify chain)
-        trustManager.deleteCertificate(mdlCaCertificate)
-        val result = trustManager.verify(listOf(mdlDsCertificate), CustomValidators.getByDocType("org.iso.18013.5.1.mDL"))
+        // act (verify chain)
+        val result = trustManager.verify(listOf(mdlDsCertificate))
 
         // assert
         Assert.assertFalse("DS Certificate is not trusted", result.isTrusted)
         Assert.assertEquals("Trust chain is empty",0, result.trustChain.size)
-        Assert.assertEquals("Trustmanager complains about missing CA Certificate", result.error, "Trusted root certificate could not be found")
+        Assert.assertEquals("Trustmanager complains about missing CA Certificate", result.error?.message, "Trusted root certificate could not be found")
     }
     private fun parseCertificate(certificateBytes: ByteArray): X509Certificate {
         return CertificateFactory.getInstance("X509")
