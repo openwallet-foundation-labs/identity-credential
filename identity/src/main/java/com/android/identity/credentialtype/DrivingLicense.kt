@@ -91,7 +91,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.STRING,
                 "document_number",
-                "Licence number",
+                "License number",
                 "The number assigned or calculated by the issuing authority.",
                 true,
                 MDL_NAMESPACE
@@ -107,7 +107,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.ComplexType("DrivingPrivilege", true),
                 "driving_privileges",
-                "Categories of vehicles/ restrictions/ conditions",
+                "Driving privileges",
                 "Driving privileges of the mDL holder",
                 true,
                 MDL_NAMESPACE
@@ -169,8 +169,8 @@ object DrivingLicense {
                     )
                 ),
                 "eye_colour",
-                "Eye colour",
-                "mDL holder’s eye colour",
+                "Eye color",
+                "mDL holder’s eye color",
                 false,
                 MDL_NAMESPACE
             )
@@ -191,8 +191,8 @@ object DrivingLicense {
                     )
                 ),
                 "hair_colour",
-                "Hair colour",
-                "mDL holder’s hair colour",
+                "Hair color",
+                "mDL holder’s hair color",
                 false,
                 MDL_NAMESPACE
             )
@@ -207,7 +207,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.STRING,
                 "resident_address",
-                "Permanent place of residence",
+                "Resident address",
                 "The place where the mDL holder resides and/or may be contacted (street/house number, municipality etc.)",
                 false,
                 MDL_NAMESPACE
@@ -223,7 +223,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.NUMBER,
                 "age_in_years",
-                "Age attestation: How old are you (in years)?",
+                "Age in years",
                 "The age of the mDL holder",
                 false,
                 MDL_NAMESPACE
@@ -231,7 +231,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.NUMBER,
                 "age_birth_year",
-                "Age attestation: In what year were you born?",
+                "Year of birth",
                 "The year when the mDL holder was born",
                 false,
                 MDL_NAMESPACE
@@ -239,7 +239,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_18",
-                "Age attestation: are you older than 18 years",
+                "Older than 18 years",
                 "Indication whether the mDL holder is as old or older than 18",
                 false,
                 MDL_NAMESPACE
@@ -247,7 +247,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_21",
-                "Age attestation: are you older than 21 years",
+                "Older than 21 years",
                 "Indication whether the mDL holder is as old or older than 21",
                 false,
                 MDL_NAMESPACE
@@ -255,7 +255,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_25",
-                "Age attestation: are you older than 25 years",
+                "Older than 25 years",
                 "Indication whether the mDL holder is as old or older than 25",
                 false,
                 MDL_NAMESPACE
@@ -263,7 +263,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_62",
-                "Age attestation: are you older than 62 years",
+                "Older than 62 years",
                 "Indication whether the mDL holder is as old or older than 62",
                 false,
                 MDL_NAMESPACE
@@ -271,7 +271,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_65",
-                "Age attestation: are you older than 65 years",
+                "Older than 65 years",
                 "Indication whether the mDL holder is as old or older than 65",
                 false,
                 MDL_NAMESPACE
@@ -303,7 +303,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.STRING,
                 "resident_state",
-                "Resident state/province/district",
+                "Resident state",
                 "The state/province/district where the mDL holder lives",
                 false,
                 MDL_NAMESPACE
@@ -327,7 +327,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.STRING,
                 "family_name_national_character",
-                "Family name in national characters",
+                "Family name national characters",
                 "The family name of the mDL holder",
                 false,
                 MDL_NAMESPACE
@@ -335,7 +335,7 @@ object DrivingLicense {
             .addAttribute(
                 CredentialAttributeType.STRING,
                 "given_name_national_character",
-                "Given name in national characters",
+                "Given name national characters",
                 "The given name of the mDL holder",
                 false,
                 MDL_NAMESPACE
@@ -352,7 +352,7 @@ object DrivingLicense {
                 CredentialAttributeType.ComplexType("DomesticDrivingPrivilege", true),
                 "domestic_driving_privileges",
                 "aamva_domestic_driving_privileges",
-                "Domestic categories of vehicles/ restrictions/ conditions",
+                "Domestic driving privileges",
                 "Vehicle types the license holder is authorized to operate",
                 false,
                 AAMVA_NAMESPACE

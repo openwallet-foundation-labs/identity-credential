@@ -6,6 +6,11 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.credential.CredentialStore
+import com.android.identity.credentialtype.CredentialTypeRepository
+import com.android.identity.credentialtype.DrivingLicense
+import com.android.identity.credentialtype.EUPersonalID
+import com.android.identity.credentialtype.VaccinationDocument
+import com.android.identity.credentialtype.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.SoftwareSecureArea
 import com.android.identity.util.Logger
@@ -27,6 +32,10 @@ class HolderApp: Application() {
         DynamicColors.applyToActivitiesIfAvailable(this)
         PreferencesHelper.initialize(this)
         PeriodicKeysRefreshWorkRequest(this).schedulePeriodicKeysRefreshing()
+        CredentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
+        CredentialTypeRepository.addCredentialType(VehicleRegistration.getCredentialType())
+        CredentialTypeRepository.addCredentialType(VaccinationDocument.getCredentialType())
+        CredentialTypeRepository.addCredentialType(EUPersonalID.getCredentialType())
     }
 
     companion object {

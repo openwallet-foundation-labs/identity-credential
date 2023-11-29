@@ -14,12 +14,11 @@ import androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLif
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.wallet.R
 import com.android.identity.wallet.support.SecureAreaSupport
 import com.android.identity.wallet.theme.HolderAppTheme
 import com.android.identity.wallet.transfer.AddDocumentToResponseResult
-import com.android.identity.wallet.util.DocumentData
-import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.viewmodel.TransferDocumentViewModel
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
@@ -73,21 +72,26 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
             viewModel.addDocumentForSigning(documentData)
             val elements = documentData.requestedElements.map { element ->
                 viewModel.toggleSignedElement(element)
-                val displayName = stringValueFor(element.namespace, element.value)
+                val displayName = stringValueFor(
+                    documentData.requestedDocument.docType,
+                    element.namespace,
+                    element.value
+                )
                 ConfirmationSheetData.DocumentElement(displayName, element)
             }
             ConfirmationSheetData(documentData.userReadableName, elements)
         }
     }
 
-    private fun stringValueFor(namespace: String, element: String): String {
-        val requested = if (element == "portrait") portraitFor(namespace) else element
-        val identifier = resources.getIdentifier(requested, "string", requireContext().packageName)
-        return if (identifier != 0) getString(identifier) else element
-    }
-
-    private fun portraitFor(namespace: String): String {
-        return if (namespace == DocumentData.EU_PID_NAMESPACE) "facial_portrait" else "portrait"
+    private fun stringValueFor(docType: String, namespace: String, element: String): String {
+        val credentialType = CredentialTypeRepository.getCredentialTypes()
+            .find { it.mdocCredentialType != null && it.mdocCredentialType?.docType == docType }
+            ?: return element
+        val mdocNamespace = credentialType.mdocCredentialType?.namespaces?.find { it.namespace == namespace }
+            ?: return element
+        val dataElement = mdocNamespace.dataElements.find { it.attribute.identifier == element }
+            ?: return element
+        return dataElement.attribute.displayName
     }
 
     private fun sendResponse() {

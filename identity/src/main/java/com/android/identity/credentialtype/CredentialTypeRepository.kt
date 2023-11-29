@@ -23,16 +23,6 @@ object CredentialTypeRepository {
     private val credentialTypes: MutableList<CredentialType> = mutableListOf()
 
     /**
-     * Add the Credential Types that are known in this project
-     */
-    init {
-        addCredentialType(DrivingLicense.getCredentialType())
-        addCredentialType(VehicleRegistration.getCredentialType())
-        addCredentialType(VaccinationDocument.getCredentialType())
-        addCredentialType(EUPersonalID.getCredentialType())
-    }
-
-    /**
      * Add a Credential Type to the repository
      */
     fun addCredentialType(credentialType: CredentialType){

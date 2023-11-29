@@ -56,7 +56,7 @@ object VehicleRegistration {
             .addMdocAttribute(
                 CredentialAttributeType.ComplexType("BasicVehicleInfo", false),
                 "basic_vehicle_info",
-                "Basic Vehicle Information ",
+                "Basic Vehicle Information",
                 "This data element contains the basic vehicle information",
                 true,
                 MVR_NAMESPACE
@@ -72,7 +72,7 @@ object VehicleRegistration {
             .addMdocAttribute(
                 CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
                 "RegistrationInfo.issuingCountry",
-                "country code",
+                "Country code",
                 "country code",
                 true,
                 MVR_NAMESPACE
@@ -80,7 +80,7 @@ object VehicleRegistration {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "RegistrationInfo.competentAuthority",
-                "name of the competent authority",
+                "Competent authority",
                 "name of the competent authority",
                 true,
                 MVR_NAMESPACE

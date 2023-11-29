@@ -32,7 +32,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "1D47_vaccinated",
-                "Indication of vaccination against Yellow Fever",
+                "Vaccination against Yellow Fever",
                 "Attestation that the holder has been fully vaccinated against Yellow Fever",
                 false,
                 MICOV_ATT_NAMESPACE
@@ -40,7 +40,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "RA01_vaccinated",
-                "Indication of vaccination against COVID-19",
+                "Vaccination against COVID-19",
                 "Attestation that the holder has been fully vaccinated against COVID-19",
                 false,
                 MICOV_ATT_NAMESPACE
@@ -48,7 +48,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.ComplexType("Test", false),
                 "RA01_test",
-                "Indication of test event for COVID-19",
+                "Test event for COVID-19",
                 "Attestation that the holder has obtained a negative test for COVID-19",
                 false,
                 MICOV_ATT_NAMESPACE
@@ -192,7 +192,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.ComplexType("Vac", false),
                 "v_RA01_1",
-                "First vaccination against RA01",
+                "RA01 first vaccination",
                 "COVID-19 – first vaccination data",
                 false,
                 MICOV_VTR_NAMESPACE
@@ -200,7 +200,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.ComplexType("Vac", false),
                 "v_RA01_2",
-                "Second vaccination against RA01",
+                "RA01 second vaccination",
                 "COVID-19 – second vaccination data",
                 false,
                 MICOV_VTR_NAMESPACE
@@ -256,7 +256,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "Vac.ma",
-                "Marketing authorization holder / Manufacturer",
+                "Manufacturer",
                 "Marketing authorization holder / Manufacturer",
                 false,
                 MICOV_VTR_NAMESPACE
@@ -264,7 +264,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "Vac.bn",
-                "Batch number or lot number of the vaccine",
+                "Batch/lot number of the vaccine",
                 "Batch number or lot number of the vaccine",
                 false,
                 MICOV_VTR_NAMESPACE
@@ -320,7 +320,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.DATE,
                 "Vac.nx",
-                "Due date of next dose, if required",
+                "Due date of next dose",
                 "Due date of next dose, if required",
                 false,
                 MICOV_VTR_NAMESPACE
@@ -376,7 +376,7 @@ object VaccinationDocument {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "Pid.pnr",
-                "unique number for the pty/pic or pty/pic/pia combination",
+                "Unique number for the pty/pic/(pia) combination",
                 "unique number for the pty/pic or pty/pic/pia combination",
                 true,
                 MICOV_VTR_NAMESPACE
