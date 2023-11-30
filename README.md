@@ -159,6 +159,9 @@ and replace the following field with your website URL:
     public static final String BASE_URL = "<YOUR_WEBSITE_URL>";
 ```
 
-# Support
+# Name
 
-This is not an officially supported Google product.
+The name of the project is currently "Identity Credential" and it's using
+`com.android.identity` as the Java package name. This is because of the
+fact that the project was contributed from Google. Work is underway
+to find a new name and Java package name, see [Issue #422](../../issues/422).
