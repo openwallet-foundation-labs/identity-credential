@@ -46,7 +46,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("Test", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "RA01_test",
                 "Test event for COVID-19",
                 "Attestation that the holder has obtained a negative test for COVID-19",
@@ -54,7 +54,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("SafeEntry", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "safeEntry_Leisure",
                 "Safe entry indication",
                 "Attest that the holder fulfils certain set requirements for safe entry in a leisure context (without disclosing if it is based on vaccination, recovery, or negative test)",
@@ -111,54 +111,6 @@ object VaccinationDocument {
             )
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
-                "Test.Result",
-                "Test result",
-                "Test result",
-                true,
-                MICOV_ATT_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Test.TypeOfTest",
-                "Type of test",
-                "Type of test, e.g. PCR test",
-                true,
-                MICOV_ATT_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.DATE_TIME,
-                "Test.TimeOfTest",
-                "Time of test",
-                "Time of test",
-                true,
-                MICOV_ATT_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.BOOLEAN,
-                "SafeEntry.SeCondFulfilled",
-                "Second fulfilled",
-                "Second fulfilled",
-                true,
-                MICOV_ATT_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "SafeEntry.SeCondType",
-                "Second type",
-                "Second type",
-                true,
-                MICOV_ATT_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.DATE,
-                "SafeEntry.SeCondExpiry",
-                "Second expiry",
-                "Second expiry",
-                true,
-                MICOV_ATT_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
                 "fn",
                 "Family Name",
                 "Family Name of the holder",
@@ -190,7 +142,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("Vac", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "v_RA01_1",
                 "RA01 first vaccination",
                 "COVID-19 – first vaccination data",
@@ -198,7 +150,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("Vac", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "v_RA01_2",
                 "RA01 second vaccination",
                 "COVID-19 – second vaccination data",
@@ -206,7 +158,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("Pid", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "pid_PPN",
                 "ID with pasport number",
                 "Unique set of elements identifying the holder by passport number",
@@ -214,186 +166,10 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("Pid", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "pid_DL",
                 "ID with driver’s license number",
                 "Unique set of elements identifying the holder by driver’s license number",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.tg",
-                "Disease or agent targeted",
-                "Disease or agent targeted",
-                true,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.vp",
-                "Vaccine or prophylaxis",
-                "Vaccine or prophylaxis",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.mp",
-                "Vaccine medicinal product",
-                "Vaccine medicinal product",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.br",
-                "Vaccine brand",
-                "Vaccine brand",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.ma",
-                "Manufacturer",
-                "Marketing authorization holder / Manufacturer",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.bn",
-                "Batch/lot number of the vaccine",
-                "Batch number or lot number of the vaccine",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.NUMBER,
-                "Vac.dn",
-                "Dose number",
-                "Dose number",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.NUMBER,
-                "Vac.sd",
-                "Total series of doses",
-                "Total series of doses",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.DATE,
-                "Vac.dt",
-                "Date of vaccination",
-                "Date of vaccination",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
-                "Vac.co",
-                "Country of vaccination",
-                "Country of vaccination",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.ao",
-                "Administering organization",
-                "Administering organization",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.ap",
-                "Administering professional",
-                "Administering professional",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.DATE,
-                "Vac.nx",
-                "Due date of next dose",
-                "Due date of next dose, if required",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.is",
-                "Certificate issuer",
-                "Certificate issuer",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.ci",
-                "Unique certificate identifier (UVCI)",
-                "Unique certificate identifier (UVCI)",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vac.pd",
-                "Protection duration",
-                "Protection duration",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.DATE,
-                "Vac.vf",
-                "Valid from",
-                "Valid from",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.DATE,
-                "Vac.vu",
-                "Valid until",
-                "Valid until",
-                false,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Pid.pty",
-                "type of person identifier",
-                "type of person identifier",
-                true,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Pid.pnr",
-                "Unique number for the pty/pic/(pia) combination",
-                "unique number for the pty/pic or pty/pic/pia combination",
-                true,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
-                "Pid.pic",
-                "Issuing country of the pty.",
-                "Issuing country of the pty.",
-                true,
-                MICOV_VTR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Pid.pia",
-                "Issuing authority of the pty",
-                "Issuing authority of the pty",
                 false,
                 MICOV_VTR_NAMESPACE
             )

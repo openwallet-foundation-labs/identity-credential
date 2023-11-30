@@ -26,7 +26,7 @@ sealed class CredentialAttributeType {
     object DATE_TIME : CredentialAttributeType()
     object PICTURE : CredentialAttributeType()
     object BOOLEAN : CredentialAttributeType()
+    object COMPLEXTYPE: CredentialAttributeType()
     class StringOptions(val options: List<StringOption>): CredentialAttributeType()
     class IntegerOptions(val options: List<IntegerOption>): CredentialAttributeType()
-    class ComplexType(val typeName: String, val isArray: Boolean): CredentialAttributeType()
 }

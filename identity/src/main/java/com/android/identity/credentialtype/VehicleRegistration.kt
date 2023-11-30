@@ -30,7 +30,7 @@ object VehicleRegistration {
         return CredentialType.Builder("Vehicle Registration")
             .addMdocCredentialType("nl.rdw.mekb.1")
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("RegistrationInfo", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "registration_info",
                 "Vehicle Registration Information",
                 "This data element contains the common vehicle registration information, including UN/EU elements, A and H.",
@@ -46,7 +46,7 @@ object VehicleRegistration {
                 MVR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("RegistrationHolder", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "registration_holder",
                 "Vehicle Registration Holder Information ",
                 "This data element identifies the holder of the registration certificate",
@@ -54,7 +54,7 @@ object VehicleRegistration {
                 MVR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.ComplexType("BasicVehicleInfo", false),
+                CredentialAttributeType.COMPLEXTYPE,
                 "basic_vehicle_info",
                 "Basic Vehicle Information",
                 "This data element contains the basic vehicle information",
@@ -69,134 +69,6 @@ object VehicleRegistration {
                 true,
                 MVR_NAMESPACE
             )
-            .addMdocAttribute(
-                CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
-                "RegistrationInfo.issuingCountry",
-                "Country code",
-                "country code",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "RegistrationInfo.competentAuthority",
-                "Competent authority",
-                "name of the competent authority",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "RegistrationInfo.registrationNumber",
-                "UN/EU element A",
-                "UN/EU element A",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.DATE,
-                "RegistrationInfo.validFrom",
-                "Custom EKB element, valid from",
-                "Custom EKB element, valid from",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.DATE,
-                "RegistrationInfo.validUntil",
-                "Custom EKB element, valid until",
-                "Custom EKB element, valid until",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.ComplexType("PersonalData", false),
-                "RegistrationHolder.holderInfo",
-                "Personal data",
-                "Personal data",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.NUMBER,
-                "RegistrationHolder.ownershipStatus",
-                "Ownership status",
-                "Ownership status",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "PersonalData.name",
-                "Name of the vehicle owner",
-                "Name of the vehicle owner",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.ComplexType("Address", false),
-                "PersonalData.address",
-                "Address of the vehicle owner",
-                "Address of the vehicle owner",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Address.streetName",
-                "Street name",
-                "Street name",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Address.houseNumber",
-                "House number",
-                "House number",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Address.houseNumberSuffix",
-                "House number suffix",
-                "House number suffix",
-                false,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Address.postalCode",
-                "Postal code",
-                "Postal code",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Address.placeOfResidence",
-                "Place of residence",
-                "Place of residence",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.ComplexType("Vehicle", false),
-                "BasicVehicleInfo.vehicle",
-                "Vehicle",
-                "Vehicle",
-                true,
-                MVR_NAMESPACE
-            )
-            .addMdocAttribute(
-                CredentialAttributeType.STRING,
-                "Vehicle.make",
-                "Make of the vehicle",
-                "Make of the vehicle",
-                true,
-                MVR_NAMESPACE
-            )
-            .build()
+        .build()
     }
 }

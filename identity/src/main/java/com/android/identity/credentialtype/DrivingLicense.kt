@@ -105,7 +105,7 @@ object DrivingLicense {
                 MDL_NAMESPACE
             )
             .addAttribute(
-                CredentialAttributeType.ComplexType("DrivingPrivilege", true),
+                CredentialAttributeType.COMPLEXTYPE,
                 "driving_privileges",
                 "Driving privileges",
                 "Driving privileges of the mDL holder",
@@ -349,7 +349,7 @@ object DrivingLicense {
                 MDL_NAMESPACE
             )
             .addAttribute(
-                CredentialAttributeType.ComplexType("DomesticDrivingPrivilege", true),
+                CredentialAttributeType.COMPLEXTYPE,
                 "domestic_driving_privileges",
                 "aamva_domestic_driving_privileges",
                 "Domestic driving privileges",
@@ -617,132 +617,6 @@ object DrivingLicense {
                 "Non-REAL ID credential text",
                 "Text, agreed on between the Issuing Authority and DHS, appearing on credentials not meeting REAL ID requirements."
             )
-            /*
-             * Finally the complex type definitions
-             */
-            // details of driving_privileges
-            .addAttribute(
-                CredentialAttributeType.StringOptions(
-                    listOf(
-                        StringOption(null, "(not set)"),
-                        StringOption("A", "Motorcycles (A)"),
-                        StringOption("AEU", "Motorcycles (AEU)"),
-                        StringOption("B", "Light vehicles (B"),
-                        StringOption("C", "Goods vehicles (C)"),
-                        StringOption("D", "Passenger vehicles (D)"),
-                        StringOption("BE", "Light vehicles with trailers (BE)"),
-                        StringOption("CE", "Goods vehicles with trailers (CE)"),
-                        StringOption("DE", "Passenger vehicles with trailers (DE)"),
-                        StringOption("AM", "Mopeds (AM)"),
-                        StringOption("A1", "Light motorcycles (A1)"),
-                        StringOption("A1EU", "Light motorcycles (A1EU)"),
-                        StringOption("A2", "Medium motorcycles (A2)"),
-                        StringOption("B1", "Light vehicles (B1)"),
-                        StringOption("B1EU", "Light vehicles (B1EU)"),
-                        StringOption("C1", "Medium sized goods vehicles (C1)"),
-                        StringOption("D1", "Medium sized passenger vehicles (e.g. minibuses) (D1)"),
-                    )
-                ),
-                "DrivingPrivilege.vehicle_category_code",
-                "Vehicle category code",
-                "Vehicle category code",
-                true,
-                MDL_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.DATE,
-                "DrivingPrivilege.issue_date",
-                "Date of issue",
-                "Date of issue",
-                false,
-                MDL_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.DATE,
-                "DrivingPrivilege.expiry_date",
-                "Date of expiry",
-                "Date of expiry",
-                false,
-                MDL_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.ComplexType("Code", true),
-                "DrivingPrivilege.codes",
-                "Codes of driving privileges",
-                "Codes of driving privileges",
-                false,
-                MDL_NAMESPACE
-            )
-            // details of DrivingPrivilege.codes
-            .addAttribute(
-                CredentialAttributeType.StringOptions(
-                    listOf(
-                        StringOption(null, "(not set)"),
-                        StringOption(
-                            "01",
-                            "Licence holder requires eye sight correction and/or protection"
-                        ),
-                        StringOption(
-                            "03",
-                            "Licence holder requires prosthetic device for the limbs"
-                        ),
-                        StringOption(
-                            "78",
-                            "Licence holder restricted to vehicles with automatic transmission"
-                        ),
-                        StringOption(
-                            "S01",
-                            "The vehicle's maximum authorized mass (kg) shall be"
-                        ),
-                        StringOption(
-                            "S02",
-                            "The vehicle's authorized passenger seats, excluding the driver's seat, shall be"
-                        ),
-                        StringOption(
-                            "S03",
-                            "The vehicle's cylinder capacity (cm3) shall be"
-                        ),
-                        StringOption(
-                            "S04",
-                            "The vehicle's power (kW) shall be"
-                        ),
-                        StringOption(
-                            "S05",
-                            "Licence holder restricted to vehicles adapted for physically disabled"
-                        )
-                    )
-                ),
-                "Code.code",
-                "Code",
-                "Code",
-                true,
-                MDL_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.StringOptions(
-                    listOf(
-                        StringOption(null, "(not set)"),
-                        StringOption("=", "Equals (=)"),
-                        StringOption(">", "Greater than (>)"),
-                        StringOption("<", "Less than (<)"),
-                        StringOption(">=", "Greater than or equal to (≥)"),
-                        StringOption("<=", "Less than or equal to (≤)")
-                    )
-                ),
-                "Code.sign",
-                "Sign",
-                "Sign",
-                false,
-                MDL_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.STRING,
-                "Code.value",
-                "Value",
-                "Value",
-                false,
-                MDL_NAMESPACE
-            )
             .addAttribute(
                 CredentialAttributeType.STRING,
                 "audit_information",
@@ -756,98 +630,6 @@ object DrivingLicense {
                 "aamva_version",
                 "AAMVA version number",
                 "A number identifying the version of the AAMVA mDL data element set",
-                true,
-                AAMVA_NAMESPACE
-            )
-            // details of domestic_driving_privileges
-            .addAttribute(
-                CredentialAttributeType.ComplexType("DomesticVehicleClass", false),
-                "DomesticDrivingPrivilege.domestic_vehicle_class",
-                "Domestic vehicle class",
-                "Domestic vehicle class",
-                true,
-                AAMVA_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.ComplexType("DomesticVehicleRestriction", true),
-                "DomesticDrivingPrivilege.domestic_vehicle_restrictions",
-                "Domestic vehicle restrictions",
-                "Domestic vehicle restrictions",
-                true,
-                AAMVA_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.ComplexType("DomesticVehicleEndorsement", true),
-                "DomesticDrivingPrivilege.domestic_vehicle_endorsements",
-                "Domestic vehicle endorsements",
-                "Domestic vehicle endorsements",
-                true,
-                AAMVA_NAMESPACE
-            )
-            // details of DomesticDrivingPrivilege.domestic_vehicle_class
-            .addAttribute(
-                CredentialAttributeType.STRING,
-                "DomesticVehicleClass.domestic_vehicle_class_code",
-                "Domestic vehicle class code",
-                "Vehicle category code",
-                true,
-                AAMVA_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.STRING,
-                "DomesticVehicleClass.domestic_vehicle_class_description",
-                "Domestic vehicle class description",
-                "Vehicle category description",
-                true,
-                AAMVA_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.DATE,
-                "DomesticVehicleClass.issue_date",
-                "Date of issue",
-                "Date of issue",
-                false,
-                AAMVA_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.DATE,
-                "DomesticVehicleClass.expiry_date",
-                "Date of expiry",
-                "Date of expiry",
-                false,
-                AAMVA_NAMESPACE
-            )
-            // details of DomesticDrivingPrivilege.domestic_vehicle_restrictions
-            .addAttribute(
-                CredentialAttributeType.STRING,
-                "DomesticVehicleRestriction.domestic_vehicle_restriction_code",
-                "Restriction code",
-                "Restriction code",
-                false,
-                AAMVA_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.STRING,
-                "DomesticVehicleRestriction.domestic_vehicle_restriction_description",
-                "Vehicle category description",
-                "Vehicle category description",
-                true,
-                AAMVA_NAMESPACE
-            )
-            // details of DomesticDrivingPrivilege.domestic_vehicle_endorsements
-            .addAttribute(
-                CredentialAttributeType.STRING,
-                "DomesticVehicleEndorsement.domestic_vehicle_endorsement_code",
-                "Endorsement code",
-                "Endorsement code",
-                false,
-                AAMVA_NAMESPACE
-            )
-            .addAttribute(
-                CredentialAttributeType.STRING,
-                "DomesticVehicleEndorsement.domestic_vehicle_endorsement_description",
-                "Vehicle endorsement description",
-                "Vehicle endorsement description",
                 true,
                 AAMVA_NAMESPACE
             )

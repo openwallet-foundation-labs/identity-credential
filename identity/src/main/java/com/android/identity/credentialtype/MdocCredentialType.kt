@@ -34,8 +34,8 @@ class MdocCredentialType private constructor(
      * @param namespaces the namespaces of the mDoc Credential Type
      */
     data class Builder(
-        var docType: String,
-        var namespaces: MutableMap<String, MdocNamespace.Builder> = mutableMapOf()
+        val docType: String,
+        val namespaces: MutableMap<String, MdocNamespace.Builder> = mutableMapOf()
     ) {
         /**
          * Add a data element to a namespace in the mDoc Credential Type

@@ -180,6 +180,7 @@ class SelfSignedDetailsFragment : Fragment() {
                     field.fieldType,
                     getViewValue(field.id),
                     namespace = field.namespace,
+                    isArray = field.isArray,
                     parentId = field.parentId,
                     stringOptions = field.stringOptions,
                     integerOptions = field.integerOptions
@@ -248,7 +249,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 )
             }
 
-            is CredentialAttributeType.ComplexType -> {
+            is CredentialAttributeType.COMPLEXTYPE -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTitleView(field.id + 500, field.label)
                 )

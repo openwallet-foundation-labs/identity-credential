@@ -12,6 +12,7 @@ data class Field(
     val fieldType: CredentialAttributeType,
     val value: Any?,
     val namespace: String? = null,
+    val isArray: Boolean = false,
     val parentId: Int? = null,
     var stringOptions: List<StringOption>? = null,
     var integerOptions: List<IntegerOption>? = null

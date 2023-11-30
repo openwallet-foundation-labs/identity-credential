@@ -22,7 +22,7 @@ package com.android.identity.credentialtype
  * @param namespace the namespace of this part of the mDoc Credential Type
  * @param dataElements the data elements in this namespace
  */
-class MdocNamespace(
+class MdocNamespace private constructor(
     val namespace: String,
     val dataElements: List<MdocDataElement>
 ) {

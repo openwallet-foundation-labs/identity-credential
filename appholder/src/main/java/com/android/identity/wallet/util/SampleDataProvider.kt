@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.wallet.R
 
 object SampleDataProvider {
@@ -18,11 +17,12 @@ object SampleDataProvider {
     fun getSampleValue(
         context: Context,
         namespace: String,
-        dataElement: MdocDataElement,
-        dataElementParent: MdocDataElement? = null
+        identifier: String,
+        type: CredentialAttributeType,
+        identifierParent: String? = null
     ): Any? {
         return when (namespace) {
-            MDL_NAMESPACE -> when (dataElement.attribute.identifier) {
+            MDL_NAMESPACE -> when (identifier) {
                 "family_name" -> "Mustermann"
                 "given_name" -> "Erika"
                 "birth_date" -> "1971-09-01"
@@ -71,10 +71,10 @@ object SampleDataProvider {
                 "biometric_template_signature_sign",
                 "biometric_template_iris" -> Bitmap.createBitmap(200, 200, Bitmap.Config.ARGB_8888)
 
-                else -> defaultValue(dataElement)
+                else -> defaultValue(type)
             }
 
-            AAMVA_NAMESPACE -> when (dataElement.attribute.identifier) {
+            AAMVA_NAMESPACE -> when (identifier) {
                 "name_suffix" -> "SR"
                 "organ_donor" -> 1
                 "veteran" -> null
@@ -93,33 +93,33 @@ object SampleDataProvider {
                 "sex" -> 2
                 "audit_information" -> "Sample auditor"
                 "aamva_version" -> 2
-                "DomesticVehicleClass.domestic_vehicle_class_code" -> "B"
-                "DomesticVehicleClass.domestic_vehicle_class_description" -> "Light vehicles"
-                "DomesticVehicleClass.issue_date" -> "2021-04-18"
-                "DomesticVehicleClass.expiry_date" -> "2026-04-18"
-                else -> defaultValue(dataElement)
+                "domestic_vehicle_class_code" -> "B"
+                "domestic_vehicle_class_description" -> "Light vehicles"
+                "issue_date" -> "2021-04-18"
+                "expiry_date" -> "2026-04-18"
+                else -> defaultValue(type)
             }
 
-            MVR_NAMESPACE -> when (dataElement.attribute.identifier) {
+            MVR_NAMESPACE -> when (identifier) {
                 "issue_date" -> "2021-04-18"
                 "vin" -> "1M8GDM9AXKP042788"
-                "RegistrationInfo.issuingCountry" -> "NL"
-                "RegistrationInfo.competentAuthority" -> "RDW"
-                "RegistrationInfo.registrationNumber" -> "E-01-23"
-                "RegistrationInfo.validFrom" -> "2021-04-19"
-                "RegistrationInfo.validUntil" -> "2023-04-20"
-                "RegistrationHolder.ownershipStatus" -> 2
-                "PersonalData.name" -> "Erika"
-                "Address.streetName" -> "Teststraat"
-                "Address.houseNumber" -> "86"
-                "Address.houseNumberSuffix" -> "A"
-                "Address.postalCode" -> "1234 AA"
-                "Address.placeOfResidence" -> "Samplecity"
-                "Vehicle.make" -> "Dummymobile"
-                else -> defaultValue(dataElement)
+                "issuingCountry" -> "NL"
+                "competentAuthority" -> "RDW"
+                "registrationNumber" -> "E-01-23"
+                "validFrom" -> "2021-04-19"
+                "validUntil" -> "2023-04-20"
+                "ownershipStatus" -> 2
+                "name" -> "Erika"
+                "streetName" -> "Teststraat"
+                "houseNumber" -> "86"
+                "houseNumberSuffix" -> "A"
+                "postalCode" -> "1234 AA"
+                "placeOfResidence" -> "Samplecity"
+                "make" -> "Dummymobile"
+                else -> defaultValue(type)
             }
 
-            MICOV_ATT_NAMESPACE -> when (dataElement.attribute.identifier) {
+            MICOV_ATT_NAMESPACE -> when (identifier) {
                 "1D47_vaccinated" -> true
                 "RA01_vaccinated" -> true
                 "fac" -> BitmapFactory.decodeResource(
@@ -132,70 +132,70 @@ object SampleDataProvider {
                 "by" -> 1964
                 "bm" -> 8
                 "bd" -> 12
-                "Test.Result" -> "260415000"
-                "Test.TypeOfTest" -> "LP6464-4"
-                "Test.TimeOfTest" -> "2021-10-12"
-                "SafeEntry.SeCondFulfilled" -> true
-                "SafeEntry.SeCondType" -> "leisure"
-                "SafeEntry.SeCondExpiry" -> "2021-10-13"
-                else -> defaultValue(dataElement)
+                "Result" -> "260415000"
+                "TypeOfTest" -> "LP6464-4"
+                "TimeOfTest" -> "2021-10-12"
+                "SeCondFulfilled" -> true
+                "SeCondType" -> "leisure"
+                "SeCondExpiry" -> "2021-10-13"
+                else -> defaultValue(type)
             }
 
-            MICOV_VTR_NAMESPACE -> when (dataElement.attribute.identifier) {
+            MICOV_VTR_NAMESPACE -> when (identifier) {
                 "fn" -> "Mustermann"
                 "gn" -> "Erika"
                 "dob" -> "1964-08-12"
                 "sex" -> 2
-                "Vac.tg" -> "840539006"
-                "Vac.vp" -> "1119349007"
-                "Vac.mp" -> "EU/1/20/1528"
-                "Vac.br" -> "Sample brand"
-                "Vac.ma" -> "ORG-100030215"
-                "Vac.bn" -> when (dataElementParent != null && dataElementParent.attribute.identifier == "v_RA01_1") {
+                "tg" -> "840539006"
+                "vp" -> "1119349007"
+                "mp" -> "EU/1/20/1528"
+                "br" -> "Sample brand"
+                "ma" -> "ORG-100030215"
+                "bn" -> when (identifierParent != null && identifierParent == "v_RA01_1") {
                     true -> "B12345/67"
                     else -> "B67890/12"
                 }
 
-                "Vac.dn" -> when (dataElementParent != null && dataElementParent.attribute.identifier == "v_RA01_1") {
+                "dn" -> when (identifierParent != null && identifierParent == "v_RA01_1") {
                     true -> 1
                     else -> 2
                 }
 
-                "Vac.sd" -> 2
-                "Vac.dt" -> when (dataElementParent != null && dataElementParent.attribute.identifier == "v_RA01_1") {
+                "sd" -> 2
+                "dt" -> when (identifierParent != null && identifierParent == "v_RA01_1") {
                     true -> "2021-04-08"
                     else -> "2021-05-18"
                 }
 
-                "Vac.co" -> "US"
-                "Vac.ao" -> "RHI"
-                "Vac.ap" -> ""
-                "Vac.nx" -> "2021-05-20"
-                "Vac.is" -> "SC17"
-                "Vac.ci" -> when (dataElementParent != null && dataElementParent.attribute.identifier == "v_RA01_1") {
+                "co" -> "US"
+                "ao" -> "RHI"
+                "ap" -> ""
+                "nx" -> "2021-05-20"
+                "is" -> "SC17"
+                "ci" -> when (identifierParent != null && identifierParent == "v_RA01_1") {
                     true -> "URN:UVCI:01:UT:187/37512422923"
                     else -> "URN:UVCI:01:UT:187/37512533044"
                 }
 
-                "Vac.pd" -> ""
-                "Vac.vf" -> ""
-                "Vac.vu" -> ""
-                "Pid.pty" -> when (dataElementParent != null && dataElementParent.attribute.identifier == "pid_PPN") {
+                "pd" -> ""
+                "vf" -> "2021-05-27"
+                "vu" -> "2022-05-27"
+                "pty" -> when (identifierParent != null && identifierParent == "pid_PPN") {
                     true -> "PPN"
                     else -> "DL"
                 }
 
-                "Pid.pnr" -> when (dataElementParent != null && dataElementParent.attribute.identifier == "pid_PPN") {
+                "pnr" -> when (identifierParent != null && identifierParent == "pid_PPN") {
                     true -> "476284728"
                     else -> "987654321"
                 }
 
-                "Pid.pic" -> "US"
-                "Pid.pia" -> ""
-                else -> defaultValue(dataElement)
+                "pic" -> "US"
+                "pia" -> ""
+                else -> defaultValue(type)
             }
 
-            EUPID_NAMESPACE -> when (dataElement.attribute.identifier) {
+            EUPID_NAMESPACE -> when (identifier) {
                 "family_name" -> "Mustermann"
                 "family_name_national_characters" -> "Бабіак"
                 "given_name" -> "Erika"
@@ -229,89 +229,89 @@ object SampleDataProvider {
                 "age_over_68" -> false
                 "age_in_years" -> 37
                 "age_birth_year" -> 1986
-                else -> defaultValue(dataElement)
+                else -> defaultValue(type)
             }
 
-            else -> defaultValue(dataElement)
+            else -> defaultValue(type)
         }
     }
 
-    fun getSampleValue(namespace: String, dataElement: MdocDataElement, index: Int): Any? {
+    fun getSampleValue(namespace: String, identifier: String, type: CredentialAttributeType, index: Int): Any? {
         return when (namespace) {
-            MDL_NAMESPACE -> when (dataElement.attribute.identifier) {
-                "DrivingPrivilege.vehicle_category_code" -> when (index) {
+            MDL_NAMESPACE -> when (identifier) {
+                "vehicle_category_code" -> when (index) {
                     0 -> "A"
                     else -> "B"
                 }
 
-                "DrivingPrivilege.issue_date" -> when (index) {
+                "issue_date" -> when (index) {
                     0 -> "2018-08-09"
                     else -> "2017-02-23"
                 }
 
-                "DrivingPrivilege.expiry_date" -> when (index) {
+                "expiry_date" -> when (index) {
                     0 -> "2024-10-20"
                     else -> "2024-10-20"
                 }
 
-                "Code.code" -> when (index) {
+                "code" -> when (index) {
                     0 -> "S01"
                     else -> "S02"
                 }
 
-                "Code.sign" -> when (index) {
+                "sign" -> when (index) {
                     0 -> "<="
                     else -> "="
                 }
 
-                "Code.value" -> when (index) {
+                "value" -> when (index) {
                     0 -> "2500"
                     else -> "8"
                 }
 
-                else -> defaultValue(dataElement)
+                else -> defaultValue(type)
             }
 
-            AAMVA_NAMESPACE -> when (dataElement.attribute.identifier) {
-                "DomesticVehicleRestriction.domestic_vehicle_restriction_code" -> when (index) {
+            AAMVA_NAMESPACE -> when (identifier) {
+                "domestic_vehicle_restriction_code" -> when (index) {
                     0 -> "B"
                     else -> "C"
                 }
 
-                "DomesticVehicleRestriction.domestic_vehicle_restriction_description" -> when (index) {
+                "domestic_vehicle_restriction_description" -> when (index) {
                     0 -> "Corrective lenses must be worn"
                     else -> "Mechanical Aid (special brakes, hand controls, or other adaptive devices)"
                 }
 
-                "DomesticVehicleEndorsement.domestic_vehicle_endorsement_code" -> when (index) {
+                "domestic_vehicle_endorsement_code" -> when (index) {
                     0 -> "P"
                     else -> "S"
                 }
 
-                "DomesticVehicleEndorsement.domestic_vehicle_endorsement_description" -> when (index) {
+                "domestic_vehicle_endorsement_description" -> when (index) {
                     0 -> "Passenger"
                     else -> "School Bus"
                 }
 
-                else -> defaultValue(dataElement)
+                else -> defaultValue(type)
             }
 
-            else -> defaultValue(dataElement)
+            else -> defaultValue(type)
         }
     }
 
-    fun getArrayLength(namespace: String, dataElement: MdocDataElement): Int {
+    fun getArrayLength(namespace: String, identifier: String): Int {
         return when (namespace) {
-            MDL_NAMESPACE -> when (dataElement.attribute.identifier) {
+            MDL_NAMESPACE -> when (identifier) {
                 "driving_privileges" -> 2
-                "DrivingPrivilege.codes" -> 2
+                "codes" -> 2
                 else -> 2
             }
 
-            AAMVA_NAMESPACE -> when (dataElement.attribute.identifier) {
+            AAMVA_NAMESPACE -> when (identifier) {
                 "domestic_driving_privileges" -> 1
-                "DomesticDrivingPrivilege.domestic_vehicle_restrictions" -> 2
-                "DomesticDrivingPrivilege.domestic_vehicle_endorsements" -> 2
+                "domestic_vehicle_restrictions" -> 2
+                "domestic_vehicle_endorsements" -> 2
                 else -> 2
             }
 
@@ -319,8 +319,8 @@ object SampleDataProvider {
         }
     }
 
-    private fun defaultValue(dataElement: MdocDataElement): Any? {
-        return when (dataElement.attribute.type) {
+    private fun defaultValue(type: CredentialAttributeType): Any? {
+        return when (type) {
             is CredentialAttributeType.STRING -> "-"
             is CredentialAttributeType.NUMBER -> 0
             is CredentialAttributeType.DATE,
@@ -335,7 +335,7 @@ object SampleDataProvider {
             is CredentialAttributeType.BOOLEAN -> false
             is CredentialAttributeType.StringOptions,
             is CredentialAttributeType.IntegerOptions,
-            is CredentialAttributeType.ComplexType -> null
+            is CredentialAttributeType.COMPLEXTYPE -> null
         }
     }
 }

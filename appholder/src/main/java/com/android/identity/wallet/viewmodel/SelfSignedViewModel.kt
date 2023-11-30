@@ -10,6 +10,8 @@ import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.credentialtype.MdocCredentialType
 import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.wallet.document.DocumentManager
+import com.android.identity.wallet.documentdata.MdocComplexTypeDefinition
+import com.android.identity.wallet.documentdata.MdocComplexTypeRepository
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.SampleDataProvider
@@ -35,7 +37,8 @@ class SelfSignedViewModel(val app: Application) :
         for (credentialType in CredentialTypeRepository.getCredentialTypes()
             .filter { it.mdocCredentialType != null }) {
             id = 1 // reset the id to 1
-            fieldsByDocType[credentialType.mdocCredentialType?.docType!!] = createFields(credentialType.mdocCredentialType!!)
+            fieldsByDocType[credentialType.mdocCredentialType?.docType!!] =
+                createFields(credentialType.mdocCredentialType!!)
         }
     }
 
@@ -55,42 +58,42 @@ class SelfSignedViewModel(val app: Application) :
         }
     }
 
-    private fun createFields(mdocCredentialType: MdocCredentialType): MutableList<Field>
-    {
+    private fun createFields(mdocCredentialType: MdocCredentialType): MutableList<Field> {
         val fields: MutableList<Field> = mutableListOf()
+        val complexTypes = MdocComplexTypeRepository.getComplexTypes()
+            .find { it.docType == mdocCredentialType.docType }
         for (namespace in mdocCredentialType.namespaces) {
-            for (dataElement in namespace.dataElements.filter {
-                !it.attribute.identifier.contains(
-                    "."
-                )
-            }) {
+            val namespaceComplexTypes =
+                complexTypes?.namespaces?.find { it.namespace == namespace.namespace }
+            for (dataElement in namespace.dataElements) {
                 when (dataElement.attribute.type) {
-                    is CredentialAttributeType.ComplexType -> {
+                    is CredentialAttributeType.COMPLEXTYPE -> {
+                        val complexTypeDefinitions = namespaceComplexTypes?.dataElements?.filter {
+                            it.parentIdentifiers.contains(dataElement.attribute.identifier)
+                        }
 
-                        if ((dataElement.attribute.type as CredentialAttributeType.ComplexType).isArray) {
+                        if (complexTypeDefinitions?.first()?.partOfArray == true) {
                             val arrayLength =
                                 SampleDataProvider.getArrayLength(
                                     namespace.namespace,
-                                    dataElement
+                                    dataElement.attribute.identifier
                                 )
-                            val parent = Field(
+                            val parentField = Field(
                                 id++,
                                 "${dataElement.attribute.displayName} ($arrayLength items)",
                                 dataElement.attribute.identifier,
                                 dataElement.attribute.type,
                                 null,
-                                namespace = namespace.namespace
+                                namespace = namespace.namespace,
+                                isArray = true,
                             )
-                            fields.add(parent)
+                            fields.add(parentField)
                             addArrayFields(
-                                parent,
+                                parentField,
                                 fields,
-                                dataElement,
-                                namespace.dataElements.filter {
-                                    it.attribute.identifier.contains(".")
-                                })
+                                namespaceComplexTypes.dataElements)
                         } else {
-                            val parent = Field(
+                            val parentField = Field(
                                 id++,
                                 dataElement.attribute.displayName,
                                 dataElement.attribute.identifier,
@@ -98,14 +101,11 @@ class SelfSignedViewModel(val app: Application) :
                                 null,
                                 namespace = namespace.namespace
                             )
-                            fields.add(parent)
+                            fields.add(parentField)
                             addMapFields(
-                                parent,
+                                parentField,
                                 fields,
-                                dataElement,
-                                namespace.dataElements.filter {
-                                    it.attribute.identifier.contains(".")
-                                })
+                                namespaceComplexTypes?.dataElements!!)
                         }
                     }
 
@@ -114,7 +114,8 @@ class SelfSignedViewModel(val app: Application) :
                         val sampleValue = SampleDataProvider.getSampleValue(
                             app,
                             namespace.namespace,
-                            dataElement
+                            dataElement.attribute.identifier,
+                            dataElement.attribute.type
                         )
                         val field = Field(
                             id++,
@@ -137,44 +138,45 @@ class SelfSignedViewModel(val app: Application) :
     private fun addArrayFields(
         parentField: Field,
         fields: MutableList<Field>,
-        parentElement: MdocDataElement,
-        dataElements: List<MdocDataElement>,
+        dataElements: List<MdocComplexTypeDefinition>,
         prefix: String = ""
     ) {
-        val arrayLength = SampleDataProvider.getArrayLength(parentField.namespace!!, parentElement)
-        val typeName =
-            (parentElement.attribute.type as CredentialAttributeType.ComplexType).typeName
-        val childElements = dataElements.filter { it.attribute.identifier.startsWith("$typeName.") }
+        val arrayLength =
+            SampleDataProvider.getArrayLength(parentField.namespace!!, parentField.name)
+        val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (i in 0..arrayLength - 1) {
             for (childElement in childElements) {
-                if (childElement.attribute.type is CredentialAttributeType.ComplexType) {
+                if (childElement.type is CredentialAttributeType.COMPLEXTYPE) {
 
-                    if ((childElement.attribute.type as CredentialAttributeType.ComplexType).isArray) {
+                    if (dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }) {
                         val childField = Field(
                             id++,
-                            "$prefix${i + 1} | ${childElement.attribute.displayName} (${
-                                SampleDataProvider.getArrayLength(parentField.namespace, childElement)
+                            "$prefix${i + 1} | ${childElement.displayName} (${
+                                SampleDataProvider.getArrayLength(
+                                    parentField.namespace,
+                                    childElement.identifier
+                                )
                             } items)",
-                            childElement.attribute.identifier.substringAfter("."),
-                            childElement.attribute.type,
+                            childElement.identifier,
+                            childElement.type,
                             null,
                             namespace = parentField.namespace,
+                            isArray = true,
                             parentId = parentField.id
                         )
                         fields.add(childField)
                         addArrayFields(
                             childField,
                             fields,
-                            childElement,
                             dataElements,
                             "$prefix${i + 1} | "
                         )
                     } else {
                         val childField = Field(
                             id++,
-                            "$prefix${i + 1} | ${childElement.attribute.displayName}",
-                            childElement.attribute.identifier.substringAfter("."),
-                            childElement.attribute.type,
+                            "$prefix${i + 1} | ${childElement.displayName}",
+                            childElement.identifier,
+                            childElement.type,
                             null,
                             namespace = parentField.namespace,
                             parentId = parentField.id
@@ -183,19 +185,18 @@ class SelfSignedViewModel(val app: Application) :
                         addMapFields(
                             childField,
                             fields,
-                            childElement,
                             dataElements,
                             "$prefix${i + 1} | "
                         )
                     }
                 } else {
                     val sampleValue =
-                        SampleDataProvider.getSampleValue(parentField.namespace, childElement, i)
+                        SampleDataProvider.getSampleValue(parentField.namespace, childElement.identifier, childElement.type, i)
                     val childField = Field(
                         id++,
-                        "$prefix${i + 1} | ${childElement.attribute.displayName}",
-                        childElement.attribute.identifier.substringAfter("."),
-                        childElement.attribute.type,
+                        "$prefix${i + 1} | ${childElement.displayName}",
+                        childElement.identifier,
+                        childElement.type,
                         sampleValue,
                         namespace = parentField.namespace,
                         parentId = parentField.id
@@ -210,43 +211,43 @@ class SelfSignedViewModel(val app: Application) :
     private fun addMapFields(
         parentField: Field,
         fields: MutableList<Field>,
-        parentElement: MdocDataElement,
-        dataElements: List<MdocDataElement>,
+        dataElements: List<MdocComplexTypeDefinition>,
         prefix: String = ""
     ) {
-        val typeName =
-            (parentElement.attribute.type as CredentialAttributeType.ComplexType).typeName
-        val childElements = dataElements.filter { it.attribute.identifier.startsWith("$typeName.") }
+
+        val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (childElement in childElements) {
-            if (childElement.attribute.type is CredentialAttributeType.ComplexType) {
+            if (childElement.type is CredentialAttributeType.COMPLEXTYPE) {
+                val isArray = dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }
                 val childField = Field(
                     id++,
-                    "$prefix${childElement.attribute.displayName}",
-                    childElement.attribute.identifier.substringAfter("."),
-                    childElement.attribute.type,
+                    "$prefix${childElement.displayName}",
+                    childElement.identifier,
+                    childElement.type,
                     null,
                     namespace = parentField.namespace,
+                    isArray = isArray,
                     parentId = parentField.id
                 )
                 fields.add(childField)
-                if ((childElement.attribute.type as CredentialAttributeType.ComplexType).isArray) {
-                    addArrayFields(childField, fields, childElement, dataElements, prefix)
+                if (isArray){
+                    addArrayFields(childField, fields, dataElements, prefix)
                 } else {
-                    addMapFields(childField, fields, childElement, dataElements, prefix)
+                    addMapFields(childField, fields, dataElements, prefix)
                 }
             } else {
                 val sampleValue =
                     SampleDataProvider.getSampleValue(
                         app,
                         parentField.namespace!!,
-                        childElement,
-                        parentElement
+                        childElement.identifier,
+                        childElement.type
                     )
                 val childField = Field(
                     id++,
-                    "$prefix${childElement.attribute.displayName}",
-                    childElement.attribute.identifier.substringAfter("."),
-                    childElement.attribute.type,
+                    "$prefix${childElement.displayName}",
+                    childElement.identifier,
+                    childElement.type,
                     sampleValue,
                     namespace = parentField.namespace,
                     parentId = parentField.id
@@ -265,6 +266,18 @@ class SelfSignedViewModel(val app: Application) :
 
             is CredentialAttributeType.IntegerOptions -> field.integerOptions =
                 (dataElement.attribute.type as CredentialAttributeType.IntegerOptions).options
+
+            else -> {}
+        }
+    }
+
+    fun addOptions(field: Field, dataElement: MdocComplexTypeDefinition) {
+        when (dataElement.type) {
+            is CredentialAttributeType.StringOptions -> field.stringOptions =
+                dataElement.type.options
+
+            is CredentialAttributeType.IntegerOptions -> field.integerOptions =
+                dataElement.type.options
 
             else -> {}
         }
