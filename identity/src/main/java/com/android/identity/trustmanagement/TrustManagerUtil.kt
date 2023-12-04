@@ -29,11 +29,14 @@ import java.security.cert.X509Certificate
  */
 internal object TrustManagerUtil {
 
+    private const val DIGITAL_SIGNATURE = 0
+    private const val KEY_CERT_SIGN = 5
+
     /**
      * Check that the key usage is the creation of digital signatures
      */
     fun checkKeyUsageDocumentSigner(certificate: X509Certificate) {
-        if (!certificate.hasKeyUsageDocumentSigner()) {
+        if (!hasKeyUsage(certificate, KEY_CERT_SIGN)) {
             throw CertificateException("Document Signer certificate is not a signing certificate")
         }
     }
@@ -65,7 +68,7 @@ internal object TrustManagerUtil {
      * Check that the key usage is to sign certificates
      */
     fun checkKeyUsageCaCertificate(caCertificate: X509Certificate) {
-        if (!caCertificate.hasKeyUsageCaCertificate()) {
+        if (!hasKeyUsage(caCertificate, DIGITAL_SIGNATURE)) {
             throw CertificateException("CA certificate doesn't have the key usage to sign certificates")
         }
     }
@@ -116,5 +119,16 @@ internal object TrustManagerUtil {
             ByteArrayInputStream(caCertificate.encoded)
         ) as X509Certificate
         certificateBouncyCastle.verify(caCertificateBouncyCastle.publicKey)
+    }
+
+    /**
+     * Determine whether the certificate has certain key usage
+     */
+    private fun hasKeyUsage(certificate: X509Certificate, keyUsage: Int): Boolean {
+        if (certificate.keyUsage == null)
+        {
+            return false
+        }
+        return certificate.keyUsage[keyUsage]
     }
 }

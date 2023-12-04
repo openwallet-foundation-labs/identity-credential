@@ -13,38 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.identity.trustmanagement
+package com.android.mdl.appreader.trustmanagement
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.BCStyle
-import java.security.cert.X509Certificate
 import javax.security.auth.x500.X500Principal
-
-private const val DIGITAL_SIGNATURE = 0
-private const val KEY_CERT_SIGN = 5
-
-/**
- * Determine whether the certificate has the key usage of a document signer
- */
-fun X509Certificate.hasKeyUsageDocumentSigner(): Boolean {
-    if (this.keyUsage == null)
-    {
-        return false
-    }
-    return this.keyUsage[DIGITAL_SIGNATURE]
-}
-
-/**
- * Determine whether the certificate has the key usage of a certificate authority
- */
-fun X509Certificate.hasKeyUsageCaCertificate(): Boolean {
-    if (this.keyUsage == null)
-    {
-        return false
-    }
-    return this.keyUsage[KEY_CERT_SIGN]
-}
 
 /**
  * Extract the common name of a X500Principal (subject or issuer)

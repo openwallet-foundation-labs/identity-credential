@@ -1,8 +1,8 @@
 package com.android.mdl.appreader.settings
 
-import com.android.identity.trustmanagement.getCommonName
-import com.android.identity.trustmanagement.getOrganisation
-import com.android.identity.trustmanagement.organisationalUnit
+import com.android.mdl.appreader.trustmanagement.getCommonName
+import com.android.mdl.appreader.trustmanagement.getOrganisation
+import com.android.mdl.appreader.trustmanagement.organisationalUnit
 import java.lang.StringBuilder
 import java.security.MessageDigest
 import java.security.cert.X509Certificate

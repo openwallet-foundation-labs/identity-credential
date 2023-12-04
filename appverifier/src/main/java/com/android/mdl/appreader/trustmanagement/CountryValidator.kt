@@ -1,6 +1,5 @@
 package com.android.mdl.appreader.trustmanagement
 
-import com.android.identity.trustmanagement.countryCode
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.PKIXCertPathChecker

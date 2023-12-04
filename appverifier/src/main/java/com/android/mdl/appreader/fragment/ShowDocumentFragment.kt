@@ -20,7 +20,7 @@ import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
 import com.android.mdl.appreader.trustmanagement.CustomValidators
-import com.android.identity.trustmanagement.getCommonName
+import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
