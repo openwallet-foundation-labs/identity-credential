@@ -43,7 +43,7 @@ class MdocCredentialType private constructor(
          * @param namespace the namespace of the mDoc attribute
          * @param type the datatype of this attribute
          * @param identifier the identifier of this attribute
-         * @param displayName the friendly name of the attribute
+         * @param displayName the name suitable for display of the attribute
          * @param description a description of the attribute
          * @param mandatory indication whether the mDoc attribute is mandatory
          */

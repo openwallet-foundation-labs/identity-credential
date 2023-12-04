@@ -1,5 +1,6 @@
 package com.android.identity.credentialtype
 
+import com.android.identity.credentialtype.knowntypes.DrivingLicense
 import org.junit.Test
 
 class TestCredentialTypeRepository {
@@ -21,7 +22,7 @@ class TestCredentialTypeRepository {
         assert(credentialTypes[0].mdocCredentialType?.namespaces?.get(1)?.namespace == "org.iso.18013.5.1.aamva")
         credentialTypes[0].mdocCredentialType?.namespaces?.get(1)?.dataElements?.any {
             it.attribute.identifier == "domestic_driving_privileges" &&
-                    it.attribute.type == CredentialAttributeType.COMPLEXTYPE
+                    it.attribute.type == CredentialAttributeType.COMPLEX_TYPE
         }
             ?.let { assert(it) }
 

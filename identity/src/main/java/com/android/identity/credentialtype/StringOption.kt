@@ -17,9 +17,10 @@
 package com.android.identity.credentialtype
 
 /**
- * Class that represents a combination of a string value and its user-friendly presentation
+ * Class that represents a combination of a string value and a name suitable for display presentation
+ *
  * @param value a string value
- * @param displayName a user-friendly presentation of the value
+ * @param displayName a name suitable for display of the value
  */
 data class StringOption(
     val value: String?,

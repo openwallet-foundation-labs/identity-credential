@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-package com.android.identity.credentialtype
+package com.android.identity.credentialtype.knowntypes
+
+import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.credentialtype.CredentialType
 
 /**
  * Object containing the metadata of the Vehicle Registration Credential Type
@@ -30,7 +33,7 @@ object VehicleRegistration {
         return CredentialType.Builder("Vehicle Registration")
             .addMdocCredentialType("nl.rdw.mekb.1")
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "registration_info",
                 "Vehicle Registration Information",
                 "This data element contains the common vehicle registration information, including UN/EU elements, A and H.",
@@ -46,7 +49,7 @@ object VehicleRegistration {
                 MVR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "registration_holder",
                 "Vehicle Registration Holder Information ",
                 "This data element identifies the holder of the registration certificate",
@@ -54,7 +57,7 @@ object VehicleRegistration {
                 MVR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "basic_vehicle_info",
                 "Basic Vehicle Information",
                 "This data element contains the basic vehicle information",

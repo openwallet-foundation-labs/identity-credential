@@ -16,9 +16,10 @@
 package com.android.identity.credentialtype
 
 /**
- * Class that represents a combination of a integer value and its user-friendly presentation
+ * Class that represents a combination of a integer value and a name suitable for display
+ *
  * @param value a integer value
- * @param displayName a user-friendly presentation of the value
+ * @param displayName a name suitable for display of the value
  */
 data class IntegerOption(
     val value: Int?,

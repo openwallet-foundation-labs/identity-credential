@@ -18,8 +18,13 @@ package com.android.identity.credentialtype
 
 /**
  * Class representing the metadata of a Credential Type
+ * Currently mdoc and W3C Verifiable Credential data models are supported. More credential formats
+ * may be added in the future.
+ * A Credential Type has different attributes. Each attribute has a displayName which is short
+ * (1-3 words) and suitable for displaying in the UI. There is also a description which is a longer
+ * description of the attribute, typically no more than one paragraph.
  *
- * @param displayName the friendly name of the Credential Type
+ * @param displayName the name suitable for display of the Credential Type
  * @param mdocCredentialType metadata of an mDoc Credential Type (optional)
  * @param vcCredentialType metadata of a W3C VC Credential Type (optional)
  *
@@ -33,7 +38,7 @@ class CredentialType private constructor(
     /**
      * Builder class for class [CredentialType]
      *
-     * @param displayName the friendly name of the Credential Type
+     * @param displayName the name suitable for display of the Credential Type
      * @param mdocBuilder a builder for the [MdocCredentialType]
      * @param vcBuilder a builder for the [VcCredentialType]
      */
@@ -65,7 +70,7 @@ class CredentialType private constructor(
          *
          * @param type the datatype of this attribute
          * @param identifier the identifier of this attribute for both mDoc and VC
-         * @param displayName the friendly name of the attribute
+         * @param displayName a name suitable for display of the attribute
          * @param description a description of the attribute
          * @param mandatory indication whether the mDoc attribute is mandatory
          * @param mdocNamespace the namespace of the mDoc attribute
@@ -88,7 +93,7 @@ class CredentialType private constructor(
          * @param type the datatype of this attribute
          * @param mdocIdentifier the identifier of this attribute for mDoc
          * @param vcIdentifier the identifier of this attribute for VC
-         * @param displayName the friendly name of the attribute
+         * @param displayName a name suitable for display of the attribute
          * @param description a description of the attribute
          * @param mandatory indication whether the mDoc attribute is mandatory
          * @param mdocNamespace the namespace of the mDoc attribute
@@ -111,7 +116,7 @@ class CredentialType private constructor(
          *
          * @param type the datatype of this attribute
          * @param identifier the identifier of this attribute
-         * @param displayName the friendly name of the attribute
+         * @param displayName a name suitable for display of the attribute
          * @param description a description of the attribute
          * @param mandatory indication whether the mDoc attribute is mandatory
          * @param mdocNamespace the namespace of the mDoc attribute
@@ -140,7 +145,7 @@ class CredentialType private constructor(
          *
          * @param type the datatype of this attribute
          * @param identifier the identifier of this attribute
-         * @param displayName the friendly name of the attribute
+         * @param displayName a name suitable for display of the attribute
          * @param description a description of the attribute
          */
         fun addVcAttribute(

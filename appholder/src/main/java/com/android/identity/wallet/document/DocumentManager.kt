@@ -129,7 +129,7 @@ class DocumentManager private constructor(private val context: Context) {
                     }
                 }
 
-                is CredentialAttributeType.COMPLEXTYPE -> {
+                is CredentialAttributeType.COMPLEX_TYPE -> {
 
                     val dataItem = when (field.isArray) {
                         true -> {
@@ -232,7 +232,7 @@ class DocumentManager private constructor(private val context: Context) {
                     }
                 }
 
-                is CredentialAttributeType.COMPLEXTYPE -> {
+                is CredentialAttributeType.COMPLEX_TYPE -> {
                     val dataItem = when (field.isArray) {
                         true -> {
                             createArrayDataItem(field, documentData)

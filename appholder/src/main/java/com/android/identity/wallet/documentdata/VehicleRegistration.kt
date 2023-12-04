@@ -11,7 +11,7 @@ object VehicleRegistration {
             hashSetOf("registration_info"),
             false,
             "issuingCountry",
-            "Country code",
+            "Country Code",
             CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
         )
         .addDefinition(
@@ -19,7 +19,7 @@ object VehicleRegistration {
             hashSetOf("registration_info"),
             false,
             "competentAuthority",
-            "Competent authority",
+            "Competent Authority",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -27,7 +27,7 @@ object VehicleRegistration {
             hashSetOf("registration_info"),
             false,
             "registrationNumber",
-            "UN/EU element A",
+            "UN/EU Element A",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -35,7 +35,7 @@ object VehicleRegistration {
             hashSetOf("registration_info"),
             false,
             "validFrom",
-            "Custom EKB element, valid from",
+            "Custom EKB Element, Valid From",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -43,7 +43,7 @@ object VehicleRegistration {
             hashSetOf("registration_info"),
             false,
             "validUntil",
-            "Custom EKB element, valid until",
+            "Custom EKB Element, Valid Until",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -51,15 +51,15 @@ object VehicleRegistration {
             hashSetOf("registration_holder"),
             false,
             "holderInfo",
-            "Personal data",
-            CredentialAttributeType.COMPLEXTYPE
+            "Personal Data",
+            CredentialAttributeType.COMPLEX_TYPE
         )
         .addDefinition(
             MVR_NAMESPACE,
             hashSetOf("registration_holder"),
             false,
             "ownershipStatus",
-            "Ownership status",
+            "Ownership Status",
             CredentialAttributeType.NUMBER
         )
         .addDefinition(
@@ -67,7 +67,7 @@ object VehicleRegistration {
             hashSetOf("holderInfo"),
             false,
             "name",
-            "Name of the vehicle owner",
+            "Name of the Vehicle Owner",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -75,15 +75,15 @@ object VehicleRegistration {
             hashSetOf("holderInfo"),
             false,
             "address",
-            "Address of the vehicle owner",
-            CredentialAttributeType.COMPLEXTYPE
+            "Address of the Vehicle Owner",
+            CredentialAttributeType.COMPLEX_TYPE
         )
         .addDefinition(
             MVR_NAMESPACE,
             hashSetOf("address"),
             false,
             "streetName",
-            "Street name",
+            "Street Name",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -91,7 +91,7 @@ object VehicleRegistration {
             hashSetOf("address"),
             false,
             "houseNumber",
-            "House number",
+            "House Number",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -99,7 +99,7 @@ object VehicleRegistration {
             hashSetOf("address"),
             false,
             "houseNumberSuffix",
-            "House number suffix",
+            "House Number Suffix",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -107,7 +107,7 @@ object VehicleRegistration {
             hashSetOf("address"),
             false,
             "postalCode",
-            "Postal code",
+            "Postal Code",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -115,7 +115,7 @@ object VehicleRegistration {
             hashSetOf("address"),
             false,
             "placeOfResidence",
-            "Place of residence",
+            "Place of Residence",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -124,14 +124,14 @@ object VehicleRegistration {
             false,
             "vehicle",
             "Vehicle",
-            CredentialAttributeType.COMPLEXTYPE
+            CredentialAttributeType.COMPLEX_TYPE
         )
         .addDefinition(
             MVR_NAMESPACE,
             hashSetOf("vehicle"),
             false,
             "make",
-            "Make of the vehicle",
+            "Make of the Vehicle",
             CredentialAttributeType.STRING,
         )
 

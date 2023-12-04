@@ -12,7 +12,7 @@ object DrivingLicense {
             hashSetOf("driving_privileges"),
             true,
             "vehicle_category_code",
-            "Vehicle category code",
+            "Vehicle Category Code",
             CredentialAttributeType.StringOptions(
                 listOf(
                     StringOption(null, "(not set)"),
@@ -40,7 +40,7 @@ object DrivingLicense {
             hashSetOf("driving_privileges"),
             true,
             "issue_date",
-            "Date of issue",
+            "Date of Issue",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -48,7 +48,7 @@ object DrivingLicense {
             hashSetOf("driving_privileges"),
             true,
             "expiry_date",
-            "Date of expiry",
+            "Date of Expiry",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -56,8 +56,8 @@ object DrivingLicense {
             hashSetOf("driving_privileges"),
             true,
             "codes",
-            "Codes of driving privileges",
-            CredentialAttributeType.COMPLEXTYPE,
+            "Codes of Driving Privileges",
+            CredentialAttributeType.COMPLEX_TYPE,
         )
         // details of DrivingPrivilege.codes
         .addDefinition(
@@ -135,24 +135,24 @@ object DrivingLicense {
             hashSetOf("domestic_driving_privileges"),
             true,
             "domestic_vehicle_class",
-            "Domestic vehicle class",
-            CredentialAttributeType.COMPLEXTYPE,
+            "Domestic Vehicle Class",
+            CredentialAttributeType.COMPLEX_TYPE,
         )
         .addDefinition(
             AAMVA_NAMESPACE,
             hashSetOf("domestic_driving_privileges"),
             true,
             "domestic_vehicle_restrictions",
-            "Domestic vehicle restrictions",
-            CredentialAttributeType.COMPLEXTYPE
+            "Domestic Vehicle Restrictions",
+            CredentialAttributeType.COMPLEX_TYPE
         )
         .addDefinition(
             AAMVA_NAMESPACE,
             hashSetOf("domestic_driving_privileges"),
             true,
             "domestic_vehicle_endorsements",
-            "Domestic vehicle endorsements",
-            CredentialAttributeType.COMPLEXTYPE
+            "Domestic Vehicle Endorsements",
+            CredentialAttributeType.COMPLEX_TYPE
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_class
         .addDefinition(
@@ -160,7 +160,7 @@ object DrivingLicense {
             hashSetOf("domestic_vehicle_class"),
             false,
             "domestic_vehicle_class_code",
-            "Domestic vehicle class code",
+            "Domestic Vehicle Class Code",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -168,7 +168,7 @@ object DrivingLicense {
             hashSetOf("domestic_vehicle_class"),
             false,
             "domestic_vehicle_class_description",
-            "Domestic vehicle class description",
+            "Domestic Vehicle Class Description",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -176,7 +176,7 @@ object DrivingLicense {
             hashSetOf("domestic_vehicle_class"),
             false,
             "issue_date",
-            "Date of issue",
+            "Date of Issue",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -184,7 +184,7 @@ object DrivingLicense {
             hashSetOf("domestic_vehicle_class"),
             false,
             "expiry_date",
-            "Date of expiry",
+            "Date of Expiry",
             CredentialAttributeType.DATE
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_restrictions
@@ -193,7 +193,7 @@ object DrivingLicense {
             hashSetOf("domestic_vehicle_restrictions"),
             true,
             "domestic_vehicle_restriction_code",
-            "Restriction code",
+            "Restriction Code",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -201,7 +201,7 @@ object DrivingLicense {
             hashSetOf("domestic_vehicle_restrictions"),
             true,
             "domestic_vehicle_restriction_description",
-            "Vehicle category description",
+            "Vehicle Category Description",
             CredentialAttributeType.STRING
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_endorsements
@@ -210,7 +210,7 @@ object DrivingLicense {
             hashSetOf("domestic_vehicle_endorsements"),
             true,
             "domestic_vehicle_endorsement_code",
-            "Endorsement code",
+            "Endorsement Code",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -218,7 +218,7 @@ object DrivingLicense {
             hashSetOf("domestic_vehicle_endorsements"),
             true,
             "domestic_vehicle_endorsement_description",
-            "Vehicle endorsement description",
+            "Vehicle Endorsement Description",
             CredentialAttributeType.STRING
         )
         .build()

@@ -13,7 +13,7 @@ object VaccinationDocument {
             hashSetOf("RA01_test"),
             false,
             "Result",
-            "Test result",
+            "Test Result",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -21,7 +21,7 @@ object VaccinationDocument {
             hashSetOf("RA01_test"),
             false,
             "TypeOfTest",
-            "Type of test",
+            "Type of Test",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -29,7 +29,7 @@ object VaccinationDocument {
             hashSetOf("RA01_test"),
             false,
             "TimeOfTest",
-            "Time of test",
+            "Time of Test",
             CredentialAttributeType.DATE_TIME
         )
         .addDefinition(
@@ -37,7 +37,7 @@ object VaccinationDocument {
             hashSetOf("safeEntry_Leisure"),
             false,
             "SeCondFulfilled",
-            "Second fulfilled",
+            "Second Fulfilled",
             CredentialAttributeType.BOOLEAN
         )
         .addDefinition(
@@ -45,7 +45,7 @@ object VaccinationDocument {
             hashSetOf("safeEntry_Leisure"),
             false,
             "SeCondType",
-            "Second type",
+            "Second Type",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -53,7 +53,7 @@ object VaccinationDocument {
             hashSetOf("safeEntry_Leisure"),
             false,
             "SeCondExpiry",
-            "Second expiry",
+            "Second Expiry",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -61,7 +61,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "tg",
-            "Disease or agent targeted",
+            "Disease or Agent Targeted",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -69,7 +69,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "vp",
-            "Vaccine or prophylaxis",
+            "Vaccine or Prophylaxis",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -77,7 +77,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "mp",
-            "Vaccine medicinal product",
+            "Vaccine Medicinal Product",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -85,7 +85,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "br",
-            "Vaccine brand",
+            "Vaccine Brand",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -101,7 +101,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "bn",
-            "Batch/lot number of the vaccine",
+            "Batch/Lot Number of the Vaccine",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -109,7 +109,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "dn",
-            "Dose number",
+            "Dose Number",
             CredentialAttributeType.NUMBER
         )
         .addDefinition(
@@ -117,7 +117,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "sd",
-            "Total series of doses",
+            "Total Series of Doses",
             CredentialAttributeType.NUMBER
         )
         .addDefinition(
@@ -125,7 +125,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "dt",
-            "Date of vaccination",
+            "Date of Vaccination",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -133,7 +133,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "co",
-            "Country of vaccination",
+            "Country of Vaccination",
             CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
         )
         .addDefinition(
@@ -141,7 +141,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "ao",
-            "Administering organization",
+            "Administering Organization",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -149,7 +149,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "ap",
-            "Administering professional",
+            "Administering Professional",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -157,7 +157,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "nx",
-            "Due date of next dose",
+            "Due Date of Next Dose",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -165,7 +165,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "is",
-            "Certificate issuer",
+            "Certificate Issuer",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -173,7 +173,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "ci",
-            "Unique certificate identifier (UVCI)",
+            "Unique Certificate Identifier (UVCI)",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -181,7 +181,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "pd",
-            "Protection duration",
+            "Protection Duration",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -189,7 +189,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "vf",
-            "Valid from",
+            "Valid From",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -197,7 +197,7 @@ object VaccinationDocument {
             hashSetOf("v_RA01_1", "v_RA01_2"),
             false,
             "vu",
-            "Valid until",
+            "Valid Until",
             CredentialAttributeType.DATE
         )
         .addDefinition(
@@ -205,7 +205,7 @@ object VaccinationDocument {
             hashSetOf("pid_PPN", "pid_DL"),
             false,
             "pty",
-            "Type of person identifier",
+            "Type of Person Identifier",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -213,7 +213,7 @@ object VaccinationDocument {
             hashSetOf("pid_PPN", "pid_DL"),
             false,
             "pnr",
-            "Unique number for the pty/pic/(pia) combination",
+            "Unique number for the PTY/PIC/(PIA) combination",
             CredentialAttributeType.STRING
         )
         .addDefinition(
@@ -221,7 +221,7 @@ object VaccinationDocument {
             hashSetOf("pid_PPN", "pid_DL"),
             false,
             "pic",
-            "Issuing country of the pty",
+            "Issuing Country of the PTY",
             CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
         )
         .addDefinition(
@@ -229,7 +229,7 @@ object VaccinationDocument {
             hashSetOf("pid_PPN", "pid_DL"),
             false,
             "pia",
-            "Issuing authority of the pty",
+            "Issuing Authority of the PTY",
             CredentialAttributeType.STRING,
         )
         .build()

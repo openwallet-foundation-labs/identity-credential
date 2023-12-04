@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-package com.android.identity.credentialtype
+package com.android.identity.credentialtype.knowntypes
+
+import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.credentialtype.CredentialType
+import com.android.identity.credentialtype.Options
 
 /**
  * Object containing the metadata of the EU Personal ID Credential Type
@@ -39,7 +43,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "family_name_national_characters",
-                "Family name national characters",
+                "Family Name National Characters",
                 "The family name of the PID holder in national (non-Latin) characters",
                 false,
                 EUPID_NAMESPACE
@@ -55,7 +59,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "given_name_national_characters",
-                "Given name national characters",
+                "Given Name National Characters",
                 "The given name of the PID holder in national (non-Latin) characters",
                 false,
                 EUPID_NAMESPACE
@@ -63,7 +67,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.DATE,
                 "birth_date",
-                "Date of birth",
+                "Date of Birth",
                 "Day, month, and year on which the PID holder was born. If unknown, approximate date of birth.",
                 true,
                 EUPID_NAMESPACE
@@ -87,7 +91,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "family_name_birth_national_characters",
-                "Family Name at Birth national characters",
+                "Family Name at Birth National Characters",
                 "The family name of the PID holder at birth in national (non-Latin) characters",
                 false,
                 EUPID_NAMESPACE
@@ -103,7 +107,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "given_name_birth_national_characters",
-                "First Name at Birth national characters",
+                "First Name at Birth National Characters",
                 "The given name of the PID holder at birth in national (non-Latin) characters",
                 false,
                 EUPID_NAMESPACE
@@ -111,7 +115,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "birth_place",
-                "Place of birth",
+                "Place of Birth",
                 "Country and municipality or state/province where the PID holder was born",
                 false,
                 EUPID_NAMESPACE
@@ -119,7 +123,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "resident_address",
-                "Resident address",
+                "Resident Address",
                 "The full address of the place where the PID holder currently resides and/or may be contacted (street/house number, municipality etc.)",
                 false,
                 EUPID_NAMESPACE
@@ -127,7 +131,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "resident_city",
-                "Resident city",
+                "Resident City",
                 "The city where the PID holder currently resides",
                 false,
                 EUPID_NAMESPACE
@@ -135,7 +139,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "resident_postal_code",
-                "Resident postal code",
+                "Resident Postal Code",
                 "The postal code of the place where the PID holder currently resides",
                 false,
                 EUPID_NAMESPACE
@@ -143,7 +147,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "resident_state",
-                "Resident state",
+                "Resident State",
                 "The state, province, district, or local area where the PID holder currently resides",
                 false,
                 EUPID_NAMESPACE
@@ -151,7 +155,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.STRING,
                 "resident_country",
-                "Resident country",
+                "Resident Country",
                 "The country where the PID holder currently resides",
                 false,
                 EUPID_NAMESPACE
@@ -183,7 +187,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.DATE,
                 "portrait_capture_date",
-                "Portrait capture date",
+                "Portrait Capture Date",
                 "Date when portrait was taken",
                 false,
                 EUPID_NAMESPACE
@@ -199,7 +203,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_13",
-                "Older than 13",
+                "Older Than 13",
                 "Age over 13?",
                 false,
                 EUPID_NAMESPACE
@@ -207,7 +211,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_16",
-                "Older than 16",
+                "Older Than 16",
                 "Age over 16?",
                 false,
                 EUPID_NAMESPACE
@@ -215,7 +219,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_18",
-                "Older than 18",
+                "Older Than 18",
                 "Age over 18?",
                 false,
                 EUPID_NAMESPACE
@@ -223,7 +227,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_21",
-                "Older than 21",
+                "Older Than 21",
                 "Age over 21?",
                 false,
                 EUPID_NAMESPACE
@@ -231,7 +235,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_60",
-                "Older than 60",
+                "Older Than 60",
                 "Age over 60?",
                 false,
                 EUPID_NAMESPACE
@@ -239,7 +243,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_65",
-                "Older than 65",
+                "Older Than 65",
                 "Age over 65?",
                 false,
                 EUPID_NAMESPACE
@@ -247,7 +251,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.BOOLEAN,
                 "age_over_68",
-                "Older than 68",
+                "Older Than 68",
                 "Age over 68?",
                 false,
                 EUPID_NAMESPACE
@@ -255,7 +259,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.NUMBER,
                 "age_in_years",
-                "Age in years",
+                "Age in Years",
                 "The age of the PID holder in years",
                 false,
                 EUPID_NAMESPACE
@@ -263,7 +267,7 @@ object EUPersonalID {
             .addMdocAttribute(
                 CredentialAttributeType.NUMBER,
                 "age_birth_year",
-                "Year of birth",
+                "Year of Birth",
                 "The year when the PID holder was born",
                 false,
                 EUPID_NAMESPACE

@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-package com.android.identity.credentialtype
+package com.android.identity.credentialtype.knowntypes
+
+import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.credentialtype.CredentialType
+import com.android.identity.credentialtype.Options
 
 /**
  * Object containing the metadata of the Vaccination Document Credential Type
@@ -46,17 +50,17 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "RA01_test",
-                "Test event for COVID-19",
+                "Test Event for COVID-19",
                 "Attestation that the holder has obtained a negative test for COVID-19",
                 false,
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "safeEntry_Leisure",
-                "Safe entry indication",
+                "Safe Entry Indication",
                 "Attest that the holder fulfils certain set requirements for safe entry in a leisure context (without disclosing if it is based on vaccination, recovery, or negative test)",
                 false,
                 MICOV_ATT_NAMESPACE
@@ -142,33 +146,33 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "v_RA01_1",
-                "RA01 first vaccination",
+                "RA01 First Vaccination",
                 "COVID-19 – first vaccination data",
                 false,
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "v_RA01_2",
-                "RA01 second vaccination",
+                "RA01 Second Vaccination",
                 "COVID-19 – second vaccination data",
                 false,
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "pid_PPN",
-                "ID with pasport number",
+                "ID with Pasport Number",
                 "Unique set of elements identifying the holder by passport number",
                 false,
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEXTYPE,
+                CredentialAttributeType.COMPLEX_TYPE,
                 "pid_DL",
-                "ID with driver’s license number",
+                "ID with Driver’s License Number",
                 "Unique set of elements identifying the holder by driver’s license number",
                 false,
                 MICOV_VTR_NAMESPACE

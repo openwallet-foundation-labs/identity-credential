@@ -36,7 +36,7 @@ class VcCredentialType private constructor(
          *
          * @param type the datatype of this claim
          * @param identifier the identifier of this claim
-         * @param displayName the friendly name of the claim
+         * @param displayName a name suitable for display of the claim
          * @param description a description of the claim
          */
         fun addClaim(

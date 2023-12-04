@@ -7,10 +7,10 @@ import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.credentialtype.DrivingLicense
-import com.android.identity.credentialtype.EUPersonalID
-import com.android.identity.credentialtype.VaccinationDocument
-import com.android.identity.credentialtype.VehicleRegistration
+import com.android.identity.credentialtype.knowntypes.DrivingLicense
+import com.android.identity.credentialtype.knowntypes.EUPersonalID
+import com.android.identity.credentialtype.knowntypes.VaccinationDocument
+import com.android.identity.credentialtype.knowntypes.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.SoftwareSecureArea
 import com.android.identity.util.Logger

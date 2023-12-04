@@ -17,7 +17,10 @@
 package com.android.identity.credentialtype
 
 /**
- * A class that contains the metadata of Credential Types
+ * A class that contains the metadata of Credential Types. The repository is initially empty, but in
+ * the com.android.identity.credentialtype.knowntypes package there are well known credential types
+ * which can be added using the addCredentialType() method. Applications also may add their own
+ * Credential Types.
  */
 object CredentialTypeRepository {
     private val credentialTypes: MutableList<CredentialType> = mutableListOf()

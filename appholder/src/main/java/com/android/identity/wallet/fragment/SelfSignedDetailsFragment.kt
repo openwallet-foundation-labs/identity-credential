@@ -249,7 +249,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 )
             }
 
-            is CredentialAttributeType.COMPLEXTYPE -> {
+            is CredentialAttributeType.COMPLEX_TYPE -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTitleView(field.id + 500, field.label)
                 )

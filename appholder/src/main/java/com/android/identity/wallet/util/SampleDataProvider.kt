@@ -335,7 +335,7 @@ object SampleDataProvider {
             is CredentialAttributeType.BOOLEAN -> false
             is CredentialAttributeType.StringOptions,
             is CredentialAttributeType.IntegerOptions,
-            is CredentialAttributeType.COMPLEXTYPE -> null
+            is CredentialAttributeType.COMPLEX_TYPE -> null
         }
     }
 }

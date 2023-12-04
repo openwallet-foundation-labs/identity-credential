@@ -67,7 +67,7 @@ class SelfSignedViewModel(val app: Application) :
                 complexTypes?.namespaces?.find { it.namespace == namespace.namespace }
             for (dataElement in namespace.dataElements) {
                 when (dataElement.attribute.type) {
-                    is CredentialAttributeType.COMPLEXTYPE -> {
+                    is CredentialAttributeType.COMPLEX_TYPE -> {
                         val complexTypeDefinitions = namespaceComplexTypes?.dataElements?.filter {
                             it.parentIdentifiers.contains(dataElement.attribute.identifier)
                         }
@@ -146,7 +146,7 @@ class SelfSignedViewModel(val app: Application) :
         val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (i in 0..arrayLength - 1) {
             for (childElement in childElements) {
-                if (childElement.type is CredentialAttributeType.COMPLEXTYPE) {
+                if (childElement.type is CredentialAttributeType.COMPLEX_TYPE) {
 
                     if (dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }) {
                         val childField = Field(
@@ -217,7 +217,7 @@ class SelfSignedViewModel(val app: Application) :
 
         val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (childElement in childElements) {
-            if (childElement.type is CredentialAttributeType.COMPLEXTYPE) {
+            if (childElement.type is CredentialAttributeType.COMPLEX_TYPE) {
                 val isArray = dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }
                 val childField = Field(
                     id++,
