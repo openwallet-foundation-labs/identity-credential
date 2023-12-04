@@ -36,7 +36,7 @@ internal object TrustManagerUtil {
      * Check that the key usage is the creation of digital signatures
      */
     fun checkKeyUsageDocumentSigner(certificate: X509Certificate) {
-        if (!hasKeyUsage(certificate, KEY_CERT_SIGN)) {
+        if (!hasKeyUsage(certificate, DIGITAL_SIGNATURE)) {
             throw CertificateException("Document Signer certificate is not a signing certificate")
         }
     }
@@ -68,7 +68,7 @@ internal object TrustManagerUtil {
      * Check that the key usage is to sign certificates
      */
     fun checkKeyUsageCaCertificate(caCertificate: X509Certificate) {
-        if (!hasKeyUsage(caCertificate, DIGITAL_SIGNATURE)) {
+        if (!hasKeyUsage(caCertificate, KEY_CERT_SIGN)) {
             throw CertificateException("CA certificate doesn't have the key usage to sign certificates")
         }
     }
