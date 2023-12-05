@@ -17,10 +17,12 @@
 package com.android.identity.credentialtype
 
 /**
- * Class containing the metadata of a data element of an mDoc Credential Type
+ * Class containing the metadata of a data element of an mDoc
+ * Credential Type
  *
- * @param attribute the generic metadata
- * @param mandatory a mDoc specific indication whether the data element is mandatory
+ * @param attribute the generic metadata.
+ * @param mandatory a mDoc specific indication whether the
+ * data element is mandatory
  */
 class MdocDataElement(
     val attribute: CredentialAttribute,

@@ -6,9 +6,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.credentialtype.MdocCredentialType
 import com.android.identity.credentialtype.MdocDataElement
+import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.MdocComplexTypeDefinition
 import com.android.identity.wallet.documentdata.MdocComplexTypeRepository
@@ -34,7 +34,7 @@ class SelfSignedViewModel(val app: Application) :
 
     init {
         loading.value = View.GONE
-        for (credentialType in CredentialTypeRepository.getCredentialTypes()
+        for (credentialType in HolderApp.credentialTypeRepositoryInstance.getCredentialTypes()
             .filter { it.mdocCredentialType != null }) {
             id = 1 // reset the id to 1
             fieldsByDocType[credentialType.mdocCredentialType?.docType!!] =

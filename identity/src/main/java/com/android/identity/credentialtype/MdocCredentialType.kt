@@ -17,10 +17,10 @@
 package com.android.identity.credentialtype
 
 /**
- * Class containing the metadata of an mDoc Credential Type
+ * Class containing the metadata of an mDoc Credential Type.
  *
- * @param docType the docType of the mDoc Credential Type
- * @param namespaces the namespaces of the mDoc Credential Type
+ * @param docType the docType of the mDoc Credential Type.
+ * @param namespaces the namespaces of the mDoc Credential Type.
  */
 class MdocCredentialType private constructor(
     val docType: String,
@@ -28,24 +28,24 @@ class MdocCredentialType private constructor(
 ) {
 
     /**
-     * Builder class for class [MdocCredentialType]
+     * Builder class for class [MdocCredentialType].
      *
-     * @param docType the docType of the mDoc Credential Type
-     * @param namespaces the namespaces of the mDoc Credential Type
+     * @param docType the docType of the mDoc Credential Type.
+     * @param namespaces the namespaces of the mDoc Credential Type.
      */
     data class Builder(
         val docType: String,
         val namespaces: MutableMap<String, MdocNamespace.Builder> = mutableMapOf()
     ) {
         /**
-         * Add a data element to a namespace in the mDoc Credential Type
+         * Add a data element to a namespace in the mDoc Credential Type.
          *
-         * @param namespace the namespace of the mDoc attribute
-         * @param type the datatype of this attribute
-         * @param identifier the identifier of this attribute
-         * @param displayName the name suitable for display of the attribute
-         * @param description a description of the attribute
-         * @param mandatory indication whether the mDoc attribute is mandatory
+         * @param namespace the namespace of the mDoc attribute.
+         * @param type the datatype of this attribute.
+         * @param identifier the identifier of this attribute.
+         * @param displayName the name suitable for display of the attribute.
+         * @param description a description of the attribute.
+         * @param mandatory indication whether the mDoc attribute is mandatory.
          */
         fun addDataElement(
             namespace: String,
@@ -68,7 +68,7 @@ class MdocCredentialType private constructor(
         }
 
         /**
-         * Build the [MdocCredentialType]
+         * Build the [MdocCredentialType].
          */
         fun build() = MdocCredentialType(docType, namespaces.values.map { it.build() })
     }

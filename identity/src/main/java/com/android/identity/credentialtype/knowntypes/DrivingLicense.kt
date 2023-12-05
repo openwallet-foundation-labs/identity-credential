@@ -19,18 +19,18 @@ package com.android.identity.credentialtype.knowntypes
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.CredentialType
 import com.android.identity.credentialtype.IntegerOption
-import com.android.identity.credentialtype.Options
 import com.android.identity.credentialtype.StringOption
 
 /**
- * Object containing the metadata of the Driving License Credential Type
+ * Object containing the metadata of the Driving License
+ * Credential Type.
  */
 object DrivingLicense {
     const val MDL_NAMESPACE = "org.iso.18013.5.1"
     const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
 
     /**
-     * Build the Driving License Credential Type
+     * Build the Driving License Credential Type.
      */
     fun getCredentialType(): CredentialType {
         return CredentialType.Builder("Driving License")

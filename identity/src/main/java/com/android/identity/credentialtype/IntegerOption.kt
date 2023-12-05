@@ -16,17 +16,18 @@
 package com.android.identity.credentialtype
 
 /**
- * Class that represents a combination of a integer value and a name suitable for display
+ * Class that represents a combination of an integer value
+ * and a name suitable for display
  *
- * @param value a integer value
- * @param displayName a name suitable for display of the value
+ * @param value a integer value.
+ * @param displayName a name suitable for display of the value.
  */
 data class IntegerOption(
     val value: Int?,
     val displayName: String
 ) {
     /**
-     * Show only the [displayName] in the toString function
+     * Show only the [displayName] in the toString function.
      */
     override fun toString(): String {
         return displayName

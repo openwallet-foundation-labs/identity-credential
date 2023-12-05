@@ -18,17 +18,17 @@ package com.android.identity.credentialtype.knowntypes
 
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.CredentialType
-import com.android.identity.credentialtype.Options
 
 /**
- * Object containing the metadata of the Vaccination Document Credential Type
+ * Object containing the metadata of the Vaccination
+ * Document Credential Type.
  */
 object VaccinationDocument {
     const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
     const val MICOV_VTR_NAMESPACE = "org.micov.vtr.1"
 
     /**
-     * Build the Vaccination Document Credential Type
+     * Build the Vaccination Document Credential Type.
      */
     fun getCredentialType(): CredentialType {
         return CredentialType.Builder("Vaccination Document")

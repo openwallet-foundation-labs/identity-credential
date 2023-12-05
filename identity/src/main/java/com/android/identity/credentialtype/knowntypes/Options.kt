@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.identity.credentialtype
+package com.android.identity.credentialtype.knowntypes
+
+import com.android.identity.credentialtype.IntegerOption
+import com.android.identity.credentialtype.StringOption
 
 /**
- * Object containing reusable lists of [IntegerOption] or [StringOption]
+ * Object containing reusable lists of [IntegerOption] or
+ * [StringOption].
  */
 object Options {
     /**
-     * ISO/IEC 5218 values for sex/gender
+     * ISO/IEC 5218 values for sex/gender.
      */
     val SEX_ISO_IEC_5218: List<IntegerOption> = listOf(
         IntegerOption(null, "(not set)"),
@@ -31,7 +35,7 @@ object Options {
     )
 
     /**
-     * Values for name suffix in the AAMVA namespace
+     * Values for name suffix in the AAMVA namespace.
      */
     val AAMVA_NAME_SUFFIX = listOf(
         StringOption(null, "(not set)"),
@@ -49,7 +53,7 @@ object Options {
     )
 
     /**
-     * ISO 3166-1 Alpha 2 values for Countries
+     * ISO 3166-1 Alpha 2 values for Countries.
      */
     val COUNTRY_ISO_3166_1_ALPHA_2 = listOf(
         StringOption(null, "(not set)"),
@@ -305,7 +309,8 @@ object Options {
     )
 
     /**
-     * Values for distinguishing sign according to ISO/IEC 18013-1 Annex F
+     * Values for distinguishing sign according to ISO/IEC
+     * 18013-1 Annex F.
      */
     val DISTINGUISHING_SIGN_ISO_IEC_18013_1_ANNEX_F = listOf(
         StringOption("AFG", "Afghanistan"),

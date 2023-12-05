@@ -7,8 +7,9 @@ class TestCredentialTypeRepository {
 
     @Test
     fun testCredentialTypeRepositoryDrivingLicense() {
-        CredentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
-        val credentialTypes = CredentialTypeRepository.getCredentialTypes()
+        val credentialTypeRepository = CredentialTypeRepository()
+        credentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
+        val credentialTypes = credentialTypeRepository.getCredentialTypes()
         assert(credentialTypes.count() == 1)
         assert(credentialTypes[0].displayName == "Driving License")
         assert(credentialTypes[0].mdocCredentialType?.docType == "org.iso.18013.5.1.mDL")

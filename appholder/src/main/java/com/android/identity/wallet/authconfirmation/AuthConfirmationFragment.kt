@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLif
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.android.identity.credentialtype.CredentialTypeRepository
+import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.R
 import com.android.identity.wallet.support.SecureAreaSupport
 import com.android.identity.wallet.theme.HolderAppTheme
@@ -84,7 +84,7 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun stringValueFor(docType: String, namespace: String, element: String): String {
-        val credentialType = CredentialTypeRepository.getCredentialTypes()
+        val credentialType = HolderApp.credentialTypeRepositoryInstance.getCredentialTypes()
             .find { it.mdocCredentialType != null && it.mdocCredentialType?.docType == docType }
             ?: return element
         val mdocNamespace = credentialType.mdocCredentialType?.namespaces?.find { it.namespace == namespace }

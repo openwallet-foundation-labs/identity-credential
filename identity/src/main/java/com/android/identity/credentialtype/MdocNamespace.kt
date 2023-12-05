@@ -17,17 +17,19 @@
 package com.android.identity.credentialtype
 
 /**
- * Class containing the metadata of a namespace in an mDoc Credential Type
+ * Class containing the metadata of a namespace in an mDoc
+ * Credential Type.
  *
- * @param namespace the namespace of this part of the mDoc Credential Type
- * @param dataElements the data elements in this namespace
+ * @param namespace the namespace of this part of the mDoc
+ * Credential Type.
+ * @param dataElements the data elements in this namespace.
  */
 class MdocNamespace private constructor(
     val namespace: String,
     val dataElements: List<MdocDataElement>
 ) {
     /**
-     * Builder class for class [MdocNamespace]
+     * Builder class for class [MdocNamespace].
      */
     data class Builder(
         val namespace: String,
@@ -35,13 +37,14 @@ class MdocNamespace private constructor(
     ) {
 
         /**
-         * Add a data element to a namespace in the mDoc Credential Type
+         * Add a data element to a namespace in the mDoc
+         * Credential Type.
          *
-         * @param type the datatype of this attribute
-         * @param identifier the identifier of this attribute
-         * @param displayName the name suitable for display of the attribute
-         * @param description a description of the attribute
-         * @param mandatory indication whether the mDoc attribute is mandatory
+         * @param type the datatype of this attribute.
+         * @param identifier the identifier of this attribute.
+         * @param displayName the name suitable for display of the attribute.
+         * @param description a description of the attribute.
+         * @param mandatory indication whether the mDoc attribute is mandatory.
          */
         fun addDataElement(
             type: CredentialAttributeType,
@@ -59,7 +62,7 @@ class MdocNamespace private constructor(
         }
 
         /**
-         * Build the [MdocNamespace]
+         * Build the [MdocNamespace].
          */
         fun build() = MdocNamespace(namespace, dataElements)
     }

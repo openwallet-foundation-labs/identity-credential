@@ -17,9 +17,13 @@
 package com.android.identity.credentialtype
 
 /**
- * Attributes in credentials can have different types and this enumeration contains a type-system
- * generic enough to be used across various credential formats. This is useful for wallet and reader
- * user interfaces which wants to provide UI for inputting our displaying credentials attributes.
+ * Enumeration of the different types of Credential Attributes
+ *
+ * Attributes in credentials can have different types and this
+ * enumeration contains a type-system generic enough to be
+ * used across various credential formats. This is useful for
+ * wallet and reader user interfaces which wants to provide UI
+ * for inputting or displaying credentials attributes.
  */
 sealed class CredentialAttributeType {
     object STRING : CredentialAttributeType()

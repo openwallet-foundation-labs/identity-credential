@@ -2,7 +2,7 @@ package com.android.identity.wallet.selfsigned
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import com.android.identity.credentialtype.CredentialTypeRepository
+import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.document.DocumentColor
 import com.android.identity.wallet.support.CurrentSecureArea
 import com.android.identity.wallet.support.SecureAreaSupportState
@@ -20,7 +20,7 @@ class AddSelfSignedViewModel(
     )
 
     val documentItems: List<DocumentItem> =
-        CredentialTypeRepository.getCredentialTypes().filter { it.mdocCredentialType != null }
+        HolderApp.credentialTypeRepositoryInstance.getCredentialTypes().filter { it.mdocCredentialType != null }
             .map { DocumentItem(it.mdocCredentialType!!.docType, it.displayName) }
 
 

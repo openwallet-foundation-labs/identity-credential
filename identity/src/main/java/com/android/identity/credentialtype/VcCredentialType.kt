@@ -17,7 +17,7 @@
 package com.android.identity.credentialtype
 
 /**
- * Class containing the metadata of an W3C VC Credential Type
+ * Class containing the metadata of an W3C VC Credential Type.
  */
 class VcCredentialType private constructor(
     val type: String,
@@ -25,19 +25,19 @@ class VcCredentialType private constructor(
 ) {
 
     /**
-     * Builder class for class [VcCredentialType]
+     * Builder class for class [VcCredentialType].
      */
     data class Builder(
         val type: String,
         val claims: MutableList<CredentialAttribute> = mutableListOf()
     ) {
         /**
-         * Add a claim to the metadata of the VC Credential Type
+         * Add a claim to the metadata of the VC Credential Type.
          *
-         * @param type the datatype of this claim
-         * @param identifier the identifier of this claim
-         * @param displayName a name suitable for display of the claim
-         * @param description a description of the claim
+         * @param type the datatype of this claim.
+         * @param identifier the identifier of this claim.
+         * @param displayName a name suitable for display of the claim.
+         * @param description a description of the claim.
          */
         fun addClaim(
             type: CredentialAttributeType,
@@ -49,7 +49,7 @@ class VcCredentialType private constructor(
         }
 
         /**
-         * Build the [VcCredentialType]
+         * Build the [VcCredentialType].
          */
         fun build() = VcCredentialType(type, claims)
     }

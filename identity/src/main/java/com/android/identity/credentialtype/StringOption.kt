@@ -17,17 +17,18 @@
 package com.android.identity.credentialtype
 
 /**
- * Class that represents a combination of a string value and a name suitable for display presentation
+ * Class that represents a combination of a string value
+ * and a name suitable for display presentation.
  *
- * @param value a string value
- * @param displayName a name suitable for display of the value
+ * @param value a string value.
+ * @param displayName a name suitable for display of the value.
  */
 data class StringOption(
     val value: String?,
     val displayName: String
 ) {
     /**
-     * Show only the [displayName] in the toString function
+     * Show only the [displayName] in the toString function.
      */
     override fun toString(): String {
         return displayName

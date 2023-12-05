@@ -18,16 +18,16 @@ package com.android.identity.credentialtype.knowntypes
 
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.CredentialType
-import com.android.identity.credentialtype.Options
 
 /**
- * Object containing the metadata of the EU Personal ID Credential Type
+ * Object containing the metadata of the EU Personal ID
+ * Credential Type.
  */
 object EUPersonalID {
     const val EUPID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
 
     /**
-     * Build the EU Personal ID Credential Type
+     * Build the EU Personal ID Credential Type.
      */
     fun getCredentialType(): CredentialType {
         return CredentialType.Builder("EU Personal ID")

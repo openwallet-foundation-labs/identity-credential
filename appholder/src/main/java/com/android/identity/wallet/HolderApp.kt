@@ -22,6 +22,10 @@ import java.security.Security
 
 class HolderApp: Application() {
 
+    private val credentialTypeRepository by lazy {
+        CredentialTypeRepository()
+    }
+
     override fun onCreate() {
         super.onCreate()
         Logger.setLogPrinter(AndroidLogPrinter())
@@ -32,13 +36,16 @@ class HolderApp: Application() {
         DynamicColors.applyToActivitiesIfAvailable(this)
         PreferencesHelper.initialize(this)
         PeriodicKeysRefreshWorkRequest(this).schedulePeriodicKeysRefreshing()
-        CredentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
-        CredentialTypeRepository.addCredentialType(VehicleRegistration.getCredentialType())
-        CredentialTypeRepository.addCredentialType(VaccinationDocument.getCredentialType())
-        CredentialTypeRepository.addCredentialType(EUPersonalID.getCredentialType())
+        credentialTypeRepositoryInstance = credentialTypeRepository
+        credentialTypeRepositoryInstance.addCredentialType(DrivingLicense.getCredentialType())
+        credentialTypeRepositoryInstance.addCredentialType(VehicleRegistration.getCredentialType())
+        credentialTypeRepositoryInstance.addCredentialType(VaccinationDocument.getCredentialType())
+        credentialTypeRepositoryInstance.addCredentialType(EUPersonalID.getCredentialType())
     }
 
     companion object {
+
+        lateinit var credentialTypeRepositoryInstance: CredentialTypeRepository
         fun createCredentialStore(
             context: Context,
             secureAreaRepository: SecureAreaRepository

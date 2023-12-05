@@ -20,14 +20,15 @@ import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.CredentialType
 
 /**
- * Object containing the metadata of the Vehicle Registration Credential Type
+ * Object containing the metadata of the Vehicle Registration
+ * Credential Type.
  */
 
 object VehicleRegistration {
     const val MVR_NAMESPACE = "nl.rdw.mekb.1"
 
     /**
-     * Build the Vehicle Registration Credential Type
+     * Build the Vehicle Registration Credential Type.
      */
     fun getCredentialType(): CredentialType {
         return CredentialType.Builder("Vehicle Registration")

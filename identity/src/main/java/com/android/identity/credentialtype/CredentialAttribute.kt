@@ -19,10 +19,10 @@ package com.android.identity.credentialtype
 /**
  * Class containing the metadata of an attribute/data element/claim of a Credential Type
  *
- * @param type the datatype of this attribute
- * @param identifier the identifier of this attribute
- * @param displayName the name suitable for display of the attribute
- * @param description a description of the attribute
+ * @param type the datatype of this attribute.
+ * @param identifier the identifier of this attribute.
+ * @param displayName the name suitable for display of the attribute.
+ * @param description a description of the attribute.
  */
 class CredentialAttribute(
     val type: CredentialAttributeType,

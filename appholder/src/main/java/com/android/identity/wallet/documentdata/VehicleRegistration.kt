@@ -1,7 +1,7 @@
 package com.android.identity.wallet.documentdata
 
 import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.Options
+import com.android.identity.credentialtype.knowntypes.Options
 
 object VehicleRegistration {
     const val MVR_NAMESPACE = "nl.rdw.mekb.1"
