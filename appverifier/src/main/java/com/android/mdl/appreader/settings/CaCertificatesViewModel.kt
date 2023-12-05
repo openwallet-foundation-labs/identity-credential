@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.android.mdl.appreader.VerifierApp
+import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +19,8 @@ class CaCertificatesViewModel() : ViewModel() {
     private val _currentCertificateItem = MutableStateFlow<CertificateItem?>(null)
     val currentCertificateItem = _currentCertificateItem.asStateFlow()
     fun loadCertificates() {
-        val certificates = VerifierApp.trustManagerInstance.getAllCertificates().map { it.toCertificateItem() }
+        val certificates =
+            VerifierApp.trustManagerInstance.getAllCertificates().map { it.toCertificateItem() }
         _screenState.update { it.copy(certificates = certificates) }
     }
 
@@ -29,7 +31,7 @@ class CaCertificatesViewModel() : ViewModel() {
     fun deleteCertificate() {
         _currentCertificateItem.value?.certificate?.let {
             VerifierApp.trustManagerInstance.removeCertificate(it)
-            VerifierApp.certificateStorageEngineInstance.delete(it.subjectX500Principal.name)
+            VerifierApp.certificateStorageEngineInstance.delete(it.getSubjectKeyIdentifier())
         }
     }
 

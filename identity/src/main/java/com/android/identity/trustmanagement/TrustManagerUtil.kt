@@ -15,7 +15,12 @@
  */
 package com.android.identity.trustmanagement
 
+import com.android.identity.internal.Util
+import org.bouncycastle.asn1.DEROctetString
 import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.SubjectKeyIdentifier
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.ByteArrayInputStream
 import java.security.InvalidKeyException
@@ -25,7 +30,7 @@ import java.security.cert.PKIXCertPathChecker
 import java.security.cert.X509Certificate
 
 /**
- * Object with validations on X509 certificates
+ * Object with utility functions for the TrustManager.
  */
 internal object TrustManagerUtil {
 
@@ -33,7 +38,30 @@ internal object TrustManagerUtil {
     private const val KEY_CERT_SIGN = 5
 
     /**
-     * Check that the key usage is the creation of digital signatures
+     * Get the Subject Key Identifier Extension from the
+     * X509 certificate in hexadecimal format.
+     */
+    fun getSubjectKeyIdentifier(certificate: X509Certificate): String {
+        val extensionValue = certificate.getExtensionValue(Extension.subjectKeyIdentifier.id)
+        val octets = DEROctetString.getInstance(extensionValue).octets
+        val subjectKeyIdentifier = SubjectKeyIdentifier.getInstance(octets)
+        return Util.toHex(subjectKeyIdentifier.keyIdentifier)
+    }
+
+    /**
+     * Get the Authority Key Identifier Extension from the
+     * X509 certificate in hexadecimal format.
+     */
+    fun getAuthorityKeyIdentifier(certificate: X509Certificate): String {
+        val extensionValue = certificate.getExtensionValue(Extension.authorityKeyIdentifier.id)
+        val octets = DEROctetString.getInstance(extensionValue).octets
+        val authorityKeyIdentifier = AuthorityKeyIdentifier.getInstance(octets)
+        return Util.toHex(authorityKeyIdentifier.keyIdentifier)
+    }
+
+    /**
+     * Check that the key usage is the creation of digital
+     * signatures.
      */
     fun checkKeyUsageDocumentSigner(certificate: X509Certificate) {
         if (!hasKeyUsage(certificate, DIGITAL_SIGNATURE)) {
@@ -42,7 +70,8 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Check the validity period of a certificate (based on the system date)
+     * Check the validity period of a certificate (based on
+     * the system date).
      */
     fun checkValidity(certificate: X509Certificate) {
         // check if the certificate is currently valid
@@ -53,7 +82,7 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Execute custom validations on a certificate
+     * Execute custom validations on a certificate.
      */
     fun executeCustomValidations(
         certificate: X509Certificate,
@@ -65,7 +94,7 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Check that the key usage is to sign certificates
+     * Check that the key usage is to sign certificates.
      */
     fun checkKeyUsageCaCertificate(caCertificate: X509Certificate) {
         if (!hasKeyUsage(caCertificate, KEY_CERT_SIGN)) {
@@ -74,7 +103,8 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Check that the issuer in [certificate] is equal to the subject in [caCertificate]
+     * Check that the issuer in [certificate] is equal to
+     * the subject in [caCertificate].
      */
     fun checkCaIsIssuer(certificate: X509Certificate, caCertificate: X509Certificate) {
         val issuerName = X500Name(certificate.issuerX500Principal.name)
@@ -85,7 +115,8 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Verify the signature of the [certificate] with the public key of the [caCertificate]
+     * Verify the signature of the [certificate] with the
+     * public key of the [caCertificate].
      */
     fun verifySignature(certificate: X509Certificate, caCertificate: X509Certificate) {
         try {
@@ -104,13 +135,14 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * If it is technically not possible to verify the signature, try BouncyCastle...
+     * If it is technically not possible to verify the signature,
+     * try BouncyCastle...
      */
     private fun verifySignatureBouncyCastle(
         certificate: X509Certificate,
         caCertificate: X509Certificate
     ) {
-        // Try to decode certificate using BouncyCastleProvider
+        // Try to decode certificate using BouncyCastleProvider.
         val factory = CertificateFactory.getInstance("X509", BouncyCastleProvider())
         val certificateBouncyCastle = factory.generateCertificate(
             ByteArrayInputStream(certificate.encoded)
@@ -122,11 +154,10 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Determine whether the certificate has certain key usage
+     * Determine whether the certificate has certain key usage.
      */
     private fun hasKeyUsage(certificate: X509Certificate, keyUsage: Int): Boolean {
-        if (certificate.keyUsage == null)
-        {
+        if (certificate.keyUsage == null) {
             return false
         }
         return certificate.keyUsage[keyUsage]

@@ -16,6 +16,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.theme.ReaderAppTheme
+import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.google.android.material.R
 import com.google.android.material.snackbar.Snackbar
@@ -79,7 +80,10 @@ class CaCertificatesFragment : Fragment() {
                 if (inputStream != null) {
                     val certificate = parseCertificate(inputStream.readBytes())
                     VerifierApp.trustManagerInstance.addCertificate(certificate)
-                    VerifierApp.certificateStorageEngineInstance.put(certificate.subjectX500Principal.name, certificate.encoded)
+                    VerifierApp.certificateStorageEngineInstance.put(
+                        certificate.getSubjectKeyIdentifier(),
+                        certificate.encoded
+                    )
                 }
             }
         } catch (e: Throwable) {
@@ -101,7 +105,10 @@ class CaCertificatesFragment : Fragment() {
             val text = clipboard.primaryClip?.getItemAt(0)?.text!!
             val certificate = parseCertificate(text.toString().toByteArray())
             VerifierApp.trustManagerInstance.addCertificate(certificate)
-            VerifierApp.certificateStorageEngineInstance.put(certificate.subjectX500Principal.name, certificate.encoded)
+            VerifierApp.certificateStorageEngineInstance.put(
+                certificate.getSubjectKeyIdentifier(),
+                certificate.encoded
+            )
         } catch (e: Throwable) {
             showException(e)
         } finally {
@@ -116,7 +123,10 @@ class CaCertificatesFragment : Fragment() {
             certificates.forEach {
                 if (!VerifierApp.trustManagerInstance.certificateExists(it)) {
                     VerifierApp.trustManagerInstance.addCertificate(it)
-                    VerifierApp.certificateStorageEngineInstance.put(it.subjectX500Principal.name, it.encoded)
+                    VerifierApp.certificateStorageEngineInstance.put(
+                        it.getSubjectKeyIdentifier(),
+                        it.encoded
+                    )
                     imported++
                 }
             }
@@ -134,7 +144,7 @@ class CaCertificatesFragment : Fragment() {
             viewModel.screenState.value.certificates.forEach {
                 if (it.certificate != null) {
                     VerifierApp.trustManagerInstance.removeCertificate(it.certificate)
-                    VerifierApp.certificateStorageEngineInstance.delete(it.certificate.subjectX500Principal.name)
+                    VerifierApp.certificateStorageEngineInstance.delete(it.certificate.getSubjectKeyIdentifier())
                     deleted++
                 }
             }

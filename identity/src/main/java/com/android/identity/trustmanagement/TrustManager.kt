@@ -15,20 +15,32 @@
  */
 package com.android.identity.trustmanagement
 
-import org.bouncycastle.asn1.x500.X500Name
 import java.security.cert.CertificateException
 import java.security.cert.PKIXCertPathChecker
 import java.security.cert.X509Certificate
 
 /**
- * This class is used for the verification of a certificate chain
+ * This class is used for the verification of a certificate
+ * chain.
+ *
+ * The user of the class can add trust roots using method
+ * [addCertificate]. At this moment certificates of type
+ * [X509Certificate] are supported.
+ *
+ * The Subject Key Identifier (extension 2.5.29.14 in the
+ * [X509Certificate]) is used as the primary key / unique
+ * identifier of the root CA certificate. In the verification
+ * of the chain this will be matched with the Authority Key
+ * Identifier (extension 2.5.29.35) of the certificate issued
+ * by this root CA.
  */
 class TrustManager() {
 
-    private val certificates: MutableMap<X500Name, X509Certificate> = mutableMapOf()
+    private val certificates: MutableMap<String, X509Certificate> = mutableMapOf()
 
     /**
-     * Nested class containing the result of the verification of a certificate chain
+     * Nested class containing the result of the verification
+     * of a certificate chain.
      */
     class TrustResult(
         var isTrusted: Boolean,
@@ -37,50 +49,56 @@ class TrustManager() {
     )
 
     /**
-     * Add a certificate to the [TrustManager]
+     * Add a certificate to the [TrustManager].
      */
     fun addCertificate(certificate: X509Certificate) {
         if (certificateExists(certificate)) {
             throw Exception("Certificate already exists")
         }
-        val name = X500Name(certificate.subjectX500Principal.name)
-        certificates[name] = certificate
+        val key = TrustManagerUtil.getSubjectKeyIdentifier(certificate)
+        certificates[key] = certificate
     }
 
     /**
-     * Check that a certificate exists
+     * Check that a certificate exists.
      */
     fun certificateExists(certificate: X509Certificate): Boolean {
-        val name = X500Name(certificate.subjectX500Principal.name)
-        return certificates[name] != null
+        val key = TrustManagerUtil.getSubjectKeyIdentifier(certificate)
+        return certificates[key] != null
     }
 
     /**
-     * Get all the certificates in the [TrustManager]
+     * Get all the certificates in the [TrustManager].
      */
     fun getAllCertificates(): List<X509Certificate> {
         return certificates.values.toList()
     }
 
     /**
-     * Remove a certificate from the [TrustManager]
+     * Remove a certificate from the [TrustManager].
      */
     fun removeCertificate(certificate: X509Certificate) {
-        val name = X500Name(certificate.subjectX500Principal.name)
-        certificates.remove(name)
+        val key = TrustManagerUtil.getSubjectKeyIdentifier(certificate)
+        certificates.remove(key)
     }
 
     /**
-     * Verify a certificate chain (without the self-signed root certificate) with
-     * the possibility of custom validations on the certificates ([customValidators]),
-     * for instance the country code in certificate chain of the mDL, like implemented in the
-     * CountryValidator in the reader app
+     * Verify a certificate chain (without the self-signed
+     * root certificate) with the possibility of custom
+     * validations on the certificates ([customValidators]),
+     * for instance the country code in certificate chain
+     * of the mDL, like implemented in the CountryValidator
+     * in the reader app.
      *
-     * @param [chain] the certificate chain without the self-signed root certificate
-     * @param [customValidators] optional parameter with custom validators
-     * @return [TrustResult] a class that returns a verdict [TrustResult.isTrusted], optionally
-     * [TrustResult.trustChain]: the complete certificate chain, including the root certificate and
-     * optionally [TrustResult.error]: an error message when the certificate chain is not trusted
+     * @param [chain] the certificate chain without the
+     * self-signed root certificate
+     * @param [customValidators] optional parameter with
+     * custom validators
+     * @return [TrustResult] a class that returns a verdict
+     * [TrustResult.isTrusted], optionally [TrustResult.trustChain]:
+     * the complete certificate chain, including the root
+     * certificate and optionally [TrustResult.error]: an
+     * error message when the certificate chain is not trusted.
      */
     fun verify(
         chain: List<X509Certificate>,
@@ -96,7 +114,7 @@ class TrustManager() {
                     trustChain = completeChain
                 )
             } catch (e: Throwable) {
-                // validation errors, but the trust chain could be built
+                // there are validation errors, but the trust chain could be built.
                 return TrustResult(
                     isTrusted = false,
                     trustChain = completeChain,
@@ -104,7 +122,7 @@ class TrustManager() {
                 )
             }
         } catch (e: Throwable) {
-            // no trusted root found
+            // no trusted root could be found.
             return TrustResult(
                 isTrusted = false,
                 error = e
@@ -114,14 +132,14 @@ class TrustManager() {
     }
 
     /**
-     * Find the trusted root of a certificate chain
+     * Find the trusted root of a certificate chain.
      */
     private fun findTrustedRoot(chain: List<X509Certificate>): X509Certificate {
         chain.forEach { cert ->
             run {
-                val name = X500Name(cert.issuerX500Principal.name)
-                if (certificates.containsKey(name)) {
-                    return certificates[name]!!
+                val key = TrustManagerUtil.getAuthorityKeyIdentifier(cert)
+                if (certificates.containsKey(key)) {
+                    return certificates[key]!!
                 }
             }
         }
@@ -129,7 +147,7 @@ class TrustManager() {
     }
 
     /**
-     * Validate the certificate trust path
+     * Validate the certificate trust path.
      */
     private fun validateCertificationTrustPath(
         certificationTrustPath: List<X509Certificate>,
@@ -141,9 +159,8 @@ class TrustManager() {
         TrustManagerUtil.checkValidity(leafCertificate)
         TrustManagerUtil.executeCustomValidations(leafCertificate, customValidators)
 
-        // Note that the signature of the trusted certificate itself is not verified even if it is self signed
         var previousCertificate = leafCertificate
-        var caCertificate: X509Certificate
+        var caCertificate: X509Certificate? = null
         while (certIterator.hasNext()) {
             caCertificate = certIterator.next()
             TrustManagerUtil.checkKeyUsageCaCertificate(caCertificate)
@@ -151,6 +168,10 @@ class TrustManager() {
             TrustManagerUtil.verifySignature(previousCertificate, caCertificate)
             TrustManagerUtil.executeCustomValidations(caCertificate, customValidators)
             previousCertificate = caCertificate
+        }
+        if (caCertificate != null) {
+            // check the signature of the self signed root certificate
+            TrustManagerUtil.verifySignature(caCertificate, caCertificate)
         }
     }
 }

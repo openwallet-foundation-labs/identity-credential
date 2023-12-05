@@ -1,6 +1,5 @@
 package com.android.identity.trustmanagement
 
-import org.bouncycastle.asn1.x500.X500Name
 import org.junit.Assert
 import org.junit.Test
 import java.io.ByteArrayInputStream
@@ -41,14 +40,12 @@ class TrustManagerTest {
 
     val mdlDsCertificate: X509Certificate
     val mdlCaCertificate: X509Certificate
-    val mdlCaName: X500Name
 
     init {
         mdlDsCertificate =
             parseCertificate(mdlDsCertificatePem.byteInputStream(Charsets.US_ASCII).readBytes())
         mdlCaCertificate =
             parseCertificate(mdlCaCertificatePem.byteInputStream(Charsets.US_ASCII).readBytes())
-        mdlCaName = X500Name(mdlCaCertificate.subjectX500Principal.name)
     }
 
     @Test
