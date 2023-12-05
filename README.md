@@ -64,7 +64,7 @@ building blocks
 
 Libraries are released on [GMaven](https://maven.google.com/) as needed and version
 numbers are encoded as YYYYMMDD. With each release, we also publish documentation at
-https://google.github.io/identity-credential/.
+https://openwallet-foundation-labs.github.io/identity-credential/.
 
 ## Wallet and Reader Android applications
 
