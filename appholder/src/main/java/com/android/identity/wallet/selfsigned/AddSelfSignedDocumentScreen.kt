@@ -49,7 +49,6 @@ import com.android.identity.wallet.composables.TextDropDownRow
 import com.android.identity.wallet.composables.ValueLabel
 import com.android.identity.wallet.composables.gradientFor
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.document.DocumentType
 import com.android.identity.wallet.support.CurrentSecureArea
 import com.android.identity.wallet.support.SecureAreaSupport
 import com.android.identity.wallet.support.SecureAreaSupportState
@@ -66,6 +65,7 @@ fun AddSelfSignedDocumentScreen(
     AddSelfSignedDocumentScreenContent(
         modifier = Modifier.fillMaxSize(),
         screenState = screenState,
+        documentItems = viewModel.documentItems,
         onDocumentTypeChanged = viewModel::updateDocumentType,
         onCardArtSelected = viewModel::updateCardArt,
         onDocumentNameChanged = viewModel::updateDocumentName,
@@ -83,7 +83,8 @@ fun AddSelfSignedDocumentScreen(
 private fun AddSelfSignedDocumentScreenContent(
     modifier: Modifier,
     screenState: AddSelfSignedScreenState,
-    onDocumentTypeChanged: (newType: DocumentType) -> Unit,
+    documentItems: List<DocumentItem>,
+    onDocumentTypeChanged: (newType: String, newName: String) -> Unit,
     onCardArtSelected: (newCardArt: DocumentColor) -> Unit,
     onDocumentNameChanged: (newValue: String) -> Unit,
     onKeystoreImplementationChanged: (newImplementation: CurrentSecureArea) -> Unit,
@@ -107,7 +108,8 @@ private fun AddSelfSignedDocumentScreenContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                currentType = screenState.documentType,
+                documentItems = documentItems,
+                currentDocumentType = screenState.documentType,
                 onDocumentTypeSelected = onDocumentTypeChanged
             )
             CardArtChooser(
@@ -182,8 +184,9 @@ private fun AddSelfSignedDocumentScreenContent(
 @Composable
 private fun DocumentTypeChooser(
     modifier: Modifier = Modifier,
-    currentType: DocumentType,
-    onDocumentTypeSelected: (newType: DocumentType) -> Unit
+    documentItems: List<DocumentItem>,
+    currentDocumentType: String,
+    onDocumentTypeSelected: (newType: String, newName: String) -> Unit
 ) {
     LabeledUserInput(
         modifier = modifier,
@@ -195,10 +198,12 @@ private fun DocumentTypeChooser(
                 .fillMaxWidth()
                 .clickable { expanded = true }
         ) {
-            ValueLabel(
-                modifier = Modifier.weight(1f),
-                label = stringResource(id = documentNameFor(currentType))
-            )
+            documentItems.find {it.docType == currentDocumentType}?.let {
+                ValueLabel(
+                    modifier = Modifier.weight(1f),
+                    label = it.displayName
+                )
+            }
             DropDownIndicator()
         }
         DropdownMenu(
@@ -207,34 +212,15 @@ private fun DocumentTypeChooser(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            TextDropDownRow(
-                label = stringResource(id = documentNameFor(DocumentType.MDL)),
-                onSelected = {
-                    onDocumentTypeSelected(DocumentType.MDL)
-                    expanded = false
-                }
-            )
-            TextDropDownRow(
-                label = stringResource(id = documentNameFor(DocumentType.MVR)),
-                onSelected = {
-                    onDocumentTypeSelected(DocumentType.MVR)
-                    expanded = false
-                }
-            )
-            TextDropDownRow(
-                label = stringResource(id = documentNameFor(DocumentType.MICOV)),
-                onSelected = {
-                    onDocumentTypeSelected(DocumentType.MICOV)
-                    expanded = false
-                }
-            )
-            TextDropDownRow(
-                label = stringResource(id = documentNameFor(DocumentType.EUPID)),
-                onSelected = {
-                    onDocumentTypeSelected(DocumentType.EUPID)
-                    expanded = false
-                }
-            )
+            documentItems.forEach{
+                TextDropDownRow(
+                    label = it.displayName,
+                    onSelected = {
+                        onDocumentTypeSelected(it.docType, it.displayName)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }
@@ -424,16 +410,6 @@ fun OutlinedContainerVertical(
         ) {
             content()
         }
-    }
-}
-
-@StringRes
-private fun documentNameFor(documentType: DocumentType): Int {
-    return when (documentType) {
-        is DocumentType.MDL -> R.string.document_type_mdl
-        is DocumentType.MVR -> R.string.document_type_mvr
-        is DocumentType.MICOV -> R.string.document_type_micov
-        is DocumentType.EUPID -> R.string.document_type_eu_pid
     }
 }
 

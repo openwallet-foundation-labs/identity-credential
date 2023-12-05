@@ -6,6 +6,11 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.credential.CredentialStore
+import com.android.identity.credentialtype.CredentialTypeRepository
+import com.android.identity.credentialtype.knowntypes.DrivingLicense
+import com.android.identity.credentialtype.knowntypes.EUPersonalID
+import com.android.identity.credentialtype.knowntypes.VaccinationDocument
+import com.android.identity.credentialtype.knowntypes.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.SoftwareSecureArea
 import com.android.identity.util.Logger
@@ -17,6 +22,10 @@ import java.security.Security
 
 class HolderApp: Application() {
 
+    private val credentialTypeRepository by lazy {
+        CredentialTypeRepository()
+    }
+
     override fun onCreate() {
         super.onCreate()
         Logger.setLogPrinter(AndroidLogPrinter())
@@ -27,9 +36,16 @@ class HolderApp: Application() {
         DynamicColors.applyToActivitiesIfAvailable(this)
         PreferencesHelper.initialize(this)
         PeriodicKeysRefreshWorkRequest(this).schedulePeriodicKeysRefreshing()
+        credentialTypeRepositoryInstance = credentialTypeRepository
+        credentialTypeRepositoryInstance.addCredentialType(DrivingLicense.getCredentialType())
+        credentialTypeRepositoryInstance.addCredentialType(VehicleRegistration.getCredentialType())
+        credentialTypeRepositoryInstance.addCredentialType(VaccinationDocument.getCredentialType())
+        credentialTypeRepositoryInstance.addCredentialType(EUPersonalID.getCredentialType())
     }
 
     companion object {
+
+        lateinit var credentialTypeRepositoryInstance: CredentialTypeRepository
         fun createCredentialStore(
             context: Context,
             secureAreaRepository: SecureAreaRepository
