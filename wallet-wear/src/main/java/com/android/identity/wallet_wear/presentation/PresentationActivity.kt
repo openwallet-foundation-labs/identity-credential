@@ -43,6 +43,9 @@ import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.credentialtype.CredentialType
+import com.android.identity.credentialtype.MdocCredentialType
+import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.request.DeviceRequestParser.DocumentRequest
@@ -87,6 +90,9 @@ class PresentationActivity : ComponentActivity() {
 
     // The credential we're going to send
     private var credentialToSend: Credential? = null
+
+    // The type of credential, if it matches one of our registered types.
+    private var credentialToSendType : CredentialType? = null
 
     private val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
     private val MDL_NAMESPACE = "org.iso.18013.5.1"
@@ -211,6 +217,12 @@ class PresentationActivity : ComponentActivity() {
 
         Logger.d(TAG, "Picked credential ${credentialToSend!!.name} for docType ${docRequest!!.docType}")
 
+        for (credentialType in transferHelper.credentialTypeRepository.getCredentialTypes()) {
+            if (credentialType.mdocCredentialType?.docType.equals(docRequest!!.docType)) {
+                credentialToSendType = credentialType
+            }
+        }
+
         val encodedArtwork = credentialToSend!!.applicationData.getData("artwork")
         val options = BitmapFactory.Options()
         options.inMutable = true
@@ -229,6 +241,29 @@ class PresentationActivity : ComponentActivity() {
                 ConsentPage()
             }
         }
+    }
+
+    /**
+     * Look up a details about a mdoc data element.
+     *
+     * TODO: move to CredentialType
+     *
+     * @param namespaceName the mdoc namespace name.
+     * @param dataElementName the mdoc data element name.
+     * @return a [MdocDataElement] or [null] if not found.
+     */
+    private fun lookupDataElement(type: MdocCredentialType, namespaceName: String, dataElementName: String): MdocDataElement? {
+        // TODO: we probably want to use hashtables instead of lists since this is slow
+        for (ns in type.namespaces) {
+            if (ns.namespace.equals(namespaceName)) {
+                for (de in ns.dataElements) {
+                    if (de.attribute.identifier.equals(dataElementName)) {
+                        return de
+                    }
+                }
+            }
+        }
+        return null
     }
 
     @Composable
@@ -319,11 +354,25 @@ class PresentationActivity : ComponentActivity() {
                     for (namespaceName in docRequest!!.namespaces) {
                         for (dataElementName in docRequest!!.getEntryNames(namespaceName)) {
                             if (nsData.hasDataElement(namespaceName, dataElementName)) {
+
+                                var dataElementDisplayName = dataElementName
+                                if (credentialToSendType != null) {
+                                    val mdocDataElement =
+                                        lookupDataElement(
+                                            credentialToSendType!!.mdocCredentialType!!,
+                                            namespaceName,
+                                            dataElementName
+                                        )
+                                    if (mdocDataElement != null) {
+                                        dataElementDisplayName = mdocDataElement!!.attribute.displayName
+                                    }
+                                }
+
                                 // TODO: Use CredentialType machinery from PR #419 to get
                                 //  a nice human readable name for [dataElementName]
                                 item {
                                     Text(
-                                        text = dataElementName,
+                                        text = dataElementDisplayName,
                                         textAlign = TextAlign.Start,
                                         modifier = Modifier.padding(bottom = 4.dp),
                                         fontSize = MaterialTheme.typography.body2.fontSize

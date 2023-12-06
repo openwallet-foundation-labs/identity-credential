@@ -10,6 +10,8 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.credentialtype.CredentialTypeRepository
+import com.android.identity.credentialtype.knowntypes.DrivingLicense
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
@@ -48,6 +50,8 @@ class TransferHelper private constructor(private val context: Context) {
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
     private var deviceRequest: ByteArray? = null
 
+    var credentialTypeRepository: CredentialTypeRepository
+
     private var state = MutableLiveData<State>()
 
     enum class State {
@@ -65,6 +69,10 @@ class TransferHelper private constructor(private val context: Context) {
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine);
         secureAreaRepository.addImplementation(androidKeystoreSecureArea);
         credentialStore = CredentialStore(storageEngine, secureAreaRepository)
+
+        credentialTypeRepository = CredentialTypeRepository()
+        credentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
+
         state.value = State.NOT_CONNECTED
     }
 
