@@ -308,4 +308,153 @@ public class CborUtil {
         return sb.toString();
     }
 
+
+    private static void toString(@NonNull StringBuilder sb,
+                                 int level,
+                                 @NonNull DataItem dataItem) {
+        int count;
+
+        switch (dataItem.getMajorType()) {
+            case INVALID:
+                sb.append("<invalid>");
+                break;
+
+            case UNSIGNED_INTEGER:
+                // Major type 0: an unsigned integer.
+                sb.append(((UnsignedInteger) dataItem).getValue());
+                break;
+
+            case NEGATIVE_INTEGER:
+                // Major type 1: a negative integer.
+                sb.append(((NegativeInteger) dataItem).getValue());
+                break;
+
+            case BYTE_STRING:
+                // Major type 2: a byte string.
+                sb.append(String.format(Locale.US, "bstr %d bytes", ((ByteString) dataItem).getBytes().length));
+                break;
+
+            case UNICODE_STRING:
+                // Major type 3: string of Unicode characters that is encoded as UTF-8 [RFC3629].
+                String strValue = Util.checkedStringValue(dataItem);
+                if (level == 0) {
+                    sb.append(strValue);
+                } else {
+                    String escapedStrValue = strValue.replace("\"", "\\\"");
+                    sb.append("\"" + escapedStrValue + "\"");
+                }
+                break;
+
+            case ARRAY:
+                // Major type 4: an array of data items.
+                List<DataItem> items = ((co.nstant.in.cbor.model.Array) dataItem).getDataItems();
+                sb.append("[");
+                count = 0;
+                for (DataItem item : items) {
+                    toString(sb, level + 1, item);
+                    if (++count < items.size()) {
+                        sb.append(", ");
+                    }
+                }
+                sb.append("]");
+                break;
+
+            case MAP:
+                // Major type 5: a map of pairs of data items.
+                Collection<DataItem> keys = ((co.nstant.in.cbor.model.Map) dataItem).getKeys();
+                sb.append("{");
+                count = 0;
+                for (DataItem key : keys) {
+                    DataItem value = ((co.nstant.in.cbor.model.Map) dataItem).get(key);
+                    toString(sb, level + 1, key);
+                    sb.append(": ");
+                    toString(sb, level + 1, value);
+                    if (++count < keys.size()) {
+                        sb.append(", ");
+                    }
+                }
+                sb.append("}");
+                break;
+
+            case TAG:
+                // Major type 6: optional semantic tagging of other major types
+                //
+                // We never encounter this one since it's automatically handled via the
+                // DataItem that is tagged.
+                break;
+
+            case SPECIAL:
+                // Major type 7: floating point numbers and simple data types that need no
+                // content, as well as the "break" stop code.
+                if (dataItem instanceof SimpleValue) {
+                    switch (((SimpleValue) dataItem).getSimpleValueType()) {
+                        case FALSE:
+                            sb.append("false");
+                            break;
+                        case TRUE:
+                            sb.append("true");
+                            break;
+                        case NULL:
+                            sb.append("null");
+                            break;
+                        case UNDEFINED:
+                            sb.append("undefined");
+                            break;
+                        case RESERVED:
+                            sb.append("reserved");
+                            break;
+                        case UNALLOCATED:
+                            sb.append("simple(");
+                            sb.append(((SimpleValue) dataItem).getValue());
+                            sb.append(")");
+                            break;
+                    }
+                } else if (dataItem instanceof DoublePrecisionFloat) {
+                    DecimalFormat df = new DecimalFormat("0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH));
+                    df.setMaximumFractionDigits(340);
+                    sb.append(df.format(((DoublePrecisionFloat) dataItem).getValue()));
+                } else if (dataItem instanceof AbstractFloat) {
+                    DecimalFormat df = new DecimalFormat("0",
+                            DecimalFormatSymbols.getInstance(Locale.ENGLISH));
+                    df.setMaximumFractionDigits(340);
+                    sb.append(df.format(((AbstractFloat) dataItem).getValue()));
+                } else {
+                    sb.append("break");
+                }
+                break;
+        }
+    }
+
+    public static @NonNull
+    String toString(@NonNull DataItem dataItem) {
+        StringBuilder sb = new StringBuilder();
+        toString(sb, 0, dataItem);
+        return sb.toString();
+    }
+
+    public static @NonNull
+    String toString(@NonNull byte[] encodedCbor) {
+        StringBuilder sb = new StringBuilder();
+
+        ByteArrayInputStream bais = new ByteArrayInputStream(encodedCbor);
+        List<DataItem> dataItems = null;
+        try {
+            dataItems = new CborDecoder(bais).decode();
+        } catch (CborException e) {
+            // Never throw an exception
+            return "Error Decoding CBOR";
+        }
+        int count = 0;
+        boolean hasMultipleDataItems = dataItems.size() > 1;
+        for (DataItem dataItem : dataItems) {
+            if (count > 0) {
+                sb.append(",\n");
+            }
+            toString(sb, hasMultipleDataItems ? 1 : 0, dataItem);
+            count++;
+        }
+        return sb.toString();
+    }
+
 }

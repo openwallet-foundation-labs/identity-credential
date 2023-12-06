@@ -29,14 +29,22 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -56,7 +64,14 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyListAnchorType
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.foundation.rememberActiveFocusRequester
 import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.ButtonDefaults
+import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipColors
+import androidx.wear.compose.material.ChipDefaults
+import androidx.wear.compose.material.CompactChip
+import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.MaterialTheme
+import androidx.wear.compose.material.OutlinedChip
 import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.ProvideTextStyle
 import androidx.wear.compose.material.Scaffold
@@ -76,6 +91,7 @@ import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
+import com.android.identity.util.CborUtil
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet_wear.R
@@ -586,6 +602,16 @@ class MainActivity : ComponentActivity() {
         swipeDismissableNavController: NavHostController,
         credentialId: String
     ) {
+        val credential = credentialStore.lookupCredential(credentialId)!!
+        val credentialName = credential.applicationData.getString("displayName")
+        val credentialData = credential.applicationData.getNameSpacedData("credentialData")
+
+        var portraitBitmap: Bitmap? = null
+        if (credentialData.hasDataElement(MDL_NAMESPACE, "portrait")) {
+            val data = credentialData.getDataElementByteString(MDL_NAMESPACE, "portrait")
+            portraitBitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+        }
+
         val listState = rememberScalingLazyListState()
         val focusRequester = rememberActiveFocusRequester()
         Scaffold(
@@ -600,16 +626,104 @@ class MainActivity : ComponentActivity() {
                 autoCentering = AutoCenteringParams(itemIndex = 0),
                 state = listState,
             ) {
+
                 item {
                     Text(
-                        text = "ID: $credentialId",
+                        text = credentialName,
+                        style = MaterialTheme.typography.body2,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 8.dp),
                     )
                 }
 
+                item {
+                    Divider()
+                }
+
+                if (portraitBitmap != null) {
+                    item {
+                        Image(
+                            bitmap = portraitBitmap.asImageBitmap(),
+                            contentDescription = "Photo of credential holder",
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .padding(bottom = 8.dp)
+                        )
+                    }
+
+                    item {
+                        Divider()
+                    }
+                }
+
+                for (nsName in credentialData.nameSpaceNames) {
+                    for (deName in credentialData.getDataElementNames(nsName)) {
+                        if (deName.equals("portrait")) {
+                            continue
+                        }
+                        // TODO: Use CredentialType machinery from PR #419 to get
+                        //  a nice human readable name for [dataElementName]
+                        val dataElementDisplayValue = deName
+                        val valueEncodedCbor = credentialData.getDataElement(nsName, deName)
+                        val displayValue = CborUtil.toString(valueEncodedCbor)
+
+                        item {
+                            Chip(
+                                //colors = ChipDefaults.secondaryChipColors(),
+                                colors = ChipDefaults.chipColors(
+                                    backgroundColor = Color.Transparent
+                                ),
+                                onClick = {},
+                                enabled = true,
+                                label = {
+                                    Text(
+                                        text = dataElementDisplayValue,
+                                    )
+                                },
+                                secondaryLabel = {
+                                    Text(
+                                        text = displayValue,
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Divider()
+                }
+
+                item {
+                    Chip(
+                        onClick = {
+                            val launchAppIntent = Intent(applicationContext, ShowQrCodeActivity::class.java)
+                            launchAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_NO_HISTORY or
+                                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+                            launchAppIntent.putExtra("credentialId", credentialId)
+                            applicationContext.startActivity(launchAppIntent)
+                        },
+                        enabled = true,
+                        label = {
+                            Text(
+                                text = "Share",
+                            )},
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.QrCode,
+                                contentDescription = null,
+                                modifier = Modifier.padding(8.dp)
+                            )},
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        )
+                }
+
+                /*
                 item {
                     Button(
                         modifier = Modifier
@@ -624,15 +738,23 @@ class MainActivity : ComponentActivity() {
                             applicationContext.startActivity(launchAppIntent)
                         })
                     {
-                        Text(
-                            text = "Show QR",
-                            textAlign = TextAlign.Center,
-                        )
                     }
                 }
+                 */
 
             }
         }
+    }
+
+    @Composable
+    private fun Divider() {
+        Box(
+            modifier = Modifier
+                .padding(bottom = 8.dp)
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(color = Color.DarkGray)
+        )
     }
 
     @Composable

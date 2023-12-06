@@ -67,6 +67,8 @@ dependencies {
     implementation libs.horologist.compose.layout
     implementation libs.androidx.compose.navigation
     implementation libs.androidx.wear
+    implementation libs.bundles.compose
+
     androidTestImplementation platform(libs.compose.bom)
     androidTestImplementation libs.ui.test.junit4
     debugImplementation libs.compose.icons
