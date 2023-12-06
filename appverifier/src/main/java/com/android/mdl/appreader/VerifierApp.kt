@@ -9,6 +9,7 @@ import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
 import com.android.mdl.appreader.settings.UserPreferences
+import com.android.mdl.appreader.util.KeysAndCertificates
 import com.google.android.material.color.DynamicColors
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.ByteArrayInputStream
@@ -43,9 +44,14 @@ class VerifierApp : Application() {
         Logger.setDebugEnabled(userPreferences.isDebugLoggingEnabled())
         trustManagerInstance = trustManager
         certificateStorageEngineInstance = certificateStorageEngine
-        certificateStorageEngineInstance.enumerate().forEach{
+        certificateStorageEngineInstance.enumerate().forEach {
             val certificate = parseCertificate(certificateStorageEngineInstance.get(it)!!)
             trustManagerInstance.addCertificate(certificate)
+        }
+        KeysAndCertificates.getTrustedIssuerCertificates(this).forEach {
+            if (!trustManagerInstance.certificateExists(it)) {
+                trustManagerInstance.addCertificate(it)
+            }
         }
     }
 

@@ -17,7 +17,6 @@ import androidx.navigation.fragment.findNavController
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier
-import com.android.mdl.appreader.util.KeysAndCertificates
 import com.google.android.material.R
 import com.google.android.material.snackbar.Snackbar
 import java.io.ByteArrayInputStream
@@ -56,9 +55,7 @@ class CaCertificatesFragment : Fragment() {
                             openDetails()
                         },
                         onImportCertificate = { fileDialog() },
-                        onPasteCertificate = { pasteCertificate() },
-                        onCopyCertificatesFromResources = { copyCertificatesFromResources() },
-                        onDeleteAllCertificates = { deleteAllCertificates() }
+                        onPasteCertificate = { pasteCertificate() }
                     )
                 }
             }
@@ -109,46 +106,6 @@ class CaCertificatesFragment : Fragment() {
                 certificate.getSubjectKeyIdentifier(),
                 certificate.encoded
             )
-        } catch (e: Throwable) {
-            showException(e)
-        } finally {
-            viewModel.loadCertificates()
-        }
-    }
-
-    private fun copyCertificatesFromResources() {
-        val certificates = KeysAndCertificates.getTrustedIssuerCertificates(requireContext())
-        var imported = 0
-        try {
-            certificates.forEach {
-                if (!VerifierApp.trustManagerInstance.certificateExists(it)) {
-                    VerifierApp.trustManagerInstance.addCertificate(it)
-                    VerifierApp.certificateStorageEngineInstance.put(
-                        it.getSubjectKeyIdentifier(),
-                        it.encoded
-                    )
-                    imported++
-                }
-            }
-            showMessage("$imported certificates were imported")
-        } catch (e: Throwable) {
-            showException(e)
-        } finally {
-            viewModel.loadCertificates()
-        }
-    }
-
-    private fun deleteAllCertificates() {
-        try {
-            var deleted = 0
-            viewModel.screenState.value.certificates.forEach {
-                if (it.certificate != null) {
-                    VerifierApp.trustManagerInstance.removeCertificate(it.certificate)
-                    VerifierApp.certificateStorageEngineInstance.delete(it.certificate.getSubjectKeyIdentifier())
-                    deleted++
-                }
-            }
-            showMessage("$deleted certificates were deleted")
         } catch (e: Throwable) {
             showException(e)
         } finally {

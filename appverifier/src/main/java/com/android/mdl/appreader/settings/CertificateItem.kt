@@ -16,6 +16,7 @@ data class CertificateItem(
     val sha255Fingerprint: String,
     val sha1Fingerprint: String,
     val docTypes: List<String>,
+    val supportsDelete: Boolean,
     val certificate: X509Certificate?
 ) {
 }

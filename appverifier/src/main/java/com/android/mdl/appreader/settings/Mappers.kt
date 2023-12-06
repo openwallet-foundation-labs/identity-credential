@@ -1,7 +1,9 @@
 package com.android.mdl.appreader.settings
 
+import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.trustmanagement.getOrganisation
+import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier
 import com.android.mdl.appreader.trustmanagement.organisationalUnit
 import java.lang.StringBuilder
 import java.security.MessageDigest
@@ -35,6 +37,7 @@ fun X509Certificate.toCertificateItem(docTypes: List<String> = emptyList()): Cer
         sha255Fingerprint = sha255Fingerprint,
         sha1Fingerprint = sha1Fingerprint,
         docTypes = docTypes,
+        supportsDelete = VerifierApp.certificateStorageEngineInstance.get(this.getSubjectKeyIdentifier()) != null ,
         certificate = this
     )
 }
