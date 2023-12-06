@@ -60,6 +60,13 @@ internal object TrustManagerUtil {
     }
 
     /**
+     * Check whether a certificate is self-signed
+     */
+    fun isSelfSigned(certificate: X509Certificate): Boolean{
+        return certificate.issuerX500Principal.name == certificate.subjectX500Principal.name
+    }
+
+    /**
      * Check that the key usage is the creation of digital
      * signatures.
      */

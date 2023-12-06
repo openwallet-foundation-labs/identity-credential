@@ -105,8 +105,7 @@ class TrustManager() {
         customValidators: List<PKIXCertPathChecker> = emptyList()
     ): TrustResult {
         try {
-            val trustedRoot = findTrustedRoot(chain)
-            val completeChain = chain.toMutableList().plus(trustedRoot)
+            val completeChain = createCertificateChain(chain)
             try {
                 validateCertificationTrustPath(completeChain, customValidators)
                 return TrustResult(
@@ -122,7 +121,7 @@ class TrustManager() {
                 )
             }
         } catch (e: Throwable) {
-            // no trusted root could be found.
+            // no CA certificate could be found.
             return TrustResult(
                 isTrusted = false,
                 error = e
@@ -131,19 +130,37 @@ class TrustManager() {
 
     }
 
+    private fun createCertificateChain(chain: List<X509Certificate>): List<X509Certificate>{
+        val result = chain.toMutableList()
+
+        // only an exception if not a single CA certificate is found
+        var caCertificate: X509Certificate? = findCaCertificate(chain)
+            ?: throw CertificateException("No trusted root certificate could not be found")
+        result.add(caCertificate!!)
+        while (caCertificate != null && !TrustManagerUtil.isSelfSigned(caCertificate)){
+            caCertificate = findCaCertificate(listOf(caCertificate))
+            if (caCertificate!= null){
+                result.add(caCertificate)
+            }
+        }
+        return result
+    }
+
     /**
-     * Find the trusted root of a certificate chain.
+     * Find a CA Certificate for a certificate chain.
      */
-    private fun findTrustedRoot(chain: List<X509Certificate>): X509Certificate {
+    private fun findCaCertificate(chain: List<X509Certificate>): X509Certificate? {
+        var result: X509Certificate? = null
+
         chain.forEach { cert ->
             run {
                 val key = TrustManagerUtil.getAuthorityKeyIdentifier(cert)
                 if (certificates.containsKey(key)) {
-                    return certificates[key]!!
+                    result = certificates[key]!!
                 }
             }
         }
-        throw CertificateException("Trusted root certificate could not be found")
+        return result
     }
 
     /**
@@ -169,7 +186,7 @@ class TrustManager() {
             TrustManagerUtil.executeCustomValidations(caCertificate, customValidators)
             previousCertificate = caCertificate
         }
-        if (caCertificate != null) {
+        if (caCertificate != null && TrustManagerUtil.isSelfSigned(caCertificate)) {
             // check the signature of the self signed root certificate
             TrustManagerUtil.verifySignature(caCertificate, caCertificate)
         }
