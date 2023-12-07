@@ -11,6 +11,7 @@ import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.Credential
+import com.android.identity.credential.Credential.AuthenticationKey
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.internal.Util
@@ -154,6 +155,7 @@ class GetCredentialActivity : FragmentActivity() {
         val credentialStore = ProvisioningUtil.getInstance(applicationContext).credentialStore
         val credentialName = credentialStore.listCredentials().get(credentialId.toInt())
         val credential = credentialStore.lookupCredential(credentialName)
+        val nameSpacedData = credential!!.applicationData.getNameSpacedData("credentialData")
 
         val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
             nonce,
@@ -167,7 +169,7 @@ class GetCredentialActivity : FragmentActivity() {
         }
         val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            credentialRequest, credential.nameSpacedData, staticAuthData
+            credentialRequest, nameSpacedData, staticAuthData
         )
         val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
         var documentGenerator = DocumentGenerator(
@@ -178,13 +180,13 @@ class GetCredentialActivity : FragmentActivity() {
         documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
         try {
             addDeviceNamespaces(documentGenerator, authKey, null)
-            completeResponse(deviceResponseGenerator, documentGenerator,
+            completeResponse(authKey, deviceResponseGenerator, documentGenerator,
                 requesterIdentity, encodedSessionTranscript)
         } catch (e: SecureArea.KeyLockedException) {
             doBiometricAuth(authKey, false) { keyUnlockData ->
                 if (keyUnlockData != null) {
                     addDeviceNamespaces(documentGenerator, authKey, keyUnlockData)
-                    completeResponse(deviceResponseGenerator, documentGenerator,
+                    completeResponse(authKey, deviceResponseGenerator, documentGenerator,
                         requesterIdentity, encodedSessionTranscript)
                 } else {
                     log("Need to convey error")
@@ -193,7 +195,8 @@ class GetCredentialActivity : FragmentActivity() {
         }
     }
 
-    fun completeResponse(deviceResponseGenerator: DeviceResponseGenerator,
+    fun completeResponse(authKey: AuthenticationKey,
+                         deviceResponseGenerator: DeviceResponseGenerator,
                          documentGenerator: DocumentGenerator,
                          requesterIdentity: PublicKey,
                          encodedSessionTranscript: ByteArray) {
@@ -206,6 +209,7 @@ class GetCredentialActivity : FragmentActivity() {
         val credmanUtil = CredmanUtil(requesterIdentity, null)
         val (cipherText, encapsulatedPublicKey) = credmanUtil.encrypt(encodedDeviceResponse, encodedSessionTranscript)
         val encodedCredentialDocument = CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
+        authKey.increaseUsageCount()
 
         val bundle = Bundle()
         bundle.putByteArray("identityToken", Base64.encodeToString(encodedCredentialDocument, Base64.NO_WRAP or Base64.URL_SAFE).toByteArray())

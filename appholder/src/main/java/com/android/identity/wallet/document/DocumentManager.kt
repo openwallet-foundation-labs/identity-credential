@@ -10,17 +10,23 @@ import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.credential.Credential
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.credentialtype.MdocCredentialType
+import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil
 import com.android.identity.util.CborUtil
+import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDocumentInformation
 import com.android.identity.wallet.util.log
+import com.android.identity.wallet.R
 import com.android.mdl.app.credman.IdentityCredentialEntry
 import com.android.mdl.app.credman.IdentityCredentialField
+import com.android.mdl.app.credman.IdentityCredentialRegistry
+import com.google.android.gms.identitycredentials.IdentityCredentialManager
 import java.io.ByteArrayOutputStream
-import java.util.*
+import java.util.Locale
 
 class DocumentManager private constructor(private val context: Context) {
     val client = IdentityCredentialManager.Companion.getClient(context)
@@ -51,25 +57,36 @@ class DocumentManager private constructor(private val context: Context) {
         return null
     }
 
-    // TODO: This is super inefficient. Fix by having a docType/nameSpace repository.
-    fun getDataElementDisplayName(docTypeName : String,
-                                  nameSpaceName : String,
-                                  dataElementName : String): String {
-        if (docTypeName.equals(RequestMdl.docType) && nameSpaceName.equals(RequestMdl.nameSpace)) {
-            RequestMdl.dataItems.forEach {
-                if (it.identifier.equals(dataElementName)) {
-                    return context.getString(it.stringResourceId)
+    private fun lookupDataElement(
+        mdocCredType: MdocCredentialType,
+        namespaceName: String,
+        dataElementName: String
+    ): MdocDataElement? {
+        // TODO: this should be a method on MdocCredentialType and that type should
+        //  be using hashtables instead of lists for performance reasons.
+        for (ns in mdocCredType.namespaces) {
+            if (ns.namespace.equals(namespaceName)) {
+                for (de in ns.dataElements) {
+                    if (de.attribute.identifier.equals(dataElementName)) {
+                        return de
+                    }
                 }
             }
         }
-        if (docTypeName.equals("org.iso.18013.5.1.mDL") &&
-            nameSpaceName.equals("org.iso.18013.5.1.aamva")) {
-            when (dataElementName) {
-                "EDL_credential" -> return "EDL indicator"
-                "DHS_compliance" -> return "REAL ID"
+        return null
+    }
+
+    fun getDataElementDisplayName(docTypeName : String,
+                                  nameSpaceName : String,
+                                  dataElementName : String): String {
+        for (credType in HolderApp.credentialTypeRepositoryInstance.getCredentialTypes()) {
+            if (credType.mdocCredentialType?.docType.equals(docTypeName)) {
+                val mdocDataElement = lookupDataElement(credType.mdocCredentialType!!, nameSpaceName, dataElementName)
+                if (mdocDataElement != null) {
+                    return mdocDataElement.attribute.displayName
+                }
             }
         }
-
         return dataElementName
     }
 
