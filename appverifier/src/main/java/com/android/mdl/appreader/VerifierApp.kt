@@ -49,9 +49,7 @@ class VerifierApp : Application() {
             trustManagerInstance.addCertificate(certificate)
         }
         KeysAndCertificates.getTrustedIssuerCertificates(this).forEach {
-            if (!trustManagerInstance.certificateExists(it)) {
-                trustManagerInstance.addCertificate(it)
-            }
+            trustManagerInstance.addCertificate(it)
         }
     }
 

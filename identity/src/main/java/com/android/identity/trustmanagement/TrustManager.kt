@@ -52,19 +52,8 @@ class TrustManager() {
      * Add a certificate to the [TrustManager].
      */
     fun addCertificate(certificate: X509Certificate) {
-        if (certificateExists(certificate)) {
-            throw Exception("Certificate already exists")
-        }
         val key = TrustManagerUtil.getSubjectKeyIdentifier(certificate)
         certificates[key] = certificate
-    }
-
-    /**
-     * Check that a certificate exists.
-     */
-    fun certificateExists(certificate: X509Certificate): Boolean {
-        val key = TrustManagerUtil.getSubjectKeyIdentifier(certificate)
-        return certificates[key] != null
     }
 
     /**
