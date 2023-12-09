@@ -292,8 +292,12 @@ public class QrEngagementHelper {
         Logger.d(TAG, "reportDeviceEngagementReady");
         final Listener listener = mListener;
         final Executor executor = mExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onDeviceEngagementReady);
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onDeviceEngagementReady();
+                }
+            });
         }
     }
 
@@ -301,8 +305,12 @@ public class QrEngagementHelper {
         Logger.d(TAG, "reportDeviceConnecting");
         final Listener listener = mListener;
         final Executor executor = mExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onDeviceConnecting);
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onDeviceConnecting();
+                }
+            });
         }
     }
 
@@ -310,8 +318,12 @@ public class QrEngagementHelper {
         Logger.d(TAG, "reportDeviceConnected");
         final Listener listener = mListener;
         final Executor executor = mExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceConnected(transport));
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onDeviceConnected(transport);
+                }
+            });
         }
     }
 
@@ -319,8 +331,12 @@ public class QrEngagementHelper {
         Logger.d(TAG, "reportError: error: ", error);
         final Listener listener = mListener;
         final Executor executor = mExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onError(error));
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onError(error);
+                }
+            });
         }
     }
 
