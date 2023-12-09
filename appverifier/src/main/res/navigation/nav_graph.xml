@@ -34,6 +34,9 @@
         <action
             android:id="@+id/action_settingsFragment_to_RequestOptions"
             app:destination="@id/requestOptions" />
+        <action
+            android:id="@+id/to_CaCertificates"
+            app:destination="@id/caCertificates" />
     </fragment>
     <fragment
         android:id="@+id/requestCustom"
@@ -135,4 +138,16 @@
             android:id="@+id/action_ShowQr_to_Transfer"
             app:destination="@id/transfer" />
     </fragment>
+    <fragment
+        android:id="@+id/caCertificates"
+        android:name="com.android.mdl.appreader.settings.CaCertificatesFragment"
+        android:label="mDoc Issuer Trust Store">
+        <action
+            android:id="@+id/to_CaCertificateDetails"
+            app:destination="@id/caCertificateDetails" />
+    </fragment>
+    <fragment
+        android:id="@+id/caCertificateDetails"
+        android:name="com.android.mdl.appreader.settings.CaCertificateDetailsFragment"
+        android:label="Certificate Details" />
 </navigation>
