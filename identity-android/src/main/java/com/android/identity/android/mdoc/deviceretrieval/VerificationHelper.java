@@ -28,9 +28,9 @@ import android.nfc.tech.IsoDep;
 import android.util.Base64;
 import android.util.Log;
 
+import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 
-import com.android.identity.securearea.SecureArea;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportBle;
@@ -44,13 +44,16 @@ import com.android.identity.mdoc.engagement.EngagementGenerator;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
+import com.android.identity.util.Timestamp;
 
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.security.KeyPair;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,6 +83,24 @@ import co.nstant.in.cbor.model.SimpleValue;
 public class VerificationHelper {
 
     private static final String TAG = "VerificationHelper";
+
+    public static final int ENGAGEMENT_METHOD_NOT_ENGAGED = 0;
+    public static final int ENGAGEMENT_METHOD_QR_CODE = 1;
+    public static final int ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER = 2;
+    public static final int ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER = 3;
+    public static final int ENGAGEMENT_METHOD_REVERSE = 4;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @IntDef(flag = false,
+            value = {
+                    ENGAGEMENT_METHOD_NOT_ENGAGED,
+                    ENGAGEMENT_METHOD_QR_CODE,
+                    ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER,
+                    ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER,
+                    ENGAGEMENT_METHOD_REVERSE
+            })
+    @interface EngagementMethod {}
+
     private Context mContext;
     DataTransport mDataTransport;
     Listener mListener;
@@ -103,6 +124,12 @@ public class VerificationHelper {
     private List<ConnectionMethod> mConnectionMethodsForReaderEngagement;
     private EngagementGenerator mReaderEngagementGenerator;
     private byte[] mReaderEngagement;
+    private long mTimestampNfcTap;
+    private long mTimestampEngagementReceived;
+    private long mTimestampRequestSent;
+    private long mTimestampResponseReceived;
+    private @EngagementMethod int mEngagementMethod;
+
 
     VerificationHelper() {
     }
@@ -255,6 +282,8 @@ public class VerificationHelper {
     nfcProcessOnTagDiscovered(@NonNull Tag tag) {
         Logger.d(TAG, "Tag discovered!");
 
+        mTimestampNfcTap = Timestamp.now().toEpochMilli();
+
         // Find IsoDep since we're skipping NDEF checks and doing everything ourselves via APDUs
         for (String tech : tag.getTechList()) {
             if (tech.equals(IsoDep.class.getName())) {
@@ -331,7 +360,7 @@ public class VerificationHelper {
                 Logger.dCbor(TAG, "Device Engagement from QR code", encodedDeviceEngagement);
 
                 DataItem handover = SimpleValue.NULL;
-                setDeviceEngagement(encodedDeviceEngagement, handover);
+                setDeviceEngagement(encodedDeviceEngagement, handover, ENGAGEMENT_METHOD_QR_CODE);
 
                 EngagementParser engagementParser = new EngagementParser(encodedDeviceEngagement);
                 EngagementParser.Engagement engagement = engagementParser.parse();
@@ -612,7 +641,7 @@ public class VerificationHelper {
                                 .add(SimpleValue.NULL)     // Handover Request message
                                 .end()
                                 .build().get(0);
-                        setDeviceEngagement(hs.encodedDeviceEngagement, readerHandover);
+                        setDeviceEngagement(hs.encodedDeviceEngagement, readerHandover, ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER);
                         reportDeviceEngagementReceived(hs.connectionMethods);
                         return;
                     }
@@ -705,7 +734,7 @@ public class VerificationHelper {
                             .add(hrMessage)   // Handover Request message
                             .end()
                             .build().get(0);
-                    setDeviceEngagement(encodedDeviceEngagement, handover);
+                    setDeviceEngagement(encodedDeviceEngagement, handover, ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER);
 
                     reportDeviceEngagementReceived(parsedCms);
 
@@ -717,11 +746,16 @@ public class VerificationHelper {
         transceiverThread.start();
     }
 
-    private void setDeviceEngagement(@NonNull byte[] deviceEngagement, @NonNull DataItem handover) {
+    private void setDeviceEngagement(
+            @NonNull byte[] deviceEngagement,
+            @NonNull DataItem handover,
+            @EngagementMethod int engagementMethod) {
         if (mDeviceEngagement != null) {
             throw new IllegalStateException("Device Engagement already set");
         }
         mDeviceEngagement = deviceEngagement;
+        mEngagementMethod = engagementMethod;
+        mTimestampEngagementReceived = Timestamp.now().toEpochMilli();
 
         EngagementParser engagementParser = new EngagementParser(deviceEngagement);
         EngagementParser.Engagement engagement = engagementParser.parse();
@@ -871,7 +905,7 @@ public class VerificationHelper {
         // is available and neither QR or NFC is used.
         handover = Util.cborBuildTaggedByteString(mReaderEngagement);
 
-        setDeviceEngagement(encodedDeviceEngagement, handover);
+        setDeviceEngagement(encodedDeviceEngagement, handover, ENGAGEMENT_METHOD_REVERSE);
 
         // Tell the application it can start sending requests...
         reportDeviceConnected();
@@ -911,6 +945,7 @@ public class VerificationHelper {
         //
         if (decryptedMessage.getData() != null) {
             Logger.dCbor(TAG, "DeviceResponse received", decryptedMessage.getData());
+            mTimestampResponseReceived = Timestamp.now().toEpochMilli();
             reportResponseReceived(decryptedMessage.getData());
         } else {
             // No data, so status must be set...
@@ -1080,6 +1115,7 @@ public class VerificationHelper {
                 deviceRequestBytes, OptionalLong.empty());
         Logger.dCbor(TAG, "SessionData to send", message);
         mDataTransport.sendMessage(message);
+        mTimestampRequestSent = Timestamp.now().toEpochMilli();
     }
 
     /**
@@ -1163,6 +1199,40 @@ public class VerificationHelper {
     public void setSendSessionTerminationMessage(
             boolean sendSessionTerminationMessage) {
         mSendSessionTerminationMessage = sendSessionTerminationMessage;
+    }
+
+    /**
+     * Gets the amount of time from first NFC interaction until Engagement has been received.
+     *
+     * @return The duration, in milliseconds or 0 if NFC engagement isn't in use.
+     */
+    public long getTapToEngagementDurationMillis() {
+        if (mTimestampNfcTap == 0) {
+            return 0;
+        }
+        return mTimestampEngagementReceived - mTimestampNfcTap;
+    }
+
+    /**
+     * Gets the amount of time from when Engagement has been received until the request was sent.
+     *
+     * @return The duration, in milliseconds.
+     */
+    public long getEngagementToRequestDurationMillis() {
+        return mTimestampRequestSent - mTimestampEngagementReceived;
+    }
+
+    /**
+     * Gets the the amount of time from when the request was sent until the response was received.
+     *
+     * @return The duration, in milliseconds.
+     */
+    public long getRequestToResponseDurationMillis() {
+        return mTimestampResponseReceived - mTimestampRequestSent;
+    }
+
+    public @EngagementMethod int getEngagementMethod() {
+        return mEngagementMethod;
     }
 
     /**

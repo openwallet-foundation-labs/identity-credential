@@ -19,7 +19,6 @@ import androidx.navigation.fragment.findNavController
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.EcCurve
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
 import com.android.mdl.appreader.issuerauth.SimpleIssuerTrustStore
@@ -195,17 +194,28 @@ class ShowDocumentFragment : Fragment() {
             }
         }
 
-        sb.append("Number of documents returned: <b>${documents.size}</b><br>")
-        sb.append("Address: <b>" + transferManager.mdocConnectionMethod + "</b><br>")
+        // Get primary color from theme to use in the HTML formatted document.
+        val primaryColor = String.format(
+            "#%06X",
+            0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data
+        )
+
+        val totalDuration = transferManager.getTapToEngagementDurationMillis() +
+                transferManager.getEngagementToRequestDurationMillis() +
+                transferManager.getRequestToResponseDurationMillis()
+        sb.append("Tap to Engagement Received: ${transferManager.getTapToEngagementDurationMillis()} ms<br>")
+        sb.append("Engagement Received to Request Sent: ${transferManager.getEngagementToRequestDurationMillis()} ms<br>")
+        sb.append("Request Sent to Response Received: ${transferManager.getRequestToResponseDurationMillis()} ms<br>")
+        sb.append("<b>Total transaction time: <font color=\"$primaryColor\">$totalDuration ms</font></b><br>")
+        sb.append("<br>")
+
+        sb.append("Engagement Method: <b>" + transferManager.getEngagementMethod() + "</b><br>")
+        sb.append("Device Retrieval Method: <b>" + transferManager.mdocConnectionMethod + "</b><br>")
         sb.append("Session encryption curve: <b>" + curveNameFor(transferManager.getMdocSessionEncryptionCurve()) + "</b><br>")
         sb.append("<br>")
+
         for (doc in documents) {
-            // Get primary color from theme to use in the HTML formatted document.
-            val color = String.format(
-                "#%06X",
-                0xFFFFFF and requireContext().theme.attr(R.attr.colorPrimary).data
-            )
-            sb.append("<h3>Doctype: <font color=\"$color\">${doc.docType}</font></h3>")
+            sb.append("<h3>Doctype: <font color=\"$primaryColor\">${doc.docType}</font></h3>")
             val certPath =
                 simpleIssuerTrustStore.createCertificationTrustPath(doc.issuerCertificateChain.toList())
             val isDSTrusted = simpleIssuerTrustStore.validateCertificationTrustPath(certPath)
