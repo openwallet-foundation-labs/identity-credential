@@ -168,7 +168,7 @@ class TrustManagerTest {
         val trustManager = TrustManager()
 
         // act (add certificate and verify chain)
-        trustManager.addCertificate(mdlCaCertificate)
+        trustManager.addTrustPoint(TrustPoint(mdlCaCertificate))
         val result = trustManager.verify(listOf(mdlDsCertificate))
 
         // assert
@@ -183,8 +183,8 @@ class TrustManagerTest {
         val trustManager = TrustManager()
 
         // act (add intermediate and CA certificate and verify chain)
-        trustManager.addCertificate(intermediateCertificate)
-        trustManager.addCertificate(caCertificate)
+        trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
+        trustManager.addTrustPoint(TrustPoint(caCertificate))
         val result = trustManager.verify(listOf(dsCertificate))
 
         // assert
@@ -199,7 +199,7 @@ class TrustManagerTest {
         val trustManager = TrustManager()
 
         // act (add intermediate certificate (without CA) and verify chain)
-        trustManager.addCertificate(intermediateCertificate)
+        trustManager.addTrustPoint(TrustPoint(intermediateCertificate))
         val result = trustManager.verify(listOf(dsCertificate))
 
         // assert
