@@ -38,22 +38,24 @@ internal object TrustManagerUtil {
     private const val KEY_CERT_SIGN = 5
 
     /**
-     * Get the Subject Key Identifier Extension from the
-     * X509 certificate in hexadecimal format.
+     * Get the Subject Key Identifier Extension from the X509 certificate
+     * in hexadecimal format.
      */
     fun getSubjectKeyIdentifier(certificate: X509Certificate): String {
         val extensionValue = certificate.getExtensionValue(Extension.subjectKeyIdentifier.id)
+            ?: return ""
         val octets = DEROctetString.getInstance(extensionValue).octets
         val subjectKeyIdentifier = SubjectKeyIdentifier.getInstance(octets)
         return Util.toHex(subjectKeyIdentifier.keyIdentifier)
     }
 
     /**
-     * Get the Authority Key Identifier Extension from the
-     * X509 certificate in hexadecimal format.
+     * Get the Authority Key Identifier Extension from the X509 certificate
+     * in hexadecimal format.
      */
     fun getAuthorityKeyIdentifier(certificate: X509Certificate): String {
         val extensionValue = certificate.getExtensionValue(Extension.authorityKeyIdentifier.id)
+            ?: return ""
         val octets = DEROctetString.getInstance(extensionValue).octets
         val authorityKeyIdentifier = AuthorityKeyIdentifier.getInstance(octets)
         return Util.toHex(authorityKeyIdentifier.keyIdentifier)
@@ -62,13 +64,12 @@ internal object TrustManagerUtil {
     /**
      * Check whether a certificate is self-signed
      */
-    fun isSelfSigned(certificate: X509Certificate): Boolean{
+    fun isSelfSigned(certificate: X509Certificate): Boolean {
         return certificate.issuerX500Principal.name == certificate.subjectX500Principal.name
     }
 
     /**
-     * Check that the key usage is the creation of digital
-     * signatures.
+     * Check that the key usage is the creation of digital signatures.
      */
     fun checkKeyUsageDocumentSigner(certificate: X509Certificate) {
         if (!hasKeyUsage(certificate, DIGITAL_SIGNATURE)) {
@@ -77,13 +78,12 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Check the validity period of a certificate (based on
-     * the system date).
+     * Check the validity period of a certificate (based on the system date).
      */
     fun checkValidity(certificate: X509Certificate) {
         // check if the certificate is currently valid
-        // NOTE does not check if it is valid within the validity period of the issuing
-        // CA
+        // NOTE does not check if it is valid within the validity period of
+        // the issuing CA
         certificate.checkValidity()
         // NOTE throws multiple exceptions derived from CertificateException
     }
@@ -110,8 +110,8 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Check that the issuer in [certificate] is equal to
-     * the subject in [caCertificate].
+     * Check that the issuer in [certificate] is equal to the subject in
+     * [caCertificate].
      */
     fun checkCaIsIssuer(certificate: X509Certificate, caCertificate: X509Certificate) {
         val issuerName = X500Name(certificate.issuerX500Principal.name)
@@ -122,8 +122,8 @@ internal object TrustManagerUtil {
     }
 
     /**
-     * Verify the signature of the [certificate] with the
-     * public key of the [caCertificate].
+     * Verify the signature of the [certificate] with the public key of the
+     * [caCertificate].
      */
     fun verifySignature(certificate: X509Certificate, caCertificate: X509Certificate) {
         try {

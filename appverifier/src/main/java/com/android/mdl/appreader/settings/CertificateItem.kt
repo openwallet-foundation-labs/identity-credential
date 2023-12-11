@@ -1,6 +1,6 @@
 package com.android.mdl.appreader.settings
 
-import java.security.cert.X509Certificate
+import com.android.identity.trustmanagement.TrustPoint
 import java.util.Date
 
 data class CertificateItem(
@@ -17,6 +17,6 @@ data class CertificateItem(
     val sha1Fingerprint: String,
     val docTypes: List<String>,
     val supportsDelete: Boolean,
-    val certificate: X509Certificate?
+    val trustPoint: TrustPoint?
 ) {
 }

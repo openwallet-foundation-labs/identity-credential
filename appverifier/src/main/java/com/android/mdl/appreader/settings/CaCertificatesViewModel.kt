@@ -20,7 +20,7 @@ class CaCertificatesViewModel() : ViewModel() {
     val currentCertificateItem = _currentCertificateItem.asStateFlow()
     fun loadCertificates() {
         val certificates =
-            VerifierApp.trustManagerInstance.getAllCertificates().map { it.toCertificateItem() }
+            VerifierApp.trustManagerInstance.getAllTrustPoints().map { it.toCertificateItem() }
         _screenState.update { it.copy(certificates = certificates) }
     }
 
@@ -29,9 +29,9 @@ class CaCertificatesViewModel() : ViewModel() {
     }
 
     fun deleteCertificate() {
-        _currentCertificateItem.value?.certificate?.let {
-            VerifierApp.trustManagerInstance.removeCertificate(it)
-            VerifierApp.certificateStorageEngineInstance.delete(it.getSubjectKeyIdentifier())
+        _currentCertificateItem.value?.trustPoint?.let {
+            VerifierApp.trustManagerInstance.removeTrustPoint(it)
+            VerifierApp.certificateStorageEngineInstance.delete(it.certificate.getSubjectKeyIdentifier())
         }
     }
 

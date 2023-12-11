@@ -110,7 +110,7 @@ private fun PreviewCaCertificatesScreen() {
                         sha1Fingerprint = "9D 80 9B CF 63 AA86 29 E9 3C 78 9A EA DA 15 56 7E BF 56 D8",
                         docTypes = emptyList(),
                         supportsDelete = false,
-                        certificate = null
+                        trustPoint = null
                     ),
                     CertificateItem(
                         title = "Test 2",
@@ -132,7 +132,7 @@ private fun PreviewCaCertificatesScreen() {
                         sha1Fingerprint = "9D 80 9B CF 63 AA86 29 E9 3C 78 9A EA DA 15 56 7E BF 56 D8",
                         docTypes = emptyList(),
                         supportsDelete = false,
-                        certificate = null
+                        trustPoint = null
                     )
                 )
             ),
