@@ -20,6 +20,7 @@ import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureArea.EcCurve
+import com.android.identity.util.Timestamp
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
 import com.android.mdl.appreader.issuerauth.SimpleIssuerTrustStore
@@ -192,6 +193,14 @@ class ShowDocumentFragment : Fragment() {
                         + "holder. Be careful doing any business transactions or inquiries until "
                         + "proper identification is confirmed.</i><br>")
                 sb.append("<br>")
+            }else if(!checkValidityInfoNotExpired(doc)) {
+                // Warn if validity info is expired.
+                sb.append("<h3>WARNING: <font color=\"red\">MSO is expired "
+                        + "for ${doc.docType}.</font></h3><br>")
+                sb.append("<i>Expired MSO indicates that this document is no longer valid. ")
+                sb.append("<i>It is advisable to request updated or renewed documentation ")
+                sb.append("before proceeding with any business transactions or inquiries.</i><br>")
+                sb.append("<br>")
             }
         }
 
@@ -332,6 +341,11 @@ class ShowDocumentFragment : Fragment() {
             }
         }
         return true
+    }
+
+    // the 'validUntil' element shall be equal or later than the current timestamp.
+    private fun checkValidityInfoNotExpired(document: DeviceResponseParser.Document): Boolean {
+        return Timestamp.now().toEpochMilli() <= document.validityInfoValidUntil.toEpochMilli()
     }
 
     private fun Resources.Theme.attr(@AttrRes attribute: Int): TypedValue {
