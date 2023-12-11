@@ -185,7 +185,7 @@ class TransferManager private constructor(private val context: Context) {
         if (authKey != null) {
             authKeyToUse = authKey
         } else {
-            authKeyToUse = credential.findAuthenticationKey(Timestamp.now())
+            authKeyToUse = credential.findAuthenticationKey(ProvisioningUtil.AUTH_KEY_DOMAIN, Timestamp.now())
                 ?: throw IllegalStateException("No auth key available")
         }
 

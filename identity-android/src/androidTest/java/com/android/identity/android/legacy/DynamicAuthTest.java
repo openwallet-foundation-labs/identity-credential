@@ -35,6 +35,8 @@ import com.android.identity.internal.Util;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -44,6 +46,7 @@ import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.Security;
 import java.security.SignatureException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -69,6 +72,12 @@ import co.nstant.in.cbor.CborException;
 @SuppressWarnings("deprecation")
 public class DynamicAuthTest {
     private static final String TAG = "DynamicAuthTest";
+
+    @Before
+    public void setup() {
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
+        Security.addProvider(new BouncyCastleProvider());
+    }
 
     @SuppressWarnings("deprecation")
     @Test

@@ -21,6 +21,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.android.mdoc.transport.DataTransportBle;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.android.mdoc.transport.TransmissionProgressListener;
@@ -67,7 +68,9 @@ public class DeviceRetrievalHelper {
     private static final String TAG = "DeviceRetrievalHelper";
 
     private KeyPair mEDeviceKeyPair;
+    private @SecureArea.EcCurve int mEDeviceKeyCurve;
     private Context mContext;
+    private int mEReaderKeyCurve;
     private PublicKey mEReaderKey;
 
     private byte[] mDeviceEngagement;
@@ -151,11 +154,6 @@ public class DeviceRetrievalHelper {
     void start() {
         mTransport.setListener(new DataTransport.Listener() {
             @Override
-            public void onConnectionMethodReady() {
-                Logger.d(TAG, "onConnectionMethodReady");
-            }
-
-            @Override
             public void onConnecting() {
                 Logger.d(TAG, "onConnecting");
             }
@@ -181,6 +179,7 @@ public class DeviceRetrievalHelper {
 
                     EngagementGenerator generator = new EngagementGenerator(
                             mEDeviceKeyPair.getPublic(),
+                            mEDeviceKeyCurve,
                             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
                     generator.setOriginInfos(mReverseEngagementOriginInfos);
                     mDeviceEngagement = generator.generate();
@@ -247,7 +246,7 @@ public class DeviceRetrievalHelper {
 
             // This is reverse engagement, we actually haven't connected yet...
             byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
-                    Util.cborEncode(Util.cborBuildCoseKey(mEDeviceKeyPair.getPublic()))));
+                    Util.cborEncode(Util.cborBuildCoseKey(mEDeviceKeyPair.getPublic(), mEDeviceKeyCurve))));
             mTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
             mTransport.connect();
         }
@@ -284,6 +283,7 @@ public class DeviceRetrievalHelper {
         }
         DataItem eReaderKeyDataItem = Util.cborDecode(encodedEReaderKey);
         try {
+            mEReaderKeyCurve = Util.coseKeyGetCurve(eReaderKeyDataItem);
             mEReaderKey = Util.coseKeyDecode(eReaderKeyDataItem);
         } catch (IllegalArgumentException
                  | IllegalStateException e) {
@@ -301,6 +301,7 @@ public class DeviceRetrievalHelper {
         mSessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC,
                 mEDeviceKeyPair,
                 mEReaderKey,
+                mEReaderKeyCurve,
                 mEncodedSessionTranscript);
 
         reportEReaderKeyReceived(mEReaderKey);
@@ -316,6 +317,7 @@ public class DeviceRetrievalHelper {
             mAlternateSessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC,
                     mEDeviceKeyPair,
                     mEReaderKey,
+                    mEReaderKeyCurve,
                     mEncodedAlternateSessionTranscript);
         }
         return OptionalLong.empty();
@@ -570,6 +572,13 @@ public class DeviceRetrievalHelper {
         mTransport.sendTransportSpecificTerminationMessage();
     }
 
+    public long getScanningTimeMillis() {
+        if (mTransport instanceof DataTransportBle) {
+            return ((DataTransportBle) mTransport).getScanningTimeMillis();
+        }
+        return 0;
+    }
+
     /**
      * Interface for listening to messages from the remote verifier device.
      *
@@ -651,7 +660,8 @@ public class DeviceRetrievalHelper {
         public Builder(@NonNull Context context,
                        @Nullable Listener listener,
                        @Nullable Executor executor,
-                       @NonNull KeyPair eDeviceKeyPair) {
+                       @NonNull KeyPair eDeviceKeyPair,
+                       @SecureArea.EcCurve int eDeviceKeyCurve) {
             mHelper = new DeviceRetrievalHelper();
             mHelper.mContext = context;
             if (listener != null && executor == null) {
@@ -660,6 +670,7 @@ public class DeviceRetrievalHelper {
             mHelper.mListener = listener;
             mHelper.mListenerExecutor = executor;
             mHelper.mEDeviceKeyPair = eDeviceKeyPair;
+            mHelper.mEDeviceKeyCurve = eDeviceKeyCurve;
         }
 
         /**

@@ -47,11 +47,6 @@ public class SessionEncryptionTest {
         Security.insertProviderAt(new BouncyCastleProvider(), 1);
     }
 
-    @After
-    public void tearDown() {
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
-    }
-
     @Test
     public void testReaderAgainstVectors() {
         PublicKey eReaderKeyPublic = Util.getPublicKeyFromIntegers(
@@ -78,6 +73,7 @@ public class SessionEncryptionTest {
         SessionEncryption sessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
                 new KeyPair(eReaderKeyPublic, eReaderKeyPrivate),
                 eDeviceKey,
+                SecureArea.EC_CURVE_P256,
                 Util.cborEncode(sessionTranscript));
 
         // Check that encryption works.
@@ -141,6 +137,7 @@ public class SessionEncryptionTest {
         SessionEncryption sessionEncryptionDevice = new SessionEncryption(SessionEncryption.ROLE_MDOC,
                 new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                 eReaderKey,
+                SecureArea.EC_CURVE_P256,
                 encodedSessionTranscript);
 
         // Check that decryption works.
@@ -184,11 +181,13 @@ public class SessionEncryptionTest {
                 SessionEncryption.ROLE_MDOC_READER,
                 eReaderKeyPair,
                 eDeviceKeyPublic,
+                curve,
                 encodedSessionTranscript);
         sessionEncryptionReader.setSendSessionEstablishment(false);
         SessionEncryption sessionEncryptionHolder = new SessionEncryption(SessionEncryption.ROLE_MDOC,
                 new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                 eReaderKeyPublic,
+                curve,
                 encodedSessionTranscript);
 
         for (int i = 1; i <= 3; i++) {

@@ -17,6 +17,7 @@ import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
 
@@ -60,6 +61,7 @@ public class NfcEngagementHelper {
     private final int mNegotiatedHandoverWtInt;
     private final int mNegotiatedHandoverMaxNumWaitingTimeExtensions;
     private final PublicKey mEDeviceKey;
+    private final @SecureArea.EcCurve int mEDeviceKeyCurve;
     private List<ConnectionMethod> mStaticHandoverConnectionMethods;
     private final DataTransportOptions mOptions;
     private final Listener mListener;
@@ -96,12 +98,11 @@ public class NfcEngagementHelper {
     private @NegotiatedHandoverState int mNegotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED;
 
     private byte[] mSelectedNfcFile;
-    private long mTimeStartedSettingUpTransports;
-    private boolean mTransportsAreSettingUp;
     private boolean mTestingDoNotStartTransports = false;
 
     private NfcEngagementHelper(@NonNull Context context,
                                 @NonNull PublicKey eDeviceKey,
+                                @SecureArea.EcCurve int eDeviceKeyCurve,
                                 @NonNull DataTransportOptions options,
                                 int negotiatedHandoverWtInt,
                                 int negotiatedHandoverMaxNumWaitingTimeExtensions,
@@ -109,6 +110,7 @@ public class NfcEngagementHelper {
                                 @NonNull Executor executor) {
         mContext = context;
         mEDeviceKey = eDeviceKey;
+        mEDeviceKeyCurve = eDeviceKeyCurve;
         mNegotiatedHandoverWtInt = negotiatedHandoverWtInt;
         mNegotiatedHandoverMaxNumWaitingTimeExtensions = negotiatedHandoverMaxNumWaitingTimeExtensions;
         mListener = listener;
@@ -116,6 +118,7 @@ public class NfcEngagementHelper {
         mOptions = options;
         mEncodedDeviceEngagement = new EngagementGenerator(
                 mEDeviceKey,
+                mEDeviceKeyCurve,
                 EngagementGenerator.ENGAGEMENT_VERSION_1_0
             ).generate();
         Logger.dCbor(TAG, "NFC DeviceEngagement", mEncodedDeviceEngagement);
@@ -140,7 +143,6 @@ public class NfcEngagementHelper {
             Logger.d(TAG, String.format(Locale.US,"Closed %d transports", numTransportsClosed));
             mTransports = null;
         }
-        mTransportsAreSettingUp = false;
         mNegotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_NOT_STARTED;
         mSelectedNfcFile = null;
     }
@@ -176,23 +178,20 @@ public class NfcEngagementHelper {
     }
 
     // Used by both static and negotiated handover... safe to be called multiple times.
-    private void setupTransports(@NonNull List<ConnectionMethod> connectionMethods) {
-        if (mTransportsAreSettingUp) {
-            return;
-        }
-        mTransportsAreSettingUp = true;
-
+    private List<ConnectionMethod> setupTransports(@NonNull List<ConnectionMethod> connectionMethods) {
         if (mTestingDoNotStartTransports) {
             Logger.d(TAG, "Test mode, not setting up transports");
-            return;
+            return connectionMethods;
         }
+
+        List<ConnectionMethod> setupConnectionMethods = new ArrayList<>();
 
         Logger.d(TAG, "Setting up transports");
         mTransports = new ArrayList<>();
-        mTimeStartedSettingUpTransports = System.currentTimeMillis();
+        long timeStartedSettingUpTransports = System.currentTimeMillis();
 
         byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
-                Util.cborEncode(Util.cborBuildCoseKey(mEDeviceKey))));
+                Util.cborEncode(Util.cborBuildCoseKey(mEDeviceKey, mEDeviceKeyCurve))));
 
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
@@ -209,75 +208,53 @@ public class NfcEngagementHelper {
         // in another thread than we're in right now. For example this happens if using
         // ThreadPoolExecutor.
         //
-        // In particular, it means we need locking around `mNumTransportsStillSettingUp`. We'll
-        // use the monitor for this object for to achieve that.
-        //
         final NfcEngagementHelper helper = this;
-        mNumTransportsStillSettingUp = 0;
 
-        synchronized (helper) {
-            for (DataTransport transport : mTransports) {
-                transport.setListener(new DataTransport.Listener() {
-                    @Override
-                    public void onConnectionMethodReady() {
-                        Logger.d(TAG, "onConnectionMethodReady for " + transport);
-                        synchronized (helper) {
-                            mNumTransportsStillSettingUp -= 1;
-                            if (mNumTransportsStillSettingUp == 0) {
-                                allTransportsAreSetup();
-                            }
-                        }
-                    }
+        for (DataTransport transport : mTransports) {
+            transport.setListener(new DataTransport.Listener() {
+                @Override
+                public void onConnecting() {
+                    Logger.d(TAG, "onConnecting for " + transport);
+                    peerIsConnecting(transport);
+                }
 
-                    @Override
-                    public void onConnecting() {
-                        Logger.d(TAG, "onConnecting for " + transport);
-                        peerIsConnecting(transport);
-                    }
+                @Override
+                public void onConnected() {
+                    Logger.d(TAG, "onConnected for " + transport);
+                    peerHasConnected(transport);
+                }
 
-                    @Override
-                    public void onConnected() {
-                        Logger.d(TAG, "onConnected for " + transport);
-                        peerHasConnected(transport);
-                    }
+                @Override
+                public void onDisconnected() {
+                    Logger.d(TAG, "onDisconnected for " + transport);
+                    transport.close();
+                }
 
-                    @Override
-                    public void onDisconnected() {
-                        Logger.d(TAG, "onDisconnected for " + transport);
-                        transport.close();
-                    }
+                @Override
+                public void onError(@NonNull Throwable error) {
+                    transport.close();
+                    reportError(error);
+                }
 
-                    @Override
-                    public void onError(@NonNull Throwable error) {
-                        transport.close();
-                        reportError(error);
-                    }
+                @Override
+                public void onMessageReceived() {
+                    Logger.d(TAG, "onMessageReceived for " + transport);
+                }
 
-                    @Override
-                    public void onMessageReceived() {
-                        Logger.d(TAG, "onMessageReceived for " + transport);
-                    }
+                @Override
+                public void onTransportSpecificSessionTermination() {
+                    Logger.d(TAG, "Received transport-specific session termination");
+                    transport.close();
+                }
 
-                    @Override
-                    public void onTransportSpecificSessionTermination() {
-                        Logger.d(TAG, "Received transport-specific session termination");
-                        transport.close();
-                    }
-
-                }, mExecutor);
-                Logger.d(TAG, "Connecting to transport " + transport);
-                transport.connect();
-                mNumTransportsStillSettingUp += 1;
-            }
+            }, mExecutor);
+            Logger.d(TAG, "Connecting to transport " + transport);
+            transport.connect();
+            setupConnectionMethods.add(transport.getConnectionMethod());
         }
-    }
-
-    // TODO: handle the case where a transport never calls onConnectionMethodReady... that
-    //  is, set up a timeout to call this.
-    //
-    void allTransportsAreSetup() {
-        long setupTimeMillis = System.currentTimeMillis() - mTimeStartedSettingUpTransports;
+        long setupTimeMillis = System.currentTimeMillis() - timeStartedSettingUpTransports;
         Logger.d(TAG, String.format(Locale.US, "All transports set up in %d msec", setupTimeMillis));
+        return setupConnectionMethods;
     }
 
     /**
@@ -296,7 +273,7 @@ public class NfcEngagementHelper {
     /**
      * Method to call when a command APDU has been received.
      *
-     * This should be called from the application's implementation of
+     * <p>This should be called from the application's implementation of
      * {@link android.nfc.cardemulation.HostApduService#processCommandApdu(byte[], Bundle)}.
      *
      * @param apdu The APDU that was received from the remote device.
@@ -427,10 +404,12 @@ public class NfcEngagementHelper {
                 mSelectedNfcFile = fileContents;
                 mNegotiatedHandoverState = NEGOTIATED_HANDOVER_STATE_EXPECT_SERVICE_SELECT;
             } else {
+                List<ConnectionMethod> cmsFromTransports = setupTransports(mStaticHandoverConnectionMethods);
                 Logger.d(TAG, "handleSelectFile: NDEF file selected and using static handover - calculating handover message");
                 byte[] hsMessage = NfcUtil.createNdefMessageHandoverSelect(
-                        mStaticHandoverConnectionMethods,
-                        mEncodedDeviceEngagement);
+                        cmsFromTransports,
+                        mEncodedDeviceEngagement,
+                        mOptions);
                 Logger.dHex(TAG, "handleSelectFile: Handover Select", hsMessage);
                 byte[] fileContents = new byte[hsMessage.length + 2];
                 fileContents[0] = (byte) (hsMessage.length / 256);
@@ -448,8 +427,10 @@ public class NfcEngagementHelper {
                 Logger.dCbor(TAG, "NFC static DeviceEngagement", mEncodedDeviceEngagement);
                 Logger.dCbor(TAG, "NFC static Handover", mEncodedHandover);
 
-                // Technically we should ensure the transports are up until sending the response...
-                setupTransports(mStaticHandoverConnectionMethods);
+                // TODO: We're reporting this just a bit early, we should move this
+                //  to handleReadBinary() instead and emit it once all bytes from
+                //  mSelectedNfcFile has been read
+                reportHandoverSelectMessageSent();
             }
         } else {
             Logger.w(TAG, "handleSelectFile: Unknown file selected with id 0x%04x");
@@ -733,7 +714,8 @@ public class NfcEngagementHelper {
 
         byte[] hsMessage = NfcUtil.createNdefMessageHandoverSelect(
                 listWithSelectedConnectionMethod,
-                mEncodedDeviceEngagement);
+                mEncodedDeviceEngagement,
+                mOptions);
         byte[] fileContents = new byte[hsMessage.length + 2];
         fileContents[0] = (byte) (hsMessage.length / 256);
         fileContents[1] = (byte) (hsMessage.length & 0xff);
@@ -751,6 +733,11 @@ public class NfcEngagementHelper {
                 .build().get(0));
         Logger.dCbor(TAG, "NFC negotiated DeviceEngagement", mEncodedDeviceEngagement);
         Logger.dCbor(TAG, "NFC negotiated Handover", mEncodedHandover);
+
+        // TODO: We're reporting this just a bit early, we should move this
+        //  to handleReadBinary() instead and emit it once all bytes from
+        //  mSelectedNfcFile has been read
+        reportHandoverSelectMessageSent();
 
         // Technically we should ensure the transports are up until sending the response...
         setupTransports(listWithSelectedConnectionMethod);
@@ -808,6 +795,18 @@ public class NfcEngagementHelper {
         }
     }
 
+    void reportHandoverSelectMessageSent() {
+        Logger.d(TAG, "onHandoverSelectMessageSent");
+        final Listener listener = mListener;
+        final Executor executor = mExecutor;
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onHandoverSelectMessageSent();
+                }
+            });
+        }
+    }
 
     void reportDeviceConnecting() {
         Logger.d(TAG, "reportDeviceConnecting");
@@ -861,6 +860,14 @@ public class NfcEngagementHelper {
         void onTwoWayEngagementDetected();
 
         /**
+         * Called when the Handover Select message has been sent to the NFC tag reader.
+         *
+         * <p>This is a good point for an app to notify the user that an mdoc transaction
+         * is about to to take place and they can start removing the device from the field.
+         */
+        void onHandoverSelectMessageSent();
+
+        /**
          * Called when a remote mdoc reader is starting to connect.
          */
         void onDeviceConnecting();
@@ -909,6 +916,7 @@ public class NfcEngagementHelper {
          */
         public Builder(@NonNull Context context,
                        @NonNull PublicKey eDeviceKey,
+                       @SecureArea.EcCurve int eDeviceKeyCurve,
                        @NonNull DataTransportOptions options,
                        @NonNull Listener listener,
                        @NonNull Executor executor) {
@@ -923,6 +931,7 @@ public class NfcEngagementHelper {
 
             mHelper = new NfcEngagementHelper(context,
                     eDeviceKey,
+                    eDeviceKeyCurve,
                     options,
                     negotiatedHandoverWtInt,
                     negotiatedHandoverMaxNumWaitingTimeExtensions,

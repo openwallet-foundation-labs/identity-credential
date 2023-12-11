@@ -52,6 +52,10 @@ class NfcEngagementHandler : HostApduService() {
             log("Engagement Listener: Two Way Engagement Detected.")
         }
 
+        override fun onHandoverSelectMessageSent() {
+            log("Engagement Listener: Handover Select Message Sent.")
+        }
+
         override fun onDeviceConnecting() {
             log("Engagement Listener: Device Connecting. Launching Transfer Screen")
             val pendingIntent = NavDeepLinkBuilder(applicationContext)
@@ -75,7 +79,8 @@ class NfcEngagementHandler : HostApduService() {
                 applicationContext,
                 presentationListener,
                 applicationContext.mainExecutor(),
-                eDeviceKeyPair
+                eDeviceKeyPair,
+                settings.getEphemeralKeyCurveOption()
             )
             builder.useForwardEngagement(
                 transport,
@@ -128,6 +133,7 @@ class NfcEngagementHandler : HostApduService() {
         val builder = NfcEngagementHelper.Builder(
             applicationContext,
             eDeviceKeyPair.public,
+            settings.getEphemeralKeyCurveOption(),
             connectionSetup.getConnectionOptions(),
             nfcEngagementListener,
             applicationContext.mainExecutor()

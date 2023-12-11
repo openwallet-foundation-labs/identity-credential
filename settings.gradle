@@ -24,6 +24,14 @@ dependencyResolutionManagement {
         }
     }
 }
-include ':appholder', ':appverifier', ':identity', ':identity-android', ':secure-area-test-app', ':wwwverifier', ':wallet'
+
 rootProject.name = 'Identity Credential'
 
+// Libraries
+include ':identity', ':identity-android'
+// Android apps
+include ':appholder', ':appverifier', ':secure-area-test-app', ':wwwverifier', ':wallet'
+// Server-side apps
+include ':wwwverifier'
+// Samples
+include ':samples:preconsent-mdl', ':samples:age-verifier-mdl'

@@ -82,11 +82,6 @@ public class UtilTest {
         Security.insertProviderAt(new BouncyCastleProvider(), 1);
     }
 
-    @After
-    public void tearDown() {
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
-    }
-
     @Test
     public void prettyPrintMultipleCompleteTypes() throws CborException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -401,7 +396,7 @@ public class UtilTest {
 
     @Test
     public void coseSignAndVerify_P256() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
         ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp256r1");
         kpg.initialize(ecSpec);
         KeyPair keyPair = kpg.generateKeyPair();
@@ -619,7 +614,8 @@ public class UtilTest {
                 Util.cborPrettyPrint(Util.cborBuildCoseKey(
                         Util.getPublicKeyFromIntegers(
                                 BigInteger.valueOf(1),
-                                BigInteger.valueOf(2)))));
+                                BigInteger.valueOf(2)),
+                        SecureArea.EC_CURVE_P256)));
     }
 
     @Test
@@ -1006,7 +1002,7 @@ public class UtilTest {
     // for an EC key of a given curve.
     static private void testCoseKey(@SecureArea.EcCurve int curve) {
         KeyPair kp = Util.createEphemeralKeyPair(curve);
-        DataItem coseKey = Util.cborBuildCoseKey(kp.getPublic());
+        DataItem coseKey = Util.cborBuildCoseKey(kp.getPublic(), curve);
         PublicKey decoded = Util.coseKeyDecode(coseKey);
         Assert.assertEquals(kp.getPublic(), decoded);
     }

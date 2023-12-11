@@ -7,6 +7,7 @@ import com.android.identity.internal.Util;
 import com.android.identity.util.Logger;
 
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.UUID;
 
 import co.nstant.in.cbor.CborBuilder;
@@ -24,6 +25,8 @@ public class ConnectionMethodBle extends ConnectionMethod {
     private final boolean mSupportsCentralClientMode;
     private final UUID mPeripheralServerModeUuid;
     private final UUID mCentralClientModeUuid;
+    private OptionalInt mPeripheralServerModePsm = OptionalInt.empty();
+    private byte[] mPeripheralServerModeMacAddress = null;
 
     static final int METHOD_TYPE = 2;
     static final int METHOD_MAX_VERSION = 1;
@@ -32,6 +35,7 @@ public class ConnectionMethodBle extends ConnectionMethod {
     private static final int OPTION_KEY_PERIPHERAL_SERVER_MODE_UUID = 10;
     private static final int OPTION_KEY_CENTRAL_CLIENT_MODE_UUID = 11;
     private static final int OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS = 20;
+    private static final int OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM = 2023; // NOTE: not yet standardized
 
     /**
      * Creates a new connection method for BLE.
@@ -89,6 +93,55 @@ public class ConnectionMethodBle extends ConnectionMethod {
         return mCentralClientModeUuid;
     }
 
+    /**
+     * Gets the L2CAP PSM, if set.
+     *
+     * <p>This is currently not standardized so use at your own risk.
+     *
+     * @return the L2CAP PSM, if set.
+     */
+    public
+    OptionalInt getPeripheralServerModePsm() {
+        return mPeripheralServerModePsm;
+    }
+
+    /**
+     * Sets the L2CAP PSM or unsets it.
+     *
+     * <p>This is currently not standardized so use at your own risk.
+     *
+     * @param psm the value.
+     */
+    public
+    void setPeripheralServerModePsm(@NonNull OptionalInt psm) {
+        mPeripheralServerModePsm = psm;
+    }
+
+    /**
+     * Gets the MAC address, if set.
+     *
+     * @return the MAC address or {@code null} if not set.
+     */
+    public @Nullable
+    byte[] getPeripheralServerModeMacAddress() {
+        return mPeripheralServerModeMacAddress;
+    }
+
+    /**
+     * Sets or unsets the MAC address.
+     *
+     * @param macAddress the MAC address or {@code null} to unset it.
+     */
+    public
+    void setPeripheralServerModeMacAddress(@Nullable byte[] macAddress) {
+        if (macAddress != null) {
+            if (macAddress.length != 6) {
+                throw new IllegalArgumentException("MAC address should be 6 bytes, got " + macAddress.length);
+            }
+        }
+        mPeripheralServerModeMacAddress = macAddress;
+    }
+
     @Override
     public @NonNull
     String toString() {
@@ -98,6 +151,18 @@ public class ConnectionMethodBle extends ConnectionMethod {
         }
         if (mSupportsCentralClientMode) {
             sb.append(":central_client_mode:uuid=" + mCentralClientModeUuid);
+        }
+        if (mPeripheralServerModePsm.isPresent()) {
+            sb.append(":psm=" + mPeripheralServerModePsm.getAsInt());
+        }
+        if (mPeripheralServerModeMacAddress != null) {
+            sb.append(":mac=");
+            for (int n = 0; n < 6; n++) {
+                if (n > 0) {
+                    sb.append("-");
+                }
+                sb.append(String.format("%02x", mPeripheralServerModeMacAddress[n]));
+            }
         }
         return sb.toString();
     }
@@ -146,11 +211,20 @@ public class ConnectionMethodBle extends ConnectionMethod {
                             OPTION_KEY_CENTRAL_CLIENT_MODE_UUID));
         }
 
-        return new ConnectionMethodBle(
+        ConnectionMethodBle cm = new ConnectionMethodBle(
                 supportsPeripheralServerMode,
                 supportsCentralClientMode,
                 peripheralServerModeUuid,
                 centralClientModeUuid);
+        if (Util.cborMapHasKey(options, OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM)) {
+            cm.setPeripheralServerModePsm(OptionalInt.of(
+                    (int) Util.cborMapExtractNumber(options, OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM)));
+        }
+        if (Util.cborMapHasKey(options, OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)) {
+            cm.setPeripheralServerModeMacAddress(
+                    Util.cborMapExtractByteString(options, OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS));
+        }
+        return cm;
     }
 
     @Override
@@ -165,7 +239,12 @@ public class ConnectionMethodBle extends ConnectionMethod {
         if (mCentralClientModeUuid != null) {
             builder.put(OPTION_KEY_CENTRAL_CLIENT_MODE_UUID, Util.uuidToBytes(mCentralClientModeUuid));
         }
-        // TODO: add support for OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS
+        if (mPeripheralServerModePsm.isPresent()) {
+            builder.put(OPTION_KEY_PERIPHERAL_SERVER_MODE_PSM, mPeripheralServerModePsm.getAsInt());
+        }
+        if (mPeripheralServerModeMacAddress != null) {
+            builder.put(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS, mPeripheralServerModeMacAddress);
+        }
         return Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(METHOD_TYPE)

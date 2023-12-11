@@ -59,11 +59,6 @@ public class DeviceRequestParserTest {
         Security.insertProviderAt(new BouncyCastleProvider(), 1);
     }
 
-    @After
-    public void tearDown() {
-        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
-    }
-
     @Test
     public void testDeviceRequestParserWithVectors() {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.

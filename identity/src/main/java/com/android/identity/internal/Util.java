@@ -1018,62 +1018,6 @@ public class Util {
         return BigIntegers.asUnsignedByteArray(octetStringSize, fieldValue);
     }
 
-    public static
-    @SecureArea.EcCurve int getCurve(@NonNull PublicKey publicKey) {
-        String curveName;
-        try {
-            if (publicKey instanceof BCXDHPublicKey) {
-                curveName = ((BCXDHPublicKey) publicKey).getAlgorithm();
-            } else if (publicKey instanceof BCEdDSAPublicKey) {
-                curveName = ((BCEdDSAPublicKey) publicKey).getAlgorithm();
-            } else if (publicKey instanceof ECKey) {
-                AlgorithmParameters params = AlgorithmParameters.getInstance("EC",
-                        new BouncyCastleProvider());
-                params.init(((ECKey) publicKey).getParams());
-                curveName = params.getParameterSpec(ECGenParameterSpec.class).getName();
-            } else {
-                throw new IllegalArgumentException(
-                        "No support for PublicKey of class " + publicKey.getClass().getName());
-            }
-        } catch (InvalidParameterSpecException | NoSuchAlgorithmException e) {
-            throw new IllegalArgumentException(e);
-        }
-        switch (curveName) {
-            case "secp256r1":
-            case "prime256v1":
-            case "1.2.840.10045.3.1.7":
-                return SecureArea.EC_CURVE_P256;
-            case "1.3.132.0.34":
-            case "secp384r1":
-                return SecureArea.EC_CURVE_P384;
-            case "1.3.132.0.35":
-            case "secp521r1":
-                return SecureArea.EC_CURVE_P521;
-            case "1.3.36.3.3.2.8.1.1.7":
-            case "brainpoolP256r1":
-                return SecureArea.EC_CURVE_BRAINPOOLP256R1;
-            case "1.3.36.3.3.2.8.1.1.9":
-            case "brainpoolP320r1":
-                return SecureArea.EC_CURVE_BRAINPOOLP320R1;
-            case "1.3.36.3.3.2.8.1.1.11":
-            case "brainpoolP384r1":
-                return SecureArea.EC_CURVE_BRAINPOOLP384R1;
-            case "1.3.36.3.3.2.8.1.1.13":
-            case "brainpoolP512r1":
-                return SecureArea.EC_CURVE_BRAINPOOLP512R1;
-            case "X448":
-                return SecureArea.EC_CURVE_X448;
-            case "X25519":
-                return SecureArea.EC_CURVE_X25519;
-            case "Ed448":
-                return SecureArea.EC_CURVE_ED448;
-            case "Ed25519":
-                return SecureArea.EC_CURVE_ED25519;
-            default:
-                throw new IllegalArgumentException("Unknown curve name '" + curveName + "'");
-        }
-    }
-
     private static
     int getCurveBitSize(@SecureArea.EcCurve int curve) {
         switch (curve) {
@@ -1109,20 +1053,19 @@ public class Util {
     }
 
     public static @NonNull
-    DataItem cborBuildCoseKey(@NonNull PublicKey key) {
-        @SecureArea.EcCurve int coseCurveIdentifier = getCurve(key);
-        int keySizeBits = getCurveBitSize(coseCurveIdentifier);
+    DataItem cborBuildCoseKey(@NonNull PublicKey key,
+                              @SecureArea.EcCurve int curve) {
         byte[] x;
         byte[] y;
         DataItem item;
-        switch (coseCurveIdentifier) {
+        switch (curve) {
             case SecureArea.EC_CURVE_ED25519:
             case SecureArea.EC_CURVE_ED448:
                 x = ((BCEdDSAPublicKey) key).getPointEncoding();
                 item = new CborBuilder()
                         .addMap()
                         .put(COSE_KEY_KTY, COSE_KEY_TYPE_OKP)
-                        .put(COSE_KEY_PARAM_CRV, coseCurveIdentifier)
+                        .put(COSE_KEY_PARAM_CRV, curve)
                         .put(COSE_KEY_PARAM_X, x)
                         .end()
                         .build().get(0);
@@ -1134,7 +1077,7 @@ public class Util {
                 item = new CborBuilder()
                         .addMap()
                         .put(COSE_KEY_KTY, COSE_KEY_TYPE_OKP)
-                        .put(COSE_KEY_PARAM_CRV, coseCurveIdentifier)
+                        .put(COSE_KEY_PARAM_CRV, curve)
                         .put(COSE_KEY_PARAM_X, x)
                         .end()
                         .build().get(0);
@@ -1143,13 +1086,13 @@ public class Util {
             default:
                 ECPublicKey ecKey = (ECPublicKey) key;
                 ECPoint w = ecKey.getW();
-                keySizeBits = getCurveBitSize(coseCurveIdentifier);
+                int keySizeBits = getCurveBitSize(curve);
                 x = sec1EncodeFieldElementAsOctetString((keySizeBits + 7)/8, w.getAffineX());
                 y = sec1EncodeFieldElementAsOctetString((keySizeBits + 7)/8, w.getAffineY());
                 item = new CborBuilder()
                         .addMap()
                         .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
-                        .put(COSE_KEY_PARAM_CRV, coseCurveIdentifier)
+                        .put(COSE_KEY_PARAM_CRV, curve)
                         .put(COSE_KEY_PARAM_X, x)
                         .put(COSE_KEY_PARAM_Y, y)
                         .end()
@@ -1324,7 +1267,7 @@ public class Util {
         BigInteger y = new BigInteger(1, encodedY);
 
         try {
-            AlgorithmParameters params = AlgorithmParameters.getInstance("EC", new BouncyCastleProvider());
+            AlgorithmParameters params = AlgorithmParameters.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
             params.init(new ECGenParameterSpec(curveName));
             ECParameterSpec ecParameters = params.getParameterSpec(ECParameterSpec.class);
 
@@ -1336,7 +1279,8 @@ public class Util {
 
         } catch (NoSuchAlgorithmException
                  | InvalidParameterSpecException
-                 | InvalidKeySpecException e) {
+                 | InvalidKeySpecException
+                 | NoSuchProviderException e) {
             throw new IllegalStateException("Unexpected error", e);
         }
     }
@@ -1362,22 +1306,22 @@ public class Util {
             KeyFactory kf;
             switch ((int) crv) {
                 case SecureArea.EC_CURVE_ED448:
-                    kf = KeyFactory.getInstance("EdDSA", new BouncyCastleProvider());
+                    kf = KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME);
                     prefix = ED448_X509_ENCODED_PREFIX;
                     break;
 
                 case SecureArea.EC_CURVE_ED25519:
-                    kf = KeyFactory.getInstance("EdDSA", new BouncyCastleProvider());
+                    kf = KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME);
                     prefix = ED25519_X509_ENCODED_PREFIX;
                     break;
 
                 case SecureArea.EC_CURVE_X25519:
-                    kf = KeyFactory.getInstance("XDH", new BouncyCastleProvider());
+                    kf = KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME);
                     prefix = X25519_X509_ENCODED_PREFIX;
                     break;
 
                 case SecureArea.EC_CURVE_X448:
-                    kf = KeyFactory.getInstance("XDH", new BouncyCastleProvider());
+                    kf = KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME);
                     prefix = X448_X509_ENCODED_PREFIX;
                     break;
 
@@ -1388,7 +1332,8 @@ public class Util {
             baos.write(prefix);
             baos.write(encodedX);
             return kf.generatePublic(new X509EncodedKeySpec(baos.toByteArray()));
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | IOException |
+                 NoSuchProviderException e) {
             throw new IllegalStateException("Unexpected error", e);
         }
     }
@@ -2197,23 +2142,23 @@ public class Util {
         try {
             KeyPairGenerator kpg;
             if (stdName.equals("X25519")) {
-                kpg = KeyPairGenerator.getInstance("X25519", new BouncyCastleProvider());
+                kpg = KeyPairGenerator.getInstance("X25519", BouncyCastleProvider.PROVIDER_NAME);
                 kpg.initialize(new XDHParameterSpec(XDHParameterSpec.X25519));
             } else if (stdName.equals("Ed25519")) {
-                kpg = KeyPairGenerator.getInstance("Ed25519", new BouncyCastleProvider());
+                kpg = KeyPairGenerator.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME);
             } else if (stdName.equals("X448")) {
-                kpg = KeyPairGenerator.getInstance("X448", new BouncyCastleProvider());
+                kpg = KeyPairGenerator.getInstance("X448", BouncyCastleProvider.PROVIDER_NAME);
                 kpg.initialize(new XDHParameterSpec(XDHParameterSpec.X448));
             } else if (stdName.equals("Ed448")) {
-                kpg = KeyPairGenerator.getInstance("Ed448", new BouncyCastleProvider());
+                kpg = KeyPairGenerator.getInstance("Ed448", BouncyCastleProvider.PROVIDER_NAME);
             } else {
-                kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
+                kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
                 kpg.initialize(new ECGenParameterSpec(stdName));
             }
             KeyPair keyPair = kpg.generateKeyPair();
             return keyPair;
-        } catch (NoSuchAlgorithmException
-                 | InvalidAlgorithmParameterException e) {
+        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException |
+                 NoSuchProviderException e) {
             throw new IllegalStateException("Error generating ephemeral key-pair", e);
         }
     }

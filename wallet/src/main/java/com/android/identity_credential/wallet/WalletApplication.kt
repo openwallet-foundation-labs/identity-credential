@@ -207,7 +207,8 @@ class WalletApplication : Application() {
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 MDL_DOCTYPE,
-                pendingAuthKey.attestation[0].publicKey
+                pendingAuthKey.attestation[0].publicKey,
+                SecureArea.EC_CURVE_P256
             )
             msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
             val deterministicRandomProvider = Random(42)

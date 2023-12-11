@@ -20,8 +20,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.content.Context;
 import android.net.wifi.WifiManager;
+import android.nfc.NdefRecord;
 import android.text.format.Formatter;
 import android.util.Log;
+import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -31,6 +33,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -39,6 +42,8 @@ import java.net.Socket;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.TimeUnit;
@@ -78,9 +83,8 @@ public class DataTransportTcp extends DataTransport {
     }
 
     private void connectAsMdoc() {
-        String address = getWifiIpAddress(mContext);
         try {
-            mServerSocket = new ServerSocket(0);
+            mServerSocket = new ServerSocket(mPort);
         } catch (IOException e) {
             reportError(e);
             return;
@@ -112,8 +116,12 @@ public class DataTransportTcp extends DataTransport {
             }
         };
         socketServerThread.start();
-        mHost = address;
-        mPort = port;
+        if (mHost == null || mHost.length() == 0) {
+            mHost = getWifiIpAddress(mContext);
+        }
+        if (mPort == 0) {
+            mPort = port;
+        }
     }
 
     // Should be called from worker thread to handle incoming messages from the peer.
@@ -215,7 +223,6 @@ public class DataTransportTcp extends DataTransport {
         } else {
             connectAsMdocReader();
         }
-        reportConnectionMethodReady();
     }
 
     void setupWritingThread() {
@@ -323,4 +330,32 @@ public class DataTransportTcp extends DataTransport {
         return t;
     }
 
+    public static @Nullable
+    Pair<NdefRecord, byte[]> toNdefRecord(@NonNull ConnectionMethodTcp cm,
+                                          @NonNull List<String> auxiliaryReferences,
+                                          boolean isForHandoverSelect) {
+        byte[] reference = String.format("%d", ConnectionMethodTcp.METHOD_TYPE).getBytes(StandardCharsets.UTF_8);
+        NdefRecord record = new NdefRecord((short) 0x02, // type = RFC 2046 (MIME)
+                "application/vnd.android.ic.dmr".getBytes(StandardCharsets.UTF_8),
+                reference,
+                cm.toDeviceEngagement());
+
+        // From 7.1 Alternative Carrier Record
+        //
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        baos.write(0x01); // CPS: active
+        baos.write(reference.length);
+        try {
+            baos.write(reference);
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        baos.write(0x01); // Number of auxiliary references
+        byte[] auxReference = "mdoc".getBytes(StandardCharsets.UTF_8);
+        baos.write(auxReference.length);
+        baos.write(auxReference, 0, auxReference.length);
+        byte[] acRecordPayload = baos.toByteArray();
+
+        return new Pair<>(record, acRecordPayload);
+    }
 }

@@ -958,8 +958,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
      * Class for holding Android Keystore-specific settings related to key creation.
      */
     public static class CreateKeySettings extends SecureArea.CreateKeySettings {
-        private final @KeyPurpose int mKeyPurposes;
-        private final @EcCurve int mEcCurve;
         private final boolean mUserAuthenticationRequired;
         private final long mUserAuthenticationTimeoutMillis;
         private final @UserAuthenticationType int mUserAuthenticationType;
@@ -978,9 +976,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                                   @Nullable String attestKeyAlias,
                                   @Nullable Timestamp validFrom,
                                   @Nullable Timestamp validUntil) {
-            super(attestationChallenge);
-            mKeyPurposes = keyPurpose;
-            mEcCurve = ecCurve;
+            super(attestationChallenge, keyPurpose, ecCurve);
             mUserAuthenticationRequired = userAuthenticationRequired;
             mUserAuthenticationTimeoutMillis = userAuthenticationTimeoutMillis;
             mUserAuthenticationType = userAuthenticationType;
@@ -1034,24 +1030,6 @@ public class AndroidKeystoreSecureArea implements SecureArea {
          */
         public @Nullable String getAttestKeyAlias() {
             return mAttestKeyAlias;
-        }
-
-        /**
-         * Gets the key purposes.
-         *
-         * @return the key purposes.
-         */
-        public @KeyPurpose int getKeyPurposes() {
-            return mKeyPurposes;
-        }
-
-        /**
-         * Gets the curve used.
-         *
-         * @return the curve used.
-         */
-        public @EcCurve int getEcCurve() {
-            return mEcCurve;
         }
 
         /**

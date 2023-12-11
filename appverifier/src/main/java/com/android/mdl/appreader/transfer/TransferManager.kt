@@ -16,7 +16,7 @@ import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
-import com.android.identity.internal.Util
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -75,6 +75,21 @@ class TransferManager private constructor(private val context: Context) {
             .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
             .setBleClearCache(userPreferences.isBleClearCacheEnabled())
             .build()
+
+        // TODO: read from settings - for now, just hardcode BLE central client mode
+        //  as the only connection-method we over for Negotiated Handover...
+        //
+        val negotiatedHandoverConnectionMethods = mutableListOf<ConnectionMethod>()
+        val bleUuid = UUID.randomUUID()
+        negotiatedHandoverConnectionMethods.add(
+            ConnectionMethodBle(
+            false,
+            true,
+            null,
+            bleUuid)
+        )
+        builder.setNegotiatedHandoverConnectionMethods(negotiatedHandoverConnectionMethods)
+
         builder.setDataTransportOptions(options)
         verification = builder.build()
         usingReverseEngagement = false
@@ -360,11 +375,15 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun getMdocSessionEncryptionCurve(): Int {
-        return Util.getCurve(verification!!.eReaderKeyPair.public)
+        return verification!!.eReaderKeyCurve
     }
 
     fun getTapToEngagementDurationMillis(): Long {
         return verification?.tapToEngagementDurationMillis ?: 0
+    }
+
+    fun getBleScanningMillis(): Long {
+        return verification!!.scanningTimeMillis
     }
 
     fun getEngagementToRequestDurationMillis(): Long {

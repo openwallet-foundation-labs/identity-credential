@@ -25,10 +25,12 @@ import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.ApplicationData;
 import com.android.identity.util.Timestamp;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.util.Iterator;
 import java.util.List;
@@ -46,6 +48,8 @@ public class CredentialStoreTest {
 
     @Before
     public void setup() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+
         mStorageEngine = new EphemeralStorageEngine();
 
         mSecureAreaRepository = new SecureAreaRepository();
@@ -182,7 +186,7 @@ public class CredentialStoreTest {
         Assert.assertEquals(0, credential.getAuthenticationKeyCounter());
 
         // Since none are certified or even pending yet, we can't present anything.
-        Assert.assertNull(credential.findAuthenticationKey(timeDuringValidity));
+        Assert.assertNull(credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeDuringValidity));
 
         // Create ten authentication keys...
         for (int n = 0; n < 10; n++) {
@@ -211,18 +215,18 @@ public class CredentialStoreTest {
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
         // If at a time before anything is valid, should not be able to present
-        Assert.assertNull(credential.findAuthenticationKey(timeBeforeValidity));
+        Assert.assertNull(credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeBeforeValidity));
 
         // Ditto for right after
-        Assert.assertNull(credential.findAuthenticationKey(timeAfterValidity));
+        Assert.assertNull(credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeAfterValidity));
 
         // Check we're able to present at a time when the auth keys are valid
-        Credential.AuthenticationKey authKey = credential.findAuthenticationKey(timeDuringValidity);
+        Credential.AuthenticationKey authKey = credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeDuringValidity);
         Assert.assertNotNull(authKey);
 
         Assert.assertEquals(0, authKey.getUsageCount());
 
-        // B/c of how findAuthenticationKey() we know we get the first key. Match
+        // B/c of how findAuthenticationKey(AUTH_KEY_DOMAIN) we know we get the first key. Match
         // up with expected issuer signed data as per above.
         Assert.assertEquals((byte) 0, authKey.getIssuerProvidedData()[2]);
 
@@ -232,10 +236,10 @@ public class CredentialStoreTest {
 
         // Simulate nine more presentations, all of them should now be used up
         for (n = 0; n < 9; n++) {
-            authKey = credential.findAuthenticationKey(timeDuringValidity);
+            authKey = credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeDuringValidity);
             Assert.assertNotNull(authKey);
 
-            // B/c of how findAuthenticationKey() we know we get the keys after
+            // B/c of how findAuthenticationKey(AUTH_KEY_DOMAIN) we know we get the keys after
             // the first one in order. Match up with expected issuer signed data as per above.
             Assert.assertEquals((byte) (n + 1), authKey.getIssuerProvidedData()[2]);
 
@@ -249,7 +253,7 @@ public class CredentialStoreTest {
 
         // Simulate ten more presentations
         for (n = 0; n < 10; n++) {
-            authKey = credential.findAuthenticationKey(timeDuringValidity);
+            authKey = credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeDuringValidity);
             Assert.assertNotNull(authKey);
             authKey.increaseUsageCount();
         }
@@ -285,7 +289,7 @@ public class CredentialStoreTest {
 
         // Simulate ten presentations and check we get the newly created ones
         for (n = 0; n < 10; n++) {
-            authKey = credential.findAuthenticationKey(timeDuringValidity);
+            authKey = credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeDuringValidity);
             Assert.assertNotNull(authKey);
             Assert.assertEquals(0, authKey.getIssuerProvidedData().length);
             authKey.increaseUsageCount();
@@ -298,7 +302,7 @@ public class CredentialStoreTest {
 
         // Simulate 15 more presentations
         for (n = 0; n < 15; n++) {
-            authKey = credential.findAuthenticationKey(timeDuringValidity);
+            authKey = credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeDuringValidity);
             Assert.assertNotNull(authKey);
             authKey.increaseUsageCount();
         }
@@ -444,7 +448,7 @@ public class CredentialStoreTest {
         // Simulate ten presentations before the birthday
         for (n = 0; n < 10; n++) {
             Credential.AuthenticationKey authenticationKey =
-                    credential.findAuthenticationKey(timeOfUseBeforeBirthday);
+                    credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeOfUseBeforeBirthday);
             Assert.assertNotNull(authenticationKey);
             // Check we got a key with age 17.
             Assert.assertEquals((byte) 17, authenticationKey.getIssuerProvidedData()[0]);
@@ -454,7 +458,7 @@ public class CredentialStoreTest {
         // Simulate twenty presentations after the birthday
         for (n = 0; n < 20; n++) {
             Credential.AuthenticationKey authenticationKey =
-                    credential.findAuthenticationKey(timeOfUseAfterBirthday);
+                    credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeOfUseAfterBirthday);
             Assert.assertNotNull(authenticationKey);
             // Check we got a key with age 18.
             Assert.assertEquals((byte) 18, authenticationKey.getIssuerProvidedData()[0]);

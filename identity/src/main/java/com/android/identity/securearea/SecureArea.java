@@ -357,14 +357,35 @@ public interface SecureArea {
      */
     class CreateKeySettings {
         protected final byte[] mAttestationChallenge;
+        protected final @KeyPurpose int mKeyPurposes;
+        protected final @EcCurve int mEcCurve;
 
         /**
          * Creates a new settings object.
+         *
+         * <p>This will use {@link #KEY_PURPOSE_SIGN} and EC curve {@link #EC_CURVE_P256}.
          *
          * @param attestationChallenge challenge to include in attestation for the created key.
          */
         public CreateKeySettings(@NonNull byte[] attestationChallenge) {
             mAttestationChallenge = attestationChallenge;
+            mKeyPurposes = KEY_PURPOSE_SIGN;
+            mEcCurve = EC_CURVE_P256;
+        }
+
+        /**
+         * Creates a new settings object.
+         *
+         * @param attestationChallenge challenge to include in attestation for the created key.
+         * @param keyPurposes the key purposes.
+         * @param ecCurve the curve.
+         */
+        public CreateKeySettings(@NonNull byte[] attestationChallenge,
+                                 @KeyPurpose int keyPurposes,
+                                 @EcCurve int ecCurve) {
+            mAttestationChallenge = attestationChallenge;
+            mKeyPurposes = keyPurposes;
+            mEcCurve = ecCurve;
         }
 
         /**
@@ -374,6 +395,24 @@ public interface SecureArea {
          */
         public @NonNull byte[] getAttestationChallenge() {
             return mAttestationChallenge;
+        }
+
+        /**
+         * Gets the curve used.
+         *
+         * @return the curve used.
+         */
+        public @EcCurve int getEcCurve() {
+            return mEcCurve;
+        }
+
+        /**
+         * Gets the key purposes.
+         *
+         * @return the key purposes.
+         */
+        public @KeyPurpose int getKeyPurposes() {
+            return mKeyPurposes;
         }
     }
 }

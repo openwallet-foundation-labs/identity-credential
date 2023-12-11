@@ -17,6 +17,7 @@
 package com.android.identity.mdoc.mso;
 
 import com.android.identity.TestVectors;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
 
@@ -147,7 +148,7 @@ public class MobileSecurityObjectGeneratorTest {
         keyInfo.put(10L, Util.fromHex("C985"));
 
         byte[] encodedMSO = new MobileSecurityObjectGenerator(digestAlgorithm,
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector)
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector, SecureArea.EC_CURVE_P256)
                 .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
                 .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                 .setDeviceKeyAuthorizedNameSpaces(List.of("abc", "bcd"))
@@ -196,7 +197,7 @@ public class MobileSecurityObjectGeneratorTest {
         final String digestAlgorithm = "SHA-256";
 
         byte[] encodedMSO = new MobileSecurityObjectGenerator(digestAlgorithm,
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector)
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector, SecureArea.EC_CURVE_P256)
                 .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
                 .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                 .setValidityInfo(signedTimestamp, validFromTimestamp, validUntilTimestamp, null)
@@ -250,11 +251,11 @@ public class MobileSecurityObjectGeneratorTest {
         Assert.assertThrows("expect exception for illegal digestAlgorithm",
                 IllegalArgumentException.class,
                 () -> new MobileSecurityObjectGenerator("SHA-257",
-                        "org.iso.18013.5.1.mDL", deviceKeyFromVector));
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector, SecureArea.EC_CURVE_P256));
 
         final String digestAlgorithm = "SHA-256";
         MobileSecurityObjectGenerator msoGenerator = new MobileSecurityObjectGenerator(digestAlgorithm,
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector);
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector, SecureArea.EC_CURVE_P256);
 
         Assert.assertThrows("expect exception for empty digestIDs",
                 IllegalArgumentException.class,
@@ -300,7 +301,7 @@ public class MobileSecurityObjectGeneratorTest {
                         "addDigestIdsForNamespace called before generating",
                 IllegalStateException.class,
                 () -> {new MobileSecurityObjectGenerator(digestAlgorithm,
-                        "org.iso.18013.5.1.mDL", deviceKeyFromVector)
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector, SecureArea.EC_CURVE_P256)
                         .setValidityInfo(
                                 Timestamp.ofEpochMilli(1601559002000L),
                                 Timestamp.ofEpochMilli(1601559002000L),
@@ -312,7 +313,7 @@ public class MobileSecurityObjectGeneratorTest {
                         "setValidityInfo called before generating",
                 IllegalStateException.class,
                 () -> {new MobileSecurityObjectGenerator(digestAlgorithm,
-                        "org.iso.18013.5.1.mDL", deviceKeyFromVector)
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector, SecureArea.EC_CURVE_P256)
                         .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
                         .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                         .generate();});

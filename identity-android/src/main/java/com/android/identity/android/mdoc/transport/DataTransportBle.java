@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.UUID;
 
 /**
@@ -43,9 +44,21 @@ public abstract class DataTransportBle extends DataTransport {
     private static final String TAG = "DataTransportBle";
 
     // The size of buffer for read() calls when using L2CAP sockets.
-    static final int L2CAP_BUF_SIZE = 4096;
+    static final int L2CAP_BUF_SIZE = 65536;
     protected UUID mServiceUuid;
     protected ConnectionMethodBle mConnectionMethod;
+    protected ConnectionMethodBle mConnectionMethodToReturn;
+
+    protected long mTimeScanningMillis = 0;
+
+    /**
+     * Gets the amount of time spent scanning for the other device.
+     *
+     * @return Time in milliseconds or 0 if the transport is advertising instead of scanning.
+     */
+    public long getScanningTimeMillis() {
+        return mTimeScanningMillis;
+    }
 
     public DataTransportBle(@NonNull Context context,
                             @Role int role,
@@ -53,6 +66,14 @@ public abstract class DataTransportBle extends DataTransport {
                             @NonNull DataTransportOptions options) {
         super(context, role, options);
         mConnectionMethod = connectionMethod;
+        // May be modified during start() to e.g. add the PSM... TODO: use clone() instead?
+        mConnectionMethodToReturn = new ConnectionMethodBle(
+                connectionMethod.getSupportsPeripheralServerMode(),
+                connectionMethod.getSupportsCentralClientMode(),
+                connectionMethod.getPeripheralServerModeUuid(),
+                connectionMethod.getCentralClientModeUuid());
+        mConnectionMethodToReturn.setPeripheralServerModePsm(mConnectionMethod.getPeripheralServerModePsm());
+        mConnectionMethodToReturn.setPeripheralServerModeMacAddress(mConnectionMethod.getPeripheralServerModeMacAddress());
     }
 
     public static @Nullable
@@ -63,6 +84,8 @@ public abstract class DataTransportBle extends DataTransport {
         UUID uuid = null;
         boolean gotLeRole = false;
         boolean gotUuid = false;
+        OptionalInt psm = OptionalInt.empty();
+        byte[] macAddress = null;
 
         // See createNdefRecords() method for how this data is encoded.
         //
@@ -105,6 +128,13 @@ public abstract class DataTransportBle extends DataTransport {
                     uuid = new UUID(msb, lsb);
                     gotUuid = true;
                 }
+            } else if (type == 0x1b && len == 0x07) {
+                // MAC address
+                macAddress = new byte[6];
+                payload.get(macAddress);
+            } else if (type == 0x77 && len == 0x05) {
+                // PSM
+                psm = OptionalInt.of(payload.getInt());
             } else {
                 Logger.d(TAG, String.format("Skipping unknown type %d of length %d", type, len));
                 payload.position(payload.position() + len - 1);
@@ -120,10 +150,13 @@ public abstract class DataTransportBle extends DataTransport {
 
         // Note that the UUID for both modes is the same if both peripheral and
         // central client mode is used!
-        return new ConnectionMethodBle(peripheral,
+        ConnectionMethodBle cm = new ConnectionMethodBle(peripheral,
                 centralClient,
                 peripheral ? uuid : null,
                 centralClient ? uuid : null);
+        cm.setPeripheralServerModePsm(psm);
+        cm.setPeripheralServerModeMacAddress(macAddress);
+        return cm;
     }
 
     void setServiceUuid(@NonNull UUID serviceUuid) {
@@ -132,7 +165,7 @@ public abstract class DataTransportBle extends DataTransport {
 
     @Override
     public @NonNull ConnectionMethod getConnectionMethod() {
-        return mConnectionMethod;
+        return mConnectionMethodToReturn;
     }
 
     static @NonNull
@@ -211,8 +244,8 @@ public abstract class DataTransportBle extends DataTransport {
         // AD is defined in the "Bluetooth Supplement to the Core Specification" document.
         //
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        baos.write(0x02);  // LE Role
-        baos.write(0x1c);
+        baos.write(0x02);
+        baos.write(0x1c);  // LE Role
         baos.write(leRole);
         if (uuid != null) {
             baos.write(0x11);  // Complete List of 128-bit Service UUID’s (0x07)
@@ -222,6 +255,33 @@ public abstract class DataTransportBle extends DataTransport {
             uuidBuf.putLong(8, uuid.getMostSignificantBits());
             try {
                 baos.write(uuidBuf.array());
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        byte[] macAddress = cm.getPeripheralServerModeMacAddress();
+        if (macAddress != null) {
+            if (macAddress.length != 6) {
+                throw new IllegalArgumentException("MAC address should be six bytes, found " + macAddress.length);
+            }
+            baos.write(0x07);
+            baos.write(0x1b);  // MAC address
+            try {
+                baos.write(macAddress);
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        OptionalInt psm = cm.getPeripheralServerModePsm();
+        if (psm.isPresent()) {
+            // TODO: need to actually allocate this number (0x77)
+            baos.write(0x05);  // PSM: 4 bytes
+            baos.write(0x77);
+            ByteBuffer psmValue = ByteBuffer.allocate(4)
+                    .order(ByteOrder.LITTLE_ENDIAN)
+                    .putInt(psm.getAsInt());
+            try {
+                baos.write(psmValue.array());
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }

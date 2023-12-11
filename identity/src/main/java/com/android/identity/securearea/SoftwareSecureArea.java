@@ -46,6 +46,7 @@ import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -143,7 +144,7 @@ public class SoftwareSecureArea implements SecureArea {
 
         KeyPairGenerator kpg;
         try {
-            kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
+            kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
             String selfSigningSignatureAlgorithm;
             switch (settings.getEcCurve()) {
                 case EC_CURVE_P256:
@@ -175,19 +176,19 @@ public class SoftwareSecureArea implements SecureArea {
                     selfSigningSignatureAlgorithm = "SHA512withECDSA";
                     break;
                 case EC_CURVE_ED25519:
-                    kpg = KeyPairGenerator.getInstance("Ed25519", new BouncyCastleProvider());
+                    kpg = KeyPairGenerator.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME);
                     selfSigningSignatureAlgorithm = "Ed25519";
                     break;
                 case EC_CURVE_ED448:
-                    kpg = KeyPairGenerator.getInstance("Ed448", new BouncyCastleProvider());
+                    kpg = KeyPairGenerator.getInstance("Ed448", BouncyCastleProvider.PROVIDER_NAME);
                     selfSigningSignatureAlgorithm = "Ed448";
                     break;
                 case EC_CURVE_X25519:
-                    kpg = KeyPairGenerator.getInstance("x25519", new BouncyCastleProvider());
+                    kpg = KeyPairGenerator.getInstance("x25519", BouncyCastleProvider.PROVIDER_NAME);
                     selfSigningSignatureAlgorithm = null;  // Not possible to self-sign
                     break;
                 case EC_CURVE_X448:
-                    kpg = KeyPairGenerator.getInstance("x448", new BouncyCastleProvider());
+                    kpg = KeyPairGenerator.getInstance("x448", BouncyCastleProvider.PROVIDER_NAME);
                     selfSigningSignatureAlgorithm = null;  // Not possible to self-sign
                     break;
                 default:
@@ -289,11 +290,9 @@ public class SoftwareSecureArea implements SecureArea {
             attestationBuilder.end();
 
             mStorageEngine.put(PREFIX + alias, Util.cborEncode(builder.build().get(0)));
-        } catch (NoSuchAlgorithmException
-                 | CertificateException
-                 | InvalidAlgorithmParameterException
-                 | OperatorCreationException
-                 | IOException e) {
+        } catch (NoSuchAlgorithmException | CertificateException |
+                 InvalidAlgorithmParameterException | OperatorCreationException | IOException |
+                 NoSuchProviderException e) {
             throw new IllegalStateException("Unexpected exception", e);
         }
     }
@@ -389,10 +388,9 @@ public class SoftwareSecureArea implements SecureArea {
 
         PKCS8EncodedKeySpec encodedKeySpec = new PKCS8EncodedKeySpec(encodedPrivateKey);
         try {
-            KeyFactory ecKeyFac = KeyFactory.getInstance("EC", new BouncyCastleProvider());
+            KeyFactory ecKeyFac = KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
             ret.privateKey = ecKeyFac.generatePrivate(encodedKeySpec);
-        } catch (NoSuchAlgorithmException |
-                 InvalidKeySpecException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException | NoSuchProviderException e) {
             throw new IllegalStateException("Error loading private key", e);
         }
         return ret;
@@ -453,13 +451,12 @@ public class SoftwareSecureArea implements SecureArea {
         }
 
         try {
-            Signature s = Signature.getInstance(signatureAlgorithmName, new BouncyCastleProvider());
+            Signature s = Signature.getInstance(signatureAlgorithmName, BouncyCastleProvider.PROVIDER_NAME);
             s.initSign(keyData.privateKey);
             s.update(dataToSign);
             return s.sign();
-        } catch (NoSuchAlgorithmException
-                 | SignatureException
-                 | InvalidKeyException e) {
+        } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException |
+                 NoSuchProviderException e) {
             throw new IllegalStateException("Unexpected Exception", e);
         }
     }
@@ -576,8 +573,6 @@ public class SoftwareSecureArea implements SecureArea {
      * Class used to indicate key creation settings.
      */
     public static class CreateKeySettings extends SecureArea.CreateKeySettings {
-        private final @KeyPurpose int mKeyPurposes;
-        private final @EcCurve int mEcCurve;
         private final boolean mPassphraseRequired;
         private final String mPassphrase;
         private final String mSubject;
@@ -598,11 +593,9 @@ public class SoftwareSecureArea implements SecureArea {
                                   @Nullable PrivateKey attestationKey,
                                   @Nullable String attestationKeySignatureAlgorithm,
                                   @Nullable List<X509Certificate> attestationKeyCertification) {
-            super(attestationChallenge);
+            super(attestationChallenge, keyPurposes, ecCurve);
             mPassphraseRequired = passphraseRequired;
             mPassphrase = passphrase;
-            mEcCurve = ecCurve;
-            mKeyPurposes = keyPurposes;
             mSubject = subject;
             mValidFrom = validFrom;
             mValidUntil = validUntil;
@@ -627,24 +620,6 @@ public class SoftwareSecureArea implements SecureArea {
          */
         public @NonNull String getPassphrase() {
             return mPassphrase;
-        }
-
-        /**
-         * Gets the curve used.
-         *
-         * @return the curve used.
-         */
-        public @EcCurve int getEcCurve() {
-            return mEcCurve;
-        }
-
-        /**
-         * Gets the key purposes.
-         *
-         * @return the key purposes.
-         */
-        public @KeyPurpose int getKeyPurposes() {
-            return mKeyPurposes;
         }
 
         /**
