@@ -245,11 +245,7 @@ class MainActivity : ComponentActivity() {
         familyName: String,
         portrait_id: Int
     ) {
-        val credential = credentialStore.createCredential(
-            credentialId,
-            androidKeystoreSecureArea,
-            AndroidKeystoreSecureArea.CreateKeySettings.Builder("challenge".toByteArray()).build()
-        )
+        val credential = credentialStore.createCredential(credentialId)
 
         credential.applicationData.setData("artwork", createArtwork(color1, color2, artworkText))
         credential.applicationData.setString("displayName", displayName)
