@@ -20,91 +20,93 @@ import java.security.cert.PKIXCertPathChecker
 import java.security.cert.X509Certificate
 
 /**
- * This class is used for the verification of a certificate
- * chain.
+ * This class is used for the verification of a certificate chain.
  *
- * The user of the class can add trust roots using method
- * [addCertificate]. At this moment certificates of type
- * [X509Certificate] are supported.
+ * The user of the class can add trust roots using method [addTrustPoint].
+ * At this moment certificates of type [X509Certificate] are supported.
  *
- * The Subject Key Identifier (extension 2.5.29.14 in the
- * [X509Certificate]) is used as the primary key / unique
- * identifier of the root CA certificate. In the verification
- * of the chain this will be matched with the Authority Key
- * Identifier (extension 2.5.29.35) of the certificate issued
- * by this root CA.
+ * The Subject Key Identifier (extension 2.5.29.14 in the [X509Certificate])
+ * is used as the primary key / unique identifier of the root CA certificate.
+ * In the verification of the chain this will be matched with the Authority
+ * Key Identifier (extension 2.5.29.35) of the certificate issued by this
+ * root CA.
  */
 class TrustManager() {
 
-    private val certificates: MutableMap<String, X509Certificate> = mutableMapOf()
+    private val certificates: MutableMap<String, TrustPoint> = mutableMapOf()
 
     /**
-     * Nested class containing the result of the verification
-     * of a certificate chain.
+     * Nested class containing the result of the verification of a certificate
+     * chain.
      */
     class TrustResult(
         var isTrusted: Boolean,
         var trustChain: List<X509Certificate> = emptyList(),
+        var trustPoints: List<TrustPoint> = emptyList(),
         var error: Throwable? = null
     )
 
     /**
-     * Add a certificate to the [TrustManager].
+     * Add a [TrustPoint] to the [TrustManager].
      */
-    fun addCertificate(certificate: X509Certificate) {
-        val key = TrustManagerUtil.getSubjectKeyIdentifier(certificate)
-        certificates[key] = certificate
+    fun addTrustPoint(trustPoint: TrustPoint) {
+        val key = TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate)
+        if (key != "") {
+            // only certificates with the Subject Key Identifier extension will be added
+            certificates[key] = trustPoint
+        }
     }
 
     /**
-     * Get all the certificates in the [TrustManager].
+     * Get all the [TrustPoint]s in the [TrustManager].
      */
-    fun getAllCertificates(): List<X509Certificate> {
+    fun getAllTrustPoints(): List<TrustPoint> {
         return certificates.values.toList()
     }
 
     /**
-     * Remove a certificate from the [TrustManager].
+     * Remove a [TrustPoint] from the [TrustManager].
      */
-    fun removeCertificate(certificate: X509Certificate) {
-        val key = TrustManagerUtil.getSubjectKeyIdentifier(certificate)
+    fun removeTrustPoint(trustPoint: TrustPoint) {
+        val key = TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate)
         certificates.remove(key)
     }
 
     /**
-     * Verify a certificate chain (without the self-signed
-     * root certificate) with the possibility of custom
-     * validations on the certificates ([customValidators]),
-     * for instance the country code in certificate chain
-     * of the mDL, like implemented in the CountryValidator
-     * in the reader app.
+     * Verify a certificate chain (without the self-signed root certificate)
+     * with the possibility of custom validations on the certificates
+     * ([customValidators]), for instance the country code in certificate chain
+     * of the mDL, like implemented in the CountryValidator in the reader app.
      *
-     * @param [chain] the certificate chain without the
-     * self-signed root certificate
-     * @param [customValidators] optional parameter with
-     * custom validators
+     * @param [chain] the certificate chain without the self-signed root
+     * certificate
+     * @param [customValidators] optional parameter with custom validators
      * @return [TrustResult] a class that returns a verdict
-     * [TrustResult.isTrusted], optionally [TrustResult.trustChain]:
-     * the complete certificate chain, including the root
-     * certificate and optionally [TrustResult.error]: an
-     * error message when the certificate chain is not trusted.
+     * [TrustResult.isTrusted], optionally [TrustResult.trustPoints] the found
+     * trusted root certificates with their display names and icons, optionally
+     * [TrustResult.trustChain], the complete certificate chain, including the
+     * root/intermediate certificate(s), and optionally [TrustResult.error]:
+     * an error message when the certificate chain is not trusted.
      */
     fun verify(
         chain: List<X509Certificate>,
         customValidators: List<PKIXCertPathChecker> = emptyList()
     ): TrustResult {
         try {
-            val completeChain = createCertificateChain(chain)
+            val trustPoints = getAllTrustPoints(chain)
+            val completeChain = chain.plus(trustPoints.map { it.certificate })
             try {
                 validateCertificationTrustPath(completeChain, customValidators)
                 return TrustResult(
                     isTrusted = true,
+                    trustPoints = trustPoints,
                     trustChain = completeChain
                 )
             } catch (e: Throwable) {
                 // there are validation errors, but the trust chain could be built.
                 return TrustResult(
                     isTrusted = false,
+                    trustPoints = trustPoints,
                     trustChain = completeChain,
                     error = e
                 )
@@ -119,16 +121,16 @@ class TrustManager() {
 
     }
 
-    private fun createCertificateChain(chain: List<X509Certificate>): List<X509Certificate>{
-        val result = chain.toMutableList()
+    private fun getAllTrustPoints(chain: List<X509Certificate>): List<TrustPoint> {
+        val result = mutableListOf<TrustPoint>()
 
         // only an exception if not a single CA certificate is found
-        var caCertificate: X509Certificate? = findCaCertificate(chain)
+        var caCertificate: TrustPoint? = findCaCertificate(chain)
             ?: throw CertificateException("No trusted root certificate could not be found")
         result.add(caCertificate!!)
-        while (caCertificate != null && !TrustManagerUtil.isSelfSigned(caCertificate)){
-            caCertificate = findCaCertificate(listOf(caCertificate))
-            if (caCertificate!= null){
+        while (caCertificate != null && !TrustManagerUtil.isSelfSigned(caCertificate.certificate)) {
+            caCertificate = findCaCertificate(listOf(caCertificate.certificate))
+            if (caCertificate != null) {
                 result.add(caCertificate)
             }
         }
@@ -138,13 +140,14 @@ class TrustManager() {
     /**
      * Find a CA Certificate for a certificate chain.
      */
-    private fun findCaCertificate(chain: List<X509Certificate>): X509Certificate? {
-        var result: X509Certificate? = null
+    private fun findCaCertificate(chain: List<X509Certificate>): TrustPoint? {
+        var result: TrustPoint? = null
 
         chain.forEach { cert ->
             run {
                 val key = TrustManagerUtil.getAuthorityKeyIdentifier(cert)
-                if (certificates.containsKey(key)) {
+                // only certificates with an Authority Key Identifier extension will be matched
+                if (key != "" && certificates.containsKey(key)) {
                     result = certificates[key]!!
                 }
             }
