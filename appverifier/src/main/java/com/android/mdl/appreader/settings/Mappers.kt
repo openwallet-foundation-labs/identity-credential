@@ -1,5 +1,6 @@
 package com.android.mdl.appreader.settings
 
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.trustmanagement.getOrganisation
@@ -7,19 +8,18 @@ import com.android.mdl.appreader.trustmanagement.getSubjectKeyIdentifier
 import com.android.mdl.appreader.trustmanagement.organisationalUnit
 import java.lang.StringBuilder
 import java.security.MessageDigest
-import java.security.cert.X509Certificate
 
-fun X509Certificate.toCertificateItem(docTypes: List<String> = emptyList()): CertificateItem {
-    val subject = this.subjectX500Principal
-    val issuer = this.issuerX500Principal
+fun TrustPoint.toCertificateItem(docTypes: List<String> = emptyList()): CertificateItem {
+    val subject = this.certificate.subjectX500Principal
+    val issuer = this.certificate.issuerX500Principal
     val sha255Fingerprint = hexWithSpaces(
         MessageDigest.getInstance("SHA-256").digest(
-            this.encoded
+            this.certificate.encoded
         )
     )
     val sha1Fingerprint = hexWithSpaces(
         MessageDigest.getInstance("SHA-1").digest(
-            this.encoded
+            this.certificate.encoded
         )
     )
     val defaultValue = "<Not part of certificate>"
@@ -32,13 +32,13 @@ fun X509Certificate.toCertificateItem(docTypes: List<String> = emptyList()): Cer
         commonNameIssuer = issuer.getCommonName(defaultValue),
         organisationIssuer = issuer.getOrganisation(defaultValue),
         organisationalUnitIssuer = issuer.organisationalUnit(defaultValue),
-        notBefore = this.notBefore,
-        notAfter = this.notAfter,
+        notBefore = this.certificate.notBefore,
+        notAfter = this.certificate.notAfter,
         sha255Fingerprint = sha255Fingerprint,
         sha1Fingerprint = sha1Fingerprint,
         docTypes = docTypes,
-        supportsDelete = VerifierApp.certificateStorageEngineInstance.get(this.getSubjectKeyIdentifier()) != null ,
-        certificate = this
+        supportsDelete = VerifierApp.certificateStorageEngineInstance.get(this.certificate.getSubjectKeyIdentifier()) != null ,
+        trustPoint = this
     )
 }
 

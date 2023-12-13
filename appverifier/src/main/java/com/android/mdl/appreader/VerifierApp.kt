@@ -7,6 +7,7 @@ import androidx.preference.PreferenceManager
 import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.mdl.appreader.settings.UserPreferences
 import com.android.mdl.appreader.util.KeysAndCertificates
 import com.google.android.material.color.DynamicColors
@@ -45,10 +46,10 @@ class VerifierApp : Application() {
         certificateStorageEngineInstance = certificateStorageEngine
         certificateStorageEngineInstance.enumerate().forEach {
             val certificate = parseCertificate(certificateStorageEngineInstance.get(it)!!)
-            trustManagerInstance.addCertificate(certificate)
+            trustManagerInstance.addTrustPoint(TrustPoint(certificate))
         }
         KeysAndCertificates.getTrustedIssuerCertificates(this).forEach {
-            trustManagerInstance.addCertificate(it)
+            trustManagerInstance.addTrustPoint(TrustPoint(it))
         }
     }
 
@@ -57,14 +58,13 @@ class VerifierApp : Application() {
         private lateinit var userPreferencesInstance: UserPreferences
         lateinit var trustManagerInstance: TrustManager
         lateinit var certificateStorageEngineInstance: StorageEngine
-
         fun isDebugLogEnabled(): Boolean {
             return userPreferencesInstance.isDebugLoggingEnabled()
         }
     }
 
     /**
-     * Parse a byte array an X509 certificate
+     * Parse a byte array as an X509 certificate
      */
     private fun parseCertificate(certificateBytes: ByteArray): X509Certificate {
         return CertificateFactory.getInstance("X509")
