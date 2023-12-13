@@ -16,7 +16,9 @@ class IdentityCredentialRegistry(
     return RegistrationRequest(
       credentials = credentialBytes(),
       matcher = loadMatcher(context),
-      type = "com.credman.IdentityCredential"
+      type = "com.credman.IdentityCredential",
+      requestType = "",
+      protocolTypes = emptyList(),
     )
   }
 

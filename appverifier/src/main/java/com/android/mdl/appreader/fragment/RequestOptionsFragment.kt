@@ -35,6 +35,7 @@ import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
+import com.android.mdl.appreader.util.logError
 import com.google.android.gms.identitycredentials.CredentialOption
 import com.google.android.gms.identitycredentials.GetCredentialRequest
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
@@ -150,6 +151,8 @@ class RequestOptionsFragment() : Fragment() {
             credentialRetrievalData = Bundle(),
             candidateQueryData = Bundle(),
             requestMatcher = requestJson,
+            requestType = "",
+            protocolType = "",
         )
         client.getCredential(GetCredentialRequest(
             credentialOptions = listOf(option),
@@ -178,6 +181,8 @@ class RequestOptionsFragment() : Fragment() {
             }
         )).addOnSuccessListener {result ->
             startIntentSenderForResult(result.pendingIntent.intentSender, 777, null, 0, 0, 0, null)
+        }.addOnFailureListener {
+            logError("Error with get-cred intent generation", it)
         }
     }
 

@@ -20,6 +20,7 @@ import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDocumentInformation
 import com.android.identity.wallet.util.log
+import com.android.identity.wallet.util.logError
 import com.android.identity.wallet.R
 import com.android.mdl.app.credman.IdentityCredentialEntry
 import com.android.mdl.app.credman.IdentityCredentialField
@@ -140,6 +141,8 @@ class DocumentManager private constructor(private val context: Context) {
         }
         val registry = IdentityCredentialRegistry(entries)
         client.registerCredentials(registry.toRegistrationRequest(context))
+            .addOnSuccessListener { log("CredMan registry succeeded") }
+            .addOnFailureListener { logError("CredMan registry failed $it") }
     }
 
     fun getDocuments(): List<DocumentInformation> {
