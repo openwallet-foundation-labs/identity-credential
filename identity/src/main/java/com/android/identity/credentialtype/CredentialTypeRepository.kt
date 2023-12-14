@@ -28,18 +28,55 @@ package com.android.identity.credentialtype
  */
 class CredentialTypeRepository {
     private val credentialTypes: MutableList<CredentialType> = mutableListOf()
+    private val mdocDataElements: MutableMap<String, Map<String, Map<String, MdocDataElement>>> =
+        mutableMapOf()
 
     /**
      * Add a Credential Type to the repository.
      */
-    fun addCredentialType(credentialType: CredentialType){
+    fun addCredentialType(credentialType: CredentialType) {
         credentialTypes.add(credentialType)
+        if (credentialType.mdocCredentialType != null) {
+            mdocDataElements[credentialType.mdocCredentialType.docType] =
+                credentialType.mdocCredentialType.namespaces.map {
+                    Pair(
+                        it.namespace,
+                        it.dataElements.associateBy { el -> el.attribute.identifier }.toMap()
+                    )
+                }.toMap()
+        }
     }
 
     /**
      * Get all the Credential Types that are in the repository.
      */
-    fun getCredentialTypes(): List<CredentialType>{
+    fun getCredentialTypes(): List<CredentialType> {
         return credentialTypes
+    }
+
+    /**
+     * Get an mdoc data element by doc type, namespace and identifier
+     *
+     * @param docType the type of the mdoc credential
+     * @param namespace the namespace of the data element
+     * @param identifier the identifier of the data element
+     */
+    fun getMdocDataElement(
+        docType: String,
+        namespace: String,
+        identifier: String
+    ): MdocDataElement? {
+        return mdocDataElements[docType]?.get(namespace)?.get(identifier)
+    }
+
+    /**
+     * Get an mdoc credential type by its doc type
+     *
+     * @param docType the type of the mdoc credential
+     */
+    fun getMdocCredentialType(docType: String): MdocCredentialType? {
+        return credentialTypes.find {
+            it.mdocCredentialType?.docType?.equals(docType) ?: false
+        }?.mdocCredentialType
     }
 }

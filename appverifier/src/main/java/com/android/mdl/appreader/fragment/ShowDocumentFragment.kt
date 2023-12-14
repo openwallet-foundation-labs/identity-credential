@@ -16,6 +16,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
@@ -37,9 +39,7 @@ class ShowDocumentFragment : Fragment() {
 
     companion object {
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        private const val MICOV_DOCTYPE = "org.micov.1"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
-        private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
         private const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
         private const val EU_PID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
     }
@@ -145,6 +145,7 @@ class ShowDocumentFragment : Fragment() {
                     transferManager.disconnect()
                     hideButtons()
                 }
+
                 else -> {}
             }
         }
@@ -181,11 +182,15 @@ class ShowDocumentFragment : Fragment() {
         for (doc in documents) {
             if (!checkPortraitPresenceIfRequired(doc)) {
                 // Warn if portrait isn't included in the response.
-                sb.append("<h3>WARNING: <font color=\"red\">No portrait image provided "
-                        + "for ${doc.docType}.</font></h3><br>")
-                sb.append("<i>This means it's not possible to verify the presenter is the authorized "
-                        + "holder. Be careful doing any business transactions or inquiries until "
-                        + "proper identification is confirmed.</i><br>")
+                sb.append(
+                    "<h3>WARNING: <font color=\"red\">No portrait image provided "
+                            + "for ${doc.docType}.</font></h3><br>"
+                )
+                sb.append(
+                    "<i>This means it's not possible to verify the presenter is the authorized "
+                            + "holder. Be careful doing any business transactions or inquiries until "
+                            + "proper identification is confirmed.</i><br>"
+                )
                 sb.append("<br>")
             }
         }
@@ -218,7 +223,7 @@ class ShowDocumentFragment : Fragment() {
                 chain = certChain,
                 customValidators = customValidators
             )
-            if (result.trustChain.any()){
+            if (result.trustChain.any()) {
                 certChain = result.trustChain
             }
             if (!result.isTrusted) {
@@ -270,10 +275,14 @@ class ShowDocumentFragment : Fragment() {
                 for (elem in doc.getIssuerEntryNames(ns)) {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
-                    if (isPortraitElement(doc.docType, ns, elem)) {
-                        valueStr = String.format("(%d bytes, shown above)", value.size)
-                        portraitBytes = doc.getIssuerEntryByteString(ns, elem)
-                    } else if (doc.docType == MICOV_DOCTYPE && ns == MICOV_ATT_NAMESPACE && elem == "fac") {
+                    val mdocDataElement =
+                        VerifierApp.credentialTypeRepositoryInstance.getMdocDataElement(
+                            doc.docType,
+                            ns,
+                            elem
+                        )
+                    val name = mdocDataElement?.attribute?.displayName ?: elem
+                    if (isPortraitElement(mdocDataElement)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = doc.getIssuerEntryByteString(ns, elem)
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "extra") {
@@ -281,12 +290,19 @@ class ShowDocumentFragment : Fragment() {
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "signature_usual_mark") {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
                         signatureBytes = doc.getIssuerEntryByteString(ns, elem)
-                    } else if (doc.docType == EU_PID_DOCTYPE && ns == EU_PID_NAMESPACE && elem == "biometric_template_finger") {
-                        valueStr = String.format("%d bytes", value.size)
                     } else {
-                        valueStr = FormatUtil.cborPrettyPrint(value)
+                        valueStr = getPresentation(mdocDataElement, value)
                     }
-                    sb.append("${getFormattedCheck(doc.getIssuerEntryDigestMatch(ns, elem))}<b>$elem</b> -> $valueStr<br>")
+                    sb.append(
+                        "${
+                            getFormattedCheck(
+                                doc.getIssuerEntryDigestMatch(
+                                    ns,
+                                    elem
+                                )
+                            )
+                        }<b>$name</b> -> $valueStr<br>"
+                    )
                 }
                 sb.append("</p><br>")
             }
@@ -294,19 +310,17 @@ class ShowDocumentFragment : Fragment() {
         return sb.toString()
     }
 
-    private fun isPortraitApplicable(docType: String, namespace: String?): Boolean{
+    private fun isPortraitApplicable(docType: String, namespace: String?): Boolean {
         val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
         val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
         return hasPortrait && namespaceContainsPortrait
     }
 
-    private fun isPortraitElement(
-        docType: String,
-        namespace: String?,
-        entryName: String?
-    ): Boolean {
-        val portraitApplicable = isPortraitApplicable(docType, namespace)
-        return portraitApplicable && entryName == "portrait"
+    private fun isPortraitElement(mdocDataElement: MdocDataElement?): Boolean {
+        if (mdocDataElement?.attribute?.type != CredentialAttributeType.PICTURE) {
+            return false
+        }
+        return listOf("portrait", "fac").contains(mdocDataElement.attribute.identifier)
     }
 
     // ISO/IEC 18013-5 requires the portrait image to be shared if the portrait was requested and if any other data element is released
@@ -324,6 +338,35 @@ class ShowDocumentFragment : Fragment() {
             }
         }
         return true
+    }
+
+    private fun getPresentation(mdocDataElement: MdocDataElement?, value: ByteArray): String {
+        return when (mdocDataElement?.attribute?.type) {
+            is CredentialAttributeType.STRING,
+            is CredentialAttributeType.DATE,
+            is CredentialAttributeType.DATE_TIME -> Util.cborDecodeString(value)
+
+            is CredentialAttributeType.NUMBER -> Util.cborDecodeLong(value).toString()
+            is CredentialAttributeType.PICTURE -> String.format("%d bytes", value.size)
+            is CredentialAttributeType.BOOLEAN -> Util.cborDecodeBoolean(value).toString()
+            is CredentialAttributeType.COMPLEX_TYPE -> FormatUtil.cborPrettyPrint(value)
+            is CredentialAttributeType.StringOptions -> {
+                val key = Util.cborDecodeString(value)
+                val options =
+                    (mdocDataElement.attribute.type as CredentialAttributeType.StringOptions).options
+                return options.find { it.value.equals(key) }?.displayName?: key
+            }
+
+            is CredentialAttributeType.IntegerOptions -> {
+                val key = Util.cborDecodeLong(value)
+                val options =
+                    (mdocDataElement.attribute.type as CredentialAttributeType.IntegerOptions).options
+                return options.find { it.value?.toLong() == key }?.displayName?: key.toString()
+            }
+
+            else -> FormatUtil.cborPrettyPrint(value)
+        }
+
     }
 
     private fun Resources.Theme.attr(@AttrRes attribute: Int): TypedValue {

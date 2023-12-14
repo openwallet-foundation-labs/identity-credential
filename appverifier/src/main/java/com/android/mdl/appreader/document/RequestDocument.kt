@@ -3,32 +3,18 @@ package com.android.mdl.appreader.document
 import java.io.Serializable
 
 
-abstract class RequestDocument : Serializable {
-    abstract val docType: String
-    abstract val nameSpace: String
-    abstract val dataItems: List<RequestDataItem>
-
-    private var mapSelectedDataItem: Map<String, Boolean>? = null
-
-    /**
-     * Set data items selected by the user
-     *
-     * @param mapSelectedDataItem Map with the <code>String</code> identifier of the data item and
-     *                             intentToRetain <code>Boolean</code>
-     */
-    fun setSelectedDataItems(mapSelectedDataItem: Map<String, Boolean>) {
-        this.mapSelectedDataItem = mapSelectedDataItem
-    }
-
-    open fun getItemsToRequest(): Map<String, Map<String, Boolean>> {
-        mapSelectedDataItem?.let {
-
-            return mapOf(Pair(nameSpace, it))
-        } ?: throw IllegalStateException("No data items selected for this request")
-    }
-
-    interface RequestDataItem {
-        val identifier: String
-        val stringResourceId: Int
+data class RequestDocument(
+    val docType: String,
+    var itemsToRequest: Map<String, Map<String, Boolean>>
+) : Serializable
+{
+    companion object {
+        const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
+        const val MDL_NAMESPACE = "org.iso.18013.5.1"
+        const val MVR_DOCTYPE = "nl.rdw.mekb.1"
+        const val MICOV_DOCTYPE = "org.micov.1"
+        const val MICOV_VTR_NAMESPACE = "org.micov.vtr.1"
+        const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
+        const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
     }
 }

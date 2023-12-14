@@ -1,20 +1,17 @@
 package com.android.mdl.appreader.home
 
 import androidx.lifecycle.ViewModel
+import com.android.identity.credentialtype.MdocDataElement
+import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
-import com.android.mdl.appreader.document.RequestEuPid
-import com.android.mdl.appreader.document.RequestMdl
-import com.android.mdl.appreader.document.RequestMdlUsTransportation
-import com.android.mdl.appreader.document.RequestMicovAtt
-import com.android.mdl.appreader.document.RequestMicovVtr
-import com.android.mdl.appreader.document.RequestMulti003
-import com.android.mdl.appreader.document.RequestMvr
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
 class CreateRequestViewModel : ViewModel() {
+
+
 
     private val mutableState = MutableStateFlow(RequestingDocumentState())
     val state: StateFlow<RequestingDocumentState> = mutableState
@@ -58,93 +55,158 @@ class CreateRequestViewModel : ViewModel() {
 
         if (uiState.hasMdlElementsSelected) {
             if (uiState.mdlForUsTransportation.isSelected) {
-                requestDocumentList.addRequestDocument(RequestMdlUsTransportation)
+                requestDocumentList.addRequestDocument(
+                    getRequestDocument(
+                        RequestDocument.MDL_DOCTYPE,
+                        intentToRetain,
+                        filterElement = { el ->
+                            listOf(
+                                "sex",
+                                "portrait",
+                                "given_name",
+                                "issue_date",
+                                "expiry_date",
+                                "family_name",
+                                "document_number",
+                                "issuing_authority",
+                                "DHS_compliance",
+                                "EDL_credential"
+                            ).contains(el.attribute.identifier)
+                        }
+                    )
+                )
             } else {
-                val mdl = RequestMdl
                 when {
                     uiState.olderThan18.isSelected ->
-                        mdl.setSelectedDataItems(getSelectRequestMdlOlder18(intentToRetain))
+                        requestDocumentList.addRequestDocument(
+                            getRequestDocument(
+                                RequestDocument.MDL_DOCTYPE,
+                                intentToRetain,
+                                filterNamespace = { ns -> ns == RequestDocument.MDL_NAMESPACE },
+                                filterElement = { el ->
+                                    listOf(
+                                        "portrait",
+                                        "age_over_18"
+                                    ).contains(el.attribute.identifier)
+                                }
+                            )
+                        )
 
                     uiState.olderThan21.isSelected ->
-                        mdl.setSelectedDataItems(getSelectRequestMdlOlder21(intentToRetain))
+                        requestDocumentList.addRequestDocument(
+                            getRequestDocument(
+                                RequestDocument.MDL_DOCTYPE,
+                                intentToRetain,
+                                filterNamespace = { ns -> ns == RequestDocument.MDL_NAMESPACE },
+                                filterElement = { el ->
+                                    listOf(
+                                        "portrait",
+                                        "age_over_21"
+                                    ).contains(el.attribute.identifier)
+                                }
+                            )
+                        )
 
                     uiState.mandatoryFields.isSelected ->
-                        mdl.setSelectedDataItems(getSelectRequestMdlMandatory(intentToRetain))
+                        requestDocumentList.addRequestDocument(
+                            getRequestDocument(
+                                RequestDocument.MDL_DOCTYPE,
+                                intentToRetain,
+                                filterElement = { el -> el.mandatory }
+                            )
+                        )
 
-                    uiState.fullMdl.isSelected ->
-                        mdl.setSelectedDataItems(getSelectRequestFull(mdl, intentToRetain))
+                    uiState.fullMdl.isSelected || uiState.isCustomMdlRequest ->
+                        requestDocumentList.addRequestDocument(
+                            getRequestDocument(
+                                RequestDocument.MDL_DOCTYPE,
+                                intentToRetain
+                            )
+                        )
                 }
-                requestDocumentList.addRequestDocument(mdl)
             }
         }
 
         if (uiState.mVR.isSelected) {
-            val doc = RequestMvr
-            doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
-            requestDocumentList.addRequestDocument(doc)
+            requestDocumentList.addRequestDocument(
+                getRequestDocument(
+                    RequestDocument.MVR_DOCTYPE,
+                    intentToRetain
+                )
+            )
         }
         if (uiState.micov.isSelected) {
-            val doc = RequestMicovAtt
-            doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
-            requestDocumentList.addRequestDocument(doc)
-            val doc2 = RequestMicovVtr
-            doc2.setSelectedDataItems(getSelectRequestFull(doc2, intentToRetain))
-            requestDocumentList.addRequestDocument(doc2)
+            requestDocumentList.addRequestDocument(
+                getRequestDocument(
+                    RequestDocument.MICOV_DOCTYPE,
+                    intentToRetain,
+                    filterNamespace = { ns -> ns == RequestDocument.MICOV_ATT_NAMESPACE })
+            )
+            requestDocumentList.addRequestDocument(
+                getRequestDocument(
+                    RequestDocument.MICOV_DOCTYPE,
+                    intentToRetain,
+                    filterNamespace = { ns -> ns == RequestDocument.MICOV_VTR_NAMESPACE })
+            )
         }
         if (uiState.euPid.isSelected) {
-            val doc = RequestEuPid
-            doc.setSelectedDataItems(getSelectRequestFull(doc, intentToRetain))
-            requestDocumentList.addRequestDocument(doc)
+            requestDocumentList.addRequestDocument(
+                getRequestDocument(
+                    RequestDocument.EU_PID_DOCTYPE,
+                    intentToRetain
+                )
+            )
         }
         if (uiState.mdlWithLinkage.isSelected) {
-            val doc = RequestMdl
-            val selectMdl = mapOf(Pair("portrait", false), Pair("document_number", false))
-            doc.setSelectedDataItems(selectMdl)
-            requestDocumentList.addRequestDocument(doc)
-            val doc2 = RequestMulti003()
-            requestDocumentList.addRequestDocument(doc2)
+            requestDocumentList.addRequestDocument(
+                getRequestDocument(
+                    RequestDocument.MDL_DOCTYPE,
+                    intentToRetain,
+                    filterNamespace = { ns -> ns == RequestDocument.MDL_NAMESPACE },
+                    filterElement = { el ->
+                        listOf(
+                            "portrait",
+                            "document_number"
+                        ).contains(el.attribute.identifier)
+                    }
+                )
+            )
+            requestDocumentList.addRequestDocument(
+                getRequestDocument(
+                    RequestDocument.MICOV_DOCTYPE,
+                    intentToRetain,
+                    filterElement = { el ->
+                        listOf(
+                            "pid_DL",
+                            "safeEntry_Leisure"
+                        ).contains(el.attribute.identifier)
+                    }
+                )
+            )
         }
         return requestDocumentList
     }
 
-    private fun getSelectRequestMdlMandatory(intentToRetain: Boolean): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        map[RequestMdl.DataItems.FAMILY_NAME.identifier] = intentToRetain
-        map[RequestMdl.DataItems.GIVEN_NAMES.identifier] = intentToRetain
-        map[RequestMdl.DataItems.BIRTH_DATE.identifier] = intentToRetain
-        map[RequestMdl.DataItems.ISSUE_DATE.identifier] = intentToRetain
-        map[RequestMdl.DataItems.EXPIRY_DATE.identifier] = intentToRetain
-        map[RequestMdl.DataItems.ISSUING_COUNTRY.identifier] = intentToRetain
-        map[RequestMdl.DataItems.ISSUING_AUTHORITY.identifier] = intentToRetain
-        map[RequestMdl.DataItems.DOCUMENT_NUMBER.identifier] = intentToRetain
-        map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
-        map[RequestMdl.DataItems.DRIVING_PRIVILEGES.identifier] = intentToRetain
-        map[RequestMdl.DataItems.UN_DISTINGUISHING_SIGN.identifier] = intentToRetain
-        return map
-    }
 
-    private fun getSelectRequestMdlOlder21(intentToRetain: Boolean): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
-        map[RequestMdl.DataItems.AGE_OVER_21.identifier] = intentToRetain
-        return map
-    }
-
-    private fun getSelectRequestMdlOlder18(intentToRetain: Boolean): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        map[RequestMdl.DataItems.PORTRAIT.identifier] = intentToRetain
-        map[RequestMdl.DataItems.AGE_OVER_18.identifier] = intentToRetain
-        return map
-    }
-
-    private fun getSelectRequestFull(
-        requestDocument: RequestDocument,
-        intentToRetain: Boolean
-    ): Map<String, Boolean> {
-        val map = mutableMapOf<String, Boolean>()
-        requestDocument.dataItems.forEach {
-            map[it.identifier] = intentToRetain
-        }
-        return map
+    private fun getRequestDocument(
+        docType: String,
+        intentToRetain: Boolean,
+        filterNamespace: (String) -> Boolean = { _ -> true },
+        filterElement: (MdocDataElement) -> Boolean = { _ -> true }
+    ): RequestDocument {
+        val mdocCredentialType =
+            VerifierApp.credentialTypeRepositoryInstance.getMdocCredentialType(docType)!!
+        return RequestDocument(
+            docType,
+            mdocCredentialType.namespaces.filter { filterNamespace(it.namespace) }
+                .map {
+                    Pair(
+                        it.namespace,
+                        it.dataElements.filter { el -> filterElement(el) }
+                            .map { el -> Pair(el.attribute.identifier, intentToRetain) }
+                            .toMap()
+                    )
+                }.toMap()
+        )
     }
 }
