@@ -32,6 +32,7 @@ android {
     productFlavors {
         wallet {
             dimension "standard"
+            getIsDefault().set(true)
         }
         purse {
             dimension "standard"
