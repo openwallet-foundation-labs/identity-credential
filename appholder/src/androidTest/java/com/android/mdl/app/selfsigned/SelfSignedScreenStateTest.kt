@@ -5,10 +5,11 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
+import com.android.identity.credentialtype.knowntypes.EUPersonalID
+import com.android.identity.credentialtype.knowntypes.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.SoftwareSecureArea
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.document.DocumentType
 import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState
 import com.android.identity.wallet.selfsigned.AddSelfSignedViewModel
 import com.android.identity.wallet.util.PreferencesHelper
@@ -46,10 +47,11 @@ class SelfSignedScreenStateTest {
 
     @Test
     fun updateDocumentType() {
-        val personalId = DocumentType.EUPID
+        val personalId = EUPersonalID.getCredentialType().mdocCredentialType?.docType!!
+        val name= EUPersonalID.getCredentialType().displayName
         val viewModel = AddSelfSignedViewModel(savedStateHandle)
 
-        viewModel.updateDocumentType(personalId)
+        viewModel.updateDocumentType(personalId, name)
 
         assertThat(viewModel.screenState.value).isEqualTo(
             AddSelfSignedScreenState(documentType = personalId, documentName = "EU Personal ID")
@@ -69,11 +71,12 @@ class SelfSignedScreenStateTest {
 
     @Test
     fun updateDocumentTypeAfterNameUpdate() {
-        val registration = DocumentType.MVR
+        val registration = VehicleRegistration.getCredentialType().mdocCredentialType?.docType!!
+        val name = VehicleRegistration.getCredentialType().displayName
         val viewModel = AddSelfSignedViewModel(savedStateHandle)
 
         viewModel.updateDocumentName(":irrelevant:")
-        viewModel.updateDocumentType(registration)
+        viewModel.updateDocumentType(registration, name)
 
         assertThat(viewModel.screenState.value).isEqualTo(
             AddSelfSignedScreenState(

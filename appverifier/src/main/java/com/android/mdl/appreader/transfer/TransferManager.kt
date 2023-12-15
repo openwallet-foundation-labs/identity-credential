@@ -362,4 +362,27 @@ class TransferManager private constructor(private val context: Context) {
     fun getMdocSessionEncryptionCurve(): Int {
         return Util.getCurve(verification!!.eReaderKeyPair.public)
     }
+
+    fun getTapToEngagementDurationMillis(): Long {
+        return verification?.tapToEngagementDurationMillis ?: 0
+    }
+
+    fun getEngagementToRequestDurationMillis(): Long {
+        return verification?.engagementToRequestDurationMillis ?: 0
+    }
+
+    fun getRequestToResponseDurationMillis(): Long {
+        return verification?.requestToResponseDurationMillis ?: 0
+    }
+
+    fun getEngagementMethod(): String {
+        when (verification?.engagementMethod) {
+            VerificationHelper.ENGAGEMENT_METHOD_QR_CODE -> return "QR Code"
+            VerificationHelper.ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER -> return "NFC Static Handover"
+            VerificationHelper.ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER -> return "NFC Negotiated Handover"
+            VerificationHelper.ENGAGEMENT_METHOD_REVERSE -> return "Reverse"
+        }
+        return "N/A"
+    }
+
 }

@@ -2,8 +2,8 @@ package com.android.identity.wallet.selfsigned
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.document.DocumentType
 import com.android.identity.wallet.support.CurrentSecureArea
 import com.android.identity.wallet.support.SecureAreaSupportState
 import com.android.identity.wallet.util.getState
@@ -19,9 +19,14 @@ class AddSelfSignedViewModel(
         AddSelfSignedScreenState()
     )
 
-    fun updateDocumentType(newValue: DocumentType) {
+    val documentItems: List<DocumentItem> =
+        HolderApp.credentialTypeRepositoryInstance.getCredentialTypes().filter { it.mdocCredentialType != null }
+            .map { DocumentItem(it.mdocCredentialType!!.docType, it.displayName) }
+
+
+    fun updateDocumentType(newValue: String, newName: String) {
         savedStateHandle.updateState<AddSelfSignedScreenState> {
-            it.copy(documentType = newValue, documentName = documentNameFor(newValue))
+            it.copy(documentType = newValue, documentName = newName)
         }
     }
 
@@ -77,15 +82,6 @@ class AddSelfSignedViewModel(
         if (newValue <= 0) return
         savedStateHandle.updateState<AddSelfSignedScreenState> {
             it.copy(maxUseOfMso = newValue)
-        }
-    }
-
-    private fun documentNameFor(documentType: DocumentType): String {
-        return when (documentType) {
-            is DocumentType.MDL -> "Driving License"
-            is DocumentType.MVR -> "Vehicle Registration"
-            is DocumentType.MICOV -> "Vaccination Document"
-            is DocumentType.EUPID -> "EU Personal ID"
         }
     }
 }

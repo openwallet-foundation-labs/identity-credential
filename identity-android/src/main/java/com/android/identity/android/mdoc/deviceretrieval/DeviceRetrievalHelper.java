@@ -99,8 +99,12 @@ public class DeviceRetrievalHelper {
         Logger.d(TAG, "reportEReaderKeyReceived: " + eReaderKey);
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onEReaderKeyReceived(eReaderKey));
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onEReaderKeyReceived(eReaderKey);
+                }
+            });
         }
     }
 
@@ -108,8 +112,12 @@ public class DeviceRetrievalHelper {
         Logger.d(TAG, "reportDeviceRequest: deviceRequestBytes: " + deviceRequestBytes.length + " bytes");
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceRequest(deviceRequestBytes));
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onDeviceRequest(deviceRequestBytes);
+                }
+            });
         }
     }
 
@@ -118,9 +126,12 @@ public class DeviceRetrievalHelper {
                 + transportSpecificTermination);
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onDeviceDisconnected(
-                    transportSpecificTermination));
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onDeviceDisconnected(transportSpecificTermination);
+                }
+            });
         }
     }
 
@@ -128,8 +139,12 @@ public class DeviceRetrievalHelper {
         Logger.d(TAG, "reportError: error: ", error);
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onError(error));
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onError(error);
+                }
+            });
         }
     }
 

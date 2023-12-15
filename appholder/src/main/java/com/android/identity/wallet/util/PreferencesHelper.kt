@@ -87,7 +87,7 @@ object PreferencesHelper {
     }
 
     fun isConnectionAutoCloseEnabled(): Boolean {
-        return sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, false)
+        return sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, true)
     }
 
     fun setConnectionAutoCloseEnabled(enabled: Boolean) {
@@ -95,7 +95,7 @@ object PreferencesHelper {
     }
 
     fun shouldUseStaticHandover(): Boolean {
-        return sharedPreferences.getBoolean(STATIC_HANDOVER, true)
+        return sharedPreferences.getBoolean(STATIC_HANDOVER, false)
     }
 
     fun setUseStaticHandover(enabled: Boolean) {

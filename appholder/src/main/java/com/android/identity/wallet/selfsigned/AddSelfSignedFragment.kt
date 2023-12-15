@@ -35,7 +35,7 @@ class AddSelfSignedFragment : Fragment() {
         val state = viewModel.screenState.value
         val secureAreaScreenState = requireNotNull(state.secureAreaSupportState)
         val provisionInfo = ProvisionInfo(
-            docType = state.documentType.value,
+            docType = state.documentType,
             docName = state.documentName,
             docColor = state.cardArt.value,
             currentSecureArea = state.currentSecureArea,

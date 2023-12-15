@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
+import android.graphics.Typeface
 import android.icu.text.SimpleDateFormat
 import android.net.Uri
 import android.os.Bundle
@@ -14,6 +15,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.InputType
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.NOT_FOCUSABLE
@@ -32,9 +34,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.credentialtype.IntegerOption
+import com.android.identity.credentialtype.StringOption
 import com.android.identity.wallet.databinding.FragmentSelfSignedDetailsBinding
 import com.android.identity.wallet.util.Field
-import com.android.identity.wallet.util.FieldType
 import com.android.identity.wallet.util.FormatUtil.fullDateStringToMilliseconds
 import com.android.identity.wallet.util.FormatUtil.millisecondsToFullDateString
 import com.android.identity.wallet.selfsigned.ProvisionInfo
@@ -53,7 +57,7 @@ class SelfSignedDetailsFragment : Fragment() {
 
     private val vm: SelfSignedViewModel by viewModels()
     private val args: SelfSignedDetailsFragmentArgs by navArgs()
-    private val nameLabels = listOf("Given Name", "Registration Holder Name", "First Name")
+    private val nameElements = listOf("given_name", "name", "gn")
 
     private var _binding: FragmentSelfSignedDetailsBinding? = null
     private val binding get() = _binding!!
@@ -80,11 +84,19 @@ class SelfSignedDetailsFragment : Fragment() {
     private fun bindUI() {
         // Create all fields in the screen
         val documentName = getDocumentNameValue()
-        addField(Field(0, "Document Name", provisionInfo.docName, FieldType.STRING, documentName))
+        addField(
+            Field(
+                0,
+                "Document Name",
+                provisionInfo.docName,
+                CredentialAttributeType.STRING,
+                documentName
+            )
+        )
         documentNameEditText = binding.layoutSelfSignedDetails.findViewById(0)
         vm.getFields(provisionInfo.docType).forEach { field ->
             addField(field)
-            if (field.label in nameLabels) {
+            if (field.name in nameElements) {
                 holderNameEditText = binding.layoutSelfSignedDetails.findViewById(field.id)
             }
         }
@@ -106,7 +118,7 @@ class SelfSignedDetailsFragment : Fragment() {
     }
 
     private fun getDocumentNameValue(): String {
-        val value = vm.getFields(provisionInfo.docType).find { it.label in nameLabels }?.value
+        val value = vm.getFields(provisionInfo.docType).find { it.name in nameElements }?.value
         val name = value?.toString() ?: ""
         val docName = provisionInfo.docName
         return if (name.isBlank()) docName else "$name's $docName"
@@ -132,75 +144,121 @@ class SelfSignedDetailsFragment : Fragment() {
 
     private fun getField(field: Field): Field {
         return when (field.fieldType) {
-            FieldType.BITMAP -> {
+            is CredentialAttributeType.PICTURE -> {
                 Field(
                     field.id,
                     field.label,
                     field.name,
                     field.fieldType,
-                    getImageViewValue(field.id)
+                    getImageViewValue(field.id),
+                    namespace = field.namespace,
+                    parentId = field.parentId,
+                    stringOptions = field.stringOptions,
+                    integerOptions = field.integerOptions
                 )
             }
 
-            FieldType.BOOLEAN -> {
-                // TODO: get value from switch button for boolean type
-                Field(field.id, field.label, field.name, field.fieldType, getViewValue(field.id))
+            is CredentialAttributeType.BOOLEAN -> {
+                Field(
+                    field.id,
+                    field.label,
+                    field.name,
+                    field.fieldType,
+                    getViewValue(field.id),
+                    namespace = field.namespace,
+                    parentId = field.parentId,
+                    stringOptions = field.stringOptions,
+                    integerOptions = field.integerOptions
+                )
             }
 
-            FieldType.STRING, FieldType.DATE -> {
-                Field(field.id, field.label, field.name, field.fieldType, getViewValue(field.id))
+            else -> {
+                Field(
+                    field.id,
+                    field.label,
+                    field.name,
+                    field.fieldType,
+                    getViewValue(field.id),
+                    namespace = field.namespace,
+                    isArray = field.isArray,
+                    parentId = field.parentId,
+                    stringOptions = field.stringOptions,
+                    integerOptions = field.integerOptions
+                )
             }
         }
     }
 
     private fun addField(field: Field) {
         when (field.fieldType) {
-            FieldType.BITMAP -> {
+            is CredentialAttributeType.PICTURE -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label, null)
+                    getTextView(field.id + 500, field.label)
+                )
+                binding.layoutSelfSignedDetails.addView(getImageView(
+                    field.id, field.value as Bitmap
+                ) { dispatchTakePictureIntent(field.id) })
+            }
+
+            is CredentialAttributeType.BOOLEAN -> {
+                binding.layoutSelfSignedDetails.addView(
+                    getTextView(field.id + 500, field.label)
                 )
                 binding.layoutSelfSignedDetails.addView(
-                    getImageView(
-                        field.id,
-                        field.value as Bitmap
-                    ) { dispatchTakePictureIntent(field.id) }
+                    checkBox(field.id, field.value as Boolean)
                 )
             }
 
-            FieldType.BOOLEAN -> {
-                // TODO: create switch button for boolean type
+            is CredentialAttributeType.STRING, CredentialAttributeType.NUMBER -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label, null)
+                    getTextView(field.id + 500, field.label)
                 )
                 binding.layoutSelfSignedDetails.addView(
-                    getEditView(field.id, field.value as String, null)
-                )
-            }
-
-            FieldType.STRING -> {
-                binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label, null)
-                )
-                binding.layoutSelfSignedDetails.addView(
-                    getEditView(field.id, field.value as String, null)
+                    getEditView(field.id, field.value.toString(), null)
                 )
             }
 
-            FieldType.DATE -> {
+            is CredentialAttributeType.DATE, CredentialAttributeType.DATE_TIME -> {
                 binding.layoutSelfSignedDetails.addView(
-                    getTextView(field.id + 500, field.label, null)
+                    getTextView(field.id + 500, field.label)
                 )
                 binding.layoutSelfSignedDetails.addView(
                     getEditView(field.id, field.value as String, picker(field.id, field.id + 500))
+                )
+            }
+
+            is CredentialAttributeType.IntegerOptions -> {
+                binding.layoutSelfSignedDetails.addView(
+                    getTextView(field.id + 500, field.label)
+                )
+                binding.layoutSelfSignedDetails.addView(
+                    integerOptionsSpinner(
+                        field.integerOptions!!, field.id, field.value
+                    )
+                )
+            }
+
+            is CredentialAttributeType.StringOptions -> {
+                binding.layoutSelfSignedDetails.addView(
+                    getTextView(field.id + 500, field.label)
+                )
+                binding.layoutSelfSignedDetails.addView(
+                    stringOptionsSpinner(
+                        field.stringOptions!!, field.id, field.value
+                    )
+                )
+            }
+
+            is CredentialAttributeType.COMPLEX_TYPE -> {
+                binding.layoutSelfSignedDetails.addView(
+                    getTitleView(field.id + 500, field.label)
                 )
             }
         }
     }
 
     private fun getImageView(
-        id: Int,
-        bitmap: Bitmap,
-        onClickListener: View.OnClickListener?
+        id: Int, bitmap: Bitmap, onClickListener: View.OnClickListener?
     ): View {
         val imageView = ImageView(requireContext())
         imageView.id = id
@@ -215,15 +273,24 @@ class SelfSignedDetailsFragment : Fragment() {
         return imageView
     }
 
-    private fun getTextView(id: Int, value: String, onClickListener: View.OnClickListener?): View {
+    private fun getTextView(id: Int, value: String): View {
         val textView = TextView(requireContext())
         textView.id = id
         textView.text = value
         textView.layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
             it.setMargins(16, 16, 16, 0)
         }
-        onClickListener?.let {
-            textView.setOnClickListener(it)
+        return textView
+    }
+
+    private fun getTitleView(id: Int, value: String): View {
+        val textView = TextView(requireContext())
+        textView.id = id
+        textView.text = value
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18f)
+        textView.setTypeface(textView.typeface, Typeface.BOLD)
+        textView.layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
+            it.setMargins(16, 32, 16, 16)
         }
         return textView
     }
@@ -247,8 +314,7 @@ class SelfSignedDetailsFragment : Fragment() {
     fun onCreateSelfSigned() {
         updateList()
         val dData = SelfSignedDocumentData(
-            provisionInfo,
-            vm.getFields(provisionInfo.docType)
+            provisionInfo, vm.getFields(provisionInfo.docType)
         )
         vm.createSelfSigned(dData)
         binding.loadingProgress.visibility = View.VISIBLE
@@ -264,11 +330,24 @@ class SelfSignedDetailsFragment : Fragment() {
         return bitmap
     }
 
-    private fun getViewValue(id: Int): String {
+    private fun getViewValue(id: Int): Any? {
         return when (val view = binding.layoutSelfSignedDetails.findViewById<View>(id)) {
+            is CheckBox -> {
+                view.isChecked
+            }
+
             is TextView -> {
                 view.text.toString()
             }
+
+            is Spinner -> {
+                when (view.selectedItem) {
+                    is StringOption -> (view.selectedItem as StringOption).value
+                    is IntegerOption -> (view.selectedItem as IntegerOption).value
+                    else -> view.selectedItem.toString()
+                }
+            }
+
 
             else -> {
                 String()
@@ -287,19 +366,53 @@ class SelfSignedDetailsFragment : Fragment() {
      * OnClickListener for date picker
      */
     private fun picker(id: Int, idLabel: Int) = View.OnClickListener {
-        val titleText = getViewValue(idLabel)
-        val dateText = getViewValue(id)
+        val titleText = getViewValue(idLabel) as String
+        val dateText = getViewValue(id) as String
         log("$dateText - ${fullDateStringToMilliseconds(dateText)}")
-        val datePicker =
-            MaterialDatePicker.Builder.datePicker()
-                .setTitleText(titleText)
-                .setSelection(fullDateStringToMilliseconds(dateText))
-                .build()
+        val datePicker = MaterialDatePicker.Builder.datePicker().setTitleText(titleText)
+            .setSelection(fullDateStringToMilliseconds(dateText)).build()
         datePicker.addOnPositiveButtonClickListener {
             log("$it - ${millisecondsToFullDateString(it)}")
             setViewValue(id, millisecondsToFullDateString(it))
         }
         datePicker.show(parentFragmentManager, view?.tag?.toString())
+    }
+
+    private fun stringOptionsSpinner(
+        options: List<StringOption>, id: Int, value: Any?
+    ): View {
+        val spinner = Spinner(context)
+        spinner.id = id
+        val adapter =
+            ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, options)
+        spinner.adapter = adapter
+        val selected = options.find { (it.value == null && value == null) || it.value == value }
+        if (selected != null) {
+            spinner.setSelection(options.indexOf(selected))
+        }
+        return spinner
+    }
+
+    private fun integerOptionsSpinner(
+        options: List<IntegerOption>, id: Int, value: Any?
+    ): View {
+        val spinner = Spinner(context)
+        spinner.id = id
+        val adapter =
+            ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, options)
+        spinner.adapter = adapter
+        val selected = options.find { (it.value == null && value == null) || it.value == value }
+        if (selected != null) {
+            spinner.setSelection(options.indexOf(selected))
+        }
+        return spinner
+    }
+
+    private fun checkBox(id: Int, value: Boolean): View {
+        val checkBox = CheckBox(context)
+        checkBox.id = id
+        checkBox.isChecked = value
+        return checkBox
     }
 
     // Following to enable take picture

@@ -211,32 +211,48 @@ public abstract class DataTransport {
     protected void reportConnectionMethodReady() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onConnectionMethodReady());
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onConnectionMethodReady();
+                }
+            });
         }
     }
 
     protected void reportConnecting() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onConnecting);
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onConnecting();
+                }
+            });
         }
     }
 
     protected void reportConnected() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onConnected);
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onConnected();
+                }
+            });
         }
     }
 
     protected void reportDisconnected() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onDisconnected);
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onDisconnected();
+                }
+            });
         }
     }
 
@@ -244,32 +260,48 @@ public abstract class DataTransport {
         mMessageReceivedQueue.add(data);
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onMessageReceived());
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onMessageReceived();
+                }
+            });
         }
     }
 
     protected void reportMessageProgress(long progress, long max) {
         final TransmissionProgressListener listener = mProgressListener;
         final Executor executor = mProgressListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onProgressUpdate(progress, max));
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onProgressUpdate(progress, max);
+                }
+            });
         }
     }
 
     protected void reportTransportSpecificSessionTermination() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(listener::onTransportSpecificSessionTermination);
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onTransportSpecificSessionTermination();
+                }
+            });
         }
     }
 
     protected void reportError(@NonNull Throwable error) {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
-        if (!mInhibitCallbacks && listener != null && executor != null) {
-            executor.execute(() -> listener.onError(error));
+        if (listener != null && executor != null) {
+            executor.execute(() -> {
+                if (!mInhibitCallbacks) {
+                    listener.onError(error);
+                }
+            });
         }
     }
 

@@ -51,8 +51,6 @@ public class CredentialStoreTest {
         mSecureAreaRepository = new SecureAreaRepository();
         mSecureArea = new SoftwareSecureArea(mStorageEngine);
         mSecureAreaRepository.addImplementation(mSecureArea);
-
-
     }
 
     @Test
@@ -65,9 +63,7 @@ public class CredentialStoreTest {
         Assert.assertEquals(0, credentialStore.listCredentials().size());
         for (int n = 0; n < 10; n++) {
             credentialStore.createCredential(
-                    "testCred" + n,
-                    mSecureArea,
-                    new SecureArea.CreateKeySettings(new byte[0]));
+                    "testCred" + n);
         }
         Assert.assertEquals(10, credentialStore.listCredentials().size());
         credentialStore.deleteCredential("testCred1");
@@ -89,37 +85,14 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
         Assert.assertEquals("testCredential", credential.getName());
-        List<X509Certificate> certChain = credential.getAttestation();
-        Assert.assertTrue(certChain.size() >= 1);
 
         credential = credentialStore.lookupCredential("testCredential");
         Assert.assertNotNull(credential);
         Assert.assertEquals("testCredential", credential.getName());
-        List<X509Certificate> certChain2 = credential.getAttestation();
-        Assert.assertEquals(certChain.size(), certChain2.size());
-        for (int n = 0; n < certChain.size(); n++) {
-            Assert.assertEquals(certChain.get(n), certChain2.get(n));
-        }
 
         Assert.assertNull(credentialStore.lookupCredential("nonExistingCredential"));
-
-        // Check creating a credential with an existing name overwrites the existing one
-        credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
-        Assert.assertEquals("testCredential", credential.getName());
-        // At least the leaf certificate should be different
-        List<X509Certificate> certChain3 = credential.getAttestation();
-        Assert.assertNotEquals(certChain3.get(0), certChain2.get(0));
-
-        credential = credentialStore.lookupCredential("testCredential");
-        Assert.assertNotNull(credential);
-        Assert.assertEquals("testCredential", credential.getName());
 
         credentialStore.deleteCredential("testCredential");
         Assert.assertNull(credentialStore.lookupCredential("testCredential"));
@@ -135,14 +108,10 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential a = credentialStore.createCredential(
-                "a",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "a");
 
         Credential b = credentialStore.createCredential(
-                "b",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "b");
 
         Assert.assertEquals(a, credentialStore.lookupCredential("a"));
         Assert.assertEquals(a, credentialStore.lookupCredential("a"));
@@ -153,9 +122,7 @@ public class CredentialStoreTest {
         Assert.assertNull(credentialStore.lookupCredential("a"));
 
         Credential a_prime = credentialStore.createCredential(
-                "a",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "a");
         Assert.assertEquals(a_prime, credentialStore.lookupCredential("a"));
         Assert.assertEquals(a_prime, credentialStore.lookupCredential("a"));
 
@@ -172,9 +139,7 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
 
         NameSpacedData nameSpacedData = new NameSpacedData.Builder()
                 .putEntryString("ns1", "foo1", "bar1")
@@ -203,9 +168,7 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
 
         Timestamp timeBeforeValidity = Timestamp.ofEpochMilli(40);
         Timestamp timeValidityBegin = Timestamp.ofEpochMilli(50);
@@ -359,9 +322,7 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
 
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
@@ -441,9 +402,7 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
 
         // We want to check the behavior for when the holder has a birthday and the issuer
         // carefully sends half the MSOs to be used before the birthday (with age_in_years set to
@@ -521,9 +480,7 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
 
         ApplicationData appData = credential.getApplicationData();
         Assert.assertFalse(appData.keyExists("key1"));
@@ -569,9 +526,7 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
 
         for (int n = 0; n < 10; n++) {
             Credential.PendingAuthenticationKey pendingAuthKey =
@@ -654,9 +609,7 @@ public class CredentialStoreTest {
                 mSecureAreaRepository);
 
         Credential credential = credentialStore.createCredential(
-                "testCredential",
-                mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]));
+                "testCredential");
 
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());

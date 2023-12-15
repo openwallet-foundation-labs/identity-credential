@@ -48,18 +48,19 @@ import co.nstant.in.cbor.model.UnicodeString;
  * This class represents a credential created in {@link CredentialStore}.
  *
  * <p>Credentials in this store are identified by a name which must be unique
- * per credential. For each credential an asymmetric key-pair called <em>CredentialKey</em>
- * is generated and this key-pair is intended to be the primary identifier for the credential
- * and used for communication with the credential issuing authority (IA). In particular, the
- * IA can examine the attestation on <em>CredentialKey</em> to verify that the device is
- * in a known good state (e.g. verified boot is enabled, the OS is at a sufficiently recent
- * patch level, it's communicating with the expected Android application, etc.) before
- * deciding to issue a credential to the device.
+ * per credential.
  *
- * <p>Data can be stored in credentials using the {@link ApplicationData} returned by
- * {@link #getApplicationData()} which supports key/value pairs with typed values
+ * <p>Arbitrary data can be stored in credentials using the {@link ApplicationData} returned
+ * by {@link #getApplicationData()} which supports key/value pairs with typed values
  * including raw blobs, strings, booleans, numbers, and {@link NameSpacedData}.
  * This data is persisted for the life-time of the credential.
+ *
+ * <p>One typical use of {@link ApplicationData} is for using it to store the alias
+ * of a {@link SecureArea} key used for communicating with the Issuing Authority
+ * issuing data for the credential and and proving - via the attestation on the key - that
+ * the device is in a known good state (e.g. verified boot is enabled, the OS is at a
+ * sufficiently recent patch level, it's communicating with the expected Android
+ * application, etc).
  *
  * <p>Each credential may have a number of <em>Authentication Keys</em>
  * associated with it. These keys are intended to be used in ways specified by the
@@ -96,16 +97,12 @@ public class Credential {
     private static final String TAG = "Credential";
     static final String CREDENTIAL_PREFIX = "IC_Credential_";
 
-    static final String CREDENTIAL_KEY_ALIAS_PREFIX = "IC_CredentialKey_";
-
     static final String AUTHENTICATION_KEY_ALIAS_PREFIX = "IC_AuthenticationKey_";
 
     private final StorageEngine mStorageEngine;
     private final SecureAreaRepository mSecureAreaRepository;
     private String mName;
-    private String mCredentialKeyAlias;
 
-    private SecureArea mSecureArea;
     private SimpleApplicationData mApplicationData = new SimpleApplicationData(this::saveCredential);
 
     private List<PendingAuthenticationKey> mPendingAuthenticationKeys = new ArrayList<>();
@@ -122,38 +119,10 @@ public class Credential {
     // Called by CredentialStore.createCredential().
     static Credential create(@NonNull StorageEngine storageEngine,
                              @NonNull SecureAreaRepository secureAreaRepository,
-                             @NonNull String name,
-                             @NonNull SecureArea secureArea,
-                             @NonNull SecureArea.CreateKeySettings credentialKeySettings) {
-
+                             @NonNull String name) {
         Credential credential = new Credential(storageEngine, secureAreaRepository);
         credential.mName = name;
-        credential.mSecureArea = secureArea;
-        credential.mCredentialKeyAlias = CREDENTIAL_KEY_ALIAS_PREFIX + name;
-
-        credential.mSecureArea.createKey(credential.mCredentialKeyAlias, credentialKeySettings);
-
         credential.saveCredential();
-
-        return credential;
-    }
-
-    // Called by CredentialStore.createCredentialWithExistingKey().
-    static @NonNull Credential createWithExistingKey(
-            @NonNull StorageEngine storageEngine,
-            @NonNull SecureAreaRepository secureAreaRepository,
-            @NonNull String name,
-            @NonNull SecureArea secureArea,
-            @NonNull SecureArea.CreateKeySettings credentialKeySettings,
-            @NonNull String existingKeyAlias) {
-
-        Credential credential = new Credential(storageEngine, secureAreaRepository);
-        credential.mName = name;
-        credential.mSecureArea = secureArea;
-        credential.mCredentialKeyAlias = existingKeyAlias;
-
-        credential.mSecureArea.createKey(credential.mCredentialKeyAlias, credentialKeySettings);
-
         return credential;
     }
 
@@ -161,8 +130,6 @@ public class Credential {
         Timestamp t0 = Timestamp.now();
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
-        map.put("secureAreaIdentifier", mSecureArea.getIdentifier());
-        map.put("credentialKeyAlias", mCredentialKeyAlias);
 
         map.put("applicationData", mApplicationData.encodeAsCbor());
 
@@ -214,7 +181,7 @@ public class Credential {
         try {
             dataItems = new CborDecoder(bais).decode();
         } catch (CborException e) {
-            throw new IllegalStateException("Error decoded CBOR", e);
+            throw new IllegalStateException("Error decoding CBOR", e);
         }
         if (dataItems.size() != 1) {
             throw new IllegalStateException("Expected 1 item, found " + dataItems.size());
@@ -223,11 +190,6 @@ public class Credential {
             throw new IllegalStateException("Item is not a map");
         }
         co.nstant.in.cbor.model.Map map = (co.nstant.in.cbor.model.Map) dataItems.get(0);
-
-        String secureAreaIdentifier = Util.cborMapExtractString(map, "secureAreaIdentifier");
-        mSecureArea = secureAreaRepository.getImplementation(secureAreaIdentifier);
-
-        mCredentialKeyAlias = Util.cborMapExtractString(map, "credentialKeyAlias");
 
         DataItem applicationDataDataItem = map.get(new UnicodeString("applicationData"));
         if (!(applicationDataDataItem instanceof co.nstant.in.cbor.model.ByteString)) {
@@ -267,7 +229,6 @@ public class Credential {
         for (AuthenticationKey key : new ArrayList<>(mAuthenticationKeys)) {
             key.delete();
         }
-        mSecureArea.deleteKey(mCredentialKeyAlias);
         mStorageEngine.delete(CREDENTIAL_PREFIX + mName);
     }
 
@@ -278,42 +239,6 @@ public class Credential {
      */
     public @NonNull String getName() {
         return mName;
-    }
-
-    /**
-     * Gets the X.509 certificate chain for <em>CredentialKey</em>.
-     *
-     * <p>The application can use this to prove properties about the device at provisioning time.
-     *
-     * @return An X.509 certificate chain for <em>CredentialKey</em>.
-     */
-    public @NonNull List<X509Certificate> getAttestation() {
-        SecureArea.KeyInfo keyInfo = mSecureArea.getKeyInfo(mCredentialKeyAlias);
-        return keyInfo.getAttestation();
-    }
-
-    /**
-     * Gets the alias for <em>CredentialKey</em>.
-     *
-     * <p>This can be used together with the {@link SecureArea} returned by
-     * {@link #getCredentialSecureArea()}.
-     *
-     * @return The alias for <em>CredentialKey</em>.
-     */
-    public @NonNull String getCredentialKeyAlias() {
-        return mCredentialKeyAlias;
-    }
-
-    /**
-     * Gets the secure area for <em>CredentialKey</em>.
-     *
-     * <p>This can be used together with the alias returned by
-     * {@link #getCredentialKeyAlias()}.
-     *
-     * @return The {@link SecureArea} used for <em>CredentialKey</em>.
-     */
-    public @NonNull SecureArea getCredentialSecureArea() {
-        return mSecureArea;
     }
 
     /**
