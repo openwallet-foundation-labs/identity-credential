@@ -198,11 +198,11 @@ class CreateRequestViewModel : ViewModel() {
             VerifierApp.credentialTypeRepositoryInstance.getMdocCredentialType(docType)!!
         return RequestDocument(
             docType,
-            mdocCredentialType.namespaces.filter { filterNamespace(it.namespace) }
+            mdocCredentialType.namespaces.values.filter { filterNamespace(it.namespace) }
                 .map {
                     Pair(
                         it.namespace,
-                        it.dataElements.filter { el -> filterElement(el) }
+                        it.dataElements.values.filter { el -> filterElement(el) }
                             .map { el -> Pair(el.attribute.identifier, intentToRetain) }
                             .toMap()
                     )

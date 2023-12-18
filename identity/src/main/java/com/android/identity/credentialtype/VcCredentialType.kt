@@ -21,7 +21,7 @@ package com.android.identity.credentialtype
  */
 class VcCredentialType private constructor(
     val type: String,
-    val claims: List<CredentialAttribute>
+    val claims: Map<String, CredentialAttribute>
 ) {
 
     /**
@@ -29,7 +29,7 @@ class VcCredentialType private constructor(
      */
     data class Builder(
         val type: String,
-        val claims: MutableList<CredentialAttribute> = mutableListOf()
+        val claims: MutableMap<String, CredentialAttribute> = mutableMapOf()
     ) {
         /**
          * Add a claim to the metadata of the VC Credential Type.
@@ -45,7 +45,7 @@ class VcCredentialType private constructor(
             displayName: String,
             description: String
         ) = apply {
-            claims.add(CredentialAttribute(type, identifier, displayName, description))
+            claims[identifier] = CredentialAttribute(type, identifier, displayName, description)
         }
 
         /**

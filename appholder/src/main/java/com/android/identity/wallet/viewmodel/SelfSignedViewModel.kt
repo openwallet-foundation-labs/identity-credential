@@ -60,12 +60,11 @@ class SelfSignedViewModel(val app: Application) :
 
     private fun createFields(mdocCredentialType: MdocCredentialType): MutableList<Field> {
         val fields: MutableList<Field> = mutableListOf()
-        val complexTypes = MdocComplexTypeRepository.getComplexTypes()
-            .find { it.docType == mdocCredentialType.docType }
-        for (namespace in mdocCredentialType.namespaces) {
+        val complexTypes = MdocComplexTypeRepository.getComplexTypes(mdocCredentialType.docType)
+        for (namespace in mdocCredentialType.namespaces.values) {
             val namespaceComplexTypes =
                 complexTypes?.namespaces?.find { it.namespace == namespace.namespace }
-            for (dataElement in namespace.dataElements) {
+            for (dataElement in namespace.dataElements.values) {
                 when (dataElement.attribute.type) {
                     is CredentialAttributeType.COMPLEX_TYPE -> {
                         val complexTypeDefinitions = namespaceComplexTypes?.dataElements?.filter {

@@ -26,14 +26,14 @@ package com.android.identity.credentialtype
  */
 class MdocNamespace private constructor(
     val namespace: String,
-    val dataElements: List<MdocDataElement>
+    val dataElements: Map<String, MdocDataElement>
 ) {
     /**
      * Builder class for class [MdocNamespace].
      */
     data class Builder(
         val namespace: String,
-        val dataElements: MutableList<MdocDataElement> = mutableListOf()
+        val dataElements: MutableMap<String, MdocDataElement> = mutableMapOf()
     ) {
 
         /**
@@ -53,11 +53,9 @@ class MdocNamespace private constructor(
             description: String,
             mandatory: Boolean
         ) = apply {
-            dataElements.add(
-                MdocDataElement(
-                    CredentialAttribute(type, identifier, displayName, description),
-                    mandatory
-                )
+            dataElements[identifier] = MdocDataElement(
+                CredentialAttribute(type, identifier, displayName, description),
+                mandatory
             )
         }
 
