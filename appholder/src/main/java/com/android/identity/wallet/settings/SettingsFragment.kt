@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import com.android.identity.wallet.theme.HolderAppTheme
 
 class SettingsFragment : Fragment() {
@@ -37,7 +38,8 @@ class SettingsFragment : Fragment() {
                         onBLEPeripheralDataRetrievalModeChanged = settingsViewModel::onBlePeripheralModeChanged,
                         onWiFiAwareChanged = settingsViewModel::onWiFiAwareChanged,
                         onNfcChanged = settingsViewModel::onNFCChanged,
-                        onDebugChanged = settingsViewModel::onDebugLoggingChanged
+                        onDebugChanged = settingsViewModel::onDebugLoggingChanged,
+                        onOpenCaCertificates = {openCaCertificates()},
                     )
                 }
             }
@@ -46,5 +48,10 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         settingsViewModel.loadSettings()
+    }
+
+    private fun openCaCertificates(){
+        val destination = SettingsFragmentDirections.toCaCertificates()
+        findNavController().navigate(destination)
     }
 }
