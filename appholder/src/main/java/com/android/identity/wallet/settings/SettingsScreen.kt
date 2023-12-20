@@ -45,6 +45,7 @@ fun SettingsScreen(
     onWiFiAwareChanged: (Boolean) -> Unit,
     onNfcChanged: (Boolean) -> Unit,
     onDebugChanged: (Boolean) -> Unit,
+    onOpenCaCertificates: () -> Unit,
 ) {
     Column(modifier = modifier) {
         val scrollState = rememberScrollState()
@@ -129,6 +130,15 @@ fun SettingsScreen(
                 isChecked = screenState.debugEnabled,
                 onCheckedChange = onDebugChanged
             )
+            SettingSectionTitle(
+                title = "CA Certificates"
+            )
+            SettingItem(
+                modifier = Modifier
+                    .clickable { onOpenCaCertificates() },
+                title = "Show CA Certificates",
+                subtitle = "Click here to show the CA Certificates"
+            )
         }
     }
 }
@@ -145,6 +155,31 @@ private fun SettingSectionTitle(
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+@Composable
+private fun SettingItem(
+    modifier: Modifier = Modifier,
+    title: String,
+    subtitle: String
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
     }
 }
 
@@ -254,7 +289,8 @@ private fun SettingsScreenPreview() {
             onBLEPeripheralDataRetrievalModeChanged = {},
             onWiFiAwareChanged = {},
             onNfcChanged = {},
-            onDebugChanged = {}
+            onDebugChanged = {},
+            onOpenCaCertificates = {}
         )
     }
 }

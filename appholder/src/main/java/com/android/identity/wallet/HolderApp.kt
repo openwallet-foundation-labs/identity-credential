@@ -13,17 +13,33 @@ import com.android.identity.credentialtype.knowntypes.VaccinationDocument
 import com.android.identity.credentialtype.knowntypes.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.SoftwareSecureArea
+import com.android.identity.storage.GenericStorageEngine
+import com.android.identity.storage.StorageEngine
+import com.android.identity.trustmanagement.TrustManager
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
+import com.android.identity.wallet.document.KeysAndCertificates
 import com.android.identity.wallet.util.PeriodicKeysRefreshWorkRequest
 import com.android.identity.wallet.util.PreferencesHelper
 import com.google.android.material.color.DynamicColors
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.io.ByteArrayInputStream
 import java.security.Security
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 
 class HolderApp: Application() {
 
     private val credentialTypeRepository by lazy {
         CredentialTypeRepository()
+    }
+
+    private val trustManager by lazy {
+        TrustManager()
+    }
+
+    private val certificateStorageEngine by lazy {
+        GenericStorageEngine(getDir("Certificates", MODE_PRIVATE))
     }
 
     override fun onCreate() {
@@ -41,11 +57,22 @@ class HolderApp: Application() {
         credentialTypeRepositoryInstance.addCredentialType(VehicleRegistration.getCredentialType())
         credentialTypeRepositoryInstance.addCredentialType(VaccinationDocument.getCredentialType())
         credentialTypeRepositoryInstance.addCredentialType(EUPersonalID.getCredentialType())
+        trustManagerInstance = trustManager
+        certificateStorageEngineInstance = certificateStorageEngine
+        certificateStorageEngineInstance.enumerate().forEach {
+            val certificate = parseCertificate(certificateStorageEngineInstance.get(it)!!)
+            trustManagerInstance.addTrustPoint(TrustPoint(certificate))
+        }
+        KeysAndCertificates.getTrustedReaderCertificates(this).forEach {
+            trustManagerInstance.addTrustPoint(TrustPoint(it))
+        }
     }
 
     companion object {
 
         lateinit var credentialTypeRepositoryInstance: CredentialTypeRepository
+        lateinit var trustManagerInstance: TrustManager
+        lateinit var certificateStorageEngineInstance: StorageEngine
         fun createCredentialStore(
             context: Context,
             secureAreaRepository: SecureAreaRepository
@@ -60,5 +87,13 @@ class HolderApp: Application() {
             secureAreaRepository.addImplementation(softwareSecureArea)
             return CredentialStore(storageEngine, secureAreaRepository)
         }
+    }
+
+    /**
+     * Parse a byte array as an X509 certificate
+     */
+    private fun parseCertificate(certificateBytes: ByteArray): X509Certificate {
+        return CertificateFactory.getInstance("X509")
+            .generateCertificate(ByteArrayInputStream(certificateBytes)) as X509Certificate
     }
 }

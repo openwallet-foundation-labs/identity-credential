@@ -11,12 +11,13 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.R
 import com.android.identity.wallet.databinding.FragmentTransferDocumentBinding
 import com.android.identity.wallet.document.DocumentInformation
-import com.android.identity.wallet.document.KeysAndCertificates
-import com.android.identity.wallet.readerauth.SimpleReaderTrustStore
 import com.android.identity.wallet.transfer.TransferManager
+import com.android.identity.wallet.trustmanagement.CustomValidators
+import com.android.identity.wallet.trustmanagement.getCommonName
 import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.TransferStatus
 import com.android.identity.wallet.util.log
@@ -81,14 +82,10 @@ class TransferDocumentFragment : Fragment() {
 
     private fun onTransferRequested() {
         log("Request")
-
+        var commonName = ""
+        var trusted = false
         try {
-            val trustStore = com.android.identity.wallet.readerauth.SimpleReaderTrustStore(
-                KeysAndCertificates.getTrustedReaderCertificates(requireContext())
-            )
             val requestedDocuments = viewModel.getRequestedDocuments()
-            var readerCommonName = ""
-            var readerIsTrusted = false
             requestedDocuments.forEach { reqDoc ->
                 val docs = viewModel.getDocuments().filter { reqDoc.docType == it.docType }
                 if (!viewModel.getSelectedDocuments().any { reqDoc.docType == it.docType }) {
@@ -104,31 +101,23 @@ class TransferDocumentFragment : Fragment() {
                 }
                 val doc = viewModel.getSelectedDocuments().first { reqDoc.docType == it.docType }
                 if (reqDoc.readerAuth != null && reqDoc.readerAuthenticated) {
-                    val readerChain = reqDoc.readerCertificateChain
-                    val trustPath =
-                        trustStore.createCertificationTrustPath(readerChain.toList())
-                    // Look for the common name in the root certificate if it is trusted or not
-                    val certChain = if (trustPath?.isNotEmpty() == true) {
-                        trustPath
-                    } else {
-                        readerChain
+                    var certChain = reqDoc.readerCertificateChain
+                    val customValidators = CustomValidators.getByDocType(doc.docType)
+                    val result = HolderApp.trustManagerInstance.verify(
+                        chain = certChain,
+                        customValidators = customValidators
+                    )
+                    trusted = result.isTrusted
+                    if (result.trustChain.any()){
+                        certChain = result.trustChain
                     }
-
-                    certChain.first().subjectX500Principal.name.split(",")
-                        .forEach { line ->
-                            val (key, value) = line.split("=", limit = 2)
-                            if (key == "CN") {
-                                readerCommonName = value
-                            }
-                        }
+                    commonName = certChain.last().issuerX500Principal.getCommonName("")
 
                     // Add some information about the reader certificate used
-                    if (trustStore.validateCertificationTrustPath(trustPath)) {
-                        readerIsTrusted = true
-                        binding.txtDocuments.append("- Trusted reader auth used: ($readerCommonName)\n")
+                    if (result.isTrusted) {
+                        binding.txtDocuments.append("- Trusted reader auth used: ($commonName)\n")
                     } else {
-                        readerIsTrusted = false
-                        binding.txtDocuments.append("- Not trusted reader auth used: ($readerCommonName)\n")
+                        binding.txtDocuments.append("- Not trusted reader auth used: ($commonName)\n")
                     }
                 }
                 binding.txtDocuments.append("- ${doc.userVisibleName} (${doc.docType})\n")
@@ -136,7 +125,7 @@ class TransferDocumentFragment : Fragment() {
             if (viewModel.getSelectedDocuments().isNotEmpty()) {
                 viewModel.createSelectedItemsList()
                 val direction = TransferDocumentFragmentDirections
-                    .navigateToConfirmation(readerCommonName, readerIsTrusted)
+                    .navigateToConfirmation(commonName, trusted)
                 findNavController().navigate(direction)
             } else {
                 // Send response with 0 documents

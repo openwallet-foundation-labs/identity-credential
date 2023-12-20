@@ -68,6 +68,9 @@
         <action
             android:id="@+id/action_settingsFragment_to_selectDocumentFragment"
             app:destination="@id/wallet" />
+        <action
+            android:id="@+id/to_CaCertificates"
+            app:destination="@id/caCertificates" />
     </fragment>
     <fragment
         android:id="@+id/documentDetailFragment"
@@ -142,6 +145,18 @@
             android:id="@+id/action_selfSignedDetails_to_selectDocumentFragment"
             app:destination="@id/wallet" />
     </fragment>
+    <fragment
+        android:id="@+id/caCertificates"
+        android:name="com.android.identity.wallet.settings.CaCertificatesFragment"
+        android:label="mDoc Reader Trust Store">
+        <action
+            android:id="@+id/to_CaCertificateDetails"
+            app:destination="@id/caCertificateDetails" />
+    </fragment>
+    <fragment
+        android:id="@+id/caCertificateDetails"
+        android:name="com.android.identity.wallet.settings.CaCertificateDetailsFragment"
+        android:label="Certificate Details" />
     <dialog
         android:id="@+id/promptPassphrase"
         android:name="com.android.identity.wallet.authconfirmation.PassphrasePrompt">
