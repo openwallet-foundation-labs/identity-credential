@@ -223,7 +223,8 @@ class DocumentManager private constructor(private val context: Context) {
                     mapBuilder.put(field.name, bytes)
                 }
 
-                is CredentialAttributeType.IntegerOptions -> {
+                is CredentialAttributeType.IntegerOptions,
+                is CredentialAttributeType.NUMBER-> {
                     if (field.value != "") {
                         mapBuilder.put(
                             field.name,

@@ -20,10 +20,11 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.navigation.NavDirections
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
-import com.android.mdl.appreader.document.RequestMdl
 import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.home.CreateRequestViewModel
 import com.android.mdl.appreader.theme.ReaderAppTheme
@@ -188,11 +189,15 @@ class RequestOptionsFragment : Fragment() {
         findNavController().navigate(destination)
     }
 
-    private fun getCustomMdlDestination() = RequestOptionsFragmentDirections.toRequestCustom(
-        RequestMdl,
-        calcRequestDocumentList(),
-        args.keepConnection
-    )
+    private fun getCustomMdlDestination():NavDirections {
+        val requestDocumentList = calcRequestDocumentList()
+        val mdl = requestDocumentList.getAll().first { it.docType == RequestDocument.MDL_DOCTYPE }
+        return RequestOptionsFragmentDirections.toRequestCustom(
+            mdl,
+            requestDocumentList,
+            args.keepConnection
+        )
+    }
 
     private fun calcRequestDocumentList(): RequestDocumentList {
         // TODO: get intent to retain from user

@@ -31,15 +31,43 @@ class CredentialTypeRepository {
 
     /**
      * Add a Credential Type to the repository.
+     *
+     * @param credentialType the Credential Type to add
      */
-    fun addCredentialType(credentialType: CredentialType){
+    fun addCredentialType(credentialType: CredentialType) {
         credentialTypes.add(credentialType)
     }
 
     /**
      * Get all the Credential Types that are in the repository.
+     *
+     * @return all the [CredentialType]s in the repository
      */
-    fun getCredentialTypes(): List<CredentialType>{
+    fun getCredentialTypes(): List<CredentialType> {
         return credentialTypes
+    }
+
+    /**
+     * Get an mdoc credential type by its doc type
+     *
+     * @param docType the type of the mdoc credential     *
+     * @return the [MdocCredentialType] when found
+     */
+    fun getMdocCredentialType(docType: String): MdocCredentialType? {
+        return credentialTypes.find {
+            it.mdocCredentialType?.docType?.equals(docType) ?: false
+        }?.mdocCredentialType
+    }
+
+    /**
+     * Get a VC credential type by its type
+     *
+     * @param type the type of the VC credential     *
+     * @return the [VcCredentialType] when found
+     */
+    fun getVcCredentialType(type: String): VcCredentialType? {
+        return credentialTypes.find {
+            it.vcCredentialType?.type?.equals(type) ?: false
+        }?.vcCredentialType
     }
 }

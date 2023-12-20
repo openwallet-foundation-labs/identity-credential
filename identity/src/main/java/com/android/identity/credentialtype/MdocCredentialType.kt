@@ -24,9 +24,8 @@ package com.android.identity.credentialtype
  */
 class MdocCredentialType private constructor(
     val docType: String,
-    val namespaces: List<MdocNamespace>
+    val namespaces: Map<String, MdocNamespace>
 ) {
-
     /**
      * Builder class for class [MdocCredentialType].
      *
@@ -70,6 +69,6 @@ class MdocCredentialType private constructor(
         /**
          * Build the [MdocCredentialType].
          */
-        fun build() = MdocCredentialType(docType, namespaces.values.map { it.build() })
+        fun build() = MdocCredentialType(docType, namespaces.map { Pair(it.key, it.value.build()) }.toMap())
     }
 }

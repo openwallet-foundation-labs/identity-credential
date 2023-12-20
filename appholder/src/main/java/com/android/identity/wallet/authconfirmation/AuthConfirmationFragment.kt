@@ -84,14 +84,9 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
     }
 
     private fun stringValueFor(docType: String, namespace: String, element: String): String {
-        val credentialType = HolderApp.credentialTypeRepositoryInstance.getCredentialTypes()
-            .find { it.mdocCredentialType != null && it.mdocCredentialType?.docType == docType }
-            ?: return element
-        val mdocNamespace = credentialType.mdocCredentialType?.namespaces?.find { it.namespace == namespace }
-            ?: return element
-        val dataElement = mdocNamespace.dataElements.find { it.attribute.identifier == element }
-            ?: return element
-        return dataElement.attribute.displayName
+        return HolderApp.credentialTypeRepositoryInstance.getMdocCredentialType(docType)?.namespaces?.get(
+            namespace
+        )?.dataElements?.get(element)?.attribute?.displayName ?: element
     }
 
     private fun sendResponse() {
