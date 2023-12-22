@@ -1,6 +1,7 @@
 plugins {
     id("java-library")
     id "org.jetbrains.kotlin.jvm"
+    alias libs.plugins.kotlinx.serialization.plugin
     alias libs.plugins.dokka
 }
 
@@ -14,6 +15,7 @@ dependencies {
     implementation "co.nstant.in:cbor:0.9"
     implementation "org.bouncycastle:bcprov-jdk15on:1.69"
     implementation("org.bouncycastle:bcpkix-jdk15on:1.69")
+    implementation libs.kotlinx.serialization
 
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.bouncycastle:bcprov-jdk15on:1.69"
