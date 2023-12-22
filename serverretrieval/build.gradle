@@ -1,0 +1,24 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'org.gretty:gretty:+'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'war'
+apply plugin: 'org.gretty'
+
+dependencies {
+    implementation 'com.nimbusds:oauth2-oidc-sdk:11.7'
+    implementation 'javax.servlet:javax.servlet-api:4.0.1'
+    implementation project(path: ':identity')
+    implementation "co.nstant.in:cbor:0.9"
+    testImplementation 'junit:junit:4.12'
+}
+
+gretty {
+}
