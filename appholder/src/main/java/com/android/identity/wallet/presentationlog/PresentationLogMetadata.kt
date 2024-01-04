@@ -30,13 +30,12 @@ class PresentationLogMetadata private constructor(
                     .put("transaction_start", transactionStartTime)
                     .put("transaction_end", transactionEndTime)
                     .put("session_transcript", sessionTranscript)
-                    .put("location_latitude", locationLatitude)
-                    .put("location_longitude", locationLongitude)
+                    .put("location_latitude", locationLatitude.toString())
+                    .put("location_longitude", locationLongitude.toString())
                     .end()
                     .build()
             )
         }.toByteArray()
-
 
     companion object {
         /**

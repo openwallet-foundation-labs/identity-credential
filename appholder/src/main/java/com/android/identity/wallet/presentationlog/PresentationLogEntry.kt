@@ -12,9 +12,10 @@ class PresentationLogEntry private constructor(
     fun getCborData(logComponent: PresentationLogComponent) =
         componentLogs[logComponent] ?: byteArrayOf()
 
-    fun getRequest(): DeviceRequestParser.DeviceRequest {
+    fun getRequest(): DeviceRequestParser.DeviceRequest? {
         val requestBytes = getCborData(PresentationLogComponent.Request)
-        if (requestBytes.isEmpty()) throw IllegalStateException("Presentation Log Request not present")
+//        if (requestBytes.isEmpty()) throw IllegalStateException("Presentation Log Request not present")
+        if (requestBytes.isEmpty()) return null
 
         val metadata = getMetadata()
         val parser = DeviceRequestParser()

@@ -20,15 +20,19 @@ class PresentationLogStore(
     private val storageEngine: StorageEngine,
 ) {
 
+    val historyLogStore = PresentationHistoryStore(storageEngine)
+
     object StoreConst {
         // used for identifying entries belonging to PresentationLogStore when persisting logs in the StorageEngine
         val LOG_PREFIX = "IC_Log_"
 
         // retain a history of the last MAX_ENTRIES number of log entries
         val MAX_ENTRIES = 100
-
     }
 
+    init {
+        PresentationLogComponent.ALL
+    }
     // builder responsible for adding the different parts of a PresentationLogEntry and persisting
     // logs upon a successful or terminated transaction.
     private var presentationLogEntryBuilder: PresentationLogEntry.Builder =
@@ -111,55 +115,55 @@ class PresentationLogStore(
         // ready a new PresentationLogEntry Builder
         presentationLogEntryBuilder = PresentationLogEntry.Builder()
     }
-}
 
+    /**
+     * Provides a Public/External History Log Store that can fetch previous log entries,
+     * delete a single entry, and delete all entries.
+     */
+    class PresentationHistoryStore(
+        private val storageEngine: StorageEngine,
+    ) {
 
-/**f
- * Provides a Log Store that can fetch previous log entries, delete a single entry, and delete all entries.
- */
-class LogHistoryStore(
-    private val storageEngine: StorageEngine,
-) {
-
-    fun fetchAllLogEntries(): List<PresentationLogEntry> {
-        val persistedLogEntries = mutableListOf<PresentationLogEntry>()
-        fetchAllLogEntryIds()
-            .forEach { logEntryId ->
-                val presentationLogEntry = PresentationLogEntry.Builder(logEntryId)
-                PresentationLogComponent.ALL.forEach { logComponent ->
-                    val componentStoreKey = logComponent.getStoreKey(logEntryId)
-                    presentationLogEntry.addComponentLog(
-                        logComponent,
-                        storageEngine[componentStoreKey] ?: byteArrayOf()
-                    )
+        fun fetchAllLogEntries(): List<PresentationLogEntry> {
+            val persistedLogEntries = mutableListOf<PresentationLogEntry>()
+            fetchAllLogEntryIds()
+                .forEach { logEntryId ->
+                    val presentationLogEntry = PresentationLogEntry.Builder(logEntryId)
+                    PresentationLogComponent.ALL.forEach { logComponent ->
+                        val componentStoreKey = logComponent.getStoreKey(logEntryId)
+                        presentationLogEntry.addComponentLog(
+                            logComponent,
+                            storageEngine[componentStoreKey] ?: byteArrayOf()
+                        )
+                    }
+                    persistedLogEntries.add(presentationLogEntry.build())
                 }
-                persistedLogEntries.add(presentationLogEntry.build())
-            }
 
 
-        return persistedLogEntries
-    }
-
-    private fun fetchAllLogEntryIds(): List<Int> = storageEngine.enumerate()
-        .filter { it.startsWith(PresentationLogStore.StoreConst.LOG_PREFIX) }
-        .map { extractLogEntryId(it) }
-        .distinct()
-
-    private fun extractLogEntryId(storeKey: String) =
-        storeKey
-            .split(PresentationLogStore.StoreConst.LOG_PREFIX)[1]
-            .split(PresentationLogComponent.COMPONENT_PREFIX)[0]
-            .toInt()
-
-
-    fun deleteLogEntry(entryId: Int) =
-        PresentationLogComponent.ALL.forEach { logComponent ->
-            storageEngine.delete(logComponent.getStoreKey(entryId))
+            return persistedLogEntries
         }
 
-    fun deleteAllLogs() =
-        fetchAllLogEntryIds()
-            .forEach { logEntryId ->
-                deleteLogEntry(logEntryId)
+        private fun fetchAllLogEntryIds(): List<Int> = storageEngine.enumerate()
+            .filter { it.startsWith(PresentationLogStore.StoreConst.LOG_PREFIX) }
+            .map { extractLogEntryId(it) }
+            .distinct()
+
+        private fun extractLogEntryId(storeKey: String) =
+            storeKey
+                .split(PresentationLogStore.StoreConst.LOG_PREFIX)[1]
+                .split(PresentationLogComponent.COMPONENT_PREFIX)[0]
+                .toInt()
+
+
+        fun deleteLogEntry(entryId: Int) =
+            PresentationLogComponent.ALL.forEach { logComponent ->
+                storageEngine.delete(logComponent.getStoreKey(entryId))
             }
+
+        fun deleteAllLogs() =
+            fetchAllLogEntryIds()
+                .forEach { logEntryId ->
+                    deleteLogEntry(logEntryId)
+                }
+    }
 }
