@@ -7,7 +7,7 @@ cryptography==41.0.6
 idna==2.10
 Naked==0.1.31
 pycparser==2.20
-pycryptodome==3.10.1
+pycryptodome==3.19.1
 pycryptodomex==3.10.1
 PyYAML==5.4.1
 requests==2.31.0
