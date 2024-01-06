@@ -12,16 +12,14 @@ import kotlinx.coroutines.launch
 class PresentationHistoryViewModel(val app: Application) : AndroidViewModel(app) {
 
     val presentationHistoryStore: PresentationLogStore.PresentationHistoryStore =
-        ProvisioningUtil.getInstance(app.applicationContext).logStore.historyLogStore
+        ProvisioningUtil.getInstance(app.applicationContext).logStore.presentationHistoryStore
 
-
-    private val _logEntries =
-        MutableStateFlow(listOf(PresentationLogEntry.Builder(101010101).build()))
+    private val _logEntries = MutableStateFlow(listOf<PresentationLogEntry>())
     val logEntries: StateFlow<List<PresentationLogEntry>>
         get() = _logEntries.asStateFlow()
 
 
-    fun getPresentationLogHistory(): StateFlow<List<PresentationLogEntry>> {
+    fun fetchPresentationLogHistory(): StateFlow<List<PresentationLogEntry>> {
         val entries = presentationHistoryStore.fetchAllLogEntries()
         viewModelScope.launch {
             _logEntries.value = entries
@@ -29,19 +27,19 @@ class PresentationHistoryViewModel(val app: Application) : AndroidViewModel(app)
         return logEntries
     }
 
-    fun deleteSelectedEntries(entryIds: List<Int>) {
+    fun deleteSelectedEntries(entryIds: List<Long>) {
         viewModelScope.launch {
             entryIds.forEach { entryId ->
                 presentationHistoryStore.deleteLogEntry(entryId)
             }
-            getPresentationLogHistory()
+            fetchPresentationLogHistory()
         }
     }
 
     fun deleteAllEntries() {
         viewModelScope.launch {
             presentationHistoryStore.deleteAllLogs()
-            getPresentationLogHistory()
+            fetchPresentationLogHistory()
         }
     }
 }

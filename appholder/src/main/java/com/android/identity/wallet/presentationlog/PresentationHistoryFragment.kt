@@ -70,7 +70,7 @@ class PresentationHistoryFragment : BottomSheetDialogFragment() {
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
-                val logEntries by viewModel.getPresentationLogHistory().collectAsState()
+                val logEntries by viewModel.fetchPresentationLogHistory().collectAsState()
                 HolderAppTheme {
                     PresentationHistoryContainer(
                         modifier = Modifier
@@ -96,10 +96,10 @@ fun PresentationHistoryContainer(
     modifier: Modifier = Modifier,
     title: String,
     logEntries: List<PresentationLogEntry>,
-    onDeleteSelected: (List<Int>) -> Unit,
+    onDeleteSelected: (List<Long>) -> Unit,
     onDeleteAll: () -> Unit
 ) {
-    val selectedEntries = remember { mutableStateMapOf<Int, Boolean>() }
+    val selectedEntries = remember { mutableStateMapOf<Long, Boolean>() }
 
     Column(modifier = modifier) {
         BottomSheetHandle(
@@ -184,7 +184,7 @@ private fun BottomSheetHandle(
 private fun LogEntryRowContainer(
     modifier: Modifier = Modifier,
     entry: PresentationLogEntry,
-    onSelectedLogEntry: (entryId: Int, checked: Boolean) -> Unit
+    onSelectedLogEntry: (entryId: Long, checked: Boolean) -> Unit
 ) {
     Row(
         modifier = modifier,
@@ -205,13 +205,14 @@ private fun LogEntryRowContainer(
 private fun LogEntryRow(
     modifier: Modifier = Modifier,
     logEntry: PresentationLogEntry,
-    onSelectedLogEntry: (entryId: Int, checked: Boolean) -> Unit
+    onSelectedLogEntry: (entryId: Long, checked: Boolean) -> Unit
 ) {
     var isChecked by remember { mutableStateOf(false) }
 
     val request = logEntry.getRequest()
     val response = logEntry.getResponse()
     val metadata = logEntry.getMetadata()
+        ?: throw IllegalStateException("Expected PresentationLogEntry ${logEntry.id} to have the Metadata component persisted to StorageEngine but none could be found")
 
     FilterChip(
         modifier = modifier,

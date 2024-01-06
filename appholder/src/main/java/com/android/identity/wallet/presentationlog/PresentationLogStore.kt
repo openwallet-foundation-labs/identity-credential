@@ -1,50 +1,43 @@
 package com.android.identity.wallet.presentationlog
 
-import android.location.Location
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborEncoder
-import com.android.identity.internal.Util
-import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.wallet.util.EngagementType
-import com.android.identity.wallet.util.log
-import java.io.ByteArrayOutputStream
-import java.security.PublicKey
-import kotlin.random.Random.Default.nextInt
 
 /**
  * A Store for logging transactions of mDL Presentations.
- *
  */
 class PresentationLogStore(
     private val storageEngine: StorageEngine,
 ) {
 
-    val historyLogStore = PresentationHistoryStore(storageEngine)
+    val presentationHistoryStore = PresentationHistoryStore(storageEngine)
 
     object StoreConst {
         // used for identifying entries belonging to PresentationLogStore when persisting logs in the StorageEngine
-        val LOG_PREFIX = "IC_Log_"
+        const val LOG_PREFIX = "IC_Log_"
 
         // retain a history of the last MAX_ENTRIES number of log entries
-        val MAX_ENTRIES = 100
+        const val MAX_ENTRIES = 100
     }
 
     init {
+        // referencing will instantiate all objects inside
         PresentationLogComponent.ALL
     }
+
     // builder responsible for adding the different parts of a PresentationLogEntry and persisting
     // logs upon a successful or terminated transaction.
-    private var presentationLogEntryBuilder: PresentationLogEntry.Builder =
+    private var logEntryBuilder: PresentationLogEntry.Builder =
         PresentationLogEntry.Builder()
 
+    // builder responsible for populating a PresentationLogMetadata with type-values
     private var metadataBuilder: PresentationLogMetadata.Builder = PresentationLogMetadata.Builder()
 
     /**
-     * Add data of a specific LogComponent to [PresentationLogEntry] whose bytes are CBOR encoded
+     * Add the CBOR data bytes of a specific LogComponent to [PresentationLogEntry].
      */
     private fun logComponent(logComponent: PresentationLogComponent, data: ByteArray) {
-        presentationLogEntryBuilder.addComponentLog(logComponent, data)
+        logEntryBuilder.addComponentLog(logComponent, data)
     }
 
     fun logRequestData(
@@ -53,7 +46,7 @@ class PresentationLogStore(
         engagementType: EngagementType
     ) {
         logComponent(PresentationLogComponent.Request, data)
-        logMetadataData()
+        logMetaData()
             .engagementType(engagementType)
             .sessionTranscript(sessionTranscript ?: byteArrayOf())
 
@@ -63,12 +56,7 @@ class PresentationLogStore(
         logComponent(PresentationLogComponent.Response, data)
     }
 
-    fun logMetadataData() = metadataBuilder
-
-    fun logPresentationError(throwable: Throwable) {
-        metadataBuilder.transactionError(throwable)
-        persistCurrentLogEntry()
-    }
+    fun logMetaData() = metadataBuilder
 
     fun logPresentationComplete() {
         metadataBuilder.transactionComplete()
@@ -91,8 +79,15 @@ class PresentationLogStore(
         persistCurrentLogEntry()
     }
 
+    fun logPresentationError(throwable: Throwable) {
+        metadataBuilder.transactionError(throwable)
+        persistCurrentLogEntry()
+    }
 
-    private fun buildAndAddMetadataLog() {
+    /**
+     *
+     */
+    private fun addMetadataLogs() {
         logComponent(
             PresentationLogComponent.Metadata,
             metadataBuilder.build().cborDataBytes
@@ -102,18 +97,47 @@ class PresentationLogStore(
         metadataBuilder = PresentationLogMetadata.Builder()
     }
 
+    /**
+     * Persist all the data of log components that built the current PresentationLogEntry instance.
+     * Creates a new instance of [PresentationLogEntry.Builder] ready to persist yet another entry
+     */
     private fun persistCurrentLogEntry() {
-        buildAndAddMetadataLog()
+        // add the Metadata log component bytes to the builder
+        addMetadataLogs()
         // Build the log entry to persist the log data
-        val logEntry = presentationLogEntryBuilder.build()
+        val logEntry = logEntryBuilder.build()
 
         PresentationLogComponent.ALL.forEach { logComponent ->
+            // generate the key to use for storing the byte array of every log component
             val storeKey = logComponent.getStoreKey(logEntry.id)
-            storageEngine.put(storeKey, logEntry.getCborData(logComponent))
+            // create a new entry record in secure persistent storage for every log component's bytes in PresentationLogEntry
+            storageEngine.put(storeKey, logEntry.getLogComponentBytes(logComponent))
         }
 
         // ready a new PresentationLogEntry Builder
-        presentationLogEntryBuilder = PresentationLogEntry.Builder()
+        logEntryBuilder = PresentationLogEntry.Builder()
+
+        // if we stored 1 more log entry than the defined MAX_ENTRIES, remove the oldest entry
+        ensureMaxLogEntries()
+    }
+
+    /**
+     * Ensure there are no more than SoreConst.MAX_ENTRIES entries saved in [StorageEngine], else,
+     * delete the oldest entry.
+     *
+     * This function is always called after every persisting of PresentationLogEntry.
+     */
+    private fun ensureMaxLogEntries() {
+        val allLogEntryIds = presentationHistoryStore.fetchAllLogEntryIds().sorted()
+        var difference = StoreConst.MAX_ENTRIES - allLogEntryIds.size
+        var oldestIndex = 0
+        while (difference < 0) { // there's at least 1 more entry over the defined MAX_ENTRIES
+            // delete the oldest entries to bring count to MAX_ENTRIES
+            val oldestId = allLogEntryIds[oldestIndex]
+            presentationHistoryStore.deleteLogEntry(oldestId)
+            difference++ // 1 entry was purged
+            oldestIndex++ // go to next oldest entry
+        }
     }
 
     /**
@@ -124,46 +148,69 @@ class PresentationLogStore(
         private val storageEngine: StorageEngine,
     ) {
 
+        /**
+         * Retrieve the bytes of all persisted log entries and return a list of PresentationLogEntry of those entries.
+         */
         fun fetchAllLogEntries(): List<PresentationLogEntry> {
+            // list to populate with all persisted PresentationLogEntry objects
             val persistedLogEntries = mutableListOf<PresentationLogEntry>()
-            fetchAllLogEntryIds()
-                .forEach { logEntryId ->
-                    val presentationLogEntry = PresentationLogEntry.Builder(logEntryId)
-                    PresentationLogComponent.ALL.forEach { logComponent ->
-                        val componentStoreKey = logComponent.getStoreKey(logEntryId)
+            // get all the unique IDs that are embedded in the store key of every component tied to a PresentationLogEntry
+            fetchAllLogEntryIds().forEach { logEntryId ->
+                // Creating a new PresentationLogEntry for every encountered ID
+                val presentationLogEntry = PresentationLogEntry.Builder(logEntryId)
+                // try get saved bytes of every log component to build the PresentationLogEntry with bytes of every found component
+                PresentationLogComponent.ALL.forEach { logComponent ->
+                    // look for bytes of a component (for every entry ID) at this key
+                    val componentStoreKey = logComponent.getStoreKey(logEntryId)
+                    val componentValueBytes = storageEngine[componentStoreKey]
+                    // add components that have data persisted
+                    if (componentValueBytes != null) {
                         presentationLogEntry.addComponentLog(
                             logComponent,
-                            storageEngine[componentStoreKey] ?: byteArrayOf()
+                            componentValueBytes
                         )
                     }
-                    persistedLogEntries.add(presentationLogEntry.build())
                 }
-
+                // build the entry now that we've extracted all possible bytes of every log component for a given entry ID
+                persistedLogEntries.add(presentationLogEntry.build())
+            }
 
             return persistedLogEntries
         }
 
-        private fun fetchAllLogEntryIds(): List<Int> = storageEngine.enumerate()
-            .filter { it.startsWith(PresentationLogStore.StoreConst.LOG_PREFIX) }
+        /**
+         * Enumerate all persisted entries of [StorageEngine] and filter for (Presentation) log entries,
+         * return only unique log entry IDs - where each log entry ID can have 1 or more key/value pairs
+         * stored in the secure persistent storage table.
+         */
+        fun fetchAllLogEntryIds(): List<Long> = storageEngine.enumerate()
+            .filter { it.startsWith(StoreConst.LOG_PREFIX) }
             .map { extractLogEntryId(it) }
             .distinct()
 
+        /**
+         * Given a key found in [StorageEngine], extract the ID of the log entry that was stored.
+         */
         private fun extractLogEntryId(storeKey: String) =
             storeKey
-                .split(PresentationLogStore.StoreConst.LOG_PREFIX)[1]
+                .split(StoreConst.LOG_PREFIX)[1]
                 .split(PresentationLogComponent.COMPONENT_PREFIX)[0]
-                .toInt()
+                .toLong()
 
 
-        fun deleteLogEntry(entryId: Int) =
+        /**
+         * Delete all saved records (log components) from [StorageEngine] associated with the specified entryID.
+         */
+        fun deleteLogEntry(entryId: Long) =
             PresentationLogComponent.ALL.forEach { logComponent ->
                 storageEngine.delete(logComponent.getStoreKey(entryId))
             }
 
+        /**
+         * Delete all logs - iterate through all persisted unique entry IDs and delete all log components
+         * tied for each entry ID.
+         */
         fun deleteAllLogs() =
-            fetchAllLogEntryIds()
-                .forEach { logEntryId ->
-                    deleteLogEntry(logEntryId)
-                }
+            fetchAllLogEntryIds().forEach { logEntryId -> deleteLogEntry(logEntryId) }
     }
 }

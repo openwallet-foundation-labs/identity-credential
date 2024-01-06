@@ -39,9 +39,9 @@ class PresentationLogMetadata private constructor(
 
     companion object {
         /**
-         * Return a new instance of PresentationLogMetadata extracted from the passed-in CBOR encoded data
+         * Return a new instance of PresentationLogMetadata extracted from the passed-in CBOR encoded bytes
          */
-        fun fromCborData(cborData: ByteArray): PresentationLogMetadata {
+        fun fromCborBytes(cborData: ByteArray): PresentationLogMetadata {
             val metadataItem = Util.cborDecode(cborData)
             return PresentationLogMetadata(
                 PresentationTransactionStatus.fromNumber(
