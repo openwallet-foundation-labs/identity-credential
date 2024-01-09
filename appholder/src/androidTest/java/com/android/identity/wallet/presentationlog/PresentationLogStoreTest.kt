@@ -5,7 +5,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.wallet.util.PreferencesHelper
-import com.android.identity.wallet.util.ProvisioningUtil
 import org.junit.Before
 import org.junit.runner.RunWith
 

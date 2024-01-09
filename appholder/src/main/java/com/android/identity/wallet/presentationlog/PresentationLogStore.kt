@@ -3,26 +3,51 @@ package com.android.identity.wallet.presentationlog
 import com.android.identity.storage.StorageEngine
 import com.android.identity.wallet.util.EngagementType
 
+// for readability
+typealias LogComponent = PresentationLogStore.LogComponent
+
 /**
- * A Store for logging transactions of mDL Presentations.
+ * A Log Store that is used to form and persist all components of a PresentationLogEntry.
+ * It also provides a History Store for obtaining previously persisted log entries (list of PresentationLogEntry)
  */
 class PresentationLogStore(
     private val storageEngine: StorageEngine,
 ) {
-
     val presentationHistoryStore = PresentationHistoryStore(storageEngine)
+    enum class LogComponent {
+        Request,
+        Response,
+        Metadata,
+        ;
 
-    object StoreConst {
+        /**
+         * Differentiate const fields from enum names.
+         */
+        object Const {
+            const val COMPONENT_PREFIX = "_CMPNT_"
+        }
+
+        /**
+         * Return the store key for storing/retrieving bytes of a LogComponent in [StorageEngine].
+         */
+        fun getStoreKey(logEntryId: Long) = StoreConst.LOG_PREFIX +
+                logEntryId +
+                Const.COMPONENT_PREFIX +
+                name
+    }
+
+    /**
+     * Const object (rather than companion) dedicated to providing constants
+     */
+    protected object StoreConst {
         // used for identifying entries belonging to PresentationLogStore when persisting logs in the StorageEngine
         const val LOG_PREFIX = "IC_Log_"
 
+        // whether or not to enforce a limit to the number of log entries that are persisted to [StorageEngine]
+        const val MAX_ENTRIES_ENFORCEMENT = true
+
         // retain a history of the last MAX_ENTRIES number of log entries
         const val MAX_ENTRIES = 100
-    }
-
-    init {
-        // referencing will instantiate all objects inside
-        PresentationLogComponent.ALL
     }
 
     // builder responsible for adding the different parts of a PresentationLogEntry and persisting
@@ -36,7 +61,7 @@ class PresentationLogStore(
     /**
      * Add the CBOR data bytes of a specific LogComponent to [PresentationLogEntry].
      */
-    private fun logComponent(logComponent: PresentationLogComponent, data: ByteArray) {
+    private fun addLogComponentData(logComponent: LogComponent, data: ByteArray) {
         logEntryBuilder.addComponentLog(logComponent, data)
     }
 
@@ -45,7 +70,7 @@ class PresentationLogStore(
         sessionTranscript: ByteArray?,
         engagementType: EngagementType
     ) {
-        logComponent(PresentationLogComponent.Request, data)
+        addLogComponentData(LogComponent.Request, data)
         logMetaData()
             .engagementType(engagementType)
             .sessionTranscript(sessionTranscript ?: byteArrayOf())
@@ -53,7 +78,7 @@ class PresentationLogStore(
     }
 
     fun logResponseData(data: ByteArray) {
-        logComponent(PresentationLogComponent.Response, data)
+        addLogComponentData(LogComponent.Response, data)
     }
 
     fun logMetaData() = metadataBuilder
@@ -88,8 +113,8 @@ class PresentationLogStore(
      *
      */
     private fun addMetadataLogs() {
-        logComponent(
-            PresentationLogComponent.Metadata,
+        addLogComponentData(
+            LogComponent.Metadata,
             metadataBuilder.build().cborDataBytes
         )
 
@@ -107,7 +132,7 @@ class PresentationLogStore(
         // Build the log entry to persist the log data
         val logEntry = logEntryBuilder.build()
 
-        PresentationLogComponent.ALL.forEach { logComponent ->
+        LogComponent.values().forEach { logComponent ->
             // generate the key to use for storing the byte array of every log component
             val storeKey = logComponent.getStoreKey(logEntry.id)
             // create a new entry record in secure persistent storage for every log component's bytes in PresentationLogEntry
@@ -117,17 +142,20 @@ class PresentationLogStore(
         // ready a new PresentationLogEntry Builder
         logEntryBuilder = PresentationLogEntry.Builder()
 
-        // if we stored 1 more log entry than the defined MAX_ENTRIES, remove the oldest entry
-        ensureMaxLogEntries()
+        if (StoreConst.MAX_ENTRIES_ENFORCEMENT) {
+            // if we stored 1 more log entry than the defined MAX_ENTRIES, remove the oldest entry
+            enforceMaxLogEntries()
+        }
     }
 
     /**
      * Ensure there are no more than SoreConst.MAX_ENTRIES entries saved in [StorageEngine], else,
-     * delete the oldest entry.
+     * delete as many oldest entries as necessary to satisfy requirement.
      *
-     * This function is always called after every persisting of PresentationLogEntry.
+     * This function is always called after every persisting of PresentationLogEntry and only
+     * if MAX_ENTRIES_ENFORCEMENT = true.
      */
-    private fun ensureMaxLogEntries() {
+    private fun enforceMaxLogEntries() {
         val allLogEntryIds = presentationHistoryStore.fetchAllLogEntryIds().sorted()
         var difference = StoreConst.MAX_ENTRIES - allLogEntryIds.size
         var oldestIndex = 0
@@ -147,7 +175,6 @@ class PresentationLogStore(
     class PresentationHistoryStore(
         private val storageEngine: StorageEngine,
     ) {
-
         /**
          * Retrieve the bytes of all persisted log entries and return a list of PresentationLogEntry of those entries.
          */
@@ -159,7 +186,7 @@ class PresentationLogStore(
                 // Creating a new PresentationLogEntry for every encountered ID
                 val presentationLogEntry = PresentationLogEntry.Builder(logEntryId)
                 // try get saved bytes of every log component to build the PresentationLogEntry with bytes of every found component
-                PresentationLogComponent.ALL.forEach { logComponent ->
+                LogComponent.values().forEach { logComponent ->
                     // look for bytes of a component (for every entry ID) at this key
                     val componentStoreKey = logComponent.getStoreKey(logEntryId)
                     val componentValueBytes = storageEngine[componentStoreKey]
@@ -174,7 +201,6 @@ class PresentationLogStore(
                 // build the entry now that we've extracted all possible bytes of every log component for a given entry ID
                 persistedLogEntries.add(presentationLogEntry.build())
             }
-
             return persistedLogEntries
         }
 
@@ -194,7 +220,7 @@ class PresentationLogStore(
         private fun extractLogEntryId(storeKey: String) =
             storeKey
                 .split(StoreConst.LOG_PREFIX)[1]
-                .split(PresentationLogComponent.COMPONENT_PREFIX)[0]
+                .split(LogComponent.Const.COMPONENT_PREFIX)[0]
                 .toLong()
 
 
@@ -202,7 +228,7 @@ class PresentationLogStore(
          * Delete all saved records (log components) from [StorageEngine] associated with the specified entryID.
          */
         fun deleteLogEntry(entryId: Long) =
-            PresentationLogComponent.ALL.forEach { logComponent ->
+            LogComponent.values().forEach { logComponent ->
                 storageEngine.delete(logComponent.getStoreKey(entryId))
             }
 

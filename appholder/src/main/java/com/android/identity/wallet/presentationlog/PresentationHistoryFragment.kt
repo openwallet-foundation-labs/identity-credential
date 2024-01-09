@@ -1,5 +1,7 @@
 package com.android.identity.wallet.presentationlog
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -43,8 +45,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.activityViewModels
 import co.nstant.`in`.cbor.model.DataItem
@@ -57,7 +64,10 @@ import com.android.identity.wallet.theme.HolderAppTheme
 import com.android.identity.wallet.util.FormatUtil.millisecondsToFullDateTimeString
 import com.android.identity.wallet.util.FormatUtil.millisecondsToTimeString
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import org.bouncycastle.crypto.params.Blake3Parameters.context
 import java.time.Duration
+import java.util.Locale
+
 
 class PresentationHistoryFragment : BottomSheetDialogFragment() {
 
@@ -261,11 +271,40 @@ fun MetadataLogView(metadata: PresentationLogMetadata) {
     metadataInfo += "Engagement type: ${metadata.engagementType.name}\n"
     metadataInfo += "Error: ${metadata.error}\n"
     metadataInfo += "Session transcript length: ${metadata.sessionTranscript.size}\n"
-    metadataInfo += "Location (lat,long): (${metadata.locationLatitude},${metadata.locationLongitude})"
-
+    val locationText =
+        "Location (lat,long): (${metadata.locationLatitude},${metadata.locationLongitude})"
+    val context = LocalContext.current
     Text(
         text = metadataInfo,
         style = MaterialTheme.typography.bodyMedium
+    )
+    Text(
+        modifier = Modifier
+            .clickable {
+                val uri: String =
+                    java.lang.String.format(
+                        Locale.ENGLISH, "geo:%f,%f?q=%f,%f(mDL Presentation on $dateTimeStart)",
+                        metadata.locationLatitude,
+                        metadata.locationLongitude,
+                        metadata.locationLatitude,
+                        metadata.locationLongitude
+                    )
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+                context.startActivity(intent)
+            }
+            .padding(16.dp)
+        ,
+        text = buildAnnotatedString {
+            append(locationText)
+            addStyle(
+                style = SpanStyle(
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = TextDecoration.Underline
+                ),
+                start = 0,
+                end = locationText.length - 1
+            )
+        },
     )
 }
 
@@ -298,8 +337,9 @@ fun RequestLogView(request: DeviceRequestParser.DeviceRequest?) {
             )
         }
 
+
         request.documentRequests.forEach { docRequest ->
-            val requestHeader = "Request (v${request.version}) for ${docRequest.docType}"
+            val requestHeader = "Request (v${request.version}) for Doc: ${docRequest.docType}"
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -335,6 +375,21 @@ fun RequestLogView(request: DeviceRequestParser.DeviceRequest?) {
                             text = text
                         )
                     }
+                    val requestInfo = docRequest.requestInfo
+
+
+                    val requestText =
+                        "request info: ${requestInfo.size}, Reader Authentication: ${docRequest.readerAuth}"
+                    Text(
+                        modifier = Modifier
+                            .padding(start = 5.dp)
+                            .border(
+                                1.dp,
+                                SolidColor(MaterialTheme.colorScheme.outline),
+                                CutCornerShape(5.dp)
+                            ),
+                        text = requestText
+                    )
                 }
             }
         }
