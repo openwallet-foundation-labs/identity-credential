@@ -1,12 +1,15 @@
 package com.android.identity.wallet
 
+import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.view.GravityCompat
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
@@ -17,12 +20,17 @@ import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl
 import com.android.identity.util.Logger
 import com.android.identity.wallet.databinding.ActivityMainBinding
+import com.android.identity.wallet.presentationlog.PresentationLogStore
 import com.android.identity.wallet.util.PreferencesHelper
+import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
 import com.android.identity.wallet.util.logInfo
 import com.android.identity.wallet.util.logWarning
 import com.android.identity.wallet.viewmodel.ShareDocumentViewModel
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.elevation.SurfaceColors
 
 class MainActivity : AppCompatActivity() {
@@ -31,6 +39,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var pendingIntent: PendingIntent
     private var nfcAdapter: NfcAdapter? = null
+
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var locationCallback: LocationCallback
+    val presentationLogStore: PresentationLogStore by lazy {
+        ProvisioningUtil.getInstance(applicationContext).logStore
+    }
 
     private val navController by lazy {
         Navigation.findNavController(this, R.id.nav_host_fragment)
@@ -47,6 +61,31 @@ class MainActivity : AppCompatActivity() {
         setupNfc()
         onNewIntent(intent)
         Logger.setDebugEnabled(PreferencesHelper.isDebugLoggingEnabled())
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            // TODO: handle Location permissions request?
+            //  Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { lastKnownLocation ->
+            presentationLogStore.getMetadataBuilder().location(lastKnownLocation)
+        }
     }
 
     private fun setupNfc() {

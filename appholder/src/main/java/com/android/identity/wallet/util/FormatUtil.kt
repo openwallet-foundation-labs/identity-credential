@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream
 import java.security.PublicKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECPoint
+import java.text.DateFormat.getDateTimeInstance
 import kotlin.math.min
 
 
@@ -90,6 +91,16 @@ object FormatUtil {
 
     fun millisecondsToFullDateString(milliseconds: Long): String {
         val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd")
+        return simpleDateFormat.format(milliseconds)
+    }
+
+    fun millisecondsToFullDateTimeString(milliseconds: Long): String {
+        val simpleDateFormat = SimpleDateFormat("MMM d, yyyy 'at' hh:mm:ss a")
+        return simpleDateFormat.format(milliseconds)
+    }
+
+    fun millisecondsToTimeString(milliseconds: Long): String {
+        val simpleDateFormat = SimpleDateFormat("hh:mm:ss a")
         return simpleDateFormat.format(milliseconds)
     }
 }

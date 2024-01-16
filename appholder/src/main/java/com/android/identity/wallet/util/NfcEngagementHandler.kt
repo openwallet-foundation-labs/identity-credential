@@ -27,6 +27,7 @@ import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.internal.Util
 import com.android.identity.wallet.R
+import com.android.identity.wallet.presentationlog.PresentationLogStore
 import com.android.identity.wallet.transfer.Communication
 import com.android.identity.wallet.transfer.ConnectionSetup
 import com.android.identity.wallet.transfer.TransferManager
@@ -37,6 +38,7 @@ class NfcEngagementHandler : HostApduService() {
     private lateinit var engagementHelper: NfcEngagementHelper
     private lateinit var communication: Communication
     private lateinit var transferManager: TransferManager
+    private lateinit var presentationLogStore: PresentationLogStore
 
     private var presentation: DeviceRetrievalHelper? = null
 
@@ -90,6 +92,7 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onError(error: Throwable) {
             log("Engagement Listener: onError -> ${error.message}")
+            presentationLogStore.persistLogEntryTransactionError(error)
             transferManager.updateStatus(TransferStatus.ERROR)
             engagementHelper.close()
         }
@@ -103,17 +106,24 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             log("Presentation Listener: OnDeviceRequest")
+            presentationLogStore.newLogEntryWithRequest(
+                deviceRequestBytes,
+                communication.getSessionTranscript(),
+                EngagementType.NFC
+            )
             communication.setDeviceRequest(deviceRequestBytes)
             transferManager.updateStatus(TransferStatus.REQUEST)
         }
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
             log("Presentation Listener: onDeviceDisconnected")
+            presentationLogStore.persistLogEntryTransactionDisconnected()
             transferManager.updateStatus(TransferStatus.DISCONNECTED)
         }
 
         override fun onError(error: Throwable) {
             log("Presentation Listener: onError -> ${error.message}")
+            presentationLogStore.persistLogEntryTransactionError(error)
             transferManager.updateStatus(TransferStatus.ERROR)
         }
     }
@@ -121,6 +131,7 @@ class NfcEngagementHandler : HostApduService() {
     override fun onCreate() {
         super.onCreate()
         log("onCreate")
+        presentationLogStore = ProvisioningUtil.getInstance(applicationContext).logStore
         communication = Communication.getInstance(applicationContext)
         transferManager = TransferManager.getInstance(applicationContext)
         transferManager.setCommunication(communication)
@@ -139,7 +150,8 @@ class NfcEngagementHandler : HostApduService() {
         }
         engagementHelper = builder.build()
 
-        val launchAppIntent = Intent(applicationContext, com.android.identity.wallet.MainActivity::class.java)
+        val launchAppIntent =
+            Intent(applicationContext, com.android.identity.wallet.MainActivity::class.java)
         launchAppIntent.action = Intent.ACTION_VIEW
         launchAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
         launchAppIntent.addCategory(Intent.CATEGORY_DEFAULT)

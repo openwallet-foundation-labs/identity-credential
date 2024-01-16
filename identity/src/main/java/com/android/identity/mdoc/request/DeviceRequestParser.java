@@ -16,6 +16,8 @@
 
 package com.android.identity.mdoc.request;
 
+import static java.rmi.server.LogStream.log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -242,6 +244,7 @@ public final class DeviceRequestParser {
                             requestInfo.put(key, encodedValue);
                         }
                     }
+
 
                     String docType = Util.cborMapExtractString(itemsRequest, "docType");
                     DocumentRequest.Builder builder = new DocumentRequest.Builder(docType,

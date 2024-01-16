@@ -25,6 +25,7 @@ import com.android.identity.util.Timestamp
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.DocumentDataReader
 import com.android.identity.wallet.documentdata.DocumentElements
+import com.android.identity.wallet.presentationlog.PresentationLogStore
 import com.android.identity.wallet.util.*
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
@@ -46,6 +47,10 @@ class TransferManager private constructor(private val context: Context) {
                 instance ?: TransferManager(context).also { instance = it }
             }
     }
+
+    private val presentationLogStore: PresentationLogStore =
+        ProvisioningUtil.getInstance(context).logStore
+
 
     private var reversedQrCommunicationSetup: ReverseQrCommunicationSetup? = null
     private var qrCommunicationSetup: QrCommunicationSetup? = null
@@ -83,12 +88,21 @@ class TransferManager private constructor(private val context: Context) {
                 communication.setupPresentation(presentation)
             },
             onNewRequest = { request ->
+                presentationLogStore.newLogEntryWithRequest(
+                    request,
+                    communication.getSessionTranscript(),
+                    EngagementType.QR
+                )
                 communication.setDeviceRequest(request)
                 transferStatusLd.value = TransferStatus.REQUEST
             },
-            onDisconnected = { transferStatusLd.value = TransferStatus.DISCONNECTED },
+            onDisconnected = {
+                transferStatusLd.value = TransferStatus.DISCONNECTED
+                presentationLogStore.persistLogEntryTransactionDisconnected()
+            },
             onCommunicationError = { error ->
                 log("onError: ${error.message}")
+                presentationLogStore.persistLogEntryTransactionError(error)
                 transferStatusLd.value = TransferStatus.ERROR
             }
         ).apply {
@@ -111,12 +125,21 @@ class TransferManager private constructor(private val context: Context) {
                 transferStatusLd.value = TransferStatus.CONNECTED
             },
             onNewDeviceRequest = { deviceRequest ->
+                presentationLogStore.newLogEntryWithRequest(
+                    deviceRequest,
+                    communication.getSessionTranscript(),
+                    EngagementType.QR
+                )
                 communication.setDeviceRequest(deviceRequest)
                 transferStatusLd.value = TransferStatus.REQUEST
             },
-            onDisconnected = { transferStatusLd.value = TransferStatus.DISCONNECTED }
+            onDisconnected = {
+                transferStatusLd.value = TransferStatus.DISCONNECTED
+                presentationLogStore.persistLogEntryTransactionDisconnected()
+            }
         ) { error ->
             log("onError: ${error.message}")
+            presentationLogStore.persistLogEntryTransactionError(error)
             transferStatusLd.value = TransferStatus.ERROR
         }.apply {
             configure()
@@ -261,6 +284,8 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
+        // log the response
+        presentationLogStore.logResponseData(deviceResponse)
         communication.sendResponse(deviceResponse, closeAfterSending)
         if (closeAfterSending) {
             disconnect()
@@ -278,5 +303,6 @@ class TransferManager private constructor(private val context: Context) {
 
     fun setResponseServed() {
         transferStatusLd.value = TransferStatus.REQUEST_SERVED
+        presentationLogStore.persistLogEntryTransactionComplete()
     }
 }

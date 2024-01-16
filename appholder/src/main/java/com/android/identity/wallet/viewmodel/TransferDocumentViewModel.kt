@@ -21,9 +21,11 @@ import com.android.identity.wallet.authconfirmation.RequestedElement
 import com.android.identity.wallet.authconfirmation.SignedElementsCollection
 import com.android.identity.wallet.document.DocumentInformation
 import com.android.identity.wallet.document.DocumentManager
+import com.android.identity.wallet.presentationlog.PresentationLogStore
 import com.android.identity.wallet.transfer.AddDocumentToResponseResult
 import com.android.identity.wallet.transfer.TransferManager
 import com.android.identity.wallet.util.PreferencesHelper
+import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.TransferStatus
 import com.android.identity.wallet.util.logWarning
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +41,9 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     private val closeConnectionMutableLiveData = MutableLiveData<Boolean>()
     private val selectedDocuments = mutableListOf<DocumentInformation>()
 
+    val presentationLogStore: PresentationLogStore =
+        ProvisioningUtil.getInstance(app.applicationContext).logStore
+
     var inProgress = ObservableInt(View.GONE)
     var documentsSent = ObservableField<String>()
     val connectionClosedLiveData: LiveData<Boolean> = closeConnectionMutableLiveData
@@ -48,6 +53,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun onAuthenticationCancelled() {
         mutableConfirmationState.value = true
+        presentationLogStore.persistLogEntryTransactionCanceled()
     }
 
     fun onAuthenticationCancellationConsumed() {
