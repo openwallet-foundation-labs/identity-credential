@@ -88,7 +88,7 @@ class TransferManager private constructor(private val context: Context) {
                 communication.setupPresentation(presentation)
             },
             onNewRequest = { request ->
-                presentationLogStore.logRequestData(
+                presentationLogStore.newLogEntryWithRequest(
                     request,
                     communication.getSessionTranscript(),
                     EngagementType.QR
@@ -98,11 +98,11 @@ class TransferManager private constructor(private val context: Context) {
             },
             onDisconnected = {
                 transferStatusLd.value = TransferStatus.DISCONNECTED
-                presentationLogStore.logPresentationDisconnected()
+                presentationLogStore.persistLogEntryTransactionDisconnected()
             },
             onCommunicationError = { error ->
                 log("onError: ${error.message}")
-                presentationLogStore.logPresentationError(error)
+                presentationLogStore.persistLogEntryTransactionError(error)
                 transferStatusLd.value = TransferStatus.ERROR
             }
         ).apply {
@@ -125,7 +125,7 @@ class TransferManager private constructor(private val context: Context) {
                 transferStatusLd.value = TransferStatus.CONNECTED
             },
             onNewDeviceRequest = { deviceRequest ->
-                presentationLogStore.logRequestData(
+                presentationLogStore.newLogEntryWithRequest(
                     deviceRequest,
                     communication.getSessionTranscript(),
                     EngagementType.QR
@@ -135,11 +135,11 @@ class TransferManager private constructor(private val context: Context) {
             },
             onDisconnected = {
                 transferStatusLd.value = TransferStatus.DISCONNECTED
-                presentationLogStore.logPresentationDisconnected()
+                presentationLogStore.persistLogEntryTransactionDisconnected()
             }
         ) { error ->
             log("onError: ${error.message}")
-            presentationLogStore.logPresentationError(error)
+            presentationLogStore.persistLogEntryTransactionError(error)
             transferStatusLd.value = TransferStatus.ERROR
         }.apply {
             configure()
@@ -303,6 +303,6 @@ class TransferManager private constructor(private val context: Context) {
 
     fun setResponseServed() {
         transferStatusLd.value = TransferStatus.REQUEST_SERVED
-        presentationLogStore.logPresentationComplete()
+        presentationLogStore.persistLogEntryTransactionComplete()
     }
 }

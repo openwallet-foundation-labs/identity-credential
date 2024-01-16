@@ -53,7 +53,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun onAuthenticationCancelled() {
         mutableConfirmationState.value = true
-        presentationLogStore.logPresentationCanceled()
+        presentationLogStore.persistLogEntryTransactionCanceled()
     }
 
     fun onAuthenticationCancellationConsumed() {

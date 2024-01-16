@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 class PresentationHistoryViewModel(val app: Application) : AndroidViewModel(app) {
 
-    val presentationHistoryStore: PresentationLogStore.PresentationHistoryStore =
+    private val presentationHistoryStore: PresentationLogStore.PresentationHistoryStore =
         ProvisioningUtil.getInstance(app.applicationContext).logStore.presentationHistoryStore
 
     private val _logEntries = MutableStateFlow(listOf<PresentationLogEntry>())

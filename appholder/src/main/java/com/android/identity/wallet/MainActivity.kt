@@ -84,7 +84,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         fusedLocationClient.lastLocation.addOnSuccessListener { lastKnownLocation ->
-            presentationLogStore.logMetaData().location(lastKnownLocation)
+            presentationLogStore.getMetadataBuilder().location(lastKnownLocation)
         }
     }
 

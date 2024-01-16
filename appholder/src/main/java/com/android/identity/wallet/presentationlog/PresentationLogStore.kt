@@ -2,6 +2,7 @@ package com.android.identity.wallet.presentationlog
 
 import com.android.identity.storage.StorageEngine
 import com.android.identity.wallet.util.EngagementType
+import com.google.android.gms.common.util.VisibleForTesting
 
 // for readability
 typealias LogComponent = PresentationLogStore.LogComponent
@@ -14,6 +15,7 @@ class PresentationLogStore(
     private val storageEngine: StorageEngine,
 ) {
     val presentationHistoryStore = PresentationHistoryStore(storageEngine)
+
     enum class LogComponent {
         Request,
         Response,
@@ -39,7 +41,8 @@ class PresentationLogStore(
     /**
      * Const object (rather than companion) dedicated to providing constants
      */
-    protected object StoreConst {
+    @VisibleForTesting
+    object StoreConst {
         // used for identifying entries belonging to PresentationLogStore when persisting logs in the StorageEngine
         const val LOG_PREFIX = "IC_Log_"
 
@@ -47,101 +50,154 @@ class PresentationLogStore(
         const val MAX_ENTRIES_ENFORCEMENT = true
 
         // retain a history of the last MAX_ENTRIES number of log entries
-        const val MAX_ENTRIES = 100
+        const val MAX_ENTRIES_COUNT = 100
     }
 
-    // builder responsible for adding the different parts of a PresentationLogEntry and persisting
-    // logs upon a successful or terminated transaction.
-    private var logEntryBuilder: PresentationLogEntry.Builder =
-        PresentationLogEntry.Builder()
+    private val currentEntries = mutableListOf<PresentationLogEntry.Builder>()
 
-    // builder responsible for populating a PresentationLogMetadata with type-values
-    private var metadataBuilder: PresentationLogMetadata.Builder = PresentationLogMetadata.Builder()
+    private fun getCurrentLogEntryBuilder(
+        newInstance: Boolean = false,
+        havingId: Long? = null
+    ): PresentationLogEntry.Builder {
+        // immediately create a new PresentationLogEntry.Builder instance and return it
+        if (newInstance) {
+            val newEntryBuilder = PresentationLogEntry.Builder()
+            currentEntries.add(newEntryBuilder)
+            return newEntryBuilder
+        }
+
+        // iterate through all log entry builder instances
+        currentEntries.forEach { currentEntryBuilder ->
+            // return the entry instance that has not been persisted yet
+            if (currentEntryBuilder.id == havingId // and matches specified ID
+                // or entry has not been built (is actively being populated)
+                || currentEntryBuilder.wasNotBuilt()
+            ) {
+                return currentEntryBuilder
+            }
+        }
+
+        // reaching here means we were asked to get instance with specified ID but were unable to find it
+        if (havingId != null) {
+            throw IllegalArgumentException("Could not find PresentationLogEntry instance with specified id $havingId")
+        }
+
+        // reaching here means either all log entry instances are actively being persisted or
+        // there are is no log active/new entry being populated
+        val newEntryBuilder = PresentationLogEntry.Builder() // new entry (builder)
+        currentEntries.add(newEntryBuilder)
+        return newEntryBuilder
+    }
 
     /**
-     * Add the CBOR data bytes of a specific LogComponent to [PresentationLogEntry].
+     * Delete the passed instance from ephemeral storage.
      */
-    private fun addLogComponentData(logComponent: LogComponent, data: ByteArray) {
-        logEntryBuilder.addComponentLog(logComponent, data)
+    private fun deleteLogEntryBuilderInstance(entryBuilder: PresentationLogEntry.Builder) {
+        currentEntries.remove(entryBuilder)
     }
 
-    fun logRequestData(
+    /**
+     * Create a new PresentationLogEntry.Builder instance and add the request data bytes, session transcript
+     * bytes and engagement type. This instance will be populated with other log components and
+     * persisted whenever finishing the log entry.
+     *
+     * Returns the new Builder instance.
+     */
+    fun newLogEntryWithRequest(
         data: ByteArray,
         sessionTranscript: ByteArray?,
         engagementType: EngagementType
-    ) {
-        addLogComponentData(LogComponent.Request, data)
-        logMetaData()
+    ): PresentationLogEntry.Builder {
+        val entryBuilder = getCurrentLogEntryBuilder(newInstance = true)
+
+        if (data.isNotEmpty()) {
+            entryBuilder.addComponentLogBytes(LogComponent.Request, data)
+        }
+
+        entryBuilder.metadataBuilder
             .engagementType(engagementType)
             .sessionTranscript(sessionTranscript ?: byteArrayOf())
 
-    }
-
-    fun logResponseData(data: ByteArray) {
-        addLogComponentData(LogComponent.Response, data)
-    }
-
-    fun logMetaData() = metadataBuilder
-
-    fun logPresentationComplete() {
-        metadataBuilder.transactionComplete()
-        persistCurrentLogEntry()
+        return entryBuilder
     }
 
     /**
-     * User invoked cancellation
+     * Set the data bytes for LogComponent.Response
      */
-    fun logPresentationCanceled() {
-        metadataBuilder.transactionCanceled()
-        persistCurrentLogEntry()
+    fun logResponseData(data: ByteArray, currentEntryId: Long? = null) {
+        val entryBuilder = getCurrentLogEntryBuilder(havingId = currentEntryId)
+        if (data.isNotEmpty()) {
+            entryBuilder.addComponentLogBytes(LogComponent.Response, data)
+        }
     }
 
     /**
-     * Engagement that gets abruptly disconnected
+     * Return the metadata Builder for populating PresentationLogMetadata
      */
-    fun logPresentationDisconnected() {
-        metadataBuilder.transactionDisconnected()
-        persistCurrentLogEntry()
-    }
-
-    fun logPresentationError(throwable: Throwable) {
-        metadataBuilder.transactionError(throwable)
-        persistCurrentLogEntry()
+    fun getMetadataBuilder(currentEntryId: Long? = null): PresentationLogMetadata.Builder {
+        val entryBuilder = getCurrentLogEntryBuilder(havingId = currentEntryId)
+        return entryBuilder.metadataBuilder
     }
 
     /**
-     *
+     * Persist log entry to StorageEngine after transaction was marked as complete.
      */
-    private fun addMetadataLogs() {
-        addLogComponentData(
-            LogComponent.Metadata,
-            metadataBuilder.build().cborDataBytes
-        )
-
-        // ready a new PresentationLogData Builder
-        metadataBuilder = PresentationLogMetadata.Builder()
+    fun persistLogEntryTransactionComplete(currentEntryId: Long? = null) {
+        val entryBuilder = getCurrentLogEntryBuilder(havingId = currentEntryId)
+        entryBuilder.metadataBuilder.transactionComplete()
+        persistLogEntry(entryBuilder)
     }
 
     /**
-     * Persist all the data of log components that built the current PresentationLogEntry instance.
-     * Creates a new instance of [PresentationLogEntry.Builder] ready to persist yet another entry
+     * Persist the log entry after user invoked cancellation of transaction.
      */
-    private fun persistCurrentLogEntry() {
-        // add the Metadata log component bytes to the builder
-        addMetadataLogs()
-        // Build the log entry to persist the log data
-        val logEntry = logEntryBuilder.build()
+    fun persistLogEntryTransactionCanceled(currentEntryId: Long? = null) {
+        val entryBuilder = getCurrentLogEntryBuilder(havingId = currentEntryId)
+        entryBuilder.metadataBuilder.transactionCanceled()
+        persistLogEntry(entryBuilder)
+    }
 
+    /**
+     * Persist the log entry after there's a disconnect between sender and receiver.
+     */
+    fun persistLogEntryTransactionDisconnected(currentEntryId: Long? = null) {
+        val entryBuilder = getCurrentLogEntryBuilder(havingId = currentEntryId)
+        entryBuilder.metadataBuilder.transactionDisconnected()
+        persistLogEntry(entryBuilder)
+    }
+
+    /**
+     * Persist the log entry with the specified error that occurred during presentation.
+     */
+    fun persistLogEntryTransactionError(throwable: Throwable, currentEntryId: Long? = null) {
+        val entryBuilder = getCurrentLogEntryBuilder(havingId = currentEntryId)
+        entryBuilder.metadataBuilder.transactionError(throwable)
+        persistLogEntry(entryBuilder)
+    }
+
+    /**
+     * Persist all the data of log components that built the passed in PresentationLogEntry.Builder instance.
+     */
+    private fun persistLogEntry(entryBuilder: PresentationLogEntry.Builder) {
+        // Build the log entry with data bytes for each LogComponent bytes that were added
+        val logEntry = entryBuilder.build()
+
+        // iterate through all possible LogComponents
         LogComponent.values().forEach { logComponent ->
             // generate the key to use for storing the byte array of every log component
             val storeKey = logComponent.getStoreKey(logEntry.id)
-            // create a new entry record in secure persistent storage for every log component's bytes in PresentationLogEntry
-            storageEngine.put(storeKey, logEntry.getLogComponentBytes(logComponent))
+            // get the bytes of the log component (if any were passed)
+            val storeValue = logEntry.getLogComponentBytes(logComponent)
+            if (storeValue.isNotEmpty()) { // don't persist empty data of a log component
+                // create a new entry record in secure persistent storage for every (non-empty) log component's bytes in PresentationLogEntry
+                storageEngine.put(storeKey, storeValue)
+            }
         }
 
-        // ready a new PresentationLogEntry Builder
-        logEntryBuilder = PresentationLogEntry.Builder()
+        // remove entryBuilder instance
+        deleteLogEntryBuilderInstance(entryBuilder)
 
+        // enforce max entries
         if (StoreConst.MAX_ENTRIES_ENFORCEMENT) {
             // if we stored 1 more log entry than the defined MAX_ENTRIES, remove the oldest entry
             enforceMaxLogEntries()
@@ -157,7 +213,7 @@ class PresentationLogStore(
      */
     private fun enforceMaxLogEntries() {
         val allLogEntryIds = presentationHistoryStore.fetchAllLogEntryIds().sorted()
-        var difference = StoreConst.MAX_ENTRIES - allLogEntryIds.size
+        var difference = StoreConst.MAX_ENTRIES_COUNT - allLogEntryIds.size
         var oldestIndex = 0
         while (difference < 0) { // there's at least 1 more entry over the defined MAX_ENTRIES
             // delete the oldest entries to bring count to MAX_ENTRIES
@@ -192,7 +248,7 @@ class PresentationLogStore(
                     val componentValueBytes = storageEngine[componentStoreKey]
                     // add components that have data persisted
                     if (componentValueBytes != null) {
-                        presentationLogEntry.addComponentLog(
+                        presentationLogEntry.addComponentLogBytes(
                             logComponent,
                             componentValueBytes
                         )
@@ -213,6 +269,7 @@ class PresentationLogStore(
             .filter { it.startsWith(StoreConst.LOG_PREFIX) }
             .map { extractLogEntryId(it) }
             .distinct()
+            .sortedDescending() // last entry shows up first
 
         /**
          * Given a key found in [StorageEngine], extract the ID of the log entry that was stored.

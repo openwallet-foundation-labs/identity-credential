@@ -6,6 +6,7 @@ import co.nstant.`in`.cbor.CborEncoder
 import com.android.identity.internal.Util
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet.util.EngagementType
+import com.google.android.gms.common.util.VisibleForTesting
 import java.io.ByteArrayOutputStream
 
 class PresentationLogMetadata private constructor(
@@ -88,25 +89,33 @@ class PresentationLogMetadata private constructor(
     }
 
     data class Builder(
+        // provided from new instance of PresentationLogEntry.Builder
+        private var transactionStartTime: Long,
+        private var engagementType: EngagementType = EngagementType.NONE,
         private var presentationTransactionStatus: PresentationTransactionStatus = PresentationTransactionStatus.None,
         private var error: Throwable? = null,
-        private var transactionStartTime: Long = 0L,
         private var transactionEndTime: Long = 0L,
-        private var engagementType: EngagementType = EngagementType.NONE,
         private var sessionTranscript: ByteArray = byteArrayOf(),
         private var location: Location? = null
     ) {
+        // this function should not be accessible publicly
+        @VisibleForTesting
+        fun transactionStartTimestamp(startMillis: Long) = apply {
+            transactionStartTime = startMillis
+        }
+
         fun engagementType(engagementType: EngagementType) = apply {
-            engagementStartTimestamp()
             this.engagementType = engagementType
         }
 
-        fun engagementStartTimestamp() = apply {
-            transactionStartTime = Timestamp.now().toEpochMilli()
+        fun transactionStatus(status: PresentationTransactionStatus) = apply {
+            this.presentationTransactionStatus = status
         }
 
-        fun transactionEndTimestamp() = apply {
-            transactionEndTime = Timestamp.now().toEpochMilli()
+        fun transactionEndTimestamp(endMillis: Long? = null) = apply {
+            if (transactionEndTime == 0L) { // if it's been previously set, don't change it
+                transactionEndTime = endMillis ?: Timestamp.now().toEpochMilli()
+            }
         }
 
         fun transactionComplete() = apply {
@@ -129,10 +138,6 @@ class PresentationLogMetadata private constructor(
             throwable?.let {
                 error = throwable
             }
-        }
-
-        fun transactionStatus(status: PresentationTransactionStatus) = apply {
-            this.presentationTransactionStatus = status
         }
 
         fun sessionTranscript(byteArray: ByteArray) = apply {

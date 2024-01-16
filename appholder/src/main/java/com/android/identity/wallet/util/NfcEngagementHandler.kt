@@ -92,7 +92,7 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onError(error: Throwable) {
             log("Engagement Listener: onError -> ${error.message}")
-            presentationLogStore.logPresentationError(error)
+            presentationLogStore.persistLogEntryTransactionError(error)
             transferManager.updateStatus(TransferStatus.ERROR)
             engagementHelper.close()
         }
@@ -106,7 +106,7 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onDeviceRequest(deviceRequestBytes: ByteArray) {
             log("Presentation Listener: OnDeviceRequest")
-            presentationLogStore.logRequestData(
+            presentationLogStore.newLogEntryWithRequest(
                 deviceRequestBytes,
                 communication.getSessionTranscript(),
                 EngagementType.NFC
@@ -117,13 +117,13 @@ class NfcEngagementHandler : HostApduService() {
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
             log("Presentation Listener: onDeviceDisconnected")
-            presentationLogStore.logPresentationDisconnected()
+            presentationLogStore.persistLogEntryTransactionDisconnected()
             transferManager.updateStatus(TransferStatus.DISCONNECTED)
         }
 
         override fun onError(error: Throwable) {
             log("Presentation Listener: onError -> ${error.message}")
-            presentationLogStore.logPresentationError(error)
+            presentationLogStore.persistLogEntryTransactionError(error)
             transferManager.updateStatus(TransferStatus.ERROR)
         }
     }
