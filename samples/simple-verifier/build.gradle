@@ -1,15 +1,15 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    alias libs.plugins.kotlin.android
 }
 
 android {
-    namespace 'com.android.identity_credential.wallet'
+    namespace 'com.example.simple_verifier'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.android.identity_credential.wallet"
-        minSdk 27
+        applicationId "com.example.simple_verifier"
+        minSdk 29
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -37,7 +37,7 @@ android {
         compose true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion libs.versions.kotlin.compiler.extension.get()
+        kotlinCompilerExtensionVersion '1.4.6'
     }
     packagingOptions {
         resources {
@@ -47,20 +47,19 @@ android {
 }
 
 dependencies {
-    implementation project(':identity')
-    implementation project(':identity-android')
-
-    implementation libs.cbor
-    implementation libs.androidx.core.ktx
-    implementation libs.bundles.androidx.lifecycle
-    implementation libs.bundles.androidx.activity.compose
-    implementation libs.bundles.androidx.navigation
     implementation platform(libs.compose.bom)
-    implementation libs.compose.ui.tooling
-    implementation libs.compose.material
-    implementation libs.bundles.bouncy.castle
+    implementation libs.bundles.androidx.core
+    implementation libs.bundles.androidx.lifecycle
+    implementation libs.bundles.androidx.navigation
+    implementation libs.bundles.androidx.crypto
+    implementation libs.bundles.androidx.activity.compose
     implementation libs.androidx.navigation.compose
-    debugImplementation libs.compose.icons
+    implementation libs.bundles.bouncy.castle
+    implementation libs.bundles.compose
+    implementation libs.code.scanner
+
+    implementation("com.android.identity:identity-credential-android:20231002")
+    implementation("com.android.identity:identity-credential:20231002")
 
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso
