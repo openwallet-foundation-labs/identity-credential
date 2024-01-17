@@ -23,7 +23,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.origininfo.OriginInfo;
-import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl;
+import com.android.identity.mdoc.origininfo.OriginInfoDomain;
 import com.android.identity.securearea.SecureArea;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -81,7 +81,7 @@ public class EngagementGeneratorTest {
         connectionMethods.add(new ConnectionMethodHttp("http://www.example.com/verifier/123"));
         eg.setConnectionMethods(connectionMethods);
         List<OriginInfo> originInfos = new ArrayList<>();
-        originInfos.add(new OriginInfoReferrerUrl("http://www.example.com/verifier"));
+        originInfos.add(new OriginInfoDomain("http://www.example.com/verifier"));
         eg.setOriginInfos(originInfos);
         byte[] encodedEngagement = eg.generate();
 
@@ -94,7 +94,7 @@ public class EngagementGeneratorTest {
         ConnectionMethodHttp cm = (ConnectionMethodHttp) engagement.getConnectionMethods().get(0);
         Assert.assertEquals("http://www.example.com/verifier/123", cm.getUri());
         Assert.assertEquals(1, engagement.getOriginInfos().size());
-        OriginInfoReferrerUrl oi = (OriginInfoReferrerUrl) engagement.getOriginInfos().get(0);
+        OriginInfoDomain oi = (OriginInfoDomain) engagement.getOriginInfos().get(0);
         Assert.assertEquals("http://www.example.com/verifier", oi.getUrl());
     }
 

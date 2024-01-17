@@ -39,11 +39,8 @@ public abstract class OriginInfo {
             throw new IllegalArgumentException("Top-level CBOR is not a Map");
         }
         long type = Util.cborMapExtractNumber(oiDataItem, "type");
-        switch ((int) type) {
-            case OriginInfoReferrerUrl.TYPE:
-                return OriginInfoReferrerUrl.decode(oiDataItem);
-            case OriginInfoBaseUrl.TYPE:
-                return OriginInfoBaseUrl.decode(oiDataItem);
+        if ((int) type == OriginInfoDomain.TYPE) {
+            return OriginInfoDomain.decode(oiDataItem);
         }
         Logger.w(TAG, "Unsupported type " + type);
         return null;
