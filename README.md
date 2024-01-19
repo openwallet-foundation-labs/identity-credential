@@ -91,6 +91,10 @@ reachable on the left side bar of the Android Studio, or by selecting: _View -> 
 Inside the `Build Variants` panel, at the `appholder` row, the desired flavor can be chosen. Once a
 flavor is selected, by running the app it will install it on the target device/emulator.
 
+The `wallet` module is a rewrite of the `appholder` reference application
+with an eye towards a production-quality and easily rebrandable identity
+wallet application.
+
 ## ISO 18013-7 Reader Website
 
 The `wwwverifier` module contains the source code for a website acting as an

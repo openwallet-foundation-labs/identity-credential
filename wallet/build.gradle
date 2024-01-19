@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    namespace 'com.android.identity.secure_area_test_app'
+    namespace 'com.android.identity_credential.wallet'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.android.identity.secure_area_test_app"
-        minSdk 26
+        applicationId "com.android.identity_credential.wallet"
+        minSdk 27
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -50,22 +50,21 @@ dependencies {
     implementation project(':identity')
     implementation project(':identity-android')
 
-    implementation platform(libs.compose.bom)
-    implementation libs.bundles.androidx.core
-    implementation libs.bundles.androidx.lifecycle
-    implementation libs.bundles.androidx.navigation
-    implementation libs.bundles.androidx.crypto
-    implementation libs.bundles.androidx.activity.compose
-    implementation libs.bundles.bouncy.castle
-    implementation libs.bundles.compose
     implementation libs.cbor
-    implementation libs.exifinterface
-    implementation libs.code.scanner
-    implementation libs.kotlinx.serialization
+    implementation libs.androidx.core.ktx
+    implementation libs.bundles.androidx.lifecycle
+    implementation libs.androidx.activity.compose
+    implementation libs.bundles.androidx.navigation
+    implementation platform(libs.compose.bom)
+    implementation libs.compose.ui.tooling
+    implementation libs.compose.material
+    implementation libs.bundles.bouncy.castle
+    implementation libs.androidx.navigation.compose
+    debugImplementation libs.compose.icons
 
-    androidTestImplementation libs.bundles.ui.testing
-
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.androidx.test.espresso
+    androidTestImplementation platform(libs.compose.bom)
     testImplementation libs.bundles.unit.testing
-
     testRuntimeOnly libs.junit.jupiter.engine
 }

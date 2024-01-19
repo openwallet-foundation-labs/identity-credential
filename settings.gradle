@@ -24,5 +24,6 @@ dependencyResolutionManagement {
         }
     }
 }
-include ':appholder', ':appverifier', ':identity', ':identity-android', ':secure-area-test-app', ':wwwverifier'
+include ':appholder', ':appverifier', ':identity', ':identity-android', ':secure-area-test-app', ':wwwverifier', ':wallet'
 rootProject.name = 'Identity Credential'
+
