@@ -2,6 +2,7 @@ package com.android.identity.wallet
 
 import android.app.Application
 import android.content.Context
+import android.location.Location
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
@@ -19,6 +20,7 @@ import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import com.android.identity.wallet.document.KeysAndCertificates
+import com.android.identity.presentationlog.PresentationLogStore
 import com.android.identity.wallet.util.PeriodicKeysRefreshWorkRequest
 import com.android.identity.wallet.util.PreferencesHelper
 import com.google.android.material.color.DynamicColors
@@ -87,6 +89,17 @@ class HolderApp: Application() {
             secureAreaRepository.addImplementation(softwareSecureArea)
             return CredentialStore(storageEngine, secureAreaRepository)
         }
+
+        /**
+         * Create a PresentationLogStore
+         */
+        fun createPresentationLogStore(
+            context: Context,
+        ): PresentationLogStore {
+            val storageDir = PreferencesHelper.getKeystoreBackedStorageLocation(context)
+            val storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+            return PresentationLogStore(storageEngine)
+        }
     }
 
     /**
@@ -96,4 +109,7 @@ class HolderApp: Application() {
         return CertificateFactory.getInstance("X509")
             .generateCertificate(ByteArrayInputStream(certificateBytes)) as X509Certificate
     }
+
+
+
 }

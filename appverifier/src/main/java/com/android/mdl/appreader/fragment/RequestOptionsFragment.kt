@@ -23,10 +23,11 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.NavDirections
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
-import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.home.CreateRequestViewModel
+import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
@@ -36,25 +37,27 @@ class RequestOptionsFragment : Fragment() {
 
     private val createRequestViewModel: CreateRequestViewModel by activityViewModels()
     private val args: RequestOptionsFragmentArgs by navArgs()
-    private val appPermissions: List<String> get() {
-        val permissions = mutableListOf<String>()
-        if (android.os.Build.VERSION.SDK_INT >= 31) {
-            permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
-            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
-            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+    private val appPermissions: List<String>
+        get() {
+            val permissions = mutableListOf<String>()
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+                permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+                permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+            return permissions
         }
-        return permissions
-    }
 
-    private val permissionsLauncher = registerForActivityResult(RequestMultiplePermissions()) { permissions ->
-        permissions.entries.forEach { permission ->
-            logDebug("permissionsLauncher ${permission.key} = ${permission.value}")
-            if (!permission.value && !shouldShowRequestPermissionRationale(permission.key)) {
-                openSettings()
-                return@registerForActivityResult
+    private val permissionsLauncher =
+        registerForActivityResult(RequestMultiplePermissions()) { permissions ->
+            permissions.entries.forEach { permission ->
+                logDebug("permissionsLauncher ${permission.key} = ${permission.value}")
+                if (!permission.value && !shouldShowRequestPermissionRationale(permission.key)) {
+                    openSettings()
+                    return@registerForActivityResult
+                }
             }
         }
-    }
 
     private lateinit var transferManager: TransferManager
 
@@ -140,6 +143,10 @@ class RequestOptionsFragment : Fragment() {
         } else {
             RequestOptionsFragmentDirections.toSelectTransport(requestedDocuments)
         }
+        if (findNavController().currentDestination?.id == R.id.presentationLogs) {
+            findNavController().popBackStack()
+        }
+
         findNavController().navigate(destination)
     }
 
@@ -189,7 +196,7 @@ class RequestOptionsFragment : Fragment() {
         findNavController().navigate(destination)
     }
 
-    private fun getCustomMdlDestination():NavDirections {
+    private fun getCustomMdlDestination(): NavDirections {
         val requestDocumentList = calcRequestDocumentList()
         val mdl = requestDocumentList.getAll().first { it.docType == RequestDocument.MDL_DOCTYPE }
         return RequestOptionsFragmentDirections.toRequestCustom(

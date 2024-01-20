@@ -1,10 +1,13 @@
 package com.android.mdl.appreader
 
+import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.view.GravityCompat
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
@@ -13,8 +16,11 @@ import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
+import com.android.mdl.appreader.MainActivity.Const.LOCATION_REQUEST_CODE
 import com.android.mdl.appreader.databinding.ActivityMainBinding
 import com.android.mdl.appreader.util.logDebug
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.elevation.SurfaceColors
 import java.security.Security
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -27,6 +33,11 @@ class MainActivity : AppCompatActivity() {
     private var mPendingIntent: PendingIntent? = null
     private val navController by lazy {
         Navigation.findNavController(this, R.id.nav_host_fragment)
+    }
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    object Const {
+        const val LOCATION_REQUEST_CODE = 123
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +57,31 @@ class MainActivity : AppCompatActivity() {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
         mPendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                listOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ).toTypedArray(),
+                LOCATION_REQUEST_CODE
+            )
+            return
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { lastKnownLocation ->
+            lastKnownLocation?.let{
+                VerifierApp.presentationLogStoreInstance.locationLatitude = lastKnownLocation.latitude
+                VerifierApp.presentationLogStoreInstance.locationLongitude = lastKnownLocation.longitude
+            }
+        }
     }
 
     private fun setupDrawerLayout() {
