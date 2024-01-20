@@ -1,5 +1,6 @@
 package com.android.mdl.appreader.util
 
+import android.icu.text.SimpleDateFormat
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.CborException
 import co.nstant.`in`.cbor.model.AbstractFloat
@@ -193,5 +194,15 @@ object FormatUtil {
             }
         }
         return true
+    }
+
+    fun millisecondsToFullDateTimeString(milliseconds: Long): String {
+        val simpleDateFormat = SimpleDateFormat("MMM d, yyyy 'at' hh:mm:ss a")
+        return simpleDateFormat.format(milliseconds)
+    }
+
+    fun millisecondsToTimeString(milliseconds: Long): String {
+        val simpleDateFormat = SimpleDateFormat("hh:mm:ss a")
+        return simpleDateFormat.format(milliseconds)
     }
 }

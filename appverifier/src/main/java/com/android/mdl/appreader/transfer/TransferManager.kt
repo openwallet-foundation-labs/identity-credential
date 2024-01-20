@@ -17,7 +17,13 @@ import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
 import com.android.identity.internal.Util
+import com.android.identity.util.EngagementTypeDef
+import com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER
+import com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER
+import com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_QR_CODE
+import com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_REVERSE
 import com.android.mdl.appreader.R
+import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
 import com.android.mdl.appreader.readercertgen.SupportedCurves.*
@@ -68,9 +74,11 @@ class TransferManager private constructor(private val context: Context) {
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
     fun initVerificationHelper() {
-        val builder = VerificationHelper.Builder(context,
+        val builder = VerificationHelper.Builder(
+            context,
             responseListener,
-            context.mainExecutor())
+            context.mainExecutor()
+        )
         val options = DataTransportOptions.Builder()
             .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
             .setBleClearCache(userPreferences.isBleClearCacheEnabled())
@@ -81,9 +89,11 @@ class TransferManager private constructor(private val context: Context) {
     }
 
     fun initVerificationHelperReverseEngagement() {
-        val builder = VerificationHelper.Builder(context,
+        val builder = VerificationHelper.Builder(
+            context,
             responseListener,
-            context.mainExecutor())
+            context.mainExecutor()
+        )
         val options = DataTransportOptions.Builder()
             .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
             .setBleClearCache(userPreferences.isBleClearCacheEnabled())
@@ -109,7 +119,8 @@ class TransferManager private constructor(private val context: Context) {
             activity, readerModeListener,
             NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
                     + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
-            null)
+            null
+        )
     }
 
     private val readerModeListener = NfcAdapter.ReaderCallback { tag ->
@@ -159,7 +170,7 @@ class TransferManager private constructor(private val context: Context) {
         disconnect()
     }
 
-    fun disconnect(){
+    fun disconnect() {
         try {
             verification?.disconnect()
         } catch (e: RuntimeException) {
@@ -203,15 +214,18 @@ class TransferManager private constructor(private val context: Context) {
         }
 
         override fun onResponseReceived(deviceResponseBytes: ByteArray) {
+            VerifierApp.presentationLogStoreInstance.logResponseData(deviceResponseBytes)
             responseBytes = deviceResponseBytes
             transferStatusLd.value = TransferStatus.RESPONSE
         }
 
         override fun onDeviceDisconnected(transportSpecificTermination: Boolean) {
+            VerifierApp.presentationLogStoreInstance.persistLogEntryTransactionDisconnected()
             transferStatusLd.value = TransferStatus.DISCONNECTED
         }
 
         override fun onError(error: Throwable) {
+            VerifierApp.presentationLogStoreInstance.persistLogEntryTransactionError(error)
             logError("onError: ${error.message}")
             transferStatusLd.value = TransferStatus.ERROR
         }
@@ -265,6 +279,7 @@ class TransferManager private constructor(private val context: Context) {
                         )
                     readerKeyCertificateChain = listOf(readerCertificate)
                 }
+
                 SECP384R1.name, BRAINPOOLP384R1.name -> {
                     val keyPair = ReaderCertificateGenerator.generateECDSAKeyPair(curveName)
 
@@ -280,6 +295,7 @@ class TransferManager private constructor(private val context: Context) {
                         )
                     readerKeyCertificateChain = listOf(readerCertificate)
                 }
+
                 SECP521R1.name, BRAINPOOLP512R1.name -> {
                     val keyPair = ReaderCertificateGenerator.generateECDSAKeyPair(curveName)
 
@@ -295,6 +311,7 @@ class TransferManager private constructor(private val context: Context) {
                         )
                     readerKeyCertificateChain = listOf(readerCertificate)
                 }
+
                 ED25519.name, ED448.name -> {
                     val keyPair = ReaderCertificateGenerator.generateECDSAKeyPair(curveName)
 
@@ -322,6 +339,12 @@ class TransferManager private constructor(private val context: Context) {
                     readerKeyCertificateChain
                 )
             }
+            val requestBytes = generator.generate()
+            VerifierApp.presentationLogStoreInstance.newLogEntryWithRequest(
+                requestBytes,
+                verification?.sessionTranscript ?: byteArrayOf(),
+                EngagementTypeDef.fromValue(verification?.engagementMethod)
+            )
             verification?.sendRequest(generator.generate())
         }
     }
@@ -375,14 +398,12 @@ class TransferManager private constructor(private val context: Context) {
         return verification?.requestToResponseDurationMillis ?: 0
     }
 
-    fun getEngagementMethod(): String {
+    fun getEngagementMethod(): String =
         when (verification?.engagementMethod) {
-            VerificationHelper.ENGAGEMENT_METHOD_QR_CODE -> return "QR Code"
-            VerificationHelper.ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER -> return "NFC Static Handover"
-            VerificationHelper.ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER -> return "NFC Negotiated Handover"
-            VerificationHelper.ENGAGEMENT_METHOD_REVERSE -> return "Reverse"
+            ENGAGEMENT_METHOD_QR_CODE -> "QR Code"
+            ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER -> "NFC Static Handover"
+            ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER -> "NFC Negotiated Handover"
+            ENGAGEMENT_METHOD_REVERSE -> "Reverse"
+            else -> "N/A"
         }
-        return "N/A"
-    }
-
 }
