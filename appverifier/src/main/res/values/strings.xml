@@ -106,6 +106,13 @@
     <!-- Side Menu Items -->
     <string name="menu_reader_home">Home</string>
     <string name="menu_reverse_engagement">Reverse Engagement</string>
+    <string name="menu_history">History</string>
     <string name="menu_settings">Settings</string>
+
+    <!-- Presentation History -->
+    <string name="title_presentation_history">mDL Presentation History</string>
+    <string name="btn_log_delete_selected">Delete Selected</string>
+    <string name="btn_log_delete_all">Delete All</string>
+
 
 </resources>

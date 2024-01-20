@@ -23,6 +23,14 @@
         android:title="@string/menu_reverse_engagement" />
 
     <item
+        android:id="@+id/presentationLogs"
+        android:enabled="true"
+        android:checkable="true"
+        android:icon="@android:drawable/ic_menu_recent_history"
+        android:title="@string/menu_history" />
+
+
+    <item
         android:id="@+id/settings"
         android:enabled="true"
         android:checkable="true"

@@ -150,4 +150,9 @@
         android:id="@+id/caCertificateDetails"
         android:name="com.android.mdl.appreader.settings.CaCertificateDetailsFragment"
         android:label="Certificate Details" />
+
+    <dialog
+        android:id="@+id/presentationLogs"
+        android:name="com.android.identity.wallet.presentationlog.PresentationHistoryFragment"
+        android:label="History" />
 </navigation>

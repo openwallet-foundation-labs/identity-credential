@@ -16,6 +16,11 @@
 
 package com.android.identity.android.mdoc.deviceretrieval;
 
+import static com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER;
+import static com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER;
+import static com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_NOT_ENGAGED;
+import static com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_QR_CODE;
+import static com.android.identity.util.EngagementTypeDef.TypeDef.ENGAGEMENT_METHOD_REVERSE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.content.Context;
@@ -44,7 +49,6 @@ import com.android.identity.mdoc.engagement.EngagementGenerator;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
-import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
@@ -81,14 +85,7 @@ import co.nstant.in.cbor.model.SimpleValue;
 // cleaned up at object finalization time.
 @SuppressWarnings("NotCloseable")
 public class VerificationHelper {
-
     private static final String TAG = "VerificationHelper";
-
-    public static final int ENGAGEMENT_METHOD_NOT_ENGAGED = 0;
-    public static final int ENGAGEMENT_METHOD_QR_CODE = 1;
-    public static final int ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER = 2;
-    public static final int ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER = 3;
-    public static final int ENGAGEMENT_METHOD_REVERSE = 4;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(flag = false,

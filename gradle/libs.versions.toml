@@ -35,6 +35,7 @@
     junit-jupiter = "5.10.0"
     truth = "1.1.5"
     navigation-compose = "2.7.5"
+    play-services-location = "21.0.1"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -87,6 +88,7 @@
     kotlinx-coroutine-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines-version" }
     truth = { module = "com.google.truth:truth", version.ref = "truth" }
     androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
+    play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "play-services-location" }
 
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]
