@@ -194,7 +194,11 @@ public class AndroidStorageEngine implements StorageEngine {
 
     @Override
     public void deleteAll() {
-        for (File file : mStorageDirectory.listFiles()) {
+        File[] fileList = mStorageDirectory.listFiles();
+        if (fileList == null) {
+            return;
+        }
+        for (File file : fileList) {
             String name = file.getName();
             if (!name.startsWith(PREFIX)) {
                 continue;
@@ -207,16 +211,19 @@ public class AndroidStorageEngine implements StorageEngine {
     @NonNull
     public Collection<String> enumerate() {
         ArrayList<String> ret = new ArrayList<>();
-        for (File file : mStorageDirectory.listFiles()) {
-            String name = file.getName();
-            if (!name.startsWith(PREFIX)) {
-                continue;
-            }
-            try {
-                String decodedName = URLDecoder.decode(name.substring(PREFIX.length()), "UTF-8");
-                ret.add(decodedName);
-            } catch (UnsupportedEncodingException e) {
-                throw new IllegalStateException(e);
+        File[] fileList = mStorageDirectory.listFiles();
+        if (fileList != null) {
+            for (File file : fileList) {
+                String name = file.getName();
+                if (!name.startsWith(PREFIX)) {
+                    continue;
+                }
+                try {
+                    String decodedName = URLDecoder.decode(name.substring(PREFIX.length()), "UTF-8");
+                    ret.add(decodedName);
+                } catch (UnsupportedEncodingException e) {
+                    throw new IllegalStateException(e);
+                }
             }
         }
         return ret;
