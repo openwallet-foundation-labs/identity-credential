@@ -1,23 +1,32 @@
 package com.android.mdl.appreader
 
+import android.Manifest
 import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.util.Logger
 import androidx.preference.PreferenceManager
+import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.credentialtype.knowntypes.DrivingLicense
 import com.android.identity.credentialtype.knowntypes.EUPersonalID
 import com.android.identity.credentialtype.knowntypes.VaccinationDocument
 import com.android.identity.credentialtype.knowntypes.VehicleRegistration
+import com.android.identity.presentationlog.PresentationLogStore
 import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.mdl.appreader.settings.UserPreferences
 import com.android.mdl.appreader.util.KeysAndCertificates
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.color.DynamicColors
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.security.Security
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
@@ -39,6 +48,29 @@ class VerifierApp : Application() {
 
     private val credentialTypeRepository by lazy {
         CredentialTypeRepository()
+    }
+
+    /**
+     * Create a PresentationLogStore
+     */
+    private fun createPresentationLogStore(
+        context: Context,
+    ): PresentationLogStore {
+
+        fun getKeystoreBackedStorageLocation(context: Context): File {
+            // As per the docs, the credential data contains reference to Keystore aliases so ensure
+            // this is stored in a location where it's not automatically backed up and restored by
+            // Android Backup as per https://developer.android.com/guide/topics/data/autobackup
+            val storageDir = File(context.noBackupFilesDir, "identity")
+            if (!storageDir.exists()) {
+                storageDir.mkdir()
+            }
+            return storageDir;
+        }
+
+        val storageDir = getKeystoreBackedStorageLocation(context)
+        val storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
+        return PresentationLogStore(storageEngine)
     }
 
     override fun onCreate() {
@@ -65,6 +97,8 @@ class VerifierApp : Application() {
         credentialTypeRepositoryInstance.addCredentialType(VehicleRegistration.getCredentialType())
         credentialTypeRepositoryInstance.addCredentialType(VaccinationDocument.getCredentialType())
         credentialTypeRepositoryInstance.addCredentialType(EUPersonalID.getCredentialType())
+
+        presentationLogStoreInstance = createPresentationLogStore(this)
     }
 
     companion object {
@@ -73,6 +107,7 @@ class VerifierApp : Application() {
         lateinit var trustManagerInstance: TrustManager
         lateinit var certificateStorageEngineInstance: StorageEngine
         lateinit var credentialTypeRepositoryInstance: CredentialTypeRepository
+        lateinit var presentationLogStoreInstance : PresentationLogStore
         fun isDebugLogEnabled(): Boolean {
             return userPreferencesInstance.isDebugLoggingEnabled()
         }

@@ -72,6 +72,7 @@ dependencies {
     implementation libs.bundles.compose
     implementation libs.cbor
     implementation libs.code.scanner
+    implementation libs.play.services.location
 
     androidTestImplementation libs.bundles.ui.testing
 

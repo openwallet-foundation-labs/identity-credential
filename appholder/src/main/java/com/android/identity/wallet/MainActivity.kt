@@ -1,12 +1,15 @@
 package com.android.identity.wallet
 
+import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.view.GravityCompat
 import androidx.navigation.Navigation
 import androidx.navigation.findNavController
@@ -15,14 +18,19 @@ import androidx.navigation.ui.NavigationUI.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl
+import com.android.identity.presentationlog.PresentationLogStore
 import com.android.identity.util.Logger
+import com.android.identity.wallet.MainActivity.Const.LOCATION_REQUEST_CODE
 import com.android.identity.wallet.databinding.ActivityMainBinding
 import com.android.identity.wallet.util.PreferencesHelper
+import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
 import com.android.identity.wallet.util.logInfo
 import com.android.identity.wallet.util.logWarning
 import com.android.identity.wallet.viewmodel.ShareDocumentViewModel
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.material.elevation.SurfaceColors
 
 class MainActivity : AppCompatActivity() {
@@ -36,6 +44,15 @@ class MainActivity : AppCompatActivity() {
         Navigation.findNavController(this, R.id.nav_host_fragment)
     }
 
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private val presentationLogStore: PresentationLogStore by lazy {
+        ProvisioningUtil.getInstance(applicationContext).logStore
+    }
+
+    object Const {
+        const val LOCATION_REQUEST_CODE = 123
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val color = SurfaceColors.SURFACE_2.getColor(this)
@@ -47,6 +64,31 @@ class MainActivity : AppCompatActivity() {
         setupNfc()
         onNewIntent(intent)
         Logger.setDebugEnabled(PreferencesHelper.isDebugLoggingEnabled())
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            requestPermissions(
+                listOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ).toTypedArray(),
+                LOCATION_REQUEST_CODE
+            )
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { lastKnownLocation ->
+            lastKnownLocation?.let {
+                presentationLogStore.locationLatitude = lastKnownLocation.latitude
+                presentationLogStore.locationLongitude = lastKnownLocation.longitude
+            }
+        }
     }
 
     private fun setupNfc() {

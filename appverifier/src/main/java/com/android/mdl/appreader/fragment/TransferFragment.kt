@@ -10,6 +10,7 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.R
+import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.databinding.FragmentTransferBinding
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.util.TransferStatus
