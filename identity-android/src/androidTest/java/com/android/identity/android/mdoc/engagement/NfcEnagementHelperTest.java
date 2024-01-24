@@ -38,11 +38,15 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware;
 import com.android.identity.mdoc.engagement.EngagementParser;
+import com.android.identity.securearea.SecureArea;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -59,6 +63,14 @@ import co.nstant.in.cbor.model.SimpleValue;
 public class NfcEnagementHelperTest {
     private static final String TAG = "NfcEngagementHelperTest";
 
+    @Before
+    public void setup() {
+        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
+        // based implementation included in Android.
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
     @Test
     @SmallTest
     public void testStaticHandover() throws Exception {
@@ -73,6 +85,10 @@ public class NfcEnagementHelperTest {
         NfcEngagementHelper.Listener listener = new NfcEngagementHelper.Listener() {
             @Override
             public void onTwoWayEngagementDetected() {
+            }
+
+            @Override
+            public void onHandoverSelectMessageSent() {
             }
 
             @Override
@@ -94,6 +110,7 @@ public class NfcEnagementHelperTest {
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 new DataTransportOptions.Builder().build(),
                 listener,
                 executor);
@@ -213,6 +230,10 @@ public class NfcEnagementHelperTest {
             }
 
             @Override
+            public void onHandoverSelectMessageSent() {
+            }
+
+            @Override
             public void onDeviceConnecting() {
 
             }
@@ -230,6 +251,7 @@ public class NfcEnagementHelperTest {
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 new DataTransportOptions.Builder().build(),
                 listener,
                 executor);

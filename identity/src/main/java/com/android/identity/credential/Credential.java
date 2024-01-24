@@ -258,14 +258,19 @@ public class Credential {
     /**
      * Finds a suitable authentication key to use.
      *
+     * @param domain The domain to pick the authentication key from.
      * @param now Pass current time to ensure that the selected slot's validity period or
      *   {@code null} to not consider validity times.
      * @return An authentication key which can be used for signing or {@code null} if none was found.
      */
-    public @Nullable AuthenticationKey findAuthenticationKey(@Nullable Timestamp now) {
+    public @Nullable AuthenticationKey findAuthenticationKey(@NonNull String domain,
+                                                             @Nullable Timestamp now) {
 
         AuthenticationKey candidate = null;
         for (AuthenticationKey authenticationKey : mAuthenticationKeys) {
+            if (!authenticationKey.getDomain().equals(domain)) {
+                continue;
+            }
             // If current time is passed...
             if (now != null) {
                 // ... ignore slots that aren't yet valid

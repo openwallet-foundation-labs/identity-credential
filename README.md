@@ -95,6 +95,22 @@ The `wallet` module is a rewrite of the `appholder` reference application
 with an eye towards a production-quality and easily rebrandable identity
 wallet application.
 
+## Sample Applications
+
+The `samples/` directory contain a number of sample applications, intended primarily
+to show certain library features or assess performance or correctness. The following
+samples are included
+
+- `preconsent-mdl` - Simple mDL application without user consent authentication.
+  - The main purpose of this sample is to assess performance of our libraries, Android,
+    the device it's being run on, and the mDL reader requesting the mDL.
+  - The application allows the user to easily configure which kind of data transfer
+    method to use, including an idealized near-zero latency method (`DataTransportUdp`)
+    to help pinpoint potential performance bottlenecks not related to data transfer.
+- `age-verifier-mdl` - a simple mDL reader for age attestations.
+  - This application is just requesting the `age_over_21` and `portrait`. It's intended
+    to be used with the `preconsent-mdl` sample for performance evaluation.
+
 ## ISO 18013-7 Reader Website
 
 The `wwwverifier` module contains the source code for a website acting as an

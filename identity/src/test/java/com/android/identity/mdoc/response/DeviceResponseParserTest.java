@@ -20,12 +20,15 @@ import com.android.identity.TestVectors;
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigInteger;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.List;
@@ -37,6 +40,11 @@ public class DeviceResponseParserTest {
 
     private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
+
+    @Before
+    public void setup() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+    }
 
     @Test
     public void testDeviceResponseParserWithVectors() throws CertificateEncodingException {

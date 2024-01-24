@@ -36,8 +36,10 @@ import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Locale;
+import java.util.OptionalInt;
 import java.util.Queue;
 import java.util.UUID;
 
@@ -74,6 +76,7 @@ class GattServer extends BluetoothGattServerCallback {
     private L2CAPServer mL2CAPServer;
     private byte[] mIdentValue;
     private boolean mUsingL2CAP = false;
+    private OptionalInt mPsm = OptionalInt.empty();
 
     GattServer(@NonNull Context context,
                @NonNull BluetoothManager bluetoothManager,
@@ -165,13 +168,49 @@ class GattServer extends BluetoothGattServerCallback {
 
         // Offers support to L2CAP when we have UUID characteristic and the OS version support it
         mUsingL2CAP = (mCharacteristicL2CAPUuid != null) && (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q);         
-        Logger.d(TAG, "Is L2CAP supported: " + mUsingL2CAP);
+        Logger.i(TAG, "Is L2CAP supported: " + mUsingL2CAP);
         if (mUsingL2CAP) {
-            c = new BluetoothGattCharacteristic(mCharacteristicL2CAPUuid,
-                    BluetoothGattCharacteristic.PROPERTY_READ,
-                    BluetoothGattCharacteristic.PERMISSION_READ);
-            service.addCharacteristic(c);
-            mCharacteristicL2CAP = c;
+            // Start L2CAP socket server
+            mL2CAPServer = new L2CAPServer(new L2CAPServer.Listener() {
+                @Override
+                public void onPeerConnected() {
+                    reportPeerConnected();
+                }
+
+                @Override
+                public void onPeerDisconnected() {
+                    reportPeerDisconnected();
+                }
+
+                @Override
+                public void onMessageReceived(@NonNull byte[] data) {
+                    reportMessageReceived(data);
+                }
+
+                @Override
+                public void onError(@NonNull Throwable error) {
+                    reportError(error);
+                }
+
+                @Override
+                public void onMessageSendProgress(long progress, long max) {
+                    reportMessageSendProgress(progress, max);
+                }
+            });
+
+            mPsm = mL2CAPServer.start(mBluetoothManager.getAdapter());
+            if (mPsm.isEmpty()) {
+                Logger.w(TAG, "Error starting L2CAP server");
+                mL2CAPServer = null;
+                mUsingL2CAP = false;
+            } else {
+                Logger.i(TAG, "Listening on L2CAP with PSM " + mPsm.getAsInt());
+                c = new BluetoothGattCharacteristic(mCharacteristicL2CAPUuid,
+                        BluetoothGattCharacteristic.PROPERTY_READ,
+                        BluetoothGattCharacteristic.PERMISSION_READ);
+                service.addCharacteristic(c);
+                mCharacteristicL2CAP = c;
+            }
         }
 
         try {
@@ -184,10 +223,16 @@ class GattServer extends BluetoothGattServerCallback {
         return true;
     }
 
+    OptionalInt getPsm() {
+        return mPsm;
+    }
+
     void stop() {
+        Logger.i(TAG, "stop");
         mInhibitCallbacks = true;
         if (mL2CAPServer != null) {
             mL2CAPServer.stop();
+            mL2CAPServer = null;
         }
         if (mGattServer != null) {
             // used to convey we want to shutdown once all write are done.
@@ -232,45 +277,14 @@ class GattServer extends BluetoothGattServerCallback {
                 reportError(new Error("Unexpected read request for L2CAP characteristic, not supported"));
                 return;
             }
-
-            // Start L2CAP socket server
-            mL2CAPServer = new L2CAPServer(new L2CAPServer.Listener() {
-                @Override
-                public void onPeerConnected() {
-                    reportPeerConnected();
-                }
-
-                @Override
-                public void onPeerDisconnected() {
-                    reportPeerDisconnected();
-                }
-
-                @Override
-                public void onMessageReceived(@NonNull byte[] data) {
-                    reportMessageReceived(data);
-                }
-
-                @Override
-                public void onError(@NonNull Throwable error) {
-                    reportError(error);
-                }
-
-                @Override
-                public void onMessageSendProgress(long progress, long max) {
-                    reportMessageSendProgress(progress, max);
-                }
-            });
-
-            byte[] psmValue = mL2CAPServer.start(mBluetoothManager.getAdapter());
-            if (psmValue == null) {
-                mUsingL2CAP = false;
-            } else {
-                mGattServer.sendResponse(device,
-                        requestId,
-                        BluetoothGatt.GATT_SUCCESS,
-                        0,
-                        psmValue);
-            }
+            // TODO: it's not clear this is the right way to encode the PSM and 18013-5 doesn't
+            //   seem to give enough guidance on it.
+            byte[] encodedPsmValue = ByteBuffer.allocate(4).putInt(mPsm.getAsInt()).array();
+            mGattServer.sendResponse(device,
+                    requestId,
+                    BluetoothGatt.GATT_SUCCESS,
+                    0,
+                    encodedPsmValue);
         } else {
             reportError(new Error("Read on unexpected characteristic with UUID "
                     + characteristic.getUuid()));

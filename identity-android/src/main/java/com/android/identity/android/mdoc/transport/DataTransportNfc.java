@@ -55,7 +55,6 @@ public class DataTransportNfc extends DataTransport {
     ArrayList<byte[]> mListenerRemainingChunks;
     int mListenerTotalChunks;
     int mListenerRemainingBytesAvailable;
-    boolean mEndTransceiverThread;
     int mListenerLeReceived = -1;
     BlockingQueue<byte[]> mWriterQueue = new LinkedTransferQueue<>();
     boolean mListenerStillActive;
@@ -635,7 +634,6 @@ public class DataTransportNfc extends DataTransport {
         } else {
             connectAsMdocReader();
         }
-        reportConnectionMethodReady();
     }
 
     private void connectAsMdocReader() {
@@ -664,7 +662,7 @@ public class DataTransportNfc extends DataTransport {
                         return;
                     }
 
-                    while (!mEndTransceiverThread && mIsoDep.isConnected()) {
+                    while (mIsoDep.isConnected()) {
                         byte[] messageToSend = null;
                         try {
                             messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
@@ -673,6 +671,10 @@ public class DataTransportNfc extends DataTransport {
                             }
                         } catch (InterruptedException e) {
                             continue;
+                        }
+                        if (messageToSend.length == 0) {
+                            // This is an indication that we're disconnecting
+                            break;
                         }
                         Logger.dHex(TAG, "Sending message", messageToSend);
 
@@ -848,7 +850,7 @@ public class DataTransportNfc extends DataTransport {
             removeActiveConnection(this);
         }
         inhibitCallbacks();
-        mEndTransceiverThread = true;
+        mWriterQueue.add(new byte[0]);
         mListenerStillActive = false;
     }
 

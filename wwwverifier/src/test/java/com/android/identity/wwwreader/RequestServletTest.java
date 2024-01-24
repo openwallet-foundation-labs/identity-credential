@@ -40,6 +40,7 @@ import java.security.PublicKey;
 import java.security.PrivateKey;
 
 // unit testing imports
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Assert;
@@ -62,6 +63,7 @@ import com.android.identity.mdoc.request.DeviceRequestParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 
 // imports from Datastore
+import com.android.identity.securearea.SecureArea;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
@@ -69,6 +71,7 @@ import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 // other imports
 import java.math.BigInteger;
 import java.io.IOException;
+import java.security.Security;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
@@ -102,7 +105,8 @@ public class RequestServletTest {
         Util.cborDecode(encodedSessionTranscriptBytes));
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
         MockitoAnnotations.initMocks(this);
         servlet = new RequestServlet();
         servlet.setStoreLogs(false);
@@ -176,6 +180,7 @@ public class RequestServletTest {
 
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
+            SecureArea.EC_CURVE_P256,
             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         eg.setConnectionMethods(Collections.singletonList(new ConnectionMethodHttp(
                 ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
@@ -196,6 +201,7 @@ public class RequestServletTest {
             new SessionEncryption(SessionEncryption.ROLE_MDOC,
                     new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                     eReaderKeyPublic,
+                    SecureArea.EC_CURVE_P256,
                     generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
             .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -227,7 +233,8 @@ public class RequestServletTest {
 
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
-            EngagementGenerator.ENGAGEMENT_VERSION_1_1);
+                SecureArea.EC_CURVE_P256,
+                EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         eg.setConnectionMethods(Collections.singletonList(
                 new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
         eg.setOriginInfos(Collections.singletonList(
@@ -246,6 +253,7 @@ public class RequestServletTest {
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
                         new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                         eReaderKeyPublic,
+                        SecureArea.EC_CURVE_P256,
                         generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
                 .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -288,6 +296,7 @@ public class RequestServletTest {
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
                         new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                         eReaderKeyPublic,
+                        SecureArea.EC_CURVE_P256,
                         generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
                 .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -331,6 +340,7 @@ public class RequestServletTest {
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
                         new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                         eReaderKeyPublic,
+                        SecureArea.EC_CURVE_P256,
                         Util.cborEncode(sessionTranscript));
         SessionEncryption.DecryptedMessage responseMessageDecrypted =
             sed.decryptMessage(responseMessage);

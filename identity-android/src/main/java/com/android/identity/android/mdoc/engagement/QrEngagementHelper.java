@@ -11,6 +11,7 @@ import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
 
@@ -49,15 +50,16 @@ public class QrEngagementHelper {
     private final DataTransportOptions mOptions;
     private final Listener mListener;
     private final Executor mExecutor;
+    private final @SecureArea.EcCurve int mEDeviceKeyCurve;
     private boolean mInhibitCallbacks;
     private ArrayList<DataTransport> mTransports = new ArrayList<>();
-    private int mNumTransportsStillSettingUp;
     private byte[] mEncodedDeviceEngagement;
     private byte[] mEncodedHandover;
     private boolean mReportedDeviceConnecting;
 
     QrEngagementHelper(@NonNull Context context,
                        @NonNull PublicKey eDeviceKey,
+                       @SecureArea.EcCurve int eDeviceKeyCurve,
                        @Nullable List<ConnectionMethod> connectionMethods,
                        @Nullable List<DataTransport> transports,
                        @NonNull DataTransportOptions options,
@@ -65,12 +67,13 @@ public class QrEngagementHelper {
                        @NonNull Executor executor) {
         mContext = context;
         mEDeviceKey = eDeviceKey;
+        mEDeviceKeyCurve = eDeviceKeyCurve;
         mListener = listener;
         mExecutor = executor;
         mOptions = options;
 
         byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
-                Util.cborEncode(Util.cborBuildCoseKey(eDeviceKey))));
+                Util.cborEncode(Util.cborBuildCoseKey(eDeviceKey, eDeviceKeyCurve))));
 
         // Set EDeviceKey for transports we were given.
         if (transports != null) {
@@ -97,69 +100,71 @@ public class QrEngagementHelper {
         // in another thread than we're in right now. For example this happens if using
         // ThreadPoolExecutor.
         //
-        // In particular, it means we need locking around `mNumTransportsStillSettingUp`. We'll
-        // use the monitor for the DeviceRetrievalHelper object for to achieve that.
-        //
         final QrEngagementHelper helper = this;
-        mNumTransportsStillSettingUp = 0;
 
-        synchronized (helper) {
-            for (DataTransport transport : mTransports) {
-                transport.setListener(new DataTransport.Listener() {
-                    @Override
-                    public void onConnectionMethodReady() {
-                        Logger.d(TAG, "onConnectionMethodReady for " + transport);
-                        synchronized (helper) {
-                            mNumTransportsStillSettingUp -= 1;
-                            if (mNumTransportsStillSettingUp == 0) {
-                                allTransportsAreSetup();
-                            }
-                        }
-                    }
+        for (DataTransport transport : mTransports) {
+            transport.setListener(new DataTransport.Listener() {
 
-                    @Override
-                    public void onConnecting() {
-                        Logger.d(TAG, "onConnecting for " + transport);
-                        peerIsConnecting(transport);
-                    }
+                @Override
+                public void onConnecting() {
+                    Logger.d(TAG, "onConnecting for " + transport);
+                    peerIsConnecting(transport);
+                }
 
-                    @Override
-                    public void onConnected() {
-                        Logger.d(TAG, "onConnected for " + transport);
-                        peerHasConnected(transport);
-                    }
+                @Override
+                public void onConnected() {
+                    Logger.d(TAG, "onConnected for " + transport);
+                    peerHasConnected(transport);
+                }
 
-                    @Override
-                    public void onDisconnected() {
-                        Logger.d(TAG, "onDisconnected for " + transport);
-                        transport.close();
-                    }
+                @Override
+                public void onDisconnected() {
+                    Logger.d(TAG, "onDisconnected for " + transport);
+                    transport.close();
+                }
 
-                    @Override
-                    public void onError(@NonNull Throwable error) {
-                        transport.close();
-                        reportError(error);
-                    }
+                @Override
+                public void onError(@NonNull Throwable error) {
+                    transport.close();
+                    reportError(error);
+                }
 
-                    @Override
-                    public void onMessageReceived() {
-                        Logger.d(TAG, "onMessageReceived for " + transport);
-                    }
+                @Override
+                public void onMessageReceived() {
+                    Logger.d(TAG, "onMessageReceived for " + transport);
+                }
 
-                    @Override
-                    public void onTransportSpecificSessionTermination() {
-                        Logger.d(TAG, "Received transport-specific session termination");
-                        transport.close();
-                    }
+                @Override
+                public void onTransportSpecificSessionTermination() {
+                    Logger.d(TAG, "Received transport-specific session termination");
+                    transport.close();
+                }
 
-                }, mExecutor);
-                Logger.d(TAG, "Connecting to transport " + transport);
-                transport.connect();
-                mNumTransportsStillSettingUp += 1;
-            }
+            }, mExecutor);
+            Logger.d(TAG, "Connecting to transport " + transport);
+            transport.connect();
         }
-    }
 
+        Logger.d(TAG, "All transports are now set up");
+
+        ArrayList<ConnectionMethod> connectionMethodsSetup = new ArrayList<>();
+        for (DataTransport transport : mTransports) {
+            connectionMethodsSetup.add(transport.getConnectionMethod());
+        }
+
+        // Calculate DeviceEngagement and Handover for QR code...
+        //
+        // TODO: Figure out when we need to use version "1.1".
+        //
+        EngagementGenerator engagementGenerator =
+                new EngagementGenerator(mEDeviceKey, mEDeviceKeyCurve, EngagementGenerator.ENGAGEMENT_VERSION_1_0);
+        engagementGenerator.setConnectionMethods(connectionMethodsSetup);
+        mEncodedDeviceEngagement = engagementGenerator.generate();
+        mEncodedHandover = Util.cborEncode(SimpleValue.NULL);
+        Logger.dCbor(TAG, "QR DE", mEncodedDeviceEngagement);
+        Logger.dCbor(TAG, "QR handover", mEncodedHandover);
+        reportDeviceEngagementReady();
+    }
 
     /**
      * Close all transports currently being listened on.
@@ -176,33 +181,6 @@ public class QrEngagementHelper {
             }
             mTransports = null;
         }
-    }
-
-
-    // TODO: handle the case where a transport never calls onConnectionMethodReady... that
-    //  is, set up a timeout to call this.
-    //
-    void allTransportsAreSetup() {
-        Logger.d(TAG, "All transports are now set up");
-
-        ArrayList<ConnectionMethod> connectionMethods = new ArrayList<>();
-        for (DataTransport transport : mTransports) {
-            connectionMethods.add(transport.getConnectionMethod());
-        }
-
-        // Calculate DeviceEngagement and Handover for QR code...
-        //
-        // TODO: Figure out when we need to use version "1.1".
-        //
-        EngagementGenerator engagementGenerator =
-                new EngagementGenerator(mEDeviceKey, EngagementGenerator.ENGAGEMENT_VERSION_1_0);
-        engagementGenerator.setConnectionMethods(connectionMethods);
-        mEncodedDeviceEngagement = engagementGenerator.generate();
-        mEncodedHandover = Util.cborEncode(SimpleValue.NULL);
-        Logger.dCbor(TAG, "QR DE", mEncodedDeviceEngagement);
-        Logger.dCbor(TAG, "QR handover", mEncodedHandover);
-
-        reportDeviceEngagementReady();
     }
 
     /**
@@ -390,6 +368,7 @@ public class QrEngagementHelper {
         private final DataTransportOptions mOptions;
         private final Listener mListener;
         private final Executor mExecutor;
+        private final @SecureArea.EcCurve int mEDeviceKeyCurve;
         private List<ConnectionMethod> mConnectionMethods;
         private List<DataTransport> mTransports;
 
@@ -405,11 +384,13 @@ public class QrEngagementHelper {
          */
         public Builder(@NonNull Context context,
                        @NonNull PublicKey eDeviceKey,
+                       @SecureArea.EcCurve int eDeviceKeyCurve,
                        @NonNull DataTransportOptions options,
                        @NonNull Listener listener,
                        @NonNull Executor executor) {
             mContext = context;
             mEDeviceKey = eDeviceKey;
+            mEDeviceKeyCurve = eDeviceKeyCurve;
             mOptions = options;
             mListener = listener;
             mExecutor = executor;
@@ -447,6 +428,7 @@ public class QrEngagementHelper {
         public @NonNull QrEngagementHelper build() {
             return new QrEngagementHelper(mContext,
                     mEDeviceKey,
+                    mEDeviceKeyCurve,
                     mConnectionMethods,
                     mTransports,
                     mOptions,

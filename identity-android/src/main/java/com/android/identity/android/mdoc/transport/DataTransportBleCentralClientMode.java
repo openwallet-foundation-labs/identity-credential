@@ -17,6 +17,7 @@
 package com.android.identity.android.mdoc.transport;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
@@ -28,10 +29,13 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
+import android.os.Build;
 import android.os.ParcelUuid;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
+import com.android.identity.internal.Util;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.util.Logger;
 
@@ -82,64 +86,18 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
                 return;
             }
             mIsConnecting = true;
-            UUID characteristicL2CAPUuid = null;
-            if (mOptions.getBleUseL2CAP()) {
-                characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
-            }
-            mGattClient = new GattClient(mContext,
-                    mServiceUuid, mEncodedEDeviceKeyBytes,
-                    mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
-                    mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
-                    characteristicL2CAPUuid);
-            mGattClient.setListener(new GattClient.Listener() {
-                @Override
-                public void onPeerConnected() {
-                    reportConnected();
-                }
 
-                @Override
-                public void onPeerDisconnected() {
-                    if (mGattClient != null) {
-                        mGattClient.setListener(null);
-                        mGattClient.disconnect();
-                        mGattClient = null;
-                    }
-                    reportDisconnected();
-                }
+            BluetoothDevice device = result.getDevice();
+            mTimeScanningMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
+            Logger.i(TAG, "Scanned for " + mTimeScanningMillis + " milliseconds. "
+                    + "Connecting to device with address " + device.getAddress());
 
-                @Override
-                public void onMessageReceived(@NonNull byte[] data) {
-                    reportMessageReceived(data);
-                }
+            connectToDevice(device);
 
-                @Override
-                public void onMessageSendProgress(final long progress, final long max) {
-                    reportMessageProgress(progress, max);
-                }
-
-                @Override
-                public void onTransportSpecificSessionTermination() {
-                    reportTransportSpecificSessionTermination();
-                }
-
-                @Override
-                public void onError(@NonNull Throwable error) {
-                    reportError(error);
-                }
-
-            });
-
-            reportConnecting();
-            long scanTimeMillis = System.currentTimeMillis() - mTimeScanningStartedMillis;
-            Logger.d(TAG, "Scanned for " + scanTimeMillis + " milliseconds. "
-                    + "Connecting to device with address " + result.getDevice().getAddress());
-            mGattClient.setClearCache(mOptions.getBleClearCache());
-            mGattClient.connect(result.getDevice());
             if (mScanner != null) {
                 Logger.d(TAG, "Stopped scanning for UUID " + mServiceUuid);
                 try {
                     mScanner.stopScan(mScanCallback);
-
                 } catch (SecurityException e) {
                     reportError(e);
                     return;
@@ -172,6 +130,101 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         }
     };
     private GattServer mGattServer;
+    private L2CAPClient mL2CAPClient;
+
+    private void connectToDevice(@NonNull BluetoothDevice device) {
+        reportConnecting();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                mOptions.getBleUseL2CAP() &&
+                mConnectionMethod.getPeripheralServerModePsm().isPresent()) {
+            Logger.i(TAG, "Have L2CAP PSM from engagement, connecting directly and skipping GATT");
+            connectL2CAP(device, mConnectionMethod.getPeripheralServerModePsm().getAsInt());
+        } else {
+            connectGatt(device);
+        }
+    }
+
+    private void connectGatt(@NonNull BluetoothDevice device) {
+        UUID characteristicL2CAPUuid = null;
+        if (mOptions.getBleUseL2CAP()) {
+            characteristicL2CAPUuid = mCharacteristicL2CAPUuidMdocReader;
+        }
+        mGattClient = new GattClient(mContext,
+                mServiceUuid, mEncodedEDeviceKeyBytes,
+                mCharacteristicStateUuid, mCharacteristicClient2ServerUuid,
+                mCharacteristicServer2ClientUuid, mCharacteristicIdentUuid,
+                characteristicL2CAPUuid);
+        mGattClient.setListener(new GattClient.Listener() {
+            @Override
+            public void onPeerConnected() {
+                reportConnected();
+            }
+
+            @Override
+            public void onPeerDisconnected() {
+                if (mGattClient != null) {
+                    mGattClient.setListener(null);
+                    mGattClient.disconnect();
+                    mGattClient = null;
+                }
+                reportDisconnected();
+            }
+
+            @Override
+            public void onMessageReceived(@NonNull byte[] data) {
+                reportMessageReceived(data);
+            }
+
+            @Override
+            public void onMessageSendProgress(final long progress, final long max) {
+                reportMessageProgress(progress, max);
+            }
+
+            @Override
+            public void onTransportSpecificSessionTermination() {
+                reportTransportSpecificSessionTermination();
+            }
+
+            @Override
+            public void onError(@NonNull Throwable error) {
+                reportError(error);
+            }
+
+        });
+        mGattClient.setClearCache(mOptions.getBleClearCache());
+        mGattClient.connect(device);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.Q)
+    private void connectL2CAP(@NonNull BluetoothDevice device, int psm) {
+        mL2CAPClient = new L2CAPClient(mContext, new L2CAPClient.Listener() {
+            @Override
+            public void onPeerConnected() {
+                reportConnected();
+            }
+
+            @Override
+            public void onPeerDisconnected() {
+                reportDisconnected();
+            }
+
+            @Override
+            public void onMessageReceived(@NonNull byte[] data) {
+                reportMessageReceived(data);
+            }
+
+            @Override
+            public void onError(@NonNull Throwable error) {
+                reportError(error);
+            }
+
+            @Override
+            public void onMessageSendProgress(long progress, long max) {
+                reportMessageProgress(progress, max);
+            }
+        });
+        mL2CAPClient.connect(device, psm);
+    }
 
     public DataTransportBleCentralClientMode(@NonNull Context context,
                                              @Role int role,
@@ -185,13 +238,20 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         mEncodedEDeviceKeyBytes = encodedEDeviceKeyBytes;
     }
 
+    // TODO: Check if BLE is enabled and error out if not so...
     private void connectAsMdoc() {
-        // TODO: Check if BLE is enabled and error out if not so...
-
-        // Start scanning...
         mBluetoothManager = mContext.getSystemService(BluetoothManager.class);
         BluetoothAdapter bluetoothAdapter = mBluetoothManager.getAdapter();
 
+        byte[] macAddress = mConnectionMethod.getPeripheralServerModeMacAddress();
+        if (macAddress != null) {
+            Logger.i(TAG, "MAC address provided, no scanning needed");
+            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(macAddress);
+            connectToDevice(device);
+            return;
+        }
+
+        // Start scanning...
         ScanFilter filter = new ScanFilter.Builder()
                 .setServiceUuid(new ParcelUuid(mServiceUuid))
                 .build();
@@ -227,6 +287,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         mGattServer.setListener(new GattServer.Listener() {
             @Override
             public void onPeerConnected() {
+                Logger.i(TAG, "onPeerConnected");
                 reportConnected();
                 // No need to advertise anymore since we now have a client...
                 if (mBluetoothLeAdvertiser != null) {
@@ -271,6 +332,12 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         });
         if (!mGattServer.start()) {
             reportError(new Error("Error starting Gatt Server"));
+            mGattServer.stop();
+            mGattServer = null;
+            return;
+        }
+        if (mOptions.getExperimentalBleL2CAPPsmInEngagement()) {
+            mConnectionMethodToReturn.setPeripheralServerModePsm(mGattServer.getPsm());
         }
 
         BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
@@ -281,7 +348,7 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
             mGattServer = null;
         } else {
             AdvertiseSettings settings = new AdvertiseSettings.Builder()
-                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED)
+                    .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
                     .setConnectable(true)
                     .setTimeout(0)
                     .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
@@ -308,11 +375,11 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         } else {
             connectAsMdocReader();
         }
-        reportConnectionMethodReady();
     }
 
     @Override
     public void close() {
+        Logger.i(TAG, "close");
         mIsConnecting = false;
         inhibitCallbacks();
         if (mBluetoothLeAdvertiser != null) {
@@ -343,6 +410,10 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
             mGattClient.disconnect();
             mGattClient = null;
         }
+        if (mL2CAPClient != null) {
+            mL2CAPClient.disconnect();
+            mL2CAPClient = null;
+        }
     }
 
     @Override
@@ -350,7 +421,9 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
         if (data.length == 0) {
             throw new IllegalArgumentException("Data to send cannot be empty");
         }
-        if (mGattServer != null) {
+        if (mL2CAPClient != null) {
+            mL2CAPClient.sendMessage(data);
+        } else if (mGattServer != null) {
             mGattServer.sendMessage(data);
         } else if (mGattClient != null) {
             mGattClient.sendMessage(data);
@@ -360,7 +433,9 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
 
     @Override
     public void sendTransportSpecificTerminationMessage() {
-        if (mGattServer == null) {
+        if (mL2CAPClient != null) {
+            reportError(new Error("Transport-specific termination not available"));
+        } else if (mGattServer == null) {
             if (mGattClient == null) {
                 reportError(new Error("Transport-specific termination not available"));
                 return;
@@ -373,7 +448,9 @@ public class DataTransportBleCentralClientMode extends DataTransportBle {
 
     @Override
     public boolean supportsTransportSpecificTerminationMessage() {
-        if (mGattServer != null) {
+        if (mL2CAPClient != null) {
+            return false;
+        } else if (mGattServer != null) {
             return mGattServer.supportsTransportSpecificTerminationMessage();
         } else if (mGattClient != null) {
             return mGattClient.supportsTransportSpecificTerminationMessage();

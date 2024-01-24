@@ -19,6 +19,7 @@ package com.android.identity.mdoc.mso;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
 
@@ -47,6 +48,7 @@ public class MobileSecurityObjectGenerator {
 
     private final CborBuilder mValueDigestsBuilder = new CborBuilder();
     private final MapBuilder<CborBuilder> mValueDigestsOuter = mValueDigestsBuilder.addMap();
+    private final @SecureArea.EcCurve int mDeviceKeyCurve;
     private boolean digestEmpty = true;
 
     private final List<String> mAuthorizedNameSpaces = new ArrayList<>();
@@ -61,11 +63,14 @@ public class MobileSecurityObjectGenerator {
      * @param digestAlgorithm The digest algorithm identifier. Must be one of {"SHA-256", "SHA-384", "SHA-512"}.
      * @param docType The document type.
      * @param deviceKey The public part of the key pair used for mdoc authentication.
+     * @param deviceKeyCurve The curve of deviceKey.
      * @exception IllegalArgumentException if the <code>digestAlgorithm</code> is not one of
      *                                     {"SHA-256", "SHA-384", "SHA-512"}.
      */
-    public MobileSecurityObjectGenerator(@NonNull String digestAlgorithm, @NonNull String docType,
-                                         @NonNull PublicKey deviceKey) {
+    public MobileSecurityObjectGenerator(@NonNull String digestAlgorithm,
+                                         @NonNull String docType,
+                                         @NonNull PublicKey deviceKey,
+                                         @SecureArea.EcCurve int deviceKeyCurve) {
         final List<String> allowableDigestAlgorithms = List.of("SHA-256", "SHA-384", "SHA-512");
         if (!allowableDigestAlgorithms.contains(digestAlgorithm)) {
             throw new IllegalArgumentException("digestAlgorithm must be one of " +
@@ -75,6 +80,7 @@ public class MobileSecurityObjectGenerator {
         mDigestAlgorithm = digestAlgorithm;
         mDocType = docType;
         mDeviceKey = deviceKey;
+        mDeviceKeyCurve = deviceKeyCurve;
         switch (digestAlgorithm) {
             case "SHA-256": mDigestSize = 32; break;
             case "SHA-384": mDigestSize = 48; break;
@@ -237,7 +243,7 @@ public class MobileSecurityObjectGenerator {
     private CborBuilder generateDeviceKeyBuilder() {
         CborBuilder deviceKeyBuilder = new CborBuilder();
         MapBuilder<CborBuilder> deviceKeyMapBuilder = deviceKeyBuilder.addMap();
-        deviceKeyMapBuilder.put(new UnicodeString("deviceKey"), Util.cborBuildCoseKey(mDeviceKey));
+        deviceKeyMapBuilder.put(new UnicodeString("deviceKey"), Util.cborBuildCoseKey(mDeviceKey, mDeviceKeyCurve));
 
         if (!mAuthorizedNameSpaces.isEmpty() | !mAuthorizedDataElements.isEmpty()) {
             MapBuilder<MapBuilder<CborBuilder>> keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations");

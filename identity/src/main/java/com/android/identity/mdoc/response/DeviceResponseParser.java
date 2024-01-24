@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
@@ -45,6 +46,7 @@ import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.ByteString;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnicodeString;
+import kotlin.Pair;
 
 /**
  * Helper class for parsing the bytes of <code>DeviceResponse</code>
@@ -151,7 +153,7 @@ public final class DeviceResponseParser {
         // Returns the DeviceKey from the MSO
         //
         private @NonNull
-        PublicKey parseIssuerSigned(
+        Pair<PublicKey, Integer> parseIssuerSigned(
                 String expectedDocType,
                 DataItem issuerSigned,
                 Document.Builder builder) {
@@ -205,6 +207,7 @@ public final class DeviceResponseParser {
             }
 
             PublicKey deviceKey = parsedMso.getDeviceKey();
+            @SecureArea.EcCurve int deviceKeyCurve = parsedMso.getDeviceKeyCurve();
 
             // nameSpaces may be absent...
             if (Util.cborMapHasKey(issuerSigned, "nameSpaces")) {
@@ -247,7 +250,7 @@ public final class DeviceResponseParser {
                     }
                 }
             }
-            return deviceKey;
+            return new Pair<>(deviceKey, deviceKeyCurve);
         }
 
         private void parseDeviceSigned(
@@ -352,12 +355,12 @@ public final class DeviceResponseParser {
 
                     DataItem issuerSigned = Util.cborMapExtractMap(documentDataItem,
                             "issuerSigned");
-                    PublicKey deviceKey = parseIssuerSigned(docType, issuerSigned, builder);
-                    builder.setDeviceKey(deviceKey);
+                    Pair<PublicKey, Integer> deviceKeyAndCurve = parseIssuerSigned(docType, issuerSigned, builder);
+                    builder.setDeviceKey(deviceKeyAndCurve.getFirst(), deviceKeyAndCurve.getSecond());
 
                     DataItem deviceSigned = Util.cborMapExtractMap(documentDataItem,
                             "deviceSigned");
-                    parseDeviceSigned(deviceSigned, docType, encodedSessionTranscript, deviceKey,
+                    parseDeviceSigned(deviceSigned, docType, encodedSessionTranscript, deviceKeyAndCurve.getFirst(),
                             eReaderKey, builder);
 
                     documents.add(builder.build());
@@ -421,6 +424,7 @@ public final class DeviceResponseParser {
      */
     public static class Document {
         static final String TAG = "Document";
+        private @SecureArea.EcCurve int mDeviceKeyCurve;
 
         static class EntryData {
             byte[] mValue;
@@ -504,6 +508,16 @@ public final class DeviceResponseParser {
         public @NonNull
         PublicKey getDeviceKey() {
             return mDeviceKey;
+        }
+
+        /**
+         * Gets the curve of {@code DeviceKey}.
+         *
+         * @return the curve.
+         */
+        public @SecureArea.EcCurve
+        int getDeviceKeyCurve() {
+            return mDeviceKeyCurve;
         }
 
         /**
@@ -894,8 +908,9 @@ public final class DeviceResponseParser {
                 return this;
             }
 
-            Builder setDeviceKey(@NonNull PublicKey deviceKey) {
+            Builder setDeviceKey(@NonNull PublicKey deviceKey, @SecureArea.EcCurve int deviceKeyCurve) {
                 mResult.mDeviceKey = deviceKey;
+                mResult.mDeviceKeyCurve = deviceKeyCurve;
                 return this;
             }
 

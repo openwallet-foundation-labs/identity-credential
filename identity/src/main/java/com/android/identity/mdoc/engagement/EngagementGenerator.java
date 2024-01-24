@@ -23,6 +23,8 @@ import com.android.identity.internal.Util;
 
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.origininfo.OriginInfo;
+import com.android.identity.securearea.SecureArea;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.security.PublicKey;
@@ -40,7 +42,8 @@ import co.nstant.in.cbor.model.UnsignedInteger;
 public final class EngagementGenerator {
     private static final String TAG = "EngagementGenerator";
     private final String mVersion;
-    final private PublicKey mESenderKey;
+    private final PublicKey mESenderKey;
+    private final @SecureArea.EcCurve int mESenderKeyCurve;
     private ArrayBuilder<CborBuilder> mDeviceRetrievalMethodsArrayBuilder;
     private ArrayBuilder<CborBuilder> mOriginInfoArrayBuilder;
 
@@ -59,11 +62,14 @@ public final class EngagementGenerator {
      * @param ESenderKey The ephemeral key used by the device (when generating
      *                   <code>DeviceEngagement</code>) or the reader (when generating
      *                   <code>ReaderEngagement</code>).
+     * @param ESenderKeyCurve The curve of ESenderKey.
      * @param version the version to use.
      */
     public EngagementGenerator(@NonNull PublicKey ESenderKey,
+                               @SecureArea.EcCurve int ESenderKeyCurve,
                                @EngagementVersion @NonNull String version) {
         mESenderKey = ESenderKey;
+        mESenderKeyCurve = ESenderKeyCurve;
         mVersion = version;
     }
 
@@ -105,7 +111,7 @@ public final class EngagementGenerator {
     public @NonNull
     byte[] generate() {
         DataItem eDeviceKeyBytes = Util.cborBuildTaggedByteString(
-                Util.cborEncode(Util.cborBuildCoseKey(mESenderKey)));
+                Util.cborEncode(Util.cborBuildCoseKey(mESenderKey, mESenderKeyCurve)));
 
         DataItem securityDataItem = new CborBuilder()
                 .addArray()

@@ -54,7 +54,8 @@ class QrCommunicationSetup(
                 context,
                 deviceRetrievalHelperListener,
                 context.mainExecutor(),
-                eDeviceKeyPair
+                eDeviceKeyPair,
+                settings.getEphemeralKeyCurveOption()
             )
             builder.useForwardEngagement(
                 transport,
@@ -97,6 +98,7 @@ class QrCommunicationSetup(
         qrEngagement = QrEngagementHelper.Builder(
             context,
             eDeviceKeyPair.public,
+            settings.getEphemeralKeyCurveOption(),
             connectionSetup.getConnectionOptions(),
             qrEngagementListener,
             context.mainExecutor()

@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.origininfo.OriginInfo;
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
 
@@ -68,6 +69,7 @@ public class EngagementParser {
         private byte[] mESenderKeyBytes;
         private final List<ConnectionMethod> mConnectionMethods = new ArrayList<>();
         private final List<OriginInfo> mOriginInfos = new ArrayList<>();
+        private @SecureArea.EcCurve int mESenderKeyCurve;
 
         Engagement() {
         }
@@ -91,6 +93,16 @@ public class EngagementParser {
         @NonNull
         public PublicKey getESenderKey() {
             return mESenderKey;
+        }
+
+        /**
+         * Gets the curve for the ephemeral key used by the other side.
+         *
+         * @return The curve for the key returned by {@link #getESenderKey()}.
+         */
+        @SecureArea.EcCurve
+        public int getESenderKeyCurve() {
+            return mESenderKeyCurve;
         }
 
         /**
@@ -154,6 +166,7 @@ public class EngagementParser {
             }
             ByteString eSenderKeyBytes = ((ByteString) securityItems.get(1));
             DataItem coseKey = Util.cborDecode(eSenderKeyBytes.getBytes());
+            mESenderKeyCurve = Util.coseKeyGetCurve(coseKey);
             mESenderKey = Util.coseKeyDecode(coseKey);
             mESenderKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(eSenderKeyBytes.getBytes()));
 

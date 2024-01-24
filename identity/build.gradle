@@ -10,13 +10,13 @@ java {
 }
 
 dependencies {
-    implementation("androidx.annotation:annotation:1.5.0")
-    implementation "co.nstant.in:cbor:0.9"
-    implementation "org.bouncycastle:bcprov-jdk15on:1.69"
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.69")
+    implementation libs.androidx.annotation
+    implementation libs.cbor
+    implementation libs.bouncy.castle.bcprov
+    implementation libs.bouncy.castle.bcpkix
 
-    testImplementation "junit:junit:4.13.2"
-    testImplementation "org.bouncycastle:bcprov-jdk15on:1.69"
+    testImplementation libs.bundles.unit.testing
+    testImplementation libs.bouncy.castle.bcprov
 }
 
 apply from: '../publish-helper.gradle'

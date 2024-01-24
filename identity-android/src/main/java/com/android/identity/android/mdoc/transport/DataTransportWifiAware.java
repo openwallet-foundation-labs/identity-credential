@@ -393,7 +393,6 @@ class DataTransportWifiAware extends DataTransport {
         } else {
             connectAsMdocReader();
         }
-        reportConnectionMethodReady();
     }
 
     void initiatorOnMessageReceived(SubscribeDiscoverySession session, PeerHandle peerHandle) {

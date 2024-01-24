@@ -25,9 +25,12 @@ import com.android.identity.credential.NameSpacedData;
 import com.android.identity.mdoc.request.DeviceRequestParser;
 import com.android.identity.util.CborUtil;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,6 +43,11 @@ import co.nstant.in.cbor.model.DataItem;
 
 public class MdocUtilTest {
     private static final String TAG = "MdocUtilTest";
+
+    @Before
+    public void setup() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+    }
 
     @Test
     public void testGenerateIssuerNameSpaces() {

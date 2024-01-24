@@ -148,8 +148,13 @@ public class Utility {
         for (X509Certificate authKeyCert : authKeysNeedCert) {
             PublicKey authKey = authKeyCert.getPublicKey();
 
-            MobileSecurityObjectGenerator msoGenerator = new MobileSecurityObjectGenerator("SHA-256",
-                    docType, authKey).setValidityInfo(signedDate, validFromDate, validToDate, null);
+            MobileSecurityObjectGenerator msoGenerator =
+                    new MobileSecurityObjectGenerator(
+                            "SHA-256",
+                            docType,
+                            authKey,
+                            SecureArea.EC_CURVE_P256)
+                            .setValidityInfo(signedDate, validFromDate, validToDate, null);
 
             Random r = new SecureRandom();
 

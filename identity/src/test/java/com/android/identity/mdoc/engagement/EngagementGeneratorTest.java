@@ -24,17 +24,27 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.origininfo.OriginInfo;
 import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl;
+import com.android.identity.securearea.SecureArea;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class EngagementGeneratorTest {
+
+    @Before
+    public void setup() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+    }
 
     @Test
     public void testNoConnectionMethodsOrOriginInfos() throws Exception {
@@ -44,6 +54,7 @@ public class EngagementGeneratorTest {
         KeyPair eSenderKey = kpg.generateKeyPair();
 
         EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
+                SecureArea.EC_CURVE_P256,
                 ENGAGEMENT_VERSION_1_0);
         byte[] encodedEngagement = eg.generate();
 
@@ -64,6 +75,7 @@ public class EngagementGeneratorTest {
         KeyPair eSenderKey = kpg.generateKeyPair();
 
         EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
+                SecureArea.EC_CURVE_P256,
                 ENGAGEMENT_VERSION_1_1);
         List<ConnectionMethod> connectionMethods = new ArrayList<>();
         connectionMethods.add(new ConnectionMethodHttp("http://www.example.com/verifier/123"));
@@ -95,6 +107,7 @@ public class EngagementGeneratorTest {
 
         UUID uuid = UUID.randomUUID();
         EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
+                SecureArea.EC_CURVE_P256,
                 ENGAGEMENT_VERSION_1_0);
         List<ConnectionMethod> connectionMethods = new ArrayList<>();
         connectionMethods.add(new ConnectionMethodBle(

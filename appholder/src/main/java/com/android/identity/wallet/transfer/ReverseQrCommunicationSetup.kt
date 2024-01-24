@@ -79,7 +79,8 @@ class ReverseQrCommunicationSetup(
             context,
             presentationListener,
             context.mainExecutor(),
-            eDeviceKeyPair
+            eDeviceKeyPair,
+            settings.getEphemeralKeyCurveOption()
         )
         builder.useReverseEngagement(transport, encodedReaderEngagement, origins)
         presentation = builder.build()
