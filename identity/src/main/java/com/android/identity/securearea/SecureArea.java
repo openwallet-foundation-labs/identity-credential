@@ -44,13 +44,13 @@ public interface SecureArea {
     /** The curve identifier for P-521 */
     int EC_CURVE_P521 = 3;
     /** The curve identifier for brainpoolP256r1 */
-    int EC_CURVE_BRAINPOOLP256R1 = -65537;
+    int EC_CURVE_BRAINPOOLP256R1 = 256;
     /** The curve identifier for brainpoolP320r1 */
-    int EC_CURVE_BRAINPOOLP320R1 = -65538;
+    int EC_CURVE_BRAINPOOLP320R1 = 257;
     /** The curve identifier for brainpoolP384r1 */
-    int EC_CURVE_BRAINPOOLP384R1 = -65539;
+    int EC_CURVE_BRAINPOOLP384R1 = 258;
     /** The curve identifier for brainpoolP512r1 */
-    int EC_CURVE_BRAINPOOLP512R1 = -65540;
+    int EC_CURVE_BRAINPOOLP512R1 = 259;
     /** The curve identifier for Ed25519 (EdDSA only) */
     int EC_CURVE_ED25519 = 6;
     /** The curve identifier for X25519 (ECDH only) */
