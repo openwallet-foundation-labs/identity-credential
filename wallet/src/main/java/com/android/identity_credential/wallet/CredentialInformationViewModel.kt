@@ -5,12 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.identity.credential.Credential
 import com.android.identity.issuance.CredentialExtensions.housekeeping
-import com.android.identity.issuance.CredentialExtensions.refreshState
-import com.android.identity.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class CredentialInformationViewModel  : ViewModel() {
+class CredentialInformationViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "CredentialInformationViewModel"
@@ -27,7 +25,7 @@ class CredentialInformationViewModel  : ViewModel() {
                 3,
                 30*24*3600,
                 application.androidKeystoreSecureArea,
-                "mdoc/MSO")
+                WalletApplication.AUTH_KEY_DOMAIN)
             lastHousekeepingAt.value = System.currentTimeMillis()
         }
     }

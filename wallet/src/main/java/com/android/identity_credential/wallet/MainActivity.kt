@@ -1,11 +1,30 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.android.identity_credential.wallet
 
 import android.Manifest
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
@@ -37,7 +56,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -49,27 +67,26 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.edit
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -108,50 +125,76 @@ class MainActivity : ComponentActivity() {
 
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
     private val credentialInformationViewModel: CredentialInformationViewModel by viewModels()
+    private lateinit var sharedPreferences: SharedPreferences
 
-    private val permissionTracker = PermissionTracker(this, mapOf(
-        Manifest.permission.CAMERA to "This application requires camera permission to scan",
-        Manifest.permission.NFC to "NFC permission is required to operate"
-    ))
+    private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
+        PermissionTracker(this, mapOf(
+            Manifest.permission.CAMERA to "This application requires camera permission to scan",
+            Manifest.permission.NFC to "NFC permission is required to operate",
+            Manifest.permission.BLUETOOTH_ADVERTISE to "This application requires Bluetooth " +
+                    "advertising to send credential data",
+            Manifest.permission.BLUETOOTH_SCAN to "This application requires Bluetooth " +
+                    "scanning to send credential data",
+            Manifest.permission.BLUETOOTH_CONNECT to "This application requires Bluetooth " +
+                    "connection to send credential data"
+        ))
+    } else {
+        PermissionTracker(this, mapOf(
+            Manifest.permission.CAMERA to "This application requires camera permission to scan",
+            Manifest.permission.NFC to "NFC permission is required to operate",
+            Manifest.permission.ACCESS_FINE_LOCATION to "This application requires Bluetooth " +
+                    "to send credential data"
+        ))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         application = getApplication() as WalletApplication
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
         permissionTracker.updatePermissions()
+        val blePermissions: List<String> = if (Build.VERSION.SDK_INT >= 31) {
+            listOf(Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT)
+        } else {
+            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
 
         setContent {
             IdentityCredentialTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val navController = rememberNavController()
-                    NavHost(navController = navController, startDestination = "MainScreen") {
-                        composable("MainScreen") {
-                            MainScreen(navController)
-                        }
-                        composable("AboutScreen") {
-                            AboutScreen(navController)
-                        }
-                        composable("AddToWalletScreen") {
-                            AddToWalletScreen(navController)
-                        }
-                        composable("CredentialInfo/{credentialId}") { backStackEntry ->
-                            CredentialInfoScreen(navController,
-                                backStackEntry.arguments?.getString("credentialId")!!)
-                        }
-                        composable("CredentialInfo/{credentialId}/Details") { backStackEntry ->
-                            CredentialDetailsScreen(navController,
-                                backStackEntry.arguments?.getString("credentialId")!!)
-                        }
-                        composable("ProvisionCredentialScreen") {
-                            ProvisionCredentialScreen(navController)
+                permissionTracker.PermissionCheck(permissions = blePermissions) {
+                    // A surface container using the 'background' color from the theme
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        val navController = rememberNavController()
+                        NavHost(navController = navController, startDestination = "MainScreen") {
+                            composable("MainScreen") {
+                                MainScreen(navController)
+                            }
+                            composable("AboutScreen") {
+                                AboutScreen(navController)
+                            }
+                            composable("AddToWalletScreen") {
+                                AddToWalletScreen(navController)
+                            }
+                            composable("CredentialInfo/{credentialId}") { backStackEntry ->
+                                CredentialInfoScreen(navController,
+                                    backStackEntry.arguments?.getString("credentialId")!!)
+                            }
+                            composable("CredentialInfo/{credentialId}/Details") { backStackEntry ->
+                                CredentialDetailsScreen(navController,
+                                    backStackEntry.arguments?.getString("credentialId")!!)
+                            }
+                            composable("ProvisionCredentialScreen") {
+                                ProvisionCredentialScreen(navController)
+                            }
                         }
                     }
                 }
+
             }
         }
     }
@@ -264,13 +307,19 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun MainScreenCredentialPager(navigation: NavHostController) {
+        val credentialIds = application.credentialStore.listCredentials()
+        val pagerState = rememberPagerState(pageCount = {
+            credentialIds.size
+        })
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.currentPage }.collect { page ->
+                sharedPreferences.edit {
+                    putString(WalletApplication.PREFERENCE_CURRENT_CREDENTIAL_ID, credentialIds[page])
+                }
+            }
+        }
 
         Column() {
-
-            val credentialIds = application.credentialStore.listCredentials()
-            val pagerState = rememberPagerState(pageCount = {
-                credentialIds.size
-            })
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.height(200.dp)
