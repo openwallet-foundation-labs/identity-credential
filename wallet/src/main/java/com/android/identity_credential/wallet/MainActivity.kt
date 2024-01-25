@@ -80,6 +80,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
@@ -118,6 +119,9 @@ import com.android.identity_credential.mrtd.MrtdMrzScanner
 import com.android.identity_credential.mrtd.MrtdNfc
 import com.android.identity_credential.mrtd.MrtdNfcDataReader
 import com.android.identity_credential.mrtd.MrtdNfcReader
+import com.android.identity_credential.wallet.ui.QrEngagementScreen
+import com.android.identity_credential.wallet.ui.ScreenWithAppBar
+import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 
 class MainActivity : ComponentActivity() {
 
@@ -126,7 +130,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var application: WalletApplication
-
+    private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
     private val credentialInformationViewModel: CredentialInformationViewModel by viewModels()
     private lateinit var sharedPreferences: SharedPreferences
@@ -194,6 +198,9 @@ class MainActivity : ComponentActivity() {
                             }
                             composable("ProvisionCredentialScreen") {
                                 ProvisionCredentialScreen(navController)
+                            }
+                            composable("QrEngagementScreen") {
+                                QrEngagementScreen(qrEngagementViewModel, navController)
                             }
                         }
                     }
@@ -269,15 +276,36 @@ class MainActivity : ComponentActivity() {
             if (application.credentialStore.listCredentials().size == 0) {
                 MainScreenNoCredentialsAvailable(navigation)
             } else {
-                MainScreenCredentialPager(navigation)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                Box(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        modifier = Modifier.padding(8.dp),
-                        text = "Hold to Reader"
-                    )
+                    Column(modifier = Modifier.align(Alignment.Center))
+                    {
+                        MainScreenCredentialPager(navigation)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                text = "Hold to Reader"
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            qrEngagementViewModel.startQrEngagement()
+                            navigation.navigate("QrEngagementScreen")
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(8.dp),
+                            text = "Show QR"
+                        )
+                    }
                 }
             }
         }
