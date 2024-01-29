@@ -1,0 +1,54 @@
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+}
+
+android {
+    namespace 'com.android.identity_credential.icao_reader'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 27
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+}
+
+dependencies {
+
+    implementation libs.androidx.core.ktx
+    implementation libs.androidx.appcompat
+    implementation libs.androidx.material
+
+    implementation libs.androidx.camera.view
+    implementation libs.androidx.camera.camera2
+    implementation libs.androidx.camera.lifecycle
+    implementation libs.net.sf.scuba.scuba.sc.android
+    implementation libs.org.jmrtd.jmrtd
+    implementation libs.com.google.mlkit.text.recognition
+
+    implementation libs.kotlinx.coroutines.guava
+
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.androidx.test.espresso
+    androidTestImplementation platform(libs.compose.bom)
+    testImplementation libs.bundles.unit.testing
+    testRuntimeOnly libs.junit.jupiter.engine
+
+    testImplementation project(":identity-android")
+}
