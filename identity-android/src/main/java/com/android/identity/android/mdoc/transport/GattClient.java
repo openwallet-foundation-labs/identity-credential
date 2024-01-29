@@ -36,6 +36,7 @@ import com.android.identity.internal.Util;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Locale;
@@ -348,7 +349,17 @@ class GattClient extends BluetoothGattCallback {
                 }
             });
 
-            mL2CAPClient.connect(mGatt.getDevice(), characteristic.getValue());
+            byte[] psmValue = characteristic.getValue();
+            byte[] psmSized = new byte[4];
+            if (psmValue.length < 4) {
+                // Add 00 on left if psm length is lower than 4
+                System.arraycopy(psmValue, 0, psmSized, 4 - psmValue.length, psmValue.length);
+            } else {
+                psmSized = psmValue;
+            }
+            int psm = ByteBuffer.wrap(psmSized).getInt();
+
+            mL2CAPClient.connect(mGatt.getDevice(), psm);
         } else {
             reportError(new Error("Unexpected onCharacteristicRead for characteristic "
                     + characteristic.getUuid() + ", expected " + mCharacteristicIdentUuid));
@@ -574,7 +585,7 @@ class GattClient extends BluetoothGattCallback {
 
 
     void sendMessage(@NonNull byte[] data) {
-        Logger.dHex(TAG, "sendMessage", data);
+        Logger.dHex(TAG, "sendMessage " + this, data);
 
         // Use socket for L2CAP if applicable
         if (mL2CAPClient != null) {

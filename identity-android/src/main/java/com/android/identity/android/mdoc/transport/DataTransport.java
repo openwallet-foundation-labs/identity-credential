@@ -105,6 +105,8 @@ public abstract class DataTransport {
      * <p>This is an asynchronous operation, {@link Listener#onConnected()} will
      * be called on success. On error {@link Listener#onError(Throwable)} will
      * be called.
+     *
+     * <p>It's safe to call {@link #getConnectionMethod()} once this returns.
      */
     public abstract void connect();
 
@@ -206,20 +208,15 @@ public abstract class DataTransport {
         mInhibitCallbacks = true;
     }
 
-    // Note: The report*() methods are safe to call from any thread.
 
-    protected void reportConnectionMethodReady() {
-        final Listener listener = mListener;
-        final Executor executor = mListenerExecutor;
-        if (listener != null && executor != null) {
-            executor.execute(() -> {
-                if (!mInhibitCallbacks) {
-                    listener.onConnectionMethodReady();
-                }
-            });
-        }
+    private boolean mIsConnected = false;
+
+    public boolean isConnected() {
+        return mIsConnected;
     }
 
+    // Note: The report*() methods are safe to call from any thread.
+    
     protected void reportConnecting() {
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
@@ -233,6 +230,7 @@ public abstract class DataTransport {
     }
 
     protected void reportConnected() {
+        mIsConnected = true;
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
         if (listener != null && executor != null) {
@@ -308,17 +306,12 @@ public abstract class DataTransport {
     /**
      * Returns a {@link ConnectionMethod} instance that can be used to connect to this transport.
      *
-     * <p>This is used for listening transports where the address to listen on is not known
-     * until the connection has been set up for example if dynamic TCP port assignments are
-     * used or cloud relays.
-     *
      * <p>For most data transports this will return the same {@link ConnectionMethod} instance
      * that was passed at construction time. However for some transports where the address to
      * listen on is not known until the connection have been set up (for example dynamic TCP
      * listening port assignments or when a cloud relay is in use) it will differ.
      *
-     * <p>This cannot be called until the {@link Listener#onConnectionMethodReady()} callback
-     * has been fired.
+     * <p>This cannot be called until {@link #connect()} has been called.
      *
      * @return A {@link ConnectionMethod}-derived instance.
      */
@@ -328,16 +321,6 @@ public abstract class DataTransport {
      * Interface for listener.
      */
     public interface Listener {
-
-        /**
-         * Called when the {@link ConnectionMethod} is ready for the transport.
-         *
-         * <p>This is usually called right after {@link #connect()} is called.
-         *
-         * <p>After this is called it's permitted to call {@link #getConnectionMethod()}.
-         */
-        void onConnectionMethodReady();
-
         /**
          * May be called when attempting to connect and the first sign of progress is seen.
          *
@@ -433,6 +416,11 @@ public abstract class DataTransport {
             return DataTransportTcp.fromConnectionMethod(
                     context,
                     (ConnectionMethodTcp) connectionMethod,
+                    role, options);
+        } else if (connectionMethod instanceof ConnectionMethodUdp) {
+            return DataTransportUdp.fromConnectionMethod(
+                    context,
+                    (ConnectionMethodUdp) connectionMethod,
                     role, options);
         } else {
             throw new IllegalArgumentException("Unknown ConnectionMethod");

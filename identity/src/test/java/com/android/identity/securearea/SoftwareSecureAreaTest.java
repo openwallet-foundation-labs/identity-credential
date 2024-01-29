@@ -69,7 +69,7 @@ public class SoftwareSecureAreaTest {
 
         // Create an attestation key...
         try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", new BouncyCastleProvider());
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
             kpg.initialize(new ECGenParameterSpec("secp256r1"));
             KeyPair attestationKeyPair = kpg.generateKeyPair();
             mAttestationKey = attestationKeyPair.getPrivate();
@@ -93,7 +93,7 @@ public class SoftwareSecureAreaTest {
             mAttestationKeyCertification.add((X509Certificate) cf.generateCertificate(certBais));
 
         } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | IOException |
-                 CertificateException | OperatorCreationException e) {
+                 CertificateException | OperatorCreationException | NoSuchProviderException e) {
             throw new AssertionError(e);
         }
     }
@@ -685,17 +685,17 @@ public class SoftwareSecureAreaTest {
                         kpg.initialize(new ECGenParameterSpec("brainpoolP512r1"));
                         break;
                     case SecureArea.EC_CURVE_X25519:
-                        kpg = KeyPairGenerator.getInstance("x25519", new BouncyCastleProvider());
+                        kpg = KeyPairGenerator.getInstance("x25519", BouncyCastleProvider.PROVIDER_NAME);
                         break;
                     case SecureArea.EC_CURVE_X448:
-                        kpg = KeyPairGenerator.getInstance("x448", new BouncyCastleProvider());
+                        kpg = KeyPairGenerator.getInstance("x448", BouncyCastleProvider.PROVIDER_NAME);
                         break;
                     default:
                         throw new AssertionError("Unsupported curve " + ecCurve);
                 }
                 otherKeyPair = kpg.generateKeyPair();
-            } catch (InvalidAlgorithmParameterException |
-                     NoSuchAlgorithmException e) {
+            } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException |
+                     NoSuchProviderException e) {
                 throw new AssertionError("Unexpected exception", e);
             }
 

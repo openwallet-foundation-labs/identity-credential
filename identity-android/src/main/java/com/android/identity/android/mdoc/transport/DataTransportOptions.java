@@ -10,6 +10,8 @@ public class DataTransportOptions {
     private boolean mBleUseL2CAP;
     private boolean mBleClearCache;
 
+    private boolean mExperimentalBleL2CAPPsmInEngagement;
+
     DataTransportOptions() {}
 
     /**
@@ -31,6 +33,18 @@ public class DataTransportOptions {
      */
     public boolean getBleClearCache() {
         return mBleClearCache;
+    }
+
+    /**
+     * Returns the whether BLE L2CAP PSM is conveyed in engagement.
+     *
+     * See {@link Builder#setExperimentalBleL2CAPPsmInEngagement(boolean)} for details
+     * on this option.
+     *
+     * @return the value.
+     */
+    public boolean getExperimentalBleL2CAPPsmInEngagement() {
+        return mExperimentalBleL2CAPPsmInEngagement;
     }
 
     /**
@@ -72,6 +86,22 @@ public class DataTransportOptions {
          */
         public Builder setBleClearCache(boolean bleClearCache) {
             mOptions.mBleClearCache = bleClearCache;
+            return this;
+        }
+
+        /**
+         * Sets whether the BLE L2CAP PSM is conveyed in the engagement.
+         *
+         * <p>This uses a non-standardized mechanisms for conveying the BLE L2CAP PSM
+         * in NFC and QR engagement.
+         *
+         * <p>The default value for this is <em>false</em>.
+         *
+         * @param value
+         * @return the builder.
+         */
+        public Builder setExperimentalBleL2CAPPsmInEngagement(boolean value) {
+            mOptions.mExperimentalBleL2CAPPsmInEngagement = value;
             return this;
         }
 

@@ -128,7 +128,8 @@ class ProvisioningUtil private constructor(
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 docType,
-                pendingAuthKey.attestation.first().publicKey
+                pendingAuthKey.attestation.first().publicKey,
+                settings.ecCurve
             )
             msoGenerator.setValidityInfo(now, validFrom, validUntil, null)
 
@@ -237,7 +238,7 @@ class ProvisioningUtil private constructor(
 
     companion object {
 
-        private const val AUTH_KEY_DOMAIN = "mdoc/MSO"
+        const val AUTH_KEY_DOMAIN = "mdoc/MSO"
         private const val USER_VISIBLE_NAME = "userVisibleName"
         private const val DOCUMENT_TYPE = "documentType"
         private const val DATE_PROVISIONED = "dateProvisioned"

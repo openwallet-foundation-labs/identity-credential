@@ -205,6 +205,12 @@ class ShowDocumentFragment : Fragment() {
                 transferManager.getEngagementToRequestDurationMillis() +
                 transferManager.getRequestToResponseDurationMillis()
         sb.append("Tap to Engagement Received: ${transferManager.getTapToEngagementDurationMillis()} ms<br>")
+        val scanningText = if (transferManager.getBleScanningMillis() > 0) {
+            "${transferManager.getBleScanningMillis()} ms"
+        } else {
+            "N/A"
+        }
+        sb.append("BLE scanning: $scanningText ms<br>")
         sb.append("Engagement Received to Request Sent: ${transferManager.getEngagementToRequestDurationMillis()} ms<br>")
         sb.append("Request Sent to Response Received: ${transferManager.getRequestToResponseDurationMillis()} ms<br>")
         sb.append("<b>Total transaction time: <font color=\"$primaryColor\">$totalDuration ms</font></b><br>")
@@ -260,7 +266,7 @@ class ShowDocumentFragment : Fragment() {
             // Just show the SHA-1 of DeviceKey since all we're interested in here is whether
             // we saw the same key earlier.
             sb.append("<h6>DeviceKey</h6>")
-            sb.append("${getFormattedCheck(true)}Curve: <b>${curveNameFor(Util.getCurve(doc.deviceKey))}</b><br>")
+            sb.append("${getFormattedCheck(true)}Curve: <b>${curveNameFor(doc.deviceKeyCurve)}</b><br>")
             val deviceKeySha1 = FormatUtil.encodeToString(
                 MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.encoded)
             )

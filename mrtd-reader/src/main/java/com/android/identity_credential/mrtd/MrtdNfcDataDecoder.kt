@@ -2,12 +2,12 @@ package com.android.identity_credential.mrtd
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.jmrtd.lds.SODFile
 import org.jmrtd.lds.icao.DG1File
 import org.jmrtd.lds.icao.DG2File
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.security.Signature
@@ -16,7 +16,7 @@ import java.util.Arrays
 /**
  * Decoder that validates [MrtdNfcData] and converts it to [MrtdDecodedData].
  */
-class MrtdNfcDataDecoder(private val mTmpFolder: String) {
+class MrtdNfcDataDecoder(private val mTmpFolder: File) {
     /**
      * Validates and decodes [MrtdNfcData].
      *

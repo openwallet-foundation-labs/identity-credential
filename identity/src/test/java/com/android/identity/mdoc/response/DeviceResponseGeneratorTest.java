@@ -36,6 +36,7 @@ import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
@@ -45,6 +46,7 @@ import org.junit.Test;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
@@ -107,6 +109,8 @@ public class DeviceResponseGeneratorTest {
 
     @Before
     public void setup() throws Exception {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+
         mStorageEngine = new EphemeralStorageEngine();
 
         mSecureAreaRepository = new SecureAreaRepository();
@@ -165,7 +169,8 @@ public class DeviceResponseGeneratorTest {
         MobileSecurityObjectGenerator msoGenerator = new MobileSecurityObjectGenerator(
                 "SHA-256",
                 DOC_TYPE,
-                pendingAuthKey.getAttestation().get(0).getPublicKey());
+                pendingAuthKey.getAttestation().get(0).getPublicKey(),
+                SecureArea.EC_CURVE_P256);
         msoGenerator.setValidityInfo(mTimeSigned, mTimeValidityBegin, mTimeValidityEnd, null);
 
         Random deterministicRandomProvider = new Random(42);

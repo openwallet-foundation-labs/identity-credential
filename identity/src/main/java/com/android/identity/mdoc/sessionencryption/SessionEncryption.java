@@ -24,6 +24,7 @@ import androidx.annotation.Nullable;
 
 import com.android.identity.internal.Util;
 import com.android.identity.securearea.SecureArea;
+import com.android.identity.util.Logger;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -36,6 +37,7 @@ import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.List;
@@ -69,6 +71,7 @@ public final class SessionEncryption {
 
     public static final int ROLE_MDOC = 0;
     public static final int ROLE_MDOC_READER = 1;
+    private final @SecureArea.EcCurve int mCurve;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(value = {ROLE_MDOC, ROLE_MDOC_READER})
@@ -101,28 +104,31 @@ public final class SessionEncryption {
      *                then use the ephemeral key pair of the reader, and if <code>ROLE_MDOC</code>,
      *                then use the ephemeral key pair of the holder).
      * @param remotePublicKey The public ephemeral key of the remote device.
+     * @param curve The COSE curve identifier for the keys.
      * @param encodedSessionTranscript The bytes of the <code>SessionTranscript</code> CBOR.
      */
     public SessionEncryption(@Role int role,
                              @NonNull KeyPair keyPair,
                              @NonNull PublicKey remotePublicKey,
+                             @SecureArea.EcCurve int curve,
                              @NonNull byte[] encodedSessionTranscript) {
         mRole = role;
         PrivateKey mESelfKeyPrivate = keyPair.getPrivate();
         mESelfKeyPublic = keyPair.getPublic();
+        mCurve = curve;
 
         SecretKeySpec deviceSK, readerSK;
         try {
             KeyAgreement ka;
-            switch (Util.getCurve(remotePublicKey)) {
+            switch (curve) {
                 case SecureArea.EC_CURVE_X25519:
-                    ka = KeyAgreement.getInstance("X25519", new BouncyCastleProvider());
+                    ka = KeyAgreement.getInstance("X25519", BouncyCastleProvider.PROVIDER_NAME);
                     break;
                 case SecureArea.EC_CURVE_X448:
-                    ka = KeyAgreement.getInstance("X448", new BouncyCastleProvider());
+                    ka = KeyAgreement.getInstance("X448", BouncyCastleProvider.PROVIDER_NAME);
                     break;
                 default:
-                    ka = KeyAgreement.getInstance("ECDH", new BouncyCastleProvider());
+                    ka = KeyAgreement.getInstance("ECDH", BouncyCastleProvider.PROVIDER_NAME);
                     break;
             }
             ka.init(mESelfKeyPrivate);
@@ -141,7 +147,7 @@ public final class SessionEncryption {
             info = "SKReader".getBytes(UTF_8);
             derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
             readerSK = new SecretKeySpec(derivedKey, "AES");
-        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+        } catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchProviderException e) {
             throw new IllegalStateException("Error deriving keys", e);
         }
 
@@ -209,7 +215,7 @@ public final class SessionEncryption {
         if (!mSessionEstablishmentSent && mSendSessionEstablishment && mRole == ROLE_MDOC_READER) {
             DataItem eReaderKey = setInvalidEReaderKey ?
                     Util.cborBuildCoseKeyWithMalformedYPoint(mESelfKeyPublic)
-                    : Util.cborBuildCoseKey(mESelfKeyPublic);
+                    : Util.cborBuildCoseKey(mESelfKeyPublic, mCurve);
             DataItem eReaderKeyBytes = Util.cborBuildTaggedByteString(
                     Util.cborEncode(eReaderKey));
             mapBuilder.put(new UnicodeString("eReaderKey"), eReaderKeyBytes);

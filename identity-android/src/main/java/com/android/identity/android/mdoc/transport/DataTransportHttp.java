@@ -185,7 +185,6 @@ public class DataTransportHttp extends DataTransport {
                 "Listening with host=%s port=%d useTls=%s", mHost, mPort, mUseTls));
         mConnectionMethod = new ConnectionMethodHttp(
                 String.format(Locale.US, "http://%s:%d/mdocreader", mHost, mPort));
-        reportConnectionMethodReady();
     }
 
     public @NonNull String getHost() {
@@ -227,8 +226,6 @@ public class DataTransportHttp extends DataTransport {
                 "Connecting to uri=%s (host=%s port=%d useTls=%s)",
                 mConnectionMethod.getUri(),
                 mHost, mPort, mUseTls));
-
-        reportConnectionMethodReady();
 
         mRequestQueue = Volley.newRequestQueue(mContext);
 

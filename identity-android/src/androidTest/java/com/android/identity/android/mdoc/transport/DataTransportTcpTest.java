@@ -41,61 +41,6 @@ public class DataTransportTcpTest {
 
     @Test
     @SmallTest
-    public void setupReceivedWhileWaitingForConnection() {
-        Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
-        DataTransportTcp prover = new DataTransportTcp(appContext,
-                DataTransport.ROLE_MDOC,
-                new DataTransportOptions.Builder().build());
-
-        ConditionVariable proverSetupCompletedCondVar = new ConditionVariable();
-
-        Executor executor = Executors.newSingleThreadExecutor();
-
-        prover.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-                proverSetupCompletedCondVar.open();
-            }
-
-            @Override
-            public void onConnecting() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onConnected() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onDisconnected() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onMessageReceived() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onTransportSpecificSessionTermination() {
-                Assert.fail();
-            }
-
-            @Override
-            public void onError(@NonNull Throwable error) {
-                Assert.fail();
-            }
-
-        }, executor);
-
-        prover.connect();
-        Assert.assertTrue(proverSetupCompletedCondVar.block(5000));
-        prover.close();
-    }
-
-    @Test
-    @SmallTest
     public void connectAndListen() {
 
         Context appContext = androidx.test.InstrumentationRegistry.getTargetContext();
@@ -112,21 +57,14 @@ public class DataTransportTcpTest {
         final byte[][] messageReceivedByProver = {null};
         final byte[][] messageReceivedByVerifier = {null};
 
-        final ConditionVariable proverConnectionMethodReadyCondVar = new ConditionVariable();
         final ConditionVariable proverMessageReceivedCondVar = new ConditionVariable();
         final ConditionVariable proverPeerConnectedCondVar = new ConditionVariable();
         final ConditionVariable proverPeerDisconnectedCondVar = new ConditionVariable();
-        final ConditionVariable verifierConnectionMethodReadyCondVar = new ConditionVariable();
         final ConditionVariable verifierMessageReceivedCondVar = new ConditionVariable();
         final ConditionVariable verifierPeerConnectedCondVar = new ConditionVariable();
         Executor executor = Executors.newSingleThreadExecutor();
 
         prover.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-                proverConnectionMethodReadyCondVar.open();
-            }
-
             @Override
             public void onConnecting() {
             }
@@ -161,11 +99,6 @@ public class DataTransportTcpTest {
 
         verifier.setListener(new DataTransport.Listener() {
             @Override
-            public void onConnectionMethodReady() {
-                verifierConnectionMethodReadyCondVar.open();
-            }
-
-            @Override
             public void onConnecting() {
             }
 
@@ -198,10 +131,8 @@ public class DataTransportTcpTest {
         }, executor);
 
         prover.connect();
-        Assert.assertTrue(proverConnectionMethodReadyCondVar.block(5000));
         verifier.setHostAndPort(prover.getHost(), prover.getPort());
         verifier.connect();
-        Assert.assertTrue(verifierConnectionMethodReadyCondVar.block(5000));
 
         Assert.assertTrue(verifierPeerConnectedCondVar.block(5000));
         verifier.sendMessage(messageSentByVerifier);

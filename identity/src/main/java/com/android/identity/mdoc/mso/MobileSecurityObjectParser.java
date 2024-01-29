@@ -19,6 +19,7 @@ package com.android.identity.mdoc.mso;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
 
@@ -94,6 +95,7 @@ public class MobileSecurityObjectParser {
         private Map<String, List<String>> mAuthorizedDataElements;
         private Map<Long, byte[]> mDeviceKeyInfo;
         private Timestamp mSigned, mValidFrom, mValidUntil, mExpectedUpdate;
+        private @SecureArea.EcCurve int mDeviceKeyCurve;
 
         MobileSecurityObject() {}
 
@@ -153,6 +155,15 @@ public class MobileSecurityObjectParser {
          */
         @NonNull
         public PublicKey getDeviceKey() { return mDeviceKey; }
+
+        /**
+         * Gets the curve of {@code DeviceKey}.
+         *
+         * @return the curve.
+         */
+        public @SecureArea.EcCurve int getDeviceKeyCurve() {
+            return mDeviceKeyCurve;
+        }
 
         /**
          * Gets the <code>AuthorizedNameSpaces</code> portion of the <code>keyAuthorizations</code>
@@ -238,7 +249,9 @@ public class MobileSecurityObjectParser {
         }
 
         private void parseDeviceKeyInfo(DataItem deviceKeyInfo) {
-            mDeviceKey = Util.coseKeyDecode(Util.cborMapExtract(deviceKeyInfo, "deviceKey"));
+            DataItem coseKeyDataItem = Util.cborMapExtract(deviceKeyInfo, "deviceKey");
+            mDeviceKeyCurve = Util.coseKeyGetCurve(coseKeyDataItem);
+            mDeviceKey = Util.coseKeyDecode(coseKeyDataItem);
 
             mAuthorizedNameSpaces = null;
             mAuthorizedDataElements = null;

@@ -109,21 +109,14 @@ public class DataTransportHttpTest {
         final byte[][] messageReceivedByProver = {null};
         final byte[][] messageReceivedByVerifier = {null};
 
-        final ConditionVariable proverConnectionMethodReadyCondVar = new ConditionVariable();
         final ConditionVariable proverMessageReceivedCondVar = new ConditionVariable();
         final ConditionVariable proverPeerConnectedCondVar = new ConditionVariable();
         final ConditionVariable proverPeerDisconnectedCondVar = new ConditionVariable();
-        final ConditionVariable verifierConnectionMethodReadyCondVar = new ConditionVariable();
         final ConditionVariable verifierMessageReceivedCondVar = new ConditionVariable();
         final ConditionVariable verifierPeerConnectedCondVar = new ConditionVariable();
         Executor executor = Executors.newSingleThreadExecutor();
 
         verifier.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-                verifierConnectionMethodReadyCondVar.open();
-            }
-
             @Override
             public void onConnecting() {
                 Assert.fail();
@@ -157,7 +150,6 @@ public class DataTransportHttpTest {
             }
         }, executor);
         verifier.connect();
-        Assert.assertTrue(verifierConnectionMethodReadyCondVar.block(5000));
 
         ConnectionMethodHttp verifierConnectionMethod =
                 (ConnectionMethodHttp) verifier.getConnectionMethod();
@@ -167,11 +159,6 @@ public class DataTransportHttpTest {
                 verifierConnectionMethod,
                 new DataTransportOptions.Builder().build());
         prover.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-                proverConnectionMethodReadyCondVar.open();
-            }
-
             @Override
             public void onConnecting() {
             }
@@ -204,7 +191,6 @@ public class DataTransportHttpTest {
             }
         }, executor);
         prover.connect();
-        Assert.assertTrue(proverConnectionMethodReadyCondVar.block(5000));
 
         Assert.assertTrue(proverPeerConnectedCondVar.block(5000));
         prover.sendMessage(messageSentByProver);

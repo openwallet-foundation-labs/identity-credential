@@ -26,7 +26,6 @@ import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.IsoDep;
 import android.util.Base64;
-import android.util.Log;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
@@ -39,7 +38,6 @@ import com.android.identity.android.mdoc.transport.DataTransportNfc;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
 import com.android.identity.android.util.NfcUtil;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
@@ -60,7 +58,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.OptionalLong;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 
 import co.nstant.in.cbor.CborBuilder;
@@ -89,6 +86,9 @@ public class VerificationHelper {
     public static final int ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER = 2;
     public static final int ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER = 3;
     public static final int ENGAGEMENT_METHOD_REVERSE = 4;
+    private @SecureArea.EcCurve int mEphemeralKeyCurve;
+    private List<ConnectionMethod> mNegotiatedHandoverConnectionMethods;
+    private List<DataTransport> mNegotiatedHandoverListeningTransports = new ArrayList<>();;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(flag = false,
@@ -120,7 +120,6 @@ public class VerificationHelper {
     //
     private List<ConnectionMethod> mReverseEngagementConnectionMethods;
     private List<DataTransport> mReverseEngagementListeningTransports;
-    private int mNumReverseEngagementTransportsStillSettingUp;
     private List<ConnectionMethod> mConnectionMethodsForReaderEngagement;
     private EngagementGenerator mReaderEngagementGenerator;
     private byte[] mReaderEngagement;
@@ -137,6 +136,15 @@ public class VerificationHelper {
     private void start() {
         if (mReverseEngagementConnectionMethods != null) {
             setupReverseEngagement();
+        }
+
+        if (mNegotiatedHandoverConnectionMethods != null) {
+            for (ConnectionMethod cm : mNegotiatedHandoverConnectionMethods) {
+                DataTransport t = DataTransport.fromConnectionMethod(mContext, cm, DataTransport.ROLE_MDOC_READER, mOptions);
+                t.connect();
+                Logger.i(TAG, "Warming up transport for negotiated handover: " + t.getConnectionMethod());
+                mNegotiatedHandoverListeningTransports.add(t);
+            }
         }
     }
 
@@ -162,82 +170,60 @@ public class VerificationHelper {
         // in another thread than we're in right now. For example this happens if using
         // ThreadPoolExecutor.
         //
-        // In particular, it means we need locking around `mNumTransportsStillSettingUp`. We'll
-        // use the monitor for the VerificationHelper object for to achieve that.
-        //
         final VerificationHelper helper = this;
-        mNumReverseEngagementTransportsStillSettingUp = 0;
 
         // Calculate ReaderEngagement as we're setting up methods
         mReaderEngagementGenerator = new EngagementGenerator(
                 mEphemeralKeyPair.getPublic(),
+                mEphemeralKeyCurve,
                 EngagementGenerator.ENGAGEMENT_VERSION_1_1);
 
         mConnectionMethodsForReaderEngagement = new ArrayList<>();
-        synchronized (helper) {
-            for (DataTransport transport : mReverseEngagementListeningTransports) {
-                transport.setListener(new DataTransport.Listener() {
-                    @Override
-                    public void onConnectionMethodReady() {
-                        Logger.d(TAG, "onConnectionMethodReady for " + transport);
-                        synchronized (helper) {
-                            mConnectionMethodsForReaderEngagement.add(transport.getConnectionMethod());
-                            mNumReverseEngagementTransportsStillSettingUp -= 1;
-                            if (mNumReverseEngagementTransportsStillSettingUp == 0) {
-                                allReverseEngagementTransportsAreSetup();
-                            }
-                        }
-                    }
+        for (DataTransport transport : mReverseEngagementListeningTransports) {
+            transport.setListener(new DataTransport.Listener() {
+                @Override
+                public void onConnecting() {
+                    Logger.d(TAG, "onConnecting for " + transport);
+                    reverseEngagementPeerIsConnecting(transport);
+                }
 
-                    @Override
-                    public void onConnecting() {
-                        Logger.d(TAG, "onConnecting for " + transport);
-                        reverseEngagementPeerIsConnecting(transport);
-                    }
+                @Override
+                public void onConnected() {
+                    Logger.d(TAG, "onConnected for " + transport);
+                    reverseEngagementPeerHasConnected(transport);
+                }
 
-                    @Override
-                    public void onConnected() {
-                        Logger.d(TAG, "onConnected for " + transport);
-                        reverseEngagementPeerHasConnected(transport);
-                    }
+                @Override
+                public void onDisconnected() {
+                    Logger.d(TAG, "onDisconnected for " + transport);
+                    transport.close();
+                }
 
-                    @Override
-                    public void onDisconnected() {
-                        Logger.d(TAG, "onDisconnected for " + transport);
-                        transport.close();
-                    }
+                @Override
+                public void onError(@NonNull Throwable error) {
+                    transport.close();
+                    reportError(error);
+                }
 
-                    @Override
-                    public void onError(@NonNull Throwable error) {
-                        transport.close();
-                        reportError(error);
-                    }
+                @Override
+                public void onMessageReceived() {
+                    Logger.d(TAG, "onMessageReceived for " + transport);
+                    handleOnMessageReceived();
+                }
 
-                    @Override
-                    public void onMessageReceived() {
-                        Logger.d(TAG, "onMessageReceived for " + transport);
-                        handleOnMessageReceived();
-                    }
+                @Override
+                public void onTransportSpecificSessionTermination() {
+                    Logger.d(TAG, "Received transport-specific session termination");
+                    transport.close();
+                    reportDeviceDisconnected(true);
+                }
 
-                    @Override
-                    public void onTransportSpecificSessionTermination() {
-                        Logger.d(TAG, "Received transport-specific session termination");
-                        transport.close();
-                        reportDeviceDisconnected(true);
-                    }
-
-                }, mListenerExecutor);
-                Logger.d(TAG, "Connecting transport " + transport);
-                transport.connect();
-                mNumReverseEngagementTransportsStillSettingUp += 1;
-            }
+            }, mListenerExecutor);
+            Logger.d(TAG, "Connecting transport " + transport);
+            transport.connect();
+            mConnectionMethodsForReaderEngagement.add(transport.getConnectionMethod());
         }
-    }
 
-    // TODO: handle the case where a transport never calls onConnectionMethodReady... that
-    //  is, set up a timeout to call this.
-    //
-    void allReverseEngagementTransportsAreSetup() {
         Logger.d(TAG, "All reverse engagement listening transports are now set up");
 
         mReaderEngagementGenerator.setConnectionMethods(mConnectionMethodsForReaderEngagement);
@@ -325,7 +311,7 @@ public class VerificationHelper {
                     return;
                 }
                 mListenerExecutor.execute(
-                        () -> connectWithDataTransport(mDataTransport));
+                        () -> connectWithDataTransport(mDataTransport, false));
             }
         };
         connectThread.start();
@@ -545,20 +531,13 @@ public class VerificationHelper {
 
 
     private void startNfcHandover() {
-        Logger.d(TAG, "Starting NFC handover thread");
+        Logger.i(TAG, "Starting NFC handover thread");
 
         long timeMillisBegin = System.currentTimeMillis();
 
-        // TODO: need settings UI where the user can specify which methods to offer when
-        //   using NFC negotiated handover.
-        List<ConnectionMethod> connectionMethods = new ArrayList<>();
-        connectionMethods.add(new ConnectionMethodBle(
-                false,
-                true,
-                null,
-                UUID.randomUUID()));
-
-        // TODO: also start these connection methods early...
+        if (mNegotiatedHandoverListeningTransports.size() == 0) {
+            Logger.w(TAG, "Negotiated Handover will not work - no listening connections configured");
+        }
 
         final IsoDep isoDep = mNfcIsoDep;
         Thread transceiverThread = new Thread() {
@@ -615,7 +594,7 @@ public class VerificationHelper {
                             "urn:nfc:sn:handover");
                     if (handoverServiceRecord == null) {
                         long elapsedTime = System.currentTimeMillis() - timeMillisBegin;
-                        Logger.d(TAG, String.format(Locale.US,
+                        Logger.i(TAG, String.format(Locale.US,
                                 "Time spent in NFC static handover: %d ms", elapsedTime));
 
                         Logger.d(TAG, "No urn:nfc:sn:handover record found - assuming NFC static handover");
@@ -678,9 +657,15 @@ public class VerificationHelper {
                     }
 
                     // Now send Handover Request, the resulting NDEF message is Handover Response..
+                    //
+                    List<ConnectionMethod> hrConnectionMethods = new ArrayList<>();
+                    for (DataTransport t : mNegotiatedHandoverListeningTransports) {
+                        hrConnectionMethods.add(t.getConnectionMethod());
+                    }
                     byte[] hrMessage = NfcUtil.createNdefMessageHandoverRequest(
-                            connectionMethods,
-                            null); // TODO: pass ReaderEngagement message
+                            hrConnectionMethods,
+                            null,
+                            mOptions); // TODO: pass ReaderEngagement message
                     Logger.dHex(TAG, "Handover Request sent", hrMessage);
                     byte[] hsMessage = ndefTransact(isoDep, hrMessage, spr.tWaitMillis, spr.nWait);
                     if (hsMessage == null) {
@@ -689,7 +674,7 @@ public class VerificationHelper {
                     Logger.dHex(TAG, "Handover Select received", hsMessage);
 
                     long elapsedTime = System.currentTimeMillis() - timeMillisBegin;
-                    Logger.d(TAG, String.format(Locale.US,
+                    Logger.i(TAG, String.format(Locale.US,
                             "Time spent in NFC negotiated handover: %d ms", elapsedTime));
 
                     byte[] encodedDeviceEngagement = null;
@@ -726,7 +711,7 @@ public class VerificationHelper {
                     //  the HS message.
                     //  For now just assume we only offered a single CM and the other side accepted.
                     //
-                    parsedCms = connectionMethods;
+                    parsedCms = hrConnectionMethods;
 
                     DataItem handover = new CborBuilder()
                             .addArray()
@@ -761,11 +746,14 @@ public class VerificationHelper {
         EngagementParser.Engagement engagement = engagementParser.parse();
         PublicKey eDeviceKey = engagement.getESenderKey();
 
-        // Create reader ephemeral key with key to match device ephemeral key's curve.
-        int curveToUse = Util.getCurve(eDeviceKey);
-        mEphemeralKeyPair = Util.createEphemeralKeyPair(curveToUse);
+        // Create reader ephemeral key with key to match device ephemeral key's curve... this
+        // can take a long time (hundreds of milliseconds) so use the precalculated key
+        // to avoid delaying the transaction...
+        mEphemeralKeyCurve = engagement.getESenderKeyCurve();
+        mEphemeralKeyPair = Util.createEphemeralKeyPair(mEphemeralKeyCurve);
 
-        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(mEphemeralKeyPair.getPublic()));
+        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(
+                mEphemeralKeyPair.getPublic(), mEphemeralKeyCurve));
         mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(Util.cborBuildTaggedByteString(mDeviceEngagement))
@@ -778,6 +766,7 @@ public class VerificationHelper {
         mSessionEncryptionReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
                 mEphemeralKeyPair,
                 eDeviceKey,
+                mEphemeralKeyCurve,
                 mEncodedSessionTranscript);
         if (mReaderEngagement != null) {
             // No need to include EReaderKey in first message...
@@ -795,11 +784,38 @@ public class VerificationHelper {
      * @param connectionMethod the address/method to connect to.
      */
     public void connect(@NonNull ConnectionMethod connectionMethod) {
+
+        // First see if it's a warmed up transport...
+        for (DataTransport warmedUpTransport : mNegotiatedHandoverListeningTransports) {
+            if (warmedUpTransport.getConnectionMethod().toString().equals(connectionMethod.toString())) {
+                // Close other warmed-up transports and then connect.
+                mNegotiatedHandoverListeningTransports.remove(warmedUpTransport);
+                for (DataTransport t : mNegotiatedHandoverListeningTransports) {
+                    Logger.i(TAG, "Closing warmed-up transport: " + t.getConnectionMethod());
+                    t.close();
+                }
+                mNegotiatedHandoverListeningTransports.clear();
+                Logger.i(TAG, "Connecting to a warmed-up transport " + warmedUpTransport.getConnectionMethod());
+                connectWithDataTransport(warmedUpTransport, true);
+                return;
+            }
+        }
+
+        // Nope, not using a warmed-up transport. Close the warmed-up ones and connect.
+        for (DataTransport t : mNegotiatedHandoverListeningTransports) {
+            Logger.i(TAG, "Closing warmed-up transport: " + t.getConnectionMethod());
+            t.close();
+        }
+        mNegotiatedHandoverListeningTransports.clear();
+
+        Logger.i(TAG, "Connecting to transport " + connectionMethod);
         connectWithDataTransport(DataTransport.fromConnectionMethod(
-                mContext, connectionMethod, DataTransport.ROLE_MDOC_READER, mOptions));
+                mContext, connectionMethod, DataTransport.ROLE_MDOC_READER, mOptions),
+                false);
     }
 
-    private void connectWithDataTransport(DataTransport transport) {
+    private void connectWithDataTransport(DataTransport transport,
+                                          boolean usingWarmedUpTransport) {
         mDataTransport = transport;
         if (mDataTransport instanceof DataTransportNfc) {
             if (mNfcIsoDep == null) {
@@ -808,7 +824,7 @@ public class VerificationHelper {
                 // weird). In this case we just sit and wait until the tag (reader)
                 // is detected... once detected, this routine can just call connect()
                 // again.
-                Logger.d(TAG, "In connect() with NFC data transfer but no ISO dep has been set. "
+                Logger.i(TAG, "In connect() with NFC data transfer but no ISO dep has been set. "
                         + "Assuming QR engagement, waiting for mdoc to move into field");
                 reportMoveIntoNfcField();
                 return;
@@ -817,7 +833,7 @@ public class VerificationHelper {
         } else if (mDataTransport instanceof DataTransportBle) {
             // Helpful warning
             if (mOptions.getBleClearCache() && mDataTransport instanceof DataTransportBleCentralClientMode) {
-                Logger.d(TAG, "Ignoring bleClearCache flag since it only applies to "
+                Logger.i(TAG, "Ignoring bleClearCache flag since it only applies to "
                         + "BLE mdoc peripheral server mode when acting as a reader");
             }
         }
@@ -830,12 +846,7 @@ public class VerificationHelper {
         // synchronization.
         //
 
-        mDataTransport.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-                Logger.d(TAG, "onConnectionMethodReady for " + mDataTransport);
-            }
-
+        DataTransport.Listener listener = new DataTransport.Listener() {
             @Override
             public void onConnecting() {
                 Logger.d(TAG, "onConnecting for " + mDataTransport);
@@ -873,16 +884,24 @@ public class VerificationHelper {
                 reportDeviceDisconnected(true);
             }
 
-        }, mListenerExecutor);
+        };
+        mDataTransport.setListener(listener, mListenerExecutor);
 
-        try {
-            DataItem deDataItem = Util.cborDecode(mDeviceEngagement);
-            DataItem eDeviceKeyBytesDataItem = Util.cborMapExtractArray(deDataItem, 1).get(1);
-            byte[] encodedEDeviceKeyBytes = Util.cborEncode(eDeviceKeyBytesDataItem);
-            mDataTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
-            mDataTransport.connect();
-        } catch (Exception e) {
-            reportError(e);
+        // It's entirely possible the other side already connected to us...
+        if (usingWarmedUpTransport) {
+            if (mDataTransport.isConnected()) {
+                listener.onConnected();
+            }
+        } else {
+            try {
+                DataItem deDataItem = Util.cborDecode(mDeviceEngagement);
+                DataItem eDeviceKeyBytesDataItem = Util.cborMapExtractArray(deDataItem, 1).get(1);
+                byte[] encodedEDeviceKeyBytes = Util.cborEncode(eDeviceKeyBytesDataItem);
+                mDataTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
+                mDataTransport.connect();
+            } catch (Exception e) {
+                reportError(e);
+            }
         }
     }
 
@@ -1028,6 +1047,7 @@ public class VerificationHelper {
 
     void reportError(Throwable error) {
         Logger.d(TAG, "reportError: error: " + error);
+        error.printStackTrace();
         if (mListener != null) {
             mListenerExecutor.execute(() -> mListener.onError(error));
         }
@@ -1051,6 +1071,13 @@ public class VerificationHelper {
      * <p>This method is idempotent so it is safe to call multiple times.
      */
     public void disconnect() {
+        if (mNegotiatedHandoverListeningTransports != null) {
+            for (DataTransport t : mNegotiatedHandoverListeningTransports) {
+                Logger.d(TAG, "Shutting down Negotiated Handover warmed-up transport " + t);
+                t.close();
+            }
+            mNegotiatedHandoverListeningTransports = null;
+        }
         if (mReverseEngagementListeningTransports != null) {
             for (DataTransport transport : mReverseEngagementListeningTransports) {
                 transport.close();
@@ -1064,18 +1091,18 @@ public class VerificationHelper {
             if (mSendSessionTerminationMessage && sessionEstablished) {
                 if (mUseTransportSpecificSessionTermination &&
                         mDataTransport.supportsTransportSpecificTerminationMessage()) {
-                    Log.d(TAG, "Sending transport-specific termination message");
+                    Logger.d(TAG, "Sending transport-specific termination message");
                     mDataTransport.sendTransportSpecificTerminationMessage();
                 } else {
-                    Log.d(TAG, "Sending generic session termination message");
+                    Logger.d(TAG, "Sending generic session termination message");
                     byte[] sessionTermination = mSessionEncryptionReader.encryptMessage(
                             null, OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION));
                     mDataTransport.sendMessage(sessionTermination);
                 }
             } else {
-                Log.d(TAG, "Not sending session termination message");
+                Logger.d(TAG, "Not sending session termination message");
             }
-            Log.d(TAG, "Shutting down transport");
+            Logger.d(TAG, "Shutting down transport");
             mDataTransport.close();
             mDataTransport = null;
         }
@@ -1145,6 +1172,16 @@ public class VerificationHelper {
     public @NonNull
     KeyPair getEReaderKeyPair() {
         return mEphemeralKeyPair;
+    }
+
+    /**
+     * Gets the curve for the ephemeral key used by the reader for session encryption.
+     *
+     * @return the curve for the keys used for session encryption.
+     */
+    public @SecureArea.EcCurve
+    int getEReaderKeyCurve() {
+        return mEphemeralKeyCurve;
     }
 
     /**
@@ -1233,6 +1270,13 @@ public class VerificationHelper {
 
     public @EngagementMethod int getEngagementMethod() {
         return mEngagementMethod;
+    }
+
+    public long getScanningTimeMillis() {
+        if (mDataTransport instanceof DataTransportBle) {
+            return ((DataTransportBle) mDataTransport).getScanningTimeMillis();
+        }
+        return 0;
     }
 
     /**
@@ -1359,6 +1403,11 @@ public class VerificationHelper {
          */
         public @NonNull Builder setUseReverseEngagement(@NonNull List<ConnectionMethod> connectionMethods) {
             mHelper.mReverseEngagementConnectionMethods = connectionMethods;
+            return this;
+        }
+
+        public @NonNull Builder setNegotiatedHandoverConnectionMethods(@NonNull List<ConnectionMethod> connectionMethods) {
+            mHelper.mNegotiatedHandoverConnectionMethods = connectionMethods;
             return this;
         }
 

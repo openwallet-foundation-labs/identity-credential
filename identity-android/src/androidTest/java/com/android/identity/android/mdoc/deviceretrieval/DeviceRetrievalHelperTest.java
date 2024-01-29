@@ -57,9 +57,11 @@ import com.android.identity.util.Logger;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -69,6 +71,7 @@ import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
@@ -97,6 +100,7 @@ public class DeviceRetrievalHelperTest {
     private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
     private static final String AAMVA_NAMESPACE = "org.aamva.18013.5.1";  // TODO: verify
+
 
     private KeyPair generateIssuingAuthorityKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
@@ -213,6 +217,7 @@ public class DeviceRetrievalHelperTest {
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 new DataTransportOptions.Builder().build(),
                 qrHelperListener,
                 executor)
@@ -223,7 +228,8 @@ public class DeviceRetrievalHelperTest {
 
         DataItem handover = SimpleValue.NULL;
         KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
-        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedEReaderKeyPub = Util.cborEncode(
+                Util.cborBuildCoseKey(eReaderKeyPair.getPublic(), SecureArea.EC_CURVE_P256));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
@@ -234,6 +240,7 @@ public class DeviceRetrievalHelperTest {
         SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
                 eReaderKeyPair,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 encodedSessionTranscript);
 
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
@@ -251,10 +258,6 @@ public class DeviceRetrievalHelperTest {
         byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-            }
-
             @Override
             public void onConnecting() {
             }
@@ -413,7 +416,8 @@ public class DeviceRetrievalHelperTest {
                 context,
                 listener,
                 context.getMainExecutor(),
-                session.getEphemeralKeyPair())
+                session.getEphemeralKeyPair(),
+                SecureArea.EC_CURVE_P256)
                 .useForwardEngagement(proverTransport,
                         qrHelper.getDeviceEngagement(),
                         qrHelper.getHandover())
@@ -494,6 +498,7 @@ public class DeviceRetrievalHelperTest {
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 new DataTransportOptions.Builder().build(),
                 qrHelperListener,
                 executor)
@@ -504,7 +509,8 @@ public class DeviceRetrievalHelperTest {
 
         DataItem handover = SimpleValue.NULL;
         KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
-        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedEReaderKeyPub = Util.cborEncode(
+                Util.cborBuildCoseKey(eReaderKeyPair.getPublic(), SecureArea.EC_CURVE_P256));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
@@ -515,6 +521,7 @@ public class DeviceRetrievalHelperTest {
         SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
                 eReaderKeyPair,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 encodedSessionTranscript);
 
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
@@ -532,10 +539,6 @@ public class DeviceRetrievalHelperTest {
         byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-            }
-
             @Override
             public void onConnecting() {
             }
@@ -608,7 +611,8 @@ public class DeviceRetrievalHelperTest {
                 context,
                 listener,
                 context.getMainExecutor(),
-                session.getEphemeralKeyPair())
+                session.getEphemeralKeyPair(),
+                SecureArea.EC_CURVE_P256)
                 .useForwardEngagement(proverTransport,
                         qrHelper.getDeviceEngagement(),
                         qrHelper.getHandover())
@@ -671,6 +675,7 @@ public class DeviceRetrievalHelperTest {
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 new DataTransportOptions.Builder().build(),
                 qrHelperListener,
                 executor)
@@ -681,7 +686,8 @@ public class DeviceRetrievalHelperTest {
 
         DataItem handover = SimpleValue.NULL;
         KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
-        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedEReaderKeyPub = Util.cborEncode(
+                Util.cborBuildCoseKey(eReaderKeyPair.getPublic(), SecureArea.EC_CURVE_P256));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
@@ -692,6 +698,7 @@ public class DeviceRetrievalHelperTest {
         SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
                 eReaderKeyPair,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 encodedSessionTranscript);
 
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
@@ -714,10 +721,6 @@ public class DeviceRetrievalHelperTest {
                 OptionalLong.empty());
 
         verifierTransport.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-            }
-
             @Override
             public void onConnecting() {
             }
@@ -791,7 +794,8 @@ public class DeviceRetrievalHelperTest {
                 context,
                 listener,
                 context.getMainExecutor(),
-                session.getEphemeralKeyPair())
+                session.getEphemeralKeyPair(),
+                SecureArea.EC_CURVE_P256)
                 .useForwardEngagement(proverTransport,
                         qrHelper.getDeviceEngagement(),
                         qrHelper.getHandover())
@@ -852,6 +856,7 @@ public class DeviceRetrievalHelperTest {
         QrEngagementHelper qrHelper = new QrEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 new DataTransportOptions.Builder().build(),
                 qrHelperListener,
                 executor)
@@ -862,7 +867,8 @@ public class DeviceRetrievalHelperTest {
 
         byte[] encodedHandover = Util.cborEncode(SimpleValue.NULL);
         KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
-        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(eReaderKeyPair.getPublic()));
+        byte[] encodedEReaderKeyPub = Util.cborEncode(
+                Util.cborBuildCoseKey(eReaderKeyPair.getPublic(), SecureArea.EC_CURVE_P256));
         byte[] encodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(Util.cborBuildTaggedByteString(encodedDeviceEngagement))
@@ -873,6 +879,7 @@ public class DeviceRetrievalHelperTest {
         SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
                 eReaderKeyPair,
                 session.getEphemeralKeyPair().getPublic(),
+                SecureArea.EC_CURVE_P256,
                 encodedSessionTranscript);
 
         // Just make an empty request since the verifier will disconnect immediately anyway.
@@ -883,10 +890,6 @@ public class DeviceRetrievalHelperTest {
         byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
                 OptionalLong.empty());
         verifierTransport.setListener(new DataTransport.Listener() {
-            @Override
-            public void onConnectionMethodReady() {
-            }
-
             @Override
             public void onConnecting() {
             }
@@ -952,7 +955,8 @@ public class DeviceRetrievalHelperTest {
                 context,
                 listener,
                 context.getMainExecutor(),
-                session.getEphemeralKeyPair())
+                session.getEphemeralKeyPair(),
+                SecureArea.EC_CURVE_P256)
                 .useForwardEngagement(proverTransport,
                     qrHelper.getDeviceEngagement(),
                     qrHelper.getHandover())

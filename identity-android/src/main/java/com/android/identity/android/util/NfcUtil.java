@@ -12,11 +12,17 @@ import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.android.mdoc.transport.ConnectionMethodTcp;
+import com.android.identity.android.mdoc.transport.ConnectionMethodUdp;
 import com.android.identity.android.mdoc.transport.DataTransportBle;
 import com.android.identity.android.mdoc.transport.DataTransportNfc;
+import com.android.identity.android.mdoc.transport.DataTransportOptions;
+import com.android.identity.android.mdoc.transport.DataTransportTcp;
+import com.android.identity.android.mdoc.transport.DataTransportUdp;
 import com.android.identity.android.mdoc.transport.DataTransportWifiAware;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware;
 import com.android.identity.util.Logger;
@@ -24,9 +30,15 @@ import com.android.identity.internal.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+
+import co.nstant.in.cbor.model.Array;
+import co.nstant.in.cbor.model.DataItem;
+import co.nstant.in.cbor.model.Number;
 
 public class NfcUtil {
     private static final String TAG = "NfcUtil";
@@ -184,7 +196,8 @@ public class NfcUtil {
     byte[] createNdefMessageHandoverSelectOrRequest(
             @NonNull List<ConnectionMethod> methods,
             @Nullable byte[] encodedDeviceEngagement,
-            @Nullable byte[] encodedReaderEngagement) {
+            @Nullable byte[] encodedReaderEngagement,
+            @Nullable DataTransportOptions options) {
         boolean isHandoverSelect = false;
         if (encodedDeviceEngagement != null) {
             isHandoverSelect = true;
@@ -214,7 +227,7 @@ public class NfcUtil {
                 alternativeCarrierRecords.add(records.second);
                 carrierConfigurationRecords.add(records.first);
             } else {
-                Logger.d(TAG, "Ignoring address " + cm + " which yielded no NDEF records");
+                Logger.w(TAG, "Ignoring address " + cm + " which yielded no NDEF records");
             }
         }
 
@@ -253,15 +266,17 @@ public class NfcUtil {
     public static @NonNull
     byte[] createNdefMessageHandoverSelect(
             @NonNull List<ConnectionMethod> methods,
-            @NonNull byte[] encodedDeviceEngagement) {
-        return createNdefMessageHandoverSelectOrRequest(methods, encodedDeviceEngagement, null);
+            @NonNull byte[] encodedDeviceEngagement,
+            @Nullable DataTransportOptions options) {
+        return createNdefMessageHandoverSelectOrRequest(methods, encodedDeviceEngagement, null, options);
     }
 
     public static @NonNull
     byte[] createNdefMessageHandoverRequest(
             @NonNull List<ConnectionMethod> methods,
-            @Nullable byte[] encodedReaderEngagement) {
-        return createNdefMessageHandoverSelectOrRequest(methods, null, encodedReaderEngagement);
+            @Nullable byte[] encodedReaderEngagement,
+            @Nullable DataTransportOptions options) {
+        return createNdefMessageHandoverSelectOrRequest(methods, null, encodedReaderEngagement, options);
     }
 
     // Returns null if parsing fails, otherwise returns a ParsedHandoverSelectMessage instance
@@ -425,6 +440,35 @@ public class NfcUtil {
         return null;
     }
 
+    private static @Nullable
+    ConnectionMethod getConnectionMethodFromDeviceEngagement(@NonNull byte[] encodedDeviceRetrievalMethod) {
+        DataItem cmDataItem = Util.cborDecode(encodedDeviceRetrievalMethod);
+        if (!(cmDataItem instanceof co.nstant.in.cbor.model.Array)) {
+            throw new IllegalArgumentException("Top-level CBOR is not an array");
+        }
+        List<DataItem> items = ((Array) cmDataItem).getDataItems();
+        if (items.size() != 3) {
+            throw new IllegalArgumentException("Expected array with 3 elements, got " + items.size());
+        }
+        if (!(items.get(0) instanceof Number) || !(items.get(1) instanceof Number)) {
+            throw new IllegalArgumentException("First two items are not numbers");
+        }
+        long type = ((Number) items.get(0)).getValue().longValue();
+        if (!(items.get(2) instanceof co.nstant.in.cbor.model.Map)) {
+            throw new IllegalArgumentException("Third item is not a map");
+        }
+        switch ((int) type) {
+            case ConnectionMethodTcp.METHOD_TYPE:
+                return ConnectionMethodTcp.fromDeviceEngagementTcp(encodedDeviceRetrievalMethod);
+            case ConnectionMethodUdp.METHOD_TYPE:
+                return ConnectionMethodUdp.fromDeviceEngagementUdp(encodedDeviceRetrievalMethod);
+        }
+        Logger.w(TAG, String.format(Locale.US,
+                "Unsupported ConnectionMethod type %d in DeviceEngagement", type));
+        return null;
+    }
+
+
     public static @Nullable
     ConnectionMethod fromNdefRecord(@NonNull NdefRecord record, boolean isForHandoverSelect) {
         // BLE Carrier Configuration record
@@ -458,6 +502,15 @@ public class NfcUtil {
                 "iso.org:18013:nfc".getBytes(UTF_8))
                 && Arrays.equals(record.getId(), "nfc".getBytes(UTF_8))) {
             return DataTransportNfc.fromNdefRecord(record, isForHandoverSelect);
+        }
+
+        // Generic Carrier Configuration record containing DeviceEngagement
+        //
+        if (record.getTnf() == NdefRecord.TNF_MIME_MEDIA
+                && Arrays.equals(record.getType(),
+                "application/vnd.android.ic.dmr".getBytes(UTF_8))) {
+            byte[] deviceRetrievalMethod = record.getPayload();
+            return getConnectionMethodFromDeviceEngagement(deviceRetrievalMethod);
         }
 
         Logger.d(TAG, "Unknown NDEF record " + record);
@@ -494,6 +547,14 @@ public class NfcUtil {
                         auxiliaryReferences,
                         isForHandoverSelect);
             }
+        } else if (connectionMethod instanceof ConnectionMethodTcp) {
+            return DataTransportTcp.toNdefRecord((ConnectionMethodTcp) connectionMethod,
+                    auxiliaryReferences,
+                    isForHandoverSelect);
+        } else if (connectionMethod instanceof ConnectionMethodUdp) {
+            return DataTransportUdp.toNdefRecord((ConnectionMethodUdp) connectionMethod,
+                    auxiliaryReferences,
+                    isForHandoverSelect);
         }
         Logger.w(TAG, "toNdefRecord: Unsupported ConnectionMethod");
         return null;

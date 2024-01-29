@@ -154,6 +154,14 @@ public class Logger {
         }
     }
 
+    public static void i(@NonNull String tag, @NonNull String msg) {
+        println(LEVEL_I, tag, msg, null);
+    }
+
+    public static void i(@NonNull String tag, @NonNull String msg, @NonNull Throwable throwable) {
+        println(LEVEL_I, tag, msg, throwable);
+    }
+
     public static void w(@NonNull String tag, @NonNull String msg) {
         println(LEVEL_W, tag, msg, null);
     }
@@ -183,9 +191,7 @@ public class Logger {
     }
 
     public static void iHex(@NonNull String tag, @NonNull String message, @NonNull byte[] data) {
-        if (isDebugEnabled()) {
-            hex(LEVEL_I, tag, message, data);
-        }
+        hex(LEVEL_I, tag, message, data);
     }
 
     public static void wHex(@NonNull String tag, @NonNull String message, @NonNull byte[] data) {

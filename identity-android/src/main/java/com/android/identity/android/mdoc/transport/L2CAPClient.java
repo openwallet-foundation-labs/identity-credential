@@ -34,7 +34,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedTransferQueue;
@@ -56,42 +56,8 @@ class L2CAPClient {
         mListener = listener;
     }
 
-    void disconnect() {
-        mInhibitCallbacks = true;
-        if (mWritingThread != null) {
-            mWriterQueue.add(new byte[0]);
-            try {
-                mWritingThread.join();
-            } catch (InterruptedException e) {
-                Logger.e(TAG, "Caught exception while joining writing thread: " + e);
-            }
-        }
-        try {
-            if (mSocket != null) {
-                mSocket.close();
-                mSocket = null;
-            }
-        } catch (IOException e) {
-            // Ignoring this error
-            Logger.e(TAG, " Error closing socket connection " + e.getMessage(), e);
-        }
-    }
-
     @RequiresApi(api = Build.VERSION_CODES.Q)
-    public void connect(@NonNull BluetoothDevice bluetoothDevice, byte[] psmValue) {
-        if (psmValue == null || psmValue.length == 0 || psmValue.length > 4) {
-            reportError(new Error("Invalid PSM value received on L2CAP characteristic"));
-            return;
-        }
-        byte[] psmSized = new byte[4];
-        if (psmValue.length < 4) {
-            // Add 00 on left if psm length is lower than 4
-            System.arraycopy(psmValue, 0, psmSized, 4 - psmValue.length, psmValue.length);
-        } else {
-            psmSized = psmValue;
-        }
-        int psm = ByteBuffer.wrap(psmSized).getInt();
-        Logger.d(TAG, "Received psmValue: " + Util.toHex(psmValue) + " psm: " + psm);
+    public void connect(@NonNull BluetoothDevice bluetoothDevice, int psm) {
 
         // As per https://developer.android.com/reference/android/bluetooth/BluetoothAdapter#cancelDiscovery()
         // we should cancel any ongoing discovery since it interfere with the connection process
@@ -102,28 +68,26 @@ class L2CAPClient {
             return;
         }
 
+        Logger.d(TAG, "Connecting to " + bluetoothDevice.getAddress() + " and PSM " + psm);
         Thread connectThread = new Thread() {
             @Override
             public void run() {
                 try {
-                    // Using insecure L2CAP allows the app to use L2CAP frictionless, otherwise
-                    // Android will require bluetooth pairing with other device showing the pairing code
                     mSocket = bluetoothDevice.createInsecureL2capChannel(psm);
-                    Logger.d(TAG, "Connecting using L2CAP on PSM: " + psm);
                     mSocket.connect();
                 } catch (IOException e) {
-                    Logger.e(TAG, "Error connecting to socket L2CAP " + e.getMessage(), e);
-                    reportError(new Error("Error connecting to socket L2CAP", e));
+                    Logger.e(TAG, "Error connecting to L2CAP socket: " + e.getMessage(), e);
+                    reportError(new Error("Error connecting to L2CAP socket: " + e.getMessage(), e));
+                    mSocket = null;
+                    return;
                 }
-
-                Logger.d(TAG, "Connected using L2CAP");
-
-                // Let the app know we're connected.
-                reportPeerConnected();
 
                 // Start writing thread
                 mWritingThread = new Thread(L2CAPClient.this::writeToSocket);
                 mWritingThread.start();
+
+                // Let the app know we're connected.
+                reportPeerConnected();
 
                 // Reuse this thread for reading
                 readFromSocket();
@@ -132,41 +96,49 @@ class L2CAPClient {
         connectThread.start();
     }
 
+    void disconnect() {
+        mInhibitCallbacks = true;
+        if (mWritingThread != null) {
+            // This instructs the writing thread to shut down. Once all pending writes
+            // are done, [mSocket] is closed there.
+            mWriterQueue.add(new byte[0]);
+            mWritingThread = null;
+        }
+    }
+
     void writeToSocket() {
-        while (true) {
-            byte[] messageToSend;
-            try {
-                messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
-                if (messageToSend == null) {
+        OutputStream os = null;
+        try {
+            os = mSocket.getOutputStream();
+            while (true) {
+                byte[] messageToSend;
+                try {
+                    messageToSend = mWriterQueue.poll(1000, TimeUnit.MILLISECONDS);
+                    if (messageToSend == null) {
+                        continue;
+                    }
+                    if (messageToSend.length == 0) {
+                        Logger.d(TAG, "Empty message, exiting writer thread");
+                        break;
+                    }
+                } catch (InterruptedException e) {
                     continue;
                 }
-                if (messageToSend.length == 0) {
-                    Logger.d(TAG, "Empty message, exiting writer thread");
-                    return;
-                }
-            } catch (InterruptedException e) {
-                continue;
-            }
 
-            try {
-                OutputStream os = mSocket.getOutputStream();
                 os.write(messageToSend);
-                os.flush();
                 reportMessageSendProgress(messageToSend.length, messageToSend.length);
-                Logger.d(TAG, String.format(Locale.US, "Wrote CBOR data item of size %d bytes",
-                        messageToSend.length));
-            } catch (IOException e) {
-                Logger.e(TAG, "Error writing message on L2CAP socket", e);
-                reportError(new Error("Error writing message on L2CAP socket", e));
-                return;
             }
-            // TODO: If we don't do this we run into problems when sending a session termination
-            //   message and then immediately closing the connection, as is usual.
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Logger.e(TAG, "Error sleeping after writing", e);
-            }
+        } catch (IOException e) {
+            Logger.e(TAG, "Error using L2CAP socket", e);
+            reportError(new Error("Error using L2CAP socket", e));
+        }
+
+        try {
+            // TODO: This is to work around a bug in L2CAP
+            Thread.sleep(1000);
+            mSocket.close();
+        } catch (IOException | InterruptedException e) {
+            Logger.e(TAG, "Error closing socket", e);
         }
     }
 
@@ -187,7 +159,6 @@ class L2CAPClient {
             try {
                 int numBytesRead = inputStream.read(buf);
                 if (numBytesRead == -1) {
-                    Logger.d(TAG, "End of stream reading from socket");
                     reportPeerDisconnected();
                     break;
                 }
@@ -197,8 +168,6 @@ class L2CAPClient {
                 if (dataItemBytes == null) {
                     continue;
                 }
-                Logger.d(TAG, String.format(Locale.US, "Received CBOR data item of size %d bytes",
-                        dataItemBytes.length));
                 reportMessageReceived(dataItemBytes);
             } catch (IOException e) {
                 reportError(new Error("Error on listening input stream from socket L2CAP", e));

@@ -490,9 +490,9 @@ public class AndroidKeystoreSecureAreaTest {
 
         KeyPair otherKeyPair;
         try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("x25519", new BouncyCastleProvider());
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("x25519", BouncyCastleProvider.PROVIDER_NAME);
             otherKeyPair = kpg.generateKeyPair();
-        } catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException | NoSuchProviderException e) {
             throw new AssertionError("Unexpected exception", e);
         }
 
