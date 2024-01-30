@@ -35,6 +35,12 @@
     junit-jupiter = "5.10.0"
     truth = "1.1.5"
     navigation-compose = "2.7.5"
+    camera-version = "1.3.1"
+    scuba-version = "0.0.25"
+    jmrtd-version = "0.7.30"
+    mlkit-version = "16.0.0"
+    kotlinx-coroutines = "1.8.0-RC2"
+    junit = "4.13.2"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -54,6 +60,9 @@
     androidx-navigation-ktx = { module = "androidx.navigation:navigation-fragment-ktx", version.ref = "navigation" }
     androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "navigation" }
 
+    kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref="kotlinx-coroutines" }
+    kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref="kotlinx-coroutines" }
+
     compose-bom = { module = "androidx.compose:compose-bom", version.ref="compose-bom" }
     compose-ui = { module = "androidx.compose.ui:ui" }
     compose-foundation = { module = "androidx.compose.foundation:foundation" }
@@ -61,6 +70,7 @@
     compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling-preview" }
     compose-preview = { module = "androidx.compose.material:material-icons-extended" }
     compose-icons = { module = "androidx.compose.ui:ui-tooling" }
+    compose-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata" }
 
     volley = { module = "com.android.volley:volley", version.ref = "volley" }
 
@@ -87,6 +97,14 @@
     kotlinx-coroutine-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines-version" }
     truth = { module = "com.google.truth:truth", version.ref = "truth" }
     androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
+
+    androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camera-version" }
+    androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camera-version" }
+    androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camera-version" }
+    net-sf-scuba-scuba-sc-android = { group = "net.sf.scuba", name = "scuba-sc-android", version.ref="scuba-version" }
+    org-jmrtd-jmrtd = { group = "org.jmrtd", name ="jmrtd", version.ref="jmrtd-version" }
+    com-google-mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref="mlkit-version" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]
