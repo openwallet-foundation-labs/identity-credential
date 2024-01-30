@@ -24,7 +24,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.mdoc.origininfo.OriginInfo;
-import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl;
+import com.android.identity.mdoc.origininfo.OriginInfoDomain;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
@@ -317,7 +317,7 @@ public class RequestServlet extends HttpServlet {
      */
     private static void verifyOriginInfo(List<OriginInfo> oiList, Key key) {
         if (oiList.size() > 0) {
-            String oiUrl = ((OriginInfoReferrerUrl) oiList.get(0)).getUrl();
+            String oiUrl = ((OriginInfoDomain) oiList.get(0)).getUrl();
             if (!oiUrl.equals(ServletConsts.BASE_URL)) {
                 setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
                     oiUrl + ServletConsts.OI_FAILURE_END, key);

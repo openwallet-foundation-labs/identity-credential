@@ -14,7 +14,7 @@ import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.NavigationUI.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.android.identity.mdoc.origininfo.OriginInfo
-import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl
+import com.android.identity.mdoc.origininfo.OriginInfoDomain
 import com.android.identity.util.Logger
 import com.android.identity.wallet.databinding.ActivityMainBinding
 import com.android.identity.wallet.util.PreferencesHelper
@@ -105,7 +105,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             logInfo("referrer: $mdocReferrerUri")
             originInfos.add(
-                OriginInfoReferrerUrl(mdocReferrerUri)
+                OriginInfoDomain(
+                    mdocReferrerUri
+                )
             )
         }
 

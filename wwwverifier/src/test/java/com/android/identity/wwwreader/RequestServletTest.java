@@ -58,7 +58,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
 import com.android.identity.mdoc.engagement.EngagementParser;
-import com.android.identity.mdoc.origininfo.OriginInfoReferrerUrl;
+import com.android.identity.mdoc.origininfo.OriginInfoDomain;
 import com.android.identity.mdoc.request.DeviceRequestParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 
@@ -186,7 +186,7 @@ public class RequestServletTest {
                 ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
         String fakeBaseUrl = "https://fake-mdoc-reader.appspot.com/";
         eg.setOriginInfos(Collections.singletonList(
-                new OriginInfoReferrerUrl(fakeBaseUrl)));
+                new OriginInfoDomain(fakeBaseUrl)));
         byte[] encodedDeviceEngagement = eg.generate();
         byte[] messageDataBytes = createMessageData(encodedDeviceEngagement);
 
@@ -238,7 +238,7 @@ public class RequestServletTest {
         eg.setConnectionMethods(Collections.singletonList(
                 new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
         eg.setOriginInfos(Collections.singletonList(
-                new OriginInfoReferrerUrl(ServletConsts.BASE_URL)));
+                new OriginInfoDomain(ServletConsts.BASE_URL)));
         byte[] encodedDeviceEngagement = eg.generate();
         byte[] messageDataBytes = createMessageData(encodedDeviceEngagement);
 

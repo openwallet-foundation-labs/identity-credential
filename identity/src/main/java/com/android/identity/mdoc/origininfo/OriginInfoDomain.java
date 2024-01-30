@@ -25,13 +25,13 @@ import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.Map;
 
-public class OriginInfoReferrerUrl extends OriginInfo {
-    private static final String TAG = "OriginInfoReferrerUrl";
+public class OriginInfoDomain extends OriginInfo {
+    private static final String TAG = "OriginInfoDomain";
 
     static final int TYPE = 1;
     private final String mUrl;
 
-    public OriginInfoReferrerUrl(String url) {
+    public OriginInfoDomain(String url) {
         mUrl = url;
     }
 
@@ -46,13 +46,12 @@ public class OriginInfoReferrerUrl extends OriginInfo {
                 .addMap()
                 .put("cat", CAT)
                 .put("type", TYPE)
-                .put("details", mUrl)
-                .end()
-                .build().get(0);
+                .putMap("details").put("domain", mUrl).end()
+                .end().build().get(0);
     }
 
     @Nullable
-    public static OriginInfoReferrerUrl decode(@NonNull DataItem oiDataItem) {
+    public static OriginInfoDomain decode(@NonNull DataItem oiDataItem) {
         if (!(oiDataItem instanceof Map)) {
             throw new IllegalArgumentException("Top-level CBOR is not an map");
         }
@@ -63,7 +62,11 @@ public class OriginInfoReferrerUrl extends OriginInfo {
                     "category or type. Expected cat = 1, type = 1 for baseURL type but got " +
                     "cat = %d, type = %d", cat, type));
         }
-        String url = Util.cborMapExtractString(oiDataItem, "details");
-        return new OriginInfoReferrerUrl(url);
+        DataItem details = Util.cborMapExtractMap(oiDataItem, "details");
+        if (!Util.cborMapExtractMapStringKeys(details).contains("domain")) {
+            throw new IllegalArgumentException("Details does not contain \"domain\" key");
+        }
+        String url = Util.cborMapExtractString(details, "domain");
+        return new OriginInfoDomain(url);
     }
 }

@@ -26,26 +26,16 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class OriginInfoTest {
     @Test
-    public void testOriginInfoReferrerUrl() {
-        OriginInfoReferrerUrl info = new OriginInfoReferrerUrl("https://foo.com/bar");
-        OriginInfoReferrerUrl decoded = OriginInfoReferrerUrl.decode(info.encode());
+    public void testOriginInfoDomainOrigin() {
+        OriginInfoDomain info = new OriginInfoDomain("https://foo.com/bar");
+        OriginInfoDomain decoded = OriginInfoDomain.decode(info.encode());
         Assert.assertEquals("https://foo.com/bar", decoded.getUrl());
         Assert.assertEquals("{\n" +
                 "  'cat' : 1,\n" +
                 "  'type' : 1,\n" +
-                "  'details' : 'https://foo.com/bar'\n" +
-                "}", Util.cborPrettyPrint(info.encode()));
-    }
-
-    @Test
-    public void testOriginInfoWebsiteBase() {
-        OriginInfoBaseUrl info = new OriginInfoBaseUrl("https://foo.com/bar");
-        OriginInfoBaseUrl decoded = OriginInfoBaseUrl.decode(info.encode());
-        Assert.assertEquals("https://foo.com/bar", decoded.getUrl());
-        Assert.assertEquals("{\n" +
-                "  'cat' : 1,\n" +
-                "  'type' : 2,\n" +
-                "  'details' : 'https://foo.com/bar'\n" +
+                "  'details' : {\n" +
+                "    'domain' : 'https://foo.com/bar'\n" +
+                "  }\n" +
                 "}", Util.cborPrettyPrint(info.encode()));
     }
 }
