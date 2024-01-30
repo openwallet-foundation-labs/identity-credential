@@ -163,13 +163,13 @@ class TransferDocumentFragment : Fragment() {
     private fun onTransferDisconnected() {
         log("Disconnected")
         hideButtons()
-        TransferManager.getInstance(requireContext()).disconnect()
+        TransferManager.getInstance(requireContext()).disconnect(true)
     }
 
     private fun onTransferError() {
         Toast.makeText(requireContext(), "An error occurred.", Toast.LENGTH_SHORT).show()
         hideButtons()
-        TransferManager.getInstance(requireContext()).disconnect()
+        TransferManager.getInstance(requireContext()).disconnect(true)
     }
 
     private fun hideButtons() {
