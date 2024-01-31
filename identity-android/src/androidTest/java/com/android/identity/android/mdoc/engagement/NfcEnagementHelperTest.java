@@ -365,7 +365,8 @@ public class NfcEnagementHelperTest {
         // Now send Handover Request, the resulting NDEF message is Handover Response..
         byte[] hrMessage = NfcUtil.createNdefMessageHandoverRequest(
                 connectionMethods,
-                encodedReaderEngagement);
+                encodedReaderEngagement,
+                new DataTransportOptions.Builder().build());
         if (useLargeRequestMessage) {
             Assert.assertTrue(hrMessage.length >= 256 - 2);
         } else {

@@ -4,9 +4,9 @@ package com.android.identity_credential.wallet
 
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -42,14 +43,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
@@ -60,10 +67,24 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
+import com.android.identity.issuance.evidence.EvidenceType
+import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
+import com.android.identity.issuance.CredentialExtensions.state
+import com.android.identity.issuance.evidence.EvidenceRequestMessage
+import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
+import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
+import com.android.identity.issuance.evidence.EvidenceResponseMessage
+import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
+import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 class MainActivity : ComponentActivity() {
 
@@ -72,6 +93,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var application: WalletApplication
+
+    private val provisioningViewModel: ProvisioningViewModel by viewModels()
+    private val credentialInformationViewModel: CredentialInformationViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,12 +124,14 @@ class MainActivity : ComponentActivity() {
                             CredentialInfoScreen(navController,
                                 backStackEntry.arguments?.getString("credentialId")!!)
                         }
+                        composable("ProvisionCredentialScreen") {
+                            ProvisionCredentialScreen(navController)
+                        }
                     }
                 }
             }
         }
     }
-
 
     @Composable
     fun MainScreen(navigation: NavHostController) {
@@ -252,12 +278,15 @@ class MainActivity : ComponentActivity() {
 
                 val credentialId = credentialIds[page]
                 val credential = application.credentialStore.lookupCredential(credentialId)!!
-                val encodedArtwork = credential.applicationData.getData("artwork")
+                val credentialConfiguration = credential.credentialConfiguration
                 val options = BitmapFactory.Options()
                 options.inMutable = true
-                val credentialBitmap =
-                    BitmapFactory.decodeByteArray(encodedArtwork, 0, encodedArtwork.size, options)
-                val credentialName = credential.applicationData.getString("displayName")
+                val credentialBitmap = BitmapFactory.decodeByteArray(
+                    credentialConfiguration.cardArt,
+                    0,
+                    credentialConfiguration.cardArt.size,
+                    options)
+                val credentialName = credentialConfiguration.displayName
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -395,16 +424,24 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Button(onClick = {
-                        if (application.addSelfsignedMdl()) {
-                            navigation.popBackStack()
-                        } else {
-                            Toast.makeText(applicationContext,
-                                "Already have two self-signed mDLs, not adding more",
-                                Toast.LENGTH_SHORT).show()
+                    Text(
+                        modifier = Modifier.padding(8.dp),
+                        text = "Select the issuer for provisioning."
+                    )
+                }
+
+                for (issuer in application.issuingAuthorityRepository.getIssuingAuthorities()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Button(onClick = {
+                            provisioningViewModel.reset()
+                            provisioningViewModel.start(application, issuer)
+                            navigation.navigate("ProvisionCredentialScreen")
+                        }) {
+                            Text(issuer.configuration.name)
                         }
-                    }) {
-                        Text("Add self-signed mDL")
                     }
                 }
             }
@@ -414,6 +451,25 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun CredentialInfoScreen(navigation: NavHostController,
                              credentialId: String) {
+        val credential = application.credentialStore.lookupCredential(credentialId)
+        if (credential == null) {
+            Logger.w(TAG, "No credential for $credentialId")
+            return
+        }
+        Logger.d(TAG, "issuer ${credential.issuingAuthorityIdentifier}")
+        val issuer = application.issuingAuthorityRepository.lookupIssuingAuthority(credential.issuingAuthorityIdentifier)
+        if (issuer == null) {
+            Logger.w(TAG, "No IssuingAuthority for ${credential.issuingAuthorityIdentifier}")
+            return
+        }
+        val df = SimpleDateFormat("yyyy-MM-dd HH:mm:ssXXX", Locale.US)
+        df.timeZone = TimeZone.getTimeZone("UTC")
+        val stateTimeString = df.format(Date(credential.state.timestamp))
+
+        // TODO: this is needed to make the UI update when _lastRefreshedAt_ is
+        //  updated. Figure out a way to do this without logging.
+        Logger.d(TAG, "Last refresh in UI at ${credentialInformationViewModel.lastHousekeepingAt.value}")
+
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
         Scaffold(
             topBar = {
@@ -451,18 +507,27 @@ class MainActivity : ComponentActivity() {
                     .padding(innerPadding),
                 verticalArrangement = Arrangement.Center,
             ) {
+                Text("Name: ${credential.credentialConfiguration.displayName}")
+                Text("Issuer: ${issuer.configuration.name}")
+                val state = credential.state
+                Text("State: ${state.condition}")
+                Text("CPO pending: ${state.numAvailableCPO}")
+                Text("State Last Refresh: $stateTimeString")
+                Divider()
+                Text("Num PendingAuthKey: ${credential.pendingAuthenticationKeys.size}")
+                Text("Num AuthKey: ${credential.authenticationKeys.size}")
+                Divider()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text("TODO: show info for $credentialId")
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Button(onClick = {
+                        credentialInformationViewModel.housekeeping(application, credential)
+                    }) {
+                        Text("Refresh")
+                    }
+                    Button(onClick = {
+                        // TODO: run issuer deletion flow
                         application.credentialStore.deleteCredential(credentialId)
                         navigation.popBackStack()
                     }) {
@@ -472,6 +537,266 @@ class MainActivity : ComponentActivity() {
 
             }
         }
+    }
+
+    @Composable
+    fun ProvisionCredentialScreen(navigation: NavHostController) {
+        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    title = {
+                        Text(
+                            "Provisioning",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    navigationIcon = {
+                        if (provisioningViewModel.state.value != ProvisioningViewModel.State.PROOFING_COMPLETE) {
+                            IconButton(
+                                onClick = {
+                                    navigation.popBackStack()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowBack,
+                                    contentDescription = "Back Arrow"
+                                )
+                            }
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                )
+            },
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(innerPadding),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                when (provisioningViewModel.state.value) {
+                    ProvisioningViewModel.State.IDLE -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                text = "TODO: Idle"
+                            )
+                        }
+                    }
+
+                    ProvisioningViewModel.State.CREDENTIAL_REGISTRATION -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                text = "TODO: Creating CredentialKey"
+                            )
+                        }
+                    }
+
+                    ProvisioningViewModel.State.EVIDENCE_REQUESTS_READY -> {
+                        // TODO: for now we just consider the first evidence request
+                        val evidenceRequest = provisioningViewModel.evidenceRequests!![0]
+                        when (evidenceRequest.evidenceType) {
+                            EvidenceType.QUESTION_STRING -> {
+                                EvidenceRequestQuestionString(evidenceRequest as EvidenceRequestQuestionString)
+                            }
+
+                            EvidenceType.MESSAGE -> {
+                                EvidenceRequestMessage(evidenceRequest as EvidenceRequestMessage)
+                            }
+
+                            EvidenceType.QUESTION_MULTIPLE_CHOICE -> {
+                                EvidenceRequestQuestionMultipleChoice(
+                                    evidenceRequest as EvidenceRequestQuestionMultipleChoice
+                                )
+                            }
+
+                            else -> {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        modifier = Modifier.padding(8.dp),
+                                        text = "Unknown evidence type ${evidenceRequest.evidenceType}"
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    ProvisioningViewModel.State.SUBMITTING_EVIDENCE -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                text = "TODO: Submitting evidence"
+                            )
+                        }
+                    }
+
+                    ProvisioningViewModel.State.PROOFING_COMPLETE -> {
+                        navigation.popBackStack("MainScreen", false)
+                    }
+
+                    ProvisioningViewModel.State.FAILED -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                text = "Something went wrong: ${provisioningViewModel.error}"
+                            )
+                        }
+                    }
+
+                    else -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                text = "Unexpected state: ${provisioningViewModel.state.value}"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun EvidenceRequestMessage(evidenceRequest: EvidenceRequestMessage) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                modifier = Modifier.padding(8.dp),
+                text = evidenceRequest.message
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (evidenceRequest.rejectButtonText != null) {
+                Button(onClick = {
+                    provisioningViewModel.provideEvidence(EvidenceResponseMessage(false))
+                }) {
+                    Text(evidenceRequest.rejectButtonText)
+                }
+            }
+            Button(onClick = {
+                provisioningViewModel.provideEvidence(EvidenceResponseMessage(true))
+            }) {
+                Text(evidenceRequest.acceptButtonText)
+            }
+        }
+    }
+
+    @Composable
+    fun EvidenceRequestQuestionString(evidenceRequest: EvidenceRequestQuestionString) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                modifier = Modifier.padding(8.dp),
+                text = evidenceRequest.message
+            )
+        }
+
+        var inputText by remember { mutableStateOf(evidenceRequest.defaultValue) }
+        TextField(
+            value = inputText,
+            onValueChange = { inputText = it },
+            label = { Text("Answer") }
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Button(onClick = {
+                provisioningViewModel.provideEvidence(EvidenceResponseQuestionString(inputText))
+            }) {
+                Text(evidenceRequest.acceptButtonText)
+            }
+        }
+
+    }
+
+    @Composable
+    fun EvidenceRequestQuestionMultipleChoice(
+        evidenceRequest: EvidenceRequestQuestionMultipleChoice
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                modifier = Modifier.padding(8.dp),
+                text = evidenceRequest.message
+            )
+        }
+
+        val radioOptions = evidenceRequest.possibleValues
+        val (selectedOption, onOptionSelected) = remember { mutableStateOf(radioOptions[0] ) }
+        Column {
+            radioOptions.forEach { text ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = (text == selectedOption),
+                            onClick = {
+                                onOptionSelected(text)
+                            }
+                        )
+                        .padding(horizontal = 16.dp)
+                ) {
+                    RadioButton(
+                        selected = (text == selectedOption),
+                        onClick = { onOptionSelected(text) }
+                    )
+                    Text(
+                        text = text,
+                        modifier = Modifier.padding(start = 16.dp)
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Button(onClick = {
+                provisioningViewModel.provideEvidence(
+                    EvidenceResponseQuestionMultipleChoice(selectedOption)
+                )
+            }) {
+                Text(evidenceRequest.acceptButtonText)
+            }
+        }
+
     }
 
 }

@@ -17,6 +17,7 @@
 package com.android.identity.credential;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Logger;
@@ -48,23 +49,26 @@ public class CredentialUtil {
      *
      * @param credential the credential to manage authentication keys for.
      * @param secureArea the secure area to use for new pending authentication keys.
-     * @param createKeySettings the settings used to create new pending authentication keys.
+     * @param createKeySettings the settings used to create new pending authentication keys, must
+     *                          be non-null if the {@code dryRun} parameter is set to false.
      * @param domain the domain to use for created authentication keys.
      * @param now the time right now, used for determining which existing keys to replace.
      * @param numAuthenticationKeys the number of authentication keys that should be kept.
      * @param maxUsesPerKey the maximum number of uses per key.
      * @param minValidTimeMillis requests a replacement for a key if it expires within this window.
+     * @param dryRun don't actually create the keys, just return how many would be created.
      * @return the number of pending authentication keys created.
      */
     public static int managedAuthenticationKeyHelper(
             @NonNull Credential credential,
             @NonNull SecureArea secureArea,
-            @NonNull SecureArea.CreateKeySettings createKeySettings,
+            @Nullable SecureArea.CreateKeySettings createKeySettings,
             @NonNull String domain,
             @NonNull Timestamp now,
             int numAuthenticationKeys,
             int maxUsesPerKey,
-            long minValidTimeMillis) {
+            long minValidTimeMillis,
+            boolean dryRun) {
         // First determine which of the existing keys need a replacement...
         int numKeysNotNeedingReplacement = 0;
         int numReplacementsGenerated = 0;
@@ -89,8 +93,10 @@ public class CredentialUtil {
 
             if (keyExceededUseCount || keyBeyondExpirationDate) {
                 if (authKey.getReplacement() == null) {
-                    Credential.PendingAuthenticationKey pendingKey =
-                            credential.createPendingAuthenticationKey(domain, secureArea, createKeySettings, authKey);
+                    if (!dryRun) {
+                        Credential.PendingAuthenticationKey pendingKey =
+                                credential.createPendingAuthenticationKey(domain, secureArea, createKeySettings, authKey);
+                    }
                     numReplacementsGenerated++;
                     continue;
                 }
@@ -98,15 +104,24 @@ public class CredentialUtil {
             numKeysNotNeedingReplacement++;
         }
 
+        int numExistingPendingKeys = 0;
+        for (Credential.PendingAuthenticationKey pendingAuthenticationKey :
+                credential.getPendingAuthenticationKeys()) {
+            if (pendingAuthenticationKey.getDomain().equals(domain)) {
+                numExistingPendingKeys += 1;
+            }
+        }
+
         // It's possible we need to generate pending keys that aren't replacements
         int numNonReplacementsToGenerate = numAuthenticationKeys
                 - numKeysNotNeedingReplacement
-                - numReplacementsGenerated;
-        if (numNonReplacementsToGenerate > 0) {
-            for (int n = 0; n < numNonReplacementsToGenerate; n++) {
-                Credential.PendingAuthenticationKey pendingKey =
-                        credential.createPendingAuthenticationKey(domain, secureArea, createKeySettings, null);
-                pendingKey.getApplicationData().setBoolean(domain, true);
+                - numExistingPendingKeys;
+        if (!dryRun) {
+            if (numNonReplacementsToGenerate > 0) {
+                for (int n = 0; n < numNonReplacementsToGenerate; n++) {
+                    Credential.PendingAuthenticationKey pendingKey =
+                            credential.createPendingAuthenticationKey(domain, secureArea, createKeySettings, null);
+                }
             }
         }
         return numReplacementsGenerated + numNonReplacementsToGenerate;

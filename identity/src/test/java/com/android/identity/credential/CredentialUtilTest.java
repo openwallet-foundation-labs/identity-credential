@@ -21,11 +21,15 @@ import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.EphemeralStorageEngine;
 import com.android.identity.storage.StorageEngine;
+import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.security.Security;
 
 public class CredentialUtilTest {
     StorageEngine mStorageEngine;
@@ -36,6 +40,8 @@ public class CredentialUtilTest {
 
     @Before
     public void setup() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+
         mStorageEngine = new EphemeralStorageEngine();
 
         mSecureAreaRepository = new SecureAreaRepository();
@@ -75,12 +81,12 @@ public class CredentialUtilTest {
                 Timestamp.ofEpochMilli(100),
                 numAuthKeys,
                 maxUsesPerKey,
-                minValidTimeMillis);
+                minValidTimeMillis,
+                false);
         Assert.assertEquals(numAuthKeys, numKeysCreated);
         Assert.assertEquals(numAuthKeys, credential.getPendingAuthenticationKeys().size());
         count = 0;
         for (Credential.PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
-            Assert.assertTrue(pak.getApplicationData().getBoolean(managedKeyDomain));
             pak.certify(new byte[] {0, (byte) count++},
                     Timestamp.ofEpochMilli(100),
                     Timestamp.ofEpochMilli(200));
@@ -98,7 +104,8 @@ public class CredentialUtilTest {
                 Timestamp.ofEpochMilli(100),
                 numAuthKeys,
                 maxUsesPerKey,
-                minValidTimeMillis);
+                minValidTimeMillis,
+                false);
         Assert.assertEquals(0, numKeysCreated);
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
@@ -116,7 +123,8 @@ public class CredentialUtilTest {
                 Timestamp.ofEpochMilli(100),
                 numAuthKeys,
                 maxUsesPerKey,
-                minValidTimeMillis);
+                minValidTimeMillis,
+                false);
         Assert.assertEquals(0, numKeysCreated);
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
@@ -137,7 +145,8 @@ public class CredentialUtilTest {
                 Timestamp.ofEpochMilli(100),
                 numAuthKeys,
                 maxUsesPerKey,
-                minValidTimeMillis);
+                minValidTimeMillis,
+                false);
         Assert.assertEquals(5, numKeysCreated);
         Assert.assertEquals(5, credential.getPendingAuthenticationKeys().size());
         count = 0;
@@ -180,7 +189,8 @@ public class CredentialUtilTest {
                 Timestamp.ofEpochMilli(195),
                 numAuthKeys,
                 maxUsesPerKey,
-                minValidTimeMillis);
+                minValidTimeMillis,
+                false);
         Assert.assertEquals(5, numKeysCreated);
         Assert.assertEquals(5, credential.getPendingAuthenticationKeys().size());
         count = 0;

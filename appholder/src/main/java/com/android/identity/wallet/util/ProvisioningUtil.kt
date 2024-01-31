@@ -118,7 +118,8 @@ class ProvisioningUtil private constructor(
             now,
             numAuthKeys.toInt(),
             maxUsagesPerKey.toInt(),
-            minValidTimeDays*24*60*60*1000L
+            minValidTimeDays*24*60*60*1000L,
+            false
         )
         if (pendingKeysCount <= 0) {
             return
