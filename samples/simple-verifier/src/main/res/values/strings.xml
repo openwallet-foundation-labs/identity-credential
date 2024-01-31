@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Simple Verifier</string>
+    <string name="nfc">Tap to Present Via NFC</string>
+</resources>

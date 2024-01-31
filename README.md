@@ -110,6 +110,11 @@ samples are included
 - `age-verifier-mdl` - a simple mDL reader for age attestations.
   - This application is just requesting the `age_over_21` and `portrait`. It's intended
     to be used with the `preconsent-mdl` sample for performance evaluation.
+- `simple-verifier` - a simple mDL reader for age attestations.
+  - This application requests either {`age_over_21` and `portrait`} or 
+    {`age_over_18` and `portrait`}. It's intended to demonstrate use of the 
+    `MdocReaderPrompt` class, which allows any app to easily act as a reader app for 
+    the common age-verification use case.
 
 ## ISO 18013-7 Reader Website
 
