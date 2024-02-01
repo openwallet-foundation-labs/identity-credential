@@ -264,7 +264,9 @@ class TransferManager private constructor(private val context: Context) {
 
     fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
         communication.sendResponse(deviceResponse, closeAfterSending)
-        disconnect(!closeAfterSending)
+        if (closeAfterSending) {
+            disconnect(false)
+        }
     }
 
     fun readDocumentEntries(documentName: String): DocumentElements {
