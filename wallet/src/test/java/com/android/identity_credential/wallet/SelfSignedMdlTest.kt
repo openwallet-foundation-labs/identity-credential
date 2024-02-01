@@ -1,6 +1,5 @@
 package com.android.identity_credential.wallet
 
-import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialRegistrationResponse
 import com.android.identity.issuance.CredentialCondition
 import com.android.identity.issuance.CredentialPresentationFormat
@@ -12,11 +11,9 @@ import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.evidence.EvidenceType
-import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.evidence.EvidenceRequest
-import com.android.identity.issuance.simple.SimpleIssuingAuthority
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SoftwareSecureArea
+import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import kotlinx.coroutines.test.runTest
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -152,7 +149,7 @@ class SelfSignedMdlTest {
         val credentialPresentationRequests = mutableListOf<CredentialPresentationRequest>()
         for (authKeyNumber in IntRange(0, numMso - 1)) {
             val alias = "AuthKey_$authKeyNumber"
-            secureArea.createKey(alias, SecureArea.CreateKeySettings(authKeyConfiguration.challenge))
+            secureArea.createKey(alias, CreateKeySettings(authKeyConfiguration.challenge))
             credentialPresentationRequests.add(
                 CredentialPresentationRequest(
                     CredentialPresentationFormat.MDOC_MSO,

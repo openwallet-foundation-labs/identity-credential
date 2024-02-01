@@ -63,6 +63,7 @@ import com.android.identity.mdoc.request.DeviceRequestParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 
 // imports from Datastore
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
@@ -180,7 +181,7 @@ public class RequestServletTest {
 
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
-            SecureArea.EC_CURVE_P256,
+                EcCurve.P256,
             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         eg.setConnectionMethods(Collections.singletonList(new ConnectionMethodHttp(
                 ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
@@ -201,7 +202,7 @@ public class RequestServletTest {
             new SessionEncryption(SessionEncryption.ROLE_MDOC,
                     new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                     eReaderKeyPublic,
-                    SecureArea.EC_CURVE_P256,
+                    EcCurve.P256,
                     generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
             .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -233,7 +234,7 @@ public class RequestServletTest {
 
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
-                SecureArea.EC_CURVE_P256,
+                EcCurve.P256,
                 EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         eg.setConnectionMethods(Collections.singletonList(
                 new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
@@ -253,7 +254,7 @@ public class RequestServletTest {
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
                         new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                         eReaderKeyPublic,
-                        SecureArea.EC_CURVE_P256,
+                        EcCurve.P256,
                         generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
                 .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -296,7 +297,7 @@ public class RequestServletTest {
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
                         new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                         eReaderKeyPublic,
-                        SecureArea.EC_CURVE_P256,
+                        EcCurve.P256,
                         generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
                 .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -340,7 +341,7 @@ public class RequestServletTest {
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
                         new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
                         eReaderKeyPublic,
-                        SecureArea.EC_CURVE_P256,
+                        EcCurve.P256,
                         Util.cborEncode(sessionTranscript));
         SessionEncryption.DecryptedMessage responseMessageDecrypted =
             sed.decryptMessage(responseMessage);

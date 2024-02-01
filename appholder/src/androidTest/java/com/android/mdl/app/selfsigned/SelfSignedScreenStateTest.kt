@@ -8,7 +8,7 @@ import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credentialtype.knowntypes.EUPersonalID
 import com.android.identity.credentialtype.knowntypes.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.securearea.SoftwareSecureArea
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.wallet.document.DocumentColor
 import com.android.identity.wallet.selfsigned.AddSelfSignedScreenState
 import com.android.identity.wallet.selfsigned.AddSelfSignedViewModel

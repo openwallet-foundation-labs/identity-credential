@@ -159,23 +159,6 @@ class ShowDocumentFragment : Fragment() {
         binding.btNewRequest.visibility = View.GONE
     }
 
-    private fun curveNameFor(ecCurve: Int): String {
-        return when (ecCurve) {
-            SecureArea.EC_CURVE_P256 -> "P-256"
-            SecureArea.EC_CURVE_P384 -> "P-384"
-            SecureArea.EC_CURVE_P521 -> "P-521"
-            SecureArea.EC_CURVE_BRAINPOOLP256R1 -> "BrainpoolP256R1"
-            SecureArea.EC_CURVE_BRAINPOOLP320R1 -> "BrainpoolP320R1"
-            SecureArea.EC_CURVE_BRAINPOOLP384R1 -> "BrainpoolP384R1"
-            SecureArea.EC_CURVE_BRAINPOOLP512R1 -> "BrainpoolP512R1"
-            SecureArea.EC_CURVE_ED25519 -> "Ed25519"
-            SecureArea.EC_CURVE_X25519 -> "X25519"
-            SecureArea.EC_CURVE_ED448 -> "Ed448"
-            SecureArea.EC_CURVE_X448 -> "X448"
-            else -> throw IllegalArgumentException("Unknown curve $ecCurve")
-        }
-    }
-
     private fun formatTextResult(documents: Collection<DeviceResponseParser.Document>): String {
         val sb = StringBuffer()
 
@@ -218,7 +201,7 @@ class ShowDocumentFragment : Fragment() {
 
         sb.append("Engagement Method: <b>" + transferManager.getEngagementMethod() + "</b><br>")
         sb.append("Device Retrieval Method: <b>" + transferManager.mdocConnectionMethod + "</b><br>")
-        sb.append("Session encryption curve: <b>" + curveNameFor(transferManager.getMdocSessionEncryptionCurve()) + "</b><br>")
+        sb.append("Session encryption curve: <b>" + transferManager.getMdocSessionEncryptionCurve() + "</b><br>")
         sb.append("<br>")
 
         for (doc in documents) {
@@ -266,7 +249,7 @@ class ShowDocumentFragment : Fragment() {
             // Just show the SHA-1 of DeviceKey since all we're interested in here is whether
             // we saw the same key earlier.
             sb.append("<h6>DeviceKey</h6>")
-            sb.append("${getFormattedCheck(true)}Curve: <b>${curveNameFor(doc.deviceKeyCurve)}</b><br>")
+            sb.append("${getFormattedCheck(true)}Curve: <b>${doc.deviceKeyCurve}</b><br>")
             val deviceKeySha1 = FormatUtil.encodeToString(
                 MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.encoded)
             )

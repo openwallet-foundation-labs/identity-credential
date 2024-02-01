@@ -62,6 +62,7 @@ android {
 dependencies {
     // Uses module as identity credential api
     implementation project(':identity')
+    implementation project(':identity-mdoc')
     implementation project(':identity-android')
 
     implementation platform(libs.compose.bom)

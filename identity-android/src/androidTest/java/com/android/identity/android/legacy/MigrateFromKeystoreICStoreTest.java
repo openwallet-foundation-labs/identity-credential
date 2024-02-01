@@ -29,6 +29,9 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
 import com.android.identity.android.storage.AndroidStorageEngine;
 import com.android.identity.credential.NameSpacedData;
 import com.android.identity.internal.Util;
+import com.android.identity.securearea.Algorithm;
+import com.android.identity.securearea.EcCurve;
+import com.android.identity.securearea.KeyPurpose;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.StorageEngine;
@@ -60,6 +63,7 @@ import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Set;
 
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.CborEncoder;
@@ -164,8 +168,8 @@ public class MigrateFromKeystoreICStoreTest {
         AndroidKeystoreSecureArea.KeyInfo keyInfo = aksSecureArea.getKeyInfo(credentialKeyAlias);
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
@@ -179,7 +183,7 @@ public class MigrateFromKeystoreICStoreTest {
         byte[] dataToSign = new byte[]{1, 2, 3};
         byte[] derSignature = aksSecureArea.sign(
                 credentialKeyAlias,
-                SecureArea.ALGORITHM_ES256,
+                Algorithm.ES256,
                 dataToSign,
                 null);
         try {

@@ -23,13 +23,25 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import com.android.identity.TestUtilities;
+import androidx.annotation.NonNull;
 
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Timestamp;
+
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.cert.CertIOException;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.jce.spec.ECParameterSpec;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,10 +56,14 @@ import java.security.KeyPairGenerator;
 import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.LinkedList;
 import java.util.Random;
@@ -531,13 +547,39 @@ public class UtilTest {
         assertEquals(0, Util.coseSign1GetX5Chain(sig).size());
     }
 
+    public static @NonNull X509Certificate generateSelfSignedCert(KeyPair keyPair) {
+        try {
+            final Date notBefore = Date.from(Instant.now());
+            final Date notAfter = Date.from(Instant.now().plus(Duration.ofDays(30)));
+            final X500Name subjectIssuerName = new X500Name("CN=test");
+            final ContentSigner signer;
+            signer = new JcaContentSignerBuilder("SHA256WithECDSA")
+                    .build(keyPair.getPrivate());
+            final X509CertificateHolder certHolder =
+                    new JcaX509v3CertificateBuilder(
+                            subjectIssuerName,
+                            BigInteger.valueOf(10101),
+                            notBefore,
+                            notAfter,
+                            subjectIssuerName,
+                            keyPair.getPublic())
+                            .addExtension(Extension.basicConstraints, true, new BasicConstraints(true))
+                            .build(signer);
+            return new JcaX509CertificateConverter()
+                    .setProvider(new BouncyCastleProvider())
+                    .getCertificate(certHolder);
+        } catch (OperatorCreationException | CertIOException | CertificateException e) {
+            throw new IllegalStateException("Error generating self-signed certificate", e);
+        }
+    }
+
     @Test
     public void coseSignAndVerifySingleCertificate() throws Exception {
         KeyPair keyPair = generateKeyPair();
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         LinkedList<X509Certificate> certs = new LinkedList<X509Certificate>();
-        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
+        certs.add(generateSelfSignedCert(keyPair));
         DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
                 detachedContent, certs);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
@@ -551,9 +593,9 @@ public class UtilTest {
         byte[] data = new byte[]{};
         byte[] detachedContent = new byte[]{0x20, 0x21, 0x22, 0x23, 0x24};
         LinkedList<X509Certificate> certs = new LinkedList<X509Certificate>();
-        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
-        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
-        certs.add(TestUtilities.generateSelfSignedCert(keyPair));
+        certs.add(generateSelfSignedCert(keyPair));
+        certs.add(generateSelfSignedCert(keyPair));
+        certs.add(generateSelfSignedCert(keyPair));
         DataItem sig = Util.coseSign1Sign(keyPair.getPrivate(), "SHA256withECDSA", data,
                 detachedContent, certs);
         assertTrue(Util.coseSign1CheckSignature(sig, detachedContent, keyPair.getPublic()));
@@ -615,7 +657,7 @@ public class UtilTest {
                         Util.getPublicKeyFromIntegers(
                                 BigInteger.valueOf(1),
                                 BigInteger.valueOf(2)),
-                        SecureArea.EC_CURVE_P256)));
+                        EcCurve.P256)));
     }
 
     @Test
@@ -1000,7 +1042,7 @@ public class UtilTest {
 
     // Checks that our COSE_Key encode and decode functions work as expected
     // for an EC key of a given curve.
-    static private void testCoseKey(@SecureArea.EcCurve int curve) {
+    static private void testCoseKey(EcCurve curve) {
         KeyPair kp = Util.createEphemeralKeyPair(curve);
         DataItem coseKey = Util.cborBuildCoseKey(kp.getPublic(), curve);
         PublicKey decoded = Util.coseKeyDecode(coseKey);
@@ -1009,56 +1051,56 @@ public class UtilTest {
 
     @Test
     public void testCoseKeyP256() {
-        testCoseKey(SecureArea.EC_CURVE_P256);
+        testCoseKey(EcCurve.P256);
     }
 
     @Test
     public void testCoseKeyP384() {
-        testCoseKey(SecureArea.EC_CURVE_P384);
+        testCoseKey(EcCurve.P384);
     }
 
     @Test
     public void testCoseKeyP521() {
-        testCoseKey(SecureArea.EC_CURVE_P521);
+        testCoseKey(EcCurve.P521);
     }
 
     @Test
     public void testCoseKeyBrainpool256() {
-        testCoseKey(SecureArea.EC_CURVE_BRAINPOOLP256R1);
+        testCoseKey(EcCurve.BRAINPOOLP256R1);
     }
 
     @Test
     public void testCoseKeyBrainpool320() {
-        testCoseKey(SecureArea.EC_CURVE_BRAINPOOLP320R1);
+        testCoseKey(EcCurve.BRAINPOOLP320R1);
     }
 
     @Test
     public void testCoseKeyBrainpool384() {
-        testCoseKey(SecureArea.EC_CURVE_BRAINPOOLP384R1);
+        testCoseKey(EcCurve.BRAINPOOLP384R1);
     }
 
     @Test
     public void testCoseKeyBrainpool521() {
-        testCoseKey(SecureArea.EC_CURVE_BRAINPOOLP512R1);
+        testCoseKey(EcCurve.BRAINPOOLP512R1);
     }
 
     @Test
     public void testCoseKeyX25519() {
-        testCoseKey(SecureArea.EC_CURVE_X25519);
+        testCoseKey(EcCurve.X25519);
     }
 
     @Test
     public void testCoseKeyX448() {
-        testCoseKey(SecureArea.EC_CURVE_X448);
+        testCoseKey(EcCurve.X448);
     }
 
     @Test
     public void testCoseKeyEd25519() {
-        testCoseKey(SecureArea.EC_CURVE_ED25519);
+        testCoseKey(EcCurve.ED25519);
     }
 
     @Test
     public void testCoseKeyEd448() {
-        testCoseKey(SecureArea.EC_CURVE_ED448);
+        testCoseKey(EcCurve.ED448);
     }
 }

@@ -4,9 +4,12 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.fragment.app.Fragment
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.Credential
+import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SoftwareSecureArea
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Timestamp
 
 interface SecureAreaSupport {
@@ -32,8 +35,8 @@ interface SecureAreaSupport {
      * there is a provided way to navigate using the [findNavController] function.
      */
     fun Fragment.unlockKey(
-        authKey: Credential.AuthenticationKey,
-        onKeyUnlocked: (unlockData: SecureArea.KeyUnlockData?) -> Unit,
+        authKey: AuthenticationKey,
+        onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     )
 
@@ -59,7 +62,7 @@ interface SecureAreaSupport {
         challenge: ByteArray,
         validFrom: Timestamp,
         validUntil: Timestamp
-    ): SecureArea.CreateKeySettings
+    ): CreateKeySettings
 
     companion object {
         fun getInstance(

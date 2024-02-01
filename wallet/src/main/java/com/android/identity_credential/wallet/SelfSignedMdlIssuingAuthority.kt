@@ -32,6 +32,7 @@ import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph.
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.securearea.EcCurve
 import com.android.identity.securearea.SecureArea
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
@@ -107,7 +108,7 @@ class SelfSignedMdlIssuingAuthority(
             "SHA-256",
             MDL_DOCTYPE,
             authenticationKey,
-            SecureArea.EC_CURVE_P256
+            EcCurve.P256
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
         val randomProvider = SecureRandom()

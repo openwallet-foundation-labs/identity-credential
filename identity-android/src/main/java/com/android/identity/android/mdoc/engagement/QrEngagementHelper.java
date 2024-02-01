@@ -11,6 +11,7 @@ import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
@@ -50,7 +51,7 @@ public class QrEngagementHelper {
     private final DataTransportOptions mOptions;
     private final Listener mListener;
     private final Executor mExecutor;
-    private final @SecureArea.EcCurve int mEDeviceKeyCurve;
+    private final EcCurve mEDeviceKeyCurve;
     private boolean mInhibitCallbacks;
     private ArrayList<DataTransport> mTransports = new ArrayList<>();
     private byte[] mEncodedDeviceEngagement;
@@ -59,7 +60,7 @@ public class QrEngagementHelper {
 
     QrEngagementHelper(@NonNull Context context,
                        @NonNull PublicKey eDeviceKey,
-                       @SecureArea.EcCurve int eDeviceKeyCurve,
+                       EcCurve eDeviceKeyCurve,
                        @Nullable List<ConnectionMethod> connectionMethods,
                        @Nullable List<DataTransport> transports,
                        @NonNull DataTransportOptions options,
@@ -368,7 +369,7 @@ public class QrEngagementHelper {
         private final DataTransportOptions mOptions;
         private final Listener mListener;
         private final Executor mExecutor;
-        private final @SecureArea.EcCurve int mEDeviceKeyCurve;
+        private final EcCurve mEDeviceKeyCurve;
         private List<ConnectionMethod> mConnectionMethods;
         private List<DataTransport> mTransports;
 
@@ -384,7 +385,7 @@ public class QrEngagementHelper {
          */
         public Builder(@NonNull Context context,
                        @NonNull PublicKey eDeviceKey,
-                       @SecureArea.EcCurve int eDeviceKeyCurve,
+                       EcCurve eDeviceKeyCurve,
                        @NonNull DataTransportOptions options,
                        @NonNull Listener listener,
                        @NonNull Executor executor) {

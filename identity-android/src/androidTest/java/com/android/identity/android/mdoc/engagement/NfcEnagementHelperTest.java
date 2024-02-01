@@ -38,6 +38,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware;
 import com.android.identity.mdoc.engagement.EngagementParser;
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -110,7 +111,7 @@ public class NfcEnagementHelperTest {
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
-                SecureArea.EC_CURVE_P256,
+                EcCurve.P256,
                 new DataTransportOptions.Builder().build(),
                 listener,
                 executor);
@@ -251,7 +252,7 @@ public class NfcEnagementHelperTest {
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
                 session.getEphemeralKeyPair().getPublic(),
-                SecureArea.EC_CURVE_P256,
+                EcCurve.P256,
                 new DataTransportOptions.Builder().build(),
                 listener,
                 executor);

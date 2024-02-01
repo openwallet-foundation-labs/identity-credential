@@ -17,6 +17,7 @@ import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.securearea.EcCurve
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -374,7 +375,7 @@ class TransferManager private constructor(private val context: Context) {
         } ?: throw IllegalStateException("Response not received")
     }
 
-    fun getMdocSessionEncryptionCurve(): Int {
+    fun getMdocSessionEncryptionCurve(): EcCurve {
         return verification!!.eReaderKeyCurve
     }
 

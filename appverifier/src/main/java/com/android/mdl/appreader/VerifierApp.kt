@@ -50,7 +50,7 @@ class VerifierApp : Application() {
         Security.addProvider(BouncyCastleProvider())
         DynamicColors.applyToActivitiesIfAvailable(this)
         userPreferencesInstance = userPreferences
-        Logger.setDebugEnabled(userPreferences.isDebugLoggingEnabled())
+        Logger.isDebugEnabled = userPreferences.isDebugLoggingEnabled()
         trustManagerInstance = trustManager
         certificateStorageEngineInstance = certificateStorageEngine
         certificateStorageEngineInstance.enumerate().forEach {

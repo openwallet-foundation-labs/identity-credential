@@ -16,7 +16,10 @@
 
 package com.android.identity.credential;
 
-import com.android.identity.securearea.SoftwareSecureArea;
+import com.android.identity.securearea.CreateKeySettings;
+import com.android.identity.securearea.EcCurve;
+import com.android.identity.securearea.KeyPurpose;
+import com.android.identity.securearea.software.SoftwareSecureArea;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.EphemeralStorageEngine;
@@ -30,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.security.Security;
+import java.util.Set;
 
 public class CredentialUtilTest {
     StorageEngine mStorageEngine;
@@ -61,8 +65,8 @@ public class CredentialUtilTest {
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
-        SecureArea.CreateKeySettings authKeySettings =
-                new SecureArea.CreateKeySettings(new byte[0]);
+        CreateKeySettings authKeySettings =
+                new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256);
 
         int numAuthKeys = 10;
         int maxUsesPerKey = 5;
@@ -86,7 +90,8 @@ public class CredentialUtilTest {
         Assert.assertEquals(numAuthKeys, numKeysCreated);
         Assert.assertEquals(numAuthKeys, credential.getPendingAuthenticationKeys().size());
         count = 0;
-        for (Credential.PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
+        for (PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
+            Assert.assertTrue(pak.getApplicationData().getBoolean(managedKeyDomain));
             pak.certify(new byte[] {0, (byte) count++},
                     Timestamp.ofEpochMilli(100),
                     Timestamp.ofEpochMilli(200));
@@ -110,7 +115,7 @@ public class CredentialUtilTest {
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
         // Use up until just before the limit, and check it doesn't make a difference
-        for (Credential.AuthenticationKey ak : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey ak : credential.getAuthenticationKeys()) {
             for (int n = 0; n < maxUsesPerKey - 1; n++) {
                 ak.increaseUsageCount();
             }
@@ -131,7 +136,7 @@ public class CredentialUtilTest {
         // For the first 5, use one more time and check replacements are generated for those
         // Let the replacements expire just a tad later
         count = 0;
-        for (Credential.AuthenticationKey ak : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey ak : credential.getAuthenticationKeys()) {
             ak.increaseUsageCount();
             if (++count >= 5) {
                 break;
@@ -150,7 +155,7 @@ public class CredentialUtilTest {
         Assert.assertEquals(5, numKeysCreated);
         Assert.assertEquals(5, credential.getPendingAuthenticationKeys().size());
         count = 0;
-        for (Credential.PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
+        for (PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
             Assert.assertEquals(managedKeyDomain, pak.getDomain());
             pak.certify(new byte[] {1, (byte) count++},
                     Timestamp.ofEpochMilli(100),
@@ -163,7 +168,7 @@ public class CredentialUtilTest {
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         count = 0;
-        for (Credential.AuthenticationKey authKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authKey : credential.getAuthenticationKeys()) {
             byte[][] expectedData = {
                     new byte[] {0, 5},
                     new byte[] {0, 6},
@@ -194,7 +199,7 @@ public class CredentialUtilTest {
         Assert.assertEquals(5, numKeysCreated);
         Assert.assertEquals(5, credential.getPendingAuthenticationKeys().size());
         count = 0;
-        for (Credential.PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
+        for (PendingAuthenticationKey pak : credential.getPendingAuthenticationKeys()) {
             Assert.assertEquals(managedKeyDomain, pak.getDomain());
             pak.certify(new byte[] {2, (byte) count++},
                     Timestamp.ofEpochMilli(100),
@@ -207,7 +212,7 @@ public class CredentialUtilTest {
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         count = 0;
-        for (Credential.AuthenticationKey authKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authKey : credential.getAuthenticationKeys()) {
             byte[][] expectedData = {
                     new byte[] {1, 0},
                     new byte[] {1, 1},

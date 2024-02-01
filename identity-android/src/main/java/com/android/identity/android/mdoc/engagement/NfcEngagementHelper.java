@@ -17,6 +17,7 @@ import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
@@ -61,7 +62,7 @@ public class NfcEngagementHelper {
     private final int mNegotiatedHandoverWtInt;
     private final int mNegotiatedHandoverMaxNumWaitingTimeExtensions;
     private final PublicKey mEDeviceKey;
-    private final @SecureArea.EcCurve int mEDeviceKeyCurve;
+    private final EcCurve mEDeviceKeyCurve;
     private List<ConnectionMethod> mStaticHandoverConnectionMethods;
     private final DataTransportOptions mOptions;
     private final Listener mListener;
@@ -102,7 +103,7 @@ public class NfcEngagementHelper {
 
     private NfcEngagementHelper(@NonNull Context context,
                                 @NonNull PublicKey eDeviceKey,
-                                @SecureArea.EcCurve int eDeviceKeyCurve,
+                                EcCurve eDeviceKeyCurve,
                                 @NonNull DataTransportOptions options,
                                 int negotiatedHandoverWtInt,
                                 int negotiatedHandoverMaxNumWaitingTimeExtensions,
@@ -916,7 +917,7 @@ public class NfcEngagementHelper {
          */
         public Builder(@NonNull Context context,
                        @NonNull PublicKey eDeviceKey,
-                       @SecureArea.EcCurve int eDeviceKeyCurve,
+                       EcCurve eDeviceKeyCurve,
                        @NonNull DataTransportOptions options,
                        @NonNull Listener listener,
                        @NonNull Executor executor) {

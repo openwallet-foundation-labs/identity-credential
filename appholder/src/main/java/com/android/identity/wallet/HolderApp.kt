@@ -12,7 +12,7 @@ import com.android.identity.credentialtype.knowntypes.EUPersonalID
 import com.android.identity.credentialtype.knowntypes.VaccinationDocument
 import com.android.identity.credentialtype.knowntypes.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.securearea.SoftwareSecureArea
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager

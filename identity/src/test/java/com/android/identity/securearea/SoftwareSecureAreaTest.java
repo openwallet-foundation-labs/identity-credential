@@ -18,6 +18,10 @@ package com.android.identity.securearea;
 
 import androidx.annotation.NonNull;
 
+import com.android.identity.securearea.software.SoftwareCreateKeySettings;
+import com.android.identity.securearea.software.SoftwareKeyInfo;
+import com.android.identity.securearea.software.SoftwareKeyUnlockData;
+import com.android.identity.securearea.software.SoftwareSecureArea;
 import com.android.identity.storage.EphemeralStorageEngine;
 
 import org.bouncycastle.asn1.ASN1InputStream;
@@ -52,6 +56,7 @@ import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import javax.crypto.KeyAgreement;
 
@@ -104,8 +109,8 @@ public class SoftwareSecureAreaTest {
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         // First create the key...
-        ks.createKey("testKey", new SecureArea.CreateKeySettings(new byte[0]));
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        ks.createKey("testKey", new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256));
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         List<X509Certificate> certChain = keyInfo.getAttestation();
         Assert.assertTrue(certChain.size() >= 1);
 
@@ -114,11 +119,11 @@ public class SoftwareSecureAreaTest {
 
         // Now that we know the key doesn't exist, check that ecKeySign() throws
         try {
-            ks.sign("testKey", SecureArea.ALGORITHM_ES256, new byte[] {1, 2}, null);
+            ks.sign("testKey", Algorithm.ES256, new byte[] {1, 2}, null);
             Assert.fail();
         } catch (IllegalArgumentException e) {
             // Expected path.
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -131,21 +136,21 @@ public class SoftwareSecureAreaTest {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        ks.createKey("testKey", new SecureArea.CreateKeySettings(new byte[0]));
+        ks.createKey("testKey", new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256));
 
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
-        } catch (SecureArea.KeyLockedException e) {
+            derSignature = ks.sign("testKey", Algorithm.ES256, dataToSign, null);
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -166,13 +171,13 @@ public class SoftwareSecureAreaTest {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        ks.createKey("testKey", new SecureArea.CreateKeySettings(new byte[0]));
+        ks.createKey("testKey", new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256));
 
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
@@ -201,23 +206,23 @@ public class SoftwareSecureAreaTest {
     }
 
     @Test
-    public void testEcKeyCreateWithAttestationKey() throws SecureArea.KeyLockedException {
+    public void testEcKeyCreateWithAttestationKey() throws KeyLockedException {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         byte[] challenge = new byte[] {1, 2, 3};
         ks.createKey("testKey",
-                new SoftwareSecureArea.CreateKeySettings.Builder(challenge)
+                new SoftwareCreateKeySettings.Builder(challenge)
                         .setAttestationKey(mAttestationKey,
                                 mAttestationKeySignatureAlgorithm,
                                 mAttestationKeyCertification)
                         .build());
 
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 2);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
@@ -242,13 +247,13 @@ public class SoftwareSecureAreaTest {
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         byte[] challenge = new byte[] {1, 2, 3};
-        ks.createKey("testKey", new SecureArea.CreateKeySettings(challenge));
+        ks.createKey("testKey", new CreateKeySettings(challenge, Set.of(KeyPurpose.SIGN), EcCurve.P256));
 
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
@@ -262,16 +267,16 @@ public class SoftwareSecureAreaTest {
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         ks.createKey("testKey",
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
-                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
+                new SoftwareCreateKeySettings.Builder(new byte[0])
+                        .setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY))
                         .build());
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
-            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
-            Assert.fail("Signing shouldn't work with a key w/o KEY_PURPOSE_SIGN");
+            ks.sign("testKey", Algorithm.ES256, dataToSign, null);
+            Assert.fail("Signing shouldn't work with a key w/o purpose SIGN");
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("Key does not have purpose KEY_PURPOSE_SIGN", e.getMessage());
-        } catch (SecureArea.KeyLockedException e) {
+            Assert.assertEquals("Key does not have purpose SIGN", e.getMessage());
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
     }
@@ -291,15 +296,15 @@ public class SoftwareSecureAreaTest {
         }
 
         ks.createKey("testKey",
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
-                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
+                new SoftwareCreateKeySettings.Builder(new byte[0])
+                        .setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY))
                         .build());
 
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.AGREE_KEY), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
@@ -307,7 +312,7 @@ public class SoftwareSecureAreaTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -342,17 +347,15 @@ public class SoftwareSecureAreaTest {
         }
 
         ks.createKey("testKey",
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
-                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY
-                                | SecureArea.KEY_PURPOSE_SIGN)
+                new SoftwareCreateKeySettings.Builder(new byte[0])
+                        .setKeyPurposes(Set.of(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
                         .build());
 
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN
-                | SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
@@ -360,7 +363,7 @@ public class SoftwareSecureAreaTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -382,8 +385,8 @@ public class SoftwareSecureAreaTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
-        } catch (SecureArea.KeyLockedException e) {
+            derSignature = ks.sign("testKey", Algorithm.ES256, dataToSign, null);
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -414,17 +417,17 @@ public class SoftwareSecureAreaTest {
         }
 
         ks.createKey("testKey",
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
-                        //.setKeyPurpose(SecureArea.KEY_PURPOSE_AGREE_KEY)
+                new SoftwareCreateKeySettings.Builder(new byte[0])
+                        //.setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY))
                         .build());
 
         try {
             ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-            Assert.fail("ECDH shouldn't work with a key w/o KEY_PURPOSE_AGREE_KEY");
-        } catch (SecureArea.KeyLockedException e) {
+            Assert.fail("ECDH shouldn't work with a key w/o purpose AGREE_KEY");
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("Key does not have purpose KEY_PURPOSE_AGREE_KEY", e.getMessage());
+            Assert.assertEquals("Key does not have purpose AGREE_KEY", e.getMessage());
         }
 
     }
@@ -436,15 +439,15 @@ public class SoftwareSecureAreaTest {
 
         String passphrase = "verySekrit";
         ks.createKey("testKey",
-                new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
+                new SoftwareCreateKeySettings.Builder(new byte[0])
                         .setPassphraseRequired(true, passphrase)
                         .build());
 
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertFalse(keyInfo.isHardwareBacked());
         Assert.assertTrue(keyInfo.isPassphraseProtected());
 
@@ -452,32 +455,32 @@ public class SoftwareSecureAreaTest {
         byte[] derSignature = new byte[0];
         try {
             derSignature = ks.sign("testKey",
-                    SecureArea.ALGORITHM_ES256,
+                    Algorithm.ES256,
                     dataToSign,
                     null);
             Assert.fail();
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             // This is the expected path.
         }
 
         // Try with the wrong passphrase. This should fail.
         try {
             derSignature = ks.sign("testKey",
-                    SecureArea.ALGORITHM_ES256,
+                    Algorithm.ES256,
                     dataToSign,
-                    new SoftwareSecureArea.KeyUnlockData("wrongPassphrase"));
+                    new SoftwareKeyUnlockData("wrongPassphrase"));
             Assert.fail();
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             // This is the expected path.
         }
 
         // ... and with the right passphrase. This should work.
         try {
             derSignature = ks.sign("testKey",
-                    SecureArea.ALGORITHM_ES256,
+                    Algorithm.ES256,
                     dataToSign,
-                    new SoftwareSecureArea.KeyUnlockData(passphrase));
-        } catch (SecureArea.KeyLockedException e) {
+                    new SoftwareKeyUnlockData(passphrase));
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -500,21 +503,21 @@ public class SoftwareSecureAreaTest {
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
         ks.createKey("testKey",
-                new SecureArea.CreateKeySettings(new byte[0]));
-        SoftwareSecureArea.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
+                new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256));
+        SoftwareKeyInfo keyInfoOld = ks.getKeyInfo("testKey");
         List<X509Certificate> certChainOld = keyInfoOld.getAttestation();
         Assert.assertTrue(certChainOld.size() >= 1);
 
         ks.createKey("testKey",
-                new SecureArea.CreateKeySettings(new byte[0]));
-        SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+                new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256));
+        SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         List<X509Certificate> certChain = keyInfo.getAttestation();
         Assert.assertTrue(certChain.size() >= 1);
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature = new byte[0];
         try {
-            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
-        } catch (SecureArea.KeyLockedException e) {
+            derSignature = ks.sign("testKey", Algorithm.ES256, dataToSign, null);
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -541,81 +544,81 @@ public class SoftwareSecureAreaTest {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        int[] knownEcCurves = new int[] {
-                SecureArea.EC_CURVE_P256,
-                SecureArea.EC_CURVE_P384,
-                SecureArea.EC_CURVE_P521,
-                SecureArea.EC_CURVE_BRAINPOOLP256R1,
-                SecureArea.EC_CURVE_BRAINPOOLP320R1,
-                SecureArea.EC_CURVE_BRAINPOOLP384R1,
-                SecureArea.EC_CURVE_BRAINPOOLP512R1,
+        EcCurve[] knownEcCurves = new EcCurve[] {
+                EcCurve.P256,
+                EcCurve.P384,
+                EcCurve.P521,
+                EcCurve.BRAINPOOLP256R1,
+                EcCurve.BRAINPOOLP320R1,
+                EcCurve.BRAINPOOLP384R1,
+                EcCurve.BRAINPOOLP512R1,
                 // TODO: Edwards curve keys requires work in how private key is saved/loaded
-                //SecureArea.EC_CURVE_ED25519,
-                //SecureArea.EC_CURVE_ED448,
+                //EcCurve.ED25519,
+                //EcCurve.ED448,
         };
 
-        for (@SecureArea.EcCurve int ecCurve : knownEcCurves) {
+        for (EcCurve ecCurve : knownEcCurves) {
             ks.createKey("testKey",
-                    new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
+                    new SoftwareCreateKeySettings.Builder(new byte[0])
                             .setEcCurve(ecCurve)
                             .build());
 
-            SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+            SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
             Assert.assertNotNull(keyInfo);
             Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-            Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
+            Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
             Assert.assertEquals(ecCurve, keyInfo.getEcCurve());
             Assert.assertFalse(keyInfo.isHardwareBacked());
             Assert.assertFalse(keyInfo.isPassphraseProtected());
 
-            @SecureArea.Algorithm int[] signatureAlgorithms = new int[0];
+            Algorithm[] signatureAlgorithms = new Algorithm[0];
             switch (ecCurve) {
-                case SecureArea.EC_CURVE_P256:
-                case SecureArea.EC_CURVE_P384:
-                case SecureArea.EC_CURVE_P521:
-                case SecureArea.EC_CURVE_BRAINPOOLP256R1:
-                case SecureArea.EC_CURVE_BRAINPOOLP320R1:
-                case SecureArea.EC_CURVE_BRAINPOOLP384R1:
-                case SecureArea.EC_CURVE_BRAINPOOLP512R1:
-                    signatureAlgorithms = new int[] {
-                            SecureArea.ALGORITHM_ES256,
-                            SecureArea.ALGORITHM_ES384,
-                            SecureArea.ALGORITHM_ES512};
+                case P256:
+                case P384:
+                case P521:
+                case BRAINPOOLP256R1:
+                case BRAINPOOLP320R1:
+                case BRAINPOOLP384R1:
+                case BRAINPOOLP512R1:
+                    signatureAlgorithms = new Algorithm[] {
+                            Algorithm.ES256,
+                            Algorithm.ES384,
+                            Algorithm.ES512};
                     break;
 
-                case SecureArea.EC_CURVE_ED25519:
-                case SecureArea.EC_CURVE_ED448:
-                    signatureAlgorithms = new int[] {SecureArea.ALGORITHM_EDDSA};
+                case ED25519:
+                case ED448:
+                    signatureAlgorithms = new Algorithm[] {Algorithm.EDDSA};
                     break;
 
                 default:
                     Assert.fail();
             }
 
-            for (@SecureArea.Algorithm int signatureAlgorithm : signatureAlgorithms){
+            for (Algorithm signatureAlgorithm : signatureAlgorithms){
                 byte[] dataToSign = new byte[]{4, 5, 6};
                 byte[] derSignature = null;
                 try {
                     derSignature = ks.sign("testKey", signatureAlgorithm, dataToSign, null);
-                } catch (SecureArea.KeyLockedException e) {
+                } catch (KeyLockedException e) {
                     throw new AssertionError(e);
                 }
 
                 String signatureAlgorithmName = "";
                 switch (signatureAlgorithm) {
-                    case SecureArea.ALGORITHM_ES256:
+                    case ES256:
                         signatureAlgorithmName = "SHA256withECDSA";
                         break;
-                    case SecureArea.ALGORITHM_ES384:
+                    case ES384:
                         signatureAlgorithmName = "SHA384withECDSA";
                         break;
-                    case SecureArea.ALGORITHM_ES512:
+                    case ES512:
                         signatureAlgorithmName = "SHA512withECDSA";
                         break;
-                    case SecureArea.ALGORITHM_EDDSA:
-                        if (ecCurve == SecureArea.EC_CURVE_ED25519) {
+                    case EDDSA:
+                        if (ecCurve == EcCurve.ED25519) {
                             signatureAlgorithmName = "Ed25519";
-                        } else if (ecCurve == SecureArea.EC_CURVE_ED448) {
+                        } else if (ecCurve == EcCurve.ED448) {
                             signatureAlgorithmName = "Ed448";
                         } else {
                             Assert.fail("ALGORITHM_EDDSA can only be used with "
@@ -645,49 +648,49 @@ public class SoftwareSecureAreaTest {
         EphemeralStorageEngine storage = new EphemeralStorageEngine();
         SoftwareSecureArea ks = new SoftwareSecureArea(storage);
 
-        int[] knownEcCurves = new int[] {
-                SecureArea.EC_CURVE_P256,
-                SecureArea.EC_CURVE_P384,
-                SecureArea.EC_CURVE_P521,
-                SecureArea.EC_CURVE_BRAINPOOLP256R1,
-                SecureArea.EC_CURVE_BRAINPOOLP320R1,
-                SecureArea.EC_CURVE_BRAINPOOLP384R1,
-                SecureArea.EC_CURVE_BRAINPOOLP512R1,
+        EcCurve[] knownEcCurves = new EcCurve[] {
+                EcCurve.P256,
+                EcCurve.P384,
+                EcCurve.P521,
+                EcCurve.BRAINPOOLP256R1,
+                EcCurve.BRAINPOOLP320R1,
+                EcCurve.BRAINPOOLP384R1,
+                EcCurve.BRAINPOOLP512R1,
                 // TODO: Edwards curve keys requires work in how private key is saved/loaded
-                //SecureArea.EC_CURVE_X25519,
-                //SecureArea.EC_CURVE_X448,
+                //EcCurve.X25519,
+                //EcCurve.X448,
         };
 
-        for (@SecureArea.EcCurve int ecCurve : knownEcCurves) {
+        for (EcCurve ecCurve : knownEcCurves) {
             KeyPair otherKeyPair;
             try {
                 KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
                 switch (ecCurve) {
-                    case SecureArea.EC_CURVE_P256:
+                    case P256:
                         kpg.initialize(new ECGenParameterSpec("secp256r1"));
                         break;
-                    case SecureArea.EC_CURVE_P384:
+                    case P384:
                         kpg.initialize(new ECGenParameterSpec("secp384r1"));
                         break;
-                    case SecureArea.EC_CURVE_P521:
+                    case P521:
                         kpg.initialize(new ECGenParameterSpec("secp521r1"));
                         break;
-                    case SecureArea.EC_CURVE_BRAINPOOLP256R1:
+                    case BRAINPOOLP256R1:
                         kpg.initialize(new ECGenParameterSpec("brainpoolP256r1"));
                         break;
-                    case SecureArea.EC_CURVE_BRAINPOOLP320R1:
+                    case BRAINPOOLP320R1:
                         kpg.initialize(new ECGenParameterSpec("brainpoolP320r1"));
                         break;
-                    case SecureArea.EC_CURVE_BRAINPOOLP384R1:
+                    case BRAINPOOLP384R1:
                         kpg.initialize(new ECGenParameterSpec("brainpoolP384r1"));
                         break;
-                    case SecureArea.EC_CURVE_BRAINPOOLP512R1:
+                    case BRAINPOOLP512R1:
                         kpg.initialize(new ECGenParameterSpec("brainpoolP512r1"));
                         break;
-                    case SecureArea.EC_CURVE_X25519:
+                    case X25519:
                         kpg = KeyPairGenerator.getInstance("x25519", BouncyCastleProvider.PROVIDER_NAME);
                         break;
-                    case SecureArea.EC_CURVE_X448:
+                    case X448:
                         kpg = KeyPairGenerator.getInstance("x448", BouncyCastleProvider.PROVIDER_NAME);
                         break;
                     default:
@@ -700,15 +703,15 @@ public class SoftwareSecureAreaTest {
             }
 
             ks.createKey("testKey",
-                    new SoftwareSecureArea.CreateKeySettings.Builder(new byte[0])
-                            .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
+                    new SoftwareCreateKeySettings.Builder(new byte[0])
+                            .setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY))
                             .setEcCurve(ecCurve)
                             .build());
 
-            SoftwareSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+            SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
             Assert.assertNotNull(keyInfo);
             Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-            Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
+            Assert.assertEquals(Set.of(KeyPurpose.AGREE_KEY), keyInfo.getKeyPurposes());
             Assert.assertEquals(ecCurve, keyInfo.getEcCurve());
             Assert.assertFalse(keyInfo.isHardwareBacked());
             Assert.assertFalse(keyInfo.isPassphraseProtected());
@@ -717,7 +720,7 @@ public class SoftwareSecureAreaTest {
             byte[] ourSharedSecret;
             try {
                 ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-            } catch (SecureArea.KeyLockedException e) {
+            } catch (KeyLockedException e) {
                 throw new AssertionError(e);
             }
 

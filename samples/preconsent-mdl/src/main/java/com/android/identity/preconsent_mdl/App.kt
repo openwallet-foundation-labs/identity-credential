@@ -22,6 +22,6 @@ class App : Application() {
         Security.addProvider(BouncyCastleProvider())
 
         transferHelper = TransferHelper.getInstance(applicationContext)
-        Logger.setDebugEnabled(transferHelper.getDebugEnabled())
+        Logger.isDebugEnabled = transferHelper.getDebugEnabled()
     }
 }

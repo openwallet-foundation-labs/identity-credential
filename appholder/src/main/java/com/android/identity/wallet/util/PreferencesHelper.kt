@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
+import com.android.identity.securearea.EcCurve
 import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.EcCurve
 import com.android.identity.util.Logger
 import java.io.File
 
@@ -108,15 +108,14 @@ object PreferencesHelper {
 
     fun setDebugLoggingEnabled(enabled: Boolean) {
         sharedPreferences.edit { putBoolean(DEBUG_LOG, enabled) }
-        Logger.setDebugEnabled(enabled)
+        Logger.isDebugEnabled = enabled
     }
 
-    @EcCurve
-    fun getEphemeralKeyCurveOption(): Int {
-        return sharedPreferences.getInt(EPHEMERAL_KEY_CURVE_OPTION, SecureArea.EC_CURVE_P256)
+    fun getEphemeralKeyCurveOption(): EcCurve {
+        return EcCurve.fromInt(sharedPreferences.getInt(EPHEMERAL_KEY_CURVE_OPTION, EcCurve.P256.coseCurveIdentifier))
     }
 
-    fun setEphemeralKeyCurveOption(@EcCurve newValue: Int) {
-        sharedPreferences.edit { putInt(EPHEMERAL_KEY_CURVE_OPTION, newValue) }
+    fun setEphemeralKeyCurveOption(newValue: EcCurve) {
+        sharedPreferences.edit { putInt(EPHEMERAL_KEY_CURVE_OPTION, newValue.coseCurveIdentifier) }
     }
 }

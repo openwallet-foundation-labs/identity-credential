@@ -61,7 +61,6 @@ class MainActivity : ComponentActivity() {
 
         val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         val MDL_NAMESPACE = "org.iso.18013.5.1"
-
     }
 
     private lateinit var transferHelper: TransferHelper
@@ -178,7 +177,7 @@ class MainActivity : ComponentActivity() {
         }
 
         transferHelper = TransferHelper.getInstance(applicationContext, this)
-        Logger.setDebugEnabled(transferHelper.getDebugEnabled())
+        Logger.isDebugEnabled = transferHelper.getDebugEnabled()
 
         setContent {
             IdentityCredentialTheme {
@@ -475,7 +474,7 @@ class MainActivity : ComponentActivity() {
                         onCheckedChange = { checked ->
                             transferHelper.setDebugEnabled(checked)
                             debugEnabled.value = checked
-                            Logger.setDebugEnabled(checked)
+                            Logger.isDebugEnabled = checked
                         }
                     )
 

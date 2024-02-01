@@ -22,6 +22,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.identity.android.mdoc.transport.DataTransportBle;
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.android.mdoc.transport.TransmissionProgressListener;
@@ -68,9 +69,9 @@ public class DeviceRetrievalHelper {
     private static final String TAG = "DeviceRetrievalHelper";
 
     private KeyPair mEDeviceKeyPair;
-    private @SecureArea.EcCurve int mEDeviceKeyCurve;
+    private EcCurve mEDeviceKeyCurve;
     private Context mContext;
-    private int mEReaderKeyCurve;
+    private EcCurve mEReaderKeyCurve;
     private PublicKey mEReaderKey;
 
     private byte[] mDeviceEngagement;
@@ -661,7 +662,7 @@ public class DeviceRetrievalHelper {
                        @Nullable Listener listener,
                        @Nullable Executor executor,
                        @NonNull KeyPair eDeviceKeyPair,
-                       @SecureArea.EcCurve int eDeviceKeyCurve) {
+                       EcCurve eDeviceKeyCurve) {
             mHelper = new DeviceRetrievalHelper();
             mHelper.mContext = context;
             if (listener != null && executor == null) {

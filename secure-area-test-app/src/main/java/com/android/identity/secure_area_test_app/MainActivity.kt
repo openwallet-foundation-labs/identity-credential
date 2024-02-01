@@ -84,25 +84,14 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.internal.Util
 import com.android.identity.secure_area_test_app.ui.theme.IdentityCredentialTheme
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.ALGORITHM_EDDSA
-import com.android.identity.securearea.SecureArea.ALGORITHM_ES256
-import com.android.identity.securearea.SecureArea.ALGORITHM_ES384
-import com.android.identity.securearea.SecureArea.ALGORITHM_ES512
-import com.android.identity.securearea.SecureArea.EC_CURVE_BRAINPOOLP256R1
-import com.android.identity.securearea.SecureArea.EC_CURVE_BRAINPOOLP320R1
-import com.android.identity.securearea.SecureArea.EC_CURVE_BRAINPOOLP384R1
-import com.android.identity.securearea.SecureArea.EC_CURVE_BRAINPOOLP512R1
-import com.android.identity.securearea.SecureArea.EC_CURVE_ED25519
-import com.android.identity.securearea.SecureArea.EC_CURVE_ED448
-import com.android.identity.securearea.SecureArea.EC_CURVE_P256
-import com.android.identity.securearea.SecureArea.EC_CURVE_P384
-import com.android.identity.securearea.SecureArea.EC_CURVE_P521
-import com.android.identity.securearea.SecureArea.EC_CURVE_X25519
-import com.android.identity.securearea.SecureArea.EC_CURVE_X448
-import com.android.identity.securearea.SecureArea.KEY_PURPOSE_AGREE_KEY
-import com.android.identity.securearea.SecureArea.KEY_PURPOSE_SIGN
-import com.android.identity.securearea.SoftwareSecureArea
+import com.android.identity.securearea.Algorithm
+import com.android.identity.securearea.EcCurve
+import com.android.identity.securearea.KeyLockedException
+import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.KeyUnlockData
+import com.android.identity.securearea.software.SoftwareCreateKeySettings
+import com.android.identity.securearea.software.SoftwareKeyUnlockData
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
@@ -142,9 +131,9 @@ class MainActivity :  FragmentActivity() {
         val now = Timestamp.now()
         secureArea.createKey(
             "SoftwareAttestationRoot",
-            SoftwareSecureArea.CreateKeySettings.Builder("".toByteArray())
-                .setEcCurve(SecureArea.EC_CURVE_P256)
-                .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN)
+            SoftwareCreateKeySettings.Builder("".toByteArray())
+                .setEcCurve(EcCurve.P256)
+                .setKeyPurposes(setOf(KeyPurpose.SIGN))
                 .setSubject("CN=Software Attestation Root")
                 .setValidityPeriod(
                     now,
@@ -228,8 +217,8 @@ class MainActivity :  FragmentActivity() {
     }
 
     data class swPassphraseTestConfiguration(
-        val keyPurpose: Int,
-        val curve: Int,
+        val keyPurpose: KeyPurpose,
+        val curve: EcCurve,
         val description: String
     )
 
@@ -357,15 +346,15 @@ class MainActivity :  FragmentActivity() {
                         Pair(false, ""), Pair(true, "StrongBox ")
                     )) {
                         for ((keyPurpose, keyPurposeDesc) in arrayOf(
-                            Pair(KEY_PURPOSE_SIGN, "Signature"),
-                            Pair(KEY_PURPOSE_AGREE_KEY, "Key Agreement")
+                            Pair(KeyPurpose.SIGN, "Signature"),
+                            Pair(KeyPurpose.AGREE_KEY, "Key Agreement")
                         )) {
                             for ((curve, curveName, purposes) in arrayOf(
-                                Triple(EC_CURVE_P256, "P-256", KEY_PURPOSE_SIGN + KEY_PURPOSE_AGREE_KEY),
-                                Triple(EC_CURVE_ED25519, "Ed25519", KEY_PURPOSE_SIGN),
-                                Triple(EC_CURVE_X25519, "X25519", KEY_PURPOSE_AGREE_KEY),
+                                Triple(EcCurve.P256, "P-256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                                Triple(EcCurve.ED25519, "Ed25519", setOf(KeyPurpose.SIGN)),
+                                Triple(EcCurve.X25519, "X25519", setOf(KeyPurpose.AGREE_KEY)),
                             )) {
-                                if ((keyPurpose and purposes) == 0) {
+                                if (!(purposes.contains(keyPurpose))) {
                                     // No common purpose
                                     continue
                                 }
@@ -384,7 +373,7 @@ class MainActivity :  FragmentActivity() {
                                     Triple(AUTH_LSKF_OR_BIOMETRIC, -1L, "- Auth (No Confirmation)"),
                                 )) {
                                     // For brevity, Only do auth for P-256 Sign and Mac
-                                    if (curve != EC_CURVE_P256 && userAuthType != AUTH_NONE) {
+                                    if (curve != EcCurve.P256 && userAuthType != AUTH_NONE) {
                                         continue
                                     }
 
@@ -448,23 +437,23 @@ class MainActivity :  FragmentActivity() {
                     }
 
                     for ((keyPurpose, keyPurposeDesc) in arrayOf(
-                        Pair(KEY_PURPOSE_SIGN, "Signature"),
-                        Pair(KEY_PURPOSE_AGREE_KEY, "Key Agreement")
+                        Pair(KeyPurpose.SIGN, "Signature"),
+                        Pair(KeyPurpose.AGREE_KEY, "Key Agreement")
                     )) {
                         for ((curve, curveName, purposes) in arrayOf(
-                            Triple(EC_CURVE_P256, "P-256", KEY_PURPOSE_SIGN + KEY_PURPOSE_AGREE_KEY),
-                            Triple(EC_CURVE_P384, "P-384", KEY_PURPOSE_SIGN + KEY_PURPOSE_AGREE_KEY),
-                            Triple(EC_CURVE_P521, "P-521", KEY_PURPOSE_SIGN + KEY_PURPOSE_AGREE_KEY),
-                            Triple(EC_CURVE_BRAINPOOLP256R1, "Brainpool 256", KEY_PURPOSE_SIGN + KEY_PURPOSE_AGREE_KEY),
-                            Triple(EC_CURVE_BRAINPOOLP320R1, "Brainpool 320", KEY_PURPOSE_SIGN + KEY_PURPOSE_AGREE_KEY),
-                            Triple(EC_CURVE_BRAINPOOLP384R1, "Brainpool 384", KEY_PURPOSE_SIGN + KEY_PURPOSE_AGREE_KEY),
-                            Triple(EC_CURVE_BRAINPOOLP512R1, "Brainpool 512", KEY_PURPOSE_SIGN + KEY_PURPOSE_AGREE_KEY),
-                            Triple(EC_CURVE_ED25519, "Ed25519", KEY_PURPOSE_SIGN),
-                            Triple(EC_CURVE_X25519, "X25519", KEY_PURPOSE_AGREE_KEY),
-                            Triple(EC_CURVE_ED448, "Ed448", KEY_PURPOSE_SIGN),
-                            Triple(EC_CURVE_X448, "X448", KEY_PURPOSE_AGREE_KEY),
+                            Triple(EcCurve.P256, "P-256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.P384, "P-384", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.P521, "P-521", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.BRAINPOOLP256R1, "Brainpool 256", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.BRAINPOOLP320R1, "Brainpool 320", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.BRAINPOOLP384R1, "Brainpool 384", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.BRAINPOOLP512R1, "Brainpool 512", setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.ED25519, "Ed25519", setOf(KeyPurpose.SIGN)),
+                            Triple(EcCurve.X25519, "X25519", setOf(KeyPurpose.AGREE_KEY)),
+                            Triple(EcCurve.ED448, "Ed448", setOf(KeyPurpose.SIGN)),
+                            Triple(EcCurve.X448, "X448", setOf(KeyPurpose.AGREE_KEY)),
                         )) {
-                            if ((keyPurpose and purposes) == 0) {
+                            if (!purposes.contains(keyPurpose)) {
                                 // No common purpose
                                 continue
                             }
@@ -473,7 +462,7 @@ class MainActivity :  FragmentActivity() {
                                 Pair(false, ""),
                             )) {
                                 // For brevity, only do passphrase for first item (P-256 Signature)
-                                if (!(keyPurpose == KEY_PURPOSE_SIGN && curve == EC_CURVE_P256)) {
+                                if (!(keyPurpose == KeyPurpose.SIGN && curve == EcCurve.P256)) {
                                     if (passphraseRequired) {
                                         continue;
                                     }
@@ -812,17 +801,17 @@ class MainActivity :  FragmentActivity() {
         }
     }
 
-    private fun getNaturalAlgorithmForCurve(ecCurve: Int): Int {
+    private fun getNaturalAlgorithmForCurve(ecCurve: EcCurve): Algorithm {
         return when (ecCurve) {
-            EC_CURVE_P256 -> ALGORITHM_ES256
-            EC_CURVE_P384 -> ALGORITHM_ES384
-            EC_CURVE_P521 -> ALGORITHM_ES512
-            EC_CURVE_BRAINPOOLP256R1 -> ALGORITHM_ES256
-            EC_CURVE_BRAINPOOLP320R1 -> ALGORITHM_ES384
-            EC_CURVE_BRAINPOOLP384R1 -> ALGORITHM_ES384
-            EC_CURVE_BRAINPOOLP512R1 -> ALGORITHM_ES512
-            EC_CURVE_ED25519 -> ALGORITHM_EDDSA
-            EC_CURVE_ED448 -> ALGORITHM_EDDSA
+            EcCurve.P256 -> Algorithm.ES256
+            EcCurve.P384 -> Algorithm.ES384
+            EcCurve.P521 -> Algorithm.ES512
+            EcCurve.BRAINPOOLP256R1 -> Algorithm.ES256
+            EcCurve.BRAINPOOLP320R1 -> Algorithm.ES384
+            EcCurve.BRAINPOOLP384R1 -> Algorithm.ES384
+            EcCurve.BRAINPOOLP512R1 -> Algorithm.ES512
+            EcCurve.ED25519 -> Algorithm.EDDSA
+            EcCurve.ED448 -> Algorithm.EDDSA
             else -> {throw IllegalStateException("Unexpected curve " + ecCurve)}
         }
     }
@@ -847,8 +836,8 @@ class MainActivity :  FragmentActivity() {
     }
 
     private fun aksTest(
-        keyPurpose: Int,
-        curve: Int,
+        keyPurpose: KeyPurpose,
+        curve: EcCurve,
         authRequired: Boolean,
         authTimeoutMillis: Long,
         userAuthType: Int,
@@ -870,8 +859,8 @@ class MainActivity :  FragmentActivity() {
     }
 
     private fun aksTestUnguarded(
-        keyPurpose: Int,
-        curve: Int,
+        keyPurpose: KeyPurpose,
+        curve: EcCurve,
         authRequired: Boolean,
         authTimeoutMillis: Long,
         userAuthType: Int,
@@ -881,7 +870,7 @@ class MainActivity :  FragmentActivity() {
         androidKeystoreSecureArea.createKey(
             "testKey",
             AndroidKeystoreSecureArea.CreateKeySettings.Builder("Challenge".toByteArray())
-                .setKeyPurposes(keyPurpose)
+                .setKeyPurposes(setOf(keyPurpose))
                 .setUserAuthenticationRequired(
                     authRequired, authTimeoutMillis, userAuthType)
                 .setUseStrongBox(strongBox)
@@ -891,7 +880,7 @@ class MainActivity :  FragmentActivity() {
         val keyInfo = androidKeystoreSecureArea.getKeyInfo("testKey")
         val publicKey = keyInfo.attestation.get(0).publicKey
 
-        if (keyPurpose == KEY_PURPOSE_SIGN) {
+        if (keyPurpose == KeyPurpose.SIGN) {
             val signingAlgorithm = getNaturalAlgorithmForCurve(curve)
             val dataToSign = "data".toByteArray()
             try {
@@ -911,11 +900,11 @@ class MainActivity :  FragmentActivity() {
                     applicationContext, "Signed w/o authn (${t1 - t0} msec)",
                     Toast.LENGTH_SHORT
                 ).show()
-            } catch (e: SecureArea.KeyLockedException) {
+            } catch (e: KeyLockedException) {
                 val unlockData = AndroidKeystoreSecureArea.KeyUnlockData("testKey")
                 doUserAuth(
                     "Unlock to sign with key",
-                    unlockData.getCryptoObjectForSigning(ALGORITHM_ES256),
+                    unlockData.getCryptoObjectForSigning(Algorithm.ES256),
                     false,
                     biometricConfirmationRequired,
                     onAuthSuccees = {
@@ -960,7 +949,7 @@ class MainActivity :  FragmentActivity() {
                     Zab)
                 Toast.makeText(applicationContext, "ECDH w/o authn (${t1 - t0} msec)",
                     Toast.LENGTH_SHORT).show()
-            } catch (e: SecureArea.KeyLockedException) {
+            } catch (e: KeyLockedException) {
                 val unlockData = AndroidKeystoreSecureArea.KeyUnlockData("testKey")
                 doUserAuth(
                     "Unlock to ECDH with key",
@@ -1000,7 +989,7 @@ class MainActivity :  FragmentActivity() {
         val thirtyDaysFromNow = Instant.now().toEpochMilli() + 30*24*3600*1000L
         softwareSecureArea.createKey(
             "testKey",
-            SoftwareSecureArea.CreateKeySettings.Builder("Challenge".toByteArray())
+            SoftwareCreateKeySettings.Builder("Challenge".toByteArray())
                 .setValidityPeriod(Timestamp.ofEpochMilli(now), Timestamp.ofEpochMilli(thirtyDaysFromNow))
                 .setAttestationKey(softwareAttestationKey,
                     softwareAttestationKeySignatureAlgorithm,
@@ -1011,8 +1000,8 @@ class MainActivity :  FragmentActivity() {
     }
 
     private fun swTest(
-        keyPurpose: Int,
-        curve: Int,
+        keyPurpose: KeyPurpose,
+        curve: EcCurve,
         passphrase: String?,
         passphraseEnteredByUser: String?) {
         Logger.d(
@@ -1029,14 +1018,14 @@ class MainActivity :  FragmentActivity() {
     }
 
     private fun swTestUnguarded(
-        keyPurpose: Int,
-        curve: Int,
+        keyPurpose: KeyPurpose,
+        curve: EcCurve,
         passphrase: String?,
         passphraseEnteredByUser: String?) {
 
-        val builder = SoftwareSecureArea.CreateKeySettings.Builder("Challenge".toByteArray())
+        val builder = SoftwareCreateKeySettings.Builder("Challenge".toByteArray())
             .setEcCurve(curve)
-            .setKeyPurposes(keyPurpose)
+            .setKeyPurposes(setOf(keyPurpose))
             .setAttestationKey(softwareAttestationKey,
                 softwareAttestationKeySignatureAlgorithm,
                 softwareAttestationKeyCertification)
@@ -1048,12 +1037,12 @@ class MainActivity :  FragmentActivity() {
         val keyInfo = softwareSecureArea.getKeyInfo("testKey")
         val publicKey = keyInfo.attestation.get(0).publicKey
 
-        var unlockData: SecureArea.KeyUnlockData? = null
+        var unlockData: KeyUnlockData? = null
         if (passphraseEnteredByUser != null) {
-            unlockData = SoftwareSecureArea.KeyUnlockData(passphraseEnteredByUser)
+            unlockData = SoftwareKeyUnlockData(passphraseEnteredByUser)
         }
 
-        if (keyPurpose == KEY_PURPOSE_SIGN) {
+        if (keyPurpose == KeyPurpose.SIGN) {
             val signingAlgorithm = getNaturalAlgorithmForCurve(curve)
             try {
                 val t0 = System.currentTimeMillis()
@@ -1070,7 +1059,7 @@ class MainActivity :  FragmentActivity() {
                 )
                 Toast.makeText(applicationContext, "Signed w/o authn (${t1 - t0} msec)",
                     Toast.LENGTH_SHORT).show()
-            } catch (e: SecureArea.KeyLockedException) {
+            } catch (e: KeyLockedException) {
                 e.printStackTrace();
                 Toast.makeText(
                     applicationContext, "${e.message}",
@@ -1092,7 +1081,7 @@ class MainActivity :  FragmentActivity() {
                     Zab)
                 Toast.makeText(applicationContext, "ECDH w/o authn (${t1 - t0} msec)",
                     Toast.LENGTH_SHORT).show()
-            } catch (e: SecureArea.KeyLockedException) {
+            } catch (e: KeyLockedException) {
                 e.printStackTrace();
                 Toast.makeText(
                     applicationContext, "${e.message}",

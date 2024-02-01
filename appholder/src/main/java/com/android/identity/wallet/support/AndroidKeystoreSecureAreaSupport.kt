@@ -19,8 +19,13 @@ import co.nstant.`in`.cbor.model.Map
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
-import com.android.identity.credential.Credential
+import com.android.identity.credential.AuthenticationKey
 import com.android.identity.internal.Util
+import com.android.identity.securearea.Algorithm
+import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.EcCurve
+import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet.R
@@ -48,8 +53,8 @@ class AndroidKeystoreSecureAreaSupport(
     )
 
     override fun Fragment.unlockKey(
-        authKey: Credential.AuthenticationKey,
-        onKeyUnlocked: (unlockData: SecureArea.KeyUnlockData?) -> Unit,
+        authKey: AuthenticationKey,
+        onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {
         val keyInfo = authKey.secureArea.getKeyInfo(authKey.alias) as AndroidKeystoreSecureArea.KeyInfo
@@ -85,7 +90,7 @@ class AndroidKeystoreSecureAreaSupport(
         } else {
             userAuthRequest.withNegativeButton("Cancel")
         }
-        val cryptoObject = unlockData.getCryptoObjectForSigning(SecureArea.ALGORITHM_ES256)
+        val cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
         userAuthRequest.build().authenticate(cryptoObject)
     }
 
@@ -184,8 +189,9 @@ class AndroidKeystoreSecureAreaSupport(
 
         return FormatUtil.cborEncode(CborBuilder()
             .addMap()
-            .put("curve", state.authKeyCurveState.authCurve.toEcCurve().toLong())
-            .put("purposes", state.mDocAuthOption.mDocAuthentication.toKeyPurpose().toLong())
+            .put("curve", state.authKeyCurveState.authCurve.toEcCurve().coseCurveIdentifier.toLong())
+            .put("purposes", KeyPurpose.encodeSet(
+                setOf(state.mDocAuthOption.mDocAuthentication.toKeyPurpose())).toLong())
             .put("userAuthEnabled", state.userAuthentication)
             .put("userAuthTimeoutMillis", state.userAuthenticationTimeoutSeconds.toLong() * 1000L)
             .put("userAuthSettings", userAuthSettings.toLong())
@@ -199,10 +205,10 @@ class AndroidKeystoreSecureAreaSupport(
         challenge: ByteArray,
         validFrom: Timestamp,
         validUntil: Timestamp
-    ): SecureArea.CreateKeySettings {
+    ): CreateKeySettings {
         val map = CborDecoder(ByteArrayInputStream(encodedConfiguration)).decode().get(0) as Map
-        val curve = Util.cborMapExtractNumber(map, "curve").toInt()
-        val purposes = Util.cborMapExtractNumber(map, "purposes").toInt()
+        val curve = EcCurve.fromInt(Util.cborMapExtractNumber(map, "curve").toInt())
+        val purposes = KeyPurpose.decodeSet(Util.cborMapExtractNumber(map, "purposes").toInt())
         val userAuthEnabled = Util.cborMapExtractBoolean(map, "userAuthEnabled")
         val userAuthTimeoutMillis = Util.cborMapExtractNumber(map, "userAuthTimeoutMillis")
         val userAuthSettings = Util.cborMapExtractNumber(map, "userAuthSettings").toInt()

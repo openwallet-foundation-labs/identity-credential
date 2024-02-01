@@ -28,6 +28,7 @@ import com.android.identity.mdoc.origininfo.OriginInfoDomain;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.CborUtil;
 import com.android.identity.util.Timestamp;
@@ -281,7 +282,7 @@ public class RequestServlet extends HttpServlet {
                 SessionEncryption.ROLE_MDOC_READER,
                 new KeyPair(eReaderKeyPublic,eReaderKeyPrivate),
                 eDeviceKeyPublic,
-                SecureArea.EC_CURVE_P256,
+                EcCurve.P256,
                 sessionTranscript);
         ser.setSendSessionEstablishment(false);
         byte[] dr = new DeviceRequestGenerator()
@@ -303,7 +304,7 @@ public class RequestServlet extends HttpServlet {
             .addArray()
                 .add(Util.cborBuildTaggedByteString(de))
                 .add(Util.cborBuildTaggedByteString(Util.cborEncode(
-                        Util.cborBuildCoseKey(eReaderKeyPublic, SecureArea.EC_CURVE_P256))))
+                        Util.cborBuildCoseKey(eReaderKeyPublic, EcCurve.P256))))
                 .add(Util.cborBuildTaggedByteString(re))
             .end().build().get(0));
     }
@@ -387,7 +388,7 @@ public class RequestServlet extends HttpServlet {
      */
     public static byte[] generateReaderEngagement(PublicKey publicKey, Key key) {
         EngagementGenerator eg = new EngagementGenerator(publicKey,
-                SecureArea.EC_CURVE_P256,
+                EcCurve.P256,
                 EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         List<ConnectionMethod> connectionMethods = new ArrayList<>();
         connectionMethods.add(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/"
@@ -448,7 +449,7 @@ public class RequestServlet extends HttpServlet {
             ser = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
                     new KeyPair(eReaderKeyPublic, eReaderKeyPrivate),
                     eDeviceKeyPublic,
-                    SecureArea.EC_CURVE_P256,
+                    EcCurve.P256,
                     sessionTranscript);
             ser.setSendSessionEstablishment(false);
             

@@ -42,6 +42,7 @@ import com.android.identity.mdoc.engagement.EngagementGenerator;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 import com.android.identity.util.Logger;
@@ -86,7 +87,7 @@ public class VerificationHelper {
     public static final int ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER = 2;
     public static final int ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER = 3;
     public static final int ENGAGEMENT_METHOD_REVERSE = 4;
-    private @SecureArea.EcCurve int mEphemeralKeyCurve;
+    private EcCurve mEphemeralKeyCurve;
     private List<ConnectionMethod> mNegotiatedHandoverConnectionMethods;
     private List<DataTransport> mNegotiatedHandoverListeningTransports = new ArrayList<>();;
 
@@ -1179,8 +1180,7 @@ public class VerificationHelper {
      *
      * @return the curve for the keys used for session encryption.
      */
-    public @SecureArea.EcCurve
-    int getEReaderKeyCurve() {
+    public EcCurve getEReaderKeyCurve() {
         return mEphemeralKeyCurve;
     }
 
