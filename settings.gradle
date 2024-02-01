@@ -35,3 +35,4 @@ include ':appholder', ':appverifier', ':secure-area-test-app', ':wwwverifier', '
 include ':wwwverifier'
 // Samples
 include ':samples:preconsent-mdl', ':samples:age-verifier-mdl', ':samples:simple-verifier'
+include ':jpeg2k'

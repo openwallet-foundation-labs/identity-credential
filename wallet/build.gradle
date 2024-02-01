@@ -49,6 +49,7 @@ android {
 dependencies {
     implementation project(':identity')
     implementation project(':identity-android')
+    implementation project(':mrtd-reader')
 
     implementation libs.cbor
     implementation libs.androidx.core.ktx
@@ -60,7 +61,10 @@ dependencies {
     implementation libs.compose.material
     implementation libs.bundles.bouncy.castle
     implementation libs.androidx.navigation.compose
+    implementation libs.compose.runtime.livedata
     debugImplementation libs.compose.icons
+
+    implementation libs.androidx.camera.view
 
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso

@@ -2,11 +2,15 @@
 
 package com.android.identity_credential.wallet
 
+import android.Manifest
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -63,6 +67,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -71,9 +76,11 @@ import com.android.identity.issuance.CredentialExtensions.credentialConfiguratio
 import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.CredentialExtensions.state
+import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
+import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
@@ -85,6 +92,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import com.android.identity_credential.mrtd.MrtdNfcScanner
+import com.android.identity_credential.mrtd.MrtdMrzScanner
+import com.android.identity_credential.mrtd.MrtdNfcReader
 
 class MainActivity : ComponentActivity() {
 
@@ -97,10 +107,17 @@ class MainActivity : ComponentActivity() {
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
     private val credentialInformationViewModel: CredentialInformationViewModel by viewModels()
 
+    private val permissionTracker = PermissionTracker(this, mapOf(
+        Manifest.permission.CAMERA to "This application requires camera permission to scan",
+        Manifest.permission.NFC to "NFC permission is required to operate"
+    ))
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         application = getApplication() as WalletApplication
+
+        permissionTracker.updatePermissions()
 
         setContent {
             IdentityCredentialTheme {
@@ -623,6 +640,11 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
+                            EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION -> {
+                                EvidenceRequestIcaoPassiveAuthentication(
+                                    evidenceRequest as EvidenceRequestIcaoPassiveAuthentication
+                                )
+                            }
                             else -> {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -799,4 +821,85 @@ class MainActivity : ComponentActivity() {
 
     }
 
+    @Composable
+    fun EvidenceRequestIcaoPassiveAuthentication(
+        evidenceRequest: EvidenceRequestIcaoPassiveAuthentication) {
+        val requiredPermissions = listOf(Manifest.permission.CAMERA, Manifest.permission.NFC)
+        permissionTracker.PermissionCheck(requiredPermissions) {
+            var visualScan by remember { mutableStateOf(true) }  // start with visual scan
+            var status by remember { mutableStateOf<MrtdNfcReader.Status>(MrtdNfcReader.Initial) }
+            val scope = rememberCoroutineScope()
+            if (visualScan) {
+                AndroidView(
+                    factory = { context ->
+                        PreviewView(context).apply {
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            scaleType = PreviewView.ScaleType.FILL_START
+                            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                            post {
+                                scope.launch {
+                                    val passportCapture = MrtdMrzScanner(this@MainActivity)
+                                    val passportNfcScanner = MrtdNfcScanner(this@MainActivity)
+                                    try {
+                                        val mrzInfo = passportCapture.readFromCamera(surfaceProvider)
+                                        status = MrtdNfcReader.Initial
+                                        visualScan = false
+                                        val nfcData = passportNfcScanner.scanCard(mrzInfo) { st ->
+                                            status = st
+                                        }
+                                        provisioningViewModel.provideEvidence(
+                                            EvidenceResponseIcaoPassiveAuthentication(mapOf(
+                                                1 to nfcData.dg1,
+                                                2 to nfcData.dg2
+                                            ), nfcData.sod)
+                                        )
+                                    } catch (err: Exception) {
+                                        Logger.e(TAG, "Error scanning MRTD: $err")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(when(status) {
+                            is MrtdNfcReader.Initial -> "Waiting to scan"
+                            else -> "Reading..."
+                        })
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(when(status) {
+                            is MrtdNfcReader.Initial -> "Initial"
+                            is MrtdNfcReader.Connected -> "Connected"
+                            is MrtdNfcReader.AttemptingPACE -> "Attempting PACE"
+                            is MrtdNfcReader.PACESucceeded -> "PACE Succeeded"
+                            is MrtdNfcReader.PACENotSupported -> "PACE Not Supported"
+                            is MrtdNfcReader.PACEFailed -> "PACE Not Supported"
+                            is MrtdNfcReader.AttemptingBAC -> "Attempting BAC"
+                            is MrtdNfcReader.BACSucceeded -> "BAC Succeeded"
+                            is MrtdNfcReader.ReadingData -> {
+                                val s = status as MrtdNfcReader.ReadingData
+                                "Reading: ${s.read * 100 / s.total}%"
+                            }
+                            is MrtdNfcReader.Finished -> "Finished"
+                        })
+                    }
+                }
+            }
+        }
+    }
 }

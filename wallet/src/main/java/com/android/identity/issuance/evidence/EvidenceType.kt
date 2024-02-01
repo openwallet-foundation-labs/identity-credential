@@ -26,4 +26,9 @@ enum class EvidenceType {
      * See [EvidenceRequestQuestionMultipleChoice] and [EvidenceResponseQuestionMultipleChoice] for parameters and values.
      */
     QUESTION_MULTIPLE_CHOICE,
+
+    /**
+     * Evidence type for NFC-enabled passport or ID card.
+     */
+    ICAO_9303_PASSIVE_AUTHENTICATION,
 }
