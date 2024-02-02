@@ -232,7 +232,7 @@ class SelfSignedMdlIssuingAuthority(
                 )))
             .build()
         return SimpleIssuingAuthorityProofingGraph()
-            .add(SimpleNode("toc",
+            .add(SimpleNode("tos",
             EvidenceRequestMessage(
                 "Here's a long string with TOS",
                 "Accept",
@@ -264,7 +264,7 @@ class SelfSignedMdlIssuingAuthority(
     }
 
     override fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean {
-        return (collectedEvidence["toc"] as EvidenceResponseMessage).acknowledged
+        return (collectedEvidence["tos"] as EvidenceResponseMessage).acknowledged
     }
 
     override fun generateCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration {

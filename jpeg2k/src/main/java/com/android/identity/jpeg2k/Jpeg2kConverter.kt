@@ -13,14 +13,14 @@ import kotlin.math.min
  * This utilizes the fact that PDF rendering is a part of standard Android API and JPEG2000 is
  * a standard part of PDF. JPEG2000 file is wrapped in PDF and rendered using PDF renderer.
  *
- * @param mTmpDir a folder for temporary files (PDF can be rendered only from a file).
+ * @param tmpDir a folder for temporary files (PDF can be rendered only from a file).
  */
-class Jpeg2kConverter(private val mTmpDir: File) {
+class Jpeg2kConverter(private val tmpDir: File) {
 
     /** Parses JPEG2000 file and returns a Bitmap. */
     fun convertToBitmap(j2k: ByteArray): Bitmap {
         val pdf = convertToPdfData(j2k)
-        val pdfFile = File.createTempFile("tmp_conv", ".pdf", mTmpDir)
+        val pdfFile = File.createTempFile("tmp_conv", ".pdf", tmpDir)
         val out = pdfFile.outputStream()
         out.write(pdf.bytes)
         out.close()
