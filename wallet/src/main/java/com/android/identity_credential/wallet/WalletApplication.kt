@@ -12,6 +12,8 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.credentialtype.CredentialTypeRepository
+import com.android.identity.credentialtype.knowntypes.DrivingLicense
 import com.android.identity.internal.Util
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
@@ -59,6 +61,7 @@ class WalletApplication : Application() {
         private const val TAG = "WalletApplication"
     }
 
+    lateinit var credentialTypeRepository: CredentialTypeRepository
     lateinit var issuingAuthorityRepository: IssuingAuthorityRepository
     lateinit var secureAreaRepository: SecureAreaRepository
     lateinit var credentialStore: CredentialStore
@@ -75,6 +78,9 @@ class WalletApplication : Application() {
         Security.addProvider(BouncyCastleProvider())
 
         // Setup singletons
+        credentialTypeRepository = CredentialTypeRepository()
+        credentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
+
         val storageDir = File(applicationContext.noBackupFilesDir, "identity")
         val storageEngine = AndroidStorageEngine.Builder(applicationContext, storageDir).build()
         secureAreaRepository = SecureAreaRepository()

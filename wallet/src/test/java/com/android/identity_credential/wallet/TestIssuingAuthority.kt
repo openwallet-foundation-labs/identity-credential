@@ -1,5 +1,6 @@
 package com.android.identity_credential.wallet
 
+import com.android.identity.credential.NameSpacedData
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
@@ -31,12 +32,14 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
             CredentialConfiguration(
                 "mDL for Test IA (proofing pending)",
                 byteArrayOf(1, 2, 3),
+                NameSpacedData.Builder().build()
             )
         )
     }
 
     override fun createPresentationData(presentationFormat: CredentialPresentationFormat,
-                                       authenticationKey: PublicKey
+                                        credentialConfiguration: CredentialConfiguration,
+                                        authenticationKey: PublicKey
     ): ByteArray {
         return byteArrayOf(1, 2, 3)
     }
@@ -97,6 +100,7 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
         return CredentialConfiguration(
             "${firstName}'s Driving License",
             byteArrayOf(1, 2, 3),
+            NameSpacedData.Builder().build()
         )
     }
 

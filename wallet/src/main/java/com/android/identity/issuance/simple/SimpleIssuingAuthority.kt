@@ -43,6 +43,7 @@ abstract class SimpleIssuingAuthority(
     abstract fun generateCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration
 
     abstract fun createPresentationData(presentationFormat: CredentialPresentationFormat,
+                                        credentialConfiguration: CredentialConfiguration,
                                         authenticationKey: PublicKey): ByteArray
 
     private data class CpoRequest(
@@ -82,6 +83,7 @@ abstract class SimpleIssuingAuthority(
         var proofingDeadlineMillis: Long,
         var state: CredentialCondition,
         var collectedEvidence: MutableMap<String, EvidenceResponse>,
+        var credentialConfiguration: CredentialConfiguration?,
         var cpoRequests: MutableList<CpoRequest>
     ) {
         companion object {
@@ -104,10 +106,19 @@ abstract class SimpleIssuingAuthority(
                 for (cpoRequestDataItem in Util.cborMapExtractArray(map, "cpoRequests")) {
                     cpoRequests.add(CpoRequest.fromCbor(Util.cborEncode(cpoRequestDataItem)))
                 }
+
+                var credentialConfiguration: CredentialConfiguration? = null
+                if (Util.cborMapHasKey(map, "credentialConfiguration")) {
+                    credentialConfiguration = CredentialConfiguration.fromCbor(
+                        Util.cborMapExtractByteString(map, "credentialConfiguration")
+                    )
+                }
+
                 return IssuerCredential(
                     Util.cborMapExtractNumber(map, "proofingDeadline"),
                     state,
                     collectedEvidence,
+                    credentialConfiguration,
                     cpoRequests,
                 )
             }
@@ -124,15 +135,18 @@ abstract class SimpleIssuingAuthority(
                 ceMapBuilder.put(UnicodeString(evidence.key),
                     Util.cborDecode(evidence.value.toCbor()))
             }
-            return Util.cborEncode(
-                CborBuilder()
-                    .addMap()
-                    .put("proofingDeadline", proofingDeadlineMillis)
-                    .put("state", state.ordinal.toLong())
-                    .put(UnicodeString("collectedEvidence"), ceBuilder.build()[0])
-                    .put(UnicodeString("cpoRequests"), cpoBuilder.build()[0])
-                    .end()
-                    .build().get(0))
+
+            val builder = CborBuilder()
+            val mapBuilder = builder.addMap()
+            mapBuilder
+                .put("proofingDeadline", proofingDeadlineMillis)
+                .put("state", state.ordinal.toLong())
+                .put(UnicodeString("collectedEvidence"), ceBuilder.build()[0])
+                .put(UnicodeString("cpoRequests"), cpoBuilder.build()[0])
+            if (credentialConfiguration != null) {
+                mapBuilder.put("credentialConfiguration", credentialConfiguration!!.toCbor())
+            }
+            return Util.cborEncode(builder.build()[0])
         }
     }
 
@@ -193,8 +207,10 @@ abstract class SimpleIssuingAuthority(
         val issuerCredential = loadIssuerCredential(credentialId)
         check(issuerCredential.state == CredentialCondition.CONFIGURATION_AVAILABLE)
         issuerCredential.state = CredentialCondition.READY
+        val credentialConfiguration = generateCredentialConfiguration(issuerCredential.collectedEvidence)
+        issuerCredential.credentialConfiguration = credentialConfiguration
         saveIssuerCredential(credentialId, issuerCredential)
-        return generateCredentialConfiguration(issuerCredential.collectedEvidence)
+        return credentialConfiguration
     }
 
     override fun credentialRequestPresentationObjects(credentialId: String): RequestPresentationObjectsFlow {
@@ -232,8 +248,9 @@ abstract class SimpleIssuingAuthority(
             IssuerCredential(
                 System.currentTimeMillis() + 3*1000,
                 CredentialCondition.PROOFING_REQUIRED,
-                mutableMapOf(),  // collectedEvidence - initially empty
-                mutableListOf()   // cpoRequests - initially empty
+                mutableMapOf(),           // collectedEvidence - initially empty
+                null,  // no initial credential configuration
+                mutableListOf()           // cpoRequests - initially empty
             )
         )
     }
@@ -279,7 +296,11 @@ abstract class SimpleIssuingAuthority(
                 continue
             }
             val authenticationKey = request.authenticationKeyAttestation[0].publicKey
-            val presentationData = createPresentationData(request.credentialPresentationFormat, authenticationKey)
+            val presentationData = createPresentationData(
+                request.credentialPresentationFormat,
+                issuerCredential.credentialConfiguration!!,
+                authenticationKey
+            )
             val request = CpoRequest(
                 authenticationKey,
                 presentationData,
