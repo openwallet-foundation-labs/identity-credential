@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'com.android.identity_credential.icao_reader'
+    namespace 'com.android.identity.jpeg2k'
     compileSdk 34
 
     defaultConfig {
@@ -21,33 +21,20 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = '11'
+        jvmTarget = '1.8'
     }
 }
 
 dependencies {
-    implementation project(':jpeg2k')
 
     implementation libs.androidx.core.ktx
     implementation libs.androidx.appcompat
     implementation libs.androidx.material
-
-    implementation libs.androidx.camera.view
-    implementation libs.androidx.camera.camera2
-    implementation libs.androidx.camera.lifecycle
-    implementation libs.net.sf.scuba.scuba.sc.android
-    implementation libs.org.jmrtd.jmrtd
-    implementation libs.com.google.mlkit.text.recognition
-
-    implementation libs.kotlinx.coroutines.guava
-
+    testImplementation libs.junit
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso
-    androidTestImplementation platform(libs.compose.bom)
-    testImplementation libs.bundles.unit.testing
-    testRuntimeOnly libs.junit.jupiter.engine
 }

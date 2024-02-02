@@ -1,8 +1,12 @@
 package com.android.identity.issuance.evidence
 
 import co.nstant.`in`.cbor.CborBuilder
+import co.nstant.`in`.cbor.model.DataItem
+import co.nstant.`in`.cbor.model.MajorType
 import co.nstant.`in`.cbor.model.UnicodeString
+import co.nstant.`in`.cbor.model.UnsignedInteger
 import com.android.identity.internal.Util
+import java.lang.IllegalArgumentException
 
 /**
  * A request for evidence by the issuer.
@@ -46,6 +50,15 @@ abstract class EvidenceRequest(
                 mapBuilder.put(UnicodeString("possibleValues"), pvBuilder.build()[0])
                 mapBuilder.put("acceptButtonText", er.acceptButtonText)
             }
+            EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION -> {
+                val er = this as EvidenceRequestIcaoPassiveAuthentication
+                val pvBuilder = CborBuilder()
+                val pvArrayBuilder = pvBuilder.addArray()
+                for (dataGroup in er.requestedDataGroups) {
+                    pvArrayBuilder.add(dataGroup.toLong())
+                }
+                mapBuilder.put(UnicodeString("dataGroups"), pvBuilder.build()[0])
+            }
         }
         return Util.cborEncode(builder.build()[0])
     }
@@ -83,6 +96,16 @@ abstract class EvidenceRequest(
                         possibleValues,
                         Util.cborMapExtractString(map, "acceptButtonText"),
                     )
+                }
+                EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION -> {
+                    val requests = Util.cborMapExtractArray(map, "dataGroups").map {
+                        when (it.majorType) {
+                            MajorType.UNSIGNED_INTEGER -> (it as UnsignedInteger).value.toInt()
+                            else -> throw IllegalArgumentException(
+                                "not a valid ICAO_9303_PASSIVE_AUTHENTICATION request")
+                        }
+                    }
+                    return EvidenceRequestIcaoPassiveAuthentication(requests)
                 }
             }
         }

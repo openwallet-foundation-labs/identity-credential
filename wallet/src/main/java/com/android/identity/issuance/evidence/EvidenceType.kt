@@ -26,4 +26,14 @@ enum class EvidenceType {
      * See [EvidenceRequestQuestionMultipleChoice] and [EvidenceResponseQuestionMultipleChoice] for parameters and values.
      */
     QUESTION_MULTIPLE_CHOICE,
+
+    /**
+     * Evidence type for the lowest authentication level of an NFC-enabled passport or ID card.
+     *
+     * See Section 5.1 "Passive Authentication" in ICAO Doc 9303 part 11.
+     *
+     * See [EvidenceRequestIcaoPassiveAuthentication] and [EvidenceResponseIcaoPassiveAuthentication]
+     * for parameters and values.
+     */
+    ICAO_9303_PASSIVE_AUTHENTICATION,
 }

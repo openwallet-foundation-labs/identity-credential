@@ -2,6 +2,7 @@ package com.android.identity_credential.mrtd
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import com.android.identity.jpeg2k.Jpeg2kConverter
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.jmrtd.lds.SODFile
 import org.jmrtd.lds.icao.DG1File
@@ -57,10 +58,10 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
                     // Failed to read somehow
                     break;
                 }
-                if ("image/jp2" == faceImageInfo.mimeType) {
-                    // TODO support JPEG2000 (will require mTmpFolder for that)
+                photo = if ("image/jp2" == faceImageInfo.mimeType) {
+                    Jpeg2kConverter(mTmpFolder).convertToBitmap(arr)
                 } else {
-                    photo = BitmapFactory.decodeByteArray(arr, 0, arr.size)
+                    BitmapFactory.decodeByteArray(arr, 0, arr.size)
                 }
                 break
             }

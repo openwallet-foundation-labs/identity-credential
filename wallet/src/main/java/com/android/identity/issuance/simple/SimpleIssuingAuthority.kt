@@ -1,39 +1,29 @@
 package com.android.identity.issuance.simple
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.internal.Util
-import com.android.identity.issuance.RegisterCredentialFlow
-import com.android.identity.issuance.CredentialConfiguration
-import com.android.identity.issuance.CredentialState
-import com.android.identity.issuance.CredentialPresentationObject
 import com.android.identity.issuance.CredentialCondition
+import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
+import com.android.identity.issuance.CredentialPresentationObject
 import com.android.identity.issuance.CredentialPresentationRequest
-import com.android.identity.issuance.evidence.EvidenceResponse
+import com.android.identity.issuance.CredentialState
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.ProofingFlow
+import com.android.identity.issuance.RegisterCredentialFlow
 import com.android.identity.issuance.RequestPresentationObjectsFlow
-import com.android.identity.issuance.evidence.EvidenceRequest
+import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.securearea.SecureArea
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.R
-import java.io.ByteArrayOutputStream
 import java.security.PublicKey
 import kotlin.random.Random
 
 /**
  * An simple implementation of an [IssuingAuthority].
  *
- * @param configuration the [IssuingAuthorityConfiguration] to use.
- * @param checkEvidence a function to check the evidence. Returns `true` if the user can get a
- *                      credential based on this, `false` otherwise.
- * @param generateCredentialConfiguration a function to create a [CredentialConfiguration] for
- *   an already proofed user.
  * @param storageEngine the [StorageEngine] to use for persisting issuer state.
  */
 abstract class SimpleIssuingAuthority(
@@ -46,9 +36,11 @@ abstract class SimpleIssuingAuthority(
 
     abstract override val configuration: IssuingAuthorityConfiguration
 
-    abstract fun getProofingQuestions(): List<EvidenceRequest>
-    abstract fun checkEvidence(collectedEvidence: List<EvidenceResponse>): Boolean
-    abstract fun generateCredentialConfiguration(collectedEvidence: List<EvidenceResponse>): CredentialConfiguration
+    abstract fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node
+
+    // Collected evidence responses are keyed by graph node ids.
+    abstract fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean
+    abstract fun generateCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration
 
     abstract fun createPresentationData(presentationFormat: CredentialPresentationFormat,
                                         authenticationKey: PublicKey): ByteArray
@@ -89,7 +81,7 @@ abstract class SimpleIssuingAuthority(
     private data class IssuerCredential(
         var proofingDeadlineMillis: Long,
         var state: CredentialCondition,
-        var collectedEvidence: MutableList<EvidenceResponse>,
+        var collectedEvidence: MutableMap<String, EvidenceResponse>,
         var cpoRequests: MutableList<CpoRequest>
     ) {
         companion object {
@@ -99,9 +91,13 @@ abstract class SimpleIssuingAuthority(
                 val state = CredentialCondition.values().firstOrNull {it.ordinal == stateAsInt}
                     ?: throw IllegalArgumentException("Unknown state with value $stateAsInt")
 
-                val collectedEvidence = mutableListOf<EvidenceResponse>()
-                for (evidenceDataItem in Util.cborMapExtractArray(map, "collectedEvidence")) {
-                    collectedEvidence.add(EvidenceResponse.fromCbor(Util.cborEncode(evidenceDataItem)))
+                val collectedEvidence = mutableMapOf<String, EvidenceResponse>()
+                val evidenceMap = Util.cborMapExtractMap(map, "collectedEvidence")
+                        as co.nstant.`in`.cbor.model.Map
+                for (evidenceId in evidenceMap.keys) {
+                    val evidenceDataItem = evidenceMap[evidenceId]
+                    collectedEvidence[Util.checkedStringValue(evidenceId)] =
+                        EvidenceResponse.fromCbor(Util.cborEncode(evidenceDataItem))
                 }
 
                 val cpoRequests = mutableListOf<CpoRequest>()
@@ -123,9 +119,10 @@ abstract class SimpleIssuingAuthority(
                 cpoArrayBuilder.add(Util.cborDecode(cpoRequest.toCbor()))
             }
             val ceBuilder = CborBuilder()
-            val ceArrayBuilder = ceBuilder.addArray()
+            val ceMapBuilder = ceBuilder.addMap()
             for (evidence in collectedEvidence) {
-                ceArrayBuilder.add(Util.cborDecode(evidence.toCbor()))
+                ceMapBuilder.put(UnicodeString(evidence.key),
+                    Util.cborDecode(evidence.value.toCbor()))
             }
             return Util.cborEncode(
                 CborBuilder()
@@ -189,7 +186,7 @@ abstract class SimpleIssuingAuthority(
     }
 
     override fun credentialProof(credentialId: String): ProofingFlow {
-        return SimpleIssuingAuthorityProofingFlow(this, credentialId, getProofingQuestions())
+        return SimpleIssuingAuthorityProofingFlow(this, credentialId, getProofingGraphRoot())
     }
 
     override suspend fun credentialGetConfiguration(credentialId: String): CredentialConfiguration {
@@ -235,7 +232,7 @@ abstract class SimpleIssuingAuthority(
             IssuerCredential(
                 System.currentTimeMillis() + 3*1000,
                 CredentialCondition.PROOFING_REQUIRED,
-                mutableListOf(),  // collectedEvidence - initially empty
+                mutableMapOf(),  // collectedEvidence - initially empty
                 mutableListOf()   // cpoRequests - initially empty
             )
         )
@@ -247,9 +244,10 @@ abstract class SimpleIssuingAuthority(
         saveIssuerCredential(credentialId, issuerCredential)
     }
 
-    fun addCollectedEvidence(credentialId: String, evidenceResponse: EvidenceResponse) {
+    fun addCollectedEvidence(
+          credentialId: String, nodeId: String, evidenceResponse: EvidenceResponse) {
         val issuerCredential = loadIssuerCredential(credentialId)
-        issuerCredential.collectedEvidence.add(evidenceResponse)
+        issuerCredential.collectedEvidence.put(nodeId, evidenceResponse)
         saveIssuerCredential(credentialId, issuerCredential)
     }
 
