@@ -14,7 +14,6 @@ import com.android.identity.internal.Util
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
-import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
@@ -26,6 +25,9 @@ import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleCh
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
+import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
+import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph.SimpleNode
+import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph.MultipleChoiceNode
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
@@ -211,45 +213,65 @@ class SelfSignedMdlIssuingAuthority(
         return JcaX509CertificateConverter().getCertificate(certHolder)
     }
 
-    override fun getProofingQuestions(): List<EvidenceRequest> {
-        return listOf(
+    override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
+        // TODO: use Kotlin DSL for evidence request and graph builders
+        val tail = SimpleIssuingAuthorityProofingGraph()
+            .add(SimpleNode("art",
+                EvidenceRequestQuestionMultipleChoice(
+                    "Select the card art for the credential",
+                    listOf("Green", "Blue", "Red"),
+                    "Continue",
+                )))
+            .add(SimpleNode("message",
+                EvidenceRequestMessage(
+                    "Your application is about to be sent the ID issuer for " +
+                            "verification. You will get notified when the " +
+                            "application is approved.",
+                    "Continue",
+                    null,
+                )))
+            .build()
+        return SimpleIssuingAuthorityProofingGraph()
+            .add(SimpleNode("toc",
             EvidenceRequestMessage(
                 "Here's a long string with TOS",
                 "Accept",
                 "Do Not Accept",
-            ),
-            EvidenceRequestIcaoPassiveAuthentication(listOf(1, 2)),
-            EvidenceRequestQuestionString(
-                "What first name should be used for the mDL?",
-                "Erika",
-                "Continue",
-            ),
-            EvidenceRequestQuestionMultipleChoice(
-                "Select the card art for the credential",
-                listOf("Green", "Blue", "Red"),
-                "Continue",
-            ),
-            EvidenceRequestMessage(
-                "Your application is about to be sent the ID issuer for " +
-                        "verification. You will get notified when the " +
-                        "application is approved.",
-                "Continue",
-                null,
-            )
-        )
+            )))
+            .addMultipleChoice(MultipleChoiceNode("path",
+                EvidenceRequestQuestionMultipleChoice(
+                    "How do you want to authenticate",
+                    listOf("Scan passport", "Answer questions"),
+                    "Continue",
+                ),
+                mapOf(
+                    "Scan passport" to SimpleIssuingAuthorityProofingGraph()
+                        .add(SimpleNode("passport",
+                            EvidenceRequestIcaoPassiveAuthentication(listOf(1, 2))))
+                        .addTail(tail)
+                        .build(),
+                    "Answer questions" to SimpleIssuingAuthorityProofingGraph()
+                        .add(SimpleNode("firstName",
+                            EvidenceRequestQuestionString(
+                                "What first name should be used for the mDL?",
+                                "Erika",
+                                "Continue",
+                            )))
+                        .addTail(tail)
+                        .build()
+                )))
+                .build()
     }
 
-    override fun checkEvidence(collectedEvidence: List<EvidenceResponse>): Boolean {
-        val tosAcknowledged = (collectedEvidence.find { r -> r.evidenceType == EvidenceType.MESSAGE}
-                as EvidenceResponseMessage).acknowledged
-        return tosAcknowledged
+    override fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean {
+        return (collectedEvidence["toc"] as EvidenceResponseMessage).acknowledged
     }
 
-    override fun generateCredentialConfiguration(collectedEvidence: List<EvidenceResponse>): CredentialConfiguration {
+    override fun generateCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration {
         return createCredentialConfiguration(collectedEvidence)
     }
 
-    private fun createCredentialConfiguration(collectedEvidence: List<EvidenceResponse>?): CredentialConfiguration {
+    private fun createCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): CredentialConfiguration {
         if (collectedEvidence == null) {
             return CredentialConfiguration(
                 "Utopia mDL (pending)",
@@ -262,22 +284,22 @@ class SelfSignedMdlIssuingAuthority(
             )
         }
 
-        val icaoData = collectedEvidence.find {
-            r -> r.evidenceType == EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION }
-        var firstName = (collectedEvidence.find { r -> r.evidenceType == EvidenceType.QUESTION_STRING}
-                as EvidenceResponseQuestionString).answer
-        var photo: Bitmap? = null
+        val icaoData = collectedEvidence["passport"]
+        val firstName: String
+        val photo: Bitmap?
         if (icaoData is EvidenceResponseIcaoPassiveAuthentication) {
-            // Recreate
             val mrtdData = MrtdNfcData(
                 icaoData.dataGroups[1]!!, icaoData.dataGroups[2]!!, icaoData.securityObject)
             val decoder = MrtdNfcDataDecoder(application.cacheDir)
             val decoded = decoder.decode(mrtdData)
             firstName = decoded.firstName
             photo = decoded.photo
+        } else {
+            val evidenceWithName = collectedEvidence["firstName"]
+            firstName = (evidenceWithName as EvidenceResponseQuestionString).answer
+            photo = null
         }
-        val cardArtColor = (collectedEvidence.find { r -> r.evidenceType == EvidenceType.QUESTION_MULTIPLE_CHOICE}
-                as EvidenceResponseQuestionMultipleChoice).answer
+        val cardArtColor = (collectedEvidence["art"] as EvidenceResponseQuestionMultipleChoice).answer
         val gradientColor = when (cardArtColor) {
             "Green" -> {
                 Pair(
@@ -343,7 +365,7 @@ class SelfSignedMdlIssuingAuthority(
 
         if (photo != null) {
             val src = Rect(0, 0, photo.width, photo.height)
-            val scale = height * 0.6f / photo.height.toFloat()
+            val scale = height * 0.7f / photo.height.toFloat()
             val dst = RectF(round, round, photo.width*scale, photo.height*scale);
             canvas.drawBitmap(photo, src, dst, bgPaint)
         }

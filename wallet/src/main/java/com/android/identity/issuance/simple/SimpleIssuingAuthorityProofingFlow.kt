@@ -9,21 +9,21 @@ import java.lang.IllegalStateException
 class SimpleIssuingAuthorityProofingFlow(
     private val issuingAuthority: SimpleIssuingAuthority,
     private val credentialId: String,
-    private val evidenceToCollect: List<EvidenceRequest>,
+    private var currentNode: SimpleIssuingAuthorityProofingGraph.Node?,
 ) : ProofingFlow {
+
 
     companion object {
         private const val TAG = "SimpleIssuingAuthorityProofingFlow"
     }
 
-    private var evidenceCursor = 0
-
     override suspend fun getEvidenceRequests(): List<EvidenceRequest> {
-        if (evidenceCursor == evidenceToCollect.size) {
+        val currentNode = this.currentNode
+        if (currentNode == null) {
             issuingAuthority.setProofingProcessing(credentialId)
             return emptyList()
         }
-        return listOf(evidenceToCollect[evidenceCursor++])
+        return currentNode.requests
     }
 
     override suspend fun sendEvidence(evidenceResponse: EvidenceResponse?) {
@@ -31,7 +31,9 @@ class SimpleIssuingAuthorityProofingFlow(
         if (evidenceResponse == null) {
             throw IllegalStateException("Evidence must be supplied")
         }
-        issuingAuthority.addCollectedEvidence(credentialId, evidenceResponse)
+        val currentNode = this.currentNode ?: throw IllegalStateException("Evidence is not expected")
+        issuingAuthority.addCollectedEvidence(credentialId, currentNode.nodeId, evidenceResponse)
+        this.currentNode = currentNode.selectFollowUp(evidenceResponse)
     }
 
 }
