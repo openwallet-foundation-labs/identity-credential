@@ -11,6 +11,7 @@ import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
+import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.storage.EphemeralStorageEngine
 import java.security.PublicKey
 
@@ -40,40 +41,59 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
         return byteArrayOf(1, 2, 3)
     }
 
-    override fun getProofingQuestions(): List<EvidenceRequest> {
-        return listOf(
-            EvidenceRequestMessage(
-                "Here's a long string with TOS",
-                "Accept",
-                "Do Not Accept",
-            ),
-            EvidenceRequestQuestionString(
-                "What first name should be used for the mDL?",
-                "Erika",
-                "Continue",
-            ),
-            EvidenceRequestQuestionMultipleChoice(
-                "Select the card art for the credential",
-                listOf("Green", "Blue", "Red"),
-                "Continue",
-            ),
-            EvidenceRequestMessage(
-                "Your application is about to be sent the ID issuer for " +
-                        "verification. You will get notified when the " +
-                        "application is approved.",
-                "Continue",
-                null,
+    override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
+        return SimpleIssuingAuthorityProofingGraph()
+            .add(
+                SimpleIssuingAuthorityProofingGraph.SimpleNode(
+                    "tos",
+                    EvidenceRequestMessage(
+                        "Here's a long string with TOS",
+                        "Accept",
+                        "Do Not Accept",
+                    )
+                )
             )
-        )
+            .add(
+                SimpleIssuingAuthorityProofingGraph.SimpleNode(
+                    "name",
+                    EvidenceRequestQuestionString(
+                        "What first name should be used for the mDL?",
+                        "Erika",
+                        "Continue",
+                    )
+                )
+            )
+            .add(
+                SimpleIssuingAuthorityProofingGraph.SimpleNode(
+                    "multi",
+                    EvidenceRequestQuestionMultipleChoice(
+                        "Select the card art for the credential",
+                        listOf("Green", "Blue", "Red"),
+                        "Continue",
+                    )
+                )
+            )
+            .add(
+                SimpleIssuingAuthorityProofingGraph.SimpleNode(
+                    "message",
+                    EvidenceRequestMessage(
+                        "Your application is about to be sent the ID issuer for " +
+                                "verification. You will get notified when the " +
+                                "application is approved.",
+                        "Continue",
+                        null,
+                    )
+                )
+            )
+            .build()
     }
 
-    override fun checkEvidence(collectedEvidence: List<EvidenceResponse>): Boolean {
+    override fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean {
         return true
     }
 
-    override fun generateCredentialConfiguration(collectedEvidence: List<EvidenceResponse>): CredentialConfiguration {
-        val firstName = (collectedEvidence.find { r -> r.evidenceType == EvidenceType.QUESTION_STRING}
-                as EvidenceResponseQuestionString).answer
+    override fun generateCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration {
+        val firstName = (collectedEvidence["name"] as EvidenceResponseQuestionString).answer
         return CredentialConfiguration(
             "${firstName}'s Driving License",
             byteArrayOf(1, 2, 3),
