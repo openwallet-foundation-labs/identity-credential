@@ -10,6 +10,8 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.credentialtype.knowntypes.DrivingLicense
+import com.android.identity.credentialtype.knowntypes.Options
 import com.android.identity.internal.Util
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
@@ -23,7 +25,6 @@ import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthent
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
-import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph.SimpleNode
@@ -88,36 +89,13 @@ class SelfSignedMdlIssuingAuthority(
     }
 
     override fun createPresentationData(presentationFormat: CredentialPresentationFormat,
-                                       authenticationKey: PublicKey
+                                        credentialConfiguration: CredentialConfiguration,
+                                        authenticationKey: PublicKey
     ): ByteArray {
         // Right now we only support mdoc
         check(presentationFormat == CredentialPresentationFormat.MDOC_MSO)
 
-        val baos = ByteArrayOutputStream()
-        BitmapFactory.decodeResource(
-            application.applicationContext.resources,
-            R.drawable.img_erika_portrait
-        ).compress(Bitmap.CompressFormat.JPEG, 50, baos)
-        val portrait: ByteArray = baos.toByteArray()
-
         val now = Timestamp.now()
-        val issueDate = now
-        val expiryDate = Timestamp.ofEpochMilli(issueDate.toEpochMilli() + 5*365*24*3600*1000L)
-
-        val credentialData = NameSpacedData.Builder()
-            .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
-            .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
-            .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
-            .putEntryNumber(MDL_NAMESPACE, "sex", 2)
-            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(issueDate))
-            .putEntry(MDL_NAMESPACE, "expiry_date", Util.cborEncodeDateTime(expiryDate))
-            .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
-            .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
-            .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
-            .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
-            .putEntryBoolean(MDL_NAMESPACE, "age_over_18", true)
-            .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true)
-            .build()
 
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
@@ -134,7 +112,7 @@ class SelfSignedMdlIssuingAuthority(
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
         val randomProvider = SecureRandom()
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-            credentialData,
+            credentialConfiguration.staticData,
             randomProvider,
             16,
             null
@@ -162,7 +140,7 @@ class SelfSignedMdlIssuingAuthority(
         )
 
         val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-            MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, null),
+            issuerNameSpaces,
             encodedIssuerAuth
         ).generate()
 
@@ -280,25 +258,45 @@ class SelfSignedMdlIssuingAuthority(
                     Color.rgb(96, 96, 96),
                     null,
                     "mDL (Pending)",
-                )
+                ),
+                NameSpacedData.Builder().build()
             )
         }
 
         val icaoData = collectedEvidence["passport"]
-        val firstName: String
-        val photo: Bitmap?
+        lateinit var firstName: String
+        lateinit var lastName: String
+        lateinit var portrait: ByteArray
+        var sex: Long
         if (icaoData is EvidenceResponseIcaoPassiveAuthentication) {
             val mrtdData = MrtdNfcData(
                 icaoData.dataGroups[1]!!, icaoData.dataGroups[2]!!, icaoData.securityObject)
             val decoder = MrtdNfcDataDecoder(application.cacheDir)
             val decoded = decoder.decode(mrtdData)
             firstName = decoded.firstName
-            photo = decoded.photo
+            lastName = decoded.lastName
+            sex = when (decoded.gender) {
+                "MALE" -> 1
+                "FEMALE" -> 2
+                else -> 0
+            }
+            val baos = ByteArrayOutputStream()
+            decoded.photo!!.compress(Bitmap.CompressFormat.JPEG, 90, baos)
+            portrait = baos.toByteArray()
         } else {
             val evidenceWithName = collectedEvidence["firstName"]
             firstName = (evidenceWithName as EvidenceResponseQuestionString).answer
-            photo = null
+            lastName = "Mustermann"
+            sex = 2
+            val baos = ByteArrayOutputStream()
+            BitmapFactory.decodeResource(
+                application.applicationContext.resources,
+                R.drawable.img_erika_portrait
+            ).compress(Bitmap.CompressFormat.JPEG, 90, baos)
+            portrait = baos.toByteArray()
         }
+
+
         val cardArtColor = (collectedEvidence["art"] as EvidenceResponseQuestionMultipleChoice).answer
         val gradientColor = when (cardArtColor) {
             "Green" -> {
@@ -326,20 +324,49 @@ class SelfSignedMdlIssuingAuthority(
                 )
             }
         }
+
+        val baos = ByteArrayOutputStream()
+        BitmapFactory.decodeResource(
+            application.applicationContext.resources,
+            R.drawable.img_erika_signature
+        ).compress(Bitmap.CompressFormat.JPEG, 90, baos)
+        val signatureOrUsualMark: ByteArray = baos.toByteArray()
+
+        val now = Timestamp.now()
+        val issueDate = now
+        val expiryDate = Timestamp.ofEpochMilli(issueDate.toEpochMilli() + 5*365*24*3600*1000L)
+
+        val staticData = NameSpacedData.Builder()
+            .putEntryString(MDL_NAMESPACE, "given_name", firstName)
+            .putEntryString(MDL_NAMESPACE, "family_name", lastName)
+            .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
+            .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
+            .putEntryNumber(MDL_NAMESPACE, "sex", sex)
+            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(issueDate))
+            .putEntry(MDL_NAMESPACE, "expiry_date", Util.cborEncodeDateTime(expiryDate))
+            .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
+            .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
+            .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
+            .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
+            .putEntryBoolean(MDL_NAMESPACE, "age_over_18", true)
+            .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true)
+            .build()
+
         return CredentialConfiguration(
             "${firstName}'s mDL",
             createArtwork(
                 gradientColor.first,
                 gradientColor.second,
-                photo,
+                portrait,
                 "${firstName}'s mDL",
-            )
+            ),
+            staticData
         )
     }
 
     private fun createArtwork(color1: Int,
                               color2: Int,
-                              photo: Bitmap?,
+                              portrait: ByteArray?,
                               artworkText: String): ByteArray {
         val width = 800
         val height = ceil(width.toFloat() * 2.125 / 3.375).toInt()
@@ -363,11 +390,12 @@ class SelfSignedMdlIssuingAuthority(
             bgPaint
         )
 
-        if (photo != null) {
-            val src = Rect(0, 0, photo.width, photo.height)
-            val scale = height * 0.7f / photo.height.toFloat()
-            val dst = RectF(round, round, photo.width*scale, photo.height*scale);
-            canvas.drawBitmap(photo, src, dst, bgPaint)
+        if (portrait != null) {
+            val portraitBitmap = BitmapFactory.decodeByteArray(portrait, 0, portrait.size)
+            val src = Rect(0, 0, portraitBitmap.width, portraitBitmap.height)
+            val scale = height * 0.7f / portraitBitmap.height.toFloat()
+            val dst = RectF(round, round, portraitBitmap.width*scale, portraitBitmap.height*scale);
+            canvas.drawBitmap(portraitBitmap, src, dst, bgPaint)
         }
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)

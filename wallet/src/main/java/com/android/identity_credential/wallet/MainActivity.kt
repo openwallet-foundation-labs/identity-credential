@@ -3,6 +3,7 @@
 package com.android.identity_credential.wallet
 
 import android.Manifest
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.ViewGroup
@@ -64,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -73,7 +75,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
-import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.CredentialExtensions.state
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
@@ -84,6 +85,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthent
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
+import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import kotlinx.coroutines.CoroutineScope
@@ -139,6 +141,10 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("CredentialInfo/{credentialId}") { backStackEntry ->
                             CredentialInfoScreen(navController,
+                                backStackEntry.arguments?.getString("credentialId")!!)
+                        }
+                        composable("CredentialInfo/{credentialId}/Details") { backStackEntry ->
+                            CredentialDetailsScreen(navController,
                                 backStackEntry.arguments?.getString("credentialId")!!)
                         }
                         composable("ProvisionCredentialScreen") {
@@ -544,6 +550,11 @@ class MainActivity : ComponentActivity() {
                         Text("Refresh")
                     }
                     Button(onClick = {
+                        navigation.navigate("CredentialInfo/$credentialId/Details")
+                    }) {
+                        Text("View")
+                    }
+                    Button(onClick = {
                         // TODO: run issuer deletion flow
                         application.credentialStore.deleteCredential(credentialId)
                         navigation.popBackStack()
@@ -552,6 +563,123 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+            }
+        }
+    }
+
+    @Composable
+    fun CredentialDetailsScreen(navigation: NavHostController,
+                                credentialId: String) {
+        val credential = application.credentialStore.lookupCredential(credentialId)
+        if (credential == null) {
+            Logger.w(TAG, "No credential for $credentialId")
+            return
+        }
+
+        val viewCredentialData = credential.getViewCredentialData(application.credentialTypeRepository)
+        var portraitBitmap: Bitmap? = null
+        var signatureOrUsualMark: Bitmap? = null
+
+        if (viewCredentialData.portrait != null) {
+            portraitBitmap = BitmapFactory.decodeByteArray(
+                viewCredentialData.portrait,
+                0,
+                viewCredentialData.portrait.size)
+        }
+        if (viewCredentialData.signatureOrUsualMark != null) {
+            signatureOrUsualMark = BitmapFactory.decodeByteArray(
+                viewCredentialData.signatureOrUsualMark,
+                0,
+                viewCredentialData.signatureOrUsualMark.size)
+        }
+
+        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    title = {
+                        Text(
+                            "Credential Details",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = {
+                                navigation.popBackStack()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowBack,
+                                contentDescription = "Back Arrow"
+                            )
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                )
+            },
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(innerPadding),
+                verticalArrangement = Arrangement.Center,
+            ) {
+                if (portraitBitmap != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            bitmap = portraitBitmap.asImageBitmap(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .size(200.dp),
+                            contentDescription = "Portrait of Holder",
+                        )
+                    }
+                    Divider(modifier = Modifier.padding(8.dp))
+                }
+                for (section in viewCredentialData.sections) {
+                    if (section != viewCredentialData.sections[0]) {
+                        Divider(modifier = Modifier.padding(8.dp))
+                    }
+                    for ((key, value) in section.keyValuePairs) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = "$key:",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                                )
+                            Text(
+                                text = "$value",
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                    }
+                }
+                if (signatureOrUsualMark != null) {
+                    Divider(modifier = Modifier.padding(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            bitmap = signatureOrUsualMark.asImageBitmap(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .size(75.dp),
+                            contentDescription = "Signature / Usual Mark of Holder",
+                        )
+                    }
+                }
             }
         }
     }

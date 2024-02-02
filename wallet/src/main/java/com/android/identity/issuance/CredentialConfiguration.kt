@@ -1,6 +1,7 @@
 package com.android.identity.issuance
 
 import co.nstant.`in`.cbor.CborBuilder
+import com.android.identity.credential.NameSpacedData
 import com.android.identity.internal.Util
 
 /**
@@ -20,7 +21,10 @@ data class CredentialConfiguration(
      */
     val cardArt: ByteArray,
 
-    // TODO: maybe also include NameSpacedData (for static PII)
+    /**
+     * Static data in the credential.
+     */
+    val staticData: NameSpacedData
 ) {
     companion object {
         fun fromCbor(encodedData: ByteArray): CredentialConfiguration {
@@ -28,6 +32,7 @@ data class CredentialConfiguration(
             return CredentialConfiguration(
                 Util.cborMapExtractString(map, "name"),
                 Util.cborMapExtractByteString(map, "cardArt"),
+                NameSpacedData.fromEncodedCbor(Util.cborMapExtractByteString(map, "staticData"))
             )
         }
 
@@ -39,6 +44,7 @@ data class CredentialConfiguration(
                 .addMap()
                 .put("name", displayName)
                 .put("cardArt", cardArt)
+                .put("staticData", staticData.encodeAsCbor())
                 .end()
                 .build().get(0))
     }
