@@ -63,6 +63,7 @@ dependencies {
     implementation libs.exifinterface
     implementation libs.code.scanner
     implementation libs.kotlinx.serialization
+    implementation libs.kotlinx.datetime
 
     androidTestImplementation libs.bundles.ui.testing
 

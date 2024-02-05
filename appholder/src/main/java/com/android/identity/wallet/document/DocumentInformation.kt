@@ -1,6 +1,6 @@
 package com.android.identity.wallet.document
 
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.KeyPurpose
 
 data class DocumentInformation(

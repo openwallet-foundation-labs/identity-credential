@@ -1,5 +1,7 @@
 package com.android.identity.securearea
 
+import com.android.identity.crypto.EcCurve
+
 /**
  * Base class for key creation settings.
  *

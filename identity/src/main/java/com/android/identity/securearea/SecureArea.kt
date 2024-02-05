@@ -15,7 +15,8 @@
  */
 package com.android.identity.securearea
 
-import java.security.PublicKey
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.EcPublicKey
 
 /**
  * An interface to a Secure Area.
@@ -77,11 +78,14 @@ interface SecureArea {
      * in any shape or form) and `keyUnlockData` isn't set or doesn't contain
      * what's needed, [KeyLockedException] is thrown.
      *
+     * The signature is DER encoded except for curve Ed25519 and Ed448 where it's just
+     * the raw R and S values.
+     *
      * @param alias The alias of the EC key to sign with.
      * @param signatureAlgorithm the signature algorithm to use.
      * @param dataToSign the data to sign.
      * @param keyUnlockData data used to unlock the key or null.
-     * @return a DER encoded string with the signature.
+     * @return the signature.
      * @throws IllegalArgumentException if there is no key with the given alias
      * or the key wasn't created with purpose [KeyPurpose.SIGN].
      * @throws IllegalArgumentException if the signature algorithm isn’t compatible with the key.
@@ -114,7 +118,7 @@ interface SecureArea {
     @Throws(KeyLockedException::class)
     fun keyAgreement(
         alias: String,
-        otherKey: PublicKey,
+        otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
     ): ByteArray
 
@@ -126,5 +130,4 @@ interface SecureArea {
      * @throws IllegalArgumentException if there is no key with the given alias.
      */
     fun getKeyInfo(alias: String): KeyInfo
-
 }

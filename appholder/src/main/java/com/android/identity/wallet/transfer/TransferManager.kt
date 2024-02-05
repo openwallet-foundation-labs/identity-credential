@@ -20,11 +20,10 @@ import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.securearea.Algorithm
+import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
-import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.DocumentDataReader

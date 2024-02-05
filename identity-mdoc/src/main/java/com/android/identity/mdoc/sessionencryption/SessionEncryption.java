@@ -22,45 +22,27 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.internal.Util;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
-import com.android.identity.util.Logger;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborBuilder;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.MapBuilder;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPublicKey;
+import com.android.identity.crypto.EcPublicKeyDoubleCoordinate;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.util.BigIntegers;
 
-import java.io.ByteArrayInputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.KeyPair;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.util.List;
+import java.util.Map;
 import java.util.OptionalLong;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyAgreement;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.CborDecoder;
-import co.nstant.in.cbor.CborException;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
-import co.nstant.in.cbor.model.UnicodeString;
-
 
 /**
  * Helper class for implementing session encryption according to ISO/IEC 18013-5:2021
@@ -72,7 +54,6 @@ public final class SessionEncryption {
 
     public static final int ROLE_MDOC = 0;
     public static final int ROLE_MDOC_READER = 1;
-    private final EcCurve mCurve;
 
     @Retention(RetentionPolicy.SOURCE)
     @IntDef(value = {ROLE_MDOC, ROLE_MDOC_READER})
@@ -82,10 +63,10 @@ public final class SessionEncryption {
     protected final @Role int mRole;
     private boolean mSessionEstablishmentSent;
 
-    private final PublicKey mESelfKeyPublic;
+    private final EcPrivateKey mESelfKey;
 
-    private final SecretKeySpec mSKRemote;
-    private final SecretKeySpec mSKSelf;
+    private final byte[] mSKRemote;
+    private final byte[] mSKSelf;
     private int mDecryptedCounter = 1;
     private int mEncryptedCounter = 1;
     private boolean mSendSessionEstablishment = true;
@@ -105,52 +86,24 @@ public final class SessionEncryption {
      *                then use the ephemeral key pair of the reader, and if <code>ROLE_MDOC</code>,
      *                then use the ephemeral key pair of the holder).
      * @param remotePublicKey The public ephemeral key of the remote device.
-     * @param curve The COSE curve identifier for the keys.
      * @param encodedSessionTranscript The bytes of the <code>SessionTranscript</code> CBOR.
      */
     public SessionEncryption(@Role int role,
-                             @NonNull KeyPair keyPair,
-                             @NonNull PublicKey remotePublicKey,
-                             EcCurve curve,
+                             @NonNull EcPrivateKey keyPair,
+                             @NonNull EcPublicKey remotePublicKey,
                              @NonNull byte[] encodedSessionTranscript) {
         mRole = role;
-        PrivateKey mESelfKeyPrivate = keyPair.getPrivate();
-        mESelfKeyPublic = keyPair.getPublic();
-        mCurve = curve;
+        mESelfKey = keyPair;
 
-        SecretKeySpec deviceSK, readerSK;
-        try {
-            KeyAgreement ka;
-            switch (curve) {
-                case X25519:
-                    ka = KeyAgreement.getInstance("X25519", BouncyCastleProvider.PROVIDER_NAME);
-                    break;
-                case X448:
-                    ka = KeyAgreement.getInstance("X448", BouncyCastleProvider.PROVIDER_NAME);
-                    break;
-                default:
-                    ka = KeyAgreement.getInstance("ECDH", BouncyCastleProvider.PROVIDER_NAME);
-                    break;
-            }
-            ka.init(mESelfKeyPrivate);
-            ka.doPhase(remotePublicKey, true);
-            byte[] sharedSecret = ka.generateSecret();
+        byte[] sharedSecret = Crypto.keyAgreement(mESelfKey, remotePublicKey);
 
-            byte[] sessionTranscriptBytes = Util.cborEncode(
-                    Util.cborBuildTaggedByteString(encodedSessionTranscript));
-            byte[] salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes);
+        byte[] sessionTranscriptBytes = Cbor.encode(new Tagged(24, new Bstr(encodedSessionTranscript)));
+        byte[] salt = Crypto.digest(Algorithm.SHA256, sessionTranscriptBytes);
+        byte[] info = "SKDevice".getBytes(UTF_8);
+        byte[] deviceSK = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32);
 
-            byte[] info = "SKDevice".getBytes(UTF_8);
-            byte[] derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
-
-            deviceSK = new SecretKeySpec(derivedKey, "AES");
-
-            info = "SKReader".getBytes(UTF_8);
-            derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
-            readerSK = new SecretKeySpec(derivedKey, "AES");
-        } catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchProviderException e) {
-            throw new IllegalStateException("Error deriving keys", e);
-        }
+        info = "SKReader".getBytes(UTF_8);
+        byte[] readerSK = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32);
 
         if (mRole == ROLE_MDOC) {
             mSKSelf = deviceSK;
@@ -189,37 +142,26 @@ public final class SessionEncryption {
                                                  boolean setInvalidEReaderKey) {
         byte[] messageCiphertext = null;
         if (messagePlaintext != null) {
-            try {
-                // The IV and these constants are specified in ISO/IEC 18013-5:2021 clause 9.1.1.5.
-                ByteBuffer iv = ByteBuffer.allocate(12);
-                iv.putInt(0, 0x00000000);
-                int ivIdentifier = mRole == ROLE_MDOC? 0x00000001 : 0x00000000;
-                iv.putInt(4, ivIdentifier);
-                iv.putInt(8, mEncryptedCounter);
-                Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                GCMParameterSpec encryptionParameterSpec = new GCMParameterSpec(128, iv.array());
-                cipher.init(Cipher.ENCRYPT_MODE, mSKSelf, encryptionParameterSpec);
-                messageCiphertext = cipher.doFinal(messagePlaintext); // This includes the auth tag
-            } catch (BadPaddingException
-                     | IllegalBlockSizeException
-                     | NoSuchPaddingException
-                     | InvalidKeyException
-                     | NoSuchAlgorithmException
-                     | InvalidAlgorithmParameterException e) {
-                throw new IllegalStateException("Error encrypting message", e);
-            }
+            // The IV and these constants are specified in ISO/IEC 18013-5:2021 clause 9.1.1.5.
+            ByteBuffer iv = ByteBuffer.allocate(12);
+            iv.putInt(0, 0x00000000);
+            int ivIdentifier = mRole == ROLE_MDOC? 0x00000001 : 0x00000000;
+            iv.putInt(4, ivIdentifier);
+            iv.putInt(8, mEncryptedCounter);
+            messageCiphertext = Crypto.encrypt(Algorithm.A128GCM, mSKSelf, iv.array(), messagePlaintext);
             mEncryptedCounter += 1;
         }
 
-        CborBuilder builder = new CborBuilder();
-        MapBuilder<CborBuilder> mapBuilder = builder.addMap();
+        MapBuilder<CborBuilder> mapBuilder = CborMap.Companion.builder();
         if (!mSessionEstablishmentSent && mSendSessionEstablishment && mRole == ROLE_MDOC_READER) {
-            DataItem eReaderKey = setInvalidEReaderKey ?
-                    Util.cborBuildCoseKeyWithMalformedYPoint(mESelfKeyPublic)
-                    : Util.cborBuildCoseKey(mESelfKeyPublic, mCurve);
-            DataItem eReaderKeyBytes = Util.cborBuildTaggedByteString(
-                    Util.cborEncode(eReaderKey));
-            mapBuilder.put(new UnicodeString("eReaderKey"), eReaderKeyBytes);
+            EcPublicKey eReaderKey = mESelfKey.getPublicKey();
+            if (setInvalidEReaderKey) {
+                eReaderKey = new EcPublicKeyDoubleCoordinate(
+                        eReaderKey.getCurve(),
+                        ((EcPublicKeyDoubleCoordinate) eReaderKey).getX(),
+                        BigIntegers.asUnsignedByteArray(32, BigInteger.valueOf(42)));
+            }
+            mapBuilder.putTaggedEncodedCbor("eReaderKey", Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()));
             if (messageCiphertext == null) {
                 throw new IllegalStateException("Data cannot be empty in initial message");
             }
@@ -231,7 +173,7 @@ public final class SessionEncryption {
             mapBuilder.put("status", statusCode.getAsLong());
         }
         mapBuilder.end();
-        byte[] messageData = Util.cborEncode(builder.build().get(0));
+        byte[] messageData = Cbor.encode(mapBuilder.end().build());
 
         mSessionEstablishmentSent = true;
 
@@ -273,11 +215,10 @@ public final class SessionEncryption {
      * @return a byte array with the encoded CBOR message
      */
     static public @NonNull byte[] encodeStatus(long statusCode) {
-        CborBuilder builder = new CborBuilder();
-        MapBuilder<CborBuilder> mapBuilder = builder.addMap();
+        MapBuilder<CborBuilder> mapBuilder = CborMap.Companion.builder();
         mapBuilder.put("status", statusCode);
         mapBuilder.end();
-        return Util.cborEncode(builder.build().get(0));
+        return Cbor.encode(mapBuilder.end().build());
     }
 
     /**
@@ -324,34 +265,18 @@ public final class SessionEncryption {
      */
     public @NonNull DecryptedMessage decryptMessage(
             @NonNull byte[] messageData) {
-        ByteArrayInputStream bais = new ByteArrayInputStream(messageData);
-        List<DataItem> dataItems;
-        try {
-            dataItems = new CborDecoder(bais).decode();
-        } catch (CborException e) {
-            throw new IllegalArgumentException("Data is not valid CBOR", e);
-        }
-        if (dataItems.size() != 1) {
-            throw new IllegalArgumentException("Expected 1 item, found " + dataItems.size());
-        }
-        if (!(dataItems.get(0) instanceof Map)) {
-            throw new IllegalArgumentException("Item is not a map");
-        }
-        Map map = (Map) dataItems.get(0);
+        DataItem map = Cbor.decode(messageData);
 
-        DataItem dataItemData = map.get(new UnicodeString("data"));
+        DataItem dataDataItem = map.getOrNull("data");
         byte[] messageCiphertext = null;
-        if (dataItemData != null) {
-            if (!(dataItemData instanceof ByteString)) {
-                throw new IllegalArgumentException("data is not a bstr");
-            }
-            messageCiphertext = ((ByteString) dataItemData).getBytes();
+        if (dataDataItem != null) {
+            messageCiphertext = dataDataItem.getAsBstr();
         }
 
+        DataItem statusDataItem = map.getOrNull("status");
         OptionalLong status = OptionalLong.empty();
-        DataItem dataItemStatus = map.get(new UnicodeString("status"));
-        if (dataItemStatus != null) {
-            status = OptionalLong.of(Util.checkedLongValue(dataItemStatus));
+        if (statusDataItem != null) {
+            status = OptionalLong.of(statusDataItem.getAsNumber());
         }
 
         byte[] plainText = null;
@@ -361,19 +286,7 @@ public final class SessionEncryption {
             int ivIdentifier = mRole == ROLE_MDOC? 0x00000000 : 0x00000001;
             iv.putInt(4, ivIdentifier);
             iv.putInt(8, mDecryptedCounter);
-            try {
-                final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-                cipher.init(Cipher.DECRYPT_MODE, mSKRemote, new GCMParameterSpec(128,
-                        iv.array()));
-                plainText = cipher.doFinal(messageCiphertext);
-            } catch (BadPaddingException
-                    | IllegalBlockSizeException
-                    | InvalidAlgorithmParameterException
-                    | InvalidKeyException
-                    | NoSuchAlgorithmException
-                    | NoSuchPaddingException e) {
-                throw new IllegalStateException("Error decrypting data", e);
-            }
+            plainText = Crypto.decrypt(Algorithm.A128GCM, mSKRemote, iv.array(), messageCiphertext);
             mDecryptedCounter += 1;
         }
 

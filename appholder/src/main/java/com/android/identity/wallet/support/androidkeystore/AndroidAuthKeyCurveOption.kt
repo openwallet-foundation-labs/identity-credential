@@ -1,8 +1,7 @@
 package com.android.identity.wallet.support.androidkeystore
 
 import android.os.Parcelable
-import com.android.identity.securearea.EcCurve
-import com.android.identity.securearea.SecureArea
+import com.android.identity.crypto.EcCurve
 import kotlinx.parcelize.Parcelize
 
 @Parcelize

@@ -19,9 +19,8 @@ package com.android.identity.mdoc.origininfo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.internal.Util;
+import com.android.identity.cbor.DataItem;
 
-import co.nstant.in.cbor.model.DataItem;
 import com.android.identity.util.Logger;
 
 /**
@@ -35,10 +34,7 @@ public abstract class OriginInfo {
     public abstract @NonNull DataItem encode();
 
     public static @Nullable OriginInfo decode(@NonNull DataItem oiDataItem) {
-        if (!(oiDataItem instanceof co.nstant.in.cbor.model.Map)) {
-            throw new IllegalArgumentException("Top-level CBOR is not a Map");
-        }
-        long type = Util.cborMapExtractNumber(oiDataItem, "type");
+        long type = oiDataItem.get("type").getAsNumber();
         if ((int) type == OriginInfoDomain.TYPE) {
             return OriginInfoDomain.decode(oiDataItem);
         }

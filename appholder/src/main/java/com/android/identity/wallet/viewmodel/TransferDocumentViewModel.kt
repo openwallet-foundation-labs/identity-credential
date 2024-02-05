@@ -133,7 +133,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                     )
                     transferManager.setResponseServed()
                     val documentsCount = elementsToSend.count()
-                    documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount))
+                    documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount as Int))
                     cleanUp()
                     onResultReady(result)
                 } catch (e: CredentialInvalidatedException) {

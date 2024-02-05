@@ -22,9 +22,13 @@ import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.model.Map
 import com.android.identity.credential.AuthenticationKey
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.Crypto
 import com.android.identity.internal.Util
 import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
@@ -41,15 +45,16 @@ import com.android.identity.wallet.composables.SoftwareSetupContainer
 import com.android.identity.wallet.support.softwarekeystore.SoftwareAuthKeyCurveOption
 import com.android.identity.wallet.util.FormatUtil
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import java.io.ByteArrayInputStream
-import java.security.PrivateKey
-import java.security.cert.X509Certificate
+import kotlin.time.Duration.Companion.days
 
 class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
 
-    private lateinit var softwareAttestationKey: PrivateKey
-    private lateinit var softwareAttestationKeySignatureAlgorithm: String
-    private lateinit var softwareAttestationKeyCertification: List<X509Certificate>
+    private lateinit var softwareAttestationKey: EcPrivateKey
+    private lateinit var softwareAttestationKeySignatureAlgorithm: Algorithm
+    private lateinit var softwareAttestationKeyIssuer: String
+    private lateinit var softwareAttestationKeyCertification: CertificateChain
 
     private val screenState = SoftwareKeystoreSecureAreaSupportState()
 
@@ -145,9 +150,25 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
                 )
                 .build()
         )
-        softwareAttestationKey = secureArea.getPrivateKey("SoftwareAttestationRoot", null)
-        softwareAttestationKeySignatureAlgorithm = "SHA256withECDSA"
-        softwareAttestationKeyCertification = secureArea.getKeyInfo("SoftwareAttestationRoot").attestation
+        val validFrom = Clock.System.now()
+        val validUntil = validFrom + 100.days
+        softwareAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        softwareAttestationKeySignatureAlgorithm = Algorithm.ES256
+        softwareAttestationKeyIssuer = "CN=Software Attestation Root"
+        softwareAttestationKeyCertification = CertificateChain(
+            listOf(
+                Crypto.createX509v3Certificate(
+                softwareAttestationKey.publicKey,
+                softwareAttestationKey,
+                Algorithm.ES256,
+                "1",
+                "CN=Software Attestation Root",
+                "CN=Software Attestation Root",
+                validFrom,
+                validUntil,
+                emptyList<Crypto.X509v3Extension>()
+            ))
+        )
     }
 
     override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray {
@@ -176,7 +197,7 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
 
         val map = CborDecoder(ByteArrayInputStream(encodedConfiguration)).decode().get(0) as Map
         val curve = EcCurve.fromInt(Util.cborMapExtractNumber(map, "curve").toInt())
-        val purposes = KeyPurpose.decodeSet(Util.cborMapExtractNumber(map, "purposes").toInt())
+        val purposes = KeyPurpose.decodeSet(Util.cborMapExtractNumber(map, "purposes"))
         val passphraseRequired = Util.cborMapExtractBoolean(map, "passphraseRequired")
         val passphrase = Util.cborMapExtractString(map, "passphrase")
         return SoftwareCreateKeySettings.Builder(challenge)
@@ -187,6 +208,7 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
             .setAttestationKey(
                 softwareAttestationKey,
                 softwareAttestationKeySignatureAlgorithm,
+                softwareAttestationKeyIssuer,
                 softwareAttestationKeyCertification
             )
             .build()

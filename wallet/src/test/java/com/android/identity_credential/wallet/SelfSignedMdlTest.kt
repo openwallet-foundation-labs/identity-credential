@@ -188,7 +188,8 @@ class SelfSignedMdlTest {
             for (n in IntRange(0, it.size - 1)) {
                 Assert.assertEquals(
                     it[n].authenticationKey,
-                    credentialPresentationRequests[n].authenticationKeyAttestation[0].publicKey
+                    credentialPresentationRequests[n]
+                        .authenticationKeyAttestation.certificates.first().publicKey
                 )
             }
         }

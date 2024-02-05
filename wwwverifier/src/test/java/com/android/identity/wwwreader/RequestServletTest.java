@@ -17,10 +17,6 @@
 package com.android.identity.wwwreader;
 
 // imports for CBOR encoding/decoding
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.model.Array;
-import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.model.DataItem;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
@@ -33,11 +29,6 @@ import javax.servlet.ServletInputStream;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.ReadListener;
 import javax.servlet.WriteListener;
-
-// key generation imports
-import java.security.KeyPair;
-import java.security.PublicKey;
-import java.security.PrivateKey;
 
 // unit testing imports
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -53,6 +44,11 @@ import org.mockito.MockitoAnnotations;
 import static org.mockito.Mockito.doReturn;
 
 // identity credential logic imports
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPrivateKeyDoubleCoordinate;
 import com.android.identity.internal.Util;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
@@ -63,8 +59,7 @@ import com.android.identity.mdoc.request.DeviceRequestParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 
 // imports from Datastore
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
+import com.android.identity.crypto.EcCurve;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
@@ -76,6 +71,7 @@ import java.security.Security;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalLong;
 
 @RunWith(JUnit4.class)
@@ -90,20 +86,24 @@ public class RequestServletTest {
     private final LocalServiceTestHelper helper =
         new LocalServiceTestHelper(new LocalDatastoreServiceTestConfig());
 
-    private PublicKey eReaderKeyPublic = Util.getPublicKeyFromIntegers(
-        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X, 16),
-        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y, 16));
-    private PrivateKey eReaderKeyPrivate = Util.getPrivateKeyFromInteger(
-        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
-    private PublicKey eDeviceKeyPublic = Util.getPublicKeyFromIntegers(
-        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X, 16),
-        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y, 16));
-    private PrivateKey eDeviceKeyPrivate = Util.getPrivateKeyFromInteger(
-        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D, 16));
+    private EcPrivateKey eReaderKey =
+            new EcPrivateKeyDoubleCoordinate(
+                    EcCurve.P256,
+                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
+                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
+                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y)
+            );
+    private EcPrivateKey eDeviceKey =
+            new EcPrivateKeyDoubleCoordinate(
+                    EcCurve.P256,
+                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D),
+                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X),
+                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y)
+            );
     private byte[] encodedSessionTranscriptBytes = Util.fromHex(
         TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
-    private DataItem sessionTranscript = Util.cborExtractTaggedAndEncodedCbor(
-        Util.cborDecode(encodedSessionTranscriptBytes));
+    private DataItem sessionTranscript =
+            Cbor.decode(encodedSessionTranscriptBytes).getAsTaggedEncodedCbor();
 
     @Before
     public void setUp() {
@@ -172,21 +172,18 @@ public class RequestServletTest {
         String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
-        byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
+        byte[] re = RequestServlet.generateReaderEngagement(eReaderKey.getPublicKey(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP,
-            eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
-            eReaderKeyPrivate.getEncoded(), dKey);
+            Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()), dKey);
 
         // construct messageData (containing Device Engagement)
-        EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
-                EcCurve.P256,
+        EngagementGenerator eg = new EngagementGenerator(eDeviceKey.getPublicKey(),
             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        eg.setConnectionMethods(Collections.singletonList(new ConnectionMethodHttp(
+        eg.addConnectionMethods(Collections.singletonList(new ConnectionMethodHttp(
                 ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
         String fakeBaseUrl = "https://fake-mdoc-reader.appspot.com/";
-        eg.setOriginInfos(Collections.singletonList(
+        eg.addOriginInfos(Collections.singletonList(
                 new OriginInfoDomain(fakeBaseUrl)));
         byte[] encodedDeviceEngagement = eg.generate();
         byte[] messageDataBytes = createMessageData(encodedDeviceEngagement);
@@ -200,9 +197,8 @@ public class RequestServletTest {
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryption sed =
             new SessionEncryption(SessionEncryption.ROLE_MDOC,
-                    new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
-                    eReaderKeyPublic,
-                    EcCurve.P256,
+                    eDeviceKey,
+                    eReaderKey.getPublicKey(),
                     generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
             .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -225,20 +221,17 @@ public class RequestServletTest {
         String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
-        byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
+        byte[] re = RequestServlet.generateReaderEngagement(eReaderKey.getPublicKey(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP,
-            eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
-            eReaderKeyPrivate.getEncoded(), dKey);
+            Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()), dKey);
 
         // construct messageData (containing Device Engagement)
-        EngagementGenerator eg = new EngagementGenerator(eDeviceKeyPublic,
-                EcCurve.P256,
+        EngagementGenerator eg = new EngagementGenerator(eDeviceKey.getPublicKey(),
                 EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-        eg.setConnectionMethods(Collections.singletonList(
+        eg.addConnectionMethods(Collections.singletonList(
                 new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/" + dKeyStr)));
-        eg.setOriginInfos(Collections.singletonList(
+        eg.addOriginInfos(Collections.singletonList(
                 new OriginInfoDomain(ServletConsts.BASE_URL)));
         byte[] encodedDeviceEngagement = eg.generate();
         byte[] messageDataBytes = createMessageData(encodedDeviceEngagement);
@@ -252,9 +245,8 @@ public class RequestServletTest {
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryption sed =
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
-                        new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
-                        eReaderKeyPublic,
-                        EcCurve.P256,
+                        eDeviceKey,
+                        eReaderKey.getPublicKey(),
                         generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
                 .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -275,16 +267,14 @@ public class RequestServletTest {
         String dKeyStr = createSessionKey();
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
 
-        byte[] re = RequestServlet.generateReaderEngagement(eReaderKeyPublic, dKey);
+        byte[] re = RequestServlet.generateReaderEngagement(eReaderKey.getPublicKey(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
-        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP,
-            eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
-            eReaderKeyPrivate.getEncoded(), dKey);
+                Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()), dKey);
 
         // construct messageData (containing Device Engagement)
-        DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
-        byte[] messageDataBytes = createMessageData(((ByteString) deviceEngagementBytes).getBytes());
+        DataItem deviceEngagementBytes = sessionTranscript.get(0);
+        byte[] messageDataBytes = createMessageData(deviceEngagementBytes.getAsTagged().getAsBstr());
 
         sendPostRequest(messageDataBytes, dKeyStr);
 
@@ -295,9 +285,8 @@ public class RequestServletTest {
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryption sed =
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
-                        new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
-                        eReaderKeyPublic,
-                        EcCurve.P256,
+                        eDeviceKey,
+                        eReaderKey.getPublicKey(),
                         generatedTranscript);
         DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
                 .setDeviceRequest(sed.decryptMessage(sessionData).getData())
@@ -320,14 +309,12 @@ public class RequestServletTest {
         Key dKey = com.google.appengine.api.datastore.KeyFactory.stringToKey(dKeyStr);
         
         // put items in Datastore
-        RequestServlet.setDatastoreProp(ServletConsts.PUBKEY_PROP,
-            eReaderKeyPublic.getEncoded(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
-            eReaderKeyPrivate.getEncoded(), dKey);
+                Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.DEVKEY_PROP,
-            eDeviceKeyPublic.getEncoded(), dKey);
+                Cbor.encode(eDeviceKey.getPublicKey().toCoseKey(Map.of()).getDataItem()), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP,
-            Util.cborEncode(sessionTranscript), dKey);
+            Cbor.encode(sessionTranscript), dKey);
         RequestServlet.setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
             ServletConsts.OI_FAILURE_END.trim(), dKey);
         RequestServlet.setNumPostRequests(1, dKey);
@@ -339,10 +326,9 @@ public class RequestServletTest {
         byte[] responseMessage = byteWriter.toByteArray();
         SessionEncryption sed =
                 new SessionEncryption(SessionEncryption.ROLE_MDOC,
-                        new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
-                        eReaderKeyPublic,
-                        EcCurve.P256,
-                        Util.cborEncode(sessionTranscript));
+                        eDeviceKey,
+                        eReaderKey.getPublicKey(),
+                        Cbor.encode(sessionTranscript));
         SessionEncryption.DecryptedMessage responseMessageDecrypted =
             sed.decryptMessage(responseMessage);
         Assert.assertEquals(responseMessageDecrypted.getData(), null);
@@ -356,10 +342,9 @@ public class RequestServletTest {
      * @return CBOR encoded MessageData message, containing Device Engagement
      */
     private byte[] createMessageData(byte[] deviceEngagementBytes) {
-        return Util.cborEncode(new CborBuilder()
-            .addMap()
+        return Cbor.encode(CborMap.Companion.builder()
                 .put(ServletConsts.DE_KEY, deviceEngagementBytes)
-            .end().build().get(0));
+                .end().build());
     }
 
     /**

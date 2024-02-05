@@ -33,25 +33,33 @@ import com.android.identity.android.legacy.PersonalizationData;
 import com.android.identity.android.legacy.PresentationSession;
 import com.android.identity.android.legacy.Utility;
 import com.android.identity.android.legacy.WritableIdentityCredential;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DiagnosticOption;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPublicKeyKt;
 import com.android.identity.mdoc.mso.StaticAuthDataParser;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
-import com.android.identity.util.CborUtil;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
+import com.android.identity.util.Logger;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Arrays;
@@ -61,15 +69,21 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.model.DataItem;
+import java.util.Set;
 
 public class DeviceResponseGeneratorOnAndroidTest {
 
     private static final String MDL_DOCTYPE = "org.iso.18013.5.1.mDL";
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
     private static final String AAMVA_NAMESPACE = "org.aamva.18013.5.1";
+
+    @Before
+    public void setup() {
+        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
+        // based implementation included in Android.
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
+        Security.addProvider(new BouncyCastleProvider());
+    }
 
     private KeyPair generateIssuingAuthorityKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC);
@@ -126,14 +140,12 @@ public class DeviceResponseGeneratorOnAndroidTest {
 
         // Also put in some complicated CBOR to check that we don't accidentally
         // canonicalize this, leading to digest mismatches on the reader side.
-        byte[] rawCbor1 = Util.cborEncode(
-                new CborBuilder()
-                        .addMap()
+        byte[] rawCbor1 = Cbor.encode(
+                CborMap.Companion.builder()
                         .put("a", "foo")
                         .put("b", "bar")
                         .put("c", "baz")
-                        .end()
-                        .build().get(0));
+                        .end().build());
         Assert.assertEquals(
                 "{\n" +
                 "  'a' : 'foo',\n" +
@@ -141,14 +153,12 @@ public class DeviceResponseGeneratorOnAndroidTest {
                 "  'c' : 'baz'\n" +
                 "}", Util.cborPrettyPrint(rawCbor1));
 
-        byte[] rawCbor2 = Util.cborEncode(
-                new CborBuilder()
-                        .addMap()
+        byte[] rawCbor2 = Cbor.encode(
+                CborMap.Companion.builder()
                         .put("c", "baz")
                         .put("b", "bar")
                         .put("a", "foo")
-                        .end()
-                        .build().get(0));
+                        .end().build());
         Assert.assertEquals(
                 "{\n" +
                         "  'c' : 'baz',\n" +
@@ -246,12 +256,12 @@ public class DeviceResponseGeneratorOnAndroidTest {
                 Arrays.asList("given_name", "family_name", "some_number", "raw_cbor_1", "raw_cbor_2"));
         issuerSignedEntriesToRequest.put(AAMVA_NAMESPACE, Collections.singletonList("real_id"));
 
-        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(EcCurve.P256);
+        EcPrivateKey readerEphemeralKey = Crypto.createEcPrivateKey(EcCurve.P256);
 
         PresentationSession session = store.createPresentationSession(
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
         KeyPair eDeviceKeyPair = session.getEphemeralKeyPair();
-        session.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
+        session.setReaderEphemeralPublicKey(EcPublicKeyKt.getJavaPublicKey(readerEphemeralKey.getPublicKey()));
 
         byte[] encodedSessionTranscript = Util.buildSessionTranscript(eDeviceKeyPair);
         session.setSessionTranscript(encodedSessionTranscript);
@@ -300,10 +310,7 @@ public class DeviceResponseGeneratorOnAndroidTest {
                                 encodedIssuerAuth)
                         .generate();
 
-        // Check that errors is set correctly.
-        DataItem drItem = Util.cborDecode(encodedDeviceResponse);
-        List<DataItem> docsItem = Util.cborMapExtractArray(drItem, "documents");
-        DataItem errorsItem = Util.cborMapExtract(docsItem.get(0), "errors");
+        // Check that errors are set correctly.
         Assert.assertEquals("{\n" +
                         "  \"org.aamva.18013.5.1\": {\n" +
                         "    \"yet_another_element_with_error\": 1\n" +
@@ -313,12 +320,14 @@ public class DeviceResponseGeneratorOnAndroidTest {
                         "    \"another_element_with_error\": -42\n" +
                         "  }\n" +
                         "}",
-                CborUtil.toDiagnostics(errorsItem, CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT));
+                Cbor.toDiagnostics(
+                        Cbor.decode(encodedDeviceResponse).get("documents").get(0).get("errors"),
+                        Set.of(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)));
 
         // Check that the parser picked up all the fields we were setting above...
         //
         DeviceResponseParser.DeviceResponse deviceResponse = new DeviceResponseParser()
-                .setEphemeralReaderKey(readerEphemeralKeyPair.getPrivate())
+                .setEphemeralReaderKey(readerEphemeralKey)
                 .setDeviceResponse(encodedDeviceResponse)
                 .setSessionTranscript(encodedSessionTranscript)
                 .parse();

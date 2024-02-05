@@ -1,4 +1,4 @@
-package com.android.identity.securearea
+package com.android.identity.crypto
 
 /**
  * Elliptic curve identifiers.
@@ -80,5 +80,20 @@ enum class EcCurve(val coseCurveIdentifier: Int) {
             ED25519 -> "ed25519"
             X448 -> "x448"
             ED448 -> "ed448"
+        }
+
+    val defaultSigningAlgorithm: Algorithm
+        get() = when (this) {
+            P256 -> Algorithm.ES256
+            P384 -> Algorithm.ES384
+            P521 -> Algorithm.ES512
+            BRAINPOOLP256R1 -> Algorithm.ES256
+            BRAINPOOLP320R1 -> Algorithm.ES256
+            BRAINPOOLP384R1 -> Algorithm.ES384
+            BRAINPOOLP512R1 -> Algorithm.ES512
+            ED25519 -> Algorithm.EDDSA
+            X25519 -> Algorithm.UNSET
+            ED448 -> Algorithm.EDDSA
+            X448 -> Algorithm.UNSET
         }
 }

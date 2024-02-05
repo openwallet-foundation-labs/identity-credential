@@ -19,23 +19,21 @@ package com.android.identity.mdoc.engagement;
 import static com.android.identity.mdoc.engagement.EngagementGenerator.ENGAGEMENT_VERSION_1_0;
 import static com.android.identity.mdoc.engagement.EngagementGenerator.ENGAGEMENT_VERSION_1_1;
 
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPrivateKey;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.origininfo.OriginInfo;
 import com.android.identity.mdoc.origininfo.OriginInfoDomain;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
+import com.android.identity.crypto.EcCurve;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.Security;
-import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -48,21 +46,16 @@ public class EngagementGeneratorTest {
     }
 
     @Test
-    public void testNoConnectionMethodsOrOriginInfos() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
-        KeyPair eSenderKey = kpg.generateKeyPair();
-
-        EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
-                EcCurve.P256,
+    public void testNoConnectionMethodsOrOriginInfos() {
+        EcPrivateKey eSenderKey = Crypto.createEcPrivateKey(EcCurve.P256);
+        EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublicKey(),
                 ENGAGEMENT_VERSION_1_0);
         byte[] encodedEngagement = eg.generate();
 
         EngagementParser parser = new EngagementParser(encodedEngagement);
         EngagementParser.Engagement engagement = parser.parse();
 
-        Assert.assertEquals(engagement.getESenderKey(), eSenderKey.getPublic());
+        Assert.assertEquals(engagement.getESenderKey(), eSenderKey.getPublicKey());
         Assert.assertEquals(ENGAGEMENT_VERSION_1_0, engagement.getVersion());
         Assert.assertEquals(0, engagement.getConnectionMethods().size());
         Assert.assertEquals(0, engagement.getOriginInfos().size());
@@ -70,26 +63,21 @@ public class EngagementGeneratorTest {
 
     @Test
     public void testWebsiteEngagement() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
-        KeyPair eSenderKey = kpg.generateKeyPair();
-
-        EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
-                EcCurve.P256,
+        EcPrivateKey eSenderKey = Crypto.createEcPrivateKey(EcCurve.P256);
+        EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublicKey(),
                 ENGAGEMENT_VERSION_1_1);
         List<ConnectionMethod> connectionMethods = new ArrayList<>();
         connectionMethods.add(new ConnectionMethodHttp("http://www.example.com/verifier/123"));
-        eg.setConnectionMethods(connectionMethods);
+        eg.addConnectionMethods(connectionMethods);
         List<OriginInfo> originInfos = new ArrayList<>();
         originInfos.add(new OriginInfoDomain("http://www.example.com/verifier"));
-        eg.setOriginInfos(originInfos);
+        eg.addOriginInfos(originInfos);
         byte[] encodedEngagement = eg.generate();
 
         EngagementParser parser = new EngagementParser(encodedEngagement);
         EngagementParser.Engagement engagement = parser.parse();
 
-        Assert.assertEquals(engagement.getESenderKey(), eSenderKey.getPublic());
+        Assert.assertEquals(engagement.getESenderKey(), eSenderKey.getPublicKey());
         Assert.assertEquals(ENGAGEMENT_VERSION_1_1, engagement.getVersion());
         Assert.assertEquals(1, engagement.getConnectionMethods().size());
         ConnectionMethodHttp cm = (ConnectionMethodHttp) engagement.getConnectionMethods().get(0);
@@ -101,14 +89,9 @@ public class EngagementGeneratorTest {
 
     @Test
     public void testDeviceEngagementQrBleCentralClientMode() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
-        KeyPair eSenderKey = kpg.generateKeyPair();
-
+        EcPrivateKey eSenderKey = Crypto.createEcPrivateKey(EcCurve.P256);
         UUID uuid = UUID.randomUUID();
-        EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublic(),
-                EcCurve.P256,
+        EngagementGenerator eg = new EngagementGenerator(eSenderKey.getPublicKey(),
                 ENGAGEMENT_VERSION_1_0);
         List<ConnectionMethod> connectionMethods = new ArrayList<>();
         connectionMethods.add(new ConnectionMethodBle(
@@ -116,13 +99,13 @@ public class EngagementGeneratorTest {
                 true,
                 null,
                 uuid));
-        eg.setConnectionMethods(connectionMethods);
+        eg.addConnectionMethods(connectionMethods);
         byte[] encodedEngagement = eg.generate();
 
         EngagementParser parser = new EngagementParser(encodedEngagement);
         EngagementParser.Engagement engagement = parser.parse();
 
-        Assert.assertEquals(engagement.getESenderKey(), eSenderKey.getPublic());
+        Assert.assertEquals(engagement.getESenderKey(), eSenderKey.getPublicKey());
         Assert.assertEquals(ENGAGEMENT_VERSION_1_0, engagement.getVersion());
 
         Assert.assertEquals(1, engagement.getConnectionMethods().size());

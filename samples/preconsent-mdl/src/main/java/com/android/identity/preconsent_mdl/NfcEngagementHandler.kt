@@ -28,13 +28,13 @@ import com.android.identity.android.mdoc.transport.ConnectionMethodTcp
 import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
+import com.android.identity.crypto.Crypto
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
-import com.android.identity.securearea.EcCurve
-import com.android.identity.securearea.SecureArea
+import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
 import java.util.OptionalLong
 import java.util.UUID
@@ -48,9 +48,8 @@ class NfcEngagementHandler : HostApduService() {
 
     private lateinit var transferHelper : TransferHelper
 
-    private val eDeviceKeyCurve = EcCurve.P256
-    private val eDeviceKeyPair by lazy {
-        Util.createEphemeralKeyPair(eDeviceKeyCurve)
+    private val eDeviceKey by lazy {
+        Crypto.createEcPrivateKey(EcCurve.P256)
     }
     private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
 
@@ -78,8 +77,7 @@ class NfcEngagementHandler : HostApduService() {
             Logger.i(TAG, "onDeviceConnected")
 
             transferHelper.setConnected(
-                eDeviceKeyPair,
-                eDeviceKeyCurve,
+                eDeviceKey,
                 transport,
                 engagementHelper!!.deviceEngagement,
                 engagementHelper!!.handover
@@ -143,8 +141,7 @@ class NfcEngagementHandler : HostApduService() {
         }
         val builder = NfcEngagementHelper.Builder(
             applicationContext,
-            eDeviceKeyPair.public,
-            eDeviceKeyCurve,
+            eDeviceKey.publicKey,
             options,
             nfcEngagementListener,
             applicationContext.mainExecutor

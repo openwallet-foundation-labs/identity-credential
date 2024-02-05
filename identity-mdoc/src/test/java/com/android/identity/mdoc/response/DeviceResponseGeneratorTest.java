@@ -16,54 +16,56 @@
 
 package com.android.identity.mdoc.response;
 
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.DataItemExtensionsKt;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.cbor.Tstr;
+import com.android.identity.cose.Cose;
+import com.android.identity.cose.CoseLabel;
+import com.android.identity.cose.CoseNumberLabel;
 import com.android.identity.credential.AuthenticationKey;
 import com.android.identity.credential.Credential;
 import com.android.identity.credential.CredentialRequest;
 import com.android.identity.credential.CredentialStore;
 import com.android.identity.credential.NameSpacedData;
 import com.android.identity.credential.PendingAuthenticationKey;
-import com.android.identity.internal.Util;
-import com.android.identity.securearea.Algorithm;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.KeyPurpose;
-import com.android.identity.securearea.software.SoftwareCreateKeySettings;
-import com.android.identity.securearea.software.SoftwareSecureArea;
-import com.android.identity.securearea.SecureArea;
-import com.android.identity.securearea.SecureAreaRepository;
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.Certificate;
+import com.android.identity.crypto.CertificateChain;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcCurve;
+import com.android.identity.crypto.EcPrivateKey;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator;
 import com.android.identity.mdoc.mso.StaticAuthDataParser;
 import com.android.identity.mdoc.util.MdocUtil;
+import com.android.identity.securearea.KeyPurpose;
+import com.android.identity.securearea.SecureArea;
+import com.android.identity.securearea.SecureAreaRepository;
+import com.android.identity.securearea.software.SoftwareCreateKeySettings;
+import com.android.identity.securearea.software.SoftwareSecureArea;
 import com.android.identity.storage.EphemeralStorageEngine;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Timestamp;
 
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.math.BigInteger;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.Security;
-import java.security.cert.X509Certificate;
-import java.security.spec.ECGenParameterSpec;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
+
+import kotlin.random.Random;
+import kotlinx.datetime.Clock;
+import kotlinx.datetime.Instant;
 
 public class DeviceResponseGeneratorTest {
     private static final String TAG = "DeviceResponseGeneratorTest";
@@ -77,42 +79,12 @@ public class DeviceResponseGeneratorTest {
     static final String DOC_TYPE = "com.example.credential_xyz";
     private AuthenticationKey mAuthKey;
     private Credential mCredential;
-    private X509Certificate mIssuerCert;
     private Timestamp mTimeSigned;
     private Timestamp mTimeValidityBegin;
     private Timestamp mTimeValidityEnd;
 
-    private static KeyPair generateIssuingAuthorityKeyPair() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
-        return kpg.generateKeyPair();
-    }
-
-    private static X509Certificate getSelfSignedIssuerAuthorityCertificate(
-            KeyPair issuerAuthorityKeyPair) throws Exception {
-        X500Name issuer = new X500Name("CN=State Of Utopia");
-        X500Name subject = new X500Name("CN=State Of Utopia Issuing Authority Signing Key");
-
-        // Valid from now to five years from now.
-        Date now = new Date();
-        final long kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000;
-        Date expirationDate = new Date(now.getTime() + 5 * kMilliSecsInOneYear);
-        BigInteger serial = new BigInteger("42");
-        JcaX509v3CertificateBuilder builder =
-                new JcaX509v3CertificateBuilder(issuer,
-                        serial,
-                        now,
-                        expirationDate,
-                        subject,
-                        issuerAuthorityKeyPair.getPublic());
-
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256withECDSA")
-                .build(issuerAuthorityKeyPair.getPrivate());
-
-        X509CertificateHolder certHolder = builder.build(signer);
-        return new JcaX509CertificateConverter().getCertificate(certHolder);
-    }
+    private EcPrivateKey mDocumentSignerKey;
+    private Certificate mDocumentSignerCert;
 
     @Before
     public void setup() throws Exception {
@@ -149,7 +121,7 @@ public class DeviceResponseGeneratorTest {
 
         Map<String, Map<String, byte[]>> overrides = new HashMap<>();
         Map<String, byte[]> overridesForNs1 = new HashMap<>();
-        overridesForNs1.put("foo3", Util.cborEncodeString("bar3_override"));
+        overridesForNs1.put("foo3", Cbor.encode(new Tstr("bar3_override")));
         overrides.put("ns1", overridesForNs1);
 
         Map<String, List<String>> exceptions = new HashMap<>();
@@ -175,14 +147,12 @@ public class DeviceResponseGeneratorTest {
         MobileSecurityObjectGenerator msoGenerator = new MobileSecurityObjectGenerator(
                 "SHA-256",
                 DOC_TYPE,
-                pendingAuthKey.getAttestation().get(0).getPublicKey(),
-                EcCurve.P256);
+                pendingAuthKey.getAttestation().getCertificates().get(0).getPublicKey());
         msoGenerator.setValidityInfo(mTimeSigned, mTimeValidityBegin, mTimeValidityEnd, null);
 
-        Random deterministicRandomProvider = new Random(42);
         Map<String, List<byte[]>> issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
                 nameSpacedData,
-                deterministicRandomProvider,
+                Random.Default,
                 16,
                 overrides);
 
@@ -190,26 +160,50 @@ public class DeviceResponseGeneratorTest {
             Map<Long, byte[]> digests = MdocUtil.calculateDigestsForNameSpace(
                     nameSpaceName,
                     issuerNameSpaces,
-                    "SHA-256");
+                    Algorithm.SHA256);
             msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests);
         }
 
-        KeyPair issuerKeyPair = generateIssuingAuthorityKeyPair();
-        mIssuerCert = getSelfSignedIssuerAuthorityCertificate(issuerKeyPair);
+        Instant validFrom = Clock.System.INSTANCE.now();
+        Instant validUntil = Instant.Companion.fromEpochMilliseconds(
+                validFrom.toEpochMilliseconds() + 5L*365*24*60*60*1000);
+        mDocumentSignerKey = Crypto.createEcPrivateKey(EcCurve.P256);
+        mDocumentSignerCert = Crypto.createX509v3Certificate(
+                mDocumentSignerKey.getPublicKey(),
+                mDocumentSignerKey,
+                Algorithm.ES256,
+                "1",
+                "CN=State Of Utopia",
+                "CN=State Of Utopia",
+                validFrom,
+                validUntil,
+                List.of());
 
         byte[] mso = msoGenerator.generate();
-        byte[] taggedEncodedMso = Util.cborEncode(Util.cborBuildTaggedByteString(mso));
+        byte[] taggedEncodedMso = Cbor.encode(new Tagged(24, new Bstr(mso)));
 
         // IssuerAuth is a COSE_Sign1 where payload is MobileSecurityObjectBytes
         //
         // MobileSecurityObjectBytes = #6.24(bstr .cbor MobileSecurityObject)
         //
-        ArrayList<X509Certificate> issuerCertChain = new ArrayList<>();
-        issuerCertChain.add(mIssuerCert);
-        byte[] encodedIssuerAuth = Util.cborEncode(Util.coseSign1Sign(issuerKeyPair.getPrivate(),
-                "SHA256withECDSA", taggedEncodedMso,
-                null,
-                issuerCertChain));
+        Map<CoseLabel, DataItem> protectedHeaders = Map.of(
+                new CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                DataItemExtensionsKt.getDataItem(Algorithm.ES256.getCoseAlgorithmIdentifier())
+        );
+        Map<CoseLabel, DataItem> unprotectedHeaders = Map.of(
+                new CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                new CertificateChain(List.of(mDocumentSignerCert)).getDataItem()
+        );
+        byte[] encodedIssuerAuth = Cbor.encode(
+                Cose.coseSign1Sign(
+                        mDocumentSignerKey,
+                        taggedEncodedMso,
+                        true,
+                        Algorithm.ES256,
+                        protectedHeaders,
+                        unprotectedHeaders
+                ).getDataItem()
+        );
 
         byte[] issuerProvidedAuthenticationData = new StaticAuthDataGenerator(
                 MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, exceptions),
@@ -237,7 +231,7 @@ public class DeviceResponseGeneratorTest {
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 
-        byte[] encodedSessionTranscript = Util.cborEncodeString("Doesn't matter");
+        byte[] encodedSessionTranscript = Cbor.encode(new Tstr("Doesn't matter"));
 
         StaticAuthDataParser.StaticAuthData staticAuthData =
                 new StaticAuthDataParser(mAuthKey.getIssuerProvidedData())
@@ -271,8 +265,8 @@ public class DeviceResponseGeneratorTest {
         DeviceResponseParser.Document doc = deviceResponse.getDocuments().get(0);
 
         // Check the MSO was properly signed.
-        Assert.assertEquals(1, doc.getIssuerCertificateChain().size());
-        Assert.assertEquals(mIssuerCert, doc.getIssuerCertificateChain().get(0));
+        Assert.assertEquals(1, doc.getIssuerCertificateChain().getCertificates().size());
+        Assert.assertEquals(mDocumentSignerCert, doc.getIssuerCertificateChain().getCertificates().get(0));
 
         Assert.assertEquals(DOC_TYPE, doc.getDocType());
         Assert.assertEquals(mTimeSigned, doc.getValidityInfoSigned());
@@ -283,7 +277,7 @@ public class DeviceResponseGeneratorTest {
         // Check DeviceSigned data
         Assert.assertEquals(0, doc.getDeviceNamespaces().size());
         // Check the key which signed DeviceSigned was the expected one.
-        Assert.assertEquals(mAuthKey.getAttestation().get(0).getPublicKey(), doc.getDeviceKey());
+        Assert.assertEquals(mAuthKey.getAttestation().getCertificates().get(0).getPublicKey(), doc.getDeviceKey());
         // Check DeviceSigned was correctly authenticated.
         Assert.assertTrue(doc.getDeviceSignedAuthenticated());
         Assert.assertTrue(doc.getDeviceSignedAuthenticatedViaSignature());
@@ -321,7 +315,7 @@ public class DeviceResponseGeneratorTest {
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 
-        byte[] encodedSessionTranscript = Util.cborEncodeString("Doesn't matter");
+        byte[] encodedSessionTranscript = Cbor.encode(new Tstr("Doesn't matter"));
 
         StaticAuthDataParser.StaticAuthData staticAuthData =
                 new StaticAuthDataParser(mAuthKey.getIssuerProvidedData())
@@ -332,10 +326,7 @@ public class DeviceResponseGeneratorTest {
                 mCredential.getApplicationData().getNameSpacedData("credentialData"),
                 staticAuthData);
 
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
-        KeyPair eReaderKeyPair = kpg.generateKeyPair();
+        EcPrivateKey eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256);
         DeviceResponseGenerator deviceResponseGenerator = new DeviceResponseGenerator(0);
         deviceResponseGenerator.addDocument(
                 new DocumentGenerator(DOC_TYPE, staticAuthData.getIssuerAuth(), encodedSessionTranscript)
@@ -345,13 +336,13 @@ public class DeviceResponseGeneratorTest {
                                 mAuthKey.getSecureArea(),
                                 mAuthKey.getAlias(),
                                 null,
-                                eReaderKeyPair.getPublic())
+                                eReaderKey.getPublicKey())
                         .generate());
         byte[] encodedDeviceResponse = deviceResponseGenerator.generate();
         DeviceResponseParser parser = new DeviceResponseParser();
         parser.setDeviceResponse(encodedDeviceResponse);
         parser.setSessionTranscript(encodedSessionTranscript);
-        parser.setEphemeralReaderKey(eReaderKeyPair.getPrivate());
+        parser.setEphemeralReaderKey(eReaderKey);
         DeviceResponseParser.DeviceResponse deviceResponse = parser.parse();
         Assert.assertEquals(1, deviceResponse.getDocuments().size());
         DeviceResponseParser.Document doc = deviceResponse.getDocuments().get(0);
@@ -371,7 +362,7 @@ public class DeviceResponseGeneratorTest {
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 
-        byte[] encodedSessionTranscript = Util.cborEncodeString("Doesn't matter");
+        byte[] encodedSessionTranscript = Cbor.encode(new Tstr("Doesn't matter"));
 
         StaticAuthDataParser.StaticAuthData staticAuthData =
                 new StaticAuthDataParser(mAuthKey.getIssuerProvidedData())
@@ -390,10 +381,7 @@ public class DeviceResponseGeneratorTest {
                 .putEntryString("ns4", "baz3", "bah3")
                 .build();
 
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
-        KeyPair eReaderKeyPair = kpg.generateKeyPair();
+        EcPrivateKey eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256);
         DeviceResponseGenerator deviceResponseGenerator = new DeviceResponseGenerator(0);
         deviceResponseGenerator.addDocument(
                 new DocumentGenerator(DOC_TYPE, staticAuthData.getIssuerAuth(), encodedSessionTranscript)
@@ -409,7 +397,7 @@ public class DeviceResponseGeneratorTest {
         DeviceResponseParser parser = new DeviceResponseParser();
         parser.setDeviceResponse(encodedDeviceResponse);
         parser.setSessionTranscript(encodedSessionTranscript);
-        parser.setEphemeralReaderKey(eReaderKeyPair.getPrivate());
+        parser.setEphemeralReaderKey(eReaderKey);
         DeviceResponseParser.DeviceResponse deviceResponse = parser.parse();
         Assert.assertEquals(1, deviceResponse.getDocuments().size());
         DeviceResponseParser.Document doc = deviceResponse.getDocuments().get(0);
@@ -451,7 +439,7 @@ public class DeviceResponseGeneratorTest {
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 
-        byte[] encodedSessionTranscript = Util.cborEncodeString("Doesn't matter");
+        byte[] encodedSessionTranscript = Cbor.encode(new Tstr("Doesn't matter"));
 
         StaticAuthDataParser.StaticAuthData staticAuthData =
                 new StaticAuthDataParser(mAuthKey.getIssuerProvidedData())
@@ -465,10 +453,7 @@ public class DeviceResponseGeneratorTest {
                 .putEntryString("ns4", "baz3", "bah3")
                 .build();
 
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
-        KeyPair eReaderKeyPair = kpg.generateKeyPair();
+        EcPrivateKey eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256);
         DeviceResponseGenerator deviceResponseGenerator = new DeviceResponseGenerator(0);
         deviceResponseGenerator.addDocument(
                 new DocumentGenerator(DOC_TYPE, staticAuthData.getIssuerAuth(), encodedSessionTranscript)
@@ -483,7 +468,7 @@ public class DeviceResponseGeneratorTest {
         DeviceResponseParser parser = new DeviceResponseParser();
         parser.setDeviceResponse(encodedDeviceResponse);
         parser.setSessionTranscript(encodedSessionTranscript);
-        parser.setEphemeralReaderKey(eReaderKeyPair.getPrivate());
+        parser.setEphemeralReaderKey(eReaderKey);
         DeviceResponseParser.DeviceResponse deviceResponse = parser.parse();
         Assert.assertEquals(1, deviceResponse.getDocuments().size());
         DeviceResponseParser.Document doc = deviceResponse.getDocuments().get(0);
@@ -521,7 +506,7 @@ public class DeviceResponseGeneratorTest {
         CredentialRequest request = new CredentialRequest(dataElements);
 
 
-        byte[] encodedSessionTranscript = Util.cborEncodeString("Doesn't matter");
+        byte[] encodedSessionTranscript = Cbor.encode(new Tstr("Doesn't matter"));
 
         StaticAuthDataParser.StaticAuthData staticAuthData =
                 new StaticAuthDataParser(mAuthKey.getIssuerProvidedData())
@@ -555,8 +540,8 @@ public class DeviceResponseGeneratorTest {
         DeviceResponseParser.Document doc = deviceResponse.getDocuments().get(0);
 
         // Check the MSO was properly signed.
-        Assert.assertEquals(1, doc.getIssuerCertificateChain().size());
-        Assert.assertEquals(mIssuerCert, doc.getIssuerCertificateChain().get(0));
+        Assert.assertEquals(1, doc.getIssuerCertificateChain().getCertificates().size());
+        Assert.assertEquals(mDocumentSignerCert, doc.getIssuerCertificateChain().getCertificates().get(0));
 
         Assert.assertEquals(DOC_TYPE, doc.getDocType());
         Assert.assertEquals(mTimeSigned, doc.getValidityInfoSigned());
@@ -567,7 +552,7 @@ public class DeviceResponseGeneratorTest {
         // Check DeviceSigned data
         Assert.assertEquals(0, doc.getDeviceNamespaces().size());
         // Check the key which signed DeviceSigned was the expected one.
-        Assert.assertEquals(mAuthKey.getAttestation().get(0).getPublicKey(), doc.getDeviceKey());
+        Assert.assertEquals(mAuthKey.getAttestation().getCertificates().get(0).getPublicKey(), doc.getDeviceKey());
         // Check DeviceSigned was correctly authenticated.
         Assert.assertTrue(doc.getDeviceSignedAuthenticated());
         Assert.assertTrue(doc.getDeviceSignedAuthenticatedViaSignature());

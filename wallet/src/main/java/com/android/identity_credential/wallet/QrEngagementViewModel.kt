@@ -10,10 +10,12 @@ import androidx.lifecycle.viewModelScope
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
-import com.android.identity.securearea.EcCurve
 import com.android.identity.util.Logger
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
@@ -40,8 +42,7 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
         get() = qrEngagementHelper!!.deviceEngagementUriEncoded
 
     private var qrEngagementHelper: QrEngagementHelper? = null
-    private var eDeviceKeyPair: KeyPair? = null
-    private val eDeviceKeyCurve = EcCurve.P256
+    private var eDeviceKey: EcPrivateKey? = null
 
     fun startQrEngagement() {
         state = State.STARTING
@@ -53,7 +54,7 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
                 state = State.ERROR
             }
         ) {
-            eDeviceKeyPair = Util.createEphemeralKeyPair(eDeviceKeyCurve)
+            eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
             val qrEngagementListener = object : QrEngagementHelper.Listener {
 
                 override fun onDeviceEngagementReady() {
@@ -69,7 +70,7 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
 
                     state = State.CONNECTED
                     PresentationActivity.startPresentation(context, transport,
-                        qrEngagementHelper!!.handover, eDeviceKeyCurve, eDeviceKeyPair!!,
+                        qrEngagementHelper!!.handover, eDeviceKey!!,
                         qrEngagementHelper!!.deviceEngagement)
 
                     qrEngagementHelper?.close()
@@ -96,8 +97,7 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
             )
             qrEngagementHelper = QrEngagementHelper.Builder(
                 context,
-                eDeviceKeyPair!!.public,
-                eDeviceKeyCurve,
+                eDeviceKey!!.publicKey,
                 options,
                 qrEngagementListener,
                 ContextCompat.getMainExecutor(context)

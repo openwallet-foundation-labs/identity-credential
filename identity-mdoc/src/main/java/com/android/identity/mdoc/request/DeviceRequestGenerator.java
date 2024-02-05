@@ -19,18 +19,28 @@ package com.android.identity.mdoc.request;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.cbor.ArrayBuilder;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborArray;
+import com.android.identity.cbor.CborBuilder;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.DataItemExtensionsKt;
+import com.android.identity.cbor.MapBuilder;
+import com.android.identity.cbor.RawCbor;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.cose.Cose;
+import com.android.identity.cose.CoseLabel;
+import com.android.identity.cose.CoseNumberLabel;
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.CertificateChain;
+import com.android.identity.crypto.EcPrivateKey;
 import com.android.identity.internal.Util;
+import com.android.identity.util.Logger;
 
-import java.security.Signature;
-import java.security.cert.X509Certificate;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.UnicodeString;
 
 /**
  * Helper class for building <code>DeviceRequest</code> <a href="http://cbor.io/">CBOR</a>
@@ -48,7 +58,7 @@ public final class DeviceRequestGenerator {
      * Constructs a new {@link DeviceRequestGenerator}.
      */
     public DeviceRequestGenerator() {
-        mDocRequestsBuilder = new CborBuilder().addArray();
+        mDocRequestsBuilder = CborArray.Companion.builder();
     }
 
     /**
@@ -77,9 +87,11 @@ public final class DeviceRequestGenerator {
      *                                  This is
      *                                  a map from keys and the values must be valid
      *                                  <a href="http://cbor.io/">CBOR</a>.
-     * @param readerKeySignature        <code>null</code> if not signing the request, otherwise a
-     *                                  {@link Signature} to be used for signing the request.
-     * @param readerKeyCertificateChain <code>null</code> if <code>readerKeySignature</code> is
+     * @param readerKey                 <code>null</code> if not signing the request, otherwise a
+     *                                  {@link EcPrivateKey} to be used for signing the request.
+     * @param signatureAlgorithm        {@link Algorithm#UNSET} if <code>readerKey</code> is
+     *                                  <code>null</code>, otherwise the signature algorithm to use.
+     * @param readerKeyCertificateChain <code>null</code> if <code>readerKey</code> is
      *                                  <code>null</code>, otherwise a chain of X.509
      *                                  certificates for <code>readerKey</code>.
      * @return the <code>DeviceRequestGenerator</code>.
@@ -88,11 +100,13 @@ public final class DeviceRequestGenerator {
     public DeviceRequestGenerator addDocumentRequest(@NonNull String docType,
             @NonNull Map<String, Map<String, Boolean>> itemsToRequest,
             @Nullable Map<String, byte[]> requestInfo,
-            @Nullable Signature readerKeySignature,
-            @Nullable Collection<X509Certificate> readerKeyCertificateChain) {
+            @Nullable EcPrivateKey readerKey,
+            Algorithm signatureAlgorithm,
+            @Nullable CertificateChain readerKeyCertificateChain) {
 
-        CborBuilder nameSpacesBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> nsBuilder = nameSpacesBuilder.addMap();
+        // TODO: Add variant that can sign with SecureArea readerKey
+
+        MapBuilder<CborBuilder> nsBuilder = CborMap.Companion.builder();
 
         for (String namespaceName : itemsToRequest.keySet()) {
             Map<String, Boolean> innerMap = itemsToRequest.get(namespaceName);
@@ -105,26 +119,25 @@ public final class DeviceRequestGenerator {
         }
         nsBuilder.end();
 
-        CborBuilder itemsRequestBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> irMapBuilder = itemsRequestBuilder.addMap();
+        MapBuilder<CborBuilder> irMapBuilder = CborMap.Companion.builder();
         irMapBuilder.put("docType", docType);
-        irMapBuilder.put(new UnicodeString("nameSpaces"), nameSpacesBuilder.build().get(0));
+        irMapBuilder.put("nameSpaces", nsBuilder.end().build());
         if (requestInfo != null) {
             MapBuilder<MapBuilder<CborBuilder>> riBuilder = irMapBuilder.putMap("requestInfo");
             for (String key : requestInfo.keySet()) {
                 byte[] value = requestInfo.get(key);
-                DataItem valueDataItem = Util.cborDecode(value);
-                riBuilder.put(new UnicodeString(key), valueDataItem);
+                DataItem valueDataItem = Cbor.decode(value);
+                riBuilder.put(key, valueDataItem);
             }
             riBuilder.end();
         }
         irMapBuilder.end();
-        byte[] encodedItemsRequest = Util.cborEncode(itemsRequestBuilder.build().get(0));
+        byte[] encodedItemsRequest = Cbor.encode(irMapBuilder.end().build());
 
-        DataItem itemsRequestBytesDataItem = Util.cborBuildTaggedByteString(encodedItemsRequest);
+        DataItem itemsRequestBytesDataItem = new Tagged(24, new Bstr(encodedItemsRequest));
 
         DataItem readerAuth = null;
-        if (readerKeySignature != null) {
+        if (readerKey != null) {
             if (readerKeyCertificateChain == null) {
                 throw new IllegalArgumentException("readerKey is provided but no cert chain");
             }
@@ -132,32 +145,42 @@ public final class DeviceRequestGenerator {
                 throw new IllegalStateException("sessionTranscript has not been set");
             }
 
-            byte[] encodedReaderAuthentication = Util.cborEncode(new CborBuilder()
-                    .addArray()
+            byte[] encodedReaderAuthentication = Cbor.encode(
+                    CborArray.Companion.builder()
                     .add("ReaderAuthentication")
-                    .add(Util.cborDecode(mEncodedSessionTranscript))
+                    .add(new RawCbor(mEncodedSessionTranscript))
                     .add(itemsRequestBytesDataItem)
                     .end()
-                    .build().get(0));
+                    .build());
 
             byte[] readerAuthenticationBytes =
-                    Util.cborEncode(
-                            Util.cborBuildTaggedByteString(
-                                    encodedReaderAuthentication));
+                    Cbor.encode(new Tagged(24, new Bstr(encodedReaderAuthentication)));
 
-            readerAuth = Util.coseSign1Sign(readerKeySignature,
-                    null,
+            Map<CoseLabel, DataItem> protectedHeaders = Map.of(
+                    new CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                    DataItemExtensionsKt.getDataItem(signatureAlgorithm.getCoseAlgorithmIdentifier())
+            );
+            Map<CoseLabel, DataItem> unprotectedHeaders = Map.of(
+                    new CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                    readerKeyCertificateChain.getDataItem()
+            );
+
+            readerAuth = Cose.coseSign1Sign(
+                    readerKey,
                     readerAuthenticationBytes,
-                    readerKeyCertificateChain);
+                    false,
+                    signatureAlgorithm,
+                    protectedHeaders,
+                    unprotectedHeaders
+            ).getDataItem();
         }
 
-        CborBuilder docRequestBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> mapBuilder = docRequestBuilder.addMap();
-        mapBuilder.put(new UnicodeString("itemsRequest"), itemsRequestBytesDataItem);
+        MapBuilder<CborBuilder> mapBuilder = CborMap.Companion.builder();
+        mapBuilder.put("itemsRequest", itemsRequestBytesDataItem);
         if (readerAuth != null) {
-            mapBuilder.put(new UnicodeString("readerAuth"), readerAuth);
+            mapBuilder.put("readerAuth", readerAuth);
         }
-        DataItem docRequest = docRequestBuilder.build().get(0);
+        DataItem docRequest = mapBuilder.end().build();
 
         mDocRequestsBuilder.add(docRequest);
         return this;
@@ -170,12 +193,11 @@ public final class DeviceRequestGenerator {
      */
     @NonNull
     public byte[] generate() {
-        return Util.cborEncode(new CborBuilder()
-                .addMap()
+        return Cbor.encode(CborMap.Companion.builder()
                 .put("version", "1.0")
-                .put(new UnicodeString("docRequests"), mDocRequestsBuilder.end().build().get(0))
+                .put("docRequests", mDocRequestsBuilder.end().build())
                 .end()
-                .build().get(0));
+                .build());
     }
 
 }

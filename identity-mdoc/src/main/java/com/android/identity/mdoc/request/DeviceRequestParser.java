@@ -19,10 +19,22 @@ package com.android.identity.mdoc.request;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborArray;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.cose.Cose;
+import com.android.identity.cose.CoseNumberLabel;
+import com.android.identity.cose.CoseSign1;
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.CertificateChain;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.internal.Util;
+import com.android.identity.util.Logger;
 
 import java.security.PublicKey;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,11 +42,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
-import co.nstant.in.cbor.model.UnicodeString;
 
 /**
  * Helper class for parsing the bytes of <code>DeviceRequest</code>
@@ -128,7 +135,7 @@ public final class DeviceRequestParser {
         if (mEncodedSessionTranscript == null) {
             throw new IllegalStateException("sessionTranscript has not been set");
         }
-        DataItem sessionTranscript = Util.cborDecode(mEncodedSessionTranscript);
+        DataItem sessionTranscript = Cbor.decode(mEncodedSessionTranscript);
         DeviceRequestParser.DeviceRequest request = new DeviceRequestParser.DeviceRequest();
         request.parse(mEncodedDeviceRequest, sessionTranscript, mSkipReaderAuthParseAndCheck);
         return request;
@@ -170,86 +177,70 @@ public final class DeviceRequestParser {
         void parse(byte[] encodedDeviceRequest,
                 DataItem sessionTranscript, boolean skipReaderAuthParseAndCheck) {
 
-            DataItem request = Util.cborDecode(encodedDeviceRequest);
-            if (!(request instanceof Map)) {
-                throw new IllegalArgumentException("CBOR is not a map");
-            }
-
-            mVersion = Util.cborMapExtractString(request, "version");
+            DataItem request = Cbor.decode(encodedDeviceRequest);
+            mVersion = request.get("version").getAsTstr();
             if (mVersion.compareTo("1.0") < 0) {
                 throw new IllegalArgumentException("Given version '" + mVersion + "' not >= '1.0'");
             }
 
-            List<X509Certificate> readerCertChain = null;
-            if (Util.cborMapHasKey(request, "docRequests")) {
-                List<DataItem> docRequestsDataItems = Util.cborMapExtractArray(request,
-                        "docRequests");
+            CertificateChain readerCertChain = null;
+            DataItem docRequests = request.getOrNull("docRequests");
+            if (docRequests != null) {
+                List<DataItem> docRequestsDataItems = docRequests.getAsArray();
                 for (DataItem docRequestDataItem : docRequestsDataItems) {
-                    DataItem itemsRequestBytesDataItem = Util.cborMapExtract(docRequestDataItem,
-                            "itemsRequest");
-                    if (!(itemsRequestBytesDataItem instanceof ByteString)
-                            || !itemsRequestBytesDataItem.hasTag()
-                            || itemsRequestBytesDataItem.getTag().getValue() != 24) {
-                        throw new IllegalArgumentException(
-                                "itemsRequest value is not a tagged bytestring");
-                    }
-                    byte[] encodedItemsRequest =
-                            ((ByteString) itemsRequestBytesDataItem).getBytes();
-                    DataItem itemsRequest = Util.cborDecode(encodedItemsRequest);
-                    if (!(itemsRequest instanceof Map)) {
-                        throw new IllegalArgumentException("itemsRequest is not a map");
-                    }
+                    DataItem itemsRequestBytesDataItem = docRequestDataItem.get("itemsRequest");
+                    DataItem itemsRequest = itemsRequestBytesDataItem.getAsTaggedEncodedCbor();
 
-                    DataItem readerAuth = ((Map) docRequestDataItem).get(new UnicodeString(
-                            "readerAuth"));
+                    DataItem readerAuth = docRequestDataItem.getOrNull("readerAuth");
                     byte[] encodedReaderAuth = null;
                     boolean readerAuthenticated = false;
                     if (!skipReaderAuthParseAndCheck && readerAuth != null) {
-                        encodedReaderAuth = Util.cborEncode(readerAuth);
+                        encodedReaderAuth = Cbor.encode(readerAuth);
 
-                        readerCertChain = Util.coseSign1GetX5Chain(readerAuth);
-                        if (readerCertChain.size() < 1) {
-                            throw new IllegalArgumentException(
-                                    "No x5chain element in reader signature");
-                        }
-                        PublicKey readerKey = readerCertChain.iterator().next().getPublicKey();
+                        CoseSign1 readerAuthCoseSign1 = readerAuth.getAsCoseSign1();
+                        DataItem readerCertChainDataItem = readerAuthCoseSign1.getUnprotectedHeaders()
+                                .get(new CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN));
+                        Algorithm signatureAlgorithm = Algorithm.Companion.fromInt((int)
+                                readerAuthCoseSign1.getProtectedHeaders()
+                                        .get(new CoseNumberLabel(Cose.COSE_LABEL_ALG))
+                                        .getAsNumber());
+                        readerCertChain = readerCertChainDataItem.getAsCertificateChain();
+                        EcPublicKey readerKey = readerCertChain.getCertificates().get(0).getPublicKey();
 
-                        byte[] encodedReaderAuthentication = Util.cborEncode(new CborBuilder()
-                                .addArray()
-                                .add("ReaderAuthentication")
-                                .add(sessionTranscript)
-                                .add(itemsRequestBytesDataItem)
-                                .end()
-                                .build().get(0));
-
+                        byte[] encodedReaderAuthentication = Cbor.encode(
+                                CborArray.Companion.builder()
+                                        .add("ReaderAuthentication")
+                                        .add(sessionTranscript)
+                                        .add(itemsRequestBytesDataItem)
+                                        .end()
+                                        .build());
                         byte[] readerAuthenticationBytes =
-                                Util.cborEncode(
-                                        Util.cborBuildTaggedByteString(
-                                                encodedReaderAuthentication));
+                                Cbor.encode(new Tagged(24, new Bstr(encodedReaderAuthentication)));
 
-                        readerAuthenticated = Util.coseSign1CheckSignature(readerAuth,
-                                readerAuthenticationBytes,  // detached content
-                                readerKey);
+                        readerAuthenticated = Cose.coseSign1Check(
+                                readerKey,
+                                readerAuthenticationBytes,
+                                readerAuthCoseSign1,
+                                signatureAlgorithm);
                     }
 
-                    DataItem requestInfoDataItem = ((Map) itemsRequest).get(
-                            new UnicodeString("requestInfo"));
+                    DataItem requestInfoDataItem = itemsRequest.getOrNull("requestInfo");
                     java.util.Map<String, byte[]> requestInfo = new HashMap<>();
                     if (requestInfoDataItem != null) {
-                        for (String key : Util.cborMapExtractMapStringKeys(requestInfoDataItem)) {
-                            byte[] encodedValue = Util.cborEncode(
-                                    Util.cborMapExtract(requestInfoDataItem, key));
+                        for (DataItem keyDataItem : requestInfoDataItem.getAsMap().keySet()) {
+                            String key = keyDataItem.getAsTstr();
+                            byte[] encodedValue = Cbor.encode(requestInfoDataItem.get(keyDataItem));
                             requestInfo.put(key, encodedValue);
                         }
                     }
 
-                    String docType = Util.cborMapExtractString(itemsRequest, "docType");
+                    String docType = itemsRequest.get("docType").getAsTstr();
                     DocumentRequest.Builder builder = new DocumentRequest.Builder(docType,
-                            encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain,
+                            Cbor.encode(itemsRequest), requestInfo, encodedReaderAuth, readerCertChain,
                             readerAuthenticated);
 
                     // parse nameSpaces
-                    DataItem nameSpaces = Util.cborMapExtractMap(itemsRequest, "nameSpaces");
+                    DataItem nameSpaces = itemsRequest.get("nameSpaces");
                     parseNamespaces(nameSpaces, builder);
 
 
@@ -259,12 +250,12 @@ public final class DeviceRequestParser {
         }
 
         private void parseNamespaces(DataItem nameSpaces, DocumentRequest.Builder builder) {
-            Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
-            for (String nameSpace : nameSpacesKeys) {
-                DataItem itemsMap = Util.cborMapExtractMap(nameSpaces, nameSpace);
-                Collection<String> itemKeys = Util.cborMapExtractMapStringKeys(itemsMap);
-                for (String itemKey : itemKeys) {
-                    boolean intentToRetain = Util.cborMapExtractBoolean(itemsMap, itemKey);
+            for (DataItem nameSpaceDataItem : nameSpaces.getAsMap().keySet()) {
+                String nameSpace = nameSpaceDataItem.getAsTstr();
+                DataItem itemsMap = nameSpaces.get(nameSpaceDataItem);
+                for (DataItem itemKeyDataItem : itemsMap.getAsMap().keySet()) {
+                    String itemKey = itemKeyDataItem.getAsTstr();
+                    boolean intentToRetain = itemsMap.get(itemKeyDataItem).getAsBoolean();
                     builder.addEntry(nameSpace, itemKey, intentToRetain);
                 }
             }
@@ -282,12 +273,12 @@ public final class DeviceRequestParser {
         java.util.Map<String, byte[]> mRequestInfo;
         byte[] mEncodedReaderAuth;
         java.util.Map<String, java.util.Map<String, Boolean>> mRequestMap = new LinkedHashMap<>();
-        List<X509Certificate> mReaderCertificateChain;
+        CertificateChain mReaderCertificateChain;
         boolean mReaderAuthenticated;
         DocumentRequest(@NonNull String docType, @NonNull byte[] encodedItemsRequest,
                 @NonNull java.util.Map<String, byte[]> requestInfo,
                 @Nullable byte[] encodedReaderAuth,
-                @Nullable List<X509Certificate> readerCertChain,
+                @Nullable CertificateChain readerCertChain,
                 boolean readerAuthenticated) {
             mDocType = docType;
             mRequestInfo = requestInfo;
@@ -349,7 +340,7 @@ public final class DeviceRequestParser {
          *   if {@link #getReaderAuth()} returns a non-null value.
          */
         @NonNull
-        public List<X509Certificate> getReaderCertificateChain() {
+        public CertificateChain getReaderCertificateChain() {
             if (mEncodedReaderAuth == null) {
                 throw new IllegalStateException("Request isn't signed");
             }
@@ -433,7 +424,7 @@ public final class DeviceRequestParser {
             Builder(@NonNull String docType, @NonNull byte[] encodedItemsRequest,
                     java.util.Map<String, byte[]> requestInfo,
                     @Nullable byte[] encodedReaderAuth,
-                    @Nullable List<X509Certificate> readerCertChain,
+                    @Nullable CertificateChain readerCertChain,
                     boolean readerAuthenticated) {
                 this.mResult = new DeviceRequestParser.DocumentRequest(docType,
                         encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain,

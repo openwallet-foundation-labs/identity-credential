@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
 import java.io.File
 

@@ -1,6 +1,6 @@
 package com.android.identity.issuance
 
-import java.security.PublicKey
+import com.android.identity.crypto.EcPublicKey
 
 /**
  * This data structure contains a Credential Presentation Object minted by the issuer.
@@ -9,7 +9,7 @@ data class CredentialPresentationObject(
     /**
      * The authentication key that this CPO is for.
      */
-    val authenticationKey: PublicKey,
+    val authenticationKey: EcPublicKey,
 
     /**
      * The CPO is not valid until this point in time (seconds since Epoch).

@@ -9,14 +9,29 @@ import android.graphics.RadialGradient
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import com.android.identity.cbor.Bstr
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.Tagged
+import com.android.identity.cbor.dataItem
+import com.android.identity.cbor.dateTimeString
+import com.android.identity.cose.Cose
+import com.android.identity.cose.CoseLabel
+import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.NameSpacedData
-import com.android.identity.internal.Util
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
-import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
+import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
@@ -26,29 +41,17 @@ import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.securearea.EcCurve
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity_credential.mrtd.MrtdNfcData
 import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
-import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.cert.X509CertificateHolder
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
-import org.bouncycastle.operator.ContentSigner
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
+import kotlinx.datetime.Clock
 import java.io.ByteArrayOutputStream
-import java.lang.IllegalStateException
-import java.math.BigInteger
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.PublicKey
-import java.security.SecureRandom
-import java.security.cert.X509Certificate
-import java.security.spec.ECGenParameterSpec
-import java.util.Date
 import kotlin.math.ceil
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.days
+
 
 class SelfSignedMdlIssuingAuthority(
     val application: WalletApplication,
@@ -85,7 +88,7 @@ class SelfSignedMdlIssuingAuthority(
 
     override fun createPresentationData(presentationFormat: CredentialPresentationFormat,
                                         credentialConfiguration: CredentialConfiguration,
-                                        authenticationKey: PublicKey
+                                        authenticationKey: EcPublicKey
     ): ByteArray {
         // Right now we only support mdoc
         check(presentationFormat == CredentialPresentationFormat.MDOC_MSO)
@@ -101,11 +104,10 @@ class SelfSignedMdlIssuingAuthority(
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             MDL_DOCTYPE,
-            authenticationKey,
-            EcCurve.P256
+            authenticationKey
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
-        val randomProvider = SecureRandom()
+        val randomProvider = Random.Default
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
             credentialConfiguration.staticData,
             randomProvider,
@@ -116,22 +118,32 @@ class SelfSignedMdlIssuingAuthority(
             val digests = MdocUtil.calculateDigestsForNameSpace(
                 nameSpaceName,
                 issuerNameSpaces,
-                "SHA-256"
+                Algorithm.SHA256
             )
             msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
         }
 
         ensureIssuerSigningKeys()
         val mso = msoGenerator.generate()
-        val taggedEncodedMso = Util.cborEncode(Util.cborBuildTaggedByteString(mso))
-        val issuerCertChain = listOf(issuerSigningKeyCert!!)
-        val encodedIssuerAuth = Util.cborEncode(
-            Util.coseSign1Sign(
-                issuerSigningKeyPair!!.private,
-                "SHA256withECDSA", taggedEncodedMso,
-                null,
-                issuerCertChain
-            )
+        val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
+        val issuerCertChain = listOf(issuerSigningKeyCert)
+        val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
+            CoseNumberLabel(Cose.COSE_LABEL_ALG),
+            Algorithm.ES256.coseAlgorithmIdentifier.dataItem
+        ))
+        val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
+            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+            CertificateChain(listOf(Certificate(issuerSigningKeyCert.encodedCertificate))).dataItem
+        ))
+        val encodedIssuerAuth = Cbor.encode(
+            Cose.coseSign1Sign(
+                issuerSigningKey,
+                taggedEncodedMso,
+                true,
+                Algorithm.ES256,
+                protectedHeaders,
+                unprotectedHeaders
+            ).dataItem
         )
 
         val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
@@ -143,47 +155,30 @@ class SelfSignedMdlIssuingAuthority(
         return issuerProvidedAuthenticationData
     }
 
-    var issuerSigningKeyPair: KeyPair? = null
-    var issuerSigningKeyCert: X509Certificate? = null
+    private lateinit var issuerSigningKey: EcPrivateKey
+    private lateinit var issuerSigningKeyCert: Certificate
 
     private fun ensureIssuerSigningKeys() {
-        if (issuerSigningKeyPair != null) {
+        if (this::issuerSigningKey.isInitialized) {
             return
         }
-        issuerSigningKeyPair = createIssuingAuthorityKeyPair()
-        issuerSigningKeyCert = getSelfSignedIssuerAuthorityCertificate(issuerSigningKeyPair!!)
-    }
+        issuerSigningKey = Crypto.createEcPrivateKey(EcCurve.P256)
 
-    private fun createIssuingAuthorityKeyPair(): KeyPair {
-        val kpg = KeyPairGenerator.getInstance("EC")
-        val ecSpec = ECGenParameterSpec("secp256r1")
-        kpg.initialize(ecSpec)
-        return kpg.generateKeyPair()
-    }
+        // TODO: also generate an IACA certificate with the appropriate extensions
 
-    private fun getSelfSignedIssuerAuthorityCertificate(
-        issuerAuthorityKeyPair: KeyPair
-    ): X509Certificate {
-        val issuer: X500Name = X500Name("CN=State Of Utopia")
-        val subject: X500Name = X500Name("CN=State Of Utopia Issuing Authority Signing Key")
-
-        // Valid from now to five years from now.
-        val now = Date()
-        val kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000
-        val expirationDate = Date(now.time + 5 * kMilliSecsInOneYear)
-        val serial = BigInteger("42")
-        val builder = JcaX509v3CertificateBuilder(
-            issuer,
-            serial,
-            now,
-            expirationDate,
-            subject,
-            issuerAuthorityKeyPair.public
+        val validFrom = Clock.System.now()
+        val validUntil = validFrom + 365.days*5
+        issuerSigningKeyCert = Crypto.createX509v3Certificate(
+            issuerSigningKey.publicKey,
+            issuerSigningKey,
+            Algorithm.ES256,
+            "1",
+            "CN=State Of Utopia DS",
+            "CN=State Of Utopia DS",
+            validFrom,
+            validUntil,
+            listOf()
         )
-        val signer: ContentSigner = JcaContentSignerBuilder("SHA256withECDSA")
-            .build(issuerAuthorityKeyPair.private)
-        val certHolder: X509CertificateHolder = builder.build(signer)
-        return JcaX509CertificateConverter().getCertificate(certHolder)
     }
 
     override fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {
@@ -344,9 +339,9 @@ class SelfSignedMdlIssuingAuthority(
         }
 
 
-        val now = Timestamp.now()
+        val now = Clock.System.now()
         val issueDate = now
-        val expiryDate = Timestamp.ofEpochMilli(issueDate.toEpochMilli() + 5*365*24*3600*1000L)
+        val expiryDate = now + 5.days*365
 
         val staticData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", firstName)
@@ -354,8 +349,8 @@ class SelfSignedMdlIssuingAuthority(
             .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
             .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
             .putEntryNumber(MDL_NAMESPACE, "sex", sex)
-            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(issueDate))
-            .putEntry(MDL_NAMESPACE, "expiry_date", Util.cborEncodeDateTime(expiryDate))
+            .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(issueDate.dateTimeString))
+            .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.dateTimeString))
             .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
             .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
             .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")

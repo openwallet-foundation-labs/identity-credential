@@ -22,7 +22,6 @@ public class ServletConsts {
     public static final String REQ_ATTR_PROP = "Requested Attributes";
     public static final String LOGS_PROP = "Logs";
     public static final String ENTITY_TYPE = "Main";
-    public static final String PUBKEY_PROP = "Reader Key Public";
     public static final String PRIVKEY_PROP = "Reader Key Private";
     public static final String RE_PROP = "Reader Engagement";
     public static final String TRANSCRIPT_PROP = "Session Transcript";

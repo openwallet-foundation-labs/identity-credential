@@ -59,6 +59,7 @@ dependencies {
     implementation libs.compose.material
     implementation libs.bundles.bouncy.castle
     debugImplementation libs.compose.icons
+    implementation libs.kotlinx.datetime
 
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso

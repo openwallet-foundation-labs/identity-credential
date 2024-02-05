@@ -32,9 +32,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import com.android.identity.internal.Util;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
-import com.android.identity.util.Constants;
+import com.android.identity.crypto.EcCurve;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Before;
