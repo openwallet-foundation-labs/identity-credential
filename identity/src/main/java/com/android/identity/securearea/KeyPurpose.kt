@@ -3,7 +3,7 @@ package com.android.identity.securearea
 /**
  * Key purposes.
  */
-enum class KeyPurpose(val flagValue: Int) {
+enum class KeyPurpose(val flagValue: Long) {
     /**
      * Purpose of key: signing.
      */
@@ -15,18 +15,24 @@ enum class KeyPurpose(val flagValue: Int) {
     AGREE_KEY(1 shl 1);
 
     companion object {
-        fun encodeSet(purposes: Set<KeyPurpose>): Int {
-            var value = 0
+        /**
+         * Helper to encode a set of [KeyPurpose] as an integer.
+         */
+        fun encodeSet(purposes: Set<KeyPurpose>): Long {
+            var value = 0L
             for (purpose in purposes) {
                 value = value or purpose.flagValue
             }
             return value
         }
 
-        fun decodeSet(purposes: Int): Set<KeyPurpose> {
+        /**
+         * Helper to decode an integer into a set of [KeyPurpose].
+         */
+        fun decodeSet(purposes: Long): Set<KeyPurpose> {
             val result = mutableSetOf<KeyPurpose>()
             for (purpose in values()) {
-                if ((purposes and purpose.flagValue) != 0) {
+                if ((purposes and purpose.flagValue) != 0L) {
                     result.add(purpose)
                 }
             }
@@ -34,3 +40,7 @@ enum class KeyPurpose(val flagValue: Int) {
         }
     }
 }
+
+/** Decodes the number into a set of [KeyPurpose] */
+val Long.keyPurposeSet: Set<KeyPurpose>
+    get() = KeyPurpose.decodeSet(this)

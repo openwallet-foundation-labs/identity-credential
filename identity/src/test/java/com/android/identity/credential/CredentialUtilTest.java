@@ -17,14 +17,13 @@
 package com.android.identity.credential;
 
 import com.android.identity.securearea.CreateKeySettings;
-import com.android.identity.securearea.EcCurve;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.securearea.KeyPurpose;
 import com.android.identity.securearea.software.SoftwareSecureArea;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.EphemeralStorageEngine;
 import com.android.identity.storage.StorageEngine;
-import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;

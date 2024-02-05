@@ -16,12 +16,16 @@
 
 package com.android.identity.mdoc.origininfo;
 
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DiagnosticOption;
 import com.android.identity.internal.Util;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.util.Set;
 
 @RunWith(JUnit4.class)
 public class OriginInfoTest {
@@ -31,11 +35,12 @@ public class OriginInfoTest {
         OriginInfoDomain decoded = OriginInfoDomain.decode(info.encode());
         Assert.assertEquals("https://foo.com/bar", decoded.getUrl());
         Assert.assertEquals("{\n" +
-                "  'cat' : 1,\n" +
-                "  'type' : 1,\n" +
-                "  'details' : {\n" +
-                "    'domain' : 'https://foo.com/bar'\n" +
-                "  }\n" +
-                "}", Util.cborPrettyPrint(info.encode()));
+                        "  \"cat\": 1,\n" +
+                        "  \"type\": 1,\n" +
+                        "  \"details\": {\n" +
+                        "    \"domain\": \"https://foo.com/bar\"\n" +
+                        "  }\n" +
+                        "}",
+                Cbor.toDiagnostics(info.encode(), Set.of(DiagnosticOption.PRETTY_PRINT)));
     }
 }

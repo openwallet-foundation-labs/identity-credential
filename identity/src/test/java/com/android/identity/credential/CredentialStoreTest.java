@@ -16,9 +16,8 @@
 
 package com.android.identity.credential;
 
-import com.android.identity.internal.Util;
 import com.android.identity.securearea.CreateKeySettings;
-import com.android.identity.securearea.EcCurve;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.securearea.KeyPurpose;
 import com.android.identity.securearea.software.SoftwareSecureArea;
 import com.android.identity.securearea.SecureArea;
@@ -162,9 +161,9 @@ public class CredentialStoreTest {
 
         // We check that NameSpacedData is preserved across loads by simply comparing the
         // encoded data.
-        Assert.assertArrayEquals(
-                Util.cborEncode(credential.getApplicationData().getNameSpacedData("credentialData").toCbor()),
-                Util.cborEncode(loadedCredential.getApplicationData().getNameSpacedData("credentialData").toCbor()));
+        Assert.assertEquals(
+                credential.getApplicationData().getNameSpacedData("credentialData").toCbor(),
+                loadedCredential.getApplicationData().getNameSpacedData("credentialData").toCbor());
     }
 
     @Test
@@ -387,7 +386,7 @@ public class CredentialStoreTest {
             Assert.assertEquals(key1.getValidUntil(), key2.getValidUntil());
             Assert.assertEquals(key1.getUsageCount(), key2.getUsageCount());
             Assert.assertArrayEquals(key1.getIssuerProvidedData(), key2.getIssuerProvidedData());
-            Assert.assertArrayEquals(key1.getAttestation().toArray(), key2.getAttestation().toArray());
+            Assert.assertEquals(key1.getAttestation(), key2.getAttestation());
         }
 
         Iterator<PendingAuthenticationKey> itp1 = credential.getPendingAuthenticationKeys().iterator();
@@ -396,8 +395,7 @@ public class CredentialStoreTest {
             PendingAuthenticationKey key1 = itp1.next();
             PendingAuthenticationKey key2 = itp2.next();
             Assert.assertEquals(key1.getAlias(), key2.getAlias());
-            Assert.assertArrayEquals(key1.getAttestation().toArray(),
-                    key2.getAttestation().toArray());
+            Assert.assertEquals(key1.getAttestation(), key2.getAttestation());
         }
     }
 

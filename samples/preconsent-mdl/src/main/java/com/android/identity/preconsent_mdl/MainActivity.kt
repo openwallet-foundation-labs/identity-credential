@@ -53,13 +53,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.crypto.Algorithm
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
 import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import org.bouncycastle.asn1.x500.X500Name
@@ -72,10 +73,10 @@ import java.io.ByteArrayOutputStream
 import java.math.BigInteger
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.security.spec.ECGenParameterSpec
 import java.util.Date
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
 
@@ -146,14 +147,12 @@ class MainActivity : ComponentActivity() {
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 MDL_DOCTYPE,
-                pendingAuthKey.attestation[0].publicKey,
-                EcCurve.P256
+                pendingAuthKey.attestation.certificates[0].publicKey
             )
             msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
-            val randomProvider = SecureRandom()
             val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
                 credentialData,
-                randomProvider,
+                Random.Default,
                 16,
                 null
             )
@@ -161,7 +160,7 @@ class MainActivity : ComponentActivity() {
                 val digests = MdocUtil.calculateDigestsForNameSpace(
                     nameSpaceName,
                     issuerNameSpaces,
-                    "SHA-256"
+                    Algorithm.SHA256
                 )
                 msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
             }

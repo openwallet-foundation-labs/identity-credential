@@ -50,6 +50,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.age_verifier_mdl.ui.theme.IdentityCredentialTheme
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
+import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.util.Logger
@@ -224,6 +225,7 @@ class MainActivity : ComponentActivity() {
                                 request,
                                 null,
                                 null,
+                                Algorithm.UNSET,
                                 null
                             )
                             deviceRequestGenerator.setSessionTranscript(transferHelper.getSessionTranscript())

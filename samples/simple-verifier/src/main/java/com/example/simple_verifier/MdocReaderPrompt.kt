@@ -75,6 +75,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import com.android.identity.android.mdoc.transport.DataTransportOptions
+import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.request.DeviceRequestGenerator
@@ -135,6 +136,7 @@ class MdocReaderPrompt(
                 mapOf("org.iso.18013.5.1" to requestedElemsIntent),
                 null,
                 null,
+                Algorithm.UNSET,
                 null
             )
 
@@ -229,7 +231,7 @@ class MdocReaderPrompt(
             val parser =
                 DeviceResponseParser()
             parser.setSessionTranscript(verification.sessionTranscript)
-            parser.setEphemeralReaderKey(verification.eReaderKeyPair.private)
+            parser.setEphemeralReaderKey(verification.eReaderKey)
             parser.setDeviceResponse(rb)
             return parser.parse()
         } ?: throw IllegalStateException("Response not received")

@@ -16,12 +16,16 @@
 
 package com.android.identity.mdoc.mso;
 
+import com.android.identity.crypto.EcPublicKey;
+import com.android.identity.crypto.EcPublicKeyKt;
 import com.android.identity.mdoc.TestVectors;
-import com.android.identity.securearea.EcCurve;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigInteger;
@@ -30,7 +34,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
+import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +51,11 @@ public class MobileSecurityObjectGeneratorTest {
 
     private static final String MVR_DOCTYPE = "org.iso.18013.7.1.mVR";
     private static final String MVR_NAMESPACE = "org.iso.18013.7.1";
+
+    @Before
+    public void setup() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+    }
 
     private KeyPair generateReaderKeyPair() throws Exception {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
@@ -132,9 +141,11 @@ public class MobileSecurityObjectGeneratorTest {
     }
 
     public void testFullMSO(String digestAlgorithm) throws NoSuchAlgorithmException {
-        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        EcPublicKey deviceKeyFromVector = EcPublicKeyKt.toEcPublicKey(
+                Util.getPublicKeyFromIntegers(
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16)),
+                EcCurve.P256);
         final Timestamp signedTimestamp = Timestamp.ofEpochMilli(1601559002000L);
         final Timestamp validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L);
         final Timestamp validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L);
@@ -148,7 +159,7 @@ public class MobileSecurityObjectGeneratorTest {
         keyInfo.put(10L, Util.fromHex("C985"));
 
         byte[] encodedMSO = new MobileSecurityObjectGenerator(digestAlgorithm,
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector, EcCurve.P256)
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector)
                 .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
                 .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                 .setDeviceKeyAuthorizedNameSpaces(List.of("abc", "bcd"))
@@ -188,16 +199,18 @@ public class MobileSecurityObjectGeneratorTest {
 
     @Test
     public void testBasicMSO() throws Exception {
-        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        EcPublicKey deviceKeyFromVector = EcPublicKeyKt.toEcPublicKey(
+                Util.getPublicKeyFromIntegers(
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16)),
+                EcCurve.P256);
         final Timestamp signedTimestamp = Timestamp.ofEpochMilli(1601559002000L);
         final Timestamp validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L);
         final Timestamp validUntilTimestamp = Timestamp.ofEpochMilli(1633095002000L);
         final String digestAlgorithm = "SHA-256";
 
         byte[] encodedMSO = new MobileSecurityObjectGenerator(digestAlgorithm,
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector, EcCurve.P256)
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector)
                 .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
                 .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                 .setValidityInfo(signedTimestamp, validFromTimestamp, validUntilTimestamp, null)
@@ -244,18 +257,20 @@ public class MobileSecurityObjectGeneratorTest {
 
     @Test
     public void testMSOExceptions() {
-        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        EcPublicKey deviceKeyFromVector = EcPublicKeyKt.toEcPublicKey(
+                Util.getPublicKeyFromIntegers(
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16)),
+                EcCurve.P256);
 
         Assert.assertThrows("expect exception for illegal digestAlgorithm",
                 IllegalArgumentException.class,
                 () -> new MobileSecurityObjectGenerator("SHA-257",
-                        "org.iso.18013.5.1.mDL", deviceKeyFromVector, EcCurve.P256));
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector));
 
         final String digestAlgorithm = "SHA-256";
         MobileSecurityObjectGenerator msoGenerator = new MobileSecurityObjectGenerator(digestAlgorithm,
-                "org.iso.18013.5.1.mDL", deviceKeyFromVector, EcCurve.P256);
+                "org.iso.18013.5.1.mDL", deviceKeyFromVector);
 
         Assert.assertThrows("expect exception for empty digestIDs",
                 IllegalArgumentException.class,
@@ -301,7 +316,7 @@ public class MobileSecurityObjectGeneratorTest {
                         "addDigestIdsForNamespace called before generating",
                 IllegalStateException.class,
                 () -> {new MobileSecurityObjectGenerator(digestAlgorithm,
-                        "org.iso.18013.5.1.mDL", deviceKeyFromVector, EcCurve.P256)
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector)
                         .setValidityInfo(
                                 Timestamp.ofEpochMilli(1601559002000L),
                                 Timestamp.ofEpochMilli(1601559002000L),
@@ -313,7 +328,7 @@ public class MobileSecurityObjectGeneratorTest {
                         "setValidityInfo called before generating",
                 IllegalStateException.class,
                 () -> {new MobileSecurityObjectGenerator(digestAlgorithm,
-                        "org.iso.18013.5.1.mDL", deviceKeyFromVector, EcCurve.P256)
+                        "org.iso.18013.5.1.mDL", deviceKeyFromVector)
                         .addDigestIdsForNamespace("org.iso.18013.5.1", generateISODigest(digestAlgorithm))
                         .addDigestIdsForNamespace("org.iso.18013.5.1.US", generateISOUSDigest(digestAlgorithm))
                         .generate();});

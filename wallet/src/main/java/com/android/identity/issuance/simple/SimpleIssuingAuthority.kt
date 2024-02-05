@@ -1,8 +1,9 @@
 package com.android.identity.issuance.simple
 
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.model.UnicodeString
-import com.android.identity.internal.Util
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.RawCbor
 import com.android.identity.issuance.CredentialCondition
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
@@ -15,11 +16,10 @@ import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.RegisterCredentialFlow
 import com.android.identity.issuance.RequestPresentationObjectsFlow
 import com.android.identity.issuance.evidence.EvidenceResponse
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import java.lang.UnsupportedOperationException
-import java.security.PublicKey
 import kotlin.random.Random
 
 /**
@@ -49,37 +49,33 @@ abstract class SimpleIssuingAuthority(
 
     abstract fun createPresentationData(presentationFormat: CredentialPresentationFormat,
                                         credentialConfiguration: CredentialConfiguration,
-                                        authenticationKey: PublicKey): ByteArray
+                                        authenticationKey: EcPublicKey): ByteArray
 
     private data class CpoRequest(
-        val authenticationKey: PublicKey,
+        val authenticationKey: EcPublicKey,
         val presentationData: ByteArray,
         val deadlineMillis: Long,
     ) {
 
         companion object {
             fun fromCbor(encodedData: ByteArray): CpoRequest {
-                val map = Util.cborDecode(encodedData)
+                val map = Cbor.decode(encodedData)
                 return CpoRequest(
-                    Util.coseKeyDecode(Util.cborMapExtract(map, "authenticationKey")),
-                    Util.cborMapExtractByteString(map, "presentationData"),
-                    Util.cborMapExtractNumber(map, "deadline")
+                    map["authenticationKey"].asCoseKey.ecPublicKey,
+                    map["presentationData"].asBstr,
+                    map["deadline"].asNumber
                 )
             }
         }
 
         fun toCbor(): ByteArray {
-            return Util.cborEncode(
-                CborBuilder()
-                    .addMap()
-                    .put(
-                        UnicodeString("authenticationKey"),
-                        Util.cborBuildCoseKey(authenticationKey, EcCurve.P256)
-                    )
+            return Cbor.encode(
+                CborMap.builder()
+                    .put("authenticationKey", authenticationKey.toCoseKey().dataItem)
                     .put("presentationData", presentationData)
                     .put("deadline", deadlineMillis)
                     .end()
-                    .build().get(0))
+                    .build())
         }
     }
 
@@ -93,33 +89,30 @@ abstract class SimpleIssuingAuthority(
     ) {
         companion object {
             fun fromCbor(encodedData: ByteArray): IssuerCredential {
-                val map = Util.cborDecode(encodedData)
-                val stateAsInt = Util.cborMapExtractNumber(map, "state").toInt()
+                val map = Cbor.decode(encodedData)
+                val stateAsInt = map["state"].asNumber.toInt()
                 val state = CredentialCondition.values().firstOrNull {it.ordinal == stateAsInt}
                     ?: throw IllegalArgumentException("Unknown state with value $stateAsInt")
 
                 val collectedEvidence = mutableMapOf<String, EvidenceResponse>()
-                val evidenceMap = Util.cborMapExtractMap(map, "collectedEvidence") as co.nstant.`in`.cbor.model.Map
+                val evidenceMap = map["collectedEvidence"].asMap
                 for (evidenceId in evidenceMap.keys) {
-                    val evidenceDataItem = evidenceMap[evidenceId]
-                    collectedEvidence[Util.checkedStringValue(evidenceId)] =
-                        EvidenceResponse.fromCbor(Util.cborEncode(evidenceDataItem))
+                    collectedEvidence[evidenceId.asTstr] =
+                        EvidenceResponse.fromCbor(Cbor.encode(evidenceMap[evidenceId]!!))
                 }
 
                 val cpoRequests = mutableListOf<CpoRequest>()
-                for (cpoRequestDataItem in Util.cborMapExtractArray(map, "cpoRequests")) {
-                    cpoRequests.add(CpoRequest.fromCbor(Util.cborEncode(cpoRequestDataItem)))
+                for (cpoRequestDataItem in map["cpoRequests"].asArray) {
+                    cpoRequests.add(CpoRequest.fromCbor(Cbor.encode(cpoRequestDataItem)))
                 }
 
-                var credentialConfiguration: CredentialConfiguration? = null
-                if (Util.cborMapHasKey(map, "credentialConfiguration")) {
-                    credentialConfiguration = CredentialConfiguration.fromCbor(
-                        Util.cborMapExtractByteString(map, "credentialConfiguration")
-                    )
-                }
+                val credentialConfiguration: CredentialConfiguration? =
+                    map.getOrNull("credentialConfiguration")?.let {
+                        CredentialConfiguration.fromCbor(it.asBstr)
+                    }
 
                 return IssuerCredential(
-                    Util.cborMapExtractNumber(map, "proofingDeadline"),
+                    map["proofingDeadline"].asNumber,
                     state,
                     collectedEvidence,
                     credentialConfiguration,
@@ -128,29 +121,23 @@ abstract class SimpleIssuingAuthority(
             }
         }
         fun toCbor(): ByteArray {
-            val cpoBuilder = CborBuilder()
-            val cpoArrayBuilder = cpoBuilder.addArray()
-            for (cpoRequest in cpoRequests) {
-                cpoArrayBuilder.add(Util.cborDecode(cpoRequest.toCbor()))
+            val cpoArrayBuilder = CborArray.builder()
+            cpoRequests.forEach() { cpoRequest ->
+                cpoArrayBuilder.add(RawCbor(cpoRequest.toCbor()))
             }
-            val ceBuilder = CborBuilder()
-            val ceMapBuilder = ceBuilder.addMap()
-            for (evidence in collectedEvidence) {
-                ceMapBuilder.put(UnicodeString(evidence.key),
-                    Util.cborDecode(evidence.value.toCbor()))
+            val ceMapBuilder = CborMap.builder()
+            collectedEvidence.forEach() { evidence ->
+                ceMapBuilder.put(evidence.key, RawCbor(evidence.value.toCbor()))
             }
-
-            val builder = CborBuilder()
-            val mapBuilder = builder.addMap()
-            mapBuilder
+            val mapBuilder = CborMap.builder()
                 .put("proofingDeadline", proofingDeadlineMillis)
                 .put("state", state.ordinal.toLong())
-                .put(UnicodeString("collectedEvidence"), ceBuilder.build()[0])
-                .put(UnicodeString("cpoRequests"), cpoBuilder.build()[0])
+                .put("collectedEvidence", ceMapBuilder.end().build())
+                .put("cpoRequests", cpoArrayBuilder.end().build())
             if (credentialConfiguration != null) {
                 mapBuilder.put("credentialConfiguration", credentialConfiguration!!.toCbor())
             }
-            return Util.cborEncode(builder.build()[0])
+            return Cbor.encode(mapBuilder.end().build())
         }
     }
 
@@ -275,7 +262,7 @@ abstract class SimpleIssuingAuthority(
 
     private fun hasCpoRequestForAuthenticationKey(
         issuerCredential: IssuerCredential,
-        authenticationKey: PublicKey
+        authenticationKey: EcPublicKey
     ) : Boolean {
         for (cpoRequest in issuerCredential.cpoRequests) {
             if (cpoRequest.authenticationKey.equals(authenticationKey)) {
@@ -295,23 +282,24 @@ abstract class SimpleIssuingAuthority(
         val issuerCredential = loadIssuerCredential(credentialId)
         for (request in credentialPresentationRequests) {
             // Skip if we already have a request for the authentication key
-            if (hasCpoRequestForAuthenticationKey(issuerCredential, request.authenticationKeyAttestation[0].publicKey)) {
+            if (hasCpoRequestForAuthenticationKey(issuerCredential,
+                    request.authenticationKeyAttestation.certificates.first().publicKey)) {
                 Logger.d(TAG, "Already has cpoRequest for attestation with key " +
-                        "${request.authenticationKeyAttestation[0].publicKey}")
+                        "${request.authenticationKeyAttestation.certificates.first().publicKey}")
                 continue
             }
-            val authenticationKey = request.authenticationKeyAttestation[0].publicKey
+            val authenticationKey = request.authenticationKeyAttestation.certificates.first().publicKey
             val presentationData = createPresentationData(
                 request.credentialPresentationFormat,
                 issuerCredential.credentialConfiguration!!,
                 authenticationKey
             )
-            val request = CpoRequest(
+            val cpoRequest = CpoRequest(
                 authenticationKey,
                 presentationData,
                 deadlineMillis,
             )
-            issuerCredential.cpoRequests.add(request)
+            issuerCredential.cpoRequests.add(cpoRequest)
         }
         saveIssuerCredential(credentialId, issuerCredential)
     }

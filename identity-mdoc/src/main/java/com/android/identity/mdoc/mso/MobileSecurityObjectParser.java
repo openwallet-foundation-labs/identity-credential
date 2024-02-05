@@ -19,20 +19,18 @@ package com.android.identity.mdoc.mso;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.securearea.SecureArea;
-import com.android.identity.securearea.EcCurve;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborArray;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.util.Timestamp;
-import com.android.identity.internal.Util;
 
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import co.nstant.in.cbor.model.DataItem;
 
 /**
  * Helper class for parsing the bytes of <code>MobileSecurityObject</code>
@@ -91,13 +89,11 @@ public class MobileSecurityObjectParser {
         private String mDigestAlgorithm;
         private String mDocType;
         private Map<String, Map<Long, byte[]>> mValueDigests;
-        private PublicKey mDeviceKey;
+        private EcPublicKey mDeviceKey;
         private List<String> mAuthorizedNameSpaces;
         private Map<String, List<String>> mAuthorizedDataElements;
         private Map<Long, byte[]> mDeviceKeyInfo;
         private Timestamp mSigned, mValidFrom, mValidUntil, mExpectedUpdate;
-
-        private EcCurve mDeviceKeyCurve;
 
         MobileSecurityObject() {}
 
@@ -156,16 +152,7 @@ public class MobileSecurityObjectParser {
          * @return The public part of the key pair used for mdoc authentication.
          */
         @NonNull
-        public PublicKey getDeviceKey() { return mDeviceKey; }
-
-        /**
-         * Gets the curve of {@code DeviceKey}.
-         *
-         * @return the curve.
-         */
-        public EcCurve getDeviceKeyCurve() {
-            return mDeviceKeyCurve;
-        }
+        public EcPublicKey getDeviceKey() { return mDeviceKey; }
 
         /**
          * Gets the <code>AuthorizedNameSpaces</code> portion of the <code>keyAuthorizations</code>
@@ -238,12 +225,14 @@ public class MobileSecurityObjectParser {
 
         private void parseValueDigests(DataItem valueDigests) {
             mValueDigests = new HashMap<>();
-            for (String namespace : Util.cborMapExtractMapStringKeys(valueDigests)) {
-                DataItem digestIDsDataItem = Util.cborMapExtractMap(valueDigests, namespace);
+            for (DataItem namespaceDataItem : valueDigests.getAsMap().keySet()) {
+                String namespace = namespaceDataItem.getAsTstr();
+                DataItem digestIDsDataItem = valueDigests.getAsMap().get(namespaceDataItem);
 
                 Map<Long, byte[]> digestIDs = new HashMap<>();
-                for (Long digestID : Util.cborMapExtractMapNumberKeys(digestIDsDataItem)) {
-                    digestIDs.put(digestID, Util.cborMapExtractByteString(digestIDsDataItem, digestID));
+                for (DataItem digestIDDataItem : digestIDsDataItem.getAsMap().keySet()) {
+                    long digestID = digestIDDataItem.getAsNumber();
+                    digestIDs.put(digestID, digestIDsDataItem.get(digestID).getAsBstr());
                 }
 
                 mValueDigests.put(namespace, digestIDs);
@@ -251,53 +240,53 @@ public class MobileSecurityObjectParser {
         }
 
         private void parseDeviceKeyInfo(DataItem deviceKeyInfo) {
-            DataItem coseKeyDataItem = Util.cborMapExtract(deviceKeyInfo, "deviceKey");
-            mDeviceKeyCurve = Util.coseKeyGetCurve(coseKeyDataItem);
-            mDeviceKey = Util.coseKeyDecode(coseKeyDataItem);
+
+            mDeviceKey = deviceKeyInfo.get("deviceKey").getAsCoseKey().getEcPublicKey();
 
             mAuthorizedNameSpaces = null;
             mAuthorizedDataElements = null;
-            if (Util.cborMapHasKey(deviceKeyInfo, "keyAuthorizations")) {
-                DataItem keyAuth = Util.cborMapExtractMap(deviceKeyInfo, "keyAuthorizations");
-                if (Util.cborMapHasKey(keyAuth, "nameSpaces")) {
+            DataItem keyAuth = deviceKeyInfo.getOrNull("keyAuthorizations");
+            if (keyAuth != null) {
+                DataItem nameSpaces = keyAuth.getOrNull("nameSpaces");
+                if (nameSpaces != null) {
                     mAuthorizedNameSpaces = new ArrayList<>();
-                    List<DataItem> nsDataItems = Util.cborMapExtractArray(keyAuth, "nameSpaces");
-                    for (DataItem nsDataItem : nsDataItems) {
-                        mAuthorizedNameSpaces.add(Util.checkedStringValue(nsDataItem));
+                    for (DataItem nameSpaceDataItem : ((CborArray) nameSpaces).getItems()) {
+                        mAuthorizedNameSpaces.add(nameSpaceDataItem.getAsTstr());
                     }
                 }
 
-                if (Util.cborMapHasKey(keyAuth, "dataElements")) {
+                DataItem dataElements = keyAuth.getOrNull("dataElements");
+                if (dataElements != null) {
                     mAuthorizedDataElements = new HashMap<>();
-                    DataItem dataElements = Util.cborMapExtractMap(keyAuth, "dataElements");
-                    for (String namespace : Util.cborMapExtractMapStringKeys(dataElements)) {
-                        List<DataItem> dataElemDataItem = Util.cborMapExtractArray(dataElements, namespace);
+                    for (DataItem nameSpaceNameDataItem : dataElements.getAsMap().keySet()) {
+                        String nameSpaceName = nameSpaceNameDataItem.getAsTstr();
                         List<String> dataElemArray = new ArrayList<>();
-                        for (DataItem dataElementIdentifier : dataElemDataItem) {
-                            dataElemArray.add(Util.checkedStringValue(dataElementIdentifier));
+                        CborArray dataElementDataItems = (CborArray) dataElements.get(nameSpaceName);
+                        for (DataItem dataElementIdentifier: dataElementDataItems.getItems()) {
+                            dataElemArray.add(dataElementIdentifier.getAsTstr());
                         }
-
-                        mAuthorizedDataElements.put(namespace, dataElemArray);
+                        mAuthorizedDataElements.put(nameSpaceName, dataElemArray);
                     }
                 }
             }
 
             mDeviceKeyInfo = null;
-            if (Util.cborMapHasKey(deviceKeyInfo, "keyInfo")) {
+            if (deviceKeyInfo.getOrNull("keyInfo") != null) {
                 mDeviceKeyInfo = new HashMap<>();
-                DataItem keyInfo = Util.cborMapExtractMap(deviceKeyInfo, "keyInfo");
-                for (Long keyInfoKey : Util.cborMapExtractMapNumberKeys(keyInfo)) {
-                    mDeviceKeyInfo.put(keyInfoKey, Util.cborMapExtractByteString(keyInfo, keyInfoKey));
+                DataItem keyInfo = deviceKeyInfo.get("keyInfo");
+                for (DataItem keyInfoKeyDataItem : keyInfo.getAsMap().keySet()) {
+                    Long keyInfoKey = keyInfoKeyDataItem.getAsNumber();
+                    mDeviceKeyInfo.put(keyInfoKey, keyInfo.get(keyInfoKeyDataItem).getAsBstr());
                 }
             }
         }
 
         private void parseValidityInfo(DataItem validityInfo) {
-            mSigned = Util.cborMapExtractDateTime(validityInfo, "signed");
-            mValidFrom = Util.cborMapExtractDateTime(validityInfo, "validFrom");
-            mValidUntil = Util.cborMapExtractDateTime(validityInfo, "validUntil");
-            if (Util.cborMapHasKey(validityInfo, "expectedUpdate")) {
-                mExpectedUpdate = Util.cborMapExtractDateTime(validityInfo, "expectedUpdate");
+            mSigned = Timestamp.ofEpochMilli(validityInfo.get("signed").getAsDateTimeString().toEpochMilliseconds());
+            mValidFrom = Timestamp.ofEpochMilli(validityInfo.get("validFrom").getAsDateTimeString().toEpochMilliseconds());
+            mValidUntil = Timestamp.ofEpochMilli(validityInfo.get("validUntil").getAsDateTimeString().toEpochMilliseconds());
+            if (validityInfo.getOrNull("expectedUpdate") != null) {
+                mExpectedUpdate = Timestamp.ofEpochMilli(validityInfo.get("expectedUpdate").getAsDateTimeString().toEpochMilliseconds());
             } else {
                 mExpectedUpdate = null;
             }
@@ -313,24 +302,24 @@ public class MobileSecurityObjectParser {
         }
 
         void parse(byte[] encodedMobileSecurityObject) {
-            DataItem mso = Util.cborDecode(encodedMobileSecurityObject);
+            DataItem mso = Cbor.decode(encodedMobileSecurityObject);
 
-            mVersion = Util.cborMapExtractString(mso, "version");
+            mVersion = mso.get("version").getAsTstr();
             if (mVersion.compareTo("1.0") < 0) {
                 throw new IllegalArgumentException("Given version '" + mVersion + "' not >= '1.0'");
             }
 
-            mDigestAlgorithm = Util.cborMapExtractString(mso, "digestAlgorithm");
+            mDigestAlgorithm = mso.get("digestAlgorithm").getAsTstr();
             final List<String> allowableDigestAlgorithms = Arrays.asList("SHA-256", "SHA-384", "SHA-512");
             if (!allowableDigestAlgorithms.contains(mDigestAlgorithm)) {
                 throw new IllegalArgumentException("Given digest algorithm '" + mDigestAlgorithm +
                         "' one of " + allowableDigestAlgorithms);
             }
 
-            mDocType = Util.cborMapExtractString(mso, "docType");
-            parseValueDigests(Util.cborMapExtract(mso, "valueDigests"));
-            parseDeviceKeyInfo(Util.cborMapExtract(mso, "deviceKeyInfo"));
-            parseValidityInfo(Util.cborMapExtract(mso, "validityInfo"));
+            mDocType = mso.get("docType").getAsTstr();
+            parseValueDigests(mso.get("valueDigests"));
+            parseDeviceKeyInfo(mso.get("deviceKeyInfo"));
+            parseValidityInfo(mso.get("validityInfo"));
         }
     }
 

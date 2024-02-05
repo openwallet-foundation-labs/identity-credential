@@ -35,8 +35,8 @@ import co.nstant.`in`.cbor.model.Special
 import co.nstant.`in`.cbor.model.SpecialType
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
-import com.android.identity.securearea.Algorithm
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
@@ -67,7 +67,6 @@ import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
-import java.security.KeyStoreException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.security.NoSuchProviderException
@@ -75,7 +74,6 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Signature
 import java.security.SignatureException
-import java.security.UnrecoverableEntryException
 import java.security.cert.CertificateEncodingException
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
@@ -86,14 +84,11 @@ import java.security.spec.ECParameterSpec
 import java.security.spec.ECPoint
 import java.security.spec.ECPrivateKeySpec
 import java.security.spec.ECPublicKeySpec
-import java.security.spec.InvalidKeySpecException
-import java.security.spec.InvalidParameterSpecException
 import java.security.spec.X509EncodedKeySpec
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.text.ParseException
 import java.text.SimpleDateFormat
-import java.util.Arrays
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone

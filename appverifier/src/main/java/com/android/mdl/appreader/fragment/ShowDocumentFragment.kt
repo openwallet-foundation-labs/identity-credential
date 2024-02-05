@@ -18,6 +18,8 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.MdocDataElement
+import com.android.identity.crypto.javaPublicKey
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.securearea.SecureArea
@@ -31,6 +33,7 @@ import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import java.security.MessageDigest
+import java.security.cert.X509Certificate
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -206,7 +209,9 @@ class ShowDocumentFragment : Fragment() {
 
         for (doc in documents) {
             sb.append("<h3>Doctype: <font color=\"$primaryColor\">${doc.docType}</font></h3>")
-            var certChain = doc.issuerCertificateChain.toList()
+            val cc = mutableListOf<X509Certificate>()
+            doc.issuerCertificateChain.certificates.forEach() { c -> cc.add(c.javaX509Certificate) }
+            var certChain: List<X509Certificate> = cc
             val customValidators = CustomValidators.getByDocType(doc.docType)
             val result = VerifierApp.trustManagerInstance.verify(
                 chain = certChain,
@@ -249,9 +254,9 @@ class ShowDocumentFragment : Fragment() {
             // Just show the SHA-1 of DeviceKey since all we're interested in here is whether
             // we saw the same key earlier.
             sb.append("<h6>DeviceKey</h6>")
-            sb.append("${getFormattedCheck(true)}Curve: <b>${doc.deviceKeyCurve}</b><br>")
+            sb.append("${getFormattedCheck(true)}Curve: <b>${doc.deviceKey.curve}</b><br>")
             val deviceKeySha1 = FormatUtil.encodeToString(
-                MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.encoded)
+                MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.javaPublicKey.encoded)
             )
             sb.append("${getFormattedCheck(true)}SHA-1: ${deviceKeySha1}<br>")
             // TODO: log DeviceKey's that we've seen and show warning if a DeviceKey is seen

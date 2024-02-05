@@ -20,39 +20,27 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.content.Context;
 import android.icu.util.Calendar;
-import android.os.Build;
-import android.security.keystore.KeyInfo;
-import android.security.keystore.KeyProperties;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
 
 import androidx.annotation.NonNull;
 
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
+import com.android.identity.crypto.EcPublicKeyKt;
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator;
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
 
-import java.io.IOException;
-import java.security.KeyFactory;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
-import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -153,8 +141,7 @@ public class Utility {
                     new MobileSecurityObjectGenerator(
                             "SHA-256",
                             docType,
-                            authKey,
-                            EcCurve.P256)
+                            EcPublicKeyKt.toEcPublicKey(authKey, EcCurve.P256))
                             .setValidityInfo(signedDate, validFromDate, validToDate, null);
 
             Random r = new SecureRandom();

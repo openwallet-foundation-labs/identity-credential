@@ -1,7 +1,7 @@
 package com.android.identity.issuance
 
-import co.nstant.`in`.cbor.CborBuilder
-import com.android.identity.internal.Util
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
 
 /**
  * The state of a credential, as seen from the issuer's point of view.
@@ -35,25 +35,24 @@ data class CredentialState(
     ) {
     companion object {
         fun fromCbor(encodedData: ByteArray): CredentialState {
-            val map = Util.cborDecode(encodedData)
+            val map = Cbor.decode(encodedData)
             return CredentialState(
-                Util.cborMapExtractNumber(map, "timestamp"),
-                CredentialCondition.fromInt(Util.cborMapExtractNumber(map, "condition").toInt()),
-                Util.cborMapExtractNumber(map, "numPendingCPO").toInt(),
-                Util.cborMapExtractNumber(map, "numAvailableCPO").toInt(),
+                map["timestamp"].asNumber,
+                CredentialCondition.fromInt(map["condition"].asNumber.toInt()),
+                map["numPendingCPO"].asNumber.toInt(),
+                map["numAvailableCPO"].asNumber.toInt()
             )
         }
     }
 
     fun toCbor(): ByteArray {
-        return Util.cborEncode(
-            CborBuilder()
-                .addMap()
+        return Cbor.encode(
+            CborMap.builder()
                 .put("timestamp", timestamp)
-                .put("condition", condition.value.toLong())
-                .put("numPendingCPO", numPendingCPO.toLong())
-                .put("numAvailableCPO", numAvailableCPO.toLong())
+                .put("condition", condition.value)
+                .put("numPendingCPO", numPendingCPO)
+                .put("numAvailableCPO", numAvailableCPO)
                 .end()
-                .build().get(0))
+                .build())
     }
 }

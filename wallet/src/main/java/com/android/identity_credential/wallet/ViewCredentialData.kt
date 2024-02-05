@@ -1,15 +1,18 @@
 package com.android.identity_credential.wallet
 
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.RawCbor
 import com.android.identity.credential.Credential
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.credentialtype.MdocCredentialType
 import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.credentialtype.knowntypes.DrivingLicense
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
-import com.android.identity.util.CborUtil
+import com.android.identity.util.Logger
+
+const val TAG = "ViewCredentialData"
 
 /**
  * A class containing information (mainly PII) about a credential.
@@ -29,30 +32,36 @@ data class ViewCredentialDataSection(
 
 // TODO: Maybe move to MdocDataElement
 private fun renderMdocDataElement(mdocDataElement: MdocDataElement?, value: ByteArray): String {
-    return when (mdocDataElement?.attribute?.type) {
-        is CredentialAttributeType.STRING,
-        is CredentialAttributeType.DATE,
-        is CredentialAttributeType.DATE_TIME -> Util.cborDecodeString(value)
+    val item = Cbor.decode(value)
+    try {
+        return when (mdocDataElement?.attribute?.type) {
+            is CredentialAttributeType.STRING -> item.asTstr
+            /* is CredentialAttributeType.DATE -> TODO */
+            is CredentialAttributeType.DATE_TIME -> item.asDateTimeString.toString()
 
-        is CredentialAttributeType.NUMBER -> Util.cborDecodeLong(value).toString()
-        is CredentialAttributeType.PICTURE -> String.format("%d bytes", value.size)
-        is CredentialAttributeType.BOOLEAN -> Util.cborDecodeBoolean(value).toString()
-        is CredentialAttributeType.COMPLEX_TYPE -> CborUtil.toDiagnostics(value)
-        is CredentialAttributeType.StringOptions -> {
-            val key = Util.cborDecodeString(value)
-            val options =
-                (mdocDataElement.attribute.type as CredentialAttributeType.StringOptions).options
-            return options.find { it.value.equals(key) }?.displayName?: key
+            is CredentialAttributeType.NUMBER -> item.asNumber.toString()
+            is CredentialAttributeType.PICTURE -> "${value.size} bytes"
+            is CredentialAttributeType.BOOLEAN -> item.asBoolean.toString()
+            is CredentialAttributeType.COMPLEX_TYPE -> Cbor.toDiagnostics(value)
+            is CredentialAttributeType.StringOptions -> {
+                val key = item.asTstr
+                val options =
+                    (mdocDataElement.attribute.type as CredentialAttributeType.StringOptions).options
+                return options.find { it.value.equals(key) }?.displayName ?: key
+            }
+
+            is CredentialAttributeType.IntegerOptions -> {
+                val key = item.asNumber
+                val options =
+                    (mdocDataElement.attribute.type as CredentialAttributeType.IntegerOptions).options
+                return options.find { it.value?.toLong() == key }?.displayName ?: key.toString()
+            }
+
+            else -> Cbor.toDiagnostics(value)
         }
-
-        is CredentialAttributeType.IntegerOptions -> {
-            val key = Util.cborDecodeLong(value)
-            val options =
-                (mdocDataElement.attribute.type as CredentialAttributeType.IntegerOptions).options
-            return options.find { it.value?.toLong() == key }?.displayName?: key.toString()
-        }
-
-        else -> CborUtil.toDiagnostics(value)
+    } catch (e: Exception) {
+        Logger.w(TAG, "Error rendering data element $item", e)
+        return Cbor.toDiagnostics(item)
     }
 }
 
@@ -72,11 +81,11 @@ private fun visitNamespace(
     var signatureOrUsualMark: ByteArray? = null
     val keysAndValues: MutableMap<String, String> = LinkedHashMap()
     for (encodedIssuerSignedItemBytes in listOfEncodedIssuerSignedItemBytes) {
-        val encodedIssuerSignedItem = Util.cborExtractTaggedCbor(encodedIssuerSignedItemBytes)
-        val map = Util.cborDecode(encodedIssuerSignedItem)
-        val elementIdentifier = Util.cborMapExtractString(map, "elementIdentifier")
-        val elementValue = Util.cborMapExtract(map, "elementValue")
-        val encodedElementValue = Util.cborEncode(elementValue)
+        val issuerSignedItemBytes = Cbor.decode(encodedIssuerSignedItemBytes)
+        val issuerSignedItem = issuerSignedItemBytes.asTaggedEncodedCbor
+        val elementIdentifier = issuerSignedItem["elementIdentifier"].asTstr
+        val elementValue = issuerSignedItem["elementValue"]
+        val encodedElementValue = Cbor.encode(elementValue)
 
         val mdocDataElement = mdocCredentialType?.namespaces?.get(namespaceName)?.dataElements?.get(elementIdentifier)
 
@@ -85,11 +94,11 @@ private fun visitNamespace(
             namespaceName == DrivingLicense.MDL_NAMESPACE) {
             when (mdocDataElement.attribute.identifier) {
                 "portrait" -> {
-                    portrait = Util.cborDecodeByteString(encodedElementValue)
+                    portrait = elementValue.asBstr
                     continue
                 }
                 "signature_usual_mark" -> {
-                    signatureOrUsualMark = Util.cborDecodeByteString(encodedElementValue)
+                    signatureOrUsualMark = elementValue.asBstr
                     continue
                 }
             }
@@ -117,8 +126,10 @@ fun Credential.getViewCredentialData(
     var signatureOrUsualMark: ByteArray? = null
 
     val credentialData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
-    val encodedMsoBytes = Util.cborDecode(Util.coseSign1GetData(Util.cborDecode(credentialData.issuerAuth)))
-    val encodedMso = Util.cborEncode(Util.cborExtractTaggedAndEncodedCbor(encodedMsoBytes))
+    val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
+    val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
+    val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
+
     val mso = MobileSecurityObjectParser().setMobileSecurityObject(encodedMso).parse()
 
     var mdocCredentialType = credentialTypeRepository.getMdocCredentialType(mso.docType)

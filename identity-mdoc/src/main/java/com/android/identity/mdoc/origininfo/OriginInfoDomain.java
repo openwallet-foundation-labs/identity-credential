@@ -19,11 +19,8 @@ package com.android.identity.mdoc.origininfo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.internal.Util;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.Map;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
 
 public class OriginInfoDomain extends OriginInfo {
     private static final String TAG = "OriginInfoDomain";
@@ -42,31 +39,23 @@ public class OriginInfoDomain extends OriginInfo {
     @NonNull
     @Override
     public DataItem encode() {
-        return new CborBuilder()
-                .addMap()
+        return CborMap.Companion.builder()
                 .put("cat", CAT)
                 .put("type", TYPE)
                 .putMap("details").put("domain", mUrl).end()
-                .end().build().get(0);
+                .end().build();
     }
 
     @Nullable
     public static OriginInfoDomain decode(@NonNull DataItem oiDataItem) {
-        if (!(oiDataItem instanceof Map)) {
-            throw new IllegalArgumentException("Top-level CBOR is not an map");
-        }
-        long cat = Util.cborMapExtractNumber(oiDataItem, "cat");
-        int type = (int) Util.cborMapExtractNumber(oiDataItem, "type");
+        long cat = oiDataItem.get("cat").getAsNumber();
+        long type = oiDataItem.get("type").getAsNumber();
         if (!(cat == 1 && type == 1)) {
             throw new IllegalArgumentException(String.format("This CBOR object has the wrong " +
                     "category or type. Expected cat = 1, type = 1 for baseURL type but got " +
                     "cat = %d, type = %d", cat, type));
         }
-        DataItem details = Util.cborMapExtractMap(oiDataItem, "details");
-        if (!Util.cborMapExtractMapStringKeys(details).contains("domain")) {
-            throw new IllegalArgumentException("Details does not contain \"domain\" key");
-        }
-        String url = Util.cborMapExtractString(details, "domain");
-        return new OriginInfoDomain(url);
+        DataItem details = oiDataItem.get("details");
+        return new OriginInfoDomain(details.get("domain").getAsTstr());
     }
 }

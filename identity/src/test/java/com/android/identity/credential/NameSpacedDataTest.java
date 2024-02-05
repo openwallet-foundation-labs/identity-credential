@@ -18,10 +18,13 @@ package com.android.identity.credential;
 
 import androidx.annotation.NonNull;
 
-import com.android.identity.util.CborUtil;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DiagnosticOption;
 
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.Set;
 
 public class NameSpacedDataTest {
 
@@ -85,10 +88,11 @@ public class NameSpacedDataTest {
                         "    \"false\": 24(<< false >>)\n" +
                         "  }\n" +
                         "}",
-                CborUtil.toDiagnostics(asCbor,
-                        CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT
-                                | CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR));
-
+                Cbor.toDiagnostics(
+                        asCbor,
+                        Set.of(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+                )
+        );
         checkNameSpaced(nameSpacedData);
 
         NameSpacedData decoded = NameSpacedData.fromEncodedCbor(asCbor);

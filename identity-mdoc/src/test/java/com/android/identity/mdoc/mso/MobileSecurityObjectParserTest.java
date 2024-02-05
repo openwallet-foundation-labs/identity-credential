@@ -16,6 +16,12 @@
 
 package com.android.identity.mdoc.mso;
 
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cose.CoseSign1;
+import com.android.identity.crypto.EcCurve;
+import com.android.identity.crypto.EcPublicKey;
+import com.android.identity.crypto.EcPublicKeyKt;
 import com.android.identity.mdoc.TestVectors;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
@@ -24,12 +30,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.math.BigInteger;
-import java.security.PublicKey;
 import java.security.cert.CertificateEncodingException;
 import java.util.Map;
 import java.util.Set;
 
-import co.nstant.in.cbor.model.DataItem;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -38,19 +42,16 @@ public class MobileSecurityObjectParserTest {
 
     @Test
     public void testMSOParserWithVectors() throws CertificateEncodingException {
-        DataItem deviceResponse = Util.cborDecode(Util.fromHex(
-                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE));
-        DataItem documentDataItem = Util.cborMapExtractArray(deviceResponse,
-                "documents").get(0);
+        DataItem deviceResponse = Cbor.decode(Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE));
+        DataItem documentDataItem = deviceResponse.get("documents").get(0);
 
-        DataItem issuerSigned = Util.cborMapExtractMap(documentDataItem, "issuerSigned");
-        DataItem issuerAuthDataItem = Util.cborMapExtract(issuerSigned, "issuerAuth");
+        DataItem issuerSigned = documentDataItem.get("issuerSigned");
+        DataItem issuerAuthDataItem = issuerSigned.get("issuerAuth");
+        CoseSign1 issuerAuth = issuerAuthDataItem.getAsCoseSign1();
 
-        DataItem mobileSecurityObjectBytes = Util.cborDecode(
-                Util.coseSign1GetData(issuerAuthDataItem));
-        DataItem mobileSecurityObject = Util.cborExtractTaggedAndEncodedCbor(
-                mobileSecurityObjectBytes);
-        byte[] encodedMobileSecurityObject = Util.cborEncode(mobileSecurityObject);
+        DataItem mobileSecurityObjectBytes = Cbor.decode(issuerAuth.getPayload());
+        DataItem mobileSecurityObject = mobileSecurityObjectBytes.getAsTaggedEncodedCbor();
+        byte[] encodedMobileSecurityObject = Cbor.encode(mobileSecurityObject);
 
         // the response above and all the following constants are from ISO 18013-5 D.4.1.2 mdoc
         // response - the goal is to check that the parser returns the expected values
@@ -104,9 +105,11 @@ public class MobileSecurityObjectParserTest {
         Assert.assertEquals("C343AF1BD1690715439161ABA73702C474ABF992B20C9FB55C36A336EBE01A87"
                 .toLowerCase(), Util.toHex(isoUSDigestIDs.get(3L)));
 
-        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        EcPublicKey deviceKeyFromVector = EcPublicKeyKt.toEcPublicKey(
+                Util.getPublicKeyFromIntegers(
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16)),
+                EcCurve.P256);
         Assert.assertEquals(deviceKeyFromVector, mso.getDeviceKey());
         Assert.assertNull(mso.getDeviceKeyAuthorizedNameSpaces());
         Assert.assertNull(mso.getDeviceKeyAuthorizedDataElements());

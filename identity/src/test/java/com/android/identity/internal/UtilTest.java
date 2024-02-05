@@ -25,8 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 import androidx.annotation.NonNull;
 
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.util.Timestamp;
 
 import org.bouncycastle.asn1.x500.X500Name;
@@ -42,7 +41,6 @@ import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;

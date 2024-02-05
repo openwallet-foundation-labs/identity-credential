@@ -80,12 +80,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.fragment.app.FragmentActivity
+import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
+import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.storage.AndroidStorageEngine
-import com.android.identity.internal.Util
 import com.android.identity.secure_area_test_app.ui.theme.IdentityCredentialTheme
-import com.android.identity.securearea.Algorithm
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
@@ -95,13 +101,12 @@ import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import kotlinx.datetime.Clock
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
-import java.security.PrivateKey
 import java.security.Security
-import java.security.cert.X509Certificate
-import java.time.Instant
 import java.util.concurrent.Executors
+import kotlin.time.Duration.Companion.days
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity :  FragmentActivity() {
@@ -122,9 +127,10 @@ class MainActivity :  FragmentActivity() {
 
     private lateinit var sharedPreferences: SharedPreferences
 
-    private lateinit var softwareAttestationKey: PrivateKey
-    private lateinit var softwareAttestationKeySignatureAlgorithm: String
-    private lateinit var softwareAttestationKeyCertification: List<X509Certificate>
+    private lateinit var softwareAttestationKey: EcPrivateKey
+    private lateinit var softwareAttestationKeySignatureAlgorithm: Algorithm
+    private lateinit var softwareAttestationKeyIssuer: String
+    private lateinit var softwareAttestationKeyCertification: CertificateChain
 
     private fun initSoftwareAttestationKey() {
         val secureArea = SoftwareSecureArea(EphemeralStorageEngine())
@@ -141,9 +147,24 @@ class MainActivity :  FragmentActivity() {
                 )
                 .build()
         )
-        softwareAttestationKey = secureArea.getPrivateKey("SoftwareAttestationRoot", null)
-        softwareAttestationKeySignatureAlgorithm = "SHA256withECDSA"
-        softwareAttestationKeyCertification = secureArea.getKeyInfo("SoftwareAttestationRoot").attestation
+        val validFrom = Clock.System.now()
+        val validUntil = validFrom + 100.days
+        softwareAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        softwareAttestationKeySignatureAlgorithm = Algorithm.ES256
+        softwareAttestationKeyIssuer = "CN=Software Attestation Root"
+        softwareAttestationKeyCertification = CertificateChain(
+            listOf(Crypto.createX509v3Certificate(
+                softwareAttestationKey.publicKey,
+                softwareAttestationKey,
+                Algorithm.ES256,
+                "1",
+                "CN=Software Attestation Root",
+                "CN=Software Attestation Root",
+                validFrom,
+                validUntil,
+                emptyList<Crypto.X509v3Extension>()
+            ))
+        )
     }
 
     private fun getFeatureVersionKeystore(appContext: Context, useStrongbox: Boolean): Int {
@@ -233,7 +254,7 @@ class MainActivity :  FragmentActivity() {
             )
             {
                 val showCapabilitiesDialog = remember { mutableStateOf<AndroidKeystoreSecureArea.Capabilities?>(null) }
-                val showCertificateDialog = remember { mutableStateOf<List<X509Certificate>>(ArrayList()) }
+                val showCertificateDialog = remember { mutableStateOf<CertificateChain?>(null) }
                 val swShowPassphraseDialog = remember { mutableStateOf<swPassphraseTestConfiguration?>(null) }
 
                 if (showCapabilitiesDialog.value != null) {
@@ -244,10 +265,10 @@ class MainActivity :  FragmentActivity() {
                         })
                 }
 
-                if (showCertificateDialog.value.size > 0) {
-                    ShowCertificateDialog(showCertificateDialog.value,
+                if (showCertificateDialog.value != null) {
+                    ShowCertificateDialog(showCertificateDialog.value!!,
                         onDismissRequest = {
-                            showCertificateDialog.value = ArrayList()
+                            showCertificateDialog.value = null
                         })
                 }
 
@@ -359,11 +380,11 @@ class MainActivity :  FragmentActivity() {
                                     continue
                                 }
 
-                                val AUTH_NONE = 0
-                                val AUTH_LSKF_OR_BIOMETRIC = AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC +
-                                        AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
-                                val AUTH_LSKF_ONLY = AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
-                                val AUTH_BIOMETRIC_ONLY = AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC
+                                val AUTH_NONE = setOf<UserAuthenticationType>()
+                                val AUTH_LSKF_OR_BIOMETRIC = setOf(UserAuthenticationType.LSKF,
+                                    UserAuthenticationType.BIOMETRIC)
+                                val AUTH_LSKF_ONLY = setOf(UserAuthenticationType.LSKF)
+                                val AUTH_BIOMETRIC_ONLY = setOf(UserAuthenticationType.BIOMETRIC)
                                 for ((userAuthType, authTimeout, authDesc) in arrayOf(
                                     Triple(AUTH_NONE, 0L, ""),
                                     Triple(AUTH_LSKF_OR_BIOMETRIC, 0L, "- Auth"),
@@ -614,10 +635,10 @@ class MainActivity :  FragmentActivity() {
     }
 
     @Composable
-    fun ShowCertificateDialog(attestation: List<X509Certificate>,
+    fun ShowCertificateDialog(attestation: CertificateChain,
                               onDismissRequest: () -> Unit) {
         var certNumber by rememberSaveable() { mutableStateOf(0) }
-        if (certNumber < 0 || certNumber >= attestation.size) {
+        if (certNumber < 0 || certNumber >= attestation.certificates.size) {
             certNumber = 0
         }
         Dialog(onDismissRequest = { onDismissRequest() }) {
@@ -640,7 +661,7 @@ class MainActivity :  FragmentActivity() {
                     )
                     Row() {
                         Text(
-                            text = "Certificate ${certNumber + 1} of ${attestation.size}",
+                            text = "Certificate ${certNumber + 1} of ${attestation.certificates.size}",
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Start,
                             style = MaterialTheme.typography.bodyLarge,
@@ -654,7 +675,7 @@ class MainActivity :  FragmentActivity() {
                             Icon(Icons.Filled.ArrowBack, "Back")
                         }
                         IconButton(
-                            enabled = (certNumber < attestation.size - 1),
+                            enabled = (certNumber < attestation.certificates.size - 1),
                             onClick = {
                                 certNumber += 1
                             }) {
@@ -667,7 +688,8 @@ class MainActivity :  FragmentActivity() {
                             .verticalScroll(rememberScrollState())
                     ) {
                         Text(
-                            text = styledX509CertificateText(attestation[certNumber].toString()),
+                            text = styledX509CertificateText(
+                                attestation.certificates[certNumber].javaX509Certificate.toString()),
                             //text = attestation[certNumber].toString(),
                             modifier = Modifier.padding(8.dp),
                             textAlign = TextAlign.Start,
@@ -800,37 +822,21 @@ class MainActivity :  FragmentActivity() {
         }
     }
 
-    private fun getNaturalAlgorithmForCurve(ecCurve: EcCurve): Algorithm {
-        return when (ecCurve) {
-            EcCurve.P256 -> Algorithm.ES256
-            EcCurve.P384 -> Algorithm.ES384
-            EcCurve.P521 -> Algorithm.ES512
-            EcCurve.BRAINPOOLP256R1 -> Algorithm.ES256
-            EcCurve.BRAINPOOLP320R1 -> Algorithm.ES384
-            EcCurve.BRAINPOOLP384R1 -> Algorithm.ES384
-            EcCurve.BRAINPOOLP512R1 -> Algorithm.ES512
-            EcCurve.ED25519 -> Algorithm.EDDSA
-            EcCurve.ED448 -> Algorithm.EDDSA
-            else -> {throw IllegalStateException("Unexpected curve " + ecCurve)}
-        }
-    }
-
-    private fun aksAttestation(strongBox: Boolean): List<X509Certificate> {
-        val now = Instant.now().toEpochMilli()
-        val thirtyDaysFromNow = Instant.now().toEpochMilli() + 30*24*3600*1000L
+    private fun aksAttestation(strongBox: Boolean): CertificateChain {
+        val now = Clock.System.now()
+        val thirtyDaysFromNow = now + 30.days
         androidKeystoreSecureArea.createKey(
             "testKey",
-            AndroidKeystoreSecureArea.CreateKeySettings.Builder("Challenge".toByteArray())
+            AndroidKeystoreCreateKeySettings.Builder("Challenge".toByteArray())
                 .setUserAuthenticationRequired(
                     true, 10*1000,
-                    AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC +
-                            AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
+                    setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
                 )
-                .setValidityPeriod(Timestamp.ofEpochMilli(now), Timestamp.ofEpochMilli(thirtyDaysFromNow))
+                .setValidityPeriod(Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
+                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()))
                 .setUseStrongBox(strongBox)
                 .build()
         )
-        Logger.dHex(TAG, "encodedLeaf", androidKeystoreSecureArea.getKeyInfo("testKey").attestation[0].encoded)
         return androidKeystoreSecureArea.getKeyInfo("testKey").attestation
     }
 
@@ -839,7 +845,7 @@ class MainActivity :  FragmentActivity() {
         curve: EcCurve,
         authRequired: Boolean,
         authTimeoutMillis: Long,
-        userAuthType: Int,
+        userAuthType: Set<UserAuthenticationType>,
         biometricConfirmationRequired: Boolean,
         strongBox: Boolean) {
         Logger.d(
@@ -862,13 +868,13 @@ class MainActivity :  FragmentActivity() {
         curve: EcCurve,
         authRequired: Boolean,
         authTimeoutMillis: Long,
-        userAuthType: Int,
+        userAuthType: Set<UserAuthenticationType>,
         biometricConfirmationRequired: Boolean,
         strongBox: Boolean) {
 
         androidKeystoreSecureArea.createKey(
             "testKey",
-            AndroidKeystoreSecureArea.CreateKeySettings.Builder("Challenge".toByteArray())
+            AndroidKeystoreCreateKeySettings.Builder("Challenge".toByteArray())
                 .setKeyPurposes(setOf(keyPurpose))
                 .setUserAuthenticationRequired(
                     authRequired, authTimeoutMillis, userAuthType)
@@ -876,11 +882,8 @@ class MainActivity :  FragmentActivity() {
                 .build()
         )
 
-        val keyInfo = androidKeystoreSecureArea.getKeyInfo("testKey")
-        val publicKey = keyInfo.attestation.first().publicKey
-
         if (keyPurpose == KeyPurpose.SIGN) {
-            val signingAlgorithm = getNaturalAlgorithmForCurve(curve)
+            val signingAlgorithm = curve.defaultSigningAlgorithm
             val dataToSign = "data".toByteArray()
             try {
                 val t0 = System.currentTimeMillis()
@@ -900,7 +903,7 @@ class MainActivity :  FragmentActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             } catch (e: KeyLockedException) {
-                val unlockData = AndroidKeystoreSecureArea.KeyUnlockData("testKey")
+                val unlockData = AndroidKeystoreKeyUnlockData("testKey")
                 doUserAuth(
                     "Unlock to sign with key",
                     unlockData.getCryptoObjectForSigning(Algorithm.ES256),
@@ -934,12 +937,12 @@ class MainActivity :  FragmentActivity() {
                     })
             }
         } else {
-            val otherKeyPairForEcdh = Util.createEphemeralKeyPair(curve)
+            val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
             try {
                 val t0 = System.currentTimeMillis()
                 val Zab = androidKeystoreSecureArea.keyAgreement(
                     "testKey",
-                    otherKeyPairForEcdh.public,
+                    otherKeyPairForEcdh.publicKey,
                     null)
                 val t1 = System.currentTimeMillis()
                 Logger.dHex(
@@ -949,7 +952,7 @@ class MainActivity :  FragmentActivity() {
                 Toast.makeText(applicationContext, "ECDH w/o authn (${t1 - t0} msec)",
                     Toast.LENGTH_SHORT).show()
             } catch (e: KeyLockedException) {
-                val unlockData = AndroidKeystoreSecureArea.KeyUnlockData("testKey")
+                val unlockData = AndroidKeystoreKeyUnlockData("testKey")
                 doUserAuth(
                     "Unlock to ECDH with key",
                     unlockData.cryptoObjectForKeyAgreement,
@@ -960,7 +963,7 @@ class MainActivity :  FragmentActivity() {
                         val t0 = System.currentTimeMillis()
                         val Zab = androidKeystoreSecureArea.keyAgreement(
                             "testKey",
-                            otherKeyPairForEcdh.public,
+                            otherKeyPairForEcdh.publicKey,
                             unlockData)
                         val t1 = System.currentTimeMillis()
                         Logger.dHex(
@@ -983,15 +986,17 @@ class MainActivity :  FragmentActivity() {
 
     // ----
 
-    private fun swAttestation(): List<X509Certificate> {
-        val now = Instant.now().toEpochMilli()
-        val thirtyDaysFromNow = Instant.now().toEpochMilli() + 30*24*3600*1000L
+    private fun swAttestation(): CertificateChain {
+        val now = Clock.System.now()
+        val thirtyDaysFromNow = now + 30.days
         softwareSecureArea.createKey(
             "testKey",
             SoftwareCreateKeySettings.Builder("Challenge".toByteArray())
-                .setValidityPeriod(Timestamp.ofEpochMilli(now), Timestamp.ofEpochMilli(thirtyDaysFromNow))
+                .setValidityPeriod(Timestamp.ofEpochMilli(now.toEpochMilliseconds()),
+                    Timestamp.ofEpochMilli(thirtyDaysFromNow.toEpochMilliseconds()))
                 .setAttestationKey(softwareAttestationKey,
                     softwareAttestationKeySignatureAlgorithm,
+                    softwareAttestationKeyIssuer,
                     softwareAttestationKeyCertification)
                 .build()
         )
@@ -1027,14 +1032,12 @@ class MainActivity :  FragmentActivity() {
             .setKeyPurposes(setOf(keyPurpose))
             .setAttestationKey(softwareAttestationKey,
                 softwareAttestationKeySignatureAlgorithm,
+                softwareAttestationKeyIssuer,
                 softwareAttestationKeyCertification)
         if (passphrase != null) {
             builder.setPassphraseRequired(true, passphrase)
         }
         softwareSecureArea.createKey("testKey", builder.build())
-
-        val keyInfo = softwareSecureArea.getKeyInfo("testKey")
-        val publicKey = keyInfo.attestation.first().publicKey
 
         var unlockData: KeyUnlockData? = null
         if (passphraseEnteredByUser != null) {
@@ -1042,7 +1045,7 @@ class MainActivity :  FragmentActivity() {
         }
 
         if (keyPurpose == KeyPurpose.SIGN) {
-            val signingAlgorithm = getNaturalAlgorithmForCurve(curve)
+            val signingAlgorithm = curve.defaultSigningAlgorithm
             try {
                 val t0 = System.currentTimeMillis()
                 val derSignature = softwareSecureArea.sign(
@@ -1066,12 +1069,12 @@ class MainActivity :  FragmentActivity() {
                 ).show()
             }
         } else {
-            val otherKeyPairForEcdh = Util.createEphemeralKeyPair(curve)
+            val otherKeyPairForEcdh = Crypto.createEcPrivateKey(curve)
             try {
                 val t0 = System.currentTimeMillis()
                 val Zab = softwareSecureArea.keyAgreement(
                     "testKey",
-                    otherKeyPairForEcdh.public,
+                    otherKeyPairForEcdh.publicKey,
                     unlockData)
                 val t1 = System.currentTimeMillis()
                 Logger.dHex(

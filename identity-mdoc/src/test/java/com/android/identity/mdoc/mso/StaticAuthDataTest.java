@@ -16,7 +16,14 @@
 
 package com.android.identity.mdoc.mso;
 
-import com.android.identity.util.CborUtil;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborArray;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.DiagnosticOption;
+import com.android.identity.cbor.Simple;
+import com.android.identity.cbor.Tagged;
 import com.android.identity.internal.Util;
 
 import org.junit.Assert;
@@ -26,51 +33,44 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.SimpleValue;
-import co.nstant.in.cbor.model.UnicodeString;
+import java.util.Set;
 
 @SuppressWarnings("deprecation")
 public class StaticAuthDataTest {
 
     private Map<String, List<byte[]>> createValidDigestIdMapping() {
-        DataItem issuerSignedItemMetadata = new CborBuilder()
-                .addMap()
+        DataItem issuerSignedItemMetadata = CborMap.Companion.builder()
                 .put("random", new byte[] {0x50, 0x51, 0x52})
                 .put("digestID", 42)
                 .put("elementIdentifier", "dataElementName")
-                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
+                .put("elementValue", Simple.Companion.getNULL())
                 .end()
-                .build().get(0);
+                .build();
         DataItem isiMetadataBytes =
-                Util.cborBuildTaggedByteString(Util.cborEncode(issuerSignedItemMetadata));
-        byte[] encodedIsiMetadataBytes = Util.cborEncode(isiMetadataBytes);
+                new Tagged(24, new Bstr(Cbor.encode(issuerSignedItemMetadata)));
+        byte[] encodedIsiMetadataBytes = Cbor.encode(isiMetadataBytes);
 
-        DataItem issuerSignedItemMetadata2 = new CborBuilder()
-                .addMap()
+        DataItem issuerSignedItemMetadata2 = CborMap.Companion.builder()
                 .put("digestID", 43)
                 .put("random", new byte[] {0x53, 0x54, 0x55})
                 .put("elementIdentifier", "dataElementName2")
-                .put(new UnicodeString("elementValue"), SimpleValue.NULL)
+                .put("elementValue", Simple.Companion.getNULL())
                 .end()
-                .build().get(0);
+                .build();
         DataItem isiMetadata2Bytes =
-                Util.cborBuildTaggedByteString(Util.cborEncode(issuerSignedItemMetadata2));
-        byte[] encodedIsiMetadata2Bytes = Util.cborEncode(isiMetadata2Bytes);
+                new Tagged(24, new Bstr(Cbor.encode(issuerSignedItemMetadata2)));
+        byte[] encodedIsiMetadata2Bytes = Cbor.encode(isiMetadata2Bytes);
 
-        DataItem issuerSignedItemMetadata3 = new CborBuilder()
-                .addMap()
+        DataItem issuerSignedItemMetadata3 = CborMap.Companion.builder()
                 .put("digestID", 44)
                 .put("random", new byte[] {0x53, 0x54, 0x55})
                 .put("elementIdentifier", "portrait")
-                .put("elementValue", Util.cborEncodeBytestring(new byte[] {0x20, 0x21, 0x22, 0x23}))
+                .put("elementValue", Cbor.encode(new Bstr(new byte[] {0x20, 0x21, 0x22, 0x23})))
                 .end()
-                .build().get(0);
+                .build();
         DataItem isiMetadata3Bytes =
-                Util.cborBuildTaggedByteString(Util.cborEncode(issuerSignedItemMetadata3));
-        byte[] encodedIsiMetadata3Bytes = Util.cborEncode(isiMetadata3Bytes);
+                new Tagged(24, new Bstr(Cbor.encode(issuerSignedItemMetadata3)));
+        byte[] encodedIsiMetadata3Bytes = Cbor.encode(isiMetadata3Bytes);
 
         Map<String, List<byte[]>> issuerSignedMapping = new HashMap<>();
         issuerSignedMapping.put("org.namespace",
@@ -81,14 +81,13 @@ public class StaticAuthDataTest {
     }
 
     private byte[] createValidIssuerAuth() {
-        byte[] encodedIssuerAuth = Util.cborEncode(new CborBuilder()
-                .addArray()
+        byte[] encodedIssuerAuth = Cbor.encode(CborArray.Companion.builder()
                 .addArray()
                 .end()
-                .add(SimpleValue.NULL)
+                .add(Simple.Companion.getNULL())
                 .add(new byte[] {0x01, 0x02})
                 .end()
-                .build().get(0));
+                .build());
         return encodedIssuerAuth;
     }
 
@@ -135,9 +134,9 @@ public class StaticAuthDataTest {
                         "    h'0102'\n" +
                         "  ]\n" +
                         "}",
-                CborUtil.toDiagnostics(
+                Cbor.toDiagnostics(
                         staticAuthData,
-                        CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR + CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT));
+                        Set.of(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)));
 
         // Now check we can decode it
         StaticAuthDataParser.StaticAuthData decodedStaticAuthData = new StaticAuthDataParser(staticAuthData).parse();
@@ -156,8 +155,9 @@ public class StaticAuthDataTest {
                         "  \"elementIdentifier\": \"dataElementName\",\n" +
                         "  \"elementValue\": null\n" +
                         "} >>)",
-                CborUtil.toDiagnostics(list.get(0), CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT
-                        + CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR));
+                Cbor.toDiagnostics(
+                        list.get(0),
+                        Set.of(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)));
         Assert.assertEquals(
                 "24(<< {\n" +
                         "  \"digestID\": 43,\n" +
@@ -165,8 +165,9 @@ public class StaticAuthDataTest {
                         "  \"elementIdentifier\": \"dataElementName2\",\n" +
                         "  \"elementValue\": null\n" +
                         "} >>)",
-                CborUtil.toDiagnostics(list.get(1), CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT
-                        + CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR));
+                Cbor.toDiagnostics(
+                        list.get(1),
+                        Set.of(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)));
 
         byte[] issuerAuth = decodedStaticAuthData.getIssuerAuth();
         Assert.assertArrayEquals(encodedIssuerAuth, issuerAuth);

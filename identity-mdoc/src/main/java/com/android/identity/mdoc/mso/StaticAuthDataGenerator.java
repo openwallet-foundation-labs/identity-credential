@@ -18,19 +18,18 @@ package com.android.identity.mdoc.mso;
 
 import androidx.annotation.NonNull;
 
+import com.android.identity.cbor.ArrayBuilder;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborBuilder;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.MapBuilder;
+import com.android.identity.cbor.RawCbor;
 import com.android.identity.internal.Util;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.SimpleValue;
-import co.nstant.in.cbor.model.SimpleValueType;
-import co.nstant.in.cbor.model.UnicodeString;
 
 /**
  * Helper class for building <code>StaticAuthData</code> <a href="http://cbor.io/">CBOR</a> with
@@ -100,24 +99,22 @@ public class StaticAuthDataGenerator {
      */
     @NonNull
     public byte[] generate() {
-        CborBuilder digestIdBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> outerBuilder = digestIdBuilder.addMap();
+
+        MapBuilder<CborBuilder> outerBuilder = CborMap.Companion.builder();
         for (String namespace : mDigestIDMapping.keySet()) {
             ArrayBuilder<MapBuilder<CborBuilder>> innerBuilder = outerBuilder.putArray(namespace);
 
             for (byte[] encodedIssuerSignedItemMetadata : mDigestIDMapping.get(namespace)) {
-                innerBuilder.add(Util.cborDecode(encodedIssuerSignedItemMetadata));
+                innerBuilder.add(new RawCbor(encodedIssuerSignedItemMetadata));
             }
         }
-        DataItem digestIdMappingItem = digestIdBuilder.build().get(0);
+        DataItem digestIdMappingItem = outerBuilder.end().build();
 
-        byte[] staticAuthData = Util.cborEncode(new CborBuilder()
-                .addMap()
-                .put(new UnicodeString("digestIdMapping"), digestIdMappingItem)
-                .put(new UnicodeString("issuerAuth"), Util.cborDecode(mEncodedIssuerAuth))
+        return Cbor.encode(CborMap.Companion.builder()
+                .put("digestIdMapping", digestIdMappingItem)
+                .put("issuerAuth", new RawCbor(mEncodedIssuerAuth))
                 .end()
-                .build().get(0));
-        return staticAuthData;
+                .build());
     }
 
 }

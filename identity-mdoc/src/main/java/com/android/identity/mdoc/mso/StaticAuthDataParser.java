@@ -18,17 +18,13 @@ package com.android.identity.mdoc.mso;
 
 import androidx.annotation.NonNull;
 
-import com.android.identity.internal.Util;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DataItem;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.SimpleValue;
-import co.nstant.in.cbor.model.SimpleValueType;
 
 /**
  * Helper class for parsing the bytes of <code>StaticAuthData</code>
@@ -93,18 +89,13 @@ public class StaticAuthDataParser {
 
         private void parseDigestIdMapping(DataItem digestIdMapping) {
             mDigestIdMapping = new HashMap<>();
-            for (String namespace : Util.cborMapExtractMapStringKeys(digestIdMapping)) {
-                List<DataItem> namespaceList = Util.cborMapExtractArray(digestIdMapping, namespace);
+            for (DataItem namespaceDataItem : digestIdMapping.getAsMap().keySet()) {
+                String namespace = namespaceDataItem.getAsTstr();
+                List<DataItem> namespaceList = digestIdMapping.get(namespaceDataItem).getAsArray();
                 List<byte[]> innerArray = new ArrayList<>();
 
                 for (DataItem innerKey : namespaceList) {
-                    if (!(innerKey instanceof ByteString)) {
-                        throw new IllegalArgumentException("Inner key is not a bstr");
-                    }
-                    if (innerKey.getTag().getValue() != 24) {
-                        throw new IllegalArgumentException("Inner key does not have tag 24");
-                    }
-                    innerArray.add(Util.cborEncode(innerKey));
+                    innerArray.add(Cbor.encode(innerKey));
                 }
 
                 mDigestIdMapping.put(namespace, innerArray);
@@ -112,10 +103,9 @@ public class StaticAuthDataParser {
         }
 
         void parse(byte[] encodedStaticAuthData) {
-            DataItem staticAuthData = Util.cborDecode(encodedStaticAuthData);
-
-            mIssuerAuth = Util.cborEncode(Util.cborMapExtract(staticAuthData, "issuerAuth"));
-            parseDigestIdMapping(Util.cborMapExtract(staticAuthData, "digestIdMapping"));
+            DataItem staticAuthData = Cbor.decode(encodedStaticAuthData);
+            mIssuerAuth = Cbor.encode(staticAuthData.get("issuerAuth"));
+            parseDigestIdMapping(staticAuthData.get("digestIdMapping"));
         }
     }
 

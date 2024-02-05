@@ -5,6 +5,8 @@ import android.net.Uri
 import android.util.Base64
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.engagement.EngagementParser
 import com.android.identity.mdoc.origininfo.OriginInfo
@@ -23,12 +25,12 @@ class ReverseQrCommunicationSetup(
 
     private val settings = PreferencesHelper.apply { initialize(context) }
     private val connectionSetup = ConnectionSetup(context)
-    private val eDeviceKeyPair = Util.createEphemeralKeyPair(settings.getEphemeralKeyCurveOption())
+    private val eDeviceKey = Crypto.createEcPrivateKey(settings.getEphemeralKeyCurveOption())
 
     private var presentation: DeviceRetrievalHelper? = null
 
     private val presentationListener = object : DeviceRetrievalHelper.Listener {
-        override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
+        override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
             log("DeviceRetrievalHelper Listener (QR): OnEReaderKeyReceived")
         }
 
@@ -79,8 +81,7 @@ class ReverseQrCommunicationSetup(
             context,
             presentationListener,
             context.mainExecutor(),
-            eDeviceKeyPair,
-            settings.getEphemeralKeyCurveOption()
+            eDeviceKey
         )
         builder.useReverseEngagement(transport, encodedReaderEngagement, origins)
         presentation = builder.build()

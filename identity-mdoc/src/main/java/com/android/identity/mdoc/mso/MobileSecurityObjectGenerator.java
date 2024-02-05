@@ -19,16 +19,15 @@ package com.android.identity.mdoc.mso;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
+import com.android.identity.cbor.ArrayBuilder;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborBuilder;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItemExtensionsKt;
+import com.android.identity.cbor.MapBuilder;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.util.Timestamp;
-import com.android.identity.internal.Util;
 
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.UnicodeString;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,12 +43,10 @@ public class MobileSecurityObjectGenerator {
 
     private final String mDigestAlgorithm;
     private final String mDocType;
-    private final PublicKey mDeviceKey;
+    private final EcPublicKey mDeviceKey;
     private final int mDigestSize;
 
-    private final CborBuilder mValueDigestsBuilder = new CborBuilder();
-    private final MapBuilder<CborBuilder> mValueDigestsOuter = mValueDigestsBuilder.addMap();
-    private final EcCurve mDeviceKeyCurve;
+    private final MapBuilder<CborBuilder> mValueDigestsOuter = CborMap.Companion.builder();
     private boolean digestEmpty = true;
 
     private final List<String> mAuthorizedNameSpaces = new ArrayList<>();
@@ -64,14 +61,12 @@ public class MobileSecurityObjectGenerator {
      * @param digestAlgorithm The digest algorithm identifier. Must be one of {"SHA-256", "SHA-384", "SHA-512"}.
      * @param docType The document type.
      * @param deviceKey The public part of the key pair used for mdoc authentication.
-     * @param deviceKeyCurve The curve of deviceKey.
      * @exception IllegalArgumentException if the <code>digestAlgorithm</code> is not one of
      *                                     {"SHA-256", "SHA-384", "SHA-512"}.
      */
     public MobileSecurityObjectGenerator(@NonNull String digestAlgorithm,
                                          @NonNull String docType,
-                                         @NonNull PublicKey deviceKey,
-                                         EcCurve deviceKeyCurve) {
+                                         @NonNull EcPublicKey deviceKey) {
         final List<String> allowableDigestAlgorithms = List.of("SHA-256", "SHA-384", "SHA-512");
         if (!allowableDigestAlgorithms.contains(digestAlgorithm)) {
             throw new IllegalArgumentException("digestAlgorithm must be one of " +
@@ -81,7 +76,6 @@ public class MobileSecurityObjectGenerator {
         mDigestAlgorithm = digestAlgorithm;
         mDocType = docType;
         mDeviceKey = deviceKey;
-        mDeviceKeyCurve = deviceKeyCurve;
         switch (digestAlgorithm) {
             case "SHA-256": mDigestSize = 32; break;
             case "SHA-384": mDigestSize = 48; break;
@@ -242,9 +236,8 @@ public class MobileSecurityObjectGenerator {
 
     @NonNull
     private CborBuilder generateDeviceKeyBuilder() {
-        CborBuilder deviceKeyBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> deviceKeyMapBuilder = deviceKeyBuilder.addMap();
-        deviceKeyMapBuilder.put(new UnicodeString("deviceKey"), Util.cborBuildCoseKey(mDeviceKey, mDeviceKeyCurve));
+        MapBuilder<CborBuilder> deviceKeyMapBuilder = CborMap.Companion.builder();
+        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.toCoseKey(Map.of()).getDataItem());
 
         if (!mAuthorizedNameSpaces.isEmpty() | !mAuthorizedDataElements.isEmpty()) {
             MapBuilder<MapBuilder<CborBuilder>> keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations");
@@ -281,23 +274,19 @@ public class MobileSecurityObjectGenerator {
             keyInfoMapBuilder.end();
         }
 
-        deviceKeyMapBuilder.end();
-        return deviceKeyBuilder;
+        return deviceKeyMapBuilder.end();
     }
 
     @NonNull
     private CborBuilder generateValidityInfoBuilder() {
-        CborBuilder validityInfoBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> validityMapBuilder = validityInfoBuilder.addMap();
-        validityMapBuilder.put(new UnicodeString("signed"), Util.cborBuildDateTime(mSigned));
-        validityMapBuilder.put(new UnicodeString("validFrom"), Util.cborBuildDateTime(mValidFrom));
-        validityMapBuilder.put(new UnicodeString("validUntil"), Util.cborBuildDateTime(mValidUntil));
+        MapBuilder<CborBuilder> validityMapBuilder = CborMap.Companion.builder();
+        validityMapBuilder.put("signed", DataItemExtensionsKt.getDateTimeString(mSigned.toEpochMilli()));
+        validityMapBuilder.put("validFrom", DataItemExtensionsKt.getDateTimeString(mValidFrom.toEpochMilli()));
+        validityMapBuilder.put("validUntil", DataItemExtensionsKt.getDateTimeString(mValidUntil.toEpochMilli()));
         if (mExpectedUpdate != null) {
-            validityMapBuilder.put(new UnicodeString("expectedUpdate"),
-                    Util.cborBuildDateTime(mExpectedUpdate));
+            validityMapBuilder.put("expectedUpdate", DataItemExtensionsKt.getDateTimeString(mExpectedUpdate.toEpochMilli()));
         }
-        validityMapBuilder.end();
-        return validityInfoBuilder;
+        return validityMapBuilder.end();
     }
 
     /**
@@ -318,17 +307,16 @@ public class MobileSecurityObjectGenerator {
             throw new IllegalStateException("Must call setValidityInfo before generating");
         }
 
-        CborBuilder msoBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> msoMapBuilder = msoBuilder.addMap();
+        MapBuilder<CborBuilder> msoMapBuilder = CborMap.Companion.builder();
         msoMapBuilder.put("version", "1.0");
         msoMapBuilder.put("digestAlgorithm", mDigestAlgorithm);
         msoMapBuilder.put("docType", mDocType);
-        msoMapBuilder.put(new UnicodeString("valueDigests"), mValueDigestsBuilder.build().get(0));
-        msoMapBuilder.put(new UnicodeString("deviceKeyInfo"), generateDeviceKeyBuilder().build().get(0));
-        msoMapBuilder.put(new UnicodeString("validityInfo"), generateValidityInfoBuilder().build().get(0));
+        msoMapBuilder.put("valueDigests", mValueDigestsOuter.end().build());
+        msoMapBuilder.put("deviceKeyInfo", generateDeviceKeyBuilder().build());
+        msoMapBuilder.put("validityInfo", generateValidityInfoBuilder().build());
         msoMapBuilder.end();
 
-        return Util.cborEncode(msoBuilder.build().get(0));
+        return Cbor.encode(msoMapBuilder.end().build());
     }
 
 }

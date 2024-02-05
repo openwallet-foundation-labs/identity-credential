@@ -12,24 +12,26 @@ import android.os.Bundle;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 
-import com.android.identity.android.util.NfcUtil;
 import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
+import com.android.identity.android.util.NfcUtil;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.crypto.EcPublicKey;
+import com.android.identity.internal.Util;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Logger;
-import com.android.identity.internal.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Retention;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 import co.nstant.in.cbor.CborBuilder;
@@ -61,8 +63,7 @@ public class NfcEngagementHelper {
     private final Context mContext;
     private final int mNegotiatedHandoverWtInt;
     private final int mNegotiatedHandoverMaxNumWaitingTimeExtensions;
-    private final PublicKey mEDeviceKey;
-    private final EcCurve mEDeviceKeyCurve;
+    private final EcPublicKey mEDeviceKey;
     private List<ConnectionMethod> mStaticHandoverConnectionMethods;
     private final DataTransportOptions mOptions;
     private final Listener mListener;
@@ -102,8 +103,7 @@ public class NfcEngagementHelper {
     private boolean mTestingDoNotStartTransports = false;
 
     private NfcEngagementHelper(@NonNull Context context,
-                                @NonNull PublicKey eDeviceKey,
-                                EcCurve eDeviceKeyCurve,
+                                @NonNull EcPublicKey eDeviceKey,
                                 @NonNull DataTransportOptions options,
                                 int negotiatedHandoverWtInt,
                                 int negotiatedHandoverMaxNumWaitingTimeExtensions,
@@ -111,7 +111,6 @@ public class NfcEngagementHelper {
                                 @NonNull Executor executor) {
         mContext = context;
         mEDeviceKey = eDeviceKey;
-        mEDeviceKeyCurve = eDeviceKeyCurve;
         mNegotiatedHandoverWtInt = negotiatedHandoverWtInt;
         mNegotiatedHandoverMaxNumWaitingTimeExtensions = negotiatedHandoverMaxNumWaitingTimeExtensions;
         mListener = listener;
@@ -119,7 +118,6 @@ public class NfcEngagementHelper {
         mOptions = options;
         mEncodedDeviceEngagement = new EngagementGenerator(
                 mEDeviceKey,
-                mEDeviceKeyCurve,
                 EngagementGenerator.ENGAGEMENT_VERSION_1_0
             ).generate();
         Logger.dCbor(TAG, "NFC DeviceEngagement", mEncodedDeviceEngagement);
@@ -191,8 +189,9 @@ public class NfcEngagementHelper {
         mTransports = new ArrayList<>();
         long timeStartedSettingUpTransports = System.currentTimeMillis();
 
-        byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
-                Util.cborEncode(Util.cborBuildCoseKey(mEDeviceKey, mEDeviceKeyCurve))));
+        byte[] encodedEDeviceKeyBytes =
+                Cbor.encode(new Tagged(24, new Bstr(
+                        Cbor.encode(mEDeviceKey.toCoseKey(Map.of()).getDataItem()))));
 
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
@@ -916,8 +915,7 @@ public class NfcEngagementHelper {
          * @param executor a {@link Executor} to use with the listener.
          */
         public Builder(@NonNull Context context,
-                       @NonNull PublicKey eDeviceKey,
-                       EcCurve eDeviceKeyCurve,
+                       @NonNull EcPublicKey eDeviceKey,
                        @NonNull DataTransportOptions options,
                        @NonNull Listener listener,
                        @NonNull Executor executor) {
@@ -932,7 +930,6 @@ public class NfcEngagementHelper {
 
             mHelper = new NfcEngagementHelper(context,
                     eDeviceKey,
-                    eDeviceKeyCurve,
                     options,
                     negotiatedHandoverWtInt,
                     negotiatedHandoverMaxNumWaitingTimeExtensions,

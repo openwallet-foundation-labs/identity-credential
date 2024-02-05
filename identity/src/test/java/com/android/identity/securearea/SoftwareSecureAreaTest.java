@@ -18,6 +18,14 @@ package com.android.identity.securearea;
 
 import androidx.annotation.NonNull;
 
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.Certificate;
+import com.android.identity.crypto.CertificateChain;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcCurve;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPublicKeyKt;
+import com.android.identity.crypto.CertificateKt;
 import com.android.identity.securearea.software.SoftwareCreateKeySettings;
 import com.android.identity.securearea.software.SoftwareKeyInfo;
 import com.android.identity.securearea.software.SoftwareKeyUnlockData;
@@ -47,7 +55,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.Security;
-import java.security.Signature;
 import java.security.SignatureException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -60,47 +67,42 @@ import java.util.Set;
 
 import javax.crypto.KeyAgreement;
 
+import kotlin.time.Duration;
+import kotlinx.datetime.Clock;
+import kotlinx.datetime.Instant;
+
 public class SoftwareSecureAreaTest {
 
     private static final String TAG = "SoftwareSecureAreaTest";
 
-    PrivateKey mAttestationKey;
-    String mAttestationKeySignatureAlgorithm;
-    List<X509Certificate> mAttestationKeyCertification;
+    EcPrivateKey mAttestationKey;
+    Algorithm mAttestationKeySignatureAlgorithm;
+    String mAttestationKeyIssuer;
+    CertificateChain mAttestationKeyCertification;
 
     @Before
     public void setup() {
         Security.insertProviderAt(new BouncyCastleProvider(), 1);
 
         // Create an attestation key...
-        try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME);
-            kpg.initialize(new ECGenParameterSpec("secp256r1"));
-            KeyPair attestationKeyPair = kpg.generateKeyPair();
-            mAttestationKey = attestationKeyPair.getPrivate();
-            mAttestationKeySignatureAlgorithm = "SHA256withECDSA";
-
-            long nowMillis = System.currentTimeMillis();
-            JcaX509v3CertificateBuilder certBuilder =
-                    new JcaX509v3CertificateBuilder(new X500Name("CN=Test Attestation Key"),
-                            BigInteger.ONE,
-                            new Date(nowMillis),
-                            new Date(nowMillis + 24*3600*1000),
-                            new X500Name("CN=Test Attestation Key"),
-                            attestationKeyPair.getPublic());
-            ContentSigner signer;
-            signer = new JcaContentSignerBuilder("SHA256withECDSA")
-                    .build(attestationKeyPair.getPrivate());
-            byte[] encodedCert = certBuilder.build(signer).getEncoded();
-            CertificateFactory cf = CertificateFactory.getInstance("X.509");
-            ByteArrayInputStream certBais = new ByteArrayInputStream(encodedCert);
-            mAttestationKeyCertification = new ArrayList<>();
-            mAttestationKeyCertification.add((X509Certificate) cf.generateCertificate(certBais));
-
-        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException | IOException |
-                 CertificateException | OperatorCreationException | NoSuchProviderException e) {
-            throw new AssertionError(e);
-        }
+        mAttestationKey = Crypto.createEcPrivateKey(EcCurve.P256);
+        mAttestationKeyIssuer = "CN=Test Attestation Key";
+        mAttestationKeySignatureAlgorithm = Algorithm.ES256;
+        Instant validFrom = Clock.System.INSTANCE.now();
+        Instant validUntil = Instant.Companion.fromEpochMilliseconds(
+                validFrom.toEpochMilliseconds() + 24*3600*1000);
+        Certificate certificate = Crypto.createX509v3Certificate(
+                mAttestationKey.getPublicKey(),
+                mAttestationKey,
+                mAttestationKeySignatureAlgorithm,
+                "1",
+                "CN=Test Attestation Key",
+                "CN=Test Attestation Key",
+                validFrom,
+                validUntil,
+                List.of()
+        );
+        mAttestationKeyCertification = new CertificateChain(List.of(certificate));
     }
 
     @Test
@@ -111,8 +113,8 @@ public class SoftwareSecureAreaTest {
         // First create the key...
         ks.createKey("testKey", new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256));
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
-        List<X509Certificate> certChain = keyInfo.getAttestation();
-        Assert.assertTrue(certChain.size() >= 1);
+        CertificateChain certChain = keyInfo.getAttestation();
+        Assert.assertTrue(certChain.getCertificates().size() >= 1);
 
         // Now delete it...
         ks.deleteKey("testKey");
@@ -140,10 +142,9 @@ public class SoftwareSecureAreaTest {
 
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
-        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
-        Assert.assertFalse(keyInfo.isHardwareBacked());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
         byte[] dataToSign = new byte[] {4, 5, 6};
@@ -154,16 +155,11 @@ public class SoftwareSecureAreaTest {
             throw new AssertionError(e);
         }
 
-        try {
-            Signature signature = Signature.getInstance("SHA256withECDSA");
-            signature.initVerify(keyInfo.getAttestation().get(0).getPublicKey());
-            signature.update(dataToSign);
-            Assert.assertTrue(signature.verify(derSignature));
-        } catch (NoSuchAlgorithmException
-                 | SignatureException
-                 | InvalidKeyException e) {
-            throw new AssertionError(e);
-        }
+        Assert.assertTrue(Crypto.INSTANCE.checkSignature(
+                keyInfo.getPublicKey(),
+                dataToSign,
+                Algorithm.ES256,
+                derSignature));
     }
 
     @Test
@@ -175,22 +171,16 @@ public class SoftwareSecureAreaTest {
 
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
-        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
-        Assert.assertFalse(keyInfo.isHardwareBacked());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
         // Check the leaf certificate is self-signed.
-        try {
-            keyInfo.getAttestation().get(0).verify(keyInfo.getAttestation().get(0).getPublicKey());
-        } catch (CertificateException
-                | InvalidKeyException
-                | NoSuchAlgorithmException
-                | NoSuchProviderException
-                | SignatureException e) {
-            throw new AssertionError(e);
-        }
+        Assert.assertTrue(
+                keyInfo.getAttestation().getCertificates().get(0)
+                        .verify(ks.getKeyInfo("testKey").getPublicKey())
+        );
     }
 
     public static @NonNull
@@ -215,30 +205,28 @@ public class SoftwareSecureAreaTest {
                 new SoftwareCreateKeySettings.Builder(challenge)
                         .setAttestationKey(mAttestationKey,
                                 mAttestationKeySignatureAlgorithm,
+                                mAttestationKeyIssuer,
                                 mAttestationKeyCertification)
                         .build());
 
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 2);
+        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 2);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
-        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
-        Assert.assertFalse(keyInfo.isHardwareBacked());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
         // Check challenge.
-        Assert.assertArrayEquals(challenge, getChallenge(keyInfo.getAttestation().get(0)));
+        X509Certificate cert = CertificateKt.getJavaX509Certificate(
+                (com.android.identity.crypto.Certificate)
+                        keyInfo.getAttestation().getCertificates().get(0));
+        Assert.assertArrayEquals(challenge, getChallenge(cert));
 
         // Check the leaf certificate is signed by mAttestationKey.
-        try {
-            keyInfo.getAttestation().get(0).verify(mAttestationKeyCertification.get(0).getPublicKey());
-        } catch (CertificateException
-                 | InvalidKeyException
-                 | NoSuchAlgorithmException
-                 | NoSuchProviderException
-                 | SignatureException e) {
-            throw new AssertionError(e);
-        }
+        Assert.assertTrue(
+                keyInfo.getAttestation().getCertificates().get(0)
+                        .verify(mAttestationKey.getPublicKey())
+        );
     }
 
     @Test
@@ -251,14 +239,16 @@ public class SoftwareSecureAreaTest {
 
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
-        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
-        Assert.assertFalse(keyInfo.isHardwareBacked());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
         // Check challenge.
-        Assert.assertArrayEquals(challenge, getChallenge(keyInfo.getAttestation().get(0)));
+        X509Certificate cert = CertificateKt.getJavaX509Certificate(
+                (com.android.identity.crypto.Certificate)
+                        keyInfo.getAttestation().getCertificates().get(0));
+        Assert.assertArrayEquals(challenge, getChallenge(cert));
     }
 
     @Test
@@ -302,26 +292,32 @@ public class SoftwareSecureAreaTest {
 
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.AGREE_KEY), keyInfo.getKeyPurposes());
-        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
-        Assert.assertFalse(keyInfo.isHardwareBacked());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
         // First do the ECDH from the perspective of our side...
         byte[] ourSharedSecret;
         try {
-            ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
+            ourSharedSecret = ks.keyAgreement(
+                    "testKey",
+                    EcPublicKeyKt.toEcPublicKey(otherKeyPair.getPublic(), EcCurve.P256),
+                    null);
         } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
+
+        X509Certificate cert = CertificateKt.getJavaX509Certificate(
+                (com.android.identity.crypto.Certificate)
+                        keyInfo.getAttestation().getCertificates().get(0));
 
         // ...now do it from the perspective of the other side...
         byte[] theirSharedSecret;
         try {
             KeyAgreement ka = KeyAgreement.getInstance("ECDH");
             ka.init(otherKeyPair.getPrivate());
-            ka.doPhase(keyInfo.getAttestation().get(0).getPublicKey(), true);
+            ka.doPhase(cert.getPublicKey(), true);
             theirSharedSecret = ka.generateSecret();
         } catch (NoSuchAlgorithmException
                  | InvalidKeyException e) {
@@ -353,26 +349,32 @@ public class SoftwareSecureAreaTest {
 
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY), keyInfo.getKeyPurposes());
-        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
-        Assert.assertFalse(keyInfo.isHardwareBacked());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isPassphraseProtected());
 
         // First do the ECDH from the perspective of our side...
         byte[] ourSharedSecret;
         try {
-            ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
+            ourSharedSecret = ks.keyAgreement(
+                    "testKey",
+                    EcPublicKeyKt.toEcPublicKey(otherKeyPair.getPublic(), EcCurve.P256),
+                    null);
         } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
+
+        X509Certificate cert = CertificateKt.getJavaX509Certificate(
+                (com.android.identity.crypto.Certificate)
+                        keyInfo.getAttestation().getCertificates().get(0));
 
         // ...now do it from the perspective of the other side...
         byte[] theirSharedSecret;
         try {
             KeyAgreement ka = KeyAgreement.getInstance("ECDH");
             ka.init(otherKeyPair.getPrivate());
-            ka.doPhase(keyInfo.getAttestation().get(0).getPublicKey(), true);
+            ka.doPhase(cert.getPublicKey(), true);
             theirSharedSecret = ka.generateSecret();
         } catch (NoSuchAlgorithmException
                  | InvalidKeyException e) {
@@ -390,16 +392,11 @@ public class SoftwareSecureAreaTest {
             throw new AssertionError(e);
         }
 
-        try {
-            Signature signature = Signature.getInstance("SHA256withECDSA");
-            signature.initVerify(keyInfo.getAttestation().get(0).getPublicKey());
-            signature.update(dataToSign);
-            Assert.assertTrue(signature.verify(derSignature));
-        } catch (NoSuchAlgorithmException
-                 | SignatureException
-                 | InvalidKeyException e) {
-            throw new AssertionError(e);
-        }
+        Assert.assertTrue(Crypto.INSTANCE.checkSignature(
+                keyInfo.getPublicKey(),
+                dataToSign,
+                Algorithm.ES256,
+                derSignature));
     }
 
     @Test
@@ -422,7 +419,10 @@ public class SoftwareSecureAreaTest {
                         .build());
 
         try {
-            ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
+            ks.keyAgreement(
+                    "testKey",
+                    EcPublicKeyKt.toEcPublicKey(otherKeyPair.getPublic(), EcCurve.P256),
+                    null);
             Assert.fail("ECDH shouldn't work with a key w/o purpose AGREE_KEY");
         } catch (KeyLockedException e) {
             throw new AssertionError(e);
@@ -445,10 +445,9 @@ public class SoftwareSecureAreaTest {
 
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
-        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
-        Assert.assertFalse(keyInfo.isHardwareBacked());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertTrue(keyInfo.isPassphraseProtected());
 
         byte[] dataToSign = new byte[] {4, 5, 6};
@@ -485,16 +484,11 @@ public class SoftwareSecureAreaTest {
         }
 
         // Verify the signature is correct.
-        try {
-            Signature signature = Signature.getInstance("SHA256withECDSA");
-            signature.initVerify(keyInfo.getAttestation().get(0).getPublicKey());
-            signature.update(dataToSign);
-            Assert.assertTrue(signature.verify(derSignature));
-        } catch (NoSuchAlgorithmException
-                 | SignatureException
-                 | InvalidKeyException e) {
-            throw new AssertionError(e);
-        }
+        Assert.assertTrue(Crypto.INSTANCE.checkSignature(
+                keyInfo.getPublicKey(),
+                dataToSign,
+                Algorithm.ES256,
+                derSignature));
     }
 
     @Test
@@ -505,14 +499,14 @@ public class SoftwareSecureAreaTest {
         ks.createKey("testKey",
                 new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256));
         SoftwareKeyInfo keyInfoOld = ks.getKeyInfo("testKey");
-        List<X509Certificate> certChainOld = keyInfoOld.getAttestation();
-        Assert.assertTrue(certChainOld.size() >= 1);
+        CertificateChain certChainOld = keyInfoOld.getAttestation();
+        Assert.assertTrue(certChainOld.getCertificates().size() >= 1);
 
         ks.createKey("testKey",
                 new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256));
         SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
-        List<X509Certificate> certChain = keyInfo.getAttestation();
-        Assert.assertTrue(certChain.size() >= 1);
+        CertificateChain certChain = keyInfo.getAttestation();
+        Assert.assertTrue(certChain.getCertificates().size() >= 1);
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature = new byte[0];
         try {
@@ -522,21 +516,14 @@ public class SoftwareSecureAreaTest {
         }
 
         // Check new key is a different cert chain.
-        Assert.assertNotEquals(
-                certChainOld.get(0).getPublicKey().getEncoded(),
-                certChain.get(0).getPublicKey().getEncoded());
+        Assert.assertNotEquals(certChainOld, certChain);
 
         // Check new key is used to sign.
-        try {
-            Signature signature = Signature.getInstance("SHA256withECDSA");
-            signature.initVerify(certChain.get(0).getPublicKey());
-            signature.update(dataToSign);
-            Assert.assertTrue(signature.verify(derSignature));
-        } catch (NoSuchAlgorithmException
-                 | SignatureException
-                 | InvalidKeyException e) {
-            throw new AssertionError(e);
-        }
+        Assert.assertTrue(Crypto.INSTANCE.checkSignature(
+                keyInfo.getPublicKey(),
+                dataToSign,
+                Algorithm.ES256,
+                derSignature));
     }
 
     @Test
@@ -565,10 +552,9 @@ public class SoftwareSecureAreaTest {
 
             SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
             Assert.assertNotNull(keyInfo);
-            Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+            Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
             Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
-            Assert.assertEquals(ecCurve, keyInfo.getEcCurve());
-            Assert.assertFalse(keyInfo.isHardwareBacked());
+            Assert.assertEquals(ecCurve, keyInfo.getPublicKey().getCurve());
             Assert.assertFalse(keyInfo.isPassphraseProtected());
 
             Algorithm[] signatureAlgorithms = new Algorithm[0];
@@ -604,41 +590,11 @@ public class SoftwareSecureAreaTest {
                     throw new AssertionError(e);
                 }
 
-                String signatureAlgorithmName = "";
-                switch (signatureAlgorithm) {
-                    case ES256:
-                        signatureAlgorithmName = "SHA256withECDSA";
-                        break;
-                    case ES384:
-                        signatureAlgorithmName = "SHA384withECDSA";
-                        break;
-                    case ES512:
-                        signatureAlgorithmName = "SHA512withECDSA";
-                        break;
-                    case EDDSA:
-                        if (ecCurve == EcCurve.ED25519) {
-                            signatureAlgorithmName = "Ed25519";
-                        } else if (ecCurve == EcCurve.ED448) {
-                            signatureAlgorithmName = "Ed448";
-                        } else {
-                            Assert.fail("ALGORITHM_EDDSA can only be used with "
-                                    + "EC_CURVE_ED_25519 and EC_CURVE_ED_448");
-                        }
-                        break;
-                    default:
-                        Assert.fail("Unsupported signing algorithm  with id " + signatureAlgorithm);
-                }
-
-                try {
-                    Signature signature = Signature.getInstance(signatureAlgorithmName);
-                    signature.initVerify(keyInfo.getAttestation().get(0).getPublicKey());
-                    signature.update(dataToSign);
-                    Assert.assertTrue(signature.verify(derSignature));
-                } catch (NoSuchAlgorithmException
-                         | SignatureException
-                         | InvalidKeyException e) {
-                    throw new AssertionError(e);
-                }
+                Assert.assertTrue(Crypto.INSTANCE.checkSignature(
+                        keyInfo.getPublicKey(),
+                        dataToSign,
+                        signatureAlgorithm,
+                        derSignature));
             }
         }
     }
@@ -710,26 +666,32 @@ public class SoftwareSecureAreaTest {
 
             SoftwareKeyInfo keyInfo = ks.getKeyInfo("testKey");
             Assert.assertNotNull(keyInfo);
-            Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+            Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
             Assert.assertEquals(Set.of(KeyPurpose.AGREE_KEY), keyInfo.getKeyPurposes());
-            Assert.assertEquals(ecCurve, keyInfo.getEcCurve());
-            Assert.assertFalse(keyInfo.isHardwareBacked());
+            Assert.assertEquals(ecCurve, keyInfo.getPublicKey().getCurve());
             Assert.assertFalse(keyInfo.isPassphraseProtected());
 
             // First do the ECDH from the perspective of our side...
             byte[] ourSharedSecret;
             try {
-                ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
+                ourSharedSecret = ks.keyAgreement(
+                        "testKey",
+                        EcPublicKeyKt.toEcPublicKey(otherKeyPair.getPublic(), ecCurve),
+                        null);
             } catch (KeyLockedException e) {
                 throw new AssertionError(e);
             }
+
+            X509Certificate cert = CertificateKt.getJavaX509Certificate(
+                    (com.android.identity.crypto.Certificate)
+                            keyInfo.getAttestation().getCertificates().get(0));
 
             // ...now do it from the perspective of the other side...
             byte[] theirSharedSecret;
             try {
                 KeyAgreement ka = KeyAgreement.getInstance("ECDH");
                 ka.init(otherKeyPair.getPrivate());
-                ka.doPhase(keyInfo.getAttestation().get(0).getPublicKey(), true);
+                ka.doPhase(cert.getPublicKey(), true);
                 theirSharedSecret = ka.generateSecret();
             } catch (NoSuchAlgorithmException
                      | InvalidKeyException e) {

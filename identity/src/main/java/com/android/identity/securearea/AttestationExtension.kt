@@ -16,16 +16,8 @@
 
 package com.android.identity.securearea
 
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborDecoder
-import co.nstant.`in`.cbor.CborEncoder
-import co.nstant.`in`.cbor.CborException
-import co.nstant.`in`.cbor.model.ByteString
-import co.nstant.`in`.cbor.model.DataItem
-import co.nstant.`in`.cbor.model.Map
-import co.nstant.`in`.cbor.model.UnicodeString
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
 
 /**
  * X.509 Extension which may be used by [SecureArea] implementations.
@@ -60,19 +52,10 @@ object AttestationExtension {
      */
     @JvmStatic
     fun encode(challenge: ByteArray): ByteArray {
-        val baos = ByteArrayOutputStream()
-        try {
-            CborEncoder(baos).nonCanonical().encode(
-                CborBuilder()
-                    .addMap()
-                    .put("challenge", challenge)
-                    .end()
-                    .build().get(0)
-            )
-        } catch (e: CborException) {
-            throw IllegalStateException("Unexpected failure encoding data", e)
-        }
-        return baos.toByteArray()
+        return Cbor.encode(CborMap.builder()
+            .put("challenge", challenge)
+            .end()
+            .build())
     }
 
     /**
@@ -83,13 +66,7 @@ object AttestationExtension {
      */
     @JvmStatic
     fun decode(attestationExtension: ByteArray): ByteArray {
-        val dataItems: List<DataItem> = try {
-            val bais = ByteArrayInputStream(attestationExtension)
-            CborDecoder(bais).decode()
-        } catch (e: CborException) {
-            throw IllegalArgumentException("Error decoding CBOR", e)
-        }
-        return ((dataItems[0] as Map).get(UnicodeString("challenge")) as ByteString).bytes
+        val map = Cbor.decode(attestationExtension)
+        return map["challenge"].asBstr
     }
-
 }

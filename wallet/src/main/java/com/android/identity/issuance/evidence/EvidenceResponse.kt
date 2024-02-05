@@ -1,11 +1,10 @@
 package com.android.identity.issuance.evidence
 
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.model.ByteString
-import co.nstant.`in`.cbor.model.Map
-import co.nstant.`in`.cbor.model.UnicodeString
-import co.nstant.`in`.cbor.model.UnsignedInteger
-import com.android.identity.internal.Util
+import com.android.identity.cbor.Bstr
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.Tstr
+import com.android.identity.cbor.Uint
 
 /**
  * A response to an evidence request.
@@ -19,8 +18,7 @@ abstract class EvidenceResponse(
     // TODO: maybe use reflection or other nifty trick to avoid all this boilerplate
 
     fun toCbor(): ByteArray {
-        val builder = CborBuilder()
-        val mapBuilder = builder.addMap()
+        val mapBuilder = CborMap.builder()
         mapBuilder.put("evidenceType", evidenceType.name)
         when (evidenceType) {
             EvidenceType.MESSAGE -> {
@@ -38,86 +36,79 @@ abstract class EvidenceResponse(
             EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION -> {
                 val er = this as EvidenceResponseIcaoPassiveAuthentication
                 for (entry in er.dataGroups.entries) {
-                    mapBuilder.put(UnsignedInteger(entry.key.toLong()), ByteString(entry.value))
+                    mapBuilder.put(entry.key.toLong(), Bstr(entry.value))
                 }
-                mapBuilder.put(UnicodeString("sod"), ByteString(er.securityObject))
+                mapBuilder.put("sod", Bstr(er.securityObject))
             }
             EvidenceType.ICAO_9303_NFC_TUNNEL -> {
                 val er = this as EvidenceResponseIcaoNfcTunnel
-                mapBuilder.put(UnicodeString("response"), ByteString(er.response))
+                mapBuilder.put("response", Bstr(er.response))
             }
             EvidenceType.ICAO_9303_NFC_TUNNEL_RESULT -> {
                 val er = this as EvidenceResponseIcaoNfcTunnelResult
                 for (entry in er.dataGroups.entries) {
-                    mapBuilder.put(UnsignedInteger(entry.key.toLong()), ByteString(entry.value))
+                    mapBuilder.put(entry.key.toLong(), Bstr(entry.value))
                 }
-                mapBuilder.put(UnicodeString("sod"), ByteString(er.securityObject))
+                mapBuilder.put("sod", Bstr(er.securityObject))
                 mapBuilder.put("authentication", er.advancedAuthenticationType.name)
             }
         }
-        return Util.cborEncode(builder.build()[0])
+        return Cbor.encode(mapBuilder.end().build())
     }
 
     companion object {
         fun fromCbor(encodedValue: ByteArray): EvidenceResponse {
-            val map = Util.cborDecode(encodedValue)
-            val evidenceType = EvidenceType.valueOf(Util.cborMapExtractString(map, "evidenceType"))
+            val map = Cbor.decode(encodedValue)
+            val evidenceType = EvidenceType.valueOf(map["evidenceType"].asTstr)
             when (evidenceType) {
                 EvidenceType.MESSAGE -> {
-                    return EvidenceResponseMessage(
-                        Util.cborMapExtractBoolean(map, "acknowledged"),
-                    )
+                    return EvidenceResponseMessage(map["acknowledged"].asBoolean)
                 }
                 EvidenceType.QUESTION_STRING -> {
-                    return EvidenceResponseQuestionString(
-                        Util.cborMapExtractString(map, "answer"),
-                    )
+                    return EvidenceResponseQuestionString(map["answer"].asTstr)
                 }
                 EvidenceType.QUESTION_MULTIPLE_CHOICE -> {
-                    return EvidenceResponseQuestionMultipleChoice(
-                        Util.cborMapExtractString(map, "answer"),
-                    )
+                    return EvidenceResponseQuestionMultipleChoice(map["answer"].asTstr)
                 }
                 EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION -> {
-                    val cborMap = Util.castTo(Map::class.java, map)
-                    val decodedMap = HashMap<Int, ByteArray>()
+                    val decodedMap = mutableMapOf<Int, ByteArray>()
                     var securityObject: ByteArray? = null
-                    for (key in cborMap.keys) {
-                        val value = cborMap[key]
+                    for (key in map.asMap.keys) {
                         when (key) {
-                            is UnsignedInteger -> {
-                                decodedMap[key.value!!.toInt()] = (value as ByteString).bytes
-                            }
-                            is UnicodeString -> {
-                                if (key.toString() == "sod") {
-                                    securityObject = (value as ByteString).bytes
+                            is Uint -> decodedMap[key.asNumber.toInt()] = map[key].asBstr
+                            is Tstr -> {
+                                if (key.asTstr != "sod") {
+                                    throw IllegalArgumentException("Unexpected string key $key")
                                 }
+                                securityObject = map[key].asBstr
+                            }
+                            else -> {
+                                throw IllegalArgumentException("Unexpected key $key")
                             }
                         }
                     }
                     return EvidenceResponseIcaoPassiveAuthentication(decodedMap, securityObject!!)
                 }
                 EvidenceType.ICAO_9303_NFC_TUNNEL -> {
-                    return EvidenceResponseIcaoNfcTunnel(
-                        Util.cborMapExtractByteString(map, "response"),
-                    )
+                    return EvidenceResponseIcaoNfcTunnel(map["response"].asBstr)
                 }
                 EvidenceType.ICAO_9303_NFC_TUNNEL_RESULT -> {
-                    val cborMap = Util.castTo(Map::class.java, map)
-                    val decodedMap = HashMap<Int, ByteArray>()
+                    val authenticationType =
+                        EvidenceResponseIcaoNfcTunnelResult.AdvancedAuthenticationType.valueOf(
+                            map["authentication"].asTstr)
+                    val decodedMap = mutableMapOf<Int, ByteArray>()
                     var securityObject: ByteArray? = null
-                    val authenticationType = EvidenceResponseIcaoNfcTunnelResult.AdvancedAuthenticationType.valueOf(
-                        Util.cborMapExtractString(cborMap, "authentication"))
-                    for (key in cborMap.keys) {
-                        val value = cborMap[key]
+                    for (key in map.asMap.keys) {
                         when (key) {
-                            is UnsignedInteger -> {
-                                decodedMap[key.value!!.toInt()] = (value as ByteString).bytes
-                            }
-                            is UnicodeString -> {
-                                when (key.toString()) {
-                                    "sod" -> securityObject = (value as ByteString).bytes
+                            is Uint -> decodedMap[key.asNumber.toInt()] = map[key].asBstr
+                            is Tstr -> {
+                                if (key.asTstr != "sod") {
+                                    throw IllegalArgumentException("Unexpected string key $key")
                                 }
+                                securityObject = map[key].asBstr
+                            }
+                            else -> {
+                                throw IllegalArgumentException("Unexpected key $key")
                             }
                         }
                     }

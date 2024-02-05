@@ -2,7 +2,7 @@ package com.android.identity.wallet.composables
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcCurve
 import com.android.identity.wallet.R
 
 @Composable
