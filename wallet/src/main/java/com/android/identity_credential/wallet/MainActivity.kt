@@ -196,64 +196,41 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun MainScreenContent(navigation: NavHostController,
-                          scope: CoroutineScope,
-                          drawerState: DrawerState) {
-        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                    title = {
-                        Text(
-                            "Wallet",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                scope.launch {
-                                    drawerState.apply {
-                                        Logger.d(TAG, "isClosed = $isClosed")
-                                        if (isClosed) open() else close()
-                                    }
-                                }
+    fun MainScreenContent(
+        navigation: NavHostController,
+        scope: CoroutineScope,
+        drawerState: DrawerState
+    ) {
+        ScreenWithAppBar(title = "Wallet",
+            navigationIcon = {
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            drawerState.apply {
+                                Logger.d(TAG, "isClosed = $isClosed")
+                                if (isClosed) open() else close()
                             }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Menu,
-                                contentDescription = "Localized description"
-                            )
                         }
-                    },
-                    scrollBehavior = scrollBehavior,
-                )
-            },
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                if (application.credentialStore.listCredentials().size == 0) {
-                    MainScreenNoCredentialsAvailable(navigation)
-                } else {
-                    MainScreenCredentialPager(navigation)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            modifier = Modifier.padding(8.dp),
-                            text = "Hold to Reader"
-                        )
                     }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Menu,
+                        contentDescription = "Localized description"
+                    )
+                }
+            }) {
+            if (application.credentialStore.listCredentials().size == 0) {
+                MainScreenNoCredentialsAvailable(navigation)
+            } else {
+                MainScreenCredentialPager(navigation)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        modifier = Modifier.padding(8.dp),
+                        text = "Hold to Reader"
+                    )
                 }
             }
         }
@@ -354,117 +331,43 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun AboutScreen(navigation: NavHostController) {
-        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                    title = {
-                        Text(
-                            "About Wallet",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                navigation.popBackStack()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowBack,
-                                contentDescription = "Back Arrow"
-                            )
-                        }
-                    },
-                    scrollBehavior = scrollBehavior,
-                )
-            },
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.Center,
+        ScreenWithAppBarAndBackButton(title = "About Wallet", navigation = navigation) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        modifier = Modifier.padding(8.dp),
-                        text = "TODO: About Screen"
-                    )
-                }
+                Text(
+                    modifier = Modifier.padding(8.dp),
+                    text = "TODO: About Screen"
+                )
             }
         }
     }
 
     @Composable
     fun AddToWalletScreen(navigation: NavHostController) {
-        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                    title = {
-                        Text(
-                            "Add to Wallet",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                navigation.popBackStack()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowBack,
-                                contentDescription = "Back Arrow"
-                            )
-                        }
-                    },
-                    scrollBehavior = scrollBehavior,
-                )
-            },
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.Center,
+        ScreenWithAppBarAndBackButton(title = "Add to Wallet", navigation = navigation) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
             ) {
+                Text(
+                    modifier = Modifier.padding(8.dp),
+                    text = "Select the issuer for provisioning."
+                )
+            }
+
+            for (issuer in application.issuingAuthorityRepository.getIssuingAuthorities()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        modifier = Modifier.padding(8.dp),
-                        text = "Select the issuer for provisioning."
-                    )
-                }
-
-                for (issuer in application.issuingAuthorityRepository.getIssuingAuthorities()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Button(onClick = {
-                            provisioningViewModel.reset()
-                            provisioningViewModel.start(application, issuer)
-                            navigation.navigate("ProvisionCredentialScreen")
-                        }) {
-                            Text(issuer.configuration.name)
-                        }
+                    Button(onClick = {
+                        provisioningViewModel.reset()
+                        provisioningViewModel.start(application, issuer)
+                        navigation.navigate("ProvisionCredentialScreen")
+                    }) {
+                        Text(issuer.configuration.name)
                     }
                 }
             }
@@ -493,76 +396,38 @@ class MainActivity : ComponentActivity() {
         //  updated. Figure out a way to do this without logging.
         Logger.d(TAG, "Last refresh in UI at ${credentialInformationViewModel.lastHousekeepingAt.value}")
 
-        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                    title = {
-                        Text(
-                            "Credential Information",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                navigation.popBackStack()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowBack,
-                                contentDescription = "Back Arrow"
-                            )
-                        }
-                    },
-                    scrollBehavior = scrollBehavior,
-                )
-            },
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.Center,
+        ScreenWithAppBarAndBackButton(title = "Credential Information", navigation = navigation) {
+            Text("Name: ${credential.credentialConfiguration.displayName}")
+            Text("Issuer: ${issuer.configuration.name}")
+            val state = credential.state
+            Text("State: ${state.condition}")
+            Text("CPO pending: ${state.numAvailableCPO}")
+            Text("State Last Refresh: $stateTimeString")
+            Divider()
+            Text("Num PendingAuthKey: ${credential.pendingAuthenticationKeys.size}")
+            Text("Num AuthKey: ${credential.authenticationKeys.size}")
+            Divider()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Name: ${credential.credentialConfiguration.displayName}")
-                Text("Issuer: ${issuer.configuration.name}")
-                val state = credential.state
-                Text("State: ${state.condition}")
-                Text("CPO pending: ${state.numAvailableCPO}")
-                Text("State Last Refresh: $stateTimeString")
-                Divider()
-                Text("Num PendingAuthKey: ${credential.pendingAuthenticationKeys.size}")
-                Text("Num AuthKey: ${credential.authenticationKeys.size}")
-                Divider()
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Button(onClick = {
-                        credentialInformationViewModel.housekeeping(application, credential)
-                    }) {
-                        Text("Refresh")
-                    }
-                    Button(onClick = {
-                        navigation.navigate("CredentialInfo/$credentialId/Details")
-                    }) {
-                        Text("View")
-                    }
-                    Button(onClick = {
-                        // TODO: run issuer deletion flow
-                        application.credentialStore.deleteCredential(credentialId)
-                        navigation.popBackStack()
-                    }) {
-                        Text("Delete")
-                    }
+                Button(onClick = {
+                    credentialInformationViewModel.housekeeping(application, credential)
+                }) {
+                    Text("Refresh")
                 }
-
+                Button(onClick = {
+                    navigation.navigate("CredentialInfo/$credentialId/Details")
+                }) {
+                    Text("View")
+                }
+                Button(onClick = {
+                    // TODO: run issuer deletion flow
+                    application.credentialStore.deleteCredential(credentialId)
+                    navigation.popBackStack()
+                }) {
+                    Text("Delete")
+                }
             }
         }
     }
@@ -593,92 +458,55 @@ class MainActivity : ComponentActivity() {
                 viewCredentialData.signatureOrUsualMark.size)
         }
 
-        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                    title = {
+        ScreenWithAppBarAndBackButton(title = "Credential Details", navigation = navigation) {
+            if (portraitBitmap != null) {
+                Row(
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        bitmap = portraitBitmap.asImageBitmap(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .size(200.dp),
+                        contentDescription = "Portrait of Holder",
+                    )
+                }
+                Divider(modifier = Modifier.padding(8.dp))
+            }
+            for (section in viewCredentialData.sections) {
+                if (section != viewCredentialData.sections[0]) {
+                    Divider(modifier = Modifier.padding(8.dp))
+                }
+                for ((key, value) in section.keyValuePairs) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         Text(
-                            "Credential Details",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = {
-                                navigation.popBackStack()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowBack,
-                                contentDescription = "Back Arrow"
+                            text = "$key:",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                             )
-                        }
-                    },
-                    scrollBehavior = scrollBehavior,
-                )
-            },
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                if (portraitBitmap != null) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Image(
-                            bitmap = portraitBitmap.asImageBitmap(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .size(200.dp),
-                            contentDescription = "Portrait of Holder",
+                        Text(
+                            text = "$value",
+                            color = MaterialTheme.colorScheme.secondary
                         )
-                    }
-                    Divider(modifier = Modifier.padding(8.dp))
-                }
-                for (section in viewCredentialData.sections) {
-                    if (section != viewCredentialData.sections[0]) {
-                        Divider(modifier = Modifier.padding(8.dp))
-                    }
-                    for ((key, value) in section.keyValuePairs) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Text(
-                                text = "$key:",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                                )
-                            Text(
-                                text = "$value",
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                        }
                     }
                 }
-                if (signatureOrUsualMark != null) {
-                    Divider(modifier = Modifier.padding(8.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Image(
-                            bitmap = signatureOrUsualMark.asImageBitmap(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .size(75.dp),
-                            contentDescription = "Signature / Usual Mark of Holder",
-                        )
-                    }
+            }
+            if (signatureOrUsualMark != null) {
+                Divider(modifier = Modifier.padding(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Image(
+                        bitmap = signatureOrUsualMark.asImageBitmap(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .size(75.dp),
+                        contentDescription = "Signature / Usual Mark of Holder",
+                    )
                 }
             }
         }
@@ -686,149 +514,126 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun ProvisionCredentialScreen(navigation: NavHostController) {
-        val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
-        Scaffold(
-            topBar = {
-                CenterAlignedTopAppBar(
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                    ),
-                    title = {
+        ScreenWithAppBar(title = "Provisioning", navigationIcon = {
+            if (provisioningViewModel.state.value != ProvisioningViewModel.State.PROOFING_COMPLETE) {
+                IconButton(
+                    onClick = {
+                        navigation.popBackStack()
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ArrowBack,
+                        contentDescription = "Back Arrow"
+                    )
+                }
+            }
+        }
+        ) {
+            when (provisioningViewModel.state.value) {
+                ProvisioningViewModel.State.IDLE -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
                         Text(
-                            "Provisioning",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            modifier = Modifier.padding(8.dp),
+                            text = "TODO: Idle"
                         )
-                    },
-                    navigationIcon = {
-                        if (provisioningViewModel.state.value != ProvisioningViewModel.State.PROOFING_COMPLETE) {
-                            IconButton(
-                                onClick = {
-                                    navigation.popBackStack()
-                                }
+                    }
+                }
+
+                ProvisioningViewModel.State.CREDENTIAL_REGISTRATION -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(8.dp),
+                            text = "TODO: Creating CredentialKey"
+                        )
+                    }
+                }
+
+                ProvisioningViewModel.State.EVIDENCE_REQUESTS_READY -> {
+                    // TODO: for now we just consider the first evidence request
+                    val evidenceRequest = provisioningViewModel.evidenceRequests!![0]
+                    when (evidenceRequest.evidenceType) {
+                        EvidenceType.QUESTION_STRING -> {
+                            EvidenceRequestQuestionString(evidenceRequest as EvidenceRequestQuestionString)
+                        }
+
+                        EvidenceType.MESSAGE -> {
+                            EvidenceRequestMessage(evidenceRequest as EvidenceRequestMessage)
+                        }
+
+                        EvidenceType.QUESTION_MULTIPLE_CHOICE -> {
+                            EvidenceRequestQuestionMultipleChoice(
+                                evidenceRequest as EvidenceRequestQuestionMultipleChoice
+                            )
+                        }
+
+                        EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION -> {
+                            EvidenceRequestIcaoPassiveAuthentication(
+                                evidenceRequest as EvidenceRequestIcaoPassiveAuthentication
+                            )
+                        }
+
+                        else -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.ArrowBack,
-                                    contentDescription = "Back Arrow"
+                                Text(
+                                    modifier = Modifier.padding(8.dp),
+                                    text = "Unknown evidence type ${evidenceRequest.evidenceType}"
                                 )
                             }
                         }
-                    },
-                    scrollBehavior = scrollBehavior,
-                )
-            },
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                when (provisioningViewModel.state.value) {
-                    ProvisioningViewModel.State.IDLE -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(8.dp),
-                                text = "TODO: Idle"
-                            )
-                        }
                     }
+                }
 
-                    ProvisioningViewModel.State.CREDENTIAL_REGISTRATION -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(8.dp),
-                                text = "TODO: Creating CredentialKey"
-                            )
-                        }
+                ProvisioningViewModel.State.SUBMITTING_EVIDENCE -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(8.dp),
+                            text = "TODO: Submitting evidence"
+                        )
                     }
+                }
 
-                    ProvisioningViewModel.State.EVIDENCE_REQUESTS_READY -> {
-                        // TODO: for now we just consider the first evidence request
-                        val evidenceRequest = provisioningViewModel.evidenceRequests!![0]
-                        when (evidenceRequest.evidenceType) {
-                            EvidenceType.QUESTION_STRING -> {
-                                EvidenceRequestQuestionString(evidenceRequest as EvidenceRequestQuestionString)
-                            }
+                ProvisioningViewModel.State.PROOFING_COMPLETE -> {
+                    navigation.popBackStack("MainScreen", false)
+                }
 
-                            EvidenceType.MESSAGE -> {
-                                EvidenceRequestMessage(evidenceRequest as EvidenceRequestMessage)
-                            }
-
-                            EvidenceType.QUESTION_MULTIPLE_CHOICE -> {
-                                EvidenceRequestQuestionMultipleChoice(
-                                    evidenceRequest as EvidenceRequestQuestionMultipleChoice
-                                )
-                            }
-
-                            EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION -> {
-                                EvidenceRequestIcaoPassiveAuthentication(
-                                    evidenceRequest as EvidenceRequestIcaoPassiveAuthentication
-                                )
-                            }
-                            else -> {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        modifier = Modifier.padding(8.dp),
-                                        text = "Unknown evidence type ${evidenceRequest.evidenceType}"
-                                    )
-                                }
-                            }
-                        }
+                ProvisioningViewModel.State.FAILED -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(8.dp),
+                            text = "Something went wrong: ${provisioningViewModel.error}"
+                        )
                     }
+                }
 
-                    ProvisioningViewModel.State.SUBMITTING_EVIDENCE -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(8.dp),
-                                text = "TODO: Submitting evidence"
-                            )
-                        }
-                    }
-
-                    ProvisioningViewModel.State.PROOFING_COMPLETE -> {
-                        navigation.popBackStack("MainScreen", false)
-                    }
-
-                    ProvisioningViewModel.State.FAILED -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(8.dp),
-                                text = "Something went wrong: ${provisioningViewModel.error}"
-                            )
-                        }
-                    }
-
-                    else -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(8.dp),
-                                text = "Unexpected state: ${provisioningViewModel.state.value}"
-                            )
-                        }
+                else -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(8.dp),
+                            text = "Unexpected state: ${provisioningViewModel.state.value}"
+                        )
                     }
                 }
             }
         }
+
     }
 
     @Composable
