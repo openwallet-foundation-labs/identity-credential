@@ -3,6 +3,7 @@ package com.android.identity_credential.wallet
 import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
@@ -60,19 +61,29 @@ class PermissionTracker(private val activity: ComponentActivity, private val per
      */
     @Composable
     fun PermissionCheck(permissions: Iterable<String>, content: @Composable () -> Unit) {
-
         var allGranted = true
-        for (permission in permissions) {
-            if (!mState[permission]!!.observeAsState().value!!) {
-                allGranted = false
-                Text(this.permissions[permission]!!, modifier = Modifier.fillMaxWidth())
-                Button(onClick = {requestPermission(permission)}) {
-                    Text("Request")
+        Column {
+            for (permission in permissions) {
+                if (!mState[permission]!!.observeAsState().value!!) {
+                    allGranted = false
+                    SinglePermissionRequest(permission = permission)
                 }
             }
         }
+
         if (allGranted) {
             content()
+        }
+    }
+
+    @Composable
+    private fun SinglePermissionRequest(permission: String){
+        val reasoningTxt: String = this.permissions[permission]!!
+        Column {
+            Text(text = reasoningTxt, modifier = Modifier.fillMaxWidth())
+            Button(onClick = {requestPermission(permission)}) {
+                Text("I understand")
+            }
         }
     }
 }
