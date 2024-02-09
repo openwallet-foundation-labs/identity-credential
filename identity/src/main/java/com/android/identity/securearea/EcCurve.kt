@@ -41,10 +41,9 @@ enum class EcCurve(val coseCurveIdentifier: Int) {
     X448(5);
 
     companion object {
-        fun fromInt(coseCurveIdentifier: Int): EcCurve {
-            return EcCurve.values().find { it.coseCurveIdentifier == coseCurveIdentifier }
+        fun fromInt(coseCurveIdentifier: Int): EcCurve =
+            EcCurve.values().find { it.coseCurveIdentifier == coseCurveIdentifier }
                 ?: throw IllegalArgumentException("No curve with COSE identifier $coseCurveIdentifier")
-        }
     }
 
     /**
@@ -82,5 +81,4 @@ enum class EcCurve(val coseCurveIdentifier: Int) {
             X448 -> "x448"
             ED448 -> "ed448"
         }
-
 }

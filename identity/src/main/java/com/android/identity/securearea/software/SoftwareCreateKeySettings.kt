@@ -31,17 +31,22 @@ class SoftwareCreateKeySettings private constructor(
      *
      * @param attestationChallenge challenge to include in attestation for the key.
      */
-    class Builder(private val attestationChallenge: ByteArray) {
-        private var keyPurposes = setOf(KeyPurpose.SIGN)
-        private var ecCurve = EcCurve.P256
-        private var passphraseRequired = false
-        private var passphrase: String? = ""
-        private var subject: String? = null
-        private var validFrom: Timestamp? = null
-        private var validUntil: Timestamp? = null
-        private var attestationKey: PrivateKey? = null
-        private var attestationKeySignatureAlgorithm: String? = null
+    class Builder(
+        private val attestationChallenge: ByteArray,
+        private var keyPurposes: Set<KeyPurpose> = setOf(KeyPurpose.SIGN),
+        private var ecCurve: EcCurve = EcCurve.P256,
+        private var passphraseRequired: Boolean = false,
+        private var passphrase: String? = "",
+        private var subject: String? = null,
+        private var validFrom: Timestamp? = null,
+        private var validUntil: Timestamp? = null,
+        private var attestationKey: PrivateKey? = null,
+        private var attestationKeySignatureAlgorithm: String? = null,
         private var attestationKeyCertification: List<X509Certificate>? = null
+    ) {
+        constructor(challenge: ByteArray) : this(challenge, setOf(KeyPurpose.SIGN)) {
+
+        }
 
         /**
          * Sets the attestation key to use for attesting to the key.
@@ -57,11 +62,10 @@ class SoftwareCreateKeySettings private constructor(
             attestationKey: PrivateKey,
             attestationKeySignatureAlgorithm: String,
             attestationKeyCertification: List<X509Certificate>
-        ): Builder {
+        ) = apply {
             this.attestationKey = attestationKey
             this.attestationKeySignatureAlgorithm = attestationKeySignatureAlgorithm
             this.attestationKeyCertification = attestationKeyCertification
-            return this
         }
 
         /**
@@ -73,10 +77,9 @@ class SoftwareCreateKeySettings private constructor(
          * @return the builder.
          * @throws IllegalArgumentException if no purpose is set.
          */
-        fun setKeyPurposes(keyPurposes: Set<KeyPurpose>): Builder {
+        fun setKeyPurposes(keyPurposes: Set<KeyPurpose>) = apply {
             require(!keyPurposes.isEmpty()) { "Purposes cannot be empty" }
             this.keyPurposes = keyPurposes
-            return this
         }
 
         /**
@@ -87,9 +90,8 @@ class SoftwareCreateKeySettings private constructor(
          * @param curve the curve to use.
          * @return the builder.
          */
-        fun setEcCurve(curve: EcCurve): Builder {
+        fun setEcCurve(curve: EcCurve) = apply {
             ecCurve = curve
-            return this
         }
 
         /**
@@ -99,11 +101,10 @@ class SoftwareCreateKeySettings private constructor(
          * @param passphrase the passphrase to use, must not be `null` if `required` is `true`.
          * @return the builder.
          */
-        fun setPassphraseRequired(required: Boolean, passphrase: String?): Builder {
+        fun setPassphraseRequired(required: Boolean, passphrase: String?) = apply {
             check(!(passphraseRequired && passphrase == null)) { "Passphrase cannot be null if it's required" }
             passphraseRequired = required
             this.passphrase = passphrase
-            return this
         }
 
         /**
@@ -112,9 +113,8 @@ class SoftwareCreateKeySettings private constructor(
          * @param subject subject field
          * @return the builder.
          */
-        fun setSubject(subject: String?): Builder {
+        fun setSubject(subject: String?) = apply {
             this.subject = subject
-            return this
         }
 
         /**
@@ -126,13 +126,9 @@ class SoftwareCreateKeySettings private constructor(
          * @param validUntil the point in time after which the key is not valid.
          * @return the builder.
          */
-        fun setValidityPeriod(
-            validFrom: Timestamp,
-            validUntil: Timestamp
-        ): Builder {
+        fun setValidityPeriod(validFrom: Timestamp, validUntil: Timestamp) = apply {
             this.validFrom = validFrom
             this.validUntil = validUntil
-            return this
         }
 
         /**
@@ -140,14 +136,13 @@ class SoftwareCreateKeySettings private constructor(
          *
          * @return a new [SoftwareCreateKeySettings].
          */
-        fun build(): SoftwareCreateKeySettings {
-            return SoftwareCreateKeySettings(
+        fun build(): SoftwareCreateKeySettings =
+            SoftwareCreateKeySettings(
                 passphraseRequired, passphrase!!, ecCurve,
                 keyPurposes, attestationChallenge,
                 subject, validFrom, validUntil,
                 attestationKey, attestationKeySignatureAlgorithm,
                 attestationKeyCertification
             )
-        }
     }
 }

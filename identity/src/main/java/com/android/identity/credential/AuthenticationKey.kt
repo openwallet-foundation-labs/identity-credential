@@ -62,6 +62,7 @@ class AuthenticationKey {
         private set
 
     private lateinit var privateApplicationData: SimpleApplicationData
+
     /**
      * Application specific data.
      *
@@ -135,7 +136,7 @@ class AuthenticationKey {
         if (replacementAlias != null) {
             mapBuilder.put("replacementAlias", replacementAlias)
         }
-        return builder.build()[0]
+        return builder.build().first()
     }
 
     /**
@@ -143,19 +144,16 @@ class AuthenticationKey {
      * key is designated to replace this key.
      */
     val replacement: PendingAuthenticationKey?
-        get() {
-            if (replacementAlias == null) {
-                return null
-            }
-            for (pendingAuthKey in credential.pendingAuthenticationKeys) {
-                if (pendingAuthKey.alias == replacementAlias) {
-                    return pendingAuthKey
+        get() = credential.pendingAuthenticationKeys.firstOrNull { it.alias == replacementAlias }
+            .also {
+                if (it == null && replacementAlias != null) {
+                    Logger.w(
+                        TAG, "Pending key with alias $replacementAlias which " +
+                                "is intended to replace this key does not exist"
+                    )
                 }
             }
-            Logger.w(TAG, "Pending key with alias $replacementAlias which " +
-                    "is intended to replace this key does not exist")
-            return null
-        }
+
 
     fun setReplacementAlias(alias: String) {
         replacementAlias = alias
@@ -186,40 +184,36 @@ class AuthenticationKey {
         fun fromCbor(
             dataItem: DataItem,
             credential: Credential
-        ): AuthenticationKey {
-            val ret = AuthenticationKey()
-            ret.alias = Util.cborMapExtractString(dataItem, "alias")
-            if (Util.cborMapHasKey(dataItem, "domain")) {
-                ret.domain = Util.cborMapExtractString(dataItem, "domain")
+        ) = AuthenticationKey().apply {
+            alias = Util.cborMapExtractString(dataItem, "alias")
+            domain = if (Util.cborMapHasKey(dataItem, "domain")) {
+                Util.cborMapExtractString(dataItem, "domain")
             } else {
-                ret.domain = ""
+                ""
             }
             val secureAreaIdentifier =
                 Util.cborMapExtractString(dataItem, "secureAreaIdentifier")
-            ret.secureArea =
-                credential.secureAreaRepository.getImplementation(secureAreaIdentifier)!!
-            requireNotNull(ret.secureArea) { "Unknown Secure Area $secureAreaIdentifier" }
-            ret.usageCount = Util.cborMapExtractNumber(dataItem, "usageCount").toInt()
-            ret.issuerProvidedData = Util.cborMapExtractByteString(dataItem, "data")
-            ret.validFrom =
-                Timestamp.ofEpochMilli(Util.cborMapExtractNumber(dataItem, "validFrom"))
-            ret.validUntil =
-                Timestamp.ofEpochMilli(Util.cborMapExtractNumber(dataItem, "validUntil"))
+            secureArea = credential.secureAreaRepository.getImplementation(secureAreaIdentifier)!!
+            requireNotNull(secureArea) { "Unknown Secure Area $secureAreaIdentifier" }
+            usageCount = Util.cborMapExtractNumber(dataItem, "usageCount").toInt()
+            issuerProvidedData = Util.cborMapExtractByteString(dataItem, "data")
+            validFrom = Timestamp.ofEpochMilli(Util.cborMapExtractNumber(dataItem, "validFrom"))
+            validUntil = Timestamp.ofEpochMilli(Util.cborMapExtractNumber(dataItem, "validUntil"))
             if (Util.cborMapHasKey(dataItem, "replacementAlias")) {
-                ret.replacementAlias = Util.cborMapExtractString(dataItem, "replacementAlias")
+                replacementAlias = Util.cborMapExtractString(dataItem, "replacementAlias")
             }
             val applicationDataDataItem: DataItem =
                 Util.cborMapExtract(dataItem, "applicationData")
             check(applicationDataDataItem is ByteString) { "applicationData not found or not byte[]" }
-            ret.credential = credential
-            ret.privateApplicationData = SimpleApplicationData.decodeFromCbor(
-                applicationDataDataItem.bytes
-            ) { ret.credential.saveCredential() }
+            this.credential = credential
+            privateApplicationData = SimpleApplicationData
+                .decodeFromCbor(applicationDataDataItem.bytes) {
+                    credential.saveCredential()
+                }
             if (Util.cborMapHasKey(dataItem, "authenticationKeyCounter")) {
-                ret.authenticationKeyCounter =
+                authenticationKeyCounter =
                     Util.cborMapExtractNumber(dataItem, "authenticationKeyCounter")
             }
-            return ret
         }
     }
 }

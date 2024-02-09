@@ -310,7 +310,7 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
-            Column() {
+            Column {
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
@@ -319,7 +319,7 @@ class MainActivity : ComponentActivity() {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column() {
+                    Column {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
                             text = "This app is used to engage with an mDL via NFC and request " +
@@ -489,7 +489,7 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
-            Column() {
+            Column {
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
@@ -502,7 +502,7 @@ class MainActivity : ComponentActivity() {
                         Column { Text(text = "Error: ${transferHelper.error}") }
                     } else {
                         if (resultPortrait != null) {
-                            Column() {
+                            Column {
                                 Image(
                                     bitmap = resultPortrait!!.asImageBitmap(),
                                     contentDescription = null,

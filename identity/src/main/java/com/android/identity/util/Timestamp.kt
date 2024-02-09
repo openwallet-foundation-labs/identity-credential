@@ -25,30 +25,21 @@ class Timestamp private constructor(private val epochMillis: Long) {
     /**
      * @return this represented as the number of milliseconds since midnight, January 1, 1970 UTC.
      */
-    fun toEpochMilli(): Long {
-        return epochMillis
-    }
+    fun toEpochMilli(): Long = epochMillis
 
-    override fun toString(): String {
-        return "Timestamp{epochMillis=$epochMillis}"
-    }
+    override fun toString(): String = "Timestamp{epochMillis=$epochMillis}"
 
-    override fun equals(other: Any?): Boolean {
-        return other is Timestamp && other.epochMillis == epochMillis
-    }
+    override fun equals(other: Any?): Boolean =
+        other is Timestamp && other.epochMillis == epochMillis
 
-    override fun hashCode(): Int {
-        return java.lang.Long.hashCode(epochMillis)
-    }
+    override fun hashCode(): Int = java.lang.Long.hashCode(epochMillis)
 
     companion object {
         /**
          * @return a `Timestamp` representing the current time
          */
         @JvmStatic
-        fun now(): Timestamp {
-            return Timestamp(System.currentTimeMillis())
-        }
+        fun now(): Timestamp = Timestamp(System.currentTimeMillis())
 
         /**
          * @param epochMillis A time represented as the number of milliseconds since midnight,
@@ -56,8 +47,6 @@ class Timestamp private constructor(private val epochMillis: Long) {
          * @return a `Timestamp` representing the given time
          */
         @JvmStatic
-        fun ofEpochMilli(epochMillis: Long): Timestamp {
-            return Timestamp(epochMillis)
-        }
+        fun ofEpochMilli(epochMillis: Long): Timestamp = Timestamp(epochMillis)
     }
 }

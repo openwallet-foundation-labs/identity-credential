@@ -4,7 +4,6 @@ import android.os.Parcelable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.android.identity.securearea.EcCurve
-import com.android.identity.securearea.SecureArea
 import kotlinx.parcelize.Parcelize
 
 @Stable
@@ -22,10 +21,7 @@ data class SettingsScreenState(
     val debugEnabled: Boolean = true
 ) {
 
-    fun isBleEnabled(): Boolean {
-        return isBleDataRetrievalEnabled
-                || isBlePeripheralModeEnabled
-    }
+    fun isBleEnabled(): Boolean = isBleDataRetrievalEnabled || isBlePeripheralModeEnabled
 
     fun canToggleBleDataRetrievalMode(newBleCentralMode: Boolean): Boolean {
         val updatedState = copy(isBleDataRetrievalEnabled = newBleCentralMode)
@@ -47,12 +43,11 @@ data class SettingsScreenState(
         return updatedState.hasDataRetrieval()
     }
 
-    private fun hasDataRetrieval(): Boolean {
-        return isBleDataRetrievalEnabled
+    private fun hasDataRetrieval(): Boolean =
+        isBleDataRetrievalEnabled
                 || isBlePeripheralModeEnabled
                 || wifiAwareEnabled
                 || nfcEnabled
-    }
 
     @Parcelize
     enum class SessionEncryptionCurveOption : Parcelable {
@@ -66,9 +61,8 @@ data class SettingsScreenState(
         X25519,
         X448;
 
-        fun toEcCurve(): EcCurve {
-
-            return when (this) {
+        fun toEcCurve(): EcCurve =
+            when (this) {
                 P256 -> EcCurve.P256
                 P384 -> EcCurve.P384
                 P521 -> EcCurve.P521
@@ -79,11 +73,10 @@ data class SettingsScreenState(
                 X25519 -> EcCurve.X25519
                 X448 -> EcCurve.X448
             }
-        }
 
         companion object {
-            fun fromEcCurve(curve: EcCurve): SessionEncryptionCurveOption {
-                return when (curve) {
+            fun fromEcCurve(curve: EcCurve): SessionEncryptionCurveOption =
+                when (curve) {
                     EcCurve.P256 -> P256
                     EcCurve.P384 -> P384
                     EcCurve.P521 -> P521
@@ -95,7 +88,6 @@ data class SettingsScreenState(
                     EcCurve.X448 -> X448
                     else -> throw IllegalStateException("Unknown EcCurve")
                 }
-            }
         }
     }
 }

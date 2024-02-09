@@ -200,13 +200,8 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
                     val encryptedPrivateKey = baos.toByteArray()
                     map.put("publicKey", keyPair.public.encoded)
                     map.put("encryptedPrivateKey", encryptedPrivateKey)
-                } catch (e: NoSuchPaddingException) {
-                    throw IllegalStateException("Error encrypting private key", e)
-                } catch (e: IllegalBlockSizeException) {
-                    throw IllegalStateException("Error encrypting private key", e)
-                } catch (e: BadPaddingException) {
-                    throw IllegalStateException("Error encrypting private key", e)
-                } catch (e: InvalidKeyException) {
+                } catch (e: Exception) {
+                    // such as NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException
                     throw IllegalStateException("Error encrypting private key", e)
                 }
             }
@@ -268,17 +263,8 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
             }
             attestationBuilder.end()
             storageEngine.put(PREFIX + alias, cborEncode(builder.build().get(0)))
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException("Unexpected exception", e)
-        } catch (e: CertificateException) {
-            throw IllegalStateException("Unexpected exception", e)
-        } catch (e: InvalidAlgorithmParameterException) {
-            throw IllegalStateException("Unexpected exception", e)
-        } catch (e: OperatorCreationException) {
-            throw IllegalStateException("Unexpected exception", e)
-        } catch (e: IOException) {
-            throw IllegalStateException("Unexpected exception", e)
-        } catch (e: NoSuchProviderException) {
+        } catch (e: Exception) {
+            // such as NoSuchAlgorithmException, CertificateException, InvalidAlgorithmParameterException, OperatorCreationException, IOException, NoSuchProviderException
             throw IllegalStateException("Unexpected exception", e)
         }
     }
@@ -350,17 +336,8 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
                 byteBuffer[cipherText]
                 cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
                 cipher.doFinal(cipherText)
-            } catch (e: NoSuchAlgorithmException) {
-                throw KeyLockedException("Error decrypting private key", e)
-            } catch (e: NoSuchPaddingException) {
-                throw KeyLockedException("Error decrypting private key", e)
-            } catch (e: IllegalBlockSizeException) {
-                throw KeyLockedException("Error decrypting private key", e)
-            } catch (e: BadPaddingException) {
-                throw KeyLockedException("Error decrypting private key", e)
-            } catch (e: InvalidKeyException) {
-                throw KeyLockedException("Error decrypting private key", e)
-            } catch (e: InvalidAlgorithmParameterException) {
+            } catch (e: Exception) {
+                // such as NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException
                 throw KeyLockedException("Error decrypting private key", e)
             }
         } else {
@@ -370,11 +347,8 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         val privateKey = try {
             val ecKeyFac = KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
             ecKeyFac.generatePrivate(encodedKeySpec)
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException("Error loading private key", e)
-        } catch (e: InvalidKeySpecException) {
-            throw IllegalStateException("Error loading private key", e)
-        } catch (e: NoSuchProviderException) {
+        } catch (e: Exception) {
+            // such as NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException
             throw IllegalStateException("Error loading private key", e)
         }
         return KeyData(curve, keyPurposes, privateKey)
@@ -429,13 +403,8 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
             s.initSign(keyData.privateKey)
             s.update(dataToSign)
             s.sign()
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException("Unexpected Exception", e)
-        } catch (e: SignatureException) {
-            throw IllegalStateException("Unexpected Exception", e)
-        } catch (e: InvalidKeyException) {
-            throw IllegalStateException("Unexpected Exception", e)
-        } catch (e: NoSuchProviderException) {
+        } catch (e: Exception) {
+            // such as NoSuchAlgorithmException, SignatureException, InvalidKeyException, NoSuchProviderException
             throw IllegalStateException("Unexpected Exception", e)
         }
     }
@@ -453,9 +422,8 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
             ka.init(keyData.privateKey)
             ka.doPhase(otherKey, true)
             ka.generateSecret()
-        } catch (e: NoSuchAlgorithmException) {
-            throw IllegalStateException("Unexpected Exception", e)
-        } catch (e: InvalidKeyException) {
+        } catch (e: Exception) {
+            // such as NoSuchAlgorithmException, InvalidKeyException
             throw IllegalStateException("Unexpected Exception", e)
         }
     }

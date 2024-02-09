@@ -362,7 +362,7 @@ public class MdocUtil {
         for (String namespaceName : documentRequest.getNamespaces()) {
             for (String dataElementName : documentRequest.getEntryNames(namespaceName)) {
                 boolean intentToRetain = documentRequest.getIntentToRetain(namespaceName, dataElementName);
-                elements.add(new CredentialRequest.DataElement(namespaceName, dataElementName, intentToRetain));
+                elements.add(new CredentialRequest.DataElement(namespaceName, dataElementName, intentToRetain, false));
             }
         }
         return new CredentialRequest(elements);

@@ -507,17 +507,16 @@ class MainActivity :  FragmentActivity() {
 
     // Unfortunately this is API is only available to system apps so we
     // have to use reflection to use it.
-    private fun getFirstApiLevel(): Int {
+    private fun getFirstApiLevel(): Int =
         try {
             val c = Class.forName("android.os.SystemProperties")
             val get = c.getMethod("get", String::class.java)
             val firstApiLevelString = get.invoke(c, "ro.product.first_api_level") as String
-            return firstApiLevelString.toInt()
+            firstApiLevelString.toInt()
         } catch (e: java.lang.Exception) {
             Logger.w(TAG, "Error getting ro.product.first_api_level", e)
-            return 0
+            0
         }
-    }
 
     private fun getNameForApiLevel(apiLevel: Int): String {
         val fields = Build.VERSION_CODES::class.java.fields
@@ -878,7 +877,7 @@ class MainActivity :  FragmentActivity() {
         )
 
         val keyInfo = androidKeystoreSecureArea.getKeyInfo("testKey")
-        val publicKey = keyInfo.attestation.get(0).publicKey
+        val publicKey = keyInfo.attestation.first().publicKey
 
         if (keyPurpose == KeyPurpose.SIGN) {
             val signingAlgorithm = getNaturalAlgorithmForCurve(curve)
@@ -1035,7 +1034,7 @@ class MainActivity :  FragmentActivity() {
         softwareSecureArea.createKey("testKey", builder.build())
 
         val keyInfo = softwareSecureArea.getKeyInfo("testKey")
-        val publicKey = keyInfo.attestation.get(0).publicKey
+        val publicKey = keyInfo.attestation.first().publicKey
 
         var unlockData: KeyUnlockData? = null
         if (passphraseEnteredByUser != null) {

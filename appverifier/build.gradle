@@ -73,6 +73,7 @@ dependencies {
     implementation libs.bundles.compose
     implementation libs.cbor
     implementation libs.code.scanner
+    implementation libs.identity.credential
 
     androidTestImplementation libs.bundles.ui.testing
 

@@ -87,15 +87,13 @@ class CredentialStore(
      *
      * @return list of all credential names in the store.
      */
-    fun listCredentials(): List<String> {
-        val ret = mutableListOf<String>()
-        for (name in storageEngine.enumerate()) {
-            if (name.startsWith(Credential.CREDENTIAL_PREFIX)) {
-                ret.add(name.substring(Credential.CREDENTIAL_PREFIX.length))
-            }
-        }
-        return ret
+    fun listCredentials(): List<String> = mutableListOf<String>().apply {
+        storageEngine.enumerate()
+            .filter { name -> name.startsWith(Credential.CREDENTIAL_PREFIX) }
+            .map { name -> name.substring(Credential.CREDENTIAL_PREFIX.length) }
+            .forEach { name -> add(name) }
     }
+
 
     /**
      * Deletes a credential.

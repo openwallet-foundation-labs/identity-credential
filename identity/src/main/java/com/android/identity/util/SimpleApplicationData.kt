@@ -25,6 +25,13 @@ import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.credential.NameSpacedData.Companion.fromEncodedCbor
 import com.android.identity.internal.Util
+import com.android.identity.internal.Util.cborDecodeBoolean
+import com.android.identity.internal.Util.cborDecodeLong
+import com.android.identity.internal.Util.cborDecodeString
+import com.android.identity.internal.Util.cborEncode
+import com.android.identity.internal.Util.cborEncodeBoolean
+import com.android.identity.internal.Util.cborEncodeNumber
+import com.android.identity.internal.Util.cborEncodeString
 import java.io.ByteArrayInputStream
 
 /**
@@ -35,10 +42,9 @@ import java.io.ByteArrayInputStream
  * @param onDataChanged callback invoked whenever changes are made to a key that is
  * if it's added, changed, or removed.
  */
-class SimpleApplicationData(
-    private val onDataChanged: (key: String) -> Unit
-) : ApplicationData {
-    private val data: MutableMap<String, ByteArray?> = LinkedHashMap()
+class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : ApplicationData {
+
+    private val data = mutableMapOf<String, ByteArray?>()
 
     override fun setData(key: String, value: ByteArray?): ApplicationData {
         if (value == null) {
@@ -50,50 +56,30 @@ class SimpleApplicationData(
         return this
     }
 
-    override fun setString(key: String, value: String): ApplicationData {
-        return setData(key, Util.cborEncodeString(value))
-    }
+    override fun setString(key: String, value: String): ApplicationData =
+        setData(key, cborEncodeString(value))
 
-    override fun setNumber(key: String, value: Long): ApplicationData {
-        return setData(key, Util.cborEncodeNumber(value))
-    }
+    override fun setNumber(key: String, value: Long): ApplicationData =
+        setData(key, cborEncodeNumber(value))
 
-    override fun setBoolean(key: String, value: Boolean): ApplicationData {
-        return setData(key, Util.cborEncodeBoolean(value))
-    }
+    override fun setBoolean(key: String, value: Boolean): ApplicationData =
+        setData(key, cborEncodeBoolean(value))
 
-    override fun setNameSpacedData(key: String, value: NameSpacedData): ApplicationData {
-        return setData(key, value.encodeAsCbor())
-    }
+    override fun setNameSpacedData(key: String, value: NameSpacedData): ApplicationData =
+        setData(key, value.encodeAsCbor())
 
-    override fun keyExists(key: String): Boolean {
-        return data[key] != null
-    }
+    override fun keyExists(key: String): Boolean = data[key] != null
 
-    override fun getData(key: String): ByteArray {
-        return data[key]
-            ?: throw IllegalArgumentException("Key '$key' is not present")
-    }
+    override fun getData(key: String): ByteArray =
+        data[key] ?: throw IllegalArgumentException("Key '$key' is not present")
 
-    override fun getString(key: String): String {
-        val value = getData(key)
-        return Util.cborDecodeString(value)
-    }
+    override fun getString(key: String): String = cborDecodeString(getData(key))
 
-    override fun getNumber(key: String): Long {
-        val value = getData(key)
-        return Util.cborDecodeLong(value)
-    }
+    override fun getNumber(key: String): Long = cborDecodeLong(getData(key))
 
-    override fun getBoolean(key: String): Boolean {
-        val value = getData(key)
-        return Util.cborDecodeBoolean(value)
-    }
+    override fun getBoolean(key: String): Boolean = cborDecodeBoolean(getData(key))
 
-    override fun getNameSpacedData(key: String): NameSpacedData {
-        val value = getData(key)
-        return fromEncodedCbor(value)
-    }
+    override fun getNameSpacedData(key: String): NameSpacedData = fromEncodedCbor(getData(key))
 
     /**
      * Encode the [ApplicationData] as a byte[] using [CBOR](http://cbor.io/).
@@ -107,7 +93,7 @@ class SimpleApplicationData(
             appDataMapBuilder.put(key, data[key])
         }
         appDataMapBuilder.end()
-        return Util.cborEncode(appDataBuilder.build().get(0))
+        return cborEncode(appDataBuilder.build().get(0))
     }
 
     companion object {
@@ -129,8 +115,7 @@ class SimpleApplicationData(
             onDataChanged: (key: String) -> Unit
         ): SimpleApplicationData {
             val bais = ByteArrayInputStream(encodedApplicationData)
-            val dataItems: List<DataItem>
-            dataItems = try {
+            val dataItems: List<DataItem> = try {
                 CborDecoder(bais).decode()
             } catch (e: CborException) {
                 throw IllegalStateException("Error decoding CBOR", e)

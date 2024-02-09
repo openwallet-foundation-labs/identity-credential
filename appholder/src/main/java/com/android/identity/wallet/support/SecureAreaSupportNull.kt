@@ -47,22 +47,15 @@ class SecureAreaSupportNull : SecureAreaSupport {
         throw IllegalStateException("No implementation")
     }
 
-    override fun getSecureAreaSupportState(): SecureAreaSupportState {
-        return state
-    }
+    override fun getSecureAreaSupportState(): SecureAreaSupportState = state
 
-    override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray {
-        return ByteArray(0)
-    }
-
+    override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray =
+        ByteArray(0)
 
     override fun createAuthKeySettingsFromConfiguration(
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
         validFrom: Timestamp,
         validUntil: Timestamp
-    ): CreateKeySettings {
-        return CreateKeySettings(challenge)
-    }
-
+    ): CreateKeySettings = CreateKeySettings(challenge)
 }

@@ -38,29 +38,27 @@ class GenericStorageEngine(private val storageDirectory: File) : StorageEngine {
         private const val PREFIX = "IC_GenericStorageEngine_"
     }
 
-    private fun getTargetFile(name: String): File {
-        return try {
+    private fun getTargetFile(name: String): File =
+        try {
             val fileName = PREFIX + URLEncoder.encode(name, "UTF-8")
             File(storageDirectory, fileName)
         } catch (e: UnsupportedEncodingException) {
             throw IllegalStateException("Unexpected UnsupportedEncodingException", e)
         }
-    }
 
-    override fun get(key: String): ByteArray? {
-        val file = getTargetFile(key)
-        return try {
+    override fun get(key: String): ByteArray? =
+        try {
+            val file = getTargetFile(key)
             if (!Files.exists(file.toPath())) {
                 null
             } else Files.readAllBytes(file.toPath())
         } catch (e: IOException) {
             throw IllegalStateException("Unexpected exception", e)
         }
-    }
 
     override fun put(key: String, data: ByteArray) {
-        val file = getTargetFile(key)
         try {
+            val file = getTargetFile(key)
             // TODO: do this atomically
             Files.deleteIfExists(file.toPath())
             Files.write(file.toPath(), data, StandardOpenOption.CREATE_NEW)
@@ -69,8 +67,8 @@ class GenericStorageEngine(private val storageDirectory: File) : StorageEngine {
         }
     }
 
-    override fun delete(name: String) {
-        val file = getTargetFile(name)
+    override fun delete(key: String) {
+        val file = getTargetFile(key)
         try {
             Files.deleteIfExists(file.toPath())
         } catch (e: IOException) {

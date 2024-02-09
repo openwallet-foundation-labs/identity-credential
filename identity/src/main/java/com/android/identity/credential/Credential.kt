@@ -90,7 +90,7 @@ class Credential private constructor(
     private val storageEngine: StorageEngine,
     internal val secureAreaRepository: SecureAreaRepository
 ) {
-    private var privateApplicationData = SimpleApplicationData { saveCredential() }
+
     /**
      * Application specific data.
      *
@@ -98,25 +98,27 @@ class Credential private constructor(
      * with the authentication key. Setters and associated getters are
      * enumerated in the [ApplicationData] interface.
      */
+    private var _applicationData = SimpleApplicationData { saveCredential() }
     val applicationData: ApplicationData
-        get() = privateApplicationData
+        get() = _applicationData
 
-    private var privatePendingAuthenticationKeys: MutableList<PendingAuthenticationKey> = ArrayList()
+
     /**
      * Pending authentication keys.
      */
+    private var _pendingAuthenticationKeys = mutableListOf<PendingAuthenticationKey>()
     val pendingAuthenticationKeys: List<PendingAuthenticationKey>
         // Return shallow copy b/c backing field may get modified if certify() or delete() is called.
-        get() = ArrayList(privatePendingAuthenticationKeys)
+        get() = _pendingAuthenticationKeys.toList()
 
-    private var privateAuthenticationKeys: MutableList<AuthenticationKey> = ArrayList()
 
     /**
      * Certified authentication keys.
      */
+    private var _authenticationKeys = mutableListOf<AuthenticationKey>()
     val authenticationKeys: List<AuthenticationKey>
         // Return shallow copy b/c backing field may get modified if certify() or delete() is called.
-        get() = ArrayList(privateAuthenticationKeys)
+        get() = _authenticationKeys.toList()
 
     /**
      * Authentication key counter.
@@ -131,15 +133,15 @@ class Credential private constructor(
         val t0 = Timestamp.now()
         val builder = CborBuilder()
         val map: MapBuilder<CborBuilder> = builder.addMap()
-        map.put("applicationData", privateApplicationData.encodeAsCbor())
+        map.put("applicationData", _applicationData.encodeAsCbor())
         val pendingAuthenticationKeysArrayBuilder: ArrayBuilder<MapBuilder<CborBuilder>> =
             map.putArray("pendingAuthenticationKeys")
-        for (pendingAuthenticationKey in privatePendingAuthenticationKeys) {
+        for (pendingAuthenticationKey in _pendingAuthenticationKeys) {
             pendingAuthenticationKeysArrayBuilder.add(pendingAuthenticationKey.toCbor())
         }
         val authenticationKeysArrayBuilder: ArrayBuilder<MapBuilder<CborBuilder>> =
             map.putArray("authenticationKeys")
-        for (authenticationKey in privateAuthenticationKeys) {
+        for (authenticationKey in _authenticationKeys) {
             authenticationKeysArrayBuilder.add(authenticationKey.toCbor())
         }
         map.put("authenticationKeyCounter", authenticationKeyCounter)
@@ -165,39 +167,35 @@ class Credential private constructor(
         check(dataItems.size == 1) { "Expected 1 item, found " + dataItems.size }
         check(dataItems[0] is Map) { "Item is not a map" }
 
-        val map = dataItems[0] as Map
+        val map = dataItems.first() as Map
         val applicationDataDataItem: DataItem = map[UnicodeString("applicationData")]
         check(applicationDataDataItem is ByteString) { "applicationData not found or not byte[]" }
 
-        privateApplicationData = SimpleApplicationData.decodeFromCbor(
-            applicationDataDataItem.bytes
-        ) { saveCredential() }
+        _applicationData = SimpleApplicationData
+            .decodeFromCbor(applicationDataDataItem.bytes) {
+                saveCredential()
+            }
 
-        privatePendingAuthenticationKeys = ArrayList()
+        _pendingAuthenticationKeys = ArrayList()
         val pendingAuthenticationKeysDataItem: DataItem =
             map[UnicodeString("pendingAuthenticationKeys")]
         check(pendingAuthenticationKeysDataItem is Array) { "pendingAuthenticationKeys not found or not array" }
         for (item in pendingAuthenticationKeysDataItem.dataItems) {
-            privatePendingAuthenticationKeys.add(PendingAuthenticationKey.fromCbor(item, this))
+            _pendingAuthenticationKeys.add(PendingAuthenticationKey.fromCbor(item, this))
         }
-        privateAuthenticationKeys = ArrayList()
+        _authenticationKeys = ArrayList()
         val authenticationKeysDataItem: DataItem = map[UnicodeString("authenticationKeys")]
         check(authenticationKeysDataItem is Array) { "authenticationKeys not found or not array" }
         for (item in authenticationKeysDataItem.dataItems) {
-            privateAuthenticationKeys.add(AuthenticationKey.fromCbor(item, this))
+            _authenticationKeys.add(AuthenticationKey.fromCbor(item, this))
         }
         authenticationKeyCounter = Util.cborMapExtractNumber(map, "authenticationKeyCounter")
         return true
     }
 
     fun deleteCredential() {
-        // Need to use shallow copies because delete() modifies the list.
-        for (key in ArrayList(privatePendingAuthenticationKeys)) {
-            key.delete()
-        }
-        for (key in ArrayList(privateAuthenticationKeys)) {
-            key.delete()
-        }
+        _pendingAuthenticationKeys.clear()
+        _authenticationKeys.clear()
         storageEngine.delete(CREDENTIAL_PREFIX + name)
     }
 
@@ -213,30 +211,24 @@ class Credential private constructor(
         domain: String,
         now: Timestamp?
     ): AuthenticationKey? {
+
         var candidate: AuthenticationKey? = null
-        for (authenticationKey in privateAuthenticationKeys) {
-            if (authenticationKey.domain != domain) {
-                continue
-            }
-            // If current time is passed...
-            if (now != null) {
-                // ... ignore slots that aren't yet valid
-                if (now.toEpochMilli() < authenticationKey.validFrom.toEpochMilli()) {
-                    continue
-                }
-                // .. ignore slots that aren't valid anymore
-                if (now.toEpochMilli() > authenticationKey.validUntil.toEpochMilli()) {
-                    continue
-                }
-            }
+        _authenticationKeys.filter {
+            it.domain == domain && (
+                    now != null
+                            && (now.toEpochMilli() >= it.validFrom.toEpochMilli())
+                            && (now.toEpochMilli() <= it.validUntil.toEpochMilli())
+                    )
+        }.forEach { authenticationKey ->
             // If we already have a candidate, prefer this one if its usage count is lower
-            if (candidate != null) {
-                if (authenticationKey.usageCount < candidate.usageCount) {
+            candidate?.let { candidateAuthKey ->
+                if (authenticationKey.usageCount < candidateAuthKey.usageCount) {
                     candidate = authenticationKey
                 }
-            } else {
+            } ?: run {
                 candidate = authenticationKey
             }
+
         }
         return candidate
     }
@@ -282,16 +274,16 @@ class Credential private constructor(
             asReplacementFor,
             this
         )
-        privatePendingAuthenticationKeys.add(pendingAuthenticationKey)
+        _pendingAuthenticationKeys.add(pendingAuthenticationKey)
         asReplacementFor?.setReplacementAlias(pendingAuthenticationKey.alias)
         saveCredential()
         return pendingAuthenticationKey
     }
 
     fun removePendingAuthenticationKey(pendingAuthenticationKey: PendingAuthenticationKey) {
-        check(privatePendingAuthenticationKeys.remove(pendingAuthenticationKey)) { "Error removing pending authentication key" }
+        check(_pendingAuthenticationKeys.remove(pendingAuthenticationKey)) { "Error removing pending authentication key" }
         if (pendingAuthenticationKey.replacementForAlias != null) {
-            for (authKey in privateAuthenticationKeys) {
+            for (authKey in _authenticationKeys) {
                 if (authKey.alias == pendingAuthenticationKey.replacementForAlias) {
                     authKey.replacementAlias = null
                     break
@@ -302,9 +294,9 @@ class Credential private constructor(
     }
 
     fun removeAuthenticationKey(authenticationKey: AuthenticationKey) {
-        check(privateAuthenticationKeys.remove(authenticationKey)) { "Error removing authentication key" }
+        check(_authenticationKeys.remove(authenticationKey)) { "Error removing authentication key" }
         if (authenticationKey.replacementAlias != null) {
-            for (pendingAuthKey in privatePendingAuthenticationKeys) {
+            for (pendingAuthKey in _pendingAuthenticationKeys) {
                 if (pendingAuthKey.alias == authenticationKey.replacementAlias) {
                     pendingAuthKey.replacementForAlias = null
                     break
@@ -320,7 +312,7 @@ class Credential private constructor(
         validFrom: Timestamp,
         validUntil: Timestamp
     ): AuthenticationKey {
-        check(privatePendingAuthenticationKeys.remove(pendingAuthenticationKey)) { "Error removing pending authentication key" }
+        check(_pendingAuthenticationKeys.remove(pendingAuthenticationKey)) { "Error removing pending authentication key" }
         val authenticationKey = AuthenticationKey.create(
             pendingAuthenticationKey,
             issuerProvidedAuthenticationData,
@@ -328,7 +320,7 @@ class Credential private constructor(
             validUntil,
             this
         )
-        privateAuthenticationKeys.add(authenticationKey)
+        _authenticationKeys.add(authenticationKey)
         val authKeyToDelete = pendingAuthenticationKey.replacementFor
         authKeyToDelete?.delete()
         saveCredential()

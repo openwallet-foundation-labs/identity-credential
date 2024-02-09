@@ -60,7 +60,6 @@ import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.EcCurve
-import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import org.bouncycastle.asn1.x500.X500Name
@@ -83,16 +82,15 @@ class MainActivity : ComponentActivity() {
     companion object {
         private val TAG = "MainActivity"
 
-        val CREDENTIAL_ID = "mDL_Erika"
-        val AUTH_KEY_DOMAIN = "mdoc"
+        const val CREDENTIAL_ID = "mDL_Erika"
+        const val AUTH_KEY_DOMAIN = "mdoc"
 
-        val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        val MDL_NAMESPACE = "org.iso.18013.5.1"
-        val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
+        const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
+        const val MDL_NAMESPACE = "org.iso.18013.5.1"
+        const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
     }
 
     private lateinit var transferHelper: TransferHelper
-
 
     private fun provisionCredentials() {
         if (transferHelper.credentialStore.lookupCredential(CREDENTIAL_ID) == null) {
@@ -106,22 +104,19 @@ class MainActivity : ComponentActivity() {
         val credential = transferHelper.credentialStore.createCredential(CREDENTIAL_ID)
 
         val baos = ByteArrayOutputStream()
-        BitmapFactory.decodeResource(
-            applicationContext.resources,
-            R.drawable.img_erika_portrait
-        ).compress(Bitmap.CompressFormat.JPEG, 50, baos)
+        BitmapFactory.decodeResource(applicationContext.resources, R.drawable.img_erika_portrait)
+            .compress(Bitmap.CompressFormat.JPEG, 50, baos)
         val portrait: ByteArray = baos.toByteArray()
 
         val now = Timestamp.now()
-        val issueDate = now
-        val expiryDate = Timestamp.ofEpochMilli(issueDate.toEpochMilli() + 5*365*24*3600*1000L)
+        val expiryDate = Timestamp.ofEpochMilli(now.toEpochMilli() + 5 * 365 * 24 * 3600 * 1000L)
 
         val credentialData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
             .putEntryNumber(MDL_NAMESPACE, "sex", 2)
-            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(issueDate))
+            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(now))
             .putEntry(MDL_NAMESPACE, "expiry_date", Util.cborEncodeDateTime(expiryDate))
             .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
             .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
@@ -136,7 +131,7 @@ class MainActivity : ComponentActivity() {
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
         val validFrom = now
-        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + 365*24*3600*1000L)
+        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + 365 * 24 * 3600 * 1000L)
 
         // Create three authentication keys and certify them
         for (n in 0..2) {
@@ -288,16 +283,25 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MainScreen(context: Context) {
     val transferHelper = remember { TransferHelper.getInstance(context) }
-    val nfcStaticHandoverEnabled = remember { mutableStateOf(transferHelper.getNfcStaticHandoverEnabled()) }
-    val nfcNegotiatedHandoverEnabled = remember { mutableStateOf(transferHelper.getNfcNegotiatedHandoverEnabled()) }
-    val bleCentralClientDataTransferEnabled = remember { mutableStateOf(transferHelper.getBleCentralClientDataTransferEnabled()) }
-    val blePeripheralServerDataTransferEnabled = remember { mutableStateOf(transferHelper.getBlePeripheralServerDataTransferEnabled()) }
-    val wifiAwareDataTransferEnabled = remember { mutableStateOf(transferHelper.getWifiAwareDataTransferEnabled()) }
-    val nfcDataTransferEnabled = remember { mutableStateOf(transferHelper.getNfcDataTransferEnabled()) }
-    val tcpDataTransferEnabled = remember { mutableStateOf(transferHelper.getTcpDataTransferEnabled()) }
-    val udpDataTransferEnabled = remember { mutableStateOf(transferHelper.getUdpDataTransferEnabled()) }
+    val nfcStaticHandoverEnabled =
+        remember { mutableStateOf(transferHelper.getNfcStaticHandoverEnabled()) }
+    val nfcNegotiatedHandoverEnabled =
+        remember { mutableStateOf(transferHelper.getNfcNegotiatedHandoverEnabled()) }
+    val bleCentralClientDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getBleCentralClientDataTransferEnabled()) }
+    val blePeripheralServerDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getBlePeripheralServerDataTransferEnabled()) }
+    val wifiAwareDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getWifiAwareDataTransferEnabled()) }
+    val nfcDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getNfcDataTransferEnabled()) }
+    val tcpDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getTcpDataTransferEnabled()) }
+    val udpDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getUdpDataTransferEnabled()) }
     val l2capEnabled = remember { mutableStateOf(transferHelper.getL2CapEnabled()) }
-    val experimentalPsmEnabled = remember { mutableStateOf(transferHelper.getExperimentalPsmEnabled()) }
+    val experimentalPsmEnabled =
+        remember { mutableStateOf(transferHelper.getExperimentalPsmEnabled()) }
     val debugEnabled = remember { mutableStateOf(transferHelper.getDebugEnabled()) }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -327,7 +331,7 @@ private fun MainScreen(context: Context) {
                 .padding(innerPadding),
             color = MaterialTheme.colorScheme.background
         ) {
-            Column() {
+            Column {
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
@@ -335,7 +339,7 @@ private fun MainScreen(context: Context) {
                         .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column() {
+                    Column {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
                             text = "This app contains an mDL with Preconsent which " +

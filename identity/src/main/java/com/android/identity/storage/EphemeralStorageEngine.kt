@@ -23,9 +23,7 @@ package com.android.identity.storage
 class EphemeralStorageEngine : StorageEngine {
     private val data: MutableMap<String, ByteArray> = LinkedHashMap()
 
-    override fun get(key: String): ByteArray? {
-        return data[key]
-    }
+    override fun get(key: String): ByteArray? = data[key]
 
     override fun put(key: String, data: ByteArray) {
         this.data[key] = data
@@ -39,7 +37,5 @@ class EphemeralStorageEngine : StorageEngine {
         data.clear()
     }
 
-    override fun enumerate(): Collection<String> {
-        return data.keys
-    }
+    override fun enumerate(): Collection<String> =data.keys
 }

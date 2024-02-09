@@ -9,11 +9,10 @@ import kotlinx.parcelize.Parcelize
 enum class AndroidAuthKeyCurveOption : Parcelable {
     P_256, Ed25519, X25519;
 
-    fun toEcCurve(): EcCurve {
-        return when (this) {
+    fun toEcCurve(): EcCurve =
+        when (this) {
             P_256 -> EcCurve.P256
             Ed25519 -> EcCurve.ED25519
             X25519 -> EcCurve.X25519
         }
-    }
 }
