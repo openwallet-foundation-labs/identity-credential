@@ -228,12 +228,12 @@ public class DeviceResponseGeneratorTest {
         // OK, now do the request... request a strict subset of the data in the credential
         // and also request data not in the credential.
         List<CredentialRequest.DataElement> dataElements = Arrays.asList(
-                new CredentialRequest.DataElement("ns1", "foo1", false),
-                new CredentialRequest.DataElement("ns1", "foo2", false),
-                new CredentialRequest.DataElement("ns1", "foo3", false),
-                new CredentialRequest.DataElement("ns2", "bar1", false),
-                new CredentialRequest.DataElement("ns2", "does_not_exist", false),
-                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false)
+                new CredentialRequest.DataElement("ns1", "foo1", false, false),
+                new CredentialRequest.DataElement("ns1", "foo2", false, false),
+                new CredentialRequest.DataElement("ns1", "foo3", false, false),
+                new CredentialRequest.DataElement("ns2", "bar1", false, false),
+                new CredentialRequest.DataElement("ns2", "does_not_exist", false, false),
+                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false, false)
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 
@@ -312,12 +312,12 @@ public class DeviceResponseGeneratorTest {
         // DeviceSigned part is as expected.
 
         List<CredentialRequest.DataElement> dataElements = Arrays.asList(
-                new CredentialRequest.DataElement("ns1", "foo1", false),
-                new CredentialRequest.DataElement("ns1", "foo2", false),
-                new CredentialRequest.DataElement("ns1", "foo3", false),
-                new CredentialRequest.DataElement("ns2", "bar1", false),
-                new CredentialRequest.DataElement("ns2", "does_not_exist", false),
-                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false)
+                new CredentialRequest.DataElement("ns1", "foo1", false, false),
+                new CredentialRequest.DataElement("ns1", "foo2", false, false),
+                new CredentialRequest.DataElement("ns1", "foo3", false, false),
+                new CredentialRequest.DataElement("ns2", "bar1", false, false),
+                new CredentialRequest.DataElement("ns2", "does_not_exist", false, false),
+                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false, false)
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 
@@ -362,12 +362,12 @@ public class DeviceResponseGeneratorTest {
     @Test
     public void testDeviceSigned() throws Exception {
         List<CredentialRequest.DataElement> dataElements = Arrays.asList(
-                new CredentialRequest.DataElement("ns1", "foo1", false),
-                new CredentialRequest.DataElement("ns1", "foo2", false),
-                new CredentialRequest.DataElement("ns1", "foo3", false),
-                new CredentialRequest.DataElement("ns2", "bar1", false),
-                new CredentialRequest.DataElement("ns2", "does_not_exist", false),
-                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false)
+                new CredentialRequest.DataElement("ns1", "foo1", false, false),
+                new CredentialRequest.DataElement("ns1", "foo2", false, false),
+                new CredentialRequest.DataElement("ns1", "foo3", false, false),
+                new CredentialRequest.DataElement("ns2", "bar1", false, false),
+                new CredentialRequest.DataElement("ns2", "does_not_exist", false, false),
+                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false, false)
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 
@@ -442,12 +442,12 @@ public class DeviceResponseGeneratorTest {
     @Test
     public void testDeviceSignedOnly() throws Exception {
         List<CredentialRequest.DataElement> dataElements = Arrays.asList(
-                new CredentialRequest.DataElement("ns1", "foo1", false),
-                new CredentialRequest.DataElement("ns1", "foo2", false),
-                new CredentialRequest.DataElement("ns1", "foo3", false),
-                new CredentialRequest.DataElement("ns2", "bar1", false),
-                new CredentialRequest.DataElement("ns2", "does_not_exist", false),
-                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false)
+                new CredentialRequest.DataElement("ns1", "foo1", false, false),
+                new CredentialRequest.DataElement("ns1", "foo2", false, false),
+                new CredentialRequest.DataElement("ns1", "foo3", false, false),
+                new CredentialRequest.DataElement("ns2", "bar1", false, false),
+                new CredentialRequest.DataElement("ns2", "does_not_exist", false, false),
+                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false, false)
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 
@@ -508,15 +508,15 @@ public class DeviceResponseGeneratorTest {
     @Test
     public void testDocumentGeneratorDoNotSend() throws Exception {
 
-        CredentialRequest.DataElement ns1_foo2 = new CredentialRequest.DataElement("ns1", "foo2", false);
+        CredentialRequest.DataElement ns1_foo2 = new CredentialRequest.DataElement("ns1", "foo2", false, false);
         ns1_foo2.setDoNotSend(true);
         List<CredentialRequest.DataElement> dataElements = Arrays.asList(
-                new CredentialRequest.DataElement("ns1", "foo1", false),
+                new CredentialRequest.DataElement("ns1", "foo1", false, false),
                 ns1_foo2,
-                new CredentialRequest.DataElement("ns1", "foo3", false),
-                new CredentialRequest.DataElement("ns2", "bar1", false),
-                new CredentialRequest.DataElement("ns2", "does_not_exist", false),
-                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false)
+                new CredentialRequest.DataElement("ns1", "foo3", false, false),
+                new CredentialRequest.DataElement("ns2", "bar1", false, false),
+                new CredentialRequest.DataElement("ns2", "does_not_exist", false, false),
+                new CredentialRequest.DataElement("ns_does_not_exist", "boo", false, false)
         );
         CredentialRequest request = new CredentialRequest(dataElements);
 

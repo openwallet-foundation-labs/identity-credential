@@ -270,12 +270,12 @@ public class MdocUtilTest {
         DeviceRequestParser.DeviceRequest request = parser.parse();
 
         CredentialRequest.DataElement[] elementsInRequest = {
-                new CredentialRequest.DataElement("org.iso.18013.5.1", "family_name", true),
-                new CredentialRequest.DataElement("org.iso.18013.5.1", "document_number", true),
-                new CredentialRequest.DataElement("org.iso.18013.5.1", "driving_privileges", true),
-                new CredentialRequest.DataElement("org.iso.18013.5.1", "issue_date", true),
-                new CredentialRequest.DataElement("org.iso.18013.5.1", "expiry_date", true),
-                new CredentialRequest.DataElement("org.iso.18013.5.1", "portrait", false),
+                new CredentialRequest.DataElement("org.iso.18013.5.1", "family_name", true, false),
+                new CredentialRequest.DataElement("org.iso.18013.5.1", "document_number", true, false),
+                new CredentialRequest.DataElement("org.iso.18013.5.1", "driving_privileges", true, false),
+                new CredentialRequest.DataElement("org.iso.18013.5.1", "issue_date", true, false),
+                new CredentialRequest.DataElement("org.iso.18013.5.1", "expiry_date", true, false),
+                new CredentialRequest.DataElement("org.iso.18013.5.1", "portrait", false, false),
         };
 
         CredentialRequest cr = MdocUtil.generateCredentialRequest(request.getDocumentRequests().get(0));

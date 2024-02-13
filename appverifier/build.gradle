@@ -60,7 +60,6 @@ android {
 }
 
 dependencies {
-    // Uses module as identity credential api
     implementation project(':identity')
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
@@ -73,7 +72,6 @@ dependencies {
     implementation libs.bundles.compose
     implementation libs.cbor
     implementation libs.code.scanner
-    implementation libs.identity.credential
 
     androidTestImplementation libs.bundles.ui.testing
 

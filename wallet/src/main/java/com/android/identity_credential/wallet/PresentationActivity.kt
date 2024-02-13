@@ -41,6 +41,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.Credential
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.internal.Util
@@ -53,6 +54,8 @@ import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.securearea.Algorithm
+import com.android.identity.securearea.EcCurve
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
@@ -67,29 +70,30 @@ import java.util.OptionalLong
 class PresentationActivity : ComponentActivity() {
     companion object {
         private const val TAG = "PresentationActivity"
-        private var mTransport: DataTransport?
-        private var mHandover: ByteArray?
-        private var mEDeviceKeyCurve: Int? = null
-        private var mEDeviceKeyPair: KeyPair?
-        private var mDeviceEngagement: ByteArray?
+        private var transport: DataTransport?
+        private var handover: ByteArray?
+        private var eDeviceKeyCurve: EcCurve?
+        private var eDeviceKeyPair: KeyPair?
+        private var deviceEngagement: ByteArray?
         private var state = MutableLiveData<State>()
 
         init {
             state.value = State.NOT_CONNECTED
-            mTransport = null
-            mHandover = null
-            mEDeviceKeyCurve = null
-            mEDeviceKeyPair = null
-            mDeviceEngagement = null
+            transport = null
+            handover = null
+            eDeviceKeyCurve = null
+            eDeviceKeyPair = null
+            deviceEngagement = null
         }
 
         fun startPresentation(context: Context, transport: DataTransport, handover: ByteArray,
-                              eDeviceKeyCurve: Int, eDeviceKeyPair: KeyPair, deviceEngagement: ByteArray) {
-            mTransport = transport
-            mHandover = handover
-            mEDeviceKeyCurve = eDeviceKeyCurve
-            mEDeviceKeyPair = eDeviceKeyPair
-            mDeviceEngagement = deviceEngagement
+                              eDeviceKeyCurve: EcCurve, eDeviceKeyPair: KeyPair, deviceEngagement:
+                              ByteArray) {
+            this.transport = transport
+            this.handover = handover
+            this.eDeviceKeyCurve = eDeviceKeyCurve
+            this.eDeviceKeyPair = eDeviceKeyPair
+            this.deviceEngagement = deviceEngagement
             Logger.i(TAG, "engagement info set")
 
             val launchAppIntent = Intent(context, PresentationActivity::class.java)
@@ -223,9 +227,9 @@ class PresentationActivity : ComponentActivity() {
 
             },
             ContextCompat.getMainExecutor(applicationContext),
-            mEDeviceKeyPair!!,
-            mEDeviceKeyCurve!!)
-            .useForwardEngagement(mTransport!!, mDeviceEngagement!!, mHandover!!)
+            eDeviceKeyPair!!,
+            eDeviceKeyCurve!!)
+            .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
             .build()
     }
 
@@ -241,8 +245,8 @@ class PresentationActivity : ComponentActivity() {
         }
         deviceRetrievalHelper?.disconnect()
         deviceRetrievalHelper = null
-        mTransport = null
-        mHandover = null
+        transport = null
+        handover = null
         state.value = State.NOT_CONNECTED
     }
 
@@ -289,7 +293,7 @@ class PresentationActivity : ComponentActivity() {
             val credentialConfiguration = credential.credentialConfiguration
             val now = Timestamp.now()
 
-            val authKey: Credential.AuthenticationKey
+            val authKey: AuthenticationKey
             try {
                 authKey = credential.findAuthenticationKey(WalletApplication.AUTH_KEY_DOMAIN, now)!!
             } catch (e: Exception) {
@@ -319,7 +323,7 @@ class PresentationActivity : ComponentActivity() {
                         authKey.secureArea,
                         authKey.alias,
                         null,
-                        SecureArea.ALGORITHM_ES256
+                        Algorithm.ES256
                     )
                     .generate()
             )

@@ -61,7 +61,6 @@ dependencies {
     implementation libs.compose.material
     implementation libs.bundles.bouncy.castle
     implementation libs.androidx.navigation.compose
-    implementation libs.identity.credential
     debugImplementation libs.compose.icons
 
     androidTestImplementation libs.androidx.test.ext.junit

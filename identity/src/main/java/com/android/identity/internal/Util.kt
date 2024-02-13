@@ -2042,5 +2042,5 @@ object Util {
     // type converters "to_"
     private fun String.toUnicodeString() = UnicodeString(this)
     private fun Long.toIntegerNumber() =
-        if (this > 0) UnsignedInteger(this) else NegativeInteger(this)
+        if (this >= 0) UnsignedInteger(this) else NegativeInteger(this)
 }
