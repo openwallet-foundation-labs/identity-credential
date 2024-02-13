@@ -1,13 +1,11 @@
 package com.android.identity.wallet.support
 
-import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.KeyPurpose
 import com.android.identity.wallet.composables.state.MdocAuthStateOption
 
-@SecureArea.KeyPurpose
-fun MdocAuthStateOption.toKeyPurpose(): Int {
-    return if (this == MdocAuthStateOption.ECDSA) {
-        SecureArea.KEY_PURPOSE_SIGN
+fun MdocAuthStateOption.toKeyPurpose(): KeyPurpose =
+    if (this == MdocAuthStateOption.ECDSA) {
+        KeyPurpose.SIGN
     } else {
-        SecureArea.KEY_PURPOSE_AGREE_KEY
+        KeyPurpose.AGREE_KEY
     }
-}

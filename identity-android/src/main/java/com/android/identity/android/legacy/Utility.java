@@ -33,6 +33,7 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator;
 import com.android.identity.mdoc.response.DeviceResponseGenerator;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
@@ -153,7 +154,7 @@ public class Utility {
                             "SHA-256",
                             docType,
                             authKey,
-                            SecureArea.EC_CURVE_P256)
+                            EcCurve.P256)
                             .setValidityInfo(signedDate, validFromDate, validToDate, null);
 
             Random r = new SecureRandom();

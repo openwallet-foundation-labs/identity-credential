@@ -11,7 +11,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.android.identity.*
 import com.android.identity.android.legacy.*
-import com.android.identity.credential.Credential
+import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -20,6 +20,10 @@ import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.securearea.Algorithm
+import com.android.identity.securearea.KeyLockedException
+import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet.document.DocumentManager
@@ -163,8 +167,8 @@ class TransferManager private constructor(private val context: Context) {
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
         deviceResponseGenerator: DeviceResponseGenerator,
-        authKey: Credential.AuthenticationKey?,
-        authKeyUnlockData: SecureArea.KeyUnlockData?,
+        authKey: AuthenticationKey?,
+        authKeyUnlockData: KeyUnlockData?,
     ) = suspendCancellableCoroutine { continuation ->
         var result: AddDocumentToResponseResult
         var signingKeyUsageLimitPassed = false
@@ -181,7 +185,7 @@ class TransferManager private constructor(private val context: Context) {
 
         val request = CredentialRequest(dataElements)
 
-        val authKeyToUse: Credential.AuthenticationKey
+        val authKeyToUse: AuthenticationKey
         if (authKey != null) {
             authKeyToUse = authKey
         } else {
@@ -207,13 +211,13 @@ class TransferManager private constructor(private val context: Context) {
             val generator = DocumentGenerator(docType, staticAuthData.issuerAuth, transcript)
                 .setIssuerNamespaces(mergedIssuerNamespaces)
             val keyInfo = authKeyToUse.secureArea.getKeyInfo(authKeyToUse.alias)
-            if ((keyInfo.keyPurposes and SecureArea.KEY_PURPOSE_SIGN) != 0) {
+            if (keyInfo.keyPurposes.contains(KeyPurpose.SIGN)) {
                 generator.setDeviceNamespacesSignature(
                     NameSpacedData.Builder().build(),
                     authKeyToUse.secureArea,
                     authKeyToUse.alias,
                     authKeyUnlockData,
-                    SecureArea.ALGORITHM_ES256
+                    Algorithm.ES256
                 )
             } else {
                 generator.setDeviceNamespacesMac(
@@ -230,7 +234,7 @@ class TransferManager private constructor(private val context: Context) {
             authKeyToUse.increaseUsageCount()
             ProvisioningUtil.getInstance(context).trackUsageTimestamp(credential)
             result = AddDocumentToResponseResult.DocumentAdded(signingKeyUsageLimitPassed)
-        } catch (lockedException: SecureArea.KeyLockedException) {
+        } catch (lockedException: KeyLockedException) {
             result = AddDocumentToResponseResult.DocumentLocked(authKeyToUse)
         }
         continuation.resume(result)

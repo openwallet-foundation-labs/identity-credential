@@ -21,12 +21,16 @@ import androidx.navigation.fragment.findNavController
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.model.Map
-import com.android.identity.credential.Credential
+import com.android.identity.credential.AuthenticationKey
 import com.android.identity.internal.Util
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SoftwareSecureArea
+import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.EcCurve
+import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.KeyUnlockData
+import com.android.identity.securearea.software.SoftwareCreateKeySettings
+import com.android.identity.securearea.software.SoftwareKeyUnlockData
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet.authconfirmation.AuthConfirmationFragmentDirections
 import com.android.identity.wallet.authconfirmation.PassphraseAuthResult
@@ -50,8 +54,8 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
     private val screenState = SoftwareKeystoreSecureAreaSupportState()
 
     override fun Fragment.unlockKey(
-        authKey: Credential.AuthenticationKey,
-        onKeyUnlocked: (unlockData: SecureArea.KeyUnlockData?) -> Unit,
+        authKey: AuthenticationKey,
+        onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {
         val viewModel: PassphrasePromptViewModel by activityViewModels()
@@ -61,7 +65,7 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.CREATED) {
                 viewModel.authorizationState.collect { value ->
                     if (value is PassphraseAuthResult.Success) {
-                        val keyUnlockData = SoftwareSecureArea.KeyUnlockData(value.userPassphrase)
+                        val keyUnlockData = SoftwareKeyUnlockData(value.userPassphrase)
                         didAttemptToUnlock = true
                         onKeyUnlocked(keyUnlockData)
                         viewModel.reset()
@@ -131,9 +135,9 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
         val now = Timestamp.now()
         secureArea.createKey(
             "SoftwareAttestationRoot",
-            SoftwareSecureArea.CreateKeySettings.Builder("".toByteArray())
-                .setEcCurve(SecureArea.EC_CURVE_P256)
-                .setKeyPurposes(SecureArea.KEY_PURPOSE_SIGN)
+            SoftwareCreateKeySettings.Builder("".toByteArray())
+                .setEcCurve(EcCurve.P256)
+                .setKeyPurposes(setOf(KeyPurpose.SIGN))
                 .setSubject("CN=Software Attestation Root")
                 .setValidityPeriod(
                     now,
@@ -151,8 +155,9 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
         return FormatUtil.cborEncode(
             CborBuilder()
             .addMap()
-            .put("curve", state.softwareAuthKeyCurveState.authCurve.toEcCurve().toLong())
-            .put("purposes", state.mDocAuthOption.mDocAuthentication.toKeyPurpose().toLong())
+            .put("curve", state.softwareAuthKeyCurveState.authCurve.toEcCurve().coseCurveIdentifier.toLong())
+            .put("purposes", KeyPurpose.encodeSet(
+                setOf(state.mDocAuthOption.mDocAuthentication.toKeyPurpose())).toLong())
             .put("passphraseRequired", state.passphrase.isNotEmpty())
             .put("passphrase", state.passphrase)
             .end()
@@ -164,17 +169,17 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
         challenge: ByteArray,
         validFrom: Timestamp,
         validUntil: Timestamp
-    ): SecureArea.CreateKeySettings {
+    ): CreateKeySettings {
         if (!this::softwareAttestationKey.isInitialized) {
             initSoftwareAttestationKey()
         }
 
         val map = CborDecoder(ByteArrayInputStream(encodedConfiguration)).decode().get(0) as Map
-        val curve = Util.cborMapExtractNumber(map, "curve").toInt()
-        val purposes = Util.cborMapExtractNumber(map, "purposes").toInt()
+        val curve = EcCurve.fromInt(Util.cborMapExtractNumber(map, "curve").toInt())
+        val purposes = KeyPurpose.decodeSet(Util.cborMapExtractNumber(map, "purposes").toInt())
         val passphraseRequired = Util.cborMapExtractBoolean(map, "passphraseRequired")
         val passphrase = Util.cborMapExtractString(map, "passphrase")
-        return SoftwareSecureArea.CreateKeySettings.Builder(challenge)
+        return SoftwareCreateKeySettings.Builder(challenge)
             .setEcCurve(curve)
             .setKeyPurposes(purposes)
             .setValidityPeriod(validFrom, validUntil)

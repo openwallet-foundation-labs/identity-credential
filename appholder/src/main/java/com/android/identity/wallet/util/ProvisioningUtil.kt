@@ -282,7 +282,7 @@ class ProvisioningUtil private constructor(
                         domain = key.domain,
                         issuerDataBytesCount = key.issuerProvidedData.size,
                         usagesCount = key.usageCount,
-                        keyPurposes = info.keyPurposes,
+                        keyPurposes = info.keyPurposes.first(),
                         ecCurve = info.ecCurve,
                         isHardwareBacked = info.isHardwareBacked,
                         secureAreaDisplayName = authKeySecureArea.displayName

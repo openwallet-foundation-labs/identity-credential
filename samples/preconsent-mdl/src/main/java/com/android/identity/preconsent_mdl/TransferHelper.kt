@@ -30,6 +30,7 @@ import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialStore
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.response.DeviceResponseGenerator
+import com.android.identity.securearea.EcCurve
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
@@ -234,7 +235,7 @@ class TransferHelper private constructor(private val context: Context) {
 
     fun setConnected(
         eDeviceKeyPair: KeyPair,
-        eDeviceKeyCurve: Int,
+        eDeviceKeyCurve: EcCurve,
         transport: DataTransport,
         deviceEngagement: ByteArray,
         handover: ByteArray

@@ -27,6 +27,7 @@ import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.internal.Util
+import com.android.identity.securearea.EcCurve
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger
 
@@ -37,7 +38,7 @@ class NfcEngagementHandler : HostApduService() {
 
     private var engagementHelper: NfcEngagementHelper? = null
 
-    private val eDeviceKeyCurve = SecureArea.EC_CURVE_P256
+    private val eDeviceKeyCurve = EcCurve.P256
     private val eDeviceKeyPair by lazy {
         Util.createEphemeralKeyPair(eDeviceKeyCurve)
     }

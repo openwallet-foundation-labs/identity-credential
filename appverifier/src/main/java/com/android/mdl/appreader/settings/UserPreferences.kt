@@ -78,7 +78,7 @@ class UserPreferences(
 
     fun setDebugLoggingEnabled(enabled: Boolean) {
         preferences.edit { putBoolean(LOG_ENABLED, enabled) }
-        Logger.setDebugEnabled(enabled)
+        Logger.isDebugEnabled = enabled
     }
 
     fun getReaderAuthentication(): Int {

@@ -31,6 +31,10 @@ import androidx.annotation.Nullable;
 import androidx.biometric.BiometricPrompt;
 
 import com.android.identity.internal.Util;
+import com.android.identity.securearea.Algorithm;
+import com.android.identity.securearea.EcCurve;
+import com.android.identity.securearea.KeyLockedException;
+import com.android.identity.securearea.KeyPurpose;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Logger;
@@ -64,7 +68,9 @@ import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.sql.Date;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.crypto.KeyAgreement;
 
@@ -98,8 +104,8 @@ import co.nstant.in.cbor.model.UnicodeString;
  * <a href="https://developer.android.com/build/configure-app-module#set_the_application_id">
  * Application Id</a>) created the key.
  *
- * <p>Curve {@link SecureArea#EC_CURVE_P256} for signing using algorithm
- * {@link SecureArea#ALGORITHM_ES256} is guaranteed to be implemented in
+ * <p>Curve {@link EcCurve#P256} for signing using algorithm
+ * {@link Algorithm#ES256} is guaranteed to be implemented in
  * Secure Hardware on any Android device shipping with Android 8.1 or later. As of 2023
  * this includes nearly all Android devices.
  *
@@ -178,7 +184,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
 
     @Override
     public void createKey(@NonNull String alias,
-                          @NonNull SecureArea.CreateKeySettings createKeySettings) {
+                          @NonNull com.android.identity.securearea.CreateKeySettings createKeySettings) {
         CreateKeySettings aSettings;
         if (createKeySettings instanceof CreateKeySettings) {
             aSettings = (CreateKeySettings) createKeySettings;
@@ -195,10 +201,10 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                     KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore");
 
             int purposes = 0;
-            if ((aSettings.getKeyPurposes() & KEY_PURPOSE_SIGN) != 0) {
+            if (aSettings.getKeyPurposes().contains(KeyPurpose.SIGN)) {
                 purposes |= KeyProperties.PURPOSE_SIGN;
             }
-            if ((aSettings.getKeyPurposes() & KEY_PURPOSE_AGREE_KEY) != 0) {
+            if (aSettings.getKeyPurposes().contains(KeyPurpose.AGREE_KEY)) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     purposes |= KeyProperties.PURPOSE_AGREE_KEY;
                 } else {
@@ -226,37 +232,37 @@ public class AndroidKeystoreSecureArea implements SecureArea {
 
             KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(alias, purposes);
             switch (aSettings.getEcCurve()) {
-                case EC_CURVE_P256:
+                case P256:
                     // Works with both purposes.
                     builder.setDigests(KeyProperties.DIGEST_SHA256);
                     break;
 
-                case EC_CURVE_ED25519:
+                case ED25519:
                     // Only works with KEY_PURPOSE_SIGN
-                    if (aSettings.getKeyPurposes() != KEY_PURPOSE_SIGN) {
+                    if (!aSettings.getKeyPurposes().contains(KeyPurpose.SIGN)) {
                         throw new IllegalArgumentException(
-                                "Curve Ed25519 only works with KEY_PURPOSE_SIGN");
+                                "Curve Ed25519 only works with purpose SIGN");
                     }
                     builder.setAlgorithmParameterSpec(new ECGenParameterSpec("ed25519"));
                     break;
 
-                case EC_CURVE_X25519:
+                case X25519:
                     // Only works with KEY_PURPOSE_AGREE_KEY
-                    if (aSettings.getKeyPurposes() != KEY_PURPOSE_AGREE_KEY) {
+                    if (!aSettings.getKeyPurposes().contains(KeyPurpose.AGREE_KEY)) {
                         throw new IllegalArgumentException(
-                                "Curve X25519 only works with KEY_PURPOSE_AGREE_KEY");
+                                "Curve X25519 only works with purpose AGREE_KEY");
                     }
                     builder.setAlgorithmParameterSpec(new ECGenParameterSpec("x25519"));
                     break;
 
-                case SecureArea.EC_CURVE_BRAINPOOLP256R1:
-                case SecureArea.EC_CURVE_BRAINPOOLP320R1:
-                case SecureArea.EC_CURVE_BRAINPOOLP384R1:
-                case SecureArea.EC_CURVE_BRAINPOOLP512R1:
-                case SecureArea.EC_CURVE_ED448:
-                case SecureArea.EC_CURVE_P384:
-                case SecureArea.EC_CURVE_P521:
-                case SecureArea.EC_CURVE_X448:
+                case BRAINPOOLP256R1:
+                case BRAINPOOLP320R1:
+                case BRAINPOOLP384R1:
+                case BRAINPOOLP512R1:
+                case ED448:
+                case P384:
+                case P521:
+                case X448:
                 default:
                     throw new IllegalArgumentException("Curve is not supported");
             }
@@ -347,8 +353,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
      * <p>This doesn't actually create a key but creates the out-of-band data
      * structures so an existing Android KeyStore key can be used with e.g.
      * {@link #getKeyInfo(String)},
-     * {@link #sign(String, int, byte[], SecureArea.KeyUnlockData)},
-     * {@link #keyAgreement(String, PublicKey, SecureArea.KeyUnlockData)}
+     * {@link #sign(String, Algorithm, byte[], com.android.identity.securearea.KeyUnlockData)},
+     * {@link #keyAgreement(String, PublicKey, com.android.identity.securearea.KeyUnlockData)}
      * and other methods.
      *
      * @param existingAlias the alias of the existing key.
@@ -402,13 +408,13 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         // curve - not available in KeyInfo, assume P-256
 
         // keyPurposes
-        @KeyPurpose int purposes = 0;
+        Set<KeyPurpose> purposes = new LinkedHashSet<>();
         int ksPurposes = keyInfo.getPurposes();
         if ((ksPurposes & KeyProperties.PURPOSE_SIGN) != 0) {
-            purposes |= KEY_PURPOSE_SIGN;
+            purposes.add(KeyPurpose.SIGN);
         }
         if ((ksPurposes & KeyProperties.PURPOSE_AGREE_KEY) != 0) {
-            purposes |= KEY_PURPOSE_AGREE_KEY;
+            purposes.add(KeyPurpose.AGREE_KEY);
         }
         settingsBuilder.setKeyPurposes(purposes);
 
@@ -464,18 +470,18 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         Logger.d(TAG, "EC key with alias '" + alias + "' deleted");
     }
 
-    static String getSignatureAlgorithmName(@Algorithm int signatureAlgorithm) {
+    static String getSignatureAlgorithmName(Algorithm signatureAlgorithm) {
         switch (signatureAlgorithm) {
-            case ALGORITHM_ES256:
+            case ES256:
                 return "SHA256withECDSA";
 
-            case ALGORITHM_ES384:
+            case ES384:
                 return "SHA384withECDSA";
 
-            case ALGORITHM_ES512:
+            case ES512:
                 return "SHA512withECDSA";
 
-            case ALGORITHM_EDDSA:
+            case EDDSA:
                 return "Ed25519";
 
             default:
@@ -486,10 +492,10 @@ public class AndroidKeystoreSecureArea implements SecureArea {
 
     @Override
     public @NonNull byte[] sign(@NonNull String alias,
-                                @Algorithm int signatureAlgorithm,
+                                Algorithm signatureAlgorithm,
                                 @NonNull byte[] dataToSign,
-                                @Nullable SecureArea.KeyUnlockData keyUnlockData)
-            throws SecureArea.KeyLockedException {
+                                @Nullable com.android.identity.securearea.KeyUnlockData keyUnlockData)
+            throws KeyLockedException {
         if (keyUnlockData != null) {
             KeyUnlockData unlockData = (KeyUnlockData) keyUnlockData;
             if (!unlockData.mAlias.equals(alias)) {
@@ -553,7 +559,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
     @Override
     public @NonNull byte[] keyAgreement(@NonNull String alias,
                                         @NonNull PublicKey otherKey,
-                                        @Nullable SecureArea.KeyUnlockData keyUnlockData)
+                                        @Nullable com.android.identity.securearea.KeyUnlockData keyUnlockData)
             throws KeyLockedException {
         try {
             KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
@@ -595,12 +601,12 @@ public class AndroidKeystoreSecureArea implements SecureArea {
      *
      * <p>Currently only user-authentication is supported.
      */
-    public static class KeyUnlockData implements SecureArea.KeyUnlockData {
+    public static class KeyUnlockData implements com.android.identity.securearea.KeyUnlockData {
 
         private Signature mSignature;
         private final String mAlias;
         private BiometricPrompt.CryptoObject mCryptoObjectForSigning;
-        private @Algorithm int mSignatureAlgorithm;
+        private Algorithm mSignatureAlgorithm;
 
         /**
          * Constructs a new object used for unlocking a key.
@@ -616,7 +622,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
          *
          * <p>This can be used with {@link BiometricPrompt} to unlock the key.
          * On successful authentication, this object should be passed to
-         * {@link AndroidKeystoreSecureArea#sign(String, int, byte[], SecureArea.KeyUnlockData)}.
+         * {@link AndroidKeystoreSecureArea#sign(String, Algorithm, byte[], com.android.identity.securearea.KeyUnlockData)}.
          *
          * <p>Note that a {@link BiometricPrompt.CryptoObject} is returned only if the key is
          * configured to require authentication for every use of the key, that is, when the
@@ -626,7 +632,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
          * @param signatureAlgorithm the signature algorithm to use.
          * @return A {@link BiometricPrompt.CryptoObject} or {@code null}.
          */
-        public @Nullable BiometricPrompt.CryptoObject getCryptoObjectForSigning(@Algorithm int signatureAlgorithm) {
+        public @Nullable BiometricPrompt.CryptoObject getCryptoObjectForSigning(Algorithm signatureAlgorithm) {
             if (mCryptoObjectForSigning != null) {
                 return mCryptoObjectForSigning;
             }
@@ -671,7 +677,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
          *
          * <p>This can be used with {@link BiometricPrompt} to unlock the key.
          * On successful authentication, this object should be passed to
-         * {@link AndroidKeystoreSecureArea#keyAgreement(String, PublicKey, SecureArea.KeyUnlockData)}.
+         * {@link AndroidKeystoreSecureArea#keyAgreement(String, PublicKey, com.android.identity.securearea.KeyUnlockData)}.
          *
          * <p>Note that a {@link BiometricPrompt.CryptoObject} is returned only if the key is
          * configured to require authentication for every use of the key, that is, when the
@@ -724,7 +730,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
     /**
      * Android Keystore specific class for information about a key.
      */
-    public static class KeyInfo extends SecureArea.KeyInfo {
+    public static class KeyInfo extends com.android.identity.securearea.KeyInfo {
 
         private final boolean mUserAuthenticationRequired;
         private final boolean mIsStrongBoxBacked;
@@ -735,8 +741,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         private final Timestamp mValidUntil;
 
         KeyInfo(@NonNull List<X509Certificate> attestation,
-                @KeyPurpose int keyPurposes,
-                @EcCurve int ecCurve,
+                Set<KeyPurpose> keyPurposes,
+                EcCurve ecCurve,
                 boolean isHardwareBacked,
                 @Nullable String attestKeyAlias,
                 boolean userAuthenticationRequired,
@@ -855,8 +861,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
 
             co.nstant.in.cbor.model.Map map = (co.nstant.in.cbor.model.Map) dataItems.get(0);
 
-            int ecCurve = (int) Util.cborMapExtractNumber(map, "curve");
-            int keyPurposes = (int) Util.cborMapExtractNumber(map, "keyPurposes");
+            EcCurve ecCurve = EcCurve.Companion.fromInt((int) Util.cborMapExtractNumber(map, "curve"));
+            Set<KeyPurpose> keyPurposes = KeyPurpose.Companion.decodeSet((int) Util.cborMapExtractNumber(map, "keyPurposes"));
             boolean userAuthenticationRequired = Util.cborMapExtractBoolean(map, "userAuthenticationRequired");
             long userAuthenticationTimeoutMillis = Util.cborMapExtractNumber(map, "userAuthenticationTimeoutMillis");
             boolean isStrongBoxBacked = Util.cborMapExtractBoolean(map, "useStrongBox");
@@ -931,8 +937,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                                  @NonNull List<X509Certificate> attestation) {
         CborBuilder builder = new CborBuilder();
         MapBuilder<CborBuilder> map = builder.addMap();
-        map.put("curve", settings.getEcCurve());
-        map.put("keyPurposes", settings.getKeyPurposes());
+        map.put("curve", settings.getEcCurve().getCoseCurveIdentifier());
+        map.put("keyPurposes", KeyPurpose.Companion.encodeSet(settings.getKeyPurposes()));
         String attestKeyAlias = settings.getAttestKeyAlias();
         if (attestKeyAlias != null) {
             map.put("attestKeyAlias", attestKeyAlias);
@@ -957,7 +963,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
     /**
      * Class for holding Android Keystore-specific settings related to key creation.
      */
-    public static class CreateKeySettings extends SecureArea.CreateKeySettings {
+    public static class CreateKeySettings extends com.android.identity.securearea.CreateKeySettings {
         private final boolean mUserAuthenticationRequired;
         private final long mUserAuthenticationTimeoutMillis;
         private final @UserAuthenticationType int mUserAuthenticationType;
@@ -966,8 +972,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
         private final Timestamp mValidFrom;
         private final Timestamp mValidUntil;
 
-        private CreateKeySettings(@KeyPurpose int keyPurpose,
-                                  @EcCurve int ecCurve,
+        private CreateKeySettings(Set<KeyPurpose> keyPurposes,
+                                  EcCurve ecCurve,
                                   @NonNull byte[] attestationChallenge,
                                   boolean userAuthenticationRequired,
                                   long userAuthenticationTimeoutMillis,
@@ -976,7 +982,7 @@ public class AndroidKeystoreSecureArea implements SecureArea {
                                   @Nullable String attestKeyAlias,
                                   @Nullable Timestamp validFrom,
                                   @Nullable Timestamp validUntil) {
-            super(attestationChallenge, keyPurpose, ecCurve);
+            super(attestationChallenge, keyPurposes, ecCurve);
             mUserAuthenticationRequired = userAuthenticationRequired;
             mUserAuthenticationTimeoutMillis = userAuthenticationTimeoutMillis;
             mUserAuthenticationType = userAuthenticationType;
@@ -1054,8 +1060,8 @@ public class AndroidKeystoreSecureArea implements SecureArea {
          * A builder for {@link CreateKeySettings}.
          */
         public static class Builder {
-            private @KeyPurpose int mKeyPurposes = KEY_PURPOSE_SIGN;
-            private @EcCurve int mEcCurve = EC_CURVE_P256;
+            private Set<KeyPurpose> mKeyPurposes = Set.of(KeyPurpose.SIGN);
+            private EcCurve mEcCurve = EcCurve.P256;
             private final byte[] mAttestationChallenge;
             private boolean mUserAuthenticationRequired;
             private long mUserAuthenticationTimeoutMillis;
@@ -1077,15 +1083,15 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             /**
              * Sets the key purpose.
              *
-             * <p>By default the key purpose is {@link AndroidKeystoreSecureArea#KEY_PURPOSE_SIGN}.
+             * <p>By default the key purpose is {@link KeyPurpose#SIGN}.
              *
              * @param keyPurposes one or more purposes.
              * @return the builder.
              * @throws IllegalArgumentException if no purpose is set.
              */
-            public @NonNull CreateKeySettings.Builder setKeyPurposes(@KeyPurpose int keyPurposes) {
-                if (keyPurposes == 0) {
-                    throw new IllegalArgumentException("Purpose cannot be empty");
+            public @NonNull CreateKeySettings.Builder setKeyPurposes(@NonNull Set<KeyPurpose> keyPurposes) {
+                if (keyPurposes.isEmpty()) {
+                    throw new IllegalArgumentException("Purposes cannot be empty");
                 }
                 mKeyPurposes = keyPurposes;
                 return this;
@@ -1094,12 +1100,12 @@ public class AndroidKeystoreSecureArea implements SecureArea {
             /**
              * Sets the curve to use for EC keys.
              *
-             * <p>By default {@link AndroidKeystoreSecureArea#EC_CURVE_P256} is used.
+             * <p>By default {@link EcCurve#P256} is used.
              *
              * @param curve the curve to use.
              * @return the builder.
              */
-            public @NonNull CreateKeySettings.Builder setEcCurve(@EcCurve int curve) {
+            public @NonNull CreateKeySettings.Builder setEcCurve(EcCurve curve) {
                 mEcCurve = curve;
                 return this;
             }

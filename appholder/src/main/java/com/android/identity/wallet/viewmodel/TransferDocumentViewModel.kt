@@ -10,10 +10,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.android.identity.android.legacy.CredentialInvalidatedException
-import com.android.identity.credential.Credential
+import com.android.identity.credential.AuthenticationKey
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants.DEVICE_RESPONSE_STATUS_OK
 import com.android.identity.wallet.R
 import com.android.identity.wallet.authconfirmation.RequestedDocumentData
@@ -104,8 +104,8 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun sendResponseForSelection(
         onResultReady: (result: AddDocumentToResponseResult) -> Unit,
-        authKey: Credential.AuthenticationKey? = null,
-        authKeyUnlockData: SecureArea.KeyUnlockData? = null
+        authKey: AuthenticationKey? = null,
+        authKeyUnlockData: KeyUnlockData? = null
     ) {
         val elementsToSend = signedElements.collect()
         val responseGenerator = DeviceResponseGenerator(DEVICE_RESPONSE_STATUS_OK)

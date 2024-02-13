@@ -17,7 +17,10 @@
 package com.android.identity.credential;
 
 import com.android.identity.internal.Util;
-import com.android.identity.securearea.SoftwareSecureArea;
+import com.android.identity.securearea.CreateKeySettings;
+import com.android.identity.securearea.EcCurve;
+import com.android.identity.securearea.KeyPurpose;
+import com.android.identity.securearea.software.SoftwareSecureArea;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.EphemeralStorageEngine;
@@ -31,10 +34,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.security.Security;
-import java.security.cert.X509Certificate;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class CredentialStoreTest {
     StorageEngine mStorageEngine;
@@ -193,7 +195,7 @@ public class CredentialStoreTest {
             credential.createPendingAuthenticationKey(
                     AUTH_KEY_DOMAIN,
                     mSecureArea,
-                    new SecureArea.CreateKeySettings(new byte[0]),
+                    new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                     null);
         }
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
@@ -202,7 +204,7 @@ public class CredentialStoreTest {
 
         // ... and certify all of them
         int n = 0;
-        for (Credential.PendingAuthenticationKey pendingAuthenticationKey :
+        for (PendingAuthenticationKey pendingAuthenticationKey :
                 credential.getPendingAuthenticationKeys()) {
             byte[] issuerProvidedAuthenticationData = {1, 2, (byte) n++};
             pendingAuthenticationKey.certify(
@@ -221,7 +223,7 @@ public class CredentialStoreTest {
         Assert.assertNull(credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeAfterValidity));
 
         // Check we're able to present at a time when the auth keys are valid
-        Credential.AuthenticationKey authKey = credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeDuringValidity);
+        AuthenticationKey authKey = credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeDuringValidity);
         Assert.assertNotNull(authKey);
 
         Assert.assertEquals(0, authKey.getUsageCount());
@@ -247,7 +249,7 @@ public class CredentialStoreTest {
         }
 
         // All ten auth keys should now have a use count of 1.
-        for (Credential.AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
             Assert.assertEquals(1, authenticationKey.getUsageCount());
         }
 
@@ -259,7 +261,7 @@ public class CredentialStoreTest {
         }
 
         // All ten auth keys should now have a use count of 2.
-        for (Credential.AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
             Assert.assertEquals(2, authenticationKey.getUsageCount());
         }
 
@@ -268,14 +270,14 @@ public class CredentialStoreTest {
             credential.createPendingAuthenticationKey(
                     AUTH_KEY_DOMAIN,
                     mSecureArea,
-                    new SecureArea.CreateKeySettings(new byte[0]),
+                    new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                     null);
         }
         Assert.assertEquals(10, credential.getAuthenticationKeys().size());
         Assert.assertEquals(5, credential.getPendingAuthenticationKeys().size());
         Assert.assertEquals(15, credential.getAuthenticationKeyCounter());
         n = 11;
-        for (Credential.PendingAuthenticationKey pendingAuthenticationKey :
+        for (PendingAuthenticationKey pendingAuthenticationKey :
                 credential.getPendingAuthenticationKeys()) {
             pendingAuthenticationKey.certify(
                     new byte[0],
@@ -296,7 +298,7 @@ public class CredentialStoreTest {
         }
 
         // All fifteen auth keys should now have a use count of 2.
-        for (Credential.AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
             Assert.assertEquals(2, authenticationKey.getUsageCount());
         }
 
@@ -309,7 +311,7 @@ public class CredentialStoreTest {
 
         // All fifteen auth keys should now have a use count of 3. This shows that
         // we're hitting the auth keys evenly (both old and new).
-        for (Credential.AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
             Assert.assertEquals(3, authenticationKey.getUsageCount());
         }
     }
@@ -336,17 +338,17 @@ public class CredentialStoreTest {
             credential.createPendingAuthenticationKey(
                     AUTH_KEY_DOMAIN,
                     mSecureArea,
-                    new SecureArea.CreateKeySettings(new byte[0]),
+                    new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                     null);
         }
         Assert.assertEquals(0, credential.getAuthenticationKeys().size());
         Assert.assertEquals(4, credential.getPendingAuthenticationKeys().size());
         n = 0;
-        for (Credential.PendingAuthenticationKey pendingAuthenticationKey :
+        for (PendingAuthenticationKey pendingAuthenticationKey :
                 credential.getPendingAuthenticationKeys()) {
             // Because we check that we serialize things correctly below, make sure
             // the data and validity times vary for each key...
-            Credential.AuthenticationKey authenticationKey =
+            AuthenticationKey authenticationKey =
                     pendingAuthenticationKey.certify(
                             new byte[]{1, 2, (byte) n},
                             Timestamp.ofEpochMilli(timeValidityBegin.toEpochMilli() + n),
@@ -362,7 +364,7 @@ public class CredentialStoreTest {
             credential.createPendingAuthenticationKey(
                     AUTH_KEY_DOMAIN,
                     mSecureArea,
-                    new SecureArea.CreateKeySettings(new byte[0]),
+                    new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                     null);
         }
         Assert.assertEquals(4, credential.getAuthenticationKeys().size());
@@ -375,11 +377,11 @@ public class CredentialStoreTest {
 
         // Now check that what we loaded matches what we created in-memory just above. We
         // use the fact that the order of the keys are preserved across save/load.
-        Iterator<Credential.AuthenticationKey> it1 = credential.getAuthenticationKeys().iterator();
-        Iterator<Credential.AuthenticationKey> it2 = credential2.getAuthenticationKeys().iterator();
+        Iterator<AuthenticationKey> it1 = credential.getAuthenticationKeys().iterator();
+        Iterator<AuthenticationKey> it2 = credential2.getAuthenticationKeys().iterator();
         for (n = 0; n < 4; n++) {
-            Credential.AuthenticationKey key1 = it1.next();
-            Credential.AuthenticationKey key2 = it2.next();
+            AuthenticationKey key1 = it1.next();
+            AuthenticationKey key2 = it2.next();
             Assert.assertEquals(key1.getAlias(), key2.getAlias());
             Assert.assertEquals(key1.getValidFrom(), key2.getValidFrom());
             Assert.assertEquals(key1.getValidUntil(), key2.getValidUntil());
@@ -388,12 +390,12 @@ public class CredentialStoreTest {
             Assert.assertArrayEquals(key1.getAttestation().toArray(), key2.getAttestation().toArray());
         }
 
-        Iterator<Credential.PendingAuthenticationKey> itp1 = credential.getPendingAuthenticationKeys().iterator();
-        Iterator<Credential.PendingAuthenticationKey> itp2 = credential2.getPendingAuthenticationKeys().iterator();
+        Iterator<PendingAuthenticationKey> itp1 = credential.getPendingAuthenticationKeys().iterator();
+        Iterator<PendingAuthenticationKey> itp2 = credential2.getPendingAuthenticationKeys().iterator();
         for (n = 0; n < 6; n++) {
-            Credential.PendingAuthenticationKey key1 = itp1.next();
-            Credential.PendingAuthenticationKey key2 = itp2.next();
-            Assert.assertEquals(key1.mAlias, key2.mAlias);
+            PendingAuthenticationKey key1 = itp1.next();
+            PendingAuthenticationKey key2 = itp2.next();
+            Assert.assertEquals(key1.getAlias(), key2.getAlias());
             Assert.assertArrayEquals(key1.getAttestation().toArray(),
                     key2.getAttestation().toArray());
         }
@@ -429,13 +431,13 @@ public class CredentialStoreTest {
             credential.createPendingAuthenticationKey(
                     AUTH_KEY_DOMAIN,
                     mSecureArea,
-                    new SecureArea.CreateKeySettings(new byte[0]),
+                    new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                     null);
         }
         Assert.assertEquals(10, credential.getPendingAuthenticationKeys().size());
 
         n = 0;
-        for (Credential.PendingAuthenticationKey pendingAuthenticationKey :
+        for (PendingAuthenticationKey pendingAuthenticationKey :
                 credential.getPendingAuthenticationKeys()) {
             if (n < 5) {
                 pendingAuthenticationKey.certify(new byte[]{17}, timeValidityBegin, timeOfBirthday);
@@ -447,7 +449,7 @@ public class CredentialStoreTest {
 
         // Simulate ten presentations before the birthday
         for (n = 0; n < 10; n++) {
-            Credential.AuthenticationKey authenticationKey =
+            AuthenticationKey authenticationKey =
                     credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeOfUseBeforeBirthday);
             Assert.assertNotNull(authenticationKey);
             // Check we got a key with age 17.
@@ -457,7 +459,7 @@ public class CredentialStoreTest {
 
         // Simulate twenty presentations after the birthday
         for (n = 0; n < 20; n++) {
-            Credential.AuthenticationKey authenticationKey =
+            AuthenticationKey authenticationKey =
                     credential.findAuthenticationKey(AUTH_KEY_DOMAIN, timeOfUseAfterBirthday);
             Assert.assertNotNull(authenticationKey);
             // Check we got a key with age 18.
@@ -468,7 +470,7 @@ public class CredentialStoreTest {
         // Examine the authentication keys. The first five should have use count 2, the
         // latter five use count 4.
         n = 0;
-        for (Credential.AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authenticationKey : credential.getAuthenticationKeys()) {
             if (n++ < 5) {
                 Assert.assertEquals(2, authenticationKey.getUsageCount());
             } else {
@@ -533,11 +535,11 @@ public class CredentialStoreTest {
                 "testCredential");
 
         for (int n = 0; n < 10; n++) {
-            Credential.PendingAuthenticationKey pendingAuthKey =
+            PendingAuthenticationKey pendingAuthKey =
                     credential.createPendingAuthenticationKey(
                             AUTH_KEY_DOMAIN,
                             mSecureArea,
-                            new SecureArea.CreateKeySettings(new byte[0]),
+                            new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                             null);
             String value = String.format(Locale.US, "bar%02d", n);
             ApplicationData pendingAppData = pendingAuthKey.getApplicationData();
@@ -561,7 +563,7 @@ public class CredentialStoreTest {
         credential = credentialStore.lookupCredential("testCredential");
         Assert.assertEquals(10, credential.getPendingAuthenticationKeys().size());
         int n = 0;
-        for (Credential.PendingAuthenticationKey pendingAuthKey : credential.getPendingAuthenticationKeys()) {
+        for (PendingAuthenticationKey pendingAuthKey : credential.getPendingAuthenticationKeys()) {
             String value = String.format(Locale.US, "bar%02d", n++);
             ApplicationData pendingAppData = pendingAuthKey.getApplicationData();
             Assert.assertEquals(value, pendingAppData.getString("foo"));
@@ -574,7 +576,7 @@ public class CredentialStoreTest {
         // Certify and check that data carries over from PendingAuthenticationKey
         // to AuthenticationKey
         n = 0;
-        for (Credential.PendingAuthenticationKey pendingAuthKey : credential.getPendingAuthenticationKeys()) {
+        for (PendingAuthenticationKey pendingAuthKey : credential.getPendingAuthenticationKeys()) {
             String value = String.format(Locale.US, "bar%02d", n++);
             ApplicationData pendingAppData = pendingAuthKey.getApplicationData();
             Assert.assertEquals(value, pendingAppData.getString("foo"));
@@ -582,7 +584,7 @@ public class CredentialStoreTest {
             Assert.assertFalse(pendingAppData.keyExists("non-existent"));
             Assert.assertThrows(IllegalArgumentException.class, () ->
                     pendingAppData.getString("non-existent"));
-            Credential.AuthenticationKey authKey = pendingAuthKey.certify(new byte[] {0, (byte) n},
+            AuthenticationKey authKey = pendingAuthKey.certify(new byte[] {0, (byte) n},
                     Timestamp.ofEpochMilli(100),
                     Timestamp.ofEpochMilli(200));
             ApplicationData appData = authKey.getApplicationData();
@@ -595,7 +597,7 @@ public class CredentialStoreTest {
 
         // Check it's persisted to disk.
         n = 0;
-        for (Credential.AuthenticationKey authKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authKey : credential.getAuthenticationKeys()) {
             String value = String.format(Locale.US, "bar%02d", n++);
             ApplicationData appData = authKey.getApplicationData();
             Assert.assertEquals(value, appData.getString("foo"));
@@ -619,11 +621,11 @@ public class CredentialStoreTest {
         Assert.assertEquals(0, credential.getPendingAuthenticationKeys().size());
 
         for (int n = 0; n < 10; n++) {
-            Credential.PendingAuthenticationKey pendingAuthKey =
+            PendingAuthenticationKey pendingAuthKey =
                     credential.createPendingAuthenticationKey(
                             AUTH_KEY_DOMAIN,
                             mSecureArea,
-                            new SecureArea.CreateKeySettings(new byte[0]),
+                            new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                             null);
             pendingAuthKey.certify(new byte[] {0, (byte) n},
                     Timestamp.ofEpochMilli(100),
@@ -633,13 +635,13 @@ public class CredentialStoreTest {
         Assert.assertEquals(10, credential.getAuthenticationKeys().size());
 
         // Now replace the fifth authentication key
-        Credential.AuthenticationKey keyToReplace = credential.getAuthenticationKeys().get(5);
+        AuthenticationKey keyToReplace = credential.getAuthenticationKeys().get(5);
         Assert.assertArrayEquals(new byte[] {0, 5}, keyToReplace.getIssuerProvidedData());
-        Credential.PendingAuthenticationKey pendingAuthKey =
+        PendingAuthenticationKey pendingAuthKey =
                 credential.createPendingAuthenticationKey(
                         AUTH_KEY_DOMAIN,
                         mSecureArea,
-                        new SecureArea.CreateKeySettings(new byte[0]),
+                        new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                         keyToReplace);
         // ... it's not replaced until certify() is called
         Assert.assertEquals(1, credential.getPendingAuthenticationKeys().size());
@@ -655,7 +657,7 @@ public class CredentialStoreTest {
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         int count = 0;
-        for (Credential.AuthenticationKey authKey : credential.getAuthenticationKeys()) {
+        for (AuthenticationKey authKey : credential.getAuthenticationKeys()) {
             byte[][] expectedData = {
                     new byte[] {0, 0},
                     new byte[] {0, 1},
@@ -673,12 +675,12 @@ public class CredentialStoreTest {
 
         // Test the case where the replacement key is prematurely deleted. The key
         // being replaced should no longer reference it has a replacement...
-        Credential.AuthenticationKey toBeReplaced = credential.getAuthenticationKeys().get(0);
-        Credential.PendingAuthenticationKey replacement =
+        AuthenticationKey toBeReplaced = credential.getAuthenticationKeys().get(0);
+        PendingAuthenticationKey replacement =
                 credential.createPendingAuthenticationKey(
                         AUTH_KEY_DOMAIN,
                         mSecureArea,
-                        new SecureArea.CreateKeySettings(new byte[0]),
+                        new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                         toBeReplaced);
         Assert.assertEquals(toBeReplaced, replacement.getReplacementFor());
         Assert.assertEquals(replacement, toBeReplaced.getReplacement());
@@ -690,7 +692,7 @@ public class CredentialStoreTest {
         replacement = credential.createPendingAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 mSecureArea,
-                new SecureArea.CreateKeySettings(new byte[0]),
+                new CreateKeySettings(new byte[0], Set.of(KeyPurpose.SIGN), EcCurve.P256),
                 toBeReplaced);
         Assert.assertEquals(toBeReplaced, replacement.getReplacementFor());
         Assert.assertEquals(replacement, toBeReplaced.getReplacement());

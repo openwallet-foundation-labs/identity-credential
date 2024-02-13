@@ -27,9 +27,13 @@ import android.security.keystore.KeyProperties;
 
 import com.android.identity.AndroidAttestationExtensionParser;
 import com.android.identity.android.storage.AndroidStorageEngine;
+import com.android.identity.securearea.Algorithm;
+import com.android.identity.securearea.CreateKeySettings;
+import com.android.identity.securearea.EcCurve;
+import com.android.identity.securearea.KeyInfo;
+import com.android.identity.securearea.KeyLockedException;
+import com.android.identity.securearea.KeyPurpose;
 import com.android.identity.securearea.SecureArea;
-import com.android.identity.securearea.SoftwareSecureArea;
-import com.android.identity.storage.EphemeralStorageEngine;
 import com.android.identity.storage.StorageEngine;
 import com.android.identity.util.Timestamp;
 
@@ -53,6 +57,7 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.util.Set;
 
 import javax.crypto.KeyAgreement;
 
@@ -75,11 +80,11 @@ public class AndroidKeystoreSecureAreaTest {
 
         // Now that we know the key doesn't exist, check that ecKeySign() throws
         try {
-            ks.sign("testKey", SecureArea.ALGORITHM_ES256, new byte[] {1, 2}, null);
+            ks.sign("testKey", Algorithm.ES256, new byte[] {1, 2}, null);
             Assert.fail();
         } catch (IllegalArgumentException e) {
             // Expected path.
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -116,8 +121,8 @@ public class AndroidKeystoreSecureAreaTest {
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
@@ -130,8 +135,8 @@ public class AndroidKeystoreSecureAreaTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
-        } catch (SecureArea.KeyLockedException e) {
+            derSignature = ks.sign("testKey", Algorithm.ES256, dataToSign, null);
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -179,8 +184,8 @@ public class AndroidKeystoreSecureAreaTest {
 
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired());
@@ -194,9 +199,9 @@ public class AndroidKeystoreSecureAreaTest {
 
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
-            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+            ks.sign("testKey", Algorithm.ES256, dataToSign, null);
             Assert.fail("Should not be reached");
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             /* expected path */
         }
     }
@@ -224,8 +229,8 @@ public class AndroidKeystoreSecureAreaTest {
         ks.createKey("testKey", settings);
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired());
@@ -237,9 +242,9 @@ public class AndroidKeystoreSecureAreaTest {
 
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
-            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+            ks.sign("testKey", Algorithm.ES256, dataToSign, null);
             Assert.fail("Should not be reached");
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             /* expected path */
         }
     }
@@ -267,8 +272,8 @@ public class AndroidKeystoreSecureAreaTest {
         ks.createKey("testKey", settings);
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
         Assert.assertTrue(keyInfo.isUserAuthenticationRequired());
@@ -280,9 +285,9 @@ public class AndroidKeystoreSecureAreaTest {
 
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
-            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+            ks.sign("testKey", Algorithm.ES256, dataToSign, null);
             Assert.fail("Should not be reached");
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             /* expected path */
         }
     }
@@ -330,15 +335,15 @@ public class AndroidKeystoreSecureAreaTest {
         byte[] challenge = new byte[] {1, 2, 3};
         AndroidKeystoreSecureArea.CreateKeySettings settings =
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge)
-                        .setEcCurve(SecureArea.EC_CURVE_ED25519)
+                        .setEcCurve(EcCurve.ED25519)
                         .build();
         ks.createKey("testKey", settings);
 
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_ED25519, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.ED25519, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
@@ -351,8 +356,8 @@ public class AndroidKeystoreSecureAreaTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_EDDSA, dataToSign, null);
-        } catch (SecureArea.KeyLockedException e) {
+            derSignature = ks.sign("testKey", Algorithm.EDDSA, dataToSign, null);
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -382,15 +387,15 @@ public class AndroidKeystoreSecureAreaTest {
 
         ks.createKey("testKey",
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
-                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
+                        .setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY))
                         .build());
         byte[] dataToSign = new byte[] {4, 5, 6};
         try {
-            ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
+            ks.sign("testKey", Algorithm.ES256, dataToSign, null);
             Assert.fail("Signing shouldn't work with a key w/o KEY_PURPOSE_SIGN");
         } catch (IllegalArgumentException e) {
             // Expected path.
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
     }
@@ -432,14 +437,14 @@ public class AndroidKeystoreSecureAreaTest {
         ks.createKey("testKey",
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
                         .setUseStrongBox(useStrongBox)
-                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
+                        .setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY))
                         .build());
 
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.AGREE_KEY), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
@@ -453,7 +458,7 @@ public class AndroidKeystoreSecureAreaTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -498,15 +503,15 @@ public class AndroidKeystoreSecureAreaTest {
 
         ks.createKey("testKey",
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
-                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
-                        .setEcCurve(SecureArea.EC_CURVE_X25519)
+                        .setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY))
+                        .setEcCurve(EcCurve.X25519)
                         .build());
 
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_X25519, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.AGREE_KEY), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.X25519, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
@@ -520,7 +525,7 @@ public class AndroidKeystoreSecureAreaTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -578,16 +583,14 @@ public class AndroidKeystoreSecureAreaTest {
         ks.createKey("testKey",
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
                         .setUseStrongBox(useStrongBox)
-                        .setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY
-                                | SecureArea.KEY_PURPOSE_SIGN)
+                        .setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY, KeyPurpose.SIGN))
                         .build());
 
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_AGREE_KEY
-                | SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.AGREE_KEY, KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
@@ -601,7 +604,7 @@ public class AndroidKeystoreSecureAreaTest {
         byte[] ourSharedSecret;
         try {
             ourSharedSecret = ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -623,8 +626,8 @@ public class AndroidKeystoreSecureAreaTest {
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
-        } catch (SecureArea.KeyLockedException e) {
+            derSignature = ks.sign("testKey", Algorithm.ES256, dataToSign, null);
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -663,13 +666,13 @@ public class AndroidKeystoreSecureAreaTest {
 
         ks.createKey("testKey",
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(new byte[] {1, 2, 3})
-                        //.setKeyPurposes(SecureArea.KEY_PURPOSE_AGREE_KEY)
+                        //.setKeyPurposes(Set.of(KeyPurpose.AGREE_KEY))
                         .build());
 
         try {
             ks.keyAgreement("testKey", otherKeyPair.getPublic(), null);
             Assert.fail("ECDH shouldn't work with a key w/o KEY_PURPOSE_AGREE_KEY");
-        } catch (SecureArea.KeyLockedException e) {
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         } catch (IllegalArgumentException e) {
             // Expected path.
@@ -689,17 +692,17 @@ public class AndroidKeystoreSecureAreaTest {
                 new AndroidKeystoreSecureArea.CreateKeySettings.Builder(challenge).build();
 
         ks.createKey("testKey", settings);
-        SecureArea.KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
+        KeyInfo keyInfoOld = ks.getKeyInfo("testKey");
         Assert.assertTrue(keyInfoOld.getAttestation().size() >= 1);
 
         ks.createKey("testKey", settings);
-        SecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
+        KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
         byte[] dataToSign = new byte[] {4, 5, 6};
         byte[] derSignature;
         try {
-            derSignature = ks.sign("testKey", SecureArea.ALGORITHM_ES256, dataToSign, null);
-        } catch (SecureArea.KeyLockedException e) {
+            derSignature = ks.sign("testKey", Algorithm.ES256, dataToSign, null);
+        } catch (KeyLockedException e) {
             throw new AssertionError(e);
         }
 
@@ -761,8 +764,8 @@ public class AndroidKeystoreSecureAreaTest {
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 3);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
@@ -850,8 +853,8 @@ public class AndroidKeystoreSecureAreaTest {
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
         Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
         Assert.assertEquals(useStrongBox, keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
@@ -892,12 +895,12 @@ public class AndroidKeystoreSecureAreaTest {
         AndroidKeystoreSecureArea ks = new AndroidKeystoreSecureArea(context, storageEngine);
 
         byte[] challenge = new byte[] {1, 2, 3, 4};
-        ks.createKey("testKey", new SecureArea.CreateKeySettings(challenge));
+        ks.createKey("testKey", new CreateKeySettings(challenge, Set.of(KeyPurpose.SIGN), EcCurve.P256));
 
         AndroidKeystoreSecureArea.KeyInfo keyInfo = ks.getKeyInfo("testKey");
         Assert.assertNotNull(keyInfo);
-        Assert.assertEquals(SecureArea.KEY_PURPOSE_SIGN, keyInfo.getKeyPurposes());
-        Assert.assertEquals(SecureArea.EC_CURVE_P256, keyInfo.getEcCurve());
+        Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
         Assert.assertTrue(keyInfo.isHardwareBacked());
 
         AndroidAttestationExtensionParser parser =

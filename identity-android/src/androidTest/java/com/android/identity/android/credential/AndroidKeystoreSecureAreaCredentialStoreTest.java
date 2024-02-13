@@ -23,6 +23,7 @@ import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
 import com.android.identity.android.storage.AndroidStorageEngine;
 import com.android.identity.credential.Credential;
 import com.android.identity.credential.CredentialStore;
+import com.android.identity.credential.PendingAuthenticationKey;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.StorageEngine;
@@ -33,8 +34,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.cert.X509Certificate;
-import java.util.List;
 
 // See CredentialStoreTest in non-Android tests for main tests for CredentialStore. These
 // tests are just for the Android-specific bits including attestation.
@@ -76,7 +75,7 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
 
         // Create pending authentication key and check its attestation
         byte[] authKeyChallenge = new byte[] {20, 21, 22};
-        Credential.PendingAuthenticationKey pendingAuthenticationKey =
+        PendingAuthenticationKey pendingAuthenticationKey =
                 credential.createPendingAuthenticationKey(
                         AUTH_KEY_DOMAIN,
                         mSecureArea,

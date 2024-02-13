@@ -2,8 +2,6 @@ package com.android.identity.util;
 
 import static org.junit.Assert.assertEquals;
 
-import com.android.identity.TestVectors;
-
 import com.android.identity.internal.Util;
 import org.junit.Test;
 
@@ -18,6 +16,12 @@ import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public class CborUtilTest {
+
+    public static final String ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT =
+            "a30063312e30018201d818584ba4010220012158205a88d182bce5f42efa59943f33359d2"
+                    + "e8a968ff289d93e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a"
+                    + "8cfcf3de6aa672fc60a557aa32fc670281830201a300f401f50b5045efef742b2c4837a9a"
+                    + "3b0e1d05a6917";
 
     @Test
     public void testDiagnosticsString() {
@@ -165,7 +169,7 @@ public class CborUtilTest {
         assertEquals(
                 "{0: \"1.0\", 1: [1, 24(<< {1: 2, -1: 1, -2: h'5a88d182bce5f42efa59943f33359d2e8a968ff289d93e5fa444b624343167fe', -3: h'b16e8cf858ddc7690407ba61d4c338237a8cfcf3de6aa672fc60a557aa32fc67'} >>)], 2: [[2, 1, {0: false, 1: true, 11: h'45efef742b2c4837a9a3b0e1d05a6917'}]]}",
                 CborUtil.toDiagnostics(
-                        Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT),
+                        Util.fromHex(ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT),
                         CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR));
     }
 
@@ -188,7 +192,7 @@ public class CborUtilTest {
                         "  ]\n" +
                         "}",
                 CborUtil.toDiagnostics(
-                        Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT),
+                        Util.fromHex(ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT),
                         CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT));
     }
 
@@ -219,7 +223,7 @@ public class CborUtilTest {
                         "  ]\n" +
                         "}",
                 CborUtil.toDiagnostics(
-                        Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT),
+                        Util.fromHex(ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT),
                         CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR |
                                 CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT));
     }

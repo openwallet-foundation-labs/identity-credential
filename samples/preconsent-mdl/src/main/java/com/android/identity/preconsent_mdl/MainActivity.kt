@@ -19,18 +19,14 @@ package com.android.identity.preconsent_mdl
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,14 +34,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -54,28 +44,22 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
-import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.EcCurve
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import org.bouncycastle.asn1.x500.X500Name
@@ -98,16 +82,15 @@ class MainActivity : ComponentActivity() {
     companion object {
         private val TAG = "MainActivity"
 
-        val CREDENTIAL_ID = "mDL_Erika"
-        val AUTH_KEY_DOMAIN = "mdoc"
+        const val CREDENTIAL_ID = "mDL_Erika"
+        const val AUTH_KEY_DOMAIN = "mdoc"
 
-        val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        val MDL_NAMESPACE = "org.iso.18013.5.1"
-        val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
+        const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
+        const val MDL_NAMESPACE = "org.iso.18013.5.1"
+        const val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
     }
 
     private lateinit var transferHelper: TransferHelper
-
 
     private fun provisionCredentials() {
         if (transferHelper.credentialStore.lookupCredential(CREDENTIAL_ID) == null) {
@@ -121,22 +104,19 @@ class MainActivity : ComponentActivity() {
         val credential = transferHelper.credentialStore.createCredential(CREDENTIAL_ID)
 
         val baos = ByteArrayOutputStream()
-        BitmapFactory.decodeResource(
-            applicationContext.resources,
-            R.drawable.img_erika_portrait
-        ).compress(Bitmap.CompressFormat.JPEG, 50, baos)
+        BitmapFactory.decodeResource(applicationContext.resources, R.drawable.img_erika_portrait)
+            .compress(Bitmap.CompressFormat.JPEG, 50, baos)
         val portrait: ByteArray = baos.toByteArray()
 
         val now = Timestamp.now()
-        val issueDate = now
-        val expiryDate = Timestamp.ofEpochMilli(issueDate.toEpochMilli() + 5*365*24*3600*1000L)
+        val expiryDate = Timestamp.ofEpochMilli(now.toEpochMilli() + 5 * 365 * 24 * 3600 * 1000L)
 
         val credentialData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
             .putEntryNumber(MDL_NAMESPACE, "sex", 2)
-            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(issueDate))
+            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(now))
             .putEntry(MDL_NAMESPACE, "expiry_date", Util.cborEncodeDateTime(expiryDate))
             .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
             .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
@@ -151,14 +131,14 @@ class MainActivity : ComponentActivity() {
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
         val validFrom = now
-        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + 365*24*3600*1000L)
+        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + 365 * 24 * 3600 * 1000L)
 
         // Create three authentication keys and certify them
         for (n in 0..2) {
             val pendingAuthKey = credential.createPendingAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 transferHelper.androidKeystoreSecureArea,
-                SecureArea.CreateKeySettings("".toByteArray()),
+                CreateKeySettings("".toByteArray()),
                 null
             )
 
@@ -167,7 +147,7 @@ class MainActivity : ComponentActivity() {
                 "SHA-256",
                 MDL_DOCTYPE,
                 pendingAuthKey.attestation[0].publicKey,
-                SecureArea.EC_CURVE_P256
+                EcCurve.P256
             )
             msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
             val randomProvider = SecureRandom()
@@ -303,16 +283,25 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MainScreen(context: Context) {
     val transferHelper = remember { TransferHelper.getInstance(context) }
-    val nfcStaticHandoverEnabled = remember { mutableStateOf(transferHelper.getNfcStaticHandoverEnabled()) }
-    val nfcNegotiatedHandoverEnabled = remember { mutableStateOf(transferHelper.getNfcNegotiatedHandoverEnabled()) }
-    val bleCentralClientDataTransferEnabled = remember { mutableStateOf(transferHelper.getBleCentralClientDataTransferEnabled()) }
-    val blePeripheralServerDataTransferEnabled = remember { mutableStateOf(transferHelper.getBlePeripheralServerDataTransferEnabled()) }
-    val wifiAwareDataTransferEnabled = remember { mutableStateOf(transferHelper.getWifiAwareDataTransferEnabled()) }
-    val nfcDataTransferEnabled = remember { mutableStateOf(transferHelper.getNfcDataTransferEnabled()) }
-    val tcpDataTransferEnabled = remember { mutableStateOf(transferHelper.getTcpDataTransferEnabled()) }
-    val udpDataTransferEnabled = remember { mutableStateOf(transferHelper.getUdpDataTransferEnabled()) }
+    val nfcStaticHandoverEnabled =
+        remember { mutableStateOf(transferHelper.getNfcStaticHandoverEnabled()) }
+    val nfcNegotiatedHandoverEnabled =
+        remember { mutableStateOf(transferHelper.getNfcNegotiatedHandoverEnabled()) }
+    val bleCentralClientDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getBleCentralClientDataTransferEnabled()) }
+    val blePeripheralServerDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getBlePeripheralServerDataTransferEnabled()) }
+    val wifiAwareDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getWifiAwareDataTransferEnabled()) }
+    val nfcDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getNfcDataTransferEnabled()) }
+    val tcpDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getTcpDataTransferEnabled()) }
+    val udpDataTransferEnabled =
+        remember { mutableStateOf(transferHelper.getUdpDataTransferEnabled()) }
     val l2capEnabled = remember { mutableStateOf(transferHelper.getL2CapEnabled()) }
-    val experimentalPsmEnabled = remember { mutableStateOf(transferHelper.getExperimentalPsmEnabled()) }
+    val experimentalPsmEnabled =
+        remember { mutableStateOf(transferHelper.getExperimentalPsmEnabled()) }
     val debugEnabled = remember { mutableStateOf(transferHelper.getDebugEnabled()) }
 
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -342,7 +331,7 @@ private fun MainScreen(context: Context) {
                 .padding(innerPadding),
             color = MaterialTheme.colorScheme.background
         ) {
-            Column() {
+            Column {
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
@@ -350,7 +339,7 @@ private fun MainScreen(context: Context) {
                         .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column() {
+                    Column {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
                             text = "This app contains an mDL with Preconsent which " +
@@ -478,7 +467,7 @@ private fun MainScreen(context: Context) {
                         onCheckedChange = { checked ->
                             transferHelper.setDebugEnabled(checked)
                             debugEnabled.value = checked
-                            Logger.setDebugEnabled(checked)
+                            Logger.isDebugEnabled = checked
                         }
                     )
                 }

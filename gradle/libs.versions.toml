@@ -104,7 +104,7 @@
     net-sf-scuba-scuba-sc-android = { group = "net.sf.scuba", name = "scuba-sc-android", version.ref="scuba-version" }
     org-jmrtd-jmrtd = { group = "org.jmrtd", name ="jmrtd", version.ref="jmrtd-version" }
     com-google-mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref="mlkit-version" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
+    junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]

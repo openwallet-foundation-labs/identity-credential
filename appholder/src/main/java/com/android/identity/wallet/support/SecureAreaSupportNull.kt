@@ -11,8 +11,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
-import com.android.identity.credential.Credential
-import com.android.identity.securearea.SecureArea
+import com.android.identity.credential.AuthenticationKey
+import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Timestamp
 import com.android.identity.wallet.selfsigned.OutlinedContainerVertical
 
@@ -39,29 +40,22 @@ class SecureAreaSupportNull : SecureAreaSupport {
     }
 
     override fun Fragment.unlockKey(
-        authKey: Credential.AuthenticationKey,
-        onKeyUnlocked: (unlockData: SecureArea.KeyUnlockData?) -> Unit,
+        authKey: AuthenticationKey,
+        onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {
         throw IllegalStateException("No implementation")
     }
 
-    override fun getSecureAreaSupportState(): SecureAreaSupportState {
-        return state
-    }
+    override fun getSecureAreaSupportState(): SecureAreaSupportState = state
 
-    override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray {
-        return ByteArray(0)
-    }
-
+    override fun createAuthKeySettingsConfiguration(secureAreaSupportState: SecureAreaSupportState): ByteArray =
+        ByteArray(0)
 
     override fun createAuthKeySettingsFromConfiguration(
         encodedConfiguration: ByteArray,
         challenge: ByteArray,
         validFrom: Timestamp,
         validUntil: Timestamp
-    ): SecureArea.CreateKeySettings {
-        return SecureArea.CreateKeySettings(challenge)
-    }
-
+    ): CreateKeySettings = CreateKeySettings(challenge)
 }

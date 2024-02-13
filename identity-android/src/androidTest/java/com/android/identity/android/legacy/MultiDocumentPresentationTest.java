@@ -25,6 +25,7 @@ import static org.junit.Assume.assumeTrue;
 import android.content.Context;
 
 import com.android.identity.internal.Util;
+import com.android.identity.securearea.EcCurve;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 
@@ -208,7 +209,7 @@ public class MultiDocumentPresentationTest {
                 IdentityCredentialStore.CIPHERSUITE_ECDHE_HKDF_ECDSA_WITH_AES_256_GCM_SHA256);
 
         KeyPair ephemeralKeyPair = session.getEphemeralKeyPair();
-        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256);
+        KeyPair readerEphemeralKeyPair = Util.createEphemeralKeyPair(EcCurve.P256);
         session.setReaderEphemeralPublicKey(readerEphemeralKeyPair.getPublic());
         byte[] sessionTranscript = Util.buildSessionTranscript(ephemeralKeyPair);
         session.setSessionTranscript(sessionTranscript);

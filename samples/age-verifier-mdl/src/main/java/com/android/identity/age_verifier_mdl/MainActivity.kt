@@ -61,7 +61,6 @@ class MainActivity : ComponentActivity() {
 
         val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         val MDL_NAMESPACE = "org.iso.18013.5.1"
-
     }
 
     private lateinit var transferHelper: TransferHelper
@@ -178,7 +177,7 @@ class MainActivity : ComponentActivity() {
         }
 
         transferHelper = TransferHelper.getInstance(applicationContext, this)
-        Logger.setDebugEnabled(transferHelper.getDebugEnabled())
+        Logger.isDebugEnabled = transferHelper.getDebugEnabled()
 
         setContent {
             IdentityCredentialTheme {
@@ -311,7 +310,7 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
-            Column() {
+            Column {
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
@@ -320,7 +319,7 @@ class MainActivity : ComponentActivity() {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column() {
+                    Column {
                         Text(
                             modifier = Modifier.fillMaxWidth(),
                             text = "This app is used to engage with an mDL via NFC and request " +
@@ -475,7 +474,7 @@ class MainActivity : ComponentActivity() {
                         onCheckedChange = { checked ->
                             transferHelper.setDebugEnabled(checked)
                             debugEnabled.value = checked
-                            Logger.setDebugEnabled(checked)
+                            Logger.isDebugEnabled = checked
                         }
                     )
 
@@ -490,7 +489,7 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
-            Column() {
+            Column {
                 val scrollState = rememberScrollState()
                 Column(
                     modifier = Modifier
@@ -503,7 +502,7 @@ class MainActivity : ComponentActivity() {
                         Column { Text(text = "Error: ${transferHelper.error}") }
                     } else {
                         if (resultPortrait != null) {
-                            Column() {
+                            Column {
                                 Image(
                                     bitmap = resultPortrait!!.asImageBitmap(),
                                     contentDescription = null,

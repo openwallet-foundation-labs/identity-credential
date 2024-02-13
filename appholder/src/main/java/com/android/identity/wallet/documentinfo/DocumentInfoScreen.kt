@@ -48,15 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.android.identity.securearea.SecureArea.EC_CURVE_ED25519
-import com.android.identity.securearea.SecureArea.EC_CURVE_ED448
-import com.android.identity.securearea.SecureArea.EC_CURVE_P256
-import com.android.identity.securearea.SecureArea.EC_CURVE_P384
-import com.android.identity.securearea.SecureArea.EC_CURVE_P521
-import com.android.identity.securearea.SecureArea.EC_CURVE_X25519
-import com.android.identity.securearea.SecureArea.EC_CURVE_X448
-import com.android.identity.securearea.SecureArea.KEY_PURPOSE_AGREE_KEY
-import com.android.identity.securearea.SecureArea.KEY_PURPOSE_SIGN
+import com.android.identity.securearea.EcCurve
+import com.android.identity.securearea.KeyPurpose
 import com.android.identity.wallet.R
 import com.android.identity.wallet.composables.LoadingIndicator
 import com.android.identity.wallet.composables.ShowToast
@@ -344,36 +337,13 @@ private fun AuthenticationKeyInfo(
             )
             LabeledValue(
                 label = stringResource(id = R.string.document_info_key_purposes),
-                value = authKeyInfo.keyPurposes.keyPurposesReadableValue()
+                value = authKeyInfo.keyPurposes.toString()
             )
             LabeledValue(
                 label = stringResource(id = R.string.document_info_ec_curve),
-                value = authKeyInfo.ecCurve.ecCurveReadableValue()
+                value = authKeyInfo.ecCurve.toString()
             )
         }
-    }
-}
-
-@Composable
-private fun Int.keyPurposesReadableValue() : String {
-    return when (this) {
-        KEY_PURPOSE_SIGN -> "KEY_PURPOSE_SIGN"
-        KEY_PURPOSE_AGREE_KEY -> "KEY_PURPOSE_AGREE"
-        else -> this.toString()
-    }
-}
-
-@Composable
-private fun Int.ecCurveReadableValue(): String {
-    return when (this) {
-        EC_CURVE_P256 -> "P-256"
-        EC_CURVE_P384 -> "P-384"
-        EC_CURVE_P521 -> "P-512"
-        EC_CURVE_ED25519 -> "Ed25519"
-        EC_CURVE_X25519 -> "X25519"
-        EC_CURVE_ED448 -> "ED448"
-        EC_CURVE_X448 -> "X448"
-        else -> this.toString()
     }
 }
 
@@ -460,8 +430,8 @@ private fun PreviewDocumentInfoScreen() {
                         domain = "Domain",
                         usagesCount = 1,
                         issuerDataBytesCount = "Issuer 1".toByteArray().count(),
-                        keyPurposes = KEY_PURPOSE_AGREE_KEY,
-                        ecCurve = EC_CURVE_P256,
+                        keyPurposes = KeyPurpose.AGREE_KEY,
+                        ecCurve = EcCurve.P256,
                         isHardwareBacked = false,
                         secureAreaDisplayName = "Secure Area Name"
                     ),
@@ -472,8 +442,8 @@ private fun PreviewDocumentInfoScreen() {
                         domain = "Domain",
                         usagesCount = 0,
                         issuerDataBytesCount = "Issuer 2".toByteArray().count(),
-                        keyPurposes = KEY_PURPOSE_SIGN,
-                        ecCurve = EC_CURVE_ED25519,
+                        keyPurposes = KeyPurpose.SIGN,
+                        ecCurve = EcCurve.ED25519,
                         isHardwareBacked = true,
                         secureAreaDisplayName = "Secure Area Name"
 

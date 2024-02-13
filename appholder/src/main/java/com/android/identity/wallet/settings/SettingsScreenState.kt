@@ -3,8 +3,7 @@ package com.android.identity.wallet.settings
 import android.os.Parcelable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.EcCurve
+import com.android.identity.securearea.EcCurve
 import kotlinx.parcelize.Parcelize
 
 @Stable
@@ -22,10 +21,7 @@ data class SettingsScreenState(
     val debugEnabled: Boolean = true
 ) {
 
-    fun isBleEnabled(): Boolean {
-        return isBleDataRetrievalEnabled
-                || isBlePeripheralModeEnabled
-    }
+    fun isBleEnabled(): Boolean = isBleDataRetrievalEnabled || isBlePeripheralModeEnabled
 
     fun canToggleBleDataRetrievalMode(newBleCentralMode: Boolean): Boolean {
         val updatedState = copy(isBleDataRetrievalEnabled = newBleCentralMode)
@@ -47,12 +43,11 @@ data class SettingsScreenState(
         return updatedState.hasDataRetrieval()
     }
 
-    private fun hasDataRetrieval(): Boolean {
-        return isBleDataRetrievalEnabled
+    private fun hasDataRetrieval(): Boolean =
+        isBleDataRetrievalEnabled
                 || isBlePeripheralModeEnabled
                 || wifiAwareEnabled
                 || nfcEnabled
-    }
 
     @Parcelize
     enum class SessionEncryptionCurveOption : Parcelable {
@@ -66,36 +61,33 @@ data class SettingsScreenState(
         X25519,
         X448;
 
-        fun toEcCurve(): Int {
-
-            return when (this) {
-                P256 -> SecureArea.EC_CURVE_P256
-                P384 -> SecureArea.EC_CURVE_P384
-                P521 -> SecureArea.EC_CURVE_P521
-                BrainPoolP256R1 -> SecureArea.EC_CURVE_BRAINPOOLP256R1
-                BrainPoolP320R1 -> SecureArea.EC_CURVE_BRAINPOOLP320R1
-                BrainPoolP384R1 -> SecureArea.EC_CURVE_BRAINPOOLP384R1
-                BrainPoolP512R1 -> SecureArea.EC_CURVE_BRAINPOOLP512R1
-                X25519 -> SecureArea.EC_CURVE_X25519
-                X448 -> SecureArea.EC_CURVE_X448
+        fun toEcCurve(): EcCurve =
+            when (this) {
+                P256 -> EcCurve.P256
+                P384 -> EcCurve.P384
+                P521 -> EcCurve.P521
+                BrainPoolP256R1 -> EcCurve.BRAINPOOLP256R1
+                BrainPoolP320R1 -> EcCurve.BRAINPOOLP320R1
+                BrainPoolP384R1 -> EcCurve.BRAINPOOLP384R1
+                BrainPoolP512R1 -> EcCurve.BRAINPOOLP512R1
+                X25519 -> EcCurve.X25519
+                X448 -> EcCurve.X448
             }
-        }
 
         companion object {
-            fun fromEcCurve(@EcCurve curve: Int): SessionEncryptionCurveOption {
-                return when (curve) {
-                    SecureArea.EC_CURVE_P256 -> P256
-                    SecureArea.EC_CURVE_P384 -> P384
-                    SecureArea.EC_CURVE_P521 -> P521
-                    SecureArea.EC_CURVE_BRAINPOOLP256R1 -> BrainPoolP256R1
-                    SecureArea.EC_CURVE_BRAINPOOLP320R1 -> BrainPoolP320R1
-                    SecureArea.EC_CURVE_BRAINPOOLP384R1 -> BrainPoolP384R1
-                    SecureArea.EC_CURVE_BRAINPOOLP512R1 -> BrainPoolP512R1
-                    SecureArea.EC_CURVE_X25519 -> X25519
-                    SecureArea.EC_CURVE_X448 -> X448
+            fun fromEcCurve(curve: EcCurve): SessionEncryptionCurveOption =
+                when (curve) {
+                    EcCurve.P256 -> P256
+                    EcCurve.P384 -> P384
+                    EcCurve.P521 -> P521
+                    EcCurve.BRAINPOOLP256R1 -> BrainPoolP256R1
+                    EcCurve.BRAINPOOLP320R1 -> BrainPoolP320R1
+                    EcCurve.BRAINPOOLP384R1 -> BrainPoolP384R1
+                    EcCurve.BRAINPOOLP512R1 -> BrainPoolP512R1
+                    EcCurve.X25519 -> X25519
+                    EcCurve.X448 -> X448
                     else -> throw IllegalStateException("Unknown EcCurve")
                 }
-            }
         }
     }
 }

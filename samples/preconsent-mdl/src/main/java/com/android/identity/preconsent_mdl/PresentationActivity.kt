@@ -54,6 +54,7 @@ import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
+import com.android.identity.securearea.Algorithm
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
@@ -279,7 +280,7 @@ class PresentationActivity : ComponentActivity() {
                     authKey.secureArea,
                     authKey.alias,
                     null,
-                    SecureArea.ALGORITHM_ES256
+                    Algorithm.ES256
                 )
                 .generate()
         )

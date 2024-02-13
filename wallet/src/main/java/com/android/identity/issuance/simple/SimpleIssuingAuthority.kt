@@ -15,7 +15,7 @@ import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.RegisterCredentialFlow
 import com.android.identity.issuance.RequestPresentationObjectsFlow
 import com.android.identity.issuance.evidence.EvidenceResponse
-import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.EcCurve
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import java.security.PublicKey
@@ -69,7 +69,7 @@ abstract class SimpleIssuingAuthority(
                     .addMap()
                     .put(
                         UnicodeString("authenticationKey"),
-                        Util.cborBuildCoseKey(authenticationKey, SecureArea.EC_CURVE_P256)
+                        Util.cborBuildCoseKey(authenticationKey, EcCurve.P256)
                     )
                     .put("presentationData", presentationData)
                     .put("deadline", deadlineMillis)

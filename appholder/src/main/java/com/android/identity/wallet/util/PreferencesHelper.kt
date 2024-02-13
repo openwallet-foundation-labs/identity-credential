@@ -4,8 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
-import com.android.identity.securearea.SecureArea
-import com.android.identity.securearea.SecureArea.EcCurve
+import com.android.identity.securearea.EcCurve
 import com.android.identity.util.Logger
 import java.io.File
 
@@ -38,85 +37,70 @@ object PreferencesHelper {
         return storageDir;
     }
 
-    fun isBleDataRetrievalEnabled(): Boolean {
-        return sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL, true)
-    }
+    fun isBleDataRetrievalEnabled(): Boolean =
+        sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL, true)
 
-    fun setBleDataRetrievalEnabled(enabled: Boolean) {
+    fun setBleDataRetrievalEnabled(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(BLE_DATA_RETRIEVAL, enabled) }
-    }
 
-    fun isBleDataRetrievalPeripheralModeEnabled(): Boolean {
-        return sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, false)
-    }
+    fun isBleDataRetrievalPeripheralModeEnabled(): Boolean =
+        sharedPreferences.getBoolean(BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, false)
 
-    fun setBlePeripheralDataRetrievalMode(enabled: Boolean) {
+    fun setBlePeripheralDataRetrievalMode(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(BLE_DATA_RETRIEVAL_PERIPHERAL_MODE, enabled) }
-    }
 
-    fun isBleL2capEnabled(): Boolean {
-        return sharedPreferences.getBoolean(BLE_DATA_L2CAP, false)
-    }
+    fun isBleL2capEnabled(): Boolean =
+        sharedPreferences.getBoolean(BLE_DATA_L2CAP, false)
 
-    fun setBleL2CAPEnabled(enabled: Boolean) {
+    fun setBleL2CAPEnabled(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(BLE_DATA_L2CAP, enabled) }
-    }
 
-    fun isBleClearCacheEnabled(): Boolean {
-        return sharedPreferences.getBoolean(BLE_CLEAR_CACHE, false)
-    }
+    fun isBleClearCacheEnabled(): Boolean =
+        sharedPreferences.getBoolean(BLE_CLEAR_CACHE, false)
 
-    fun setBleClearCacheEnabled(enabled: Boolean) {
+    fun setBleClearCacheEnabled(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(BLE_CLEAR_CACHE, enabled) }
-    }
 
-    fun isWifiDataRetrievalEnabled(): Boolean {
-        return sharedPreferences.getBoolean(WIFI_DATA_RETRIEVAL, false)
-    }
+    fun isWifiDataRetrievalEnabled(): Boolean =
+        sharedPreferences.getBoolean(WIFI_DATA_RETRIEVAL, false)
 
-    fun setWifiDataRetrievalEnabled(enabled: Boolean) {
+    fun setWifiDataRetrievalEnabled(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(WIFI_DATA_RETRIEVAL, enabled) }
-    }
 
-    fun isNfcDataRetrievalEnabled(): Boolean {
-        return sharedPreferences.getBoolean(NFC_DATA_RETRIEVAL, false)
-    }
+    fun isNfcDataRetrievalEnabled(): Boolean =
+        sharedPreferences.getBoolean(NFC_DATA_RETRIEVAL, false)
 
-    fun setNfcDataRetrievalEnabled(enabled: Boolean) {
+    fun setNfcDataRetrievalEnabled(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(NFC_DATA_RETRIEVAL, enabled) }
-    }
 
-    fun isConnectionAutoCloseEnabled(): Boolean {
-        return sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, true)
-    }
+    fun isConnectionAutoCloseEnabled(): Boolean =
+        sharedPreferences.getBoolean(CONNECTION_AUTO_CLOSE, true)
 
-    fun setConnectionAutoCloseEnabled(enabled: Boolean) {
+    fun setConnectionAutoCloseEnabled(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(CONNECTION_AUTO_CLOSE, enabled) }
-    }
 
-    fun shouldUseStaticHandover(): Boolean {
-        return sharedPreferences.getBoolean(STATIC_HANDOVER, false)
-    }
+    fun shouldUseStaticHandover(): Boolean =
+        sharedPreferences.getBoolean(STATIC_HANDOVER, false)
 
-    fun setUseStaticHandover(enabled: Boolean) {
+    fun setUseStaticHandover(enabled: Boolean) =
         sharedPreferences.edit { putBoolean(STATIC_HANDOVER, enabled) }
-    }
 
-    fun isDebugLoggingEnabled(): Boolean {
-        return sharedPreferences.getBoolean(DEBUG_LOG, true)
-    }
+    fun isDebugLoggingEnabled(): Boolean =
+        sharedPreferences.getBoolean(DEBUG_LOG, true)
 
-    fun setDebugLoggingEnabled(enabled: Boolean) {
-        sharedPreferences.edit { putBoolean(DEBUG_LOG, enabled) }
-        Logger.setDebugEnabled(enabled)
-    }
+    fun setDebugLoggingEnabled(enabled: Boolean) =
+        sharedPreferences
+            .edit { putBoolean(DEBUG_LOG, enabled) }
+            .also { Logger.isDebugEnabled = enabled }
 
-    @EcCurve
-    fun getEphemeralKeyCurveOption(): Int {
-        return sharedPreferences.getInt(EPHEMERAL_KEY_CURVE_OPTION, SecureArea.EC_CURVE_P256)
-    }
+    fun getEphemeralKeyCurveOption(): EcCurve =
+        EcCurve.fromInt(
+            sharedPreferences.getInt(
+                EPHEMERAL_KEY_CURVE_OPTION,
+                EcCurve.P256.coseCurveIdentifier
+            )
+        )
 
-    fun setEphemeralKeyCurveOption(@EcCurve newValue: Int) {
-        sharedPreferences.edit { putInt(EPHEMERAL_KEY_CURVE_OPTION, newValue) }
-    }
+    fun setEphemeralKeyCurveOption(newValue: EcCurve) =
+        sharedPreferences.edit { putInt(EPHEMERAL_KEY_CURVE_OPTION, newValue.coseCurveIdentifier) }
 }

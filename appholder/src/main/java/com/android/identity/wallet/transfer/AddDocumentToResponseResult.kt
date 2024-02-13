@@ -1,6 +1,6 @@
 package com.android.identity.wallet.transfer
 
-import com.android.identity.credential.Credential
+import com.android.identity.credential.AuthenticationKey
 
 sealed class AddDocumentToResponseResult {
 
@@ -9,6 +9,6 @@ sealed class AddDocumentToResponseResult {
     ) : AddDocumentToResponseResult()
 
     data class DocumentLocked(
-        val authKey: Credential.AuthenticationKey
+        val authKey: AuthenticationKey
     ) : AddDocumentToResponseResult()
 }

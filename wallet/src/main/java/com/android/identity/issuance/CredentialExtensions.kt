@@ -2,6 +2,7 @@ package com.android.identity.issuance
 
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialUtil
+import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
@@ -138,7 +139,7 @@ object CredentialExtensions {
                 val requestCpoFlow = issuer.credentialRequestPresentationObjects(credentialIdentifier)
                 val authKeyConfig = requestCpoFlow.getAuthenticationKeyConfiguration()
                 // TODO: add e.g. user authentication to AuthKey
-                val authKeySettings = SecureArea.CreateKeySettings(authKeyConfig.challenge)
+                val authKeySettings = CreateKeySettings(authKeyConfig.challenge)
                 CredentialUtil.managedAuthenticationKeyHelper(
                     this,
                     secureArea,

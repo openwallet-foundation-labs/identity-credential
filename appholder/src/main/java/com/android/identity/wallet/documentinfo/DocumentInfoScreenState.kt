@@ -1,12 +1,9 @@
 package com.android.identity.wallet.documentinfo
 
 import androidx.compose.runtime.Immutable
-import com.android.identity.securearea.SecureArea.EcCurve
-import com.android.identity.securearea.SecureArea.KeyPurpose
+import com.android.identity.securearea.EcCurve
+import com.android.identity.securearea.KeyPurpose
 import com.android.identity.wallet.document.DocumentColor
-import com.android.identity.wallet.support.CurrentSecureArea
-import com.android.identity.wallet.support.toSecureAreaState
-import com.android.identity.wallet.util.ProvisioningUtil
 
 @Immutable
 data class DocumentInfoScreenState(
@@ -30,8 +27,8 @@ data class DocumentInfoScreenState(
         val domain: String,
         val issuerDataBytesCount: Int,
         val usagesCount: Int,
-        @KeyPurpose val keyPurposes: Int,
-        @EcCurve val ecCurve: Int,
+        val keyPurposes: KeyPurpose,
+        val ecCurve: EcCurve,
         val isHardwareBacked: Boolean,
         val secureAreaDisplayName: String
     )

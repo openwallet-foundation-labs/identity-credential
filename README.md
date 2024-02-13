@@ -8,15 +8,18 @@ but the current scope also include other credential formats.
 
 ## Identity Credential Libraries
 
-The project includes two libraries written in Java and Kotlin. The
-first is `identity` which provides the core building blocks and which
-can also be used on server-side environments. The other is `identity-android`
-which provides Android-specific extensions to the former. It is designed to
-run on Android (API 24 or later) and will take advantage of
-Android-specific features including hardware-backed Keystore, NFC, Bluetooth
-Low Energy, and so on.
+The project includes libraries written in Java and Kotlin:
 
-The libraries are intended to be used by Wallet Applications (mobile
+- `identity` provides the core building blocks and which can also be used
+   in server-side environments.
+- `identity-mdoc` provides data structures and routines for working with
+   mdoc credentials. This library can also be used in server-side-environments
+- `identity-android` provides Android-specific extensions. It is designed to
+   run on Android (API 24 or later) and will take advantage of
+   Android-specific features including hardware-backed Keystore, NFC, Bluetooth
+   Low Energy, and so on.
+
+These libraries are intended to be used by Wallet Applications (mobile
 applications on the credential holder's device), Reader Applications (applications
 operated on device controlled by the verifier), and Issuance Systems (applications
 operated by the credential issuer or their agent). They provide the following

@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
         setupDrawerLayout()
         setupNfc()
         onNewIntent(intent)
-        Logger.setDebugEnabled(PreferencesHelper.isDebugLoggingEnabled())
+        Logger.isDebugEnabled = PreferencesHelper.isDebugLoggingEnabled()
     }
 
     private fun setupNfc() {
