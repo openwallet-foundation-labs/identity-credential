@@ -1,12 +1,13 @@
 package com.android.identity.issuance.evidence
 
 import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.model.DataItem
+import co.nstant.`in`.cbor.model.ByteString
 import co.nstant.`in`.cbor.model.MajorType
+import co.nstant.`in`.cbor.model.Map
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
 import com.android.identity.internal.Util
-import java.lang.IllegalArgumentException
+import kotlin.IllegalArgumentException
 
 /**
  * A request for evidence by the issuer.
@@ -42,9 +43,9 @@ abstract class EvidenceRequest(
             EvidenceType.QUESTION_MULTIPLE_CHOICE -> {
                 val er = this as EvidenceRequestQuestionMultipleChoice
                 var pvBuilder = CborBuilder()
-                var pvArrayBuilder = pvBuilder.addArray()
-                for (value in er.possibleValues) {
-                    pvArrayBuilder.add(value)
+                var pvMapBuilder = pvBuilder.addMap()
+                for (entry in er.possibleValues) {
+                    pvMapBuilder.put(entry.key, entry.value)
                 }
                 mapBuilder.put("message", er.message)
                 mapBuilder.put(UnicodeString("possibleValues"), pvBuilder.build()[0])
@@ -59,6 +60,14 @@ abstract class EvidenceRequest(
                 }
                 mapBuilder.put(UnicodeString("dataGroups"), pvBuilder.build()[0])
             }
+            EvidenceType.ICAO_9303_NFC_TUNNEL -> {
+                val er = this as EvidenceRequestIcaoNfcTunnel
+                mapBuilder.put("requestType", er.requestType.name)
+                mapBuilder.put("progress", er.progressPercent.toLong())
+                mapBuilder.put(UnicodeString("message"), ByteString(er.message))
+            }
+            EvidenceType.ICAO_9303_NFC_TUNNEL_RESULT ->
+                throw IllegalArgumentException("Invalid request type")
         }
         return Util.cborEncode(builder.build()[0])
     }
@@ -87,9 +96,10 @@ abstract class EvidenceRequest(
                     )
                 }
                 EvidenceType.QUESTION_MULTIPLE_CHOICE -> {
-                    val possibleValues = mutableListOf<String>()
-                    for (stringDataItem in Util.cborMapExtractArray(map, "possibleValues")) {
-                        possibleValues.add(stringDataItem.toString())
+                    val possibleValues = mutableMapOf<String, String>()
+                    val answers = Util.cborMapExtractMap(map, "possibleValues") as Map
+                    for (answerId in answers.keys) {
+                        possibleValues[answerId.toString()] = answers[answerId].toString()
                     }
                     return EvidenceRequestQuestionMultipleChoice(
                         Util.cborMapExtractString(map, "message"),
@@ -107,6 +117,15 @@ abstract class EvidenceRequest(
                     }
                     return EvidenceRequestIcaoPassiveAuthentication(requests)
                 }
+                EvidenceType.ICAO_9303_NFC_TUNNEL -> {
+                    return EvidenceRequestIcaoNfcTunnel(
+                        EvidenceRequestIcaoNfcTunnelType.valueOf(Util.cborMapExtractString(map, "requestType")),
+                        Util.cborMapExtractNumber(map, "progress").toInt(),
+                        Util.cborMapExtractByteString(map, "message"),
+                    )
+                }
+                EvidenceType.ICAO_9303_NFC_TUNNEL_RESULT ->
+                    throw IllegalArgumentException("Invalid request type")
             }
         }
     }

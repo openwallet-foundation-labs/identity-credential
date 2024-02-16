@@ -17,7 +17,7 @@ class MrtdNfcReaderTest {
     data class Request(val command: CommandAPDU, val wrapper: SecureMessagingWrapper?)
 
     class MockCardService(
-        private val reader: MrtdNfcReader,
+        private val reader: MrtdNfcChipAccess,
         private val responses: List<ResponseAPDU>
     ) : CardService() {
         private var opened = false
@@ -104,7 +104,8 @@ class MrtdNfcReaderTest {
         }
     }
 
-    private val reader = MrtdNfcReader(false)  // Don't check mac
+    private val chipAccess = MrtdNfcChipAccess(false)  // Don't check mac
+    private val reader = MrtdNfcDataReader(listOf(1, 2))
 
     // This test just plays out the simplest success path through the code.
     @Test
@@ -115,7 +116,7 @@ class MrtdNfcReaderTest {
         val expectedSOD = tlv(7, byteArrayOf(34, 35, 36, 37, 1, 1, 2, 3, 8, 15))
 
         val cardService = MockCardService(
-            reader, listOf(
+            chipAccess, listOf(
                 fileNotFound,  // refuse to do PACE
                 noError,  // sending applet
                 responseWithBody(byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8)),  // BAC challenge
@@ -129,20 +130,22 @@ class MrtdNfcReaderTest {
                 responseWithBody(expectedDG2.copyOf(8)),  // prefix
                 noError,  // select file, success
                 responseWithBody(expectedSOD.copyOf(8)),  // prefix
+                responseWithBody(expectedSOD.copyOfRange(8, expectedSOD.size)),  // tail
                 noError,  // select file, success
                 responseWithBody(expectedDG1.copyOfRange(8, expectedDG1.size)),  // tail
                 noError,  // select file, success
                 responseWithBody(expectedDG2.copyOfRange(8, expectedDG2.size)),  // tail
-                noError,  // select file, success
-                responseWithBody(expectedSOD.copyOfRange(8, expectedSOD.size)),  // tail
             )
         )
 
-        val statusList = ArrayList<MrtdNfcReader.Status>()
+        val statusList = mutableListOf<MrtdNfc.Status>()
 
         val data: MrtdNfcData
         try {
-            data = reader.read(cardService, MrtdMrzData("0000", "940506", "280808")) {
+            val service = chipAccess.open(cardService, MrtdMrzData("0000", "940506", "280808")) {
+                statusList.add(it)
+            }
+            data = reader.read(cardService, service) {
                 statusList.add(it)
             }
         } catch (err: Exception) {
@@ -156,20 +159,21 @@ class MrtdNfcReaderTest {
 
         Assert.assertEquals(
             listOf(
-                MrtdNfcReader.Connected,
-                MrtdNfcReader.PACENotSupported,
-                MrtdNfcReader.AttemptingBAC,
-                MrtdNfcReader.BACSucceeded,
-                MrtdNfcReader.ReadingData(dg1Size, totalSize),
-                MrtdNfcReader.ReadingData(dg1Size + dg2Size, totalSize),
-                MrtdNfcReader.ReadingData(totalSize, totalSize),
-                MrtdNfcReader.Finished
+                MrtdNfc.Connected,
+                MrtdNfc.PACENotSupported,
+                MrtdNfc.AttemptingBAC,
+                MrtdNfc.BACSucceeded,
+                MrtdNfc.ReadingData(1),
+                MrtdNfc.ReadingData(2),
+                MrtdNfc.ReadingData(2 + (sodSize * 100 / totalSize) * 98 / 100),
+                MrtdNfc.ReadingData(2 + ((sodSize + dg1Size) * 100 / totalSize) * 98 / 100),
+                MrtdNfc.ReadingData(100)
             ),
             statusList
         )
 
-        Assert.assertArrayEquals(expectedDG1, data.dg1)
-        Assert.assertArrayEquals(expectedDG2, data.dg2)
+        Assert.assertArrayEquals(expectedDG1, data.dataGroups[1])
+        Assert.assertArrayEquals(expectedDG2, data.dataGroups[2])
         Assert.assertArrayEquals(expectedSOD, data.sod)
     }
 }

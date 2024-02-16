@@ -1,5 +1,6 @@
 package com.android.identity_credential.wallet
 
+import android.os.Looper
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,9 +14,12 @@ import com.android.identity.issuance.CredentialExtensions.credentialConfiguratio
 import com.android.identity.issuance.CredentialExtensions.credentialIdentifier
 import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.CredentialExtensions.refreshState
+import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
+import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
 import com.android.identity.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class ProvisioningViewModel : ViewModel() {
 
@@ -131,5 +135,48 @@ class ProvisioningViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Handles request/response exchange through NFC tunnel.
+     *
+     * This must be called on a backround thread and will block until the tunnel is
+     * closed.
+     *
+     * @param handler a handler that communicates to the chip passing in the requests that it
+     *     gets as parameter returning responses wrapped in [EvidenceResponseIcaoTunnel].
+     */
+    fun runIcaoNfcTunnel(handler: (EvidenceRequestIcaoNfcTunnel) -> EvidenceResponseIcaoNfcTunnel) {
+        // must run on a background thread
+        if (Looper.getMainLooper().isCurrentThread) {
+            throw IllegalStateException("Must not be called on main thread")
+        }
 
+        runBlocking {
+            // handshake
+            proofingFlow!!.sendEvidence(EvidenceResponseIcaoNfcTunnel(byteArrayOf()))
+
+            while (true) {
+                val requests = proofingFlow!!.getEvidenceRequests()
+                if (requests.size != 1) {
+                    break
+                }
+                val request = requests[0]
+                if (request !is EvidenceRequestIcaoNfcTunnel) {
+                    break
+                }
+
+                val response = handler(request)
+                proofingFlow!!.sendEvidence(response)
+            }
+        }
+    }
+
+    fun finishTunnel() {
+        viewModelScope.launch(Dispatchers.IO) {
+            // This is a hack needed since evidenceRequests is not a state (and it should be).
+            // TODO: remove this once evidenceRequests becomes state
+            state.value = State.SUBMITTING_EVIDENCE
+            state.value = State.EVIDENCE_REQUESTS_READY
+            evidenceRequests = proofingFlow!!.getEvidenceRequests()
+        }
+    }
 }

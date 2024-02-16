@@ -25,6 +25,7 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 import android.preference.PreferenceManager
+import android.util.Log
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
@@ -95,6 +96,7 @@ import com.android.identity.issuance.CredentialExtensions.credentialConfiguratio
 import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.CredentialExtensions.state
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
+import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
@@ -113,6 +115,8 @@ import java.util.Locale
 import java.util.TimeZone
 import com.android.identity_credential.mrtd.MrtdNfcScanner
 import com.android.identity_credential.mrtd.MrtdMrzScanner
+import com.android.identity_credential.mrtd.MrtdNfc
+import com.android.identity_credential.mrtd.MrtdNfcDataReader
 import com.android.identity_credential.mrtd.MrtdNfcReader
 
 class MainActivity : ComponentActivity() {
@@ -627,6 +631,11 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        EvidenceType.ICAO_9303_NFC_TUNNEL -> {
+                            EvidenceRequestIcaoNfcTunnel(
+                                evidenceRequest as EvidenceRequestIcaoNfcTunnel)
+                        }
+
                         else -> {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -762,26 +771,27 @@ class MainActivity : ComponentActivity() {
         }
 
         val radioOptions = evidenceRequest.possibleValues
-        val (selectedOption, onOptionSelected) = remember { mutableStateOf(radioOptions[0] ) }
+        val (selectedOption, onOptionSelected) = remember {
+            mutableStateOf(radioOptions.keys.iterator().next() ) }
         Column {
-            radioOptions.forEach { text ->
+            radioOptions.forEach { entry ->
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .selectable(
-                            selected = (text == selectedOption),
+                            selected = (entry.key == selectedOption),
                             onClick = {
-                                onOptionSelected(text)
+                                onOptionSelected(entry.key)
                             }
                         )
                         .padding(horizontal = 16.dp)
                 ) {
                     RadioButton(
-                        selected = (text == selectedOption),
-                        onClick = { onOptionSelected(text) }
+                        selected = (entry.key == selectedOption),
+                        onClick = { onOptionSelected(entry.key) }
                     )
                     Text(
-                        text = text,
+                        text = entry.value,
                         modifier = Modifier.padding(start = 16.dp)
                     )
                 }
@@ -806,10 +816,26 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun EvidenceRequestIcaoPassiveAuthentication(
         evidenceRequest: EvidenceRequestIcaoPassiveAuthentication) {
+        EvidenceRequestIcao(MrtdNfcDataReader(evidenceRequest.requestedDataGroups)) { nfcData ->
+            provisioningViewModel.provideEvidence(
+                EvidenceResponseIcaoPassiveAuthentication(nfcData.dataGroups, nfcData.sod)
+            )
+        }
+    }
+
+    @Composable
+    fun EvidenceRequestIcaoNfcTunnel(evidenceRequest: EvidenceRequestIcaoNfcTunnel) {
+        EvidenceRequestIcao(NfcTunnelScanner(provisioningViewModel)){
+            provisioningViewModel.finishTunnel()
+        }
+    }
+
+    @Composable
+    fun <ResultT> EvidenceRequestIcao(reader: MrtdNfcReader<ResultT>, onResult: (ResultT) -> Unit) {
         val requiredPermissions = listOf(Manifest.permission.CAMERA, Manifest.permission.NFC)
         permissionTracker.PermissionCheck(requiredPermissions) {
             var visualScan by remember { mutableStateOf(true) }  // start with visual scan
-            var status by remember { mutableStateOf<MrtdNfcReader.Status>(MrtdNfcReader.Initial) }
+            var status by remember { mutableStateOf<MrtdNfc.Status>(MrtdNfc.Initial) }
             val scope = rememberCoroutineScope()
             if (visualScan) {
                 AndroidView(
@@ -827,17 +853,12 @@ class MainActivity : ComponentActivity() {
                                     val passportNfcScanner = MrtdNfcScanner(this@MainActivity)
                                     try {
                                         val mrzInfo = passportCapture.readFromCamera(surfaceProvider)
-                                        status = MrtdNfcReader.Initial
+                                        status = MrtdNfc.Initial
                                         visualScan = false
-                                        val nfcData = passportNfcScanner.scanCard(mrzInfo) { st ->
+                                        val result = passportNfcScanner.scanCard(mrzInfo, reader) { st ->
                                             status = st
                                         }
-                                        provisioningViewModel.provideEvidence(
-                                            EvidenceResponseIcaoPassiveAuthentication(mapOf(
-                                                1 to nfcData.dg1,
-                                                2 to nfcData.dg2
-                                            ), nfcData.sod)
-                                        )
+                                        onResult(result)
                                     } catch (err: Exception) {
                                         Logger.e(TAG, "Error scanning MRTD: $err")
                                     }
@@ -856,7 +877,7 @@ class MainActivity : ComponentActivity() {
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(when(status) {
-                            is MrtdNfcReader.Initial -> "Waiting to scan"
+                            is MrtdNfc.Initial -> "Waiting to scan"
                             else -> "Reading..."
                         })
                     }
@@ -865,19 +886,27 @@ class MainActivity : ComponentActivity() {
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(when(status) {
-                            is MrtdNfcReader.Initial -> "Initial"
-                            is MrtdNfcReader.Connected -> "Connected"
-                            is MrtdNfcReader.AttemptingPACE -> "Attempting PACE"
-                            is MrtdNfcReader.PACESucceeded -> "PACE Succeeded"
-                            is MrtdNfcReader.PACENotSupported -> "PACE Not Supported"
-                            is MrtdNfcReader.PACEFailed -> "PACE Not Supported"
-                            is MrtdNfcReader.AttemptingBAC -> "Attempting BAC"
-                            is MrtdNfcReader.BACSucceeded -> "BAC Succeeded"
-                            is MrtdNfcReader.ReadingData -> {
-                                val s = status as MrtdNfcReader.ReadingData
-                                "Reading: ${s.read * 100 / s.total}%"
+                            is MrtdNfc.Initial -> "Initial"
+                            is MrtdNfc.Connected -> "Connected"
+                            is MrtdNfc.AttemptingPACE -> "Attempting PACE"
+                            is MrtdNfc.PACESucceeded -> "PACE Succeeded"
+                            is MrtdNfc.PACENotSupported -> "PACE Not Supported"
+                            is MrtdNfc.PACEFailed -> "PACE Not Supported"
+                            is MrtdNfc.AttemptingBAC -> "Attempting BAC"
+                            is MrtdNfc.BACSucceeded -> "BAC Succeeded"
+                            is MrtdNfc.ReadingData -> {
+                                val s = status as MrtdNfc.ReadingData
+                                "Reading: ${s.progressPercent}%"
                             }
-                            is MrtdNfcReader.Finished -> "Finished"
+                            is MrtdNfc.TunnelAuthenticating -> {
+                                val s = status as MrtdNfc.TunnelAuthenticating
+                                "Establishing secure tunnel: ${s.progressPercent}%"
+                            }
+                            is MrtdNfc.TunnelReading -> {
+                                val s = status as MrtdNfc.TunnelReading
+                                "Reading data through tunnel: ${s.progressPercent}%"
+                            }
+                            is MrtdNfc.Finished -> "Finished"
                         })
                     }
                 }

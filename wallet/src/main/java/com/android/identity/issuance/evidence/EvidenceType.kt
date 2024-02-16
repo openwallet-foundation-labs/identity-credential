@@ -36,4 +36,24 @@ enum class EvidenceType {
      * for parameters and values.
      */
     ICAO_9303_PASSIVE_AUTHENTICATION,
+
+    /**
+     * Evidence type for extracting data from an NFC-enabled passport or ID card through a
+     * tunneled NFC connection.
+     *
+     * This is necessary for Chip Authentication and Terminal Authentication, but can be used for
+     * any open-ended reading of data from a passport/MRTD.
+     *
+     * See Section 6.2 "Chip Authentication" and Section 7.1 "Terminal Authentication" in
+     * ICAO Doc 9303 part 11.
+     */
+    ICAO_9303_NFC_TUNNEL,
+
+    /**
+     * Evidence type for that represents the result of communicating through the tunnel
+     * implemented by [ICAO_9303_NFC_TUNNEL] requests and responses.
+     *
+     * This cannot be sent directly, it is only created as the result of tunnel communication.
+     */
+    ICAO_9303_NFC_TUNNEL_RESULT,
 }

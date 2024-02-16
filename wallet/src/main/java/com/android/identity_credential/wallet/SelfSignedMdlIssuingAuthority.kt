@@ -10,30 +10,23 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import com.android.identity.credential.NameSpacedData
-import com.android.identity.credentialtype.knowntypes.DrivingLicense
-import com.android.identity.credentialtype.knowntypes.Options
 import com.android.identity.internal.Util
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
-import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
-import com.android.identity.issuance.evidence.EvidenceRequestMessage
-import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
-import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
+import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
+import com.android.identity.issuance.simple.SimpleIcaoNfcTunnelDriver
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
-import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph.SimpleNode
-import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph.MultipleChoiceNode
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.EcCurve
-import com.android.identity.securearea.SecureArea
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
@@ -46,6 +39,7 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.operator.ContentSigner
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.io.ByteArrayOutputStream
+import java.lang.IllegalStateException
 import java.math.BigInteger
 import java.security.KeyPair
 import java.security.KeyPairGenerator
@@ -192,54 +186,71 @@ class SelfSignedMdlIssuingAuthority(
         return JcaX509CertificateConverter().getCertificate(certHolder)
     }
 
+    override fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {
+        return NfcTunnelDriver()
+    }
+
+
     override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
-        // TODO: use Kotlin DSL for evidence request and graph builders
-        val tail = SimpleIssuingAuthorityProofingGraph()
-            .add(SimpleNode("art",
-                EvidenceRequestQuestionMultipleChoice(
-                    "Select the card art for the credential",
-                    listOf("Green", "Blue", "Red"),
-                    "Continue",
-                )))
-            .add(SimpleNode("message",
-                EvidenceRequestMessage(
-                    "Your application is about to be sent the ID issuer for " +
-                            "verification. You will get notified when the " +
-                            "application is approved.",
-                    "Continue",
-                    null,
-                )))
-            .build()
-        return SimpleIssuingAuthorityProofingGraph()
-            .add(SimpleNode("tos",
-            EvidenceRequestMessage(
+        return SimpleIssuingAuthorityProofingGraph.create {
+            message(
+                "tos",
                 "Here's a long string with TOS",
                 "Accept",
                 "Do Not Accept",
-            )))
-            .addMultipleChoice(MultipleChoiceNode("path",
-                EvidenceRequestQuestionMultipleChoice(
-                    "How do you want to authenticate",
-                    listOf("Scan passport", "Answer questions"),
-                    "Continue",
-                ),
-                mapOf(
-                    "Scan passport" to SimpleIssuingAuthorityProofingGraph()
-                        .add(SimpleNode("passport",
-                            EvidenceRequestIcaoPassiveAuthentication(listOf(1, 2))))
-                        .addTail(tail)
-                        .build(),
-                    "Answer questions" to SimpleIssuingAuthorityProofingGraph()
-                        .add(SimpleNode("firstName",
-                            EvidenceRequestQuestionString(
-                                "What first name should be used for the mDL?",
-                                "Erika",
+            )
+            choice("path", "How do you want to authenticate", "Continue") {
+                on("icaoPassive", "Scan passport") {
+                    icaoPassiveAuthentication("passive", listOf(1, 2, 7))
+                }
+                on("icaoTunnel", "Scan passport with authentication") {
+                    icaoTunnel("tunnel", listOf(1, 2, 7)) {
+                        whenChipAuthenticated {
+                            message("inform",
+                                "Excellent! You passport supports chip authentication",
                                 "Continue",
-                            )))
-                        .addTail(tail)
-                        .build()
-                )))
-                .build()
+                                null
+                            )
+                        }
+                        whenActiveAuthenticated {
+                            message("inform",
+                                "Nice! You passport supports active authentication",
+                                "Continue",
+                                null
+                            )
+                        }
+                        whenNotAuthenticated {
+                            message("inform",
+                                "Your passport only supports passive authentication. " +
+                                        "Who knows, maybe it is a clone? There is no protection.",
+                                "Continue",
+                                null
+                            )
+                        }
+                    }
+                }
+                on("questions", "Answer questions") {
+                    question(
+                        "firstName",
+                        "What first name should be used for the mDL?",
+                        "Erika",
+                        "Continue"
+                    )
+                }
+            }
+            choice("art", "Select the card art for the credential", "Continue") {
+                on("green", "Green") {}
+                on("blue", "Blue") {}
+                on("red", "Red") {}
+            }
+            message("message",
+                "Your application is about to be sent the ID issuer for " +
+                        "verification. You will get notified when the " +
+                        "application is approved.",
+                "Continue",
+                null
+            )
+        }
     }
 
     override fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean {
@@ -264,14 +275,21 @@ class SelfSignedMdlIssuingAuthority(
             )
         }
 
-        val icaoData = collectedEvidence["passport"]
-        lateinit var firstName: String
-        lateinit var lastName: String
-        lateinit var portrait: ByteArray
-        var sex: Long
-        if (icaoData is EvidenceResponseIcaoPassiveAuthentication) {
-            val mrtdData = MrtdNfcData(
-                icaoData.dataGroups[1]!!, icaoData.dataGroups[2]!!, icaoData.securityObject)
+        val icaoPassiveData = collectedEvidence["passive"]
+        val icaoTunnelData = collectedEvidence["tunnel"]
+        val firstName: String
+        val lastName: String
+        val portrait: ByteArray
+        val signatureOrUsualMark: ByteArray
+        val sex: Long
+        if (icaoPassiveData is EvidenceResponseIcaoPassiveAuthentication ||
+            icaoTunnelData is EvidenceResponseIcaoNfcTunnelResult) {
+            val mrtdData = if (icaoTunnelData is EvidenceResponseIcaoNfcTunnelResult)
+                    MrtdNfcData(icaoTunnelData.dataGroups, icaoTunnelData.securityObject)
+                else if (icaoPassiveData is EvidenceResponseIcaoPassiveAuthentication)
+                    MrtdNfcData(icaoPassiveData.dataGroups, icaoPassiveData.securityObject)
+                else
+                    throw IllegalStateException("Should not happen")
             val decoder = MrtdNfcDataDecoder(application.cacheDir)
             val decoded = decoder.decode(mrtdData)
             firstName = decoded.firstName
@@ -281,38 +299,33 @@ class SelfSignedMdlIssuingAuthority(
                 "FEMALE" -> 2
                 else -> 0
             }
-            val baos = ByteArrayOutputStream()
-            decoded.photo!!.compress(Bitmap.CompressFormat.JPEG, 90, baos)
-            portrait = baos.toByteArray()
+            portrait = bitmapData(decoded.photo, R.drawable.img_erika_portrait)
+            signatureOrUsualMark = bitmapData(decoded.signature, R.drawable.img_erika_signature)
         } else {
             val evidenceWithName = collectedEvidence["firstName"]
             firstName = (evidenceWithName as EvidenceResponseQuestionString).answer
             lastName = "Mustermann"
             sex = 2
-            val baos = ByteArrayOutputStream()
-            BitmapFactory.decodeResource(
-                application.applicationContext.resources,
-                R.drawable.img_erika_portrait
-            ).compress(Bitmap.CompressFormat.JPEG, 90, baos)
-            portrait = baos.toByteArray()
+            portrait = bitmapData(null, R.drawable.img_erika_portrait)
+            signatureOrUsualMark = bitmapData(null, R.drawable.img_erika_signature)
         }
 
 
-        val cardArtColor = (collectedEvidence["art"] as EvidenceResponseQuestionMultipleChoice).answer
+        val cardArtColor = (collectedEvidence["art"] as EvidenceResponseQuestionMultipleChoice).answerId
         val gradientColor = when (cardArtColor) {
-            "Green" -> {
+            "green" -> {
                 Pair(
                     android.graphics.Color.rgb(64, 255, 64),
                     android.graphics.Color.rgb(0, 96, 0),
                 )
             }
-            "Blue" -> {
+            "blue" -> {
                 Pair(
                     android.graphics.Color.rgb(64, 64, 255),
                     android.graphics.Color.rgb(0, 0, 96),
                 )
             }
-            "Red" -> {
+            "red" -> {
                 Pair(
                     android.graphics.Color.rgb(255, 64, 64),
                     android.graphics.Color.rgb(96, 0, 0),
@@ -326,12 +339,6 @@ class SelfSignedMdlIssuingAuthority(
             }
         }
 
-        val baos = ByteArrayOutputStream()
-        BitmapFactory.decodeResource(
-            application.applicationContext.resources,
-            R.drawable.img_erika_signature
-        ).compress(Bitmap.CompressFormat.JPEG, 90, baos)
-        val signatureOrUsualMark: ByteArray = baos.toByteArray()
 
         val now = Timestamp.now()
         val issueDate = now
@@ -363,6 +370,16 @@ class SelfSignedMdlIssuingAuthority(
             ),
             staticData
         )
+    }
+
+    private fun bitmapData(bitmap: Bitmap?, defaultResourceId: Int): ByteArray {
+        val baos = ByteArrayOutputStream()
+        (bitmap
+            ?: BitmapFactory.decodeResource(
+                application.applicationContext.resources,
+                defaultResourceId
+            )).compress(Bitmap.CompressFormat.JPEG, 90, baos)
+        return baos.toByteArray()
     }
 
     private fun createArtwork(color1: Int,
