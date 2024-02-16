@@ -27,16 +27,17 @@ class MrtdNfcScanner(private val mActivity: Activity) {
     /**
      * Connects to NFC card/passport and attempts to read [MrtdNfcData] in background.
      */
-    suspend fun scanCard(
+    suspend fun <ResultT>scanCard(
         mrzData: MrtdMrzData,
-        onStatus: (MrtdNfcReader.Status) -> Unit
-    ): MrtdNfcData {
+        reader: MrtdNfcReader<ResultT>,
+        onStatus: (MrtdNfc.Status) -> Unit,
+    ): ResultT {
         val options = Bundle()
         val executor = Executors.newFixedThreadPool(1)!!
         options.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 300)
         return suspendCoroutine { continuation ->
             val callback = NfcAdapter.ReaderCallback { tag ->
-                readUsingTag(tag, mrzData, executor, onStatus,
+                readUsingTag(tag, mrzData, executor, reader, onStatus,
                     { err ->
                         nfcAdapter.disableReaderMode(mActivity)
                         if (!executor.isShutdown) {
@@ -68,13 +69,14 @@ class MrtdNfcScanner(private val mActivity: Activity) {
         }
     }
 
-    private fun readUsingTag(
+    private fun <ResultT>readUsingTag(
         tag: Tag,
         mrzData: MrtdMrzData,
         executor: ExecutorService,
-        onStatus: (MrtdNfcReader.Status) -> Unit,
+        reader: MrtdNfcReader<ResultT>,
+        onStatus: (MrtdNfc.Status) -> Unit,
         onError: (Exception) -> Unit,
-        onResult: (MrtdNfcData) -> Unit
+        onResult: (ResultT) -> Unit
     ) {
         for (tech in tag.techList) {
             if (tech.equals("android.nfc.tech.IsoDep")) {
@@ -82,14 +84,16 @@ class MrtdNfcScanner(private val mActivity: Activity) {
                 val mainHandler = Handler(mActivity.mainLooper)
                 executor.submit {
                     try {
-                        val cardService = CardService.getInstance(IsoDep.get(tag))
-                        Log.i(TAG, "Got card service")
-                        val nfcReader = MrtdNfcReader(false)  // TODO: enable mac?
-                        val result = nfcReader.read(cardService, mrzData) { status ->
+                        val statusCb: (MrtdNfc.Status) -> Unit = { status ->
                             mainHandler.post {
                                 onStatus(status)
                             }
                         }
+                        val cardService = CardService.getInstance(IsoDep.get(tag))
+                        Log.i(TAG, "Got card service")
+                        val nfcReader = MrtdNfcChipAccess(false)  // TODO: enable mac?
+                        val passportService = nfcReader.open(cardService, mrzData, statusCb)
+                        val result = reader.read(cardService, passportService, statusCb)
                         mainHandler.post {
                             onResult(result)
                         }

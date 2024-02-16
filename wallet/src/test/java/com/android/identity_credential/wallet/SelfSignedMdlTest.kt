@@ -42,7 +42,7 @@ class SelfSignedMdlTest {
             ),
             EvidenceRequestQuestionMultipleChoice(
                 "Select the card art for the credential",
-                listOf("Green", "Blue", "Red"),
+                mapOf("green" to "Green", "blue" to "Blue", "red" to "Red"),
                 "Continue",
             ),
             EvidenceRequestMessage(
@@ -107,7 +107,7 @@ class SelfSignedMdlTest {
             (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.size)
         proofingFlow.sendEvidence(
             EvidenceResponseQuestionMultipleChoice(
-            (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues[0]
+            (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.keys.iterator().next()
         )
         )
 

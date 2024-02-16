@@ -4,6 +4,4 @@ data class EvidenceRequestMessage(
     val message: String,
     val acceptButtonText: String,
     val rejectButtonText: String?,
-) : EvidenceRequest(EvidenceType.MESSAGE) {
-
-}
+) : EvidenceRequest(EvidenceType.MESSAGE)

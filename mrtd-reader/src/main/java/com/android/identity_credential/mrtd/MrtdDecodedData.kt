@@ -13,5 +13,6 @@ data class MrtdDecodedData(
     val state: String,
     val nationality: String,
     val gender: String,
-    val photo: Bitmap?
+    val photo: Bitmap?,
+    val signature: Bitmap?
 )

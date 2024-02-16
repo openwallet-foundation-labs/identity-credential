@@ -1,5 +1,5 @@
 package com.android.identity.issuance.evidence
 
 data class EvidenceResponseQuestionMultipleChoice(
-    val answer: String
+    val answerId: String
 ) : EvidenceResponse(EvidenceType.QUESTION_MULTIPLE_CHOICE)

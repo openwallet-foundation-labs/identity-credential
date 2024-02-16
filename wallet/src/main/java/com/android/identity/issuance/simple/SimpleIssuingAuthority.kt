@@ -18,6 +18,7 @@ import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.securearea.EcCurve
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
+import java.lang.UnsupportedOperationException
 import java.security.PublicKey
 import kotlin.random.Random
 
@@ -35,6 +36,10 @@ abstract class SimpleIssuingAuthority(
     }
 
     abstract override val configuration: IssuingAuthorityConfiguration
+
+    open fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {
+        throw UnsupportedOperationException("Tunnel not supported")
+    }
 
     abstract fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node
 
@@ -94,8 +99,7 @@ abstract class SimpleIssuingAuthority(
                     ?: throw IllegalArgumentException("Unknown state with value $stateAsInt")
 
                 val collectedEvidence = mutableMapOf<String, EvidenceResponse>()
-                val evidenceMap = Util.cborMapExtractMap(map, "collectedEvidence")
-                        as co.nstant.`in`.cbor.model.Map
+                val evidenceMap = Util.cborMapExtractMap(map, "collectedEvidence") as co.nstant.`in`.cbor.model.Map
                 for (evidenceId in evidenceMap.keys) {
                     val evidenceDataItem = evidenceMap[evidenceId]
                     collectedEvidence[Util.checkedStringValue(evidenceId)] =
@@ -200,7 +204,8 @@ abstract class SimpleIssuingAuthority(
     }
 
     override fun credentialProof(credentialId: String): ProofingFlow {
-        return SimpleIssuingAuthorityProofingFlow(this, credentialId, getProofingGraphRoot())
+        return SimpleIssuingAuthorityProofingFlow(this, credentialId,
+            getProofingGraphRoot(), this::createNfcTunnelHandler)
     }
 
     override suspend fun credentialGetConfiguration(credentialId: String): CredentialConfiguration {
@@ -264,7 +269,7 @@ abstract class SimpleIssuingAuthority(
     fun addCollectedEvidence(
           credentialId: String, nodeId: String, evidenceResponse: EvidenceResponse) {
         val issuerCredential = loadIssuerCredential(credentialId)
-        issuerCredential.collectedEvidence.put(nodeId, evidenceResponse)
+        issuerCredential.collectedEvidence[nodeId] = evidenceResponse
         saveIssuerCredential(credentialId, issuerCredential)
     }
 

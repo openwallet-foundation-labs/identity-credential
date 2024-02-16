@@ -65,6 +65,9 @@ dependencies {
     implementation libs.compose.runtime.livedata
     debugImplementation libs.compose.icons
 
+    implementation libs.net.sf.scuba.scuba.sc.android
+    implementation libs.org.jmrtd.jmrtd
+
     implementation libs.androidx.camera.view
 
     androidTestImplementation libs.androidx.test.ext.junit

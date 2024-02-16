@@ -45,50 +45,33 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
     }
 
     override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
-        return SimpleIssuingAuthorityProofingGraph()
-            .add(
-                SimpleIssuingAuthorityProofingGraph.SimpleNode(
-                    "tos",
-                    EvidenceRequestMessage(
-                        "Here's a long string with TOS",
-                        "Accept",
-                        "Do Not Accept",
-                    )
-                )
+        return SimpleIssuingAuthorityProofingGraph.create {
+            message(
+                "tos",
+                "Here's a long string with TOS",
+                "Accept",
+                "Do Not Accept"
             )
-            .add(
-                SimpleIssuingAuthorityProofingGraph.SimpleNode(
-                    "name",
-                    EvidenceRequestQuestionString(
-                        "What first name should be used for the mDL?",
-                        "Erika",
-                        "Continue",
-                    )
-                )
+            question(
+                "name",
+                "What first name should be used for the mDL?",
+                "Erika",
+                "Continue",
             )
-            .add(
-                SimpleIssuingAuthorityProofingGraph.SimpleNode(
-                    "multi",
-                    EvidenceRequestQuestionMultipleChoice(
-                        "Select the card art for the credential",
-                        listOf("Green", "Blue", "Red"),
-                        "Continue",
-                    )
-                )
+            choice("multi", "Select the card art for the credential", "Continue") {
+                on("green", "Green") {}
+                on("blue", "Blue") {}
+                on("red", "Red") {}
+            }
+            message(
+                "message",
+                "Your application is about to be sent the ID issuer for " +
+                        "verification. You will get notified when the " +
+                        "application is approved.",
+                "Continue",
+                null,
             )
-            .add(
-                SimpleIssuingAuthorityProofingGraph.SimpleNode(
-                    "message",
-                    EvidenceRequestMessage(
-                        "Your application is about to be sent the ID issuer for " +
-                                "verification. You will get notified when the " +
-                                "application is approved.",
-                        "Continue",
-                        null,
-                    )
-                )
-            )
-            .build()
+        }
     }
 
     override fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean {
