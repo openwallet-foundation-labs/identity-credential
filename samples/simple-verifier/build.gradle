@@ -47,6 +47,10 @@ android {
 }
 
 dependencies {
+    implementation project(':identity')
+    implementation project(':identity-mdoc')
+    implementation project(':identity-android')
+
     implementation platform(libs.compose.bom)
     implementation libs.bundles.androidx.core
     implementation libs.bundles.androidx.lifecycle
@@ -57,9 +61,6 @@ dependencies {
     implementation libs.bundles.bouncy.castle
     implementation libs.bundles.compose
     implementation libs.code.scanner
-
-    implementation("com.android.identity:identity-credential-android:20231002")
-    implementation("com.android.identity:identity-credential:20231002")
 
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso

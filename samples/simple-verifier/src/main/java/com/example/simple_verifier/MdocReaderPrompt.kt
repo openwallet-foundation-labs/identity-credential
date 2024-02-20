@@ -76,6 +76,7 @@ import androidx.navigation.compose.rememberNavController
 import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.util.Logger
@@ -88,6 +89,9 @@ import com.example.simple_verifier.ui.theme.IdentityCredentialTheme
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
+import java.util.UUID
 
 class MdocReaderPrompt(
     private val mdocReaderSettings: MdocReaderSettings
@@ -202,8 +206,18 @@ class MdocReaderPrompt(
             }
         }
 
+        val connectionMethods = mutableListOf<ConnectionMethod>()
+        val bleUuid = UUID.randomUUID()
+        connectionMethods.add(
+            ConnectionMethodBle(
+                false,
+                true,
+                null,
+                bleUuid)
+        )
         verification = VerificationHelper.Builder(context, responseListener, context.mainExecutor)
             .setDataTransportOptions(DataTransportOptions.Builder().build())
+            .setNegotiatedHandoverConnectionMethods(connectionMethods)
             .build()
         readerModeListener = NfcAdapter.ReaderCallback { tag ->
             verification.nfcProcessOnTagDiscovered(tag)
@@ -215,7 +229,7 @@ class MdocReaderPrompt(
             val parser =
                 DeviceResponseParser()
             parser.setSessionTranscript(verification.sessionTranscript)
-            parser.setEphemeralReaderKey(verification.ephemeralReaderKey)
+            parser.setEphemeralReaderKey(verification.eReaderKeyPair.private)
             parser.setDeviceResponse(rb)
             return parser.parse()
         } ?: throw IllegalStateException("Response not received")
@@ -226,6 +240,11 @@ class MdocReaderPrompt(
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
+        // based implementation included in the OS itself.
+        Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
+        Security.addProvider(BouncyCastleProvider())
+
         // Fill the whole screen by default
         val bottomSheetDialog = dialog as BottomSheetDialog
         bottomSheetDialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
