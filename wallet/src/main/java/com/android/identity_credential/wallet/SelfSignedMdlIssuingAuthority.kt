@@ -195,7 +195,11 @@ class SelfSignedMdlIssuingAuthority(
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
                 "tos",
-                "Here's a long string with TOS",
+                """Here's a long string with TOS. Lorem ipsum dolor sit amet, consectetur
+                    | adipiscing elit. Vivamus dictum vel metus non mattis. Ut mattis,
+                    | ipsum vel hendrerit consectetur, mauris purus ultricies nulla, sit amet
+                    | pulvinar odio lorem sed justo. Aliquam erat volutpat.
+                    | Nulla facilisi. """.trimMargin().replace("\n", ""),
                 "Accept",
                 "Do Not Accept",
             )

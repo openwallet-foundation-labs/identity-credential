@@ -46,6 +46,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -71,6 +72,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,12 +82,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.edit
 import androidx.navigation.NavHostController
@@ -133,21 +139,17 @@ class MainActivity : ComponentActivity() {
 
     private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
         PermissionTracker(this, mapOf(
-            Manifest.permission.CAMERA to "This application requires camera permission to scan",
-            Manifest.permission.NFC to "NFC permission is required to operate",
-            Manifest.permission.BLUETOOTH_ADVERTISE to "This application requires Bluetooth " +
-                    "advertising to send credential data",
-            Manifest.permission.BLUETOOTH_SCAN to "This application requires Bluetooth " +
-                    "scanning to send credential data",
-            Manifest.permission.BLUETOOTH_CONNECT to "This application requires Bluetooth " +
-                    "connection to send credential data"
+            Manifest.permission.CAMERA to R.string.permission_camera,
+            Manifest.permission.NFC to R.string.permission_nfc,
+            Manifest.permission.BLUETOOTH_ADVERTISE to R.string.permission_bluetooth_advertise,
+            Manifest.permission.BLUETOOTH_SCAN to R.string.permission_bluetooth_scan,
+            Manifest.permission.BLUETOOTH_CONNECT to R.string.permission_bluetooth_connect
         ))
     } else {
         PermissionTracker(this, mapOf(
-            Manifest.permission.CAMERA to "This application requires camera permission to scan",
-            Manifest.permission.NFC to "NFC permission is required to operate",
-            Manifest.permission.ACCESS_FINE_LOCATION to "This application requires Bluetooth " +
-                    "to send credential data"
+            Manifest.permission.CAMERA to R.string.permission_camera,
+            Manifest.permission.NFC to R.string.permission_nfc,
+            Manifest.permission.ACCESS_FINE_LOCATION to R.string.permission_bluetooth_connect
         ))
     }
 
@@ -158,47 +160,38 @@ class MainActivity : ComponentActivity() {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
         permissionTracker.updatePermissions()
-        val blePermissions: List<String> = if (Build.VERSION.SDK_INT >= 31) {
-            listOf(Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT)
-        } else {
-            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
 
         setContent {
             IdentityCredentialTheme {
-                permissionTracker.PermissionCheck(permissions = blePermissions) {
-                    // A surface container using the 'background' color from the theme
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
-                        val navController = rememberNavController()
-                        NavHost(navController = navController, startDestination = "MainScreen") {
-                            composable("MainScreen") {
-                                MainScreen(navController)
-                            }
-                            composable("AboutScreen") {
-                                AboutScreen(navController)
-                            }
-                            composable("AddToWalletScreen") {
-                                AddToWalletScreen(navController)
-                            }
-                            composable("CredentialInfo/{credentialId}") { backStackEntry ->
-                                CredentialInfoScreen(navController,
-                                    backStackEntry.arguments?.getString("credentialId")!!)
-                            }
-                            composable("CredentialInfo/{credentialId}/Details") { backStackEntry ->
-                                CredentialDetailsScreen(navController,
-                                    backStackEntry.arguments?.getString("credentialId")!!)
-                            }
-                            composable("ProvisionCredentialScreen") {
-                                ProvisionCredentialScreen(navController)
-                            }
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    val navController = rememberNavController()
+                    NavHost(navController = navController, startDestination = "MainScreen") {
+                        composable("MainScreen") {
+                            MainScreen(navController)
+                        }
+                        composable("AboutScreen") {
+                            AboutScreen(navController)
+                        }
+                        composable("AddToWalletScreen") {
+                            AddToWalletScreen(navController)
+                        }
+                        composable("CredentialInfo/{credentialId}") { backStackEntry ->
+                            CredentialInfoScreen(navController,
+                                backStackEntry.arguments?.getString("credentialId")!!)
+                        }
+                        composable("CredentialInfo/{credentialId}/Details") { backStackEntry ->
+                            CredentialDetailsScreen(navController,
+                                backStackEntry.arguments?.getString("credentialId")!!)
+                        }
+                        composable("ProvisionCredentialScreen") {
+                            ProvisionCredentialScreen(navController)
                         }
                     }
                 }
-
             }
         }
     }
@@ -211,11 +204,11 @@ class MainActivity : ComponentActivity() {
             drawerState = drawerState,
             drawerContent = {
                 ModalDrawerSheet {
-                    Text("Wallet", modifier = Modifier.padding(16.dp))
+                    Text(stringResource(R.string.wallet_drawer_title), modifier = Modifier.padding(16.dp))
                     Divider()
                     NavigationDrawerItem(
                         icon = { Icon(imageVector = Icons.Filled.Add, contentDescription = null) },
-                        label = { Text(text = "Add to Wallet") },
+                        label = { Text(text = stringResource(R.string.wallet_drawer_add)) },
                         selected = false,
                         onClick = {
                             scope.launch {
@@ -226,7 +219,7 @@ class MainActivity : ComponentActivity() {
                     )
                     NavigationDrawerItem(
                         icon = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                        label = { Text(text = "About Wallet") },
+                        label = { Text(text = stringResource(R.string.wallet_drawer_about)) },
                         selected = false,
                         onClick = {
                             scope.launch {
@@ -248,7 +241,7 @@ class MainActivity : ComponentActivity() {
         scope: CoroutineScope,
         drawerState: DrawerState
     ) {
-        ScreenWithAppBar(title = "Wallet",
+        ScreenWithAppBar(title = stringResource(R.string.wallet_screen_title),
             navigationIcon = {
                 IconButton(
                     onClick = {
@@ -262,22 +255,31 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Menu,
-                        contentDescription = "Localized description"
+                        contentDescription = stringResource(R.string.accessibility_menu_icon)
                     )
                 }
             }) {
-            if (application.credentialStore.listCredentials().size == 0) {
+            if (application.credentialStore.listCredentials().isEmpty()) {
                 MainScreenNoCredentialsAvailable(navigation)
             } else {
-                MainScreenCredentialPager(navigation)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        modifier = Modifier.padding(8.dp),
-                        text = "Hold to Reader"
-                    )
+                val blePermissions: List<String> = if (Build.VERSION.SDK_INT >= 31) {
+                    listOf(Manifest.permission.BLUETOOTH_ADVERTISE,
+                        Manifest.permission.BLUETOOTH_SCAN,
+                        Manifest.permission.BLUETOOTH_CONNECT)
+                } else {
+                    listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+                permissionTracker.PermissionCheck(permissions = blePermissions) {
+                    MainScreenCredentialPager(navigation)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(8.dp),
+                            text = stringResource(R.string.wallet_screen_hold_to_reader)
+                        )
+                    }
                 }
             }
         }
@@ -291,20 +293,19 @@ class MainActivity : ComponentActivity() {
         ) {
             Text(
                 modifier = Modifier.padding(8.dp),
-                text = "No credentials in wallet, start by\n" +
-                "adding credentials.",
-                color = MaterialTheme.colorScheme.secondary,
+                text = stringResource(R.string.wallet_screen_empty),
+                style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center
             )
         }
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             horizontalArrangement = Arrangement.Center
         ) {
             Button(onClick = {
                 navigation.navigate("AddToWalletScreen")
             }) {
-                Text("Add to Wallet")
+                Text(stringResource(R.string.wallet_screen_add))
             }
         }
     }
@@ -347,7 +348,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Image(
                         bitmap = credentialBitmap.asImageBitmap(),
-                        contentDescription = "Artwork for $credentialName",
+                        contentDescription =
+                            stringResource(R.string.accessibility_artwork_for, credentialName),
                         modifier = Modifier.clickable(onClick = {
                             navigation.navigate("CredentialInfo/$credentialId")
                         })
@@ -384,14 +386,17 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun AboutScreen(navigation: NavHostController) {
-        ScreenWithAppBarAndBackButton(title = "About Wallet", navigation = navigation) {
+        ScreenWithAppBarAndBackButton(
+            title = stringResource(R.string.about_screen_title),
+            navigation = navigation) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
                     modifier = Modifier.padding(8.dp),
-                    text = "TODO: About Screen"
+                    style = MaterialTheme.typography.bodyLarge,
+                    text = stringResource(R.string.about_screen_text)
                 )
             }
         }
@@ -399,20 +404,24 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun AddToWalletScreen(navigation: NavHostController) {
-        ScreenWithAppBarAndBackButton(title = "Add to Wallet", navigation = navigation) {
+        ScreenWithAppBarAndBackButton(
+            title = stringResource(R.string.add_screen_title),
+            navigation = navigation) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
                     modifier = Modifier.padding(8.dp),
-                    text = "Select the issuer for provisioning."
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center,
+                    text = stringResource(R.string.add_screen_select_issuer)
                 )
             }
 
             for (issuer in application.issuingAuthorityRepository.getIssuingAuthorities()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Button(onClick = {
@@ -441,6 +450,7 @@ class MainActivity : ComponentActivity() {
             Logger.w(TAG, "No IssuingAuthority for ${credential.issuingAuthorityIdentifier}")
             return
         }
+        // TODO: should this be localized?
         val df = SimpleDateFormat("yyyy-MM-dd HH:mm:ssXXX", Locale.US)
         df.timeZone = TimeZone.getTimeZone("UTC")
         val stateTimeString = df.format(Date(credential.state.timestamp))
@@ -449,16 +459,24 @@ class MainActivity : ComponentActivity() {
         //  updated. Figure out a way to do this without logging.
         Logger.d(TAG, "Last refresh in UI at ${credentialInformationViewModel.lastHousekeepingAt.value}")
 
-        ScreenWithAppBarAndBackButton(title = "Credential Information", navigation = navigation) {
-            Text("Name: ${credential.credentialConfiguration.displayName}")
-            Text("Issuer: ${issuer.configuration.name}")
+        ScreenWithAppBarAndBackButton(title = stringResource(R.string.credential_title), navigation = navigation) {
             val state = credential.state
-            Text("State: ${state.condition}")
-            Text("CPO pending: ${state.numAvailableCPO}")
-            Text("State Last Refresh: $stateTimeString")
+            TextField(credential.credentialConfiguration.displayName, {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_name))}, modifier = Modifier.fillMaxWidth())
+            TextField(issuer.configuration.name, {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_issuer))}, modifier = Modifier.fillMaxWidth())
+            // TODO: localize state.condition text
+            TextField(state.condition.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_state))}, modifier = Modifier.fillMaxWidth())
+            TextField(state.numAvailableCPO.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_cpo_pending))}, modifier = Modifier.fillMaxWidth())
+            TextField(stateTimeString, {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_last_refresh))}, modifier = Modifier.fillMaxWidth())
             Divider()
-            Text("Num PendingAuthKey: ${credential.pendingAuthenticationKeys.size}")
-            Text("Num AuthKey: ${credential.authenticationKeys.size}")
+            TextField(credential.authenticationKeys.size.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_pending_auth_keys))}, modifier = Modifier.fillMaxWidth())
+            TextField(credential.pendingAuthenticationKeys.size.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_auth_keys))}, modifier = Modifier.fillMaxWidth())
             Divider()
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -467,19 +485,19 @@ class MainActivity : ComponentActivity() {
                 Button(onClick = {
                     credentialInformationViewModel.housekeeping(application, credential)
                 }) {
-                    Text("Refresh")
+                    Text(stringResource(R.string.credential_button_refresh))
                 }
                 Button(onClick = {
                     navigation.navigate("CredentialInfo/$credentialId/Details")
                 }) {
-                    Text("View")
+                    Text(stringResource(R.string.credential_button_view))
                 }
                 Button(onClick = {
                     // TODO: run issuer deletion flow
                     application.credentialStore.deleteCredential(credentialId)
                     navigation.popBackStack()
                 }) {
-                    Text("Delete")
+                    Text(stringResource(R.string.credential_button_delete))
                 }
             }
         }
@@ -511,55 +529,46 @@ class MainActivity : ComponentActivity() {
                 viewCredentialData.signatureOrUsualMark.size)
         }
 
-        ScreenWithAppBarAndBackButton(title = "Credential Details", navigation = navigation) {
-            if (portraitBitmap != null) {
+        ScreenWithAppBarAndBackButton(title = stringResource(R.string.details_title),
+            navigation = navigation) {
+            ColumnWithPortrait {
                 Row(
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Image(
-                        bitmap = portraitBitmap.asImageBitmap(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .size(200.dp),
-                        contentDescription = "Portrait of Holder",
-                    )
-                }
-                Divider(modifier = Modifier.padding(8.dp))
-            }
-            for (section in viewCredentialData.sections) {
-                if (section != viewCredentialData.sections[0]) {
-                    Divider(modifier = Modifier.padding(8.dp))
-                }
-                for ((key, value) in section.keyValuePairs) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = "$key:",
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                            )
-                        Text(
-                            text = "$value",
-                            color = MaterialTheme.colorScheme.secondary
+                    if (portraitBitmap != null) {
+                        Image(
+                            bitmap = portraitBitmap.asImageBitmap(),
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(200.dp),
+                            contentDescription = stringResource(R.string.accessibility_portrait),
                         )
                     }
                 }
-            }
-            if (signatureOrUsualMark != null) {
-                Divider(modifier = Modifier.padding(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Image(
-                        bitmap = signatureOrUsualMark.asImageBitmap(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .size(75.dp),
-                        contentDescription = "Signature / Usual Mark of Holder",
-                    )
+                for (section in viewCredentialData.sections) {
+                    if (section != viewCredentialData.sections[0]) {
+                        Divider(thickness = 4.dp, color = MaterialTheme.colorScheme.primary)
+                    }
+                    for ((key, value) in section.keyValuePairs) {
+                        // TODO: localizable key?
+                        TextField(value, {}, readOnly = true, modifier = Modifier.fillMaxWidth(),
+                            label = { Text(key) }
+                        )
+                    }
+                }
+                if (signatureOrUsualMark != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Image(
+                            bitmap = signatureOrUsualMark.asImageBitmap(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                                .size(75.dp),
+                            contentDescription = stringResource(R.string.accessibility_signature),
+                        )
+                    }
                 }
             }
         }
@@ -567,7 +576,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun ProvisionCredentialScreen(navigation: NavHostController) {
-        ScreenWithAppBar(title = "Provisioning", navigationIcon = {
+        ScreenWithAppBar(title = stringResource(R.string.provisioning_title), navigationIcon = {
             if (provisioningViewModel.state.value != ProvisioningViewModel.State.PROOFING_COMPLETE) {
                 IconButton(
                     onClick = {
@@ -576,7 +585,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Icon(
                         imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = "Back Arrow"
+                        contentDescription = stringResource(R.string.accessibility_go_back_icon)
                     )
                 }
             }
@@ -590,7 +599,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text(
                             modifier = Modifier.padding(8.dp),
-                            text = "TODO: Idle"
+                            text = stringResource(R.string.provisioning_idle)
                         )
                     }
                 }
@@ -602,7 +611,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text(
                             modifier = Modifier.padding(8.dp),
-                            text = "TODO: Creating CredentialKey"
+                            text = stringResource(R.string.provisioning_creating_key)
                         )
                     }
                 }
@@ -643,7 +652,8 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Text(
                                     modifier = Modifier.padding(8.dp),
-                                    text = "Unknown evidence type ${evidenceRequest.evidenceType}"
+                                    text = stringResource(R.string.provisioning_unknown_evidence_type,
+                                        evidenceRequest.evidenceType.toString())
                                 )
                             }
                         }
@@ -657,7 +667,9 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text(
                             modifier = Modifier.padding(8.dp),
-                            text = "TODO: Submitting evidence"
+                            style = MaterialTheme.typography.titleLarge,
+                            textAlign = TextAlign.Center,
+                            text = stringResource(R.string.provisioning_submitting)
                         )
                     }
                 }
@@ -673,7 +685,8 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text(
                             modifier = Modifier.padding(8.dp),
-                            text = "Something went wrong: ${provisioningViewModel.error}"
+                            text = stringResource(R.string.provisioning_error,
+                                provisioningViewModel.error.toString())
                         )
                     }
                 }
@@ -685,7 +698,8 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text(
                             modifier = Modifier.padding(8.dp),
-                            text = "Unexpected state: ${provisioningViewModel.state.value}"
+                            text = stringResource(R.string.provisioning_unexpected,
+                                provisioningViewModel.state.value)
                         )
                     }
                 }
@@ -700,23 +714,37 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
+            if (evidenceRequest.message.length < 100) {
             Text(
                 modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
                 text = evidenceRequest.message
             )
+            } else {
+                Text(
+                    modifier = Modifier.padding(8.dp),
+                    text = evidenceRequest.message,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
             if (evidenceRequest.rejectButtonText != null) {
-                Button(onClick = {
+                Button(
+                    modifier = Modifier.padding(8.dp),
+                    onClick = {
                     provisioningViewModel.provideEvidence(EvidenceResponseMessage(false))
                 }) {
                     Text(evidenceRequest.rejectButtonText)
                 }
             }
-            Button(onClick = {
+            Button(
+                modifier = Modifier.padding(8.dp),
+                onClick = {
                 provisioningViewModel.provideEvidence(EvidenceResponseMessage(true))
             }) {
                 Text(evidenceRequest.acceptButtonText)
@@ -739,8 +767,9 @@ class MainActivity : ComponentActivity() {
         var inputText by remember { mutableStateOf(evidenceRequest.defaultValue) }
         TextField(
             value = inputText,
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             onValueChange = { inputText = it },
-            label = { Text("Answer") }
+            label = { Text(stringResource(R.string.evidence_question_label_answer)) }
         )
 
         Row(
@@ -766,6 +795,8 @@ class MainActivity : ComponentActivity() {
         ) {
             Text(
                 modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
                 text = evidenceRequest.message
             )
         }
@@ -784,7 +815,8 @@ class MainActivity : ComponentActivity() {
                                 onOptionSelected(entry.key)
                             }
                         )
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = (entry.key == selectedOption),
@@ -792,7 +824,8 @@ class MainActivity : ComponentActivity() {
                     )
                     Text(
                         text = entry.value,
-                        modifier = Modifier.padding(start = 16.dp)
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
             }
@@ -838,77 +871,102 @@ class MainActivity : ComponentActivity() {
             var status by remember { mutableStateOf<MrtdNfc.Status>(MrtdNfc.Initial) }
             val scope = rememberCoroutineScope()
             if (visualScan) {
-                AndroidView(
-                    factory = { context ->
-                        PreviewView(context).apply {
-                            layoutParams = LinearLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                            scaleType = PreviewView.ScaleType.FILL_START
-                            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                            post {
-                                scope.launch {
-                                    val passportCapture = MrtdMrzScanner(this@MainActivity)
-                                    val passportNfcScanner = MrtdNfcScanner(this@MainActivity)
-                                    try {
-                                        val mrzInfo = passportCapture.readFromCamera(surfaceProvider)
-                                        status = MrtdNfc.Initial
-                                        visualScan = false
-                                        val result = passportNfcScanner.scanCard(mrzInfo, reader) { st ->
-                                            status = st
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.evidence_camera_scan_mrz_title),
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.titleLarge)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                        text = stringResource(R.string.evidence_camera_scan_mrz_instruction),
+                        style = MaterialTheme.typography.bodyLarge)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    AndroidView(
+                        modifier = Modifier.padding(16.dp),
+                        factory = { context ->
+                            PreviewView(context).apply {
+                                layoutParams = LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                scaleType = PreviewView.ScaleType.FILL_START
+                                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                                post {
+                                    scope.launch {
+                                        val passportCapture = MrtdMrzScanner(this@MainActivity)
+                                        val passportNfcScanner = MrtdNfcScanner(this@MainActivity)
+                                        try {
+                                            val mrzInfo =
+                                                passportCapture.readFromCamera(surfaceProvider)
+                                            status = MrtdNfc.Initial
+                                            visualScan = false
+                                            val result =
+                                                passportNfcScanner.scanCard(mrzInfo, reader) { st ->
+                                                    status = st
+                                                }
+                                            onResult(result)
+                                        } catch (err: Exception) {
+                                            Logger.e(TAG, "Error scanning MRTD: $err")
                                         }
-                                        onResult(result)
-                                    } catch (err: Exception) {
-                                        Logger.e(TAG, "Error scanning MRTD: $err")
                                     }
                                 }
                             }
                         }
-                    }
-                )
+                    )
+                }
             } else {
-                Column(
-                    modifier = Modifier.fillMaxHeight(),
-                    verticalArrangement = Arrangement.Center,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(when(status) {
-                            is MrtdNfc.Initial -> "Waiting to scan"
-                            else -> "Reading..."
-                        })
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(when(status) {
-                            is MrtdNfc.Initial -> "Initial"
-                            is MrtdNfc.Connected -> "Connected"
-                            is MrtdNfc.AttemptingPACE -> "Attempting PACE"
-                            is MrtdNfc.PACESucceeded -> "PACE Succeeded"
-                            is MrtdNfc.PACENotSupported -> "PACE Not Supported"
-                            is MrtdNfc.PACEFailed -> "PACE Not Supported"
-                            is MrtdNfc.AttemptingBAC -> "Attempting BAC"
-                            is MrtdNfc.BACSucceeded -> "BAC Succeeded"
-                            is MrtdNfc.ReadingData -> {
-                                val s = status as MrtdNfc.ReadingData
-                                "Reading: ${s.progressPercent}%"
-                            }
-                            is MrtdNfc.TunnelAuthenticating -> {
-                                val s = status as MrtdNfc.TunnelAuthenticating
-                                "Establishing secure tunnel: ${s.progressPercent}%"
-                            }
-                            is MrtdNfc.TunnelReading -> {
-                                val s = status as MrtdNfc.TunnelReading
-                                "Reading data through tunnel: ${s.progressPercent}%"
-                            }
-                            is MrtdNfc.Finished -> "Finished"
-                        })
-                    }
+                    Text(
+                        text = stringResource(R.string.evidence_nfc_scan_title),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(8.dp),
+                        style = MaterialTheme.typography.titleLarge)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        style = MaterialTheme.typography.bodyLarge,
+                        text = when(status) {
+                        is MrtdNfc.Initial -> stringResource(R.string.nfc_status_initial)
+                        is MrtdNfc.Connected -> stringResource(R.string.nfc_status_connected)
+                        is MrtdNfc.AttemptingPACE -> stringResource(R.string.nfc_status_attempting_pace)
+                        is MrtdNfc.PACESucceeded -> stringResource(R.string.nfc_status_pace_succeeded)
+                        is MrtdNfc.PACENotSupported -> stringResource(R.string.nfc_status_pace_not_supported)
+                        is MrtdNfc.PACEFailed -> stringResource(R.string.nfc_status_pace_failed)
+                        is MrtdNfc.AttemptingBAC -> stringResource(R.string.nfc_status_attempting_bac)
+                        is MrtdNfc.BACSucceeded -> stringResource(R.string.nfc_status_bac_succeeded)
+                        is MrtdNfc.ReadingData -> {
+                            val s = status as MrtdNfc.ReadingData
+                            stringResource(R.string.nfc_status_reading_data, s.progressPercent)
+                        }
+                        is MrtdNfc.TunnelAuthenticating -> {
+                            val s = status as MrtdNfc.TunnelAuthenticating
+                            stringResource(R.string.nfc_status_tunnel_authenticating, s.progressPercent)
+                        }
+                        is MrtdNfc.TunnelReading -> {
+                            val s = status as MrtdNfc.TunnelReading
+                            stringResource(R.string.nfc_status_tunnel_reading_data, s.progressPercent)
+                        }
+                        is MrtdNfc.Finished -> stringResource(R.string.nfc_status_finished)
+                    })
                 }
             }
         }

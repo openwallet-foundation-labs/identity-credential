@@ -3,4 +3,86 @@
     <string name="engagement_aid_group_desc">mDL AID Group</string>
     <string name="nfc_engagement_service_desc">@string/app_name</string>
     <string name="app_name_presentation">Wallet Presentation</string>
+
+    <!-- Permissions -->
+    <string name="permission_camera">Camera access is needed to scan your document</string>
+    <string name="permission_nfc">Access to NFC is needed to send credentials and to communicate to other NFC-enabled documents</string>
+    <string name="permission_bluetooth_advertise">This application needs to advertise itself on bluetooth to send credential data</string>
+    <string name="permission_bluetooth_connect">Access to bluetooth connection is needed to send credential data</string>
+    <string name="permission_bluetooth_scan">Access to bluetooth scanning is needed to send credential data</string>
+    <string name="permission_button_grant">Grant Permission</string>
+
+    <!-- Wallet drawer -->
+    <string name="wallet_drawer_title">Wallet</string>
+    <string name="wallet_drawer_add">Add to Wallet</string>
+    <string name="wallet_drawer_about">About Wallet</string>
+
+    <!-- Wallet screen -->
+    <string name="wallet_screen_title">Wallet</string>
+    <string name="wallet_screen_hold_to_reader">Hold to Reader</string>
+    <string name="wallet_screen_empty">No credentials in wallet, start by adding credentials</string>
+    <string name="wallet_screen_add">Add to Wallet</string>
+
+    <!-- About screen -->
+    <string name="about_screen_title">About Wallet</string>
+    <string name="about_screen_text">TODO: About Screen</string>
+
+    <!-- Add to Wallet screen -->
+    <string name="add_screen_title">Add to Wallet</string>
+    <string name="add_screen_select_issuer">Select the issuer for provisioning</string>
+
+    <!-- Credential Information screen -->
+    <string name="credential_title">Credential Information</string>
+    <string name="credential_label_name">Credential name</string>
+    <string name="credential_label_issuer">Issuer</string>
+    <string name="credential_label_state">Credential state</string>
+    <string name="credential_label_cpo_pending">CPO pending</string>
+    <string name="credential_label_last_refresh">Last refresh</string>
+    <string name="credential_label_pending_auth_keys">Pending auth keys</string>
+    <string name="credential_label_auth_keys">Auth keys</string>
+    <string name="credential_button_refresh">Refresh</string>
+    <string name="credential_button_view">View</string>
+    <string name="credential_button_delete">Delete</string>
+
+    <!-- Credential details screen -->
+    <string name="details_title">Credential Details</string>
+
+    <!-- Provisioning screen -->
+    <string name="provisioning_title">Provisioning</string>
+    <string name="provisioning_idle">Waiting…</string>
+    <string name="provisioning_creating_key">Generating keys…</string>
+    <string name="provisioning_unknown_evidence_type">Evidence type not supported: %1$s</string>
+    <string name="provisioning_submitting">Submitting evidence…</string>
+    <string name="provisioning_error">Error provisioning: %1$s</string>
+    <string name="provisioning_unexpected">Unexpected state: %1$s</string>
+
+    <!-- Evidence screens -->
+    <string name="evidence_question_label_answer">Answer</string>
+    <string name="evidence_camera_scan_mrz_title">Scan your document using camera</string>
+    <string name="evidence_camera_scan_mrz_instruction">
+        Scan the main page of your passport or machine-readable area of your card. When scanning
+        succeeds, the next screen will appear automatically.
+    </string>
+    <string name="evidence_nfc_scan_title">Scan your document using NFC</string>
+
+    <!-- NFC status -->
+    <string name="nfc_status_initial">Establishing NFC connection</string>
+    <string name="nfc_status_connected">NFC connected</string>
+    <string name="nfc_status_attempting_pace">Attempting PACE authorization</string>
+    <string name="nfc_status_pace_succeeded">Authorized through PACE</string>
+    <string name="nfc_status_pace_not_supported">PACE authorization is not supported</string>
+    <string name="nfc_status_pace_failed">PACE authorization failed</string>
+    <string name="nfc_status_attempting_bac">Attempting BAC authorization</string>
+    <string name="nfc_status_bac_succeeded">Authorized through BAC</string>
+    <string name="nfc_status_reading_data">Reading data: %1$d%%</string>
+    <string name="nfc_status_tunnel_authenticating">Establishing secure tunnel: %1$d%%</string>
+    <string name="nfc_status_tunnel_reading_data">Reading data through tunnel: %1$d%%</string>
+    <string name="nfc_status_finished">Finished</string>
+
+    <!-- Accessibility -->
+    <string name="accessibility_go_back_icon">Go back</string>
+    <string name="accessibility_menu_icon">Menu</string>
+    <string name="accessibility_artwork_for">Artwork for %1$s</string>
+    <string name="accessibility_portrait">Portrait of Holder</string>
+    <string name="accessibility_signature">Signature or Usual Mark of Holder</string>
 </resources>

@@ -4,13 +4,22 @@ import android.content.pm.PackageManager
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.MutableLiveData
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 
 /**
  * An object that tracks granted permissions and obtains required ones as needed.
@@ -30,7 +39,7 @@ import androidx.compose.ui.Modifier
  * @param permissions a map from permission string to the text shown to the user to explain why
  *     that permission is necessary for this app
  */
-class PermissionTracker(private val activity: ComponentActivity, private val permissions: Map<String, String>) {
+class PermissionTracker(private val activity: ComponentActivity, private val permissions: Map<String, Int>) {
     private val mState = permissions.mapValues { MutableLiveData(false) }
 
     private val permissionRequester =
@@ -62,28 +71,36 @@ class PermissionTracker(private val activity: ComponentActivity, private val per
     @Composable
     fun PermissionCheck(permissions: Iterable<String>, content: @Composable () -> Unit) {
         var allGranted = true
-        Column {
-            for (permission in permissions) {
-                if (!mState[permission]!!.observeAsState().value!!) {
-                    allGranted = false
-                    SinglePermissionRequest(permission = permission)
-                }
+        for (permission in permissions) {
+            if (!mState[permission]!!.observeAsState().value!!) {
+                allGranted = false
+                break
             }
         }
-
         if (allGranted) {
             content()
+        } else {
+            Column {
+                for (permission in permissions) {
+                    if (!mState[permission]!!.observeAsState().value!!) {
+                        SinglePermissionRequest(permission = permission)
+                    }
+                }
+            }
         }
     }
 
     @Composable
     private fun SinglePermissionRequest(permission: String){
-        val reasoningTxt: String = this.permissions[permission]!!
-        Column {
-            Text(text = reasoningTxt, modifier = Modifier.fillMaxWidth())
-            Button(onClick = {requestPermission(permission)}) {
-                Text("I understand")
-            }
+        val reasoningTxt: String = activity.getString(this.permissions[permission]!!)
+        Text(text = reasoningTxt,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(8.dp))
+        Button(
+            modifier = Modifier.padding(8.dp),
+            onClick = {requestPermission(permission)}) {
+            Text(stringResource(R.string.permission_button_grant))
         }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
