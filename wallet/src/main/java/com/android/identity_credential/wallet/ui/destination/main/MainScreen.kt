@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,20 +39,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
-import androidx.navigation.NavHostController
 import com.android.identity.credential.CredentialStore
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.MainActivity
-import com.android.identity_credential.wallet.ScreenWithAppBar
+import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.navigation.WalletDestination
+import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -61,6 +62,7 @@ const val TAG_M = "MainScreen"
 fun MainScreen(
     onNavigate: (String) -> Unit,
     credentialStore: CredentialStore,
+    qrEngagementViewModel: QrEngagementViewModel,
     sharedPreferences: SharedPreferences
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -100,6 +102,7 @@ fun MainScreen(
             onNavigate = onNavigate,
             credentialStore = credentialStore,
             sharedPreferences = sharedPreferences,
+            qrEngagementViewModel = qrEngagementViewModel,
             scope = scope,
             drawerState = drawerState
         )
@@ -111,6 +114,7 @@ fun MainScreenContent(
     onNavigate: (String) -> Unit,
     credentialStore: CredentialStore,
     sharedPreferences: SharedPreferences,
+    qrEngagementViewModel: QrEngagementViewModel,
     scope: CoroutineScope,
     drawerState: DrawerState
 ) {
@@ -135,19 +139,40 @@ fun MainScreenContent(
         if (credentialStore.listCredentials().isEmpty()) {
             MainScreenNoCredentialsAvailable(onNavigate)
         } else {
-            MainScreenCredentialPager(
-                onNavigate = onNavigate,
-                credentialStore = credentialStore,
-                sharedPreferences = sharedPreferences
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+            Box(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    modifier = Modifier.padding(8.dp),
-                    text = "Hold to Reader"
-                )
+                Column(modifier = Modifier.align(Alignment.Center))
+                {
+                    MainScreenCredentialPager(
+                        onNavigate = onNavigate,
+                        credentialStore = credentialStore,
+                        sharedPreferences = sharedPreferences
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            modifier = Modifier.padding(8.dp),
+                            text = "Hold to Reader"
+                        )
+                    }
+                }
+                Button(
+                    onClick = {
+                        qrEngagementViewModel.startQrEngagement()
+                        onNavigate(WalletDestination.QrEngagement.route)
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(10.dp)
+                ) {
+                    Text(
+                        modifier = Modifier.padding(8.dp),
+                        text = "Show QR"
+                    )
+                }
             }
         }
     }
@@ -198,7 +223,7 @@ fun MainScreenCredentialPager(
         }
     }
 
-    Column() {
+    Column {
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.height(200.dp)

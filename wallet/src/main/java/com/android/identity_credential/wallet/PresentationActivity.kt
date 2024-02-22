@@ -60,6 +60,7 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import java.lang.Exception
 import java.lang.IllegalArgumentException

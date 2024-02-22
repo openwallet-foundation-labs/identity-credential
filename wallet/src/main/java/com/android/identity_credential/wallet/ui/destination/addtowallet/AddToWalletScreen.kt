@@ -12,8 +12,8 @@ import androidx.compose.ui.unit.dp
 import com.android.identity.credential.CredentialStore
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity_credential.wallet.ProvisioningViewModel
-import com.android.identity_credential.wallet.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.navigation.WalletDestination
+import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 
 @Composable
 fun AddToWalletScreen(
@@ -22,7 +22,10 @@ fun AddToWalletScreen(
     issuingAuthorityRepository: IssuingAuthorityRepository,
     credentialStore: CredentialStore
 ) {
-    ScreenWithAppBarAndBackButton(title = "Add to Wallet", onNavigate = onNavigate) {
+    ScreenWithAppBarAndBackButton(
+        title = "About Wallet",
+        onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center

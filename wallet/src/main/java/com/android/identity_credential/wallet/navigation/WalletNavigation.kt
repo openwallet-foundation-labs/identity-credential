@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import com.android.identity_credential.wallet.CredentialInformationViewModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
+import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.destination.about.AboutScreen
 import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWalletScreen
@@ -15,6 +16,7 @@ import com.android.identity_credential.wallet.ui.destination.credential.Credenti
 import com.android.identity_credential.wallet.ui.destination.credential.CredentialInfoScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionCredentialScreen
+import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
 
 /**
  * Defines the correlation of WalletDestination routes to composable screens
@@ -26,7 +28,8 @@ fun WalletNavigation(
     provisioningViewModel: ProvisioningViewModel,
     credentialInformationViewModel: CredentialInformationViewModel,
     permissionTracker: PermissionTracker,
-    sharedPreferences: SharedPreferences
+    sharedPreferences: SharedPreferences,
+    qrEngagementViewModel: QrEngagementViewModel
 ) {
 
     // lambda navigateTo takes in a route string and navigates to the corresponding Screen
@@ -67,7 +70,8 @@ fun WalletNavigation(
             MainScreen(
                 onNavigate = navigateTo,
                 credentialStore = credentialStore,
-                sharedPreferences = sharedPreferences
+                sharedPreferences = sharedPreferences,
+                qrEngagementViewModel = qrEngagementViewModel
             )
         }
 
@@ -134,6 +138,13 @@ fun WalletNavigation(
                 permissionTracker = permissionTracker,
                 issuingAuthorityRepository = application.issuingAuthorityRepository,
                 credentialStore = application.credentialStore
+            )
+        }
+
+        composable(WalletDestination.QrEngagement.route) {
+            QrEngagementScreen(
+                qrEngagementViewModel = qrEngagementViewModel,
+                onNavigate = navigateTo
             )
         }
     }

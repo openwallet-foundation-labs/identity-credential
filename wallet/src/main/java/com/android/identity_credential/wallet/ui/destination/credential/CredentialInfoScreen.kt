@@ -16,8 +16,8 @@ import com.android.identity.issuance.CredentialExtensions.state
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.CredentialInformationViewModel
-import com.android.identity_credential.wallet.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.navigation.WalletDestination
+import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -61,7 +61,9 @@ fun CredentialInfoScreen(
         "Last refresh in UI at ${credentialInformationViewModel.lastHousekeepingAt.value}"
     )
 
-    ScreenWithAppBarAndBackButton(title = "Credential Information", onNavigate = onNavigate) {
+    ScreenWithAppBarAndBackButton(
+        title = "Credential Information",
+        onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }) {
         Text("Name: ${credential.credentialConfiguration.displayName}")
         Text("Issuer: ${issuer.configuration.name}")
         val state = credential.state

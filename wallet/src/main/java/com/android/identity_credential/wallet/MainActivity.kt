@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var application: WalletApplication
-
+    private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
     private val credentialInformationViewModel: CredentialInformationViewModel by viewModels()
     private lateinit var sharedPreferences: SharedPreferences
@@ -104,7 +104,8 @@ class MainActivity : ComponentActivity() {
                             provisioningViewModel = provisioningViewModel,
                             credentialInformationViewModel = credentialInformationViewModel,
                             permissionTracker = permissionTracker,
-                            sharedPreferences = sharedPreferences
+                            sharedPreferences = sharedPreferences,
+                            qrEngagementViewModel = qrEngagementViewModel
                         )
                     }
                 }

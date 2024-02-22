@@ -24,8 +24,8 @@ import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
-import com.android.identity_credential.wallet.ScreenWithAppBar
 import com.android.identity_credential.wallet.navigation.WalletDestination
+import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 
 
 @Composable

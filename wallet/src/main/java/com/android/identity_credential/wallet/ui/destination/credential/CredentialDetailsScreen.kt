@@ -19,8 +19,9 @@ import androidx.compose.ui.unit.dp
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.getViewCredentialData
+import com.android.identity_credential.wallet.navigation.WalletDestination
+import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 
 
 const val TAG_CDS = "CredentialDetailsScreen"
@@ -57,7 +58,10 @@ fun CredentialDetailsScreen(
         )
     }
 
-    ScreenWithAppBarAndBackButton(title = "Credential Details", onNavigate = onNavigate) {
+    ScreenWithAppBarAndBackButton(
+        title = "Credential Details",
+        onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }
+    ) {
         if (portraitBitmap != null) {
             Row(
                 horizontalArrangement = Arrangement.Center
@@ -94,19 +98,19 @@ fun CredentialDetailsScreen(
                 }
             }
         }
-        if (signatureOrUsualMark != null) {
-            Divider(modifier = Modifier.padding(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Image(
-                    bitmap = signatureOrUsualMark.asImageBitmap(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .size(75.dp),
-                    contentDescription = "Signature / Usual Mark of Holder",
-                )
-            }
-        }
+//        if (signatureOrUsualMark != null) {
+//            Divider(modifier = Modifier.padding(8.dp))
+//            Row(
+//                horizontalArrangement = Arrangement.Center
+//            ) {
+//                Image(
+//                    bitmap = signatureOrUsualMark.asImageBitmap(),
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .size(75.dp),
+//                    contentDescription = "Signature / Usual Mark of Holder",
+//                )
+//            }
+//        }
     }
 }

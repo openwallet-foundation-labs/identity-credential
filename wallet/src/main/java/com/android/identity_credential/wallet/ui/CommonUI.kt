@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.android.identity_credential.wallet
+package com.android.identity_credential.wallet.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -64,13 +64,11 @@ fun ScreenWithAppBar(
 @Composable
 fun ScreenWithAppBarAndBackButton(
     title: String,
-    onNavigate: (String) -> Unit,
+    onBackButtonClick: () -> Unit,
     body: @Composable ColumnScope.() -> Unit
 ) {
     ScreenWithAppBar(title, navigationIcon = {
-        IconButton(onClick = {
-            onNavigate(WalletDestination.PopBackStack.route)
-        }) {
+        IconButton(onClick = { onBackButtonClick() }) {
             Icon(
                 imageVector = Icons.Filled.ArrowBack, contentDescription = "Back Arrow"
             )
