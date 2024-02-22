@@ -1,7 +1,9 @@
 package com.android.identity_credential.wallet.ui.destination.main
 
+import android.Manifest
 import android.content.SharedPreferences
 import android.graphics.BitmapFactory
+import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -43,13 +45,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.android.identity.credential.CredentialStore
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.QrEngagementViewModel
+import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
@@ -63,7 +68,8 @@ fun MainScreen(
     onNavigate: (String) -> Unit,
     credentialStore: CredentialStore,
     qrEngagementViewModel: QrEngagementViewModel,
-    sharedPreferences: SharedPreferences
+    sharedPreferences: SharedPreferences,
+    permissionTracker: PermissionTracker
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -71,11 +77,11 @@ fun MainScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text("Wallet", modifier = Modifier.padding(16.dp))
+                Text(stringResource(R.string.wallet_drawer_title), modifier = Modifier.padding(16.dp))
                 Divider()
                 NavigationDrawerItem(
                     icon = { Icon(imageVector = Icons.Filled.Add, contentDescription = null) },
-                    label = { Text(text = "Add to Wallet") },
+                    label = { Text(text = stringResource(R.string.wallet_drawer_add)) },
                     selected = false,
                     onClick = {
                         scope.launch {
@@ -86,7 +92,7 @@ fun MainScreen(
                 )
                 NavigationDrawerItem(
                     icon = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
-                    label = { Text(text = "About Wallet") },
+                    label = { Text(text = stringResource(R.string.wallet_drawer_about)) },
                     selected = false,
                     onClick = {
                         scope.launch {
@@ -104,9 +110,19 @@ fun MainScreen(
             sharedPreferences = sharedPreferences,
             qrEngagementViewModel = qrEngagementViewModel,
             scope = scope,
-            drawerState = drawerState
+            drawerState = drawerState,
+            permissionTracker = permissionTracker
         )
     }
+}
+
+val blePermissions: List<String> = if (Build.VERSION.SDK_INT >= 31) {
+    listOf(
+        Manifest.permission.BLUETOOTH_ADVERTISE,
+        Manifest.permission.BLUETOOTH_SCAN,
+        Manifest.permission.BLUETOOTH_CONNECT)
+} else {
+    listOf(Manifest.permission.ACCESS_FINE_LOCATION)
 }
 
 @Composable
@@ -116,9 +132,10 @@ fun MainScreenContent(
     sharedPreferences: SharedPreferences,
     qrEngagementViewModel: QrEngagementViewModel,
     scope: CoroutineScope,
-    drawerState: DrawerState
+    drawerState: DrawerState,
+    permissionTracker: PermissionTracker
 ) {
-    ScreenWithAppBar(title = "Wallet",
+    ScreenWithAppBar(title = stringResource(R.string.wallet_screen_title),
         navigationIcon = {
             IconButton(
                 onClick = {
@@ -132,7 +149,7 @@ fun MainScreenContent(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Menu,
-                    contentDescription = "Localized description"
+                    contentDescription = stringResource(R.string.accessibility_menu_icon)
                 )
             }
         }) {
@@ -144,6 +161,8 @@ fun MainScreenContent(
             ) {
                 Column(modifier = Modifier.align(Alignment.Center))
                 {
+                    // TODO: this can be prettier
+                    permissionTracker.PermissionRequests(blePermissions)
                     MainScreenCredentialPager(
                         onNavigate = onNavigate,
                         credentialStore = credentialStore,
@@ -153,12 +172,18 @@ fun MainScreenContent(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        Text(
-                            modifier = Modifier.padding(8.dp),
-                            text = "Hold to Reader"
-                        )
+                        permissionTracker.PermissionCheck(
+                            permissions = blePermissions,
+                            displayPermissionRequest = false
+                        ) {
+                            Text(
+                                modifier = Modifier.padding(8.dp),
+                                text = stringResource(R.string.wallet_screen_hold_to_reader)
+                            )
+                        }
                     }
                 }
+                // TODO: should that be hidden if no bluetooth permission available?
                 Button(
                     onClick = {
                         qrEngagementViewModel.startQrEngagement()
@@ -170,7 +195,7 @@ fun MainScreenContent(
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = "Show QR"
+                        text = stringResource(R.string.wallet_screen_show_qr)
                     )
                 }
             }
@@ -186,20 +211,21 @@ fun MainScreenNoCredentialsAvailable(onNavigate: (String) -> Unit) {
     ) {
         Text(
             modifier = Modifier.padding(8.dp),
-            text = "No credentials in wallet, start by\n" +
-                    "adding credentials.",
-            color = MaterialTheme.colorScheme.secondary,
+            text = stringResource(R.string.wallet_screen_empty),
+            style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center
         )
     }
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
         horizontalArrangement = Arrangement.Center
     ) {
         Button(onClick = {
             onNavigate(WalletDestination.AddToWallet.route)
         }) {
-            Text("Add to Wallet")
+            Text(stringResource(R.string.wallet_screen_add))
         }
     }
 }
@@ -248,7 +274,8 @@ fun MainScreenCredentialPager(
             ) {
                 Image(
                     bitmap = credentialBitmap.asImageBitmap(),
-                    contentDescription = "Artwork for $credentialName",
+                    contentDescription =
+                        stringResource(R.string.accessibility_artwork_for, credentialName),
                     modifier = Modifier.clickable(onClick = {
                         onNavigate(
                             WalletDestination.CredentialInfo

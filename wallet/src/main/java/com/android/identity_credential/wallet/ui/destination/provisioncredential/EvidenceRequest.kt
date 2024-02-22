@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -22,7 +23,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.android.identity.credential.CredentialStore
@@ -40,9 +44,11 @@ import com.android.identity_credential.mrtd.MrtdNfc
 import com.android.identity_credential.mrtd.MrtdNfcDataReader
 import com.android.identity_credential.mrtd.MrtdNfcReader
 import com.android.identity_credential.mrtd.MrtdNfcScanner
+import com.android.identity_credential.wallet.MainActivity
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
+import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.util.getActivity
 import kotlinx.coroutines.launch
 
@@ -60,32 +66,46 @@ fun EvidenceRequestMessageView(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        Text(
-            modifier = Modifier.padding(8.dp),
-            text = evidenceRequest.message
-        )
+        if (evidenceRequest.message.length < 100) {
+            Text(
+                modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.titleLarge,
+                textAlign = TextAlign.Center,
+                text = evidenceRequest.message
+            )
+        } else {
+            Text(
+                modifier = Modifier.padding(8.dp),
+                text = evidenceRequest.message,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
         if (evidenceRequest.rejectButtonText != null) {
-            Button(onClick = {
-                provisioningViewModel.provideEvidence(
-                    evidence = EvidenceResponseMessage(false),
-                    issuingAuthorityRepository = issuingAuthorityRepository,
-                    credentialStore = credentialStore
-                )
+            Button(
+                modifier = Modifier.padding(8.dp),
+                onClick = {
+                    provisioningViewModel.provideEvidence(
+                        evidence = EvidenceResponseMessage(false),
+                        issuingAuthorityRepository = issuingAuthorityRepository,
+                        credentialStore = credentialStore
+                    )
             }) {
                 Text(evidenceRequest.rejectButtonText)
             }
         }
-        Button(onClick = {
-            provisioningViewModel.provideEvidence(
-                evidence = EvidenceResponseMessage(true),
-                issuingAuthorityRepository = issuingAuthorityRepository,
-                credentialStore = credentialStore
-            )
+        Button(
+            modifier = Modifier.padding(8.dp),
+            onClick = {
+                provisioningViewModel.provideEvidence(
+                    evidence = EvidenceResponseMessage(true),
+                    issuingAuthorityRepository = issuingAuthorityRepository,
+                    credentialStore = credentialStore
+                )
         }) {
             Text(evidenceRequest.acceptButtonText)
         }
@@ -110,8 +130,9 @@ fun EvidenceRequestQuestionStringView(
     var inputText by remember { mutableStateOf(evidenceRequest.defaultValue) }
     TextField(
         value = inputText,
+        modifier = Modifier.fillMaxWidth().padding(8.dp),
         onValueChange = { inputText = it },
-        label = { Text("Answer") }
+        label = { Text(stringResource(R.string.evidence_question_label_answer)) }
     )
 
     Row(
@@ -138,6 +159,8 @@ fun EvidenceRequestQuestionMultipleChoiceView(
     ) {
         Text(
             modifier = Modifier.padding(8.dp),
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center,
             text = evidenceRequest.message
         )
     }
@@ -157,7 +180,8 @@ fun EvidenceRequestQuestionMultipleChoiceView(
                             onOptionSelected(entry.key)
                         }
                     )
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
                     selected = (entry.key == selectedOption),
@@ -165,7 +189,8 @@ fun EvidenceRequestQuestionMultipleChoiceView(
                 )
                 Text(
                     text = entry.value,
-                    modifier = Modifier.padding(start = 16.dp)
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
         }
@@ -227,88 +252,103 @@ fun <ResultT> EvidenceRequestIcaoView(
         var status by remember { mutableStateOf<MrtdNfc.Status>(MrtdNfc.Initial) }
         val scope = rememberCoroutineScope()
         if (visualScan) {
-            AndroidView(
-                factory = { context ->
-                    PreviewView(context).apply {
-                        layoutParams = LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        scaleType = PreviewView.ScaleType.FILL_START
-                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                        post {
-                            scope.launch {
-                                val passportCapture =
-                                    context.getActivity()?.let { MrtdMrzScanner(it) }
-                                val passportNfcScanner =
-                                    MrtdNfcScanner(context.getActivity() as Activity)
-
-                                try {
-                                    val mrzInfo = passportCapture!!.readFromCamera(surfaceProvider)
-                                    status = MrtdNfc.Initial
-                                    visualScan = false
-                                    val result =
-                                        passportNfcScanner.scanCard(mrzInfo, reader) { st ->
-                                            status = st
-                                        }
-                                    onResult(result)
-                                } catch (err: Exception) {
-                                    Logger.e(TAG_ER, "Error scanning MRTD: $err")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.evidence_camera_scan_mrz_title),
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.titleLarge)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                    text = stringResource(R.string.evidence_camera_scan_mrz_instruction),
+                    style = MaterialTheme.typography.bodyLarge)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                AndroidView(
+                    modifier = Modifier.padding(16.dp),
+                    factory = { context ->
+                        PreviewView(context).apply {
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            scaleType = PreviewView.ScaleType.FILL_START
+                            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                            post {
+                                scope.launch {
+                                    val activity = context.getActivity()!!
+                                    val passportCapture = MrtdMrzScanner(activity)
+                                    val passportNfcScanner = MrtdNfcScanner(activity)
+                                    try {
+                                        val mrzInfo =
+                                            passportCapture.readFromCamera(surfaceProvider)
+                                        status = MrtdNfc.Initial
+                                        visualScan = false
+                                        val result =
+                                            passportNfcScanner.scanCard(mrzInfo, reader) { st ->
+                                                status = st
+                                            }
+                                        onResult(result)
+                                    } catch (err: Exception) {
+                                        Logger.e(TAG_ER, "Error scanning MRTD: $err")
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            )
+                )
+            }
         } else {
-            Column(
-                modifier = Modifier.fillMaxHeight(),
-                verticalArrangement = Arrangement.Center,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        when (status) {
-                            is MrtdNfc.Initial -> "Waiting to scan"
-                            else -> "Reading..."
+                Text(
+                    text = stringResource(R.string.evidence_nfc_scan_title),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(8.dp),
+                    style = MaterialTheme.typography.titleLarge)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    style = MaterialTheme.typography.bodyLarge,
+                    text = when(status) {
+                        is MrtdNfc.Initial -> stringResource(R.string.nfc_status_initial)
+                        is MrtdNfc.Connected -> stringResource(R.string.nfc_status_connected)
+                        is MrtdNfc.AttemptingPACE -> stringResource(R.string.nfc_status_attempting_pace)
+                        is MrtdNfc.PACESucceeded -> stringResource(R.string.nfc_status_pace_succeeded)
+                        is MrtdNfc.PACENotSupported -> stringResource(R.string.nfc_status_pace_not_supported)
+                        is MrtdNfc.PACEFailed -> stringResource(R.string.nfc_status_pace_failed)
+                        is MrtdNfc.AttemptingBAC -> stringResource(R.string.nfc_status_attempting_bac)
+                        is MrtdNfc.BACSucceeded -> stringResource(R.string.nfc_status_bac_succeeded)
+                        is MrtdNfc.ReadingData -> {
+                            val s = status as MrtdNfc.ReadingData
+                            stringResource(R.string.nfc_status_reading_data, s.progressPercent)
                         }
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        when (status) {
-                            is MrtdNfc.Initial -> "Initial"
-                            is MrtdNfc.Connected -> "Connected"
-                            is MrtdNfc.AttemptingPACE -> "Attempting PACE"
-                            is MrtdNfc.PACESucceeded -> "PACE Succeeded"
-                            is MrtdNfc.PACENotSupported -> "PACE Not Supported"
-                            is MrtdNfc.PACEFailed -> "PACE Not Supported"
-                            is MrtdNfc.AttemptingBAC -> "Attempting BAC"
-                            is MrtdNfc.BACSucceeded -> "BAC Succeeded"
-                            is MrtdNfc.ReadingData -> {
-                                val s = status as MrtdNfc.ReadingData
-                                "Reading: ${s.progressPercent}%"
-                            }
-
-                            is MrtdNfc.TunnelAuthenticating -> {
-                                val s = status as MrtdNfc.TunnelAuthenticating
-                                "Establishing secure tunnel: ${s.progressPercent}%"
-                            }
-
-                            is MrtdNfc.TunnelReading -> {
-                                val s = status as MrtdNfc.TunnelReading
-                                "Reading data through tunnel: ${s.progressPercent}%"
-                            }
-
-                            is MrtdNfc.Finished -> "Finished"
+                        is MrtdNfc.TunnelAuthenticating -> {
+                            val s = status as MrtdNfc.TunnelAuthenticating
+                            stringResource(R.string.nfc_status_tunnel_authenticating, s.progressPercent)
                         }
-                    )
-                }
+                        is MrtdNfc.TunnelReading -> {
+                            val s = status as MrtdNfc.TunnelReading
+                            stringResource(R.string.nfc_status_tunnel_reading_data, s.progressPercent)
+                        }
+                        is MrtdNfc.Finished -> stringResource(R.string.nfc_status_finished)
+                    })
             }
         }
     }

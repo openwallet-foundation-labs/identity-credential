@@ -8,9 +8,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.credential.CredentialStore
 import com.android.identity.issuance.IssuingAuthorityRepository
@@ -24,6 +27,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
+import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 
@@ -36,7 +40,7 @@ fun ProvisionCredentialScreen(
     issuingAuthorityRepository: IssuingAuthorityRepository,
     credentialStore: CredentialStore
 ) {
-    ScreenWithAppBar(title = "Provisioning", navigationIcon = {
+    ScreenWithAppBar(title = stringResource(R.string.provisioning_title), navigationIcon = {
         if (provisioningViewModel.state.value != ProvisioningViewModel.State.PROOFING_COMPLETE) {
             IconButton(
                 onClick = {
@@ -45,7 +49,7 @@ fun ProvisionCredentialScreen(
             ) {
                 Icon(
                     imageVector = Icons.Filled.ArrowBack,
-                    contentDescription = "Back Arrow"
+                    contentDescription = stringResource(R.string.accessibility_go_back_icon)
                 )
             }
         }
@@ -59,7 +63,7 @@ fun ProvisionCredentialScreen(
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = "TODO: Idle"
+                        text = stringResource(R.string.provisioning_idle)
                     )
                 }
             }
@@ -71,7 +75,7 @@ fun ProvisionCredentialScreen(
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = "TODO: Creating CredentialKey"
+                        text = stringResource(R.string.provisioning_creating_key)
                     )
                 }
             }
@@ -140,7 +144,10 @@ fun ProvisionCredentialScreen(
                         ) {
                             Text(
                                 modifier = Modifier.padding(8.dp),
-                                text = "Unknown evidence type ${evidenceRequest.evidenceType}"
+                                style = MaterialTheme.typography.titleLarge,
+                                textAlign = TextAlign.Center,
+                                text = stringResource(R.string.provisioning_unknown_evidence_type,
+                                    evidenceRequest.evidenceType.toString())
                             )
                         }
                     }
@@ -154,7 +161,9 @@ fun ProvisionCredentialScreen(
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = "TODO: Submitting evidence"
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                        text = stringResource(R.string.provisioning_submitting)
                     )
                 }
             }
@@ -184,7 +193,10 @@ fun ProvisionCredentialScreen(
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = "Something went wrong: ${provisioningViewModel.error}"
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                        text = stringResource(R.string.provisioning_error,
+                            provisioningViewModel.error.toString())
                     )
                 }
             }
@@ -196,7 +208,10 @@ fun ProvisionCredentialScreen(
                 ) {
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = "Unexpected state: ${provisioningViewModel.state.value}"
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                        text = stringResource(R.string.provisioning_unexpected,
+                            provisioningViewModel.state.value)
                     )
                 }
             }

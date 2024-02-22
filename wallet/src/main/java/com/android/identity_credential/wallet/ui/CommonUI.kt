@@ -20,7 +20,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
 
 /**
@@ -70,8 +73,53 @@ fun ScreenWithAppBarAndBackButton(
     ScreenWithAppBar(title, navigationIcon = {
         IconButton(onClick = { onBackButtonClick() }) {
             Icon(
-                imageVector = Icons.Filled.ArrowBack, contentDescription = "Back Arrow"
+                imageVector = Icons.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.accessibility_go_back_icon)
             )
         }
     }, body = body)
+}
+
+@Composable
+fun ColumnWithPortrait(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Layout(
+        modifier = modifier,
+        content = content
+    ) { measurables, constraints ->
+        var height = 0
+        var first = true
+        val placeables = measurables.map { measurable ->
+            val placeable = measurable.measure(constraints)
+            if (first) {
+                first = false
+            } else {
+                height += placeable.height
+            }
+            placeable
+        }
+
+        layout(constraints.maxWidth, maxOf(constraints.maxHeight, height)) {
+            var x = 0
+            var y = 0
+            var first = true
+            var floatHeight = 0
+
+            placeables.forEach { placeable ->
+                placeable.placeRelative(x, y)
+                if (first) {
+                    x = placeable.width
+                    floatHeight = placeable.height
+                    first = false;
+                } else {
+                    y += placeable.height
+                    if (y >= floatHeight) {
+                        x = 0
+                    }
+                }
+            }
+        }
+    }
 }

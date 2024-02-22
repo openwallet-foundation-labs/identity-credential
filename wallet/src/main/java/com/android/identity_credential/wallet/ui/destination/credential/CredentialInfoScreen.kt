@@ -3,11 +3,16 @@ package com.android.identity_credential.wallet.ui.destination.credential
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.CredentialStore
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
@@ -16,6 +21,7 @@ import com.android.identity.issuance.CredentialExtensions.state
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.CredentialInformationViewModel
+import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import java.text.SimpleDateFormat
@@ -50,6 +56,7 @@ fun CredentialInfoScreen(
         )
         return
     }
+    // TODO: should this be localized?
     val df = SimpleDateFormat("yyyy-MM-dd HH:mm:ssXXX", Locale.US)
     df.timeZone = TimeZone.getTimeZone("UTC")
     val stateTimeString = df.format(Date(credential.state.timestamp))
@@ -62,20 +69,27 @@ fun CredentialInfoScreen(
     )
 
     ScreenWithAppBarAndBackButton(
-        title = "Credential Information",
+        title = stringResource(R.string.credential_title),
         onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }) {
-        Text("Name: ${credential.credentialConfiguration.displayName}")
-        Text("Issuer: ${issuer.configuration.name}")
         val state = credential.state
-        Text("State: ${state.condition}")
-        Text("CPO pending: ${state.numAvailableCPO}")
-        Text("State Last Refresh: $stateTimeString")
-        Divider()
-        Text("Num PendingAuthKey: ${credential.pendingAuthenticationKeys.size}")
-        Text("Num AuthKey: ${credential.authenticationKeys.size}")
-        Divider()
+        TextField(credential.credentialConfiguration.displayName, {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_name))}, modifier = Modifier.fillMaxWidth())
+        TextField(issuer.configuration.name, {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_issuer))}, modifier = Modifier.fillMaxWidth())
+        // TODO: localize state.condition text
+        TextField(state.condition.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_state))}, modifier = Modifier.fillMaxWidth())
+        TextField(state.numAvailableCPO.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_cpo_pending))}, modifier = Modifier.fillMaxWidth())
+        TextField(stateTimeString, {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_last_refresh))}, modifier = Modifier.fillMaxWidth())
+        Divider(thickness = 4.dp, color = MaterialTheme.colorScheme.primary)
+        TextField(credential.authenticationKeys.size.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_pending_auth_keys))}, modifier = Modifier.fillMaxWidth())
+        TextField(credential.pendingAuthenticationKeys.size.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_auth_keys))}, modifier = Modifier.fillMaxWidth())
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(onClick = {
@@ -85,10 +99,10 @@ fun CredentialInfoScreen(
                     credential = credential
                 )
             }) {
-                Text("Refresh")
+                Text(stringResource(R.string.credential_button_refresh))
             }
             Button(onClick = {
-                WalletDestination.CredentialInfo.getRouteWithArguments(
+                onNavigate(WalletDestination.CredentialInfo.getRouteWithArguments(
                     listOf(
                         Pair(
                             WalletDestination.CredentialInfo.Argument.CREDENTIAL_ID,
@@ -99,17 +113,16 @@ fun CredentialInfoScreen(
                             "details"
                         )
                     )
-                )
-
+                ))
             }) {
-                Text("View")
+                Text(stringResource(R.string.credential_button_view))
             }
             Button(onClick = {
                 // TODO: run issuer deletion flow
                 credentialStore.deleteCredential(credentialId)
                 onNavigate(WalletDestination.PopBackStack.route)
             }) {
-                Text("Delete")
+                Text(stringResource(R.string.credential_button_delete))
             }
         }
     }
