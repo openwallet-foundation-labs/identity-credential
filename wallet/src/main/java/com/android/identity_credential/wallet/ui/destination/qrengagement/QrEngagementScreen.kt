@@ -1,4 +1,4 @@
-package com.android.identity_credential.wallet.ui
+package com.android.identity_credential.wallet.ui.destination.qrengagement
 
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -23,17 +23,21 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.android.identity_credential.wallet.QrEngagementViewModel
+import com.android.identity_credential.wallet.navigation.WalletDestination
+import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 
 @Composable
-fun QrEngagementScreen(qrEngagementViewModel: QrEngagementViewModel,
-                       navigation: NavHostController) {
+fun QrEngagementScreen(
+    qrEngagementViewModel: QrEngagementViewModel,
+    onNavigate: (String) -> Unit,
+) {
     BackHandler {
         qrEngagementViewModel.stopQrConnection()
-        navigation.popBackStack()
+        onNavigate(WalletDestination.PopBackStack.route)
     }
 
     val engagementState = qrEngagementViewModel.state
@@ -42,7 +46,7 @@ fun QrEngagementScreen(qrEngagementViewModel: QrEngagementViewModel,
         IconButton(
             onClick = {
                 qrEngagementViewModel.stopQrConnection()
-                navigation.popBackStack()
+                onNavigate(WalletDestination.PopBackStack.route)
             }
         ) {
             Icon(
@@ -74,7 +78,21 @@ fun QrEngagementScreen(qrEngagementViewModel: QrEngagementViewModel,
 
             QrEngagementViewModel.State.CONNECTED -> {
                 qrEngagementViewModel.stopQrConnection()
-                navigation.popBackStack("MainScreen", inclusive = false)
+                onNavigate(
+                    WalletDestination.PopBackStack
+                        .getRouteWithArguments(
+                            listOf(
+                                Pair(
+                                    WalletDestination.PopBackStack.Argument.ROUTE,
+                                    WalletDestination.Main.route
+                                ),
+                                Pair(
+                                    WalletDestination.PopBackStack.Argument.INCLUSIVE,
+                                    false
+                                )
+                            )
+                        )
+                )
             }
 
             // startQrEngagement is called before navigating to this compose, so let user know we're
@@ -90,7 +108,7 @@ fun QrEngagementScreen(qrEngagementViewModel: QrEngagementViewModel,
             QrEngagementViewModel.State.ERROR -> {
                 Column {
                     Text(text = "Error generating QR Code")
-                    Button(onClick = {qrEngagementViewModel.startQrEngagement()}) {
+                    Button(onClick = { qrEngagementViewModel.startQrEngagement() }) {
                         Text(text = "Retry")
                     }
                 }

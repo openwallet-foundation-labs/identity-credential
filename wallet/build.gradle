@@ -52,12 +52,10 @@ dependencies {
     implementation project(':identity-android')
     implementation project(':mrtd-reader')
 
-    implementation libs.kotlinx.coroutines.android
     implementation libs.cbor
     implementation libs.androidx.core.ktx
     implementation libs.bundles.androidx.lifecycle
     implementation libs.bundles.androidx.activity.compose
-    implementation libs.bundles.androidx.crypto
     implementation libs.bundles.androidx.navigation
     implementation platform(libs.compose.bom)
     implementation libs.compose.ui.tooling

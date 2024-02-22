@@ -21,7 +21,7 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.navigation.NavHostController
+import com.android.identity_credential.wallet.navigation.WalletDestination
 
 /**
  * Presents a screen with an app bar on top and possibly a navigation icon in the top left corner.
@@ -64,13 +64,11 @@ fun ScreenWithAppBar(
 @Composable
 fun ScreenWithAppBarAndBackButton(
     title: String,
-    navigation: NavHostController,
+    onBackButtonClick: () -> Unit,
     body: @Composable ColumnScope.() -> Unit
 ) {
     ScreenWithAppBar(title, navigationIcon = {
-        IconButton(onClick = {
-            navigation.popBackStack()
-        }) {
+        IconButton(onClick = { onBackButtonClick() }) {
             Icon(
                 imageVector = Icons.Filled.ArrowBack, contentDescription = "Back Arrow"
             )
