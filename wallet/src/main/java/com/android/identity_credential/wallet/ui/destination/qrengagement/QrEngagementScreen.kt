@@ -20,9 +20,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.android.identity_credential.wallet.QrEngagementViewModel
+import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import com.google.zxing.BarcodeFormat
@@ -42,7 +44,7 @@ fun QrEngagementScreen(
 
     val engagementState = qrEngagementViewModel.state
 
-    ScreenWithAppBar(title = "QR Code", navigationIcon = {
+    ScreenWithAppBar(title = stringResource(R.string.qr_title), navigationIcon = {
         IconButton(
             onClick = {
                 qrEngagementViewModel.stopQrConnection()
@@ -51,7 +53,7 @@ fun QrEngagementScreen(
         ) {
             Icon(
                 imageVector = Icons.Filled.ArrowBack,
-                contentDescription = "Back Arrow"
+                contentDescription = stringResource(R.string.accessibility_go_back_icon)
             )
         }
     }
@@ -70,7 +72,7 @@ fun QrEngagementScreen(
                 Box(modifier = Modifier.fillMaxSize()) {
                     Image(
                         bitmap = encodeQRCodeAsBitmap(deviceEngagementUriEncoded).asImageBitmap(),
-                        contentDescription = "QR Code",
+                        contentDescription = stringResource(R.string.accessibility_qr_code),
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
@@ -107,9 +109,9 @@ fun QrEngagementScreen(
 
             QrEngagementViewModel.State.ERROR -> {
                 Column {
-                    Text(text = "Error generating QR Code")
+                    Text(text = stringResource(R.string.qr_error_generating))
                     Button(onClick = { qrEngagementViewModel.startQrEngagement() }) {
-                        Text(text = "Retry")
+                        Text(text = stringResource(R.string.qr_button_retry))
                     }
                 }
             }

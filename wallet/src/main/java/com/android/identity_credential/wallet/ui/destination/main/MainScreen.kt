@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -156,45 +157,43 @@ fun MainScreenContent(
         if (credentialStore.listCredentials().isEmpty()) {
             MainScreenNoCredentialsAvailable(onNavigate)
         } else {
-            Box(
-                modifier = Modifier.fillMaxSize()
+            // TODO: this can be prettier
+            permissionTracker.PermissionRequests(blePermissions)
+            Spacer(modifier = Modifier.weight(0.5f))
+            MainScreenCredentialPager(
+                onNavigate = onNavigate,
+                credentialStore = credentialStore,
+                sharedPreferences = sharedPreferences
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
             ) {
-                Column(modifier = Modifier.align(Alignment.Center))
-                {
-                    // TODO: this can be prettier
-                    permissionTracker.PermissionRequests(blePermissions)
-                    MainScreenCredentialPager(
-                        onNavigate = onNavigate,
-                        credentialStore = credentialStore,
-                        sharedPreferences = sharedPreferences
+                permissionTracker.PermissionCheck(
+                    permissions = blePermissions,
+                    displayPermissionRequest = false
+                ) {
+                    Text(
+                        modifier = Modifier.padding(8.dp),
+                        text = stringResource(R.string.wallet_screen_hold_to_reader)
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        permissionTracker.PermissionCheck(
-                            permissions = blePermissions,
-                            displayPermissionRequest = false
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(8.dp),
-                                text = stringResource(R.string.wallet_screen_hold_to_reader)
-                            )
-                        }
-                    }
                 }
+            }
+            Spacer(modifier = Modifier.weight(0.5f))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp, top = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
                 // TODO: should that be hidden if no bluetooth permission available?
                 Button(
                     onClick = {
                         qrEngagementViewModel.startQrEngagement()
                         onNavigate(WalletDestination.QrEngagement.route)
-                    },
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(10.dp)
+                    }
                 ) {
                     Text(
-                        modifier = Modifier.padding(8.dp),
                         text = stringResource(R.string.wallet_screen_show_qr)
                     )
                 }

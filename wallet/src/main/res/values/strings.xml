@@ -57,6 +57,11 @@
     <string name="provisioning_error">Error provisioning: %1$s</string>
     <string name="provisioning_unexpected">Unexpected state: %1$s</string>
 
+    <!-- QR screen -->
+    <string name="qr_title">QR Code</string>
+    <string name="qr_error_generating">Error generating QR code</string>
+    <string name="qr_button_retry">Retry</string>
+
     <!-- Evidence screens -->
     <string name="evidence_question_label_answer">Answer</string>
     <string name="evidence_camera_scan_mrz_title">Scan your document using camera</string>
@@ -86,4 +91,5 @@
     <string name="accessibility_artwork_for">Artwork for %1$s</string>
     <string name="accessibility_portrait">Portrait of Holder</string>
     <string name="accessibility_signature">Signature or Usual Mark of Holder</string>
+    <string name="accessibility_qr_code">QR code</string>
 </resources>

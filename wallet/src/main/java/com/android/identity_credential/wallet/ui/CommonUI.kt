@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -56,6 +58,7 @@ fun ScreenWithAppBar(
         Column(
             modifier = Modifier
                 .fillMaxHeight()
+                .verticalScroll(rememberScrollState())
                 .padding(innerPadding),
             verticalArrangement = Arrangement.Center,
             content = body
@@ -101,7 +104,8 @@ fun ColumnWithPortrait(
             placeable
         }
 
-        layout(constraints.maxWidth, maxOf(constraints.maxHeight, height)) {
+        layout(constraints.maxWidth,
+            maxOf(constraints.minHeight, minOf(constraints.maxHeight, height))) {
             var x = 0
             var y = 0
             var first = true
