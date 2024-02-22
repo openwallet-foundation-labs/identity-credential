@@ -49,27 +49,19 @@ class MainActivity : ComponentActivity() {
     private lateinit var sharedPreferences: SharedPreferences
 
     private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
-        PermissionTracker(
-            this, mapOf(
-                Manifest.permission.CAMERA to "This application requires camera permission to scan",
-                Manifest.permission.NFC to "NFC permission is required to operate",
-                Manifest.permission.BLUETOOTH_ADVERTISE to "This application requires Bluetooth " +
-                        "advertising to send credential data",
-                Manifest.permission.BLUETOOTH_SCAN to "This application requires Bluetooth " +
-                        "scanning to send credential data",
-                Manifest.permission.BLUETOOTH_CONNECT to "This application requires Bluetooth " +
-                        "connection to send credential data"
-            )
-        )
+        PermissionTracker(this, mapOf(
+            Manifest.permission.CAMERA to R.string.permission_camera,
+            Manifest.permission.NFC to R.string.permission_nfc,
+            Manifest.permission.BLUETOOTH_ADVERTISE to R.string.permission_bluetooth_advertise,
+            Manifest.permission.BLUETOOTH_SCAN to R.string.permission_bluetooth_scan,
+            Manifest.permission.BLUETOOTH_CONNECT to R.string.permission_bluetooth_connect
+        ))
     } else {
-        PermissionTracker(
-            this, mapOf(
-                Manifest.permission.CAMERA to "This application requires camera permission to scan",
-                Manifest.permission.NFC to "NFC permission is required to operate",
-                Manifest.permission.ACCESS_FINE_LOCATION to "This application requires Bluetooth " +
-                        "to send credential data"
-            )
-        )
+        PermissionTracker(this, mapOf(
+            Manifest.permission.CAMERA to R.string.permission_camera,
+            Manifest.permission.NFC to R.string.permission_nfc,
+            Manifest.permission.ACCESS_FINE_LOCATION to R.string.permission_bluetooth_connect
+        ))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,35 +71,25 @@ class MainActivity : ComponentActivity() {
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
         permissionTracker.updatePermissions()
-        val blePermissions: List<String> = if (Build.VERSION.SDK_INT >= 31) {
-            listOf(
-                Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_CONNECT
-            )
-        } else {
-            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
 
         setContent {
             IdentityCredentialTheme {
-                permissionTracker.PermissionCheck(permissions = blePermissions) {
-                    // A surface container using the 'background' color from the theme
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
-                        val navController = rememberNavController()
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    val navController = rememberNavController()
 
-                        WalletNavigation(
-                            navController,
-                            application = application,
-                            provisioningViewModel = provisioningViewModel,
-                            credentialInformationViewModel = credentialInformationViewModel,
-                            permissionTracker = permissionTracker,
-                            sharedPreferences = sharedPreferences,
-                            qrEngagementViewModel = qrEngagementViewModel
-                        )
-                    }
+                    WalletNavigation(
+                        navController,
+                        application = application,
+                        provisioningViewModel = provisioningViewModel,
+                        credentialInformationViewModel = credentialInformationViewModel,
+                        permissionTracker = permissionTracker,
+                        sharedPreferences = sharedPreferences,
+                        qrEngagementViewModel = qrEngagementViewModel
+                    )
                 }
             }
         }

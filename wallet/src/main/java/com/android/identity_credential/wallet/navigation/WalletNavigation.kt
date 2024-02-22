@@ -71,7 +71,8 @@ fun WalletNavigation(
                 onNavigate = navigateTo,
                 credentialStore = credentialStore,
                 sharedPreferences = sharedPreferences,
-                qrEngagementViewModel = qrEngagementViewModel
+                qrEngagementViewModel = qrEngagementViewModel,
+                permissionTracker = permissionTracker
             )
         }
 
