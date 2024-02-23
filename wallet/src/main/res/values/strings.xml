@@ -92,4 +92,9 @@
     <string name="accessibility_portrait">Portrait of Holder</string>
     <string name="accessibility_signature">Signature or Usual Mark of Holder</string>
     <string name="accessibility_qr_code">QR code</string>
+
+    <!-- Consent Prompt -->
+    <string name="consent_prompt_cancel">Cancel</string>
+    <string name="consent_prompt_share">Share</string>
+    <string name="consent_prompt_title">\"%1$s\" is requesting the following information</string>
 </resources>
