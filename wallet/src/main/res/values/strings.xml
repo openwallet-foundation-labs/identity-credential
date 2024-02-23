@@ -95,6 +95,12 @@
     <string name="accessibility_signature">Signature or Usual Mark of Holder</string>
     <string name="accessibility_qr_code">QR code</string>
 
+    <!-- Consent Prompt -->
+    <string name="consent_prompt_cancel">Cancel</string>
+    <string name="consent_prompt_share">Share</string>
+    <string name="consent_prompt_title">The following information is being requested from \"%1$s\"</string>
+    <string name="consent_prompt_title_verifier">%1$s is requesting information from \"%2$s\"</string>
+
     <!-- SelfSignedMdlIssuingAuthority -->
     <string name="self_signed_authority_name">Utopia mDL</string>
     <string name="self_signed_authority_tos">

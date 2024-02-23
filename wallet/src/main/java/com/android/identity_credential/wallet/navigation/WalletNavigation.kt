@@ -12,11 +12,14 @@ import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.destination.about.AboutScreen
 import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWalletScreen
+import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPrompt
+import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPromptData
 import com.android.identity_credential.wallet.ui.destination.credential.CredentialDetailsScreen
 import com.android.identity_credential.wallet.ui.destination.credential.CredentialInfoScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionCredentialScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
+import com.android.identity_credential.wallet.util.unparcelize
 
 /**
  * Defines the correlation of WalletDestination routes to composable screens
@@ -32,8 +35,9 @@ fun WalletNavigation(
     qrEngagementViewModel: QrEngagementViewModel
 ) {
 
-    // lambda navigateTo takes in a route string and navigates to the corresponding Screen
-    // or perform a pop of the back stack
+    // the lambda 'navigateTo' performs navigation functionality hoisted from child composables by
+    // taking in a route string param and navigating to the corresponding Screen, or performing a
+    // pop of the back stack (simple and with arguments).
     val navigateTo: (String) -> Unit = { routeWithArgs ->
         if (routeWithArgs.startsWith(Route.POP_BACK_STACK.routeName)) {
             // check to see if a route to pop back to was passed in
@@ -58,18 +62,21 @@ fun WalletNavigation(
         }
     }
 
-    val credentialStore = application.credentialStore
+    /**
+     * NavHost definition of routes and composables
+     */
     NavHost(
         navController = navController,
         startDestination = WalletDestination.Main.route
     ) {
+
         /**
          * Main Screen
          */
         composable(WalletDestination.Main.route) {
             MainScreen(
                 onNavigate = navigateTo,
-                credentialStore = credentialStore,
+                credentialStore = application.credentialStore,
                 sharedPreferences = sharedPreferences,
                 qrEngagementViewModel = qrEngagementViewModel,
                 permissionTracker = permissionTracker
@@ -96,8 +103,8 @@ fun WalletNavigation(
         }
 
         /**
-         * Credential Details Screen
-         * Credential Info Screen
+         * Credential Info Screen is shown when a credentialId is passed in
+         * Credential Details Screen shows when "section=details" is also passed in
          */
         composable(
             route = WalletDestination.CredentialInfo.routeWithArgs,
@@ -142,10 +149,52 @@ fun WalletNavigation(
             )
         }
 
+        /**
+         * QR Engagement Screen
+         */
         composable(WalletDestination.QrEngagement.route) {
             QrEngagementScreen(
                 qrEngagementViewModel = qrEngagementViewModel,
                 onNavigate = navigateTo
+            )
+        }
+
+        /**
+         * Consent Prompt bottom sheet modal dialog expects 4 arguments to show
+         */
+        composable(
+            route = WalletDestination.ConsentPrompt.route,
+            arguments = WalletDestination.ConsentPrompt.getArguments()
+        ) { backStackEntry ->
+            val parcelableCredentialRequest = WalletDestination.ConsentPrompt
+                .Argument.CREDENTIAL_REQUEST
+                .extractParcelableFromBackStackEntry(backStackEntry)
+
+            val docType = WalletDestination.ConsentPrompt
+                .Argument.DOCUMENT_TYPE
+                .extractFromBackStackEntry(backStackEntry)
+
+            val docName = WalletDestination.ConsentPrompt
+                .Argument.DOCUMENT_NAME
+                .extractFromBackStackEntry(backStackEntry)
+
+            val credentialId = WalletDestination.ConsentPrompt
+                .Argument.CREDENTIAL_ID
+                .extractFromBackStackEntry(backStackEntry)
+
+            val verifierName = WalletDestination.ConsentPrompt
+                .Argument.VERIFIER_NAME
+                .extractFromBackStackEntry(backStackEntry) ?: ""
+
+            ConsentPrompt(
+                consentData = ConsentPromptData(
+                    credentialRequest = parcelableCredentialRequest!!.unparcelize(),
+                    docType = docType!!,
+                    documentName = docName!!,
+                    credentialId = credentialId!!, // needed to finish processing request and send response
+                    verifierName = verifierName
+                ),
+                credentialTypeRepository = application.credentialTypeRepository
             )
         }
     }
