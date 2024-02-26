@@ -63,6 +63,13 @@ building blocks
   QR engagement, NFC engagement (both static and negotiated), device retrieval
   (BLE, Wifi Aware, and NFC)
 
+### Command-line tool
+
+A command-line tool `identityctl` is included which can be used to generate
+ISO/IEC 18013-5:2021 IACA test certificates among other things. Use
+`./gradlew --quiet runIdentityCtl --args "help"` for documentation on supported
+verbs and options.
+
 ### Library releases, Versioning, and Documentation
 
 Libraries are released on [GMaven](https://maven.google.com/) as needed and version

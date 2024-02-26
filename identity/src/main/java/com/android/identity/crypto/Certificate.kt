@@ -9,6 +9,8 @@ import java.io.ByteArrayInputStream
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * An encoded X509 certificate.
@@ -25,6 +27,20 @@ data class Certificate(
      */
     val dataItem: DataItem
         get() = Bstr(encodedCertificate)
+
+    /**
+     * Encode this certificate in PEM format
+     *
+     * @return a PEM encoded string.
+     */
+    @OptIn(ExperimentalEncodingApi::class)
+    fun toPem(): String {
+        val sb = StringBuilder()
+        sb.append("-----BEGIN CERTIFICATE-----\n")
+        sb.append(Base64.Mime.encode(encodedCertificate))
+        sb.append("\n-----END CERTIFICATE-----\n")
+        return sb.toString()
+    }
 
     private fun getCurve(tbsCertificate: ByteArray): EcCurve {
         // We need to look in SubjectPublicKeyInfo for the curve...
@@ -130,6 +146,21 @@ data class Certificate(
     }
 
     companion object {
+        /**
+         * Creates a [Certificate] from a PEM encoded string.
+         *
+         * @param pemEncoding the PEM encoded string.
+         * @return a new [Certificate].
+         */
+        @OptIn(ExperimentalEncodingApi::class)
+        fun fromPem(pemEncoding: String): Certificate {
+            val encoded = Base64.Mime.decode(pemEncoding
+                .replace("-----BEGIN CERTIFICATE-----", "")
+                .replace("-----END CERTIFICATE-----", "")
+                .trim())
+            return Certificate(encoded)
+        }
+
         /**
          * Gets a [Certificate] from a [Bstr].
          *

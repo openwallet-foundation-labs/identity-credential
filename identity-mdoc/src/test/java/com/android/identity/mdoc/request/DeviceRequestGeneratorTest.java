@@ -38,6 +38,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -86,12 +88,14 @@ public class DeviceRequestGeneratorTest {
         Certificate readerCert = Crypto.createX509v3Certificate(
                 readerKey.getPublicKey(),
                 readerKey,
+                null,
                 Algorithm.ES256,
                 "1",
                 "CN=Test Key",
                 "CN=Test Key",
                 validFrom,
                 validUntil,
+                Set.of(),
                 List.of()
         );
         CertificateChain readerCertChain = new CertificateChain(List.of(readerCert));

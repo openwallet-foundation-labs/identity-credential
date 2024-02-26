@@ -91,6 +91,7 @@ import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.X509v3Extension
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
@@ -156,13 +157,15 @@ class MainActivity :  FragmentActivity() {
             listOf(Crypto.createX509v3Certificate(
                 softwareAttestationKey.publicKey,
                 softwareAttestationKey,
+                null,
                 Algorithm.ES256,
                 "1",
                 "CN=Software Attestation Root",
                 "CN=Software Attestation Root",
                 validFrom,
                 validUntil,
-                emptyList<Crypto.X509v3Extension>()
+                setOf(),
+                listOf()
             ))
         )
     }

@@ -105,6 +105,11 @@ class CertificateTests {
 
         // Checks the key material is correct.
         Assert.assertEquals(publicKey.javaPublicKey, keyPair.public)
+
+        val pemEncoded = cert.toPem()
+        val cert2 = Certificate.fromPem(pemEncoded)
+        Assert.assertEquals(cert2, cert)
+        Assert.assertEquals(cert2.javaX509Certificate, cert.javaX509Certificate)
     }
 
     @Test fun testCurve_P256() = testCurve(EcCurve.P256)

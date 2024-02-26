@@ -1,0 +1,26 @@
+plugins {
+    id 'java-library'
+    id 'org.jetbrains.kotlin.jvm'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+dependencies {
+    implementation project(':identity')
+    implementation project(':identity-mdoc')
+
+    implementation libs.kotlinx.datetime
+
+    implementation libs.bouncy.castle.bcprov
+    implementation libs.bouncy.castle.bcpkix
+}
+
+tasks.register('runIdentityCtl', JavaExec) {
+    group = 'Execution'
+    description = 'Invoke identityctl'
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'com.android.identity.identityctl.IdentityCtl'
+}

@@ -1,11 +1,19 @@
 package com.android.identity.crypto
 
 import com.android.identity.internal.Util
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
+import java.security.Security
 import kotlin.experimental.xor
 
 class CryptoTests {
+
+    @Before
+    fun setup() {
+        Security.insertProviderAt(BouncyCastleProvider(), 1)
+    }
 
     @Test
     fun digests() {
@@ -196,5 +204,31 @@ class CryptoTests {
             )
         )
     }
+
+    fun testPemEncodeDecode(curve: EcCurve) {
+        val privateKey = Crypto.createEcPrivateKey(curve)
+        val publicKey = privateKey.publicKey
+
+        val pemPublicKey = publicKey.toPem()
+        val publicKey2 = EcPublicKey.fromPem(pemPublicKey, curve)
+        Assert.assertEquals(publicKey2, publicKey)
+
+        val pemPrivateKey = privateKey.toPem()
+        val privateKey2 = EcPrivateKey.fromPem(pemPrivateKey, publicKey)
+        Assert.assertEquals(privateKey2, privateKey)
+    }
+    
+    @Test fun testPemEncodeDecode_P256() = testPemEncodeDecode(EcCurve.P256)
+    @Test fun testPemEncodeDecode_P384() = testPemEncodeDecode(EcCurve.P384)
+    @Test fun testPemEncodeDecode_P521() = testPemEncodeDecode(EcCurve.P521)
+    @Test fun testPemEncodeDecode_BRAINPOOLP256R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP256R1)
+    @Test fun testPemEncodeDecode_BRAINPOOLP320R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP320R1)
+    @Test fun testPemEncodeDecode_BRAINPOOLP384R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP384R1)
+    @Test fun testPemEncodeDecode_BRAINPOOLP512R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP512R1)
+    @Test fun testPemEncodeDecode_ED25519() = testPemEncodeDecode(EcCurve.ED25519)
+    @Test fun testPemEncodeDecode_X25519() = testPemEncodeDecode(EcCurve.X25519)
+    @Test fun testPemEncodeDecode_ED448() = testPemEncodeDecode(EcCurve.ED448)
+    @Test fun testPemEncodeDecode_X448() = testPemEncodeDecode(EcCurve.X448)
+
 
 }

@@ -29,6 +29,7 @@ import com.android.identity.internal.Util
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.X509v3Extension
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
@@ -158,16 +159,19 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
         softwareAttestationKeyCertification = CertificateChain(
             listOf(
                 Crypto.createX509v3Certificate(
-                softwareAttestationKey.publicKey,
-                softwareAttestationKey,
-                Algorithm.ES256,
-                "1",
-                "CN=Software Attestation Root",
-                "CN=Software Attestation Root",
-                validFrom,
-                validUntil,
-                emptyList<Crypto.X509v3Extension>()
-            ))
+                    softwareAttestationKey.publicKey,
+                    softwareAttestationKey,
+                    null,
+                    Algorithm.ES256,
+                    "1",
+                    "CN=Software Attestation Root",
+                    "CN=Software Attestation Root",
+                    validFrom,
+                    validUntil,
+                    setOf(),
+                    listOf()
+                )
+            )
         )
     }
 
