@@ -46,7 +46,6 @@ class MainActivity : ComponentActivity() {
     private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
     private val credentialInformationViewModel: CredentialInformationViewModel by viewModels()
-    private lateinit var sharedPreferences: SharedPreferences
 
     private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
         PermissionTracker(this, mapOf(
@@ -68,7 +67,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         application = getApplication() as WalletApplication
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
         permissionTracker.updatePermissions()
 
@@ -87,7 +85,7 @@ class MainActivity : ComponentActivity() {
                         provisioningViewModel = provisioningViewModel,
                         credentialInformationViewModel = credentialInformationViewModel,
                         permissionTracker = permissionTracker,
-                        sharedPreferences = sharedPreferences,
+                        sharedPreferences = application.sharedPreferences,
                         qrEngagementViewModel = qrEngagementViewModel
                     )
                 }
