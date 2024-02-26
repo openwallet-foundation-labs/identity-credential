@@ -50,6 +50,16 @@
             android:theme="@style/Theme.IdentityCredential">
         </activity>
 
+        <provider
+            android:name=".LogFileProvider"
+            android:authorities="com.android.identity_credential.wallet"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/log_file_paths" />
+        </provider>
+
         <service
             android:name=".NfcEngagementHandler"
             android:exported="true"

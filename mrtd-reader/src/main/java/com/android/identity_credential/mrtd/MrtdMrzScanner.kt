@@ -93,12 +93,13 @@ class MrtdMrzScanner(private val mActivity: ComponentActivity) {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         recognizer.process(image).addOnSuccessListener { visionText ->
                 imageProxy.close()
-                val newValue = extractMrtdMrzData(visionText.text)
-                if (newValue != null) {
-                    dataCb(newValue)
+                val value = extractMrtdMrzData(visionText.text)
+                if (value != null) {
+                    mrtdLogI(TAG, "MRZ scanned successfully")
+                    dataCb(value)
                 }
             }.addOnFailureListener { err ->
-                Log.e(TAG, "Error scanning: $err")
+                mrtdLogE(TAG, "Error MRZ scanning", err)
                 imageProxy.close()
             }
     }

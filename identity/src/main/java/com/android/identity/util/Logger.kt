@@ -120,6 +120,7 @@ object Logger {
             try {
                 fileWriter!!.write(logLine)
                 fileWriter!!.write('\n'.code)
+                fileWriter!!.flush()
             } catch (e: IOException) {
                 if (logPrinter != null) {
                     logPrinter!!.printLn(LEVEL_E, tag, "Error writing log message to file", e)
