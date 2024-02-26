@@ -25,12 +25,31 @@ import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.CredentialRequest.DataElement
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.CreateCertificateOption
 import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.X509v3Extension
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.internal.Util.issuerSignedItemClearValue
 import com.android.identity.internal.Util.issuerSignedItemSetValue
 import com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData
 import com.android.identity.mdoc.request.DeviceRequestParser.DocumentRequest
 import com.android.identity.util.Logger
+import kotlinx.datetime.Instant
+import org.bouncycastle.asn1.ASN1ObjectIdentifier
+import org.bouncycastle.asn1.x509.BasicConstraints
+import org.bouncycastle.asn1.x509.CRLDistPoint
+import org.bouncycastle.asn1.x509.DistributionPoint
+import org.bouncycastle.asn1.x509.DistributionPointName
+import org.bouncycastle.asn1.x509.ExtendedKeyUsage
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.GeneralName
+import org.bouncycastle.asn1.x509.GeneralNames
+import org.bouncycastle.asn1.x509.KeyPurposeId
+import org.bouncycastle.asn1.x509.KeyUsage
+import org.bouncycastle.util.BigIntegers
 import kotlin.random.Random
 
 /**
@@ -321,5 +340,201 @@ object MdocUtil {
             }
         }
         return CredentialRequest(elements)
+    }
+
+    /**
+     * Generates a self-signed IACA certificate according to ISO/IEC 18013-5:2021 Annex B.1.2.
+     *
+     * @param iacaKey the private key.
+     * @param subject the value to use for subject and issuer, e.g. "CN=Test IACA,C=UT".
+     * @param validFrom the point in time the certificate should be valid from.
+     * @param validUntil the point in time the certificate should be valid until.
+     * @param issuerAltName the issuer alternative name (see RFC 5280 section 4.2.1.7),
+     * e.g. "http://issuer.example.com/informative/web/page".
+     * @param crlUrl the URL for revocation (see RFC 5280 section 4.2.1.13).
+     * @return a [Certificate] with all the required extensions.
+     */
+    @JvmStatic
+    fun generateIacaCertificate(
+        iacaKey: EcPrivateKey,
+        subject: String,
+        validFrom: Instant,
+        validUntil: Instant,
+        issuerAltName: String,
+        crlUrl: String
+    ): Certificate {
+        // Requirements for the IACA certificate is defined in ISO/IEC 18013-5:2021 Annex B
+
+        // From 18013-5 table B.1: countryName is mandatory
+        //                         stateOrProvinceName is optional.
+        //                         organizationName is optional.
+        //                         commonName shall be present.
+        //                         serialNumber is optional.
+        //
+
+        // From 18013-5 Annex B: 3-5 years is recommended
+        //                       Maximum of 20 years after “Not before” date
+
+        val curve = iacaKey.curve
+
+        // From 18013-5 table B.1: Non-sequential positive, non-zero integer, shall contain
+        //                         at least 63 bits of output from a CSPRNG, should contain at
+        //                         least 71 bits of output from a CSPRNG, maximum 20 octets.
+        val serial = BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toString()
+
+        val extensions = mutableListOf<X509v3Extension>()
+
+        // From 18013-5 table B.1: critical: Key certificate signature + CRL signature bits set
+        extensions.add(
+            X509v3Extension(
+                Extension.keyUsage.toString(),
+                true,
+                KeyUsage(KeyUsage.cRLSign + KeyUsage.keyCertSign).encoded
+            )
+        )
+
+        // From 18013-5 table B.1: non-critical, Email or URL
+
+        extensions.add(
+            X509v3Extension(
+                Extension.issuerAlternativeName.toString(),
+                false,
+                GeneralName(GeneralName.uniformResourceIdentifier, issuerAltName).encoded
+            )
+        )
+
+        // From 18013-5 table B.1: critical, CA=true, pathLenConstraint=0
+        extensions.add(
+            X509v3Extension(
+                Extension.basicConstraints.toString(),
+                true,
+                BasicConstraints(0).encoded
+            )
+        )
+
+        // From 18013-5 table B.1: non-critical, The ‘reasons’ and ‘cRL Issuer’
+        // fields shall not be used.
+        val distributionPoint =
+            DistributionPoint(
+                DistributionPointName(
+                    GeneralNames(
+                        GeneralName(GeneralName.uniformResourceIdentifier, crlUrl)
+                    )
+                ),
+                null,
+                null
+            )
+        extensions.add(
+            X509v3Extension(
+                Extension.cRLDistributionPoints.toString(),
+                false,
+                CRLDistPoint(listOf(distributionPoint).toTypedArray()).encoded
+            )
+        )
+
+        return Crypto.createX509v3Certificate(
+            iacaKey.publicKey,
+            iacaKey,
+            null,
+            curve.defaultSigningAlgorithm,
+            serial,
+            subject,
+            subject,
+            validFrom,
+            validUntil,
+            // 18013-5 Annex C requires both of these to be present
+            setOf(
+                CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
+                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER
+            ),
+            extensions
+        )
+    }
+
+    /**
+     * Generates a Document Signing certificate according to ISO/IEC 18013-5:2021 Annex B.1.4.
+     *
+     * @param iacaCert the IACA certificate the DS certificate.
+     * @param iacaKey the private key for the IACA certificate.
+     * @param dsKey the public part of the DS key.
+     * @param subject the value to use for subject, e.g. "CN=Test DS,C=UT".
+     * @param validFrom the point in time the certificate should be valid from.
+     * @param validUntil the point in time the certificate should be valid until.
+     * @param issuerAltName the issuer alternative name (see RFC 5280 section 4.2.1.7),
+     * e.g. "http://issuer.example.com/informative/web/page".
+     * @param crlUrl the URL for revocation (see RFC 5280 section 4.2.1.13).
+     * @return a [Certificate] with all the required extensions.
+     */
+    @JvmStatic
+    fun generateDsCertificate(
+        iacaCert: Certificate,
+        iacaKey: EcPrivateKey,
+        dsKey: EcPublicKey,
+        subject: String,
+        validFrom: Instant,
+        validUntil: Instant,
+    ): Certificate {
+
+        val iacaCertJava = iacaCert.javaX509Certificate
+
+        // Must be same exact binary value as the subject of IACA certificate.
+        val issuer = iacaCertJava.subjectX500Principal.toString()
+
+        val serial = BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toString()
+
+        val extensions = mutableListOf<X509v3Extension>()
+
+        extensions.add(
+            X509v3Extension(
+                Extension.keyUsage.toString(),
+                true,
+                KeyUsage(KeyUsage.digitalSignature).encoded
+            )
+        )
+
+        extensions.add(
+            X509v3Extension(
+                Extension.extendedKeyUsage.toString(),
+                true,
+                ExtendedKeyUsage(
+                    KeyPurposeId.getInstance(ASN1ObjectIdentifier("1.0.18013.5.1.2"))
+                ).encoded
+            )
+        )
+
+        // Copy cRLDistributionPoints and issuerAlternativeName from IACA cert
+        extensions.add(
+            X509v3Extension(
+                Extension.cRLDistributionPoints.toString(),
+                false,
+                iacaCertJava.getExtensionValue(Extension.cRLDistributionPoints.toString())
+            )
+        )
+        extensions.add(
+            X509v3Extension(
+                Extension.issuerAlternativeName.toString(),
+                false,
+                iacaCertJava.getExtensionValue(Extension.issuerAlternativeName.toString())
+            )
+        )
+
+        val documentSigningKeyCert = Crypto.createX509v3Certificate(
+            dsKey,
+            iacaKey,
+            iacaCert,
+            Algorithm.ES256,
+            serial,
+            subject,
+            issuer,
+            validFrom,
+            validUntil,
+            setOf(
+                CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
+                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE
+            ),
+            extensions
+        )
+
+        return documentSigningKeyCert
     }
 }

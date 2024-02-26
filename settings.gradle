@@ -33,6 +33,7 @@ include ':identity', ':identity-mdoc', ':identity-android', ':mrtd-reader', ':jp
 include ':appholder', ':appverifier', ':secure-area-test-app', ':wwwverifier', ':wallet'
 // Server-side apps
 include ':wwwverifier'
+// Command-line tool
+include ':identityctl'
 // Samples
 include ':samples:preconsent-mdl', ':samples:age-verifier-mdl', ':samples:simple-verifier'
-

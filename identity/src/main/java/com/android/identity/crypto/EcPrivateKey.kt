@@ -12,16 +12,19 @@ import org.bouncycastle.asn1.DEROctetString
 import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier
-import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPrivateKey
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.interfaces.ECPrivateKey
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECPrivateKeySpec
 import org.bouncycastle.util.BigIntegers
-import java.io.ByteArrayInputStream
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.spec.PKCS8EncodedKeySpec
+import java.security.spec.X509EncodedKeySpec
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.text.StringBuilder
 
 
 /**
@@ -47,11 +50,50 @@ sealed class EcPrivateKey(
     abstract fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem> = emptyMap()): CoseKey
 
     /**
+     * Encode this key in PEM format
+     *
+     * @return a PEM encoded string.
+     */
+    @OptIn(ExperimentalEncodingApi::class)
+    fun toPem(): String {
+        val sb = StringBuilder()
+        sb.append("-----BEGIN PRIVATE KEY-----\n")
+        sb.append(Base64.Mime.encode(javaPrivateKey.encoded))
+        sb.append("\n-----END PRIVATE KEY-----\n")
+        return sb.toString()
+    }
+
+    /**
      * The public part of the key.
      */
     abstract val publicKey: EcPublicKey
 
     companion object {
+        /**
+         * Creates an [EcPrivateKey] from a PEM encoded string.
+         *
+         * @param pemEncoding the PEM encoded string.
+         * @param publicKey the corresponding public key.
+         * @return a new [EcPrivateKey]
+         */
+        @OptIn(ExperimentalEncodingApi::class)
+        fun fromPem(pemEncoding: String, publicKey: EcPublicKey): EcPrivateKey {
+            val encoded = Base64.Mime.decode(pemEncoding
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .trim())
+            val kf = when (publicKey.curve) {
+                EcCurve.ED448,
+                EcCurve.ED25519 -> KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
+                EcCurve.X25519,
+                EcCurve.X448 -> KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
+                else -> KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
+            }
+            val spec = PKCS8EncodedKeySpec(encoded)
+            val privateKeyJava = kf.generatePrivate(spec)
+            return privateKeyJava.toEcPrivateKey(publicKey.javaPublicKey, publicKey.curve)
+        }
+
         /**
          * Gets a [EcPrivateKey] from a COSE Key.
          *

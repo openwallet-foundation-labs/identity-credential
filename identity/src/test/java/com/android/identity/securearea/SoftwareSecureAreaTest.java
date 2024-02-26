@@ -94,12 +94,14 @@ public class SoftwareSecureAreaTest {
         Certificate certificate = Crypto.createX509v3Certificate(
                 mAttestationKey.getPublicKey(),
                 mAttestationKey,
+                null,
                 mAttestationKeySignatureAlgorithm,
                 "1",
                 "CN=Test Attestation Key",
                 "CN=Test Attestation Key",
                 validFrom,
                 validUntil,
+                Set.of(),
                 List.of()
         );
         mAttestationKeyCertification = new CertificateChain(List.of(certificate));
