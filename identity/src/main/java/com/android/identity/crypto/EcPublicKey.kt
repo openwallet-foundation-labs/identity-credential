@@ -125,8 +125,9 @@ private val X448_X509_ENCODED_PREFIX =
 val EcPublicKey.javaPublicKey: PublicKey
     get() = when (this) {
         is EcPublicKeyDoubleCoordinate -> {
-            check(x.size == curve.keySizeOctets)
-            check(y.size == curve.keySizeOctets)
+            val keySizeOctets = (curve.bitSize + 7)/8
+            check(x.size == keySizeOctets)
+            check(y.size == keySizeOctets)
             val bx = BigInteger(1, x)
             val by = BigInteger(1, y)
             try {

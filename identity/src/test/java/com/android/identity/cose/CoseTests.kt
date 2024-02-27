@@ -4,6 +4,7 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.cbor.toDataItem
 import com.android.identity.internal.Util
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
@@ -62,7 +63,7 @@ class CoseTests {
             BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32),
             BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32))
         val coseKey = key.toCoseKey(
-            mapOf(Pair(Cose.COSE_KEY_KID.toCoseLabel, "name@example.com".toByteArray().dataItem))
+            mapOf(Pair(Cose.COSE_KEY_KID.toCoseLabel, "name@example.com".toByteArray().toDataItem))
         )
         Assert.assertEquals(
             "{\n" +
@@ -159,10 +160,10 @@ class CoseTests {
 
         val coseSign1 = CoseSign1(
             mutableMapOf(
-                Pair(1L.toCoseLabel, (-7).dataItem)
+                Pair(1L.toCoseLabel, (-7).toDataItem)
             ),
             mutableMapOf(
-                Pair(11L.toCoseLabel, byteArrayOf(1, 1).dataItem)
+                Pair(11L.toCoseLabel, byteArrayOf(1, 1).toDataItem)
             ),
             Util.fromHex("8eb33e4ca31d1c465ab05aac34cc6b23d58fef5c083106c4" +
                     "d25a91aef0b0117e2af9a291aa32e14ab834dc56ed2a223444547e01f11d3b0916e5" +
@@ -247,7 +248,7 @@ class CoseTests {
         val signatureAlgorithm = privateKey.curve.defaultSigningAlgorithm
         val protectedHeaders = mapOf<CoseLabel, DataItem>(
             Pair(Cose.COSE_LABEL_ALG.toCoseLabel,
-                signatureAlgorithm.coseAlgorithmIdentifier.dataItem
+                signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
             )
         )
         val message = "Hello World".toByteArray()

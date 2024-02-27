@@ -99,5 +99,4 @@ enum class EcCurve(val coseCurveIdentifier: Int) {
         }
 
     // helper to easily return the size of key in octets
-    val keySizeOctets = (bitSize + 7) / 8
 }

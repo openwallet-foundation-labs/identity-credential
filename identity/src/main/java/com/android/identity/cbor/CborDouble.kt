@@ -41,7 +41,7 @@ class CborDouble(val value: Double) : DataItem(MajorType.SPECIAL) {
         }
     }
 
-    override fun equals(other: Any?): Boolean = other is CborDouble && value == other.value
+    override fun equals(other: Any?): Boolean = other is CborDouble && value.equals(other.value)
 
     override fun hashCode(): Int = value.hashCode()
 
