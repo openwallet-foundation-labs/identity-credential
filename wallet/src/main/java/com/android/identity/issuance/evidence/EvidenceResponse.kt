@@ -77,10 +77,11 @@ abstract class EvidenceResponse(
                         when (key) {
                             is Uint -> decodedMap[key.asNumber.toInt()] = map[key].asBstr
                             is Tstr -> {
-                                if (key.asTstr != "sod") {
-                                    throw IllegalArgumentException("Unexpected string key $key")
+                                when (key.asTstr) {
+                                    "evidenceType" -> {} // noop
+                                    "sod" -> securityObject = map[key].asBstr
+                                    else -> throw IllegalArgumentException("Unexpected string key $key")
                                 }
-                                securityObject = map[key].asBstr
                             }
                             else -> {
                                 throw IllegalArgumentException("Unexpected key $key")
@@ -93,19 +94,21 @@ abstract class EvidenceResponse(
                     return EvidenceResponseIcaoNfcTunnel(map["response"].asBstr)
                 }
                 EvidenceType.ICAO_9303_NFC_TUNNEL_RESULT -> {
-                    val authenticationType =
-                        EvidenceResponseIcaoNfcTunnelResult.AdvancedAuthenticationType.valueOf(
-                            map["authentication"].asTstr)
+                    var authenticationType: EvidenceResponseIcaoNfcTunnelResult.AdvancedAuthenticationType? = null
                     val decodedMap = mutableMapOf<Int, ByteArray>()
                     var securityObject: ByteArray? = null
                     for (key in map.asMap.keys) {
                         when (key) {
                             is Uint -> decodedMap[key.asNumber.toInt()] = map[key].asBstr
                             is Tstr -> {
-                                if (key.asTstr != "sod") {
-                                    throw IllegalArgumentException("Unexpected string key $key")
+                                when (key.asTstr) {
+                                    "evidenceType" -> {} // noop
+                                    "sod" -> securityObject = map[key].asBstr
+                                    "authentication" -> authenticationType =
+                                        EvidenceResponseIcaoNfcTunnelResult.AdvancedAuthenticationType.valueOf(
+                                                map[key].asTstr)
+                                    else -> throw IllegalArgumentException("Unexpected string key $key")
                                 }
-                                securityObject = map[key].asBstr
                             }
                             else -> {
                                 throw IllegalArgumentException("Unexpected key $key")
@@ -113,7 +116,7 @@ abstract class EvidenceResponse(
                         }
                     }
                     return EvidenceResponseIcaoNfcTunnelResult(
-                        authenticationType, decodedMap, securityObject!!)
+                        authenticationType!!, decodedMap, securityObject!!)
                 }
             }
         }

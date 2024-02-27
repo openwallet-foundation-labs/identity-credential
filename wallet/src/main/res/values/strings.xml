@@ -92,4 +92,37 @@
     <string name="accessibility_portrait">Portrait of Holder</string>
     <string name="accessibility_signature">Signature or Usual Mark of Holder</string>
     <string name="accessibility_qr_code">QR code</string>
+
+    <!-- SelfSignedMdlIssuingAuthority -->
+    <string name="self_signed_authority_name">Utopia mDL</string>
+    <string name="self_signed_authority_tos">
+        Here\'s a long string with TOS. Lorem ipsum dolor sit amet, consectetur
+        adipiscing elit. Vivamus dictum vel metus non mattis. Ut mattis,
+        ipsum vel hendrerit consectetur, mauris purus ultricies nulla, sit amet
+        pulvinar odio lorem sed justo. Aliquam erat volutpat.
+        Nulla facilisi.
+    </string>
+    <string name="self_signed_authority_accept">Accept</string>
+    <string name="self_signed_authority_reject">Do Not Accept</string>
+    <string name="self_signed_authority_authentication_choice">How do you want to authenticate</string>
+    <string name="self_signed_authority_continue">Continue</string>
+    <string name="self_signed_authority_scan_passport">Scan passport</string>
+    <string name="self_signed_authority_scan_passport_auth">Scan passport with authentication</string>
+    <string name="self_signed_authority_answer_questions">Answer questions</string>
+    <string name="self_signed_authority_chip_authentication">Excellent! You passport supports chip authentication.</string>
+    <string name="self_signed_authority_active_authentication">Nice! You passport supports active authentication.</string>
+    <string name="self_signed_authority_no_authentication">Your passport only supports passive authentication. Who knows, maybe it is a clone? There is no protection.</string>
+    <string name="self_signed_authority_question_first_name">What first name should be used for the mDL?</string>
+    <string name="self_signed_authority_card_art">Select the card art for the credential</string>
+    <string name="self_signed_authority_card_art_green">Green</string>
+    <string name="self_signed_authority_card_art_blue">Blue</string>
+    <string name="self_signed_authority_card_art_red">Red</string>
+    <string name="self_signed_authority_application_finish">
+        Your application is about to be sent the ID issuer for verification. You will get notified
+        when the application is approved.
+    </string>
+    <string name="self_signed_authority_pending_credential_title">Utopia mDL (pending)</string>
+    <string name="self_signed_authority_pending_credential_text">mDL (Pending)</string>
+    <string name="self_signed_authority_credential_title">%1$s\'s mDL</string>
+    <string name="self_signed_authority_credential_text">%1$s\'s mDL</string>
 </resources>
