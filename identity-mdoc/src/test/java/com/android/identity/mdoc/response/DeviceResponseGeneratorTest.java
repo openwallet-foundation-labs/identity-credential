@@ -171,12 +171,14 @@ public class DeviceResponseGeneratorTest {
         mDocumentSignerCert = Crypto.createX509v3Certificate(
                 mDocumentSignerKey.getPublicKey(),
                 mDocumentSignerKey,
+                null,
                 Algorithm.ES256,
                 "1",
                 "CN=State Of Utopia",
                 "CN=State Of Utopia",
                 validFrom,
                 validUntil,
+                Set.of(),
                 List.of());
 
         byte[] mso = msoGenerator.generate();

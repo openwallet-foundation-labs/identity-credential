@@ -80,7 +80,7 @@ fun WalletNavigation(
          * About Screen
          */
         composable(WalletDestination.About.route) {
-            AboutScreen(onNavigate = navigateTo)
+            AboutScreen(onNavigate = navigateTo, loggerModel = application.loggerModel)
         }
 
         /**

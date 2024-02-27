@@ -21,6 +21,8 @@ import java.security.spec.ECParameterSpec
 import java.security.spec.ECPoint
 import java.security.spec.ECPublicKeySpec
 import java.security.spec.X509EncodedKeySpec
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
  * An EC Public Key.
@@ -42,7 +44,46 @@ sealed class EcPublicKey(
      */
     abstract fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem> = emptyMap()): CoseKey
 
+    /**
+     * Encode this key in PEM format
+     *
+     * @return a PEM encoded string.
+     */
+    @OptIn(ExperimentalEncodingApi::class)
+    fun toPem(): String {
+        val sb = StringBuilder()
+        sb.append("-----BEGIN PUBLIC KEY-----\n")
+        sb.append(Base64.Mime.encode(javaPublicKey.encoded))
+        sb.append("\n-----END PUBLIC KEY-----\n")
+        return sb.toString()
+    }
+
     companion object {
+        /**
+         * Creates an [EcPublicKey] from a PEM encoded string.
+         *
+         * @param pemEncoding the PEM encoded string.
+         * @param curve the curve of the key..
+         * @return a new [EcPublicKey].
+         */
+        @OptIn(ExperimentalEncodingApi::class)
+        fun fromPem(pemEncoding: String, curve: EcCurve): EcPublicKey {
+            val encoded = Base64.Mime.decode(pemEncoding
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .trim())
+            val kf = when (curve) {
+                EcCurve.ED448,
+                EcCurve.ED25519 -> KeyFactory.getInstance("EdDSA", BouncyCastleProvider.PROVIDER_NAME)
+                EcCurve.X25519,
+                EcCurve.X448 -> KeyFactory.getInstance("XDH", BouncyCastleProvider.PROVIDER_NAME)
+                else -> KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
+            }
+            val spec = X509EncodedKeySpec(encoded)
+            val publicKeyJava = kf.generatePublic(spec)
+            return publicKeyJava.toEcPublicKey(curve)
+        }
+
         /**
          * Gets a [EcPublicKey] from a COSE Key.
          *

@@ -4,7 +4,12 @@ import com.android.identity.internal.Util
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteStringBuilder
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
+import org.bouncycastle.asn1.ASN1OctetString
 import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.SubjectKeyIdentifier
+import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.agreement.X448Agreement
@@ -505,43 +510,32 @@ object Crypto {
         }
 
     /**
-     * Data for a X509 extension
-     *
-     * @param oid the OID of the extension.
-     * @param isCritical criticality.
-     * @param payload the payload of the extension.
-     */
-    data class X509v3Extension(
-        val oid: String,
-        val isCritical: Boolean,
-        val payload: ByteArray
-    )
-
-    /**
      * Creates a certificate for a public key.
      *
      * @param publicKey the key to create a certificate for.
      * @param signingKey the key to sign the certificate.
+     * @param signingKeyCertificate the certificate for the signing key, if available.
      * @param signatureAlgorithm the signature algorithm to use.
      * @param serial the serial, must be a number.
      * @param subject the subject string.
      * @param issuer the issuer string.
      * @param validFrom when the certificate should be valid from.
      * @param validUntil when the certificate should be valid until.
-     * @param extensions list of extensions to put into the certificate.
+     * @param options one or more options from the [CreateCertificateOption] enumeration.
+     * @param additionalExtensions additional extensions to put into the certificate.
      */
     @JvmStatic
-    fun createX509v3Certificate(
-        publicKey: EcPublicKey,
-        signingKey: EcPrivateKey,
-        signatureAlgorithm: Algorithm,
-        serial: String,
-        subject: String,
-        issuer: String,
-        validFrom: Instant,
-        validUntil: Instant,
-        extensions: List<X509v3Extension>
-    ): Certificate {
+    fun createX509v3Certificate(publicKey: EcPublicKey,
+                                signingKey: EcPrivateKey,
+                                signingKeyCertificate: Certificate?,
+                                signatureAlgorithm: Algorithm,
+                                serial: String,
+                                subject: String,
+                                issuer: String,
+                                validFrom: Instant,
+                                validUntil: Instant,
+                                options: Set<CreateCertificateOption>,
+                                additionalExtensions: List<X509v3Extension>): Certificate {
         val signatureAlgorithmString = when (signatureAlgorithm) {
             Algorithm.ES256 -> "SHA256withECDSA"
             Algorithm.ES384 -> "SHA384withECDSA"
@@ -560,15 +554,42 @@ object Crypto {
         }
         val certSigningKeyJava = signingKey.javaPrivateKey
 
+        val publicKeyJava = publicKey.javaPublicKey
         val certBuilder = JcaX509v3CertificateBuilder(
             X500Name(issuer),
             BigInteger(serial),
             Date(validFrom.toEpochMilliseconds()),
             Date(validUntil.toEpochMilliseconds()),
             X500Name(subject),
-            publicKey.javaPublicKey
+            publicKeyJava
         )
-        extensions.forEach { extension ->
+        if (options.contains(CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER)) {
+            certBuilder.addExtension(
+                Extension.subjectKeyIdentifier,
+                false,
+                JcaX509ExtensionUtils().createSubjectKeyIdentifier(publicKeyJava)
+            )
+        }
+        if (options.contains(CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER)) {
+            certBuilder.addExtension(
+                Extension.authorityKeyIdentifier,
+                false,
+                JcaX509ExtensionUtils().createAuthorityKeyIdentifier(publicKeyJava)
+            )
+        }
+        if (options.contains(
+                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_FROM_SIGNING_KEY_CERTIFICATE)) {
+            check(signingKeyCertificate != null)
+            val signerCert = signingKeyCertificate.javaX509Certificate
+            val encoded = signerCert.getExtensionValue(Extension.subjectKeyIdentifier.toString())
+            val subjectKeyIdentifier = SubjectKeyIdentifier.getInstance(ASN1OctetString.getInstance(encoded).octets)
+            certBuilder.addExtension(
+                Extension.authorityKeyIdentifier,
+                false,
+                AuthorityKeyIdentifier(subjectKeyIdentifier.keyIdentifier)
+            )
+        }
+        additionalExtensions.forEach { extension ->
             certBuilder.addExtension(
                 ASN1ObjectIdentifier(extension.oid),
                 extension.isCritical,

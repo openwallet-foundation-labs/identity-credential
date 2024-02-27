@@ -7,6 +7,7 @@ import net.sf.scuba.smartcards.ResponseAPDU
 import org.jmrtd.Util
 import org.jmrtd.protocol.SecureMessagingWrapper
 import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -106,6 +107,13 @@ class MrtdNfcReaderTest {
 
     private val chipAccess = MrtdNfcChipAccess(false)  // Don't check mac
     private val reader = MrtdNfcDataReader(listOf(1, 2))
+
+    @Before
+    fun before() {
+        mrtdSetLogger { level, tag, msg, err ->
+            println("LOG$level $tag $msg ${err?.toString() ?: ""}")
+        }
+    }
 
     // This test just plays out the simplest success path through the code.
     @Test

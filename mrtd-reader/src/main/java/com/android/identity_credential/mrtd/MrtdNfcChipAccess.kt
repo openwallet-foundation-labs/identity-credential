@@ -8,6 +8,8 @@ import org.jmrtd.PassportService
 import org.jmrtd.lds.CardAccessFile
 import org.jmrtd.lds.PACEInfo
 
+private const val TAG = "MrtdNfcChipAccess"
+
 /**
  * Implements Chip Access Procedure (see ICAO 9303 part 11, Section 4.2), establishing encrypted
  * connection to the chip. Emits [MrtdNfc.Status] as the reading progresses.
@@ -21,8 +23,8 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
      * This must be called on a background thread.
      */
     fun open(cardService: CardService, mrzData: MrtdMrzData,
-             onStatus: (MrtdNfc.Status) -> Unit): PassportService
-     {
+             onStatus: (MrtdNfc.Status) -> Unit): PassportService {
+        mrtdLogI(TAG, "Opening NFC connection")
         cardService.open()
         val service = PassportService(
             cardService,
@@ -32,8 +34,8 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
             shouldCheckMac
         )
         this.service = service  // for testing
-        service.wrapper
         service.open()
+        mrtdLogI(TAG, "NFC connection opened")
         onStatus(MrtdNfc.Connected)
 
 
@@ -42,6 +44,7 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
 
         var hasPaceSucceeded = false
         try {
+            mrtdLogI(TAG, "reading EF_CARD_ACCESS")
             val cardAccessFile = CardAccessFile(
                 service.getInputStream(
                     PassportService.EF_CARD_ACCESS, PassportService.DEFAULT_MAX_BLOCKSIZE
@@ -49,6 +52,7 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
             )
             for (securityInfo in cardAccessFile.securityInfos) {
                 if (securityInfo is PACEInfo) {
+                    mrtdLogI(TAG, "attempting PACE")
                     onStatus(MrtdNfc.AttemptingPACE)
                     service.doPACE(
                         bacKeySpec,
@@ -56,6 +60,7 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
                         PACEInfo.toParameterSpec(securityInfo.parameterId),
                         securityInfo.parameterId
                     )
+                    mrtdLogI(TAG, "PACE succeeded")
                     onStatus(MrtdNfc.PACESucceeded)
                     hasPaceSucceeded = true
                     break
@@ -63,8 +68,10 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
             }
         } catch (err: CardServiceException) {
             if (err.sw == ISO7816.SW_FILE_NOT_FOUND.toInt()) {
+                mrtdLogI(TAG, "PACE not supported")
                 onStatus(MrtdNfc.PACENotSupported)  // Certainly acceptable
             } else {
+                mrtdLogI(TAG, "PACE failed")
                 onStatus(MrtdNfc.PACEFailed)  // Questionable, but happens in reality
             }
         }
@@ -72,8 +79,10 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
         service.sendSelectApplet(hasPaceSucceeded)
 
         if (!hasPaceSucceeded) {
+            mrtdLogI(TAG, "attempting BAC")
             onStatus(MrtdNfc.AttemptingBAC)
             service.doBAC(bacKeySpec)
+            mrtdLogI(TAG, "BAC succeeded")
             onStatus(MrtdNfc.BACSucceeded)
         }
 

@@ -7,11 +7,14 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.lang.IllegalArgumentException
 
+private const val TAG = "MrtdNfcDataReader"
+
 class MrtdNfcDataReader(private val dataGroups: List<Int>) : MrtdNfcReader<MrtdNfcData> {
     override fun read(rawConnection: CardService, connection: PassportService,
                       onStatus: (MrtdNfc.Status) -> Unit): MrtdNfcData {
         var totalLength = 0
         var groupsRead = 0
+        mrtdLogI(TAG, "Examining DGs")
         // report 1% progress per group info read (as it does not come free)
         val streams = dataGroups.associateBy({ dgIndex -> dgIndex }) {dgIndex ->
             if (dgIndex < 1 || dgIndex > 16) {
@@ -22,29 +25,38 @@ class MrtdNfcDataReader(private val dataGroups: List<Int>) : MrtdNfcReader<MrtdN
                     (PassportService.EF_DG1 + dgIndex - 1).toShort(),
                     PassportService.DEFAULT_MAX_BLOCKSIZE
                 )
-                totalLength += stream.length
+                val length = stream.length
+                mrtdLogI(TAG, "DG$dgIndex length = $length")
+                totalLength += length
                 groupsRead++
+                mrtdLogI(TAG, "Progress: $groupsRead%")
                 onStatus(MrtdNfc.ReadingData(groupsRead))
                 stream
             } catch (err: CardServiceException) {
                 null
             }
         }.filterValues { it != null }
+        mrtdLogI(TAG, "Examining SOD")
         val sodStream =
             connection.getInputStream(PassportService.EF_SOD, PassportService.DEFAULT_MAX_BLOCKSIZE)
         val sodLength = sodStream.length
+        mrtdLogI(TAG, "SOD length = $sodLength")
         totalLength += sodLength
         val onProgress = { progress: Int ->
             val adjustedProgress = groupsRead + progress * (100 - groupsRead) / 100
+            mrtdLogI(TAG, "Progress: $adjustedProgress%")
             onStatus(MrtdNfc.ReadingData(adjustedProgress))
         }
+        mrtdLogI(TAG, "Reading SOD")
         val sod = readStream(0, totalLength, sodStream, onProgress)
         var bytesRead = sodLength
         val dataGroupMap = streams.mapValues { entry ->
+            mrtdLogI(TAG, "Reading DG${entry.key}")
             val bytes = readStream(bytesRead, totalLength, entry.value!!, onProgress)
             bytesRead += entry.value!!.length
             bytes
         }
+        mrtdLogI(TAG, "Finished reading")
         return MrtdNfcData(dataGroupMap, sod)
     }
 

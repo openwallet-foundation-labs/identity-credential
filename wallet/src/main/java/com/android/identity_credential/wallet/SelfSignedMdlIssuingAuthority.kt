@@ -9,6 +9,7 @@ import android.graphics.RadialGradient
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import androidx.annotation.RawRes
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DataItem
@@ -22,10 +23,9 @@ import com.android.identity.credential.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
-import com.android.identity.crypto.Crypto
-import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
@@ -48,6 +48,7 @@ import com.android.identity_credential.mrtd.MrtdNfcData
 import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
 import kotlinx.datetime.Clock
 import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
 import kotlin.math.ceil
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.days
@@ -123,21 +124,21 @@ class SelfSignedMdlIssuingAuthority(
             msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
         }
 
-        ensureIssuerSigningKeys()
+        ensureDocumentSigningKey()
         val mso = msoGenerator.generate()
         val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
-        val issuerCertChain = listOf(issuerSigningKeyCert)
+        val issuerCertChain = listOf(documentSigningKeyCert)
         val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_ALG),
             Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(listOf(Certificate(issuerSigningKeyCert.encodedCertificate))).dataItem
+            CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).dataItem
         ))
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(
-                issuerSigningKey,
+                documentSigningKey,
                 taggedEncodedMso,
                 true,
                 Algorithm.ES256,
@@ -155,30 +156,44 @@ class SelfSignedMdlIssuingAuthority(
         return issuerProvidedAuthenticationData
     }
 
-    private lateinit var issuerSigningKey: EcPrivateKey
-    private lateinit var issuerSigningKeyCert: Certificate
+    private lateinit var documentSigningKey: EcPrivateKey
+    private lateinit var documentSigningKeyCert: Certificate
 
-    private fun ensureIssuerSigningKeys() {
-        if (this::issuerSigningKey.isInitialized) {
+    private fun getRawResourceAsString(@RawRes resourceId: Int): String {
+        val inputStream = application.applicationContext.resources.openRawResource(resourceId)
+        val bytes = inputStream.readBytes()
+        return String(bytes, StandardCharsets.UTF_8)
+    }
+
+    private fun ensureDocumentSigningKey() {
+        if (this::documentSigningKey.isInitialized) {
             return
         }
-        issuerSigningKey = Crypto.createEcPrivateKey(EcCurve.P256)
 
-        // TODO: also generate an IACA certificate with the appropriate extensions
+        // The IACA and DS certificates and keys can be regenerated using the following steps
+        //
+        // $ ./gradlew --quiet runIdentityCtl --args generateIaca
+        // Generated IACA certificate and private key.
+        // - Wrote private key to iaca_private_key.pem
+        // - Wrote IACA certificate to iaca_certificate.pem
+        //
+        // $ ./gradlew --quiet runIdentityCtl --args generateDs
+        // Generated DS certificate and private key.
+        // - Wrote private key to ds_private_key.pem
+        // - Wrote DS certificate to ds_certificate.pem
+        //
+        // $ mv identityctl/iaca_*.pem wallet/src/main/res/raw/
+        // $ cp wallet/src/main/res/raw/iaca_certificate.pem appverifier/src/main/res/raw/owf_wallet_iaca_root.pem
+        // $ mv identityctl/ds_*.pem wallet/src/main/res/raw/
+        //
 
-        val validFrom = Clock.System.now()
-        val validUntil = validFrom + 365.days*5
-        issuerSigningKeyCert = Crypto.createX509v3Certificate(
-            issuerSigningKey.publicKey,
-            issuerSigningKey,
-            Algorithm.ES256,
-            "1",
-            "CN=State Of Utopia DS",
-            "CN=State Of Utopia DS",
-            validFrom,
-            validUntil,
-            listOf()
+        documentSigningKeyCert = Certificate.fromPem(getRawResourceAsString(R.raw.ds_certificate))
+        Logger.d(TAG, "Cert: " + documentSigningKeyCert.javaX509Certificate.toString())
+        documentSigningKey = EcPrivateKey.fromPem(
+            getRawResourceAsString(R.raw.ds_private_key),
+            documentSigningKeyCert.publicKey
         )
+
     }
 
     override fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {

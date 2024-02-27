@@ -22,6 +22,7 @@ import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.X509v3Extension
 import com.android.identity.securearea.AttestationExtension
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
@@ -126,14 +127,16 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
             val certificate = Crypto.createX509v3Certificate(
                 privateKey.publicKey,
                 certSigningKey,
+                null,
                 signatureAlgorithm,
                 "1",
                 subject,
                 issuer,
                 validFrom,
                 validUntil,
+                setOf(),
                 listOf(
-                    Crypto.X509v3Extension(
+                    X509v3Extension(
                         AttestationExtension.ATTESTATION_OID,
                         false,
                         AttestationExtension.encode(settings.attestationChallenge)
