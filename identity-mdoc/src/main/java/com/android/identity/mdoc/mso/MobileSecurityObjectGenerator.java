@@ -237,7 +237,7 @@ public class MobileSecurityObjectGenerator {
     @NonNull
     private CborBuilder generateDeviceKeyBuilder() {
         MapBuilder<CborBuilder> deviceKeyMapBuilder = CborMap.Companion.builder();
-        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.toCoseKey(Map.of()).getDataItem());
+        deviceKeyMapBuilder.put("deviceKey", mDeviceKey.toCoseKey(Map.of()).getToDataItem());
 
         if (!mAuthorizedNameSpaces.isEmpty() | !mAuthorizedDataElements.isEmpty()) {
             MapBuilder<MapBuilder<CborBuilder>> keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations");
@@ -280,11 +280,11 @@ public class MobileSecurityObjectGenerator {
     @NonNull
     private CborBuilder generateValidityInfoBuilder() {
         MapBuilder<CborBuilder> validityMapBuilder = CborMap.Companion.builder();
-        validityMapBuilder.put("signed", DataItemExtensionsKt.getDateTimeString(mSigned.toEpochMilli()));
-        validityMapBuilder.put("validFrom", DataItemExtensionsKt.getDateTimeString(mValidFrom.toEpochMilli()));
-        validityMapBuilder.put("validUntil", DataItemExtensionsKt.getDateTimeString(mValidUntil.toEpochMilli()));
+        validityMapBuilder.put("signed", DataItemExtensionsKt.getToDataItemDateTimeString(mSigned.toEpochMilli()));
+        validityMapBuilder.put("validFrom", DataItemExtensionsKt.getToDataItemDateTimeString(mValidFrom.toEpochMilli()));
+        validityMapBuilder.put("validUntil", DataItemExtensionsKt.getToDataItemDateTimeString(mValidUntil.toEpochMilli()));
         if (mExpectedUpdate != null) {
-            validityMapBuilder.put("expectedUpdate", DataItemExtensionsKt.getDateTimeString(mExpectedUpdate.toEpochMilli()));
+            validityMapBuilder.put("expectedUpdate", DataItemExtensionsKt.getToDataItemDateTimeString(mExpectedUpdate.toEpochMilli()));
         }
         return validityMapBuilder.end();
     }

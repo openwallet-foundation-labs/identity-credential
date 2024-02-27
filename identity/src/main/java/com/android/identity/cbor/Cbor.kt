@@ -17,9 +17,7 @@ object Cbor {
         builder: ByteStringBuilder,
         majorType: MajorType,
         length: Int
-    ) {
-        return encodeLength(builder, majorType, length.toULong())
-    }
+    ) = encodeLength(builder, majorType, length.toULong())
 
     internal fun encodeLength(
         builder: ByteStringBuilder,
@@ -27,31 +25,33 @@ object Cbor {
         length: ULong
     ) {
         val majorTypeShifted = (majorType.type shl 5).toByte()
-        if (length < 24U) {
-            builder.append(majorTypeShifted.or(length.toByte()))
-        } else if (length < (1U shl 8)) {
-            builder.append(majorTypeShifted.or(24))
-            builder.append(length.toByte())
-        } else if (length < (1U shl 16)) {
-            builder.append(majorTypeShifted.or(25))
-            builder.append((length shr 8).and(0xffU).toByte())
-            builder.append((length shr 0).and(0xffU).toByte())
-        } else if (length < (1U shl 32)) {
-            builder.append(majorTypeShifted.or(26))
-            builder.append((length shr 24).and(0xffU).toByte())
-            builder.append((length shr 16).and(0xffU).toByte())
-            builder.append((length shr  8).and(0xffU).toByte())
-            builder.append((length shr  0).and(0xffU).toByte())
-        } else {
-            builder.append(majorTypeShifted.or(27))
-            builder.append((length shr 56).and(0xffU).toByte())
-            builder.append((length shr 48).and(0xffU).toByte())
-            builder.append((length shr 40).and(0xffU).toByte())
-            builder.append((length shr 32).and(0xffU).toByte())
-            builder.append((length shr 24).and(0xffU).toByte())
-            builder.append((length shr 16).and(0xffU).toByte())
-            builder.append((length shr  8).and(0xffU).toByte())
-            builder.append((length shr  0).and(0xffU).toByte())
+        builder.apply {
+            if (length < 24U) {
+                append(majorTypeShifted.or(length.toByte()))
+            } else if (length < (1U shl 8)) {
+                append(majorTypeShifted.or(24))
+                append(length.toByte())
+            } else if (length < (1U shl 16)) {
+                append(majorTypeShifted.or(25))
+                append((length shr 8).and(0xffU).toByte())
+                append((length shr 0).and(0xffU).toByte())
+            } else if (length < (1U shl 32)) {
+                append(majorTypeShifted.or(26))
+                append((length shr 24).and(0xffU).toByte())
+                append((length shr 16).and(0xffU).toByte())
+                append((length shr 8).and(0xffU).toByte())
+                append((length shr 0).and(0xffU).toByte())
+            } else {
+                append(majorTypeShifted.or(27))
+                append((length shr 56).and(0xffU).toByte())
+                append((length shr 48).and(0xffU).toByte())
+                append((length shr 40).and(0xffU).toByte())
+                append((length shr 32).and(0xffU).toByte())
+                append((length shr 24).and(0xffU).toByte())
+                append((length shr 16).and(0xffU).toByte())
+                append((length shr 8).and(0xffU).toByte())
+                append((length shr 0).and(0xffU).toByte())
+            }
         }
     }
 
@@ -87,6 +87,7 @@ object Cbor {
                             encodedCbor[offset + 2].toULong().and(0xffUL)
                     return Pair(offset + 3, length)
                 }
+
                 26 -> {
                     val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 24) +
                             (encodedCbor[offset + 2].toULong().and(0xffUL) shl 16) +
@@ -94,6 +95,7 @@ object Cbor {
                             encodedCbor[offset + 4].toULong().and(0xffUL)
                     return Pair(offset + 5, length)
                 }
+
                 27 -> {
                     val length = (encodedCbor[offset + 1].toULong().and(0xffUL) shl 56) +
                             (encodedCbor[offset + 2].toULong().and(0xffUL) shl 48) +
@@ -105,6 +107,7 @@ object Cbor {
                             encodedCbor[offset + 8].toULong().and(0xffUL)
                     return Pair(offset + 9, length)
                 }
+
                 31 ->
                     return Pair(offset + 1, 0UL)  // indefinite length
                 else -> {}
@@ -123,8 +126,8 @@ object Cbor {
         val mant = raw and 0x3ff
         val sign = (raw and 0x8000) != 0
         val value: Float
-        if (exp == 0) value = mant*2f.pow(-24)
-        else if (exp != 31) value = (mant + 1024)*2f.pow(exp - 25)
+        if (exp == 0) value = mant * 2f.pow(-24)
+        else if (exp != 31) value = (mant + 1024) * 2f.pow(exp - 25)
         else value = (if (mant == 0) Float.POSITIVE_INFINITY else Float.NaN)
         return if (sign) -value else value
     }
@@ -247,7 +250,8 @@ object Cbor {
     ): Boolean {
         for (item in items) {
             if (options.contains(DiagnosticOption.EMBEDDED_CBOR) &&
-                item is Tagged && item.tagNumber == Tagged.ENCODED_CBOR) {
+                item is Tagged && item.tagNumber == Tagged.ENCODED_CBOR
+            ) {
                 return false
             }
             when (item.majorType) {
@@ -261,10 +265,9 @@ object Cbor {
     private fun fitsInASingleLine(
         items: List<DataItem>,
         options: Set<DiagnosticOption>
-    ): Boolean {
+    ): Boolean =
         // For now just use this heuristic.
-        return allDataItemsNonCompound(items, options) && items.size < 8
-    }
+        allDataItemsNonCompound(items, options) && items.size < 8
 
     private fun toDiagnostics(
         sb: StringBuilder,
@@ -316,6 +319,7 @@ object Cbor {
                         }
                         sb.append(')')
                     }
+
                     is Bstr -> {
                         if (tagNumberOfParent != null && tagNumberOfParent == Tagged.ENCODED_CBOR) {
                             sb.append("<< ")
@@ -336,6 +340,7 @@ object Cbor {
                             sb.append("'")
                         }
                     }
+
                     else -> throw IllegalStateException("Unexpected item type")
                 }
             }
@@ -358,6 +363,7 @@ object Cbor {
                         }
                         sb.append(')')
                     }
+
                     is Tstr -> {
                         val tstrValue = (item as Tstr).value
                         val escapedTstrValue = item.value
@@ -365,6 +371,7 @@ object Cbor {
                             .replace("\"", "\\\"")
                         sb.append("\"$escapedTstrValue\"")
                     }
+
                     else -> throw IllegalStateException("Unexpected item type")
                 }
             }
@@ -446,12 +453,15 @@ object Cbor {
                             else -> sb.append("simple(${item.value})")
                         }
                     }
+
                     is CborFloat -> {
                         sb.append(item.value)
                     }
+
                     is CborDouble -> {
                         sb.append(item.value)
                     }
+
                     else -> {
                         throw IllegalArgumentException("Unexpected instance for MajorType.SPECIAL")
                     }

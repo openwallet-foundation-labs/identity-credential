@@ -17,7 +17,7 @@ package com.android.identity.util
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
-import com.android.identity.cbor.dataItem
+import com.android.identity.cbor.toDataItem
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.credential.NameSpacedData.Companion.fromEncodedCbor
 
@@ -33,24 +33,23 @@ class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : 
 
     private val data = mutableMapOf<String, ByteArray>()
 
-    override fun setData(key: String, value: ByteArray?): ApplicationData {
+    override fun setData(key: String, value: ByteArray?): ApplicationData = apply {
         if (value == null) {
             data.remove(key)
         } else {
             data[key] = value
         }
         onDataChanged(key)
-        return this
     }
 
     override fun setString(key: String, value: String): ApplicationData =
-        setData(key, Cbor.encode(value.dataItem))
+        setData(key, Cbor.encode(value.toDataItem))
 
     override fun setNumber(key: String, value: Long): ApplicationData =
-        setData(key, Cbor.encode(value.dataItem))
+        setData(key, Cbor.encode(value.toDataItem))
 
     override fun setBoolean(key: String, value: Boolean): ApplicationData =
-        setData(key, Cbor.encode(value.dataItem))
+        setData(key, Cbor.encode(value.toDataItem))
 
     override fun setNameSpacedData(key: String, value: NameSpacedData): ApplicationData =
         setData(key, value.encodeAsCbor())
@@ -73,11 +72,12 @@ class SimpleApplicationData(private val onDataChanged: (key: String) -> Unit) : 
      *
      * @return a byte[] of the encoded app data.
      */
-    fun encodeAsCbor(): ByteArray {
-        val builder = CborMap.builder()
-        data.forEach { (key, value) -> builder.put(key, value) }
-        return Cbor.encode(builder.end().build())
-    }
+    fun encodeAsCbor(): ByteArray =
+        CborMap.builder().run {
+            data.forEach { (key, value) -> put(key, value) }
+            Cbor.encode(end().build())
+        }
+
 
     companion object {
         /**

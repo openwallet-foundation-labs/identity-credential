@@ -23,33 +23,32 @@ data class CertificateChain(
      * Use [fromDataItem] to decode the returned data item.
      */
     val dataItem: DataItem
-        get() {
-            if (certificates.size == 1) {
-                return certificates[0].dataItem
-            } else {
-                val builder = CborArray.builder()
-                certificates.forEach { certificate -> builder.add(certificate.dataItem) }
-                return builder.end().build()
+        get() = if (certificates.size == 1) {
+            certificates[0].toDataItem
+        } else {
+            CborArray.builder().run {
+                certificates.forEach { certificate -> add(certificate.toDataItem) }
+                return end().build()
             }
+
         }
 
     companion object {
-
         /**
          * Decodes a certificate chain from CBOR.
          *
-         * See [Certificate.dataItem] for the expected encoding.
+         * See [Certificate.toDataItem] for the expected encoding.
          *
          * @param dataItem the CBOR data item to decode.
          * @return the certificate chain.
          */
         fun fromDataItem(dataItem: DataItem): CertificateChain {
-            val certificates = mutableListOf<Certificate>()
-            if (dataItem is CborArray) {
-                dataItem.items.forEach() { dataItem -> certificates.add(dataItem.asCertificate) }
-            } else {
-                certificates.add(dataItem.asCertificate)
-            }
+            val certificates: List<Certificate> =
+                if (dataItem is CborArray) {
+                    dataItem.items.map { item -> item.asCertificate }.toList()
+                } else {
+                    listOf(dataItem.asCertificate)
+                }
             return CertificateChain(certificates)
         }
     }
@@ -61,8 +60,4 @@ data class CertificateChain(
  * Converts the certificate chain to a list of Java X.509 certificates.
  */
 val CertificateChain.javaX509Certificates: List<X509Certificate>
-    get() {
-        val ret = mutableListOf<X509Certificate>()
-        certificates.forEach() { certificate -> ret.add(certificate.javaX509Certificate) }
-        return ret
-    }
+    get() = certificates.map { certificate -> certificate.javaX509Certificate }

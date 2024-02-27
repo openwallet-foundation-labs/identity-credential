@@ -21,7 +21,7 @@ package com.android.identity.storage
  * Data is not persisted anywhere.
  */
 class EphemeralStorageEngine : StorageEngine {
-    private val data: MutableMap<String, ByteArray> = LinkedHashMap()
+    private val data = mutableMapOf<String, ByteArray>()
 
     override fun get(key: String): ByteArray? = data[key]
 
@@ -37,5 +37,5 @@ class EphemeralStorageEngine : StorageEngine {
         data.clear()
     }
 
-    override fun enumerate(): Collection<String> =data.keys
+    override fun enumerate(): Collection<String> = data.keys
 }

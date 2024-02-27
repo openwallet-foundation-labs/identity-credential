@@ -71,7 +71,7 @@ abstract class SimpleIssuingAuthority(
         fun toCbor(): ByteArray {
             return Cbor.encode(
                 CborMap.builder()
-                    .put("authenticationKey", authenticationKey.toCoseKey().dataItem)
+                    .put("authenticationKey", authenticationKey.toCoseKey().toDataItem)
                     .put("presentationData", presentationData)
                     .put("deadline", deadlineMillis)
                     .end()

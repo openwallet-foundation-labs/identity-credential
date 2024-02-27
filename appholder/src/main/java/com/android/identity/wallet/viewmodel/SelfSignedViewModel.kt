@@ -34,7 +34,7 @@ class SelfSignedViewModel(val app: Application) :
 
     init {
         loading.value = View.GONE
-        for (credentialType in HolderApp.credentialTypeRepositoryInstance.getCredentialTypes()
+        for (credentialType in HolderApp.credentialTypeRepositoryInstance.credentialTypes
             .filter { it.mdocCredentialType != null }) {
             id = 1 // reset the id to 1
             fieldsByDocType[credentialType.mdocCredentialType?.docType!!] =
@@ -66,7 +66,7 @@ class SelfSignedViewModel(val app: Application) :
                 complexTypes?.namespaces?.find { it.namespace == namespace.namespace }
             for (dataElement in namespace.dataElements.values) {
                 when (dataElement.attribute.type) {
-                    is CredentialAttributeType.COMPLEX_TYPE -> {
+                    is CredentialAttributeType.ComplexType -> {
                         val complexTypeDefinitions = namespaceComplexTypes?.dataElements?.filter {
                             it.parentIdentifiers.contains(dataElement.attribute.identifier)
                         }
@@ -145,7 +145,7 @@ class SelfSignedViewModel(val app: Application) :
         val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (i in 0..arrayLength - 1) {
             for (childElement in childElements) {
-                if (childElement.type is CredentialAttributeType.COMPLEX_TYPE) {
+                if (childElement.type is CredentialAttributeType.ComplexType) {
 
                     if (dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }) {
                         val childField = Field(
@@ -216,7 +216,7 @@ class SelfSignedViewModel(val app: Application) :
 
         val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (childElement in childElements) {
-            if (childElement.type is CredentialAttributeType.COMPLEX_TYPE) {
+            if (childElement.type is CredentialAttributeType.ComplexType) {
                 val isArray = dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }
                 val childField = Field(
                     id++,

@@ -236,7 +236,7 @@ public class RequestServlet extends HttpServlet {
 
         // put ReaderEngagement and generated ephemeral keys into Datastore
         setDatastoreProp(ServletConsts.RE_PROP, re, key);
-        setDatastoreProp(ServletConsts.PRIVKEY_PROP, Cbor.encode(readerKey.toCoseKey(Map.of()).getDataItem()), key);
+        setDatastoreProp(ServletConsts.PRIVKEY_PROP, Cbor.encode(readerKey.toCoseKey(Map.of()).getToDataItem()), key);
 
         String reStr = Base64.getUrlEncoder().withoutPadding().encodeToString(re).replace("\n","");
   
@@ -260,7 +260,7 @@ public class RequestServlet extends HttpServlet {
 
         EngagementParser.Engagement engagement = new EngagementParser(encodedEngagement).parse();
         EcPublicKey eDeviceKeyPublic = engagement.getESenderKey();
-        byte[] encodedEDeviceKeyPublic = Cbor.encode(eDeviceKeyPublic.toCoseKey(Map.of()).getDataItem());
+        byte[] encodedEDeviceKeyPublic = Cbor.encode(eDeviceKeyPublic.toCoseKey(Map.of()).getToDataItem());
         setDatastoreProp(ServletConsts.DEVKEY_PROP, encodedEDeviceKeyPublic, key);
         verifyOriginInfo(engagement.getOriginInfos(), key);
 
@@ -296,7 +296,7 @@ public class RequestServlet extends HttpServlet {
         byte[] re = getDatastoreProp(ServletConsts.RE_PROP, key);
         return Cbor.encode(CborArray.Companion.builder()
                         .addTaggedEncodedCbor(de)
-                        .addTagged(24, eReaderKeyPublic.toCoseKey(Map.of()).getDataItem())
+                        .addTagged(24, eReaderKeyPublic.toCoseKey(Map.of()).getToDataItem())
                         .addTaggedEncodedCbor(re)
                         .end().build());
     }

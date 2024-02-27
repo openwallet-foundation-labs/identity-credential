@@ -1,11 +1,11 @@
 package com.android.identity.crypto
 
 import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.dataItem
+import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseLabel
-import com.android.identity.cose.coseLabel
+import com.android.identity.cose.toCoseLabel
 
 /**
  * EC Public Key with two coordinates.
@@ -19,13 +19,15 @@ data class EcPublicKeyDoubleCoordinate(
     val y: ByteArray
 ) : EcPublicKey(curve) {
 
-    override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey {
-        return CoseKey(mapOf(
-            Pair(Cose.COSE_KEY_KTY.coseLabel, Cose.COSE_KEY_TYPE_EC2.dataItem),
-            Pair(Cose.COSE_KEY_PARAM_CRV.coseLabel, curve.coseCurveIdentifier.dataItem),
-            Pair(Cose.COSE_KEY_PARAM_X.coseLabel, x.dataItem),
-            Pair(Cose.COSE_KEY_PARAM_Y.coseLabel, y.dataItem)) + additionalLabels)
-    }
+    override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey =
+        CoseKey(
+            mapOf(
+                Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_EC2.toDataItem),
+                Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem),
+                Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem),
+                Pair(Cose.COSE_KEY_PARAM_Y.toCoseLabel, y.toDataItem)
+            ) + additionalLabels
+        )
 
     init {
         when (curve) {

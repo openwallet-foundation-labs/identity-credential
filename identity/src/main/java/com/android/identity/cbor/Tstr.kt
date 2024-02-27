@@ -16,19 +16,16 @@ class Tstr(val value: String) : DataItem(MajorType.UNICODE_STRING) {
 
     companion object {
         internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Tstr> {
-            val (newOffset, length) = Cbor.decodeLength(encodedCbor, offset)
-            val payloadBegin = newOffset
-            val payloadEnd = newOffset + length.toInt()
+            val (payloadBegin, length) = Cbor.decodeLength(encodedCbor, offset)
+            val payloadEnd = payloadBegin + length.toInt()
             val slice = encodedCbor.sliceArray(IntRange(payloadBegin, payloadEnd - 1))
             return Pair(payloadEnd, Tstr(String(slice)))
         }
     }
 
-    override fun equals(other: Any?): Boolean = other is Tstr && value.equals(other.value)
+    override fun equals(other: Any?): Boolean = other is Tstr && value == other.value
 
     override fun hashCode(): Int = value.hashCode()
 
-    override fun toString(): String {
-        return "Tstr(\"$value\")"
-    }
+    override fun toString(): String = "Tstr(\"$value\")"
 }

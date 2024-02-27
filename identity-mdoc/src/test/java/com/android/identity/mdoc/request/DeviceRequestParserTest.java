@@ -28,7 +28,6 @@ import com.android.identity.crypto.EcCurve;
 import com.android.identity.crypto.EcPrivateKey;
 import com.android.identity.internal.Util;
 import com.android.identity.mdoc.TestVectors;
-import com.android.identity.util.Logger;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
@@ -188,7 +187,7 @@ public class DeviceRequestParserTest {
 
         Map<String, byte[]> mdlRequestInfo = new HashMap<>();
         mdlRequestInfo.put("foo", Cbor.encode(new Tstr("bar")));
-        mdlRequestInfo.put("bar", Cbor.encode(DataItemExtensionsKt.getDataItem(42)));
+        mdlRequestInfo.put("bar", Cbor.encode(DataItemExtensionsKt.getToDataItem(42)));
 
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
                 .setSessionTranscript(encodedSessionTranscript)

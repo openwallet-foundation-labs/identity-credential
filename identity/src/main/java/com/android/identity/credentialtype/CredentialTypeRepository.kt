@@ -27,25 +27,21 @@ package com.android.identity.credentialtype
  * Applications also may add their own Credential Types.
  */
 class CredentialTypeRepository {
-    private val credentialTypes: MutableList<CredentialType> = mutableListOf()
+    private val _credentialTypes: MutableList<CredentialType> = mutableListOf()
+
+    /**
+     * Get all the Credential Types that are in the repository.
+     */
+    val credentialTypes: List<CredentialType>
+        get() = _credentialTypes
 
     /**
      * Add a Credential Type to the repository.
      *
      * @param credentialType the Credential Type to add
      */
-    fun addCredentialType(credentialType: CredentialType) {
-        credentialTypes.add(credentialType)
-    }
-
-    /**
-     * Get all the Credential Types that are in the repository.
-     *
-     * @return all the [CredentialType]s in the repository
-     */
-    fun getCredentialTypes(): List<CredentialType> {
-        return credentialTypes
-    }
+    fun addCredentialType(credentialType: CredentialType) =
+        _credentialTypes.add(credentialType)
 
     /**
      * Get an mdoc credential type by its doc type
@@ -53,11 +49,10 @@ class CredentialTypeRepository {
      * @param docType the type of the mdoc credential     *
      * @return the [MdocCredentialType] when found
      */
-    fun getMdocCredentialType(docType: String): MdocCredentialType? {
-        return credentialTypes.find {
+    fun getMdocCredentialType(docType: String): MdocCredentialType? =
+        _credentialTypes.find {
             it.mdocCredentialType?.docType?.equals(docType) ?: false
         }?.mdocCredentialType
-    }
 
     /**
      * Get a VC credential type by its type
@@ -65,9 +60,8 @@ class CredentialTypeRepository {
      * @param type the type of the VC credential     *
      * @return the [VcCredentialType] when found
      */
-    fun getVcCredentialType(type: String): VcCredentialType? {
-        return credentialTypes.find {
+    fun getVcCredentialType(type: String): VcCredentialType? =
+        _credentialTypes.find {
             it.vcCredentialType?.type?.equals(type) ?: false
         }?.vcCredentialType
-    }
 }

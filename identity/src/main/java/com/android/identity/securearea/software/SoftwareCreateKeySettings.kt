@@ -81,7 +81,7 @@ class SoftwareCreateKeySettings private constructor(
          * @throws IllegalArgumentException if no purpose is set.
          */
         fun setKeyPurposes(keyPurposes: Set<KeyPurpose>) = apply {
-            require(!keyPurposes.isEmpty()) { "Purposes cannot be empty" }
+            require(keyPurposes.isNotEmpty()) { "Purposes cannot be empty" }
             this.keyPurposes = keyPurposes
         }
 

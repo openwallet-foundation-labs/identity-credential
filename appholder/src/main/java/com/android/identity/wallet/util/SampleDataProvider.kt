@@ -321,21 +321,21 @@ object SampleDataProvider {
 
     private fun defaultValue(type: CredentialAttributeType): Any? {
         return when (type) {
-            is CredentialAttributeType.STRING -> "-"
-            is CredentialAttributeType.NUMBER -> 0
-            is CredentialAttributeType.DATE,
-            is CredentialAttributeType.DATE_TIME -> "2100-01-01"
+            is CredentialAttributeType.String -> "-"
+            is CredentialAttributeType.Number -> 0
+            is CredentialAttributeType.Date,
+            is CredentialAttributeType.DateTime -> "2100-01-01"
 
-            is CredentialAttributeType.PICTURE -> Bitmap.createBitmap(
+            is CredentialAttributeType.Picture -> Bitmap.createBitmap(
                 200,
                 200,
                 Bitmap.Config.ARGB_8888
             )
 
-            is CredentialAttributeType.BOOLEAN -> false
+            is CredentialAttributeType.Boolean -> false
             is CredentialAttributeType.StringOptions,
             is CredentialAttributeType.IntegerOptions,
-            is CredentialAttributeType.COMPLEX_TYPE -> null
+            is CredentialAttributeType.ComplexType -> null
         }
     }
 }

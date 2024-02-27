@@ -9,7 +9,5 @@ class CborBuilder(private val item: DataItem) {
      *
      * @return a [DataItem]
      */
-    fun build(): DataItem {
-        return item
-    }
+    fun build(): DataItem = item
 }

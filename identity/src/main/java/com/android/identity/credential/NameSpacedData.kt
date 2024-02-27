@@ -21,7 +21,7 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.Tstr
-import com.android.identity.cbor.dataItem
+import com.android.identity.cbor.toDataItem
 
 /**
  * Key/value pairs, organized by name space.
@@ -57,6 +57,7 @@ class NameSpacedData private constructor(
     fun getDataElementNames(nameSpaceName: String) =
         map[nameSpaceName]?.keys?.toList()
             ?: throw IllegalArgumentException("No such namespace '$nameSpaceName'")
+
     /**
      * Checks if there's a value for a given data element.
      *
@@ -148,10 +149,9 @@ class NameSpacedData private constructor(
         dataElementName: String
     ) = Cbor.decode(getDataElement(nameSpaceName, dataElementName)).asBoolean
 
-    fun toCbor(): DataItem {
-        val mapBuilder = CborMap.builder()
+    fun toCbor(): DataItem = CborMap.builder().run {
         for (namespaceName in map.keys) {
-            val innerMapBuilder = mapBuilder.putMap(namespaceName)
+            val innerMapBuilder = putMap(namespaceName)
             val namespace = map[namespaceName]!!
             for ((dataElementName, dataElementValue) in namespace) {
                 innerMapBuilder.putTagged(
@@ -161,7 +161,7 @@ class NameSpacedData private constructor(
                 )
             }
         }
-        return mapBuilder.end().build()
+        return end().build()
     }
 
     /**
@@ -226,12 +226,11 @@ class NameSpacedData private constructor(
             nameSpaceName: String,
             dataElementName: String,
             value: ByteArray
-        ): Builder {
+        ): Builder = apply {
             map.putIfAbsent(nameSpaceName, mutableMapOf())
             map[nameSpaceName]?.run {
                 this[dataElementName] = value
             }
-            return this
         }
 
         /**
@@ -246,7 +245,7 @@ class NameSpacedData private constructor(
             nameSpaceName: String,
             dataElementName: String,
             value: String
-        ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.dataItem))
+        ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.toDataItem))
 
         /**
          * Encode the given value as `bstr` CBOR and adds it to the builder.
@@ -260,7 +259,7 @@ class NameSpacedData private constructor(
             nameSpaceName: String,
             dataElementName: String,
             value: ByteArray
-        ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.dataItem))
+        ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.toDataItem))
 
         /**
          * Encode the given value as an integer or unsigned integer and adds it to the builder.
@@ -274,7 +273,7 @@ class NameSpacedData private constructor(
             nameSpaceName: String,
             dataElementName: String,
             value: Long
-        ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.dataItem))
+        ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.toDataItem))
 
         /**
          * Encode the given value as a boolean and adds it to the builder.
@@ -288,7 +287,7 @@ class NameSpacedData private constructor(
             nameSpaceName: String,
             dataElementName: String,
             value: Boolean
-        ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.dataItem))
+        ) = putEntry(nameSpaceName, dataElementName, Cbor.encode(value.toDataItem))
 
         /**
          * Builds a [NameSpacedData] from the builder
@@ -311,15 +310,14 @@ class NameSpacedData private constructor(
         @JvmStatic
         fun fromEncodedCbor(encodedCbor: ByteArray) = fromCbor(Cbor.decode(encodedCbor))
 
-        private fun fromCbor(dataItem: DataItem): NameSpacedData {
+        private fun fromCbor(mapDataItem: DataItem): NameSpacedData {
             val ret = mutableMapOf<String, MutableMap<String, ByteArray>>()
-            val map = dataItem
-            require(map is CborMap)
-            for (nameSpaceNameItem in map.items.keys) {
+            require(mapDataItem is CborMap)
+            for (nameSpaceNameItem in mapDataItem.items.keys) {
                 require(nameSpaceNameItem is Tstr)
                 val namespaceName = nameSpaceNameItem.asTstr
                 val dataElementToValueMap = mutableMapOf<String, ByteArray>()
-                val dataElementItems = map[namespaceName]
+                val dataElementItems = mapDataItem[namespaceName]
                 require(dataElementItems is CborMap)
                 for (dataElementNameItem in dataElementItems.items.keys) {
                     require(dataElementNameItem is Tstr)

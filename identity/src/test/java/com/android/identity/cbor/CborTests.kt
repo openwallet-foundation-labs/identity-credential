@@ -13,17 +13,17 @@ class CborTests {
     )
 
     private fun encodeNumber(value: Long) = Cbor.toDiagnostics(
-        Cbor.encode(value.dataItem),
+        Cbor.encode(value.toDataItem),
         setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
     )
 
     private fun encodeFloat(value: Float) = Cbor.toDiagnostics(
-        Cbor.encode(value.dataItem),
+        Cbor.encode(value.toDataItem),
         setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
     )
 
     private fun encodeDouble(value: Double) = Cbor.toDiagnostics(
-        Cbor.encode(value.dataItem),
+        Cbor.encode(value.toDataItem),
         setOf(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)
     )
 
@@ -351,9 +351,9 @@ class CborTests {
                             )
                         )
                     )
-                    .add(RawCbor(Cbor.encode("some tstr".dataItem)))
+                    .add(RawCbor(Cbor.encode("some tstr".toDataItem)))
                     .add("Sprinkled in item")
-                    .add(RawCbor(Cbor.encode(42.dataItem)))
+                    .add(RawCbor(Cbor.encode(42.toDataItem)))
                     .end()
                     .build()
             )
@@ -380,7 +380,7 @@ class CborTests {
     fun indefiniteLengthArray() {
         Assert.assertEquals(
             "[_ \"foo\", \"bar\"]",
-            cborToString(CborArray(mutableListOf("foo".dataItem, "bar".dataItem), true))
+            cborToString(CborArray(mutableListOf("foo".toDataItem, "bar".toDataItem), true))
         )
     }
 
@@ -394,8 +394,8 @@ class CborTests {
             cborToString(
                 CborMap(
                     mutableMapOf(
-                        Pair("foo".dataItem, "fooVal".dataItem),
-                        Pair("bar".dataItem, "barVar".dataItem)
+                        Pair("foo".toDataItem, "fooVal".toDataItem),
+                        Pair("bar".toDataItem, "barVar".toDataItem)
                     ),
                     true
                 )
@@ -404,7 +404,7 @@ class CborTests {
     }
 
     private fun encodeAndDecodeNumber(value: Long): String {
-        val encodedData = Cbor.encode(value.dataItem)
+        val encodedData = Cbor.encode(value.toDataItem)
         return cborToString(Cbor.decode(encodedData))
     }
 
@@ -416,30 +416,30 @@ class CborTests {
 
     @Test
     fun decodeBasic() {
-        assertEncodeDecode("tstr".dataItem)
-        assertEncodeDecode(byteArrayOf(1, 2, 3).dataItem)
-        assertEncodeDecode(42.dataItem)
-        assertEncodeDecode((-42).dataItem)
-        assertEncodeDecode(true.dataItem)
-        assertEncodeDecode(false.dataItem)
+        assertEncodeDecode("tstr".toDataItem)
+        assertEncodeDecode(byteArrayOf(1, 2, 3).toDataItem)
+        assertEncodeDecode(42.toDataItem)
+        assertEncodeDecode((-42).toDataItem)
+        assertEncodeDecode(true.toDataItem)
+        assertEncodeDecode(false.toDataItem)
         assertEncodeDecode(Simple.NULL)
         assertEncodeDecode(Simple.UNDEFINED)
-        assertEncodeDecode(0.0.dataItem)
-        assertEncodeDecode(42.0.dataItem)
-        assertEncodeDecode((-42.1).dataItem)
-        assertEncodeDecode(Double.MIN_VALUE.dataItem)
-        assertEncodeDecode(Double.MAX_VALUE.dataItem)
-        assertEncodeDecode(Double.NaN.dataItem)
-        assertEncodeDecode(Double.NEGATIVE_INFINITY.dataItem)
-        assertEncodeDecode(Double.POSITIVE_INFINITY.dataItem)
-        assertEncodeDecode(0.0f.dataItem)
-        assertEncodeDecode(42.0f.dataItem)
-        assertEncodeDecode((-42.1f).dataItem)
-        assertEncodeDecode(Float.MIN_VALUE.dataItem)
-        assertEncodeDecode(Float.MAX_VALUE.dataItem)
-        assertEncodeDecode(Float.NaN.dataItem)
-        assertEncodeDecode(Float.NEGATIVE_INFINITY.dataItem)
-        assertEncodeDecode(Float.POSITIVE_INFINITY.dataItem)
+        assertEncodeDecode(0.0.toDataItem)
+        assertEncodeDecode(42.0.toDataItem)
+        assertEncodeDecode((-42.1).toDataItem)
+        assertEncodeDecode(Double.MIN_VALUE.toDataItem)
+        assertEncodeDecode(Double.MAX_VALUE.toDataItem)
+        assertEncodeDecode(Double.NaN.toDataItem)
+        assertEncodeDecode(Double.NEGATIVE_INFINITY.toDataItem)
+        assertEncodeDecode(Double.POSITIVE_INFINITY.toDataItem)
+        assertEncodeDecode(0.0f.toDataItem)
+        assertEncodeDecode(42.0f.toDataItem)
+        assertEncodeDecode((-42.1f).toDataItem)
+        assertEncodeDecode(Float.MIN_VALUE.toDataItem)
+        assertEncodeDecode(Float.MAX_VALUE.toDataItem)
+        assertEncodeDecode(Float.NaN.toDataItem)
+        assertEncodeDecode(Float.NEGATIVE_INFINITY.toDataItem)
+        assertEncodeDecode(Float.POSITIVE_INFINITY.toDataItem)
     }
 
     @Test
@@ -785,27 +785,27 @@ class CborTests {
 
     @Test
     fun parseHelperBasic() {
-        Assert.assertArrayEquals(byteArrayOf(1, 42), byteArrayOf(1, 42).dataItem.asBstr)
-        Assert.assertEquals("Tstr", "Tstr".dataItem.asTstr)
-        Assert.assertEquals(42, 42.dataItem.asNumber)
-        Assert.assertEquals(-35, (-35).dataItem.asNumber)
-        Assert.assertEquals(42.0, 42.0.dataItem.asDouble, 0.01)
-        Assert.assertEquals(43.0f, 43.0f.dataItem.asFloat, 0.01f)
-        Assert.assertEquals(true, true.dataItem.asBoolean)
-        Assert.assertEquals(false, false.dataItem.asBoolean)
+        Assert.assertArrayEquals(byteArrayOf(1, 42), byteArrayOf(1, 42).toDataItem.asBstr)
+        Assert.assertEquals("Tstr", "Tstr".toDataItem.asTstr)
+        Assert.assertEquals(42, 42.toDataItem.asNumber)
+        Assert.assertEquals(-35, (-35).toDataItem.asNumber)
+        Assert.assertEquals(42.0, 42.0.toDataItem.asDouble, 0.01)
+        Assert.assertEquals(43.0f, 43.0f.toDataItem.asFloat, 0.01f)
+        Assert.assertEquals(true, true.toDataItem.asBoolean)
+        Assert.assertEquals(false, false.toDataItem.asBoolean)
 
-        Assert.assertThrows(IllegalArgumentException::class.java) { 42.dataItem.asBstr }
-        Assert.assertThrows(IllegalArgumentException::class.java) { 42.dataItem.asTstr }
-        Assert.assertThrows(IllegalArgumentException::class.java) { 4.0.dataItem.asNumber }
-        Assert.assertThrows(IllegalArgumentException::class.java) { 42.dataItem.asDouble }
-        Assert.assertThrows(IllegalArgumentException::class.java) { 42.dataItem.asFloat }
-        Assert.assertThrows(IllegalArgumentException::class.java) { 42.dataItem.asBoolean }
+        Assert.assertThrows(IllegalArgumentException::class.java) { 42.toDataItem.asBstr }
+        Assert.assertThrows(IllegalArgumentException::class.java) { 42.toDataItem.asTstr }
+        Assert.assertThrows(IllegalArgumentException::class.java) { 4.0.toDataItem.asNumber }
+        Assert.assertThrows(IllegalArgumentException::class.java) { 42.toDataItem.asDouble }
+        Assert.assertThrows(IllegalArgumentException::class.java) { 42.toDataItem.asFloat }
+        Assert.assertThrows(IllegalArgumentException::class.java) { 42.toDataItem.asBoolean }
     }
 
     @Test
     fun parseHelperMap() {
         val map = CborMap.builder()
-            .put("foo0", "Tstr".dataItem)
+            .put("foo0", "Tstr".toDataItem)
             .put("foo1", byteArrayOf(1, 2, 3))
             .put("foo2", 42)
             .put("foo3", -35)
@@ -873,7 +873,7 @@ class CborTests {
     @Test
     fun parseHelperArray() {
         val array = CborArray.builder()
-            .add("Tstr".dataItem)
+            .add("Tstr".toDataItem)
             .add(byteArrayOf(1, 2, 3))
             .add(42)
             .add(-35)
@@ -903,7 +903,7 @@ class CborTests {
     @Test
     fun mapLookupException() {
         val map = CborMap.builder()
-            .put("foo0", "Tstr".dataItem)
+            .put("foo0", "Tstr".toDataItem)
             .end().build()
         Assert.assertEquals("Tstr", map["foo0"].asTstr)
         Assert.assertThrows(IllegalStateException::class.java) { map["foo1"] }
@@ -912,26 +912,26 @@ class CborTests {
     @Test
     fun mapGetOrDefault() {
         val map = CborMap.builder()
-            .put("foo0", "Tstr".dataItem)
+            .put("foo0", "Tstr".toDataItem)
             .end().build()
-        Assert.assertEquals("Tstr", map.getOrDefault("foo0", "dTstr".dataItem).asTstr)
-        Assert.assertEquals("dTstr", map.getOrDefault("foo1", "dTstr".dataItem).asTstr)
+        Assert.assertEquals("Tstr", map.getOrDefault("foo0", "dTstr".toDataItem).asTstr)
+        Assert.assertEquals("dTstr", map.getOrDefault("foo1", "dTstr".toDataItem).asTstr)
     }
 
     @Test
     fun mapGetOrNull() {
         val map = CborMap.builder()
-            .put("foo0", "Tstr".dataItem)
+            .put("foo0", "Tstr".toDataItem)
             .end().build()
-        Assert.assertEquals("Tstr".dataItem, map.getOrNull("foo0"))
+        Assert.assertEquals("Tstr".toDataItem, map.getOrNull("foo0"))
         Assert.assertEquals(null, map.getOrNull("foo1"))
     }
 
     @Test
     fun arrayLookupException() {
         val array = CborArray.builder()
-            .add("Tstr".dataItem)
-            .add("OtherTstr".dataItem)
+            .add("Tstr".toDataItem)
+            .add("OtherTstr".toDataItem)
             .end().build()
         Assert.assertEquals("Tstr", array[0].asTstr)
         Assert.assertEquals("OtherTstr", array[1].asTstr)
@@ -953,10 +953,10 @@ class CborTests {
     fun toDateTimeString() {
         Assert.assertEquals(
             "0(\"1970-01-01T00:00:00Z\")",
-            Cbor.toDiagnostics(Instant.fromEpochMilliseconds(0).dateTimeString))
+            Cbor.toDiagnostics(Instant.fromEpochMilliseconds(0).toDataItemDateTimeString))
 
         Assert.assertEquals(
             "0(\"2001-09-09T01:46:40Z\")",
-            Cbor.toDiagnostics(Instant.fromEpochMilliseconds(1000000000000).dateTimeString))
+            Cbor.toDiagnostics(Instant.fromEpochMilliseconds(1000000000000).toDataItemDateTimeString))
     }
 }

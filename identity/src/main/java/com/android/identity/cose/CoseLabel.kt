@@ -8,12 +8,12 @@ import com.android.identity.cbor.Uint
 /**
  * Abstract base class for COSE Labels.
  */
-sealed class CoseLabel() {
+sealed class CoseLabel {
 
     /**
      * The CBOR encoding for a COSE Label.
      */
-    abstract val dataItem: DataItem
+    abstract val toDataItem: DataItem
 
     companion object {
         /**
@@ -22,13 +22,12 @@ sealed class CoseLabel() {
          * @param dataItem the CBOR data item.
          * @return the [CoseLabel].
          */
-        fun fromDataItem(dataItem: DataItem): CoseLabel {
-            return when (dataItem) {
+        fun fromDataItem(dataItem: DataItem): CoseLabel =
+            when (dataItem) {
                 is Uint -> CoseNumberLabel(dataItem.asNumber)
                 is Nint -> CoseNumberLabel(dataItem.asNumber)
                 is Tstr -> CoseTextLabel(dataItem.asTstr)
                 else -> throw IllegalStateException("Unexpected item")
             }
-        }
     }
 }

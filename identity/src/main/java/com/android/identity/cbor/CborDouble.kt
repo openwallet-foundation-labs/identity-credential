@@ -10,19 +10,22 @@ import kotlin.experimental.or
  */
 class CborDouble(val value: Double) : DataItem(MajorType.SPECIAL) {
 
-    override fun encode(builder: ByteStringBuilder) {
-        val majorTypeShifted = (majorType.type shl 5).toByte()
-        builder.append(majorTypeShifted.or(27))
-        val raw = value.toRawBits()
-        builder.append((raw shr 56).and(0xff).toByte())
-        builder.append((raw shr 48).and(0xff).toByte())
-        builder.append((raw shr 40).and(0xff).toByte())
-        builder.append((raw shr 32).and(0xff).toByte())
-        builder.append((raw shr 24).and(0xff).toByte())
-        builder.append((raw shr 16).and(0xff).toByte())
-        builder.append((raw shr  8).and(0xff).toByte())
-        builder.append((raw shr  0).and(0xff).toByte())
-    }
+    override fun encode(builder: ByteStringBuilder) =
+        builder.run {
+            val majorTypeShifted = (majorType.type shl 5).toByte()
+            append(majorTypeShifted.or(27))
+
+            val raw = value.toRawBits()
+            append((raw shr 56).and(0xff).toByte())
+            append((raw shr 48).and(0xff).toByte())
+            append((raw shr 40).and(0xff).toByte())
+            append((raw shr 32).and(0xff).toByte())
+            append((raw shr 24).and(0xff).toByte())
+            append((raw shr 16).and(0xff).toByte())
+            append((raw shr 8).and(0xff).toByte())
+            append((raw shr 0).and(0xff).toByte())
+        }
+
 
     companion object {
         internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, CborDouble> {
@@ -42,7 +45,5 @@ class CborDouble(val value: Double) : DataItem(MajorType.SPECIAL) {
 
     override fun hashCode(): Int = value.hashCode()
 
-    override fun toString(): String {
-        return "CborDouble($value)"
-    }
+    override fun toString(): String = "CborDouble($value)"
 }

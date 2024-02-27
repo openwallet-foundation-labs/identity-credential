@@ -155,10 +155,10 @@ public class DocumentGenerator {
                             signatureAlgorithm,
                             Map.of(
                                     new CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                                    DataItemExtensionsKt.getDataItem(signatureAlgorithm.getCoseAlgorithmIdentifier())
+                                    DataItemExtensionsKt.getToDataItem(signatureAlgorithm.getCoseAlgorithmIdentifier())
                             ),
                             Map.of(),
-                            keyUnlockData).getDataItem()
+                            keyUnlockData).getToDataItem()
             );
         } else {
             byte[] sharedSecret = secureArea.keyAgreement(keyAlias,
@@ -177,9 +177,9 @@ public class DocumentGenerator {
                             false,
                             Map.of(
                                     new CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                                    DataItemExtensionsKt.getDataItem(Algorithm.HMAC_SHA256.getCoseAlgorithmIdentifier())
+                                    DataItemExtensionsKt.getToDataItem(Algorithm.HMAC_SHA256.getCoseAlgorithmIdentifier())
                             ),
-                            Map.of()).getDataItem()
+                            Map.of()).getToDataItem()
             );
         }
 

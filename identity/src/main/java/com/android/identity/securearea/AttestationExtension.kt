@@ -51,12 +51,13 @@ object AttestationExtension {
      * @return the bytes of the CBOR for the extension.
      */
     @JvmStatic
-    fun encode(challenge: ByteArray): ByteArray {
-        return Cbor.encode(CborMap.builder()
-            .put("challenge", challenge)
-            .end()
-            .build())
-    }
+    fun encode(challenge: ByteArray): ByteArray =
+        Cbor.encode(
+            CborMap.builder()
+                .put("challenge", challenge)
+                .end()
+                .build()
+        )
 
     /**
      * Extracts the challenge from the attestation extension.

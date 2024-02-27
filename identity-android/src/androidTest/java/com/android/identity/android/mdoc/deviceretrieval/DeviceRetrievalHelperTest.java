@@ -194,7 +194,7 @@ public class DeviceRetrievalHelperTest {
         //
         Map<CoseLabel, DataItem> protectedHeaders = Map.of(
                 new CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                DataItemExtensionsKt.getDataItem(Algorithm.ES256.getCoseAlgorithmIdentifier())
+                DataItemExtensionsKt.getToDataItem(Algorithm.ES256.getCoseAlgorithmIdentifier())
         );
         Map<CoseLabel, DataItem> unprotectedHeaders = Map.of(
                 new CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
@@ -208,7 +208,7 @@ public class DeviceRetrievalHelperTest {
                         Algorithm.ES256,
                         protectedHeaders,
                         unprotectedHeaders
-                ).getDataItem()
+                ).getToDataItem()
         );
 
         byte[] issuerProvidedAuthenticationData = new StaticAuthDataGenerator(
@@ -287,7 +287,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         EcPrivateKey eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256);
-        byte[] encodedEReaderKeyPub = Cbor.encode(eReaderKey.getPublicKey().toCoseKey(Map.of()).getDataItem());
+        byte[] encodedEReaderKeyPub = Cbor.encode(eReaderKey.getPublicKey().toCoseKey(Map.of()).getToDataItem());
         byte[] encodedSessionTranscript = Cbor.encode(
                 CborArray.Companion.builder()
                         .addTaggedEncodedCbor(encodedDeviceEngagement)
@@ -526,7 +526,7 @@ public class DeviceRetrievalHelperTest {
         byte[] encodedDeviceEngagement = qrHelper.getDeviceEngagement();
 
         EcPrivateKey eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256);
-        byte[] encodedEReaderKeyPub = Cbor.encode(eReaderKey.getPublicKey().toCoseKey(Map.of()).getDataItem());
+        byte[] encodedEReaderKeyPub = Cbor.encode(eReaderKey.getPublicKey().toCoseKey(Map.of()).getToDataItem());
         byte[] encodedSessionTranscript = Cbor.encode(
                 CborArray.Companion.builder()
                         .addTaggedEncodedCbor(encodedDeviceEngagement)

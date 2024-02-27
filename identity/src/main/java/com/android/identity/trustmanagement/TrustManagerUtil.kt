@@ -64,9 +64,8 @@ internal object TrustManagerUtil {
     /**
      * Check whether a certificate is self-signed
      */
-    fun isSelfSigned(certificate: X509Certificate): Boolean {
-        return certificate.issuerX500Principal.name == certificate.subjectX500Principal.name
-    }
+    fun isSelfSigned(certificate: X509Certificate): Boolean =
+        certificate.issuerX500Principal.name == certificate.subjectX500Principal.name
 
     /**
      * Check that the key usage is the creation of digital signatures.
@@ -94,11 +93,8 @@ internal object TrustManagerUtil {
     fun executeCustomValidations(
         certificate: X509Certificate,
         customValidations: List<PKIXCertPathChecker>
-    ) {
-        for (checker in customValidations) {
-            checker.check(certificate) // throws CertPathValidatorException
-        }
-    }
+    ) = customValidations.map { checker -> checker.check(certificate) }
+
 
     /**
      * Check that the key usage is to sign certificates.
@@ -125,7 +121,7 @@ internal object TrustManagerUtil {
      * Verify the signature of the [certificate] with the public key of the
      * [caCertificate].
      */
-    fun verifySignature(certificate: X509Certificate, caCertificate: X509Certificate) {
+    fun verifySignature(certificate: X509Certificate, caCertificate: X509Certificate) =
         try {
             try {
                 certificate.verify(caCertificate.publicKey)
@@ -139,7 +135,6 @@ internal object TrustManagerUtil {
                 }' could not be verified with the public key of CA certificate '${caCertificate.subjectX500Principal.name}'"
             )
         }
-    }
 
     /**
      * If it is technically not possible to verify the signature,
@@ -163,10 +158,6 @@ internal object TrustManagerUtil {
     /**
      * Determine whether the certificate has certain key usage.
      */
-    private fun hasKeyUsage(certificate: X509Certificate, keyUsage: Int): Boolean {
-        if (certificate.keyUsage == null) {
-            return false
-        }
-        return certificate.keyUsage[keyUsage]
-    }
+    private fun hasKeyUsage(certificate: X509Certificate, keyUsage: Int): Boolean =
+        certificate.keyUsage?.let { it[keyUsage] } ?: false
 }

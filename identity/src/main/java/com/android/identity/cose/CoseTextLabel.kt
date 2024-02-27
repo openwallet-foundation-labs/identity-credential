@@ -1,7 +1,7 @@
 package com.android.identity.cose
 
 import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.dataItem
+import com.android.identity.cbor.toDataItem
 
 /**
  * A COSE Label for a string.
@@ -9,12 +9,12 @@ import com.android.identity.cbor.dataItem
  * @param text the string.
  */
 data class CoseTextLabel(val text: String) : CoseLabel() {
-    override val dataItem: DataItem
-        get() = text.dataItem
+    override val toDataItem: DataItem
+        get() = text.toDataItem
 }
 
 /**
  * Gets a [CoseLabel] from a string.
  */
-val String.coseLabel
+val String.toCoseLabel
     get() = CoseTextLabel(this)

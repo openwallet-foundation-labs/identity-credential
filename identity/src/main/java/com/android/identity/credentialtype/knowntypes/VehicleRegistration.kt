@@ -34,7 +34,7 @@ object VehicleRegistration {
         return CredentialType.Builder("Vehicle Registration")
             .addMdocCredentialType("nl.rdw.mekb.1")
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "registration_info",
                 "Vehicle Registration Information",
                 "This data element contains the common vehicle registration information, including UN/EU elements, A and H.",
@@ -42,7 +42,7 @@ object VehicleRegistration {
                 MVR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.DATE,
+                CredentialAttributeType.Date,
                 "issue_date",
                 "Issue Date",
                 "Date when document was issued",
@@ -50,7 +50,7 @@ object VehicleRegistration {
                 MVR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "registration_holder",
                 "Vehicle Registration Holder Information ",
                 "This data element identifies the holder of the registration certificate",
@@ -58,7 +58,7 @@ object VehicleRegistration {
                 MVR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "basic_vehicle_info",
                 "Basic Vehicle Information",
                 "This data element contains the basic vehicle information",
@@ -66,7 +66,7 @@ object VehicleRegistration {
                 MVR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.STRING,
+                CredentialAttributeType.String,
                 "vin",
                 "Vehicle Identification Number",
                 "Vehicle Identification Number defined by the vehicle manufacture",

@@ -54,11 +54,9 @@ import kotlin.time.Duration.Companion.days
  * @param storageEngine the storage engine to use for storing key material.
  */
 class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea {
-    override val identifier: String
-        get() = "SoftwareSecureArea"
+    override val identifier get() = "SoftwareSecureArea"
 
-    override val displayName: String
-        get() = "Software Secure Area"
+    override val displayName get() = "Software Secure Area"
 
     override fun createKey(
         alias: String,
@@ -72,28 +70,33 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         }
         try {
             val privateKey = Crypto.createEcPrivateKey(settings.ecCurve)
-            val mapBuilder = CborMap.builder()
-            mapBuilder.put("curve", settings.ecCurve.coseCurveIdentifier.toLong())
-            mapBuilder.put("keyPurposes", encodeSet(settings.keyPurposes).toLong())
-            mapBuilder.put("passphraseRequired", settings.passphraseRequired)
+            val mapBuilder = CborMap.builder().apply {
+                put("curve", settings.ecCurve.coseCurveIdentifier.toLong())
+                put("keyPurposes", encodeSet(settings.keyPurposes).toLong())
+                put("passphraseRequired", settings.passphraseRequired)
+            }
+
             if (!settings.passphraseRequired) {
-                mapBuilder.put("privateKey", privateKey.toCoseKey().dataItem)
+                mapBuilder.put("privateKey", privateKey.toCoseKey().toDataItem)
             } else {
-                val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().dataItem)
+                val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem)
                 val secretKey = derivePrivateKeyEncryptionKey(
                     encodedPublicKey,
                     settings.passphrase
                 )
-                val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().dataItem)
+                val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem)
                 val iv = Random.Default.nextBytes(12)
                 val encryptedPrivateKey = Crypto.encrypt(
                     Algorithm.A128GCM,
                     secretKey,
                     iv,
-                    cleartextPrivateKey)
-                mapBuilder.put("encodedPublicKey", encodedPublicKey)
-                mapBuilder.put("encryptedPrivateKey", encryptedPrivateKey)
-                mapBuilder.put("encryptedPrivateKeyIv", iv)
+                    cleartextPrivateKey
+                )
+                mapBuilder.apply {
+                    put("encodedPublicKey", encodedPublicKey)
+                    put("encryptedPrivateKey", encryptedPrivateKey)
+                    put("encryptedPrivateKeyIv", iv)
+                }
             }
             val subject = settings.subject ?: "CN=SoftwareSecureArea Key"
             val issuer: String
@@ -135,18 +138,18 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
                 listOf(
                     X509v3Extension(
                         AttestationExtension.ATTESTATION_OID,
-                       false,
+                        false,
                         AttestationExtension.encode(settings.attestationChallenge)
                     )
                 )
             )
             val certs = mutableListOf(certificate)
             if (settings.attestationKeyCertification != null) {
-                settings.attestationKeyCertification.certificates.forEach() {
-                    cert -> certs.add(cert)
+                settings.attestationKeyCertification.certificates.forEach() { cert ->
+                    certs.add(cert)
                 }
             }
-            mapBuilder.put("publicKey", privateKey.publicKey.toCoseKey().dataItem)
+            mapBuilder.put("publicKey", privateKey.publicKey.toCoseKey().toDataItem)
             val attestationBuilder = mapBuilder.put("attestation", CertificateChain(certs).dataItem)
             attestationBuilder.end()
             storageEngine.put(PREFIX + alias, Cbor.encode(mapBuilder.end().build()))
@@ -161,12 +164,16 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         passphrase: String
     ): ByteArray {
         val info = "ICPrivateKeyEncryption1".toByteArray(StandardCharsets.UTF_8)
-        return Crypto.hkdf(Algorithm.HMAC_SHA256, passphrase.toByteArray(), encodedPublicKey, info, 32)
+        return Crypto.hkdf(
+            Algorithm.HMAC_SHA256,
+            passphrase.toByteArray(),
+            encodedPublicKey,
+            info,
+            32
+        )
     }
 
-    override fun deleteKey(alias: String) {
-        storageEngine.delete(PREFIX + alias)
-    }
+    override fun deleteKey(alias: String) = storageEngine.delete(PREFIX + alias)
 
     private data class KeyData(
         val keyPurposes: Set<KeyPurpose>,
@@ -221,10 +228,7 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
     fun getPrivateKey(
         alias: String,
         keyUnlockData: KeyUnlockData?
-    ): EcPrivateKey {
-        val keyData = loadKey(PREFIX, alias, keyUnlockData)
-        return keyData.privateKey
-    }
+    ): EcPrivateKey = loadKey(PREFIX, alias, keyUnlockData).privateKey
 
     @Throws(KeyLockedException::class)
     override fun sign(
@@ -232,10 +236,9 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray {
-        val keyData = loadKey(PREFIX, alias, keyUnlockData)
-        require(keyData.keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
-        return Crypto.sign(keyData.privateKey, signatureAlgorithm, dataToSign)
+    ): ByteArray = loadKey(PREFIX, alias, keyUnlockData).run {
+        require(keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
+        Crypto.sign(privateKey, signatureAlgorithm, dataToSign)
     }
 
     @Throws(KeyLockedException::class)
@@ -243,10 +246,9 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         alias: String,
         otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray {
-        val keyData = loadKey(PREFIX, alias, keyUnlockData)
-        require(keyData.keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
-        return Crypto.keyAgreement(keyData.privateKey, otherKey)
+    ): ByteArray = loadKey(PREFIX, alias, keyUnlockData).run {
+        require(keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
+        Crypto.keyAgreement(privateKey, otherKey)
     }
 
     override fun getKeyInfo(alias: String): SoftwareKeyInfo {

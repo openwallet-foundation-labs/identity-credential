@@ -1,13 +1,11 @@
 package com.android.identity.crypto
 
 import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.dataItem
+import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseLabel
-import com.android.identity.cose.coseLabel
-import com.android.identity.util.Logger
-import org.bouncycastle.asn1.ASN1InputStream
+import com.android.identity.cose.toCoseLabel
 import org.bouncycastle.asn1.DEROctetString
 import org.bouncycastle.asn1.edec.EdECObjectIdentifiers
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
@@ -100,43 +98,41 @@ sealed class EcPrivateKey(
          * @param coseKey the COSE Key.
          * @return the private key.
          */
-        fun fromCoseKey(coseKey: CoseKey): EcPrivateKey {
-            val kty = coseKey.keyType
-            when (kty) {
-                Cose.COSE_KEY_TYPE_EC2.dataItem -> {
+        fun fromCoseKey(coseKey: CoseKey): EcPrivateKey =
+            when (coseKey.keyType) {
+                Cose.COSE_KEY_TYPE_EC2.toDataItem -> {
                     val curve = EcCurve.fromInt(
-                        coseKey.labels[Cose.COSE_KEY_PARAM_CRV.coseLabel]!!.asNumber.toInt()
+                        coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
                     )
-                    val keySizeOctets = (curve.bitSize + 7)/8
-                    val x = coseKey.labels[Cose.COSE_KEY_PARAM_X.coseLabel]!!.asBstr
-                    val y = coseKey.labels[Cose.COSE_KEY_PARAM_Y.coseLabel]!!.asBstr
-                    val d = coseKey.labels[Cose.COSE_KEY_PARAM_D.coseLabel]!!.asBstr
+                    val keySizeOctets = (curve.bitSize + 7) / 8
+                    val x = coseKey.labels[Cose.COSE_KEY_PARAM_X.toCoseLabel]!!.asBstr
+                    val y = coseKey.labels[Cose.COSE_KEY_PARAM_Y.toCoseLabel]!!.asBstr
+                    val d = coseKey.labels[Cose.COSE_KEY_PARAM_D.toCoseLabel]!!.asBstr
                     check(x.size == keySizeOctets)
                     check(y.size == keySizeOctets)
-                    return EcPrivateKeyDoubleCoordinate(curve, d, x, y)
+                    EcPrivateKeyDoubleCoordinate(curve, d, x, y)
                 }
-                Cose.COSE_KEY_TYPE_OKP.dataItem -> {
+
+                Cose.COSE_KEY_TYPE_OKP.toDataItem -> {
                     val curve = EcCurve.fromInt(
-                        coseKey.labels[Cose.COSE_KEY_PARAM_CRV.coseLabel]!!.asNumber.toInt()
+                        coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
                     )
-                    val x = coseKey.labels[Cose.COSE_KEY_PARAM_X.coseLabel]!!.asBstr
-                    val d = coseKey.labels[Cose.COSE_KEY_PARAM_D.coseLabel]!!.asBstr
-                    return EcPrivateKeyOkp(curve, d, x)
+                    val x = coseKey.labels[Cose.COSE_KEY_PARAM_X.toCoseLabel]!!.asBstr
+                    val d = coseKey.labels[Cose.COSE_KEY_PARAM_D.toCoseLabel]!!.asBstr
+                    EcPrivateKeyOkp(curve, d, x)
                 }
+
                 else -> {
-                    throw IllegalArgumentException("Unknown key type $kty")
+                    throw IllegalArgumentException("Unknown key type ${coseKey.keyType}")
                 }
             }
-
-        }
     }
-
 }
 
 // TODO: move to identity-jvm library
 
-fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKey {
-    return when (curve) {
+fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKey =
+    when (curve) {
         EcCurve.P256,
         EcCurve.P384,
         EcCurve.P521,
@@ -159,7 +155,6 @@ fun PrivateKey.toEcPrivateKey(publicKey: PublicKey, curve: EcCurve): EcPrivateKe
             EcPrivateKeyOkp(curve, encoded.sliceArray(IntRange(2, encoded.size - 1)), pub.x)
         }
     }
-}
 
 val EcPrivateKey.javaPrivateKey: PrivateKey
     get() = when (this.curve) {
@@ -178,10 +173,11 @@ val EcPrivateKey.javaPrivateKey: PrivateKey
                 )
             )
         }
+
         EcCurve.ED25519,
         EcCurve.X25519,
         EcCurve.ED448,
-        EcCurve.X448-> {
+        EcCurve.X448 -> {
             val ids = when (this.curve) {
                 EcCurve.ED25519 -> Pair("Ed25519", EdECObjectIdentifiers.id_Ed25519)
                 EcCurve.X25519 -> Pair("X25519", EdECObjectIdentifiers.id_X25519)

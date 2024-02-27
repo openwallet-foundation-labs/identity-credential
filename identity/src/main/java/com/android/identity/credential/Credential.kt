@@ -92,7 +92,6 @@ class Credential private constructor(
     val applicationData: ApplicationData
         get() = _applicationData
 
-
     /**
      * Pending authentication keys.
      */
@@ -100,7 +99,6 @@ class Credential private constructor(
     val pendingAuthenticationKeys: List<PendingAuthenticationKey>
         // Return shallow copy b/c backing field may get modified if certify() or delete() is called.
         get() = _pendingAuthenticationKeys.toList()
-
 
     /**
      * Certified authentication keys.
@@ -121,17 +119,18 @@ class Credential private constructor(
 
     internal fun saveCredential() {
         val t0 = Timestamp.now()
-        val mapBuilder = CborMap.builder()
-        mapBuilder.put("applicationData", _applicationData.encodeAsCbor())
-        val pendingAuthenticationKeysArrayBuilder = mapBuilder.putArray("pendingAuthenticationKeys")
-        for (pendingAuthenticationKey in _pendingAuthenticationKeys) {
-            pendingAuthenticationKeysArrayBuilder.add(pendingAuthenticationKey.toCbor())
+        val mapBuilder = CborMap.builder().apply {
+            put("applicationData", _applicationData.encodeAsCbor())
+            val pendingAuthenticationKeysArrayBuilder = putArray("pendingAuthenticationKeys")
+            for (pendingAuthenticationKey in _pendingAuthenticationKeys) {
+                pendingAuthenticationKeysArrayBuilder.add(pendingAuthenticationKey.toCbor())
+            }
+            val authenticationKeysArrayBuilder = putArray("authenticationKeys")
+            for (authenticationKey in _authenticationKeys) {
+                authenticationKeysArrayBuilder.add(authenticationKey.toCbor())
+            }
+            put("authenticationKeyCounter", authenticationKeyCounter)
         }
-        val authenticationKeysArrayBuilder = mapBuilder.putArray("authenticationKeys")
-        for (authenticationKey in _authenticationKeys) {
-            authenticationKeysArrayBuilder.add(authenticationKey.toCbor())
-        }
-        mapBuilder.put("authenticationKeyCounter", authenticationKeyCounter)
         storageEngine.put(CREDENTIAL_PREFIX + name, Cbor.encode(mapBuilder.end().build()))
         val t1 = Timestamp.now()
 
@@ -182,7 +181,6 @@ class Credential private constructor(
         domain: String,
         now: Timestamp?
     ): AuthenticationKey? {
-
         var candidate: AuthenticationKey? = null
         _authenticationKeys.filter {
             it.domain == domain && (
@@ -308,22 +306,20 @@ class Credential private constructor(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
             name: String
-        ): Credential {
-            val credential = Credential(name, storageEngine, secureAreaRepository)
-            credential.saveCredential()
-            return credential
-        }
+        ): Credential =
+            Credential(name, storageEngine, secureAreaRepository).apply { saveCredential() }
 
         // Called by CredentialStore.lookupCredential().
         fun lookup(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
             name: String
-        ): Credential? {
-            val credential = Credential(name, storageEngine, secureAreaRepository)
-            return if (!credential.loadCredential()) {
-                null
-            } else credential
+        ): Credential? = Credential(name, storageEngine, secureAreaRepository).run {
+            if (loadCredential()) {
+                this// return this Credential object
+            } else { // when credential.loadCredential() == false
+                null // return null
+            }
         }
     }
 }

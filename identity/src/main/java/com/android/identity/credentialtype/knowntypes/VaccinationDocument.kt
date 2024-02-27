@@ -34,7 +34,7 @@ object VaccinationDocument {
         return CredentialType.Builder("Vaccination Document")
             .addMdocCredentialType("org.micov.1")
             .addMdocAttribute(
-                CredentialAttributeType.BOOLEAN,
+                CredentialAttributeType.Boolean,
                 "1D47_vaccinated",
                 "Vaccination against Yellow Fever",
                 "Attestation that the holder has been fully vaccinated against Yellow Fever",
@@ -42,7 +42,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.BOOLEAN,
+                CredentialAttributeType.Boolean,
                 "RA01_vaccinated",
                 "Vaccination against COVID-19",
                 "Attestation that the holder has been fully vaccinated against COVID-19",
@@ -50,7 +50,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "RA01_test",
                 "Test Event for COVID-19",
                 "Attestation that the holder has obtained a negative test for COVID-19",
@@ -58,7 +58,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "safeEntry_Leisure",
                 "Safe Entry Indication",
                 "Attest that the holder fulfils certain set requirements for safe entry in a leisure context (without disclosing if it is based on vaccination, recovery, or negative test)",
@@ -66,7 +66,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.PICTURE,
+                CredentialAttributeType.Picture,
                 "fac",
                 "Facial Image",
                 "Facial Image of the holder",
@@ -74,7 +74,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.STRING,
+                CredentialAttributeType.String,
                 "fni",
                 "Family Name Initial",
                 "Initial letter of the Family Name of the holder",
@@ -82,7 +82,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.STRING,
+                CredentialAttributeType.String,
                 "gni",
                 "Given Name Initial",
                 "Initial letter of the Given Name of the holder",
@@ -90,7 +90,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.NUMBER,
+                CredentialAttributeType.Number,
                 "by",
                 "Birth Year",
                 "Birth Year of the holder",
@@ -98,7 +98,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.NUMBER,
+                CredentialAttributeType.Number,
                 "bm",
                 "Birth Month",
                 "Birth Month of the holder",
@@ -106,7 +106,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.NUMBER,
+                CredentialAttributeType.Number,
                 "bd",
                 "Birth Day",
                 "Birth Day of the holder",
@@ -114,7 +114,7 @@ object VaccinationDocument {
                 MICOV_ATT_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.STRING,
+                CredentialAttributeType.String,
                 "fn",
                 "Family Name",
                 "Family Name of the holder",
@@ -122,7 +122,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.STRING,
+                CredentialAttributeType.String,
                 "gn",
                 "Given Name",
                 "Given Name of the holder",
@@ -130,7 +130,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.DATE,
+                CredentialAttributeType.Date,
                 "dob",
                 "Date of Birth",
                 "Date of Birth of the holder",
@@ -146,7 +146,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "v_RA01_1",
                 "RA01 First Vaccination",
                 "COVID-19 – first vaccination data",
@@ -154,7 +154,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "v_RA01_2",
                 "RA01 Second Vaccination",
                 "COVID-19 – second vaccination data",
@@ -162,7 +162,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "pid_PPN",
                 "ID with Pasport Number",
                 "Unique set of elements identifying the holder by passport number",
@@ -170,7 +170,7 @@ object VaccinationDocument {
                 MICOV_VTR_NAMESPACE
             )
             .addMdocAttribute(
-                CredentialAttributeType.COMPLEX_TYPE,
+                CredentialAttributeType.ComplexType,
                 "pid_DL",
                 "ID with Driver’s License Number",
                 "Unique set of elements identifying the holder by driver’s license number",

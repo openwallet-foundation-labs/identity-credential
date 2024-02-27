@@ -191,7 +191,7 @@ public class NfcEngagementHelper {
 
         byte[] encodedEDeviceKeyBytes =
                 Cbor.encode(new Tagged(24, new Bstr(
-                        Cbor.encode(mEDeviceKey.toCoseKey(Map.of()).getDataItem()))));
+                        Cbor.encode(mEDeviceKey.toCoseKey(Map.of()).getToDataItem()))));
 
         // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
         // if both BLE modes are available at the same time.
