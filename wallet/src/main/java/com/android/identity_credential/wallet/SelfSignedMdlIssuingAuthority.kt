@@ -80,7 +80,7 @@ class SelfSignedMdlIssuingAuthority(
         val icon: ByteArray = baos.toByteArray()
         configuration = IssuingAuthorityConfiguration(
             "mDL_Utopia",
-            "Utopia mDL",
+            resourceString(R.string.self_signed_authority_name),
             icon,
             setOf(CredentialPresentationFormat.MDOC_MSO),
             createCredentialConfiguration(null)
@@ -205,63 +205,63 @@ class SelfSignedMdlIssuingAuthority(
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
                 "tos",
-                """Here's a long string with TOS. Lorem ipsum dolor sit amet, consectetur
-                    | adipiscing elit. Vivamus dictum vel metus non mattis. Ut mattis,
-                    | ipsum vel hendrerit consectetur, mauris purus ultricies nulla, sit amet
-                    | pulvinar odio lorem sed justo. Aliquam erat volutpat.
-                    | Nulla facilisi. """.trimMargin().replace("\n", ""),
-                "Accept",
-                "Do Not Accept",
+                resourceString(R.string.self_signed_authority_tos),
+                resourceString(R.string.self_signed_authority_accept),
+                resourceString(R.string.self_signed_authority_reject),
             )
-            choice("path", "How do you want to authenticate", "Continue") {
-                on("icaoPassive", "Scan passport") {
+            choice("path",
+                resourceString(R.string.self_signed_authority_authentication_choice),
+                resourceString(R.string.self_signed_authority_continue)) {
+                on("icaoPassive",
+                    resourceString(R.string.self_signed_authority_scan_passport)) {
                     icaoPassiveAuthentication("passive", listOf(1, 2, 7))
                 }
-                on("icaoTunnel", "Scan passport with authentication") {
+                on("icaoTunnel",
+                    resourceString(R.string.self_signed_authority_scan_passport_auth)) {
                     icaoTunnel("tunnel", listOf(1, 2, 7)) {
                         whenChipAuthenticated {
                             message("inform",
-                                "Excellent! You passport supports chip authentication",
-                                "Continue",
+                                resourceString(R.string.self_signed_authority_chip_authentication),
+                                resourceString(R.string.self_signed_authority_continue),
                                 null
                             )
                         }
                         whenActiveAuthenticated {
                             message("inform",
-                                "Nice! You passport supports active authentication",
-                                "Continue",
+                                resourceString(R.string.self_signed_authority_active_authentication),
+                                resourceString(R.string.self_signed_authority_continue),
                                 null
                             )
                         }
                         whenNotAuthenticated {
                             message("inform",
-                                "Your passport only supports passive authentication. " +
-                                        "Who knows, maybe it is a clone? There is no protection.",
-                                "Continue",
+                                resourceString(R.string.self_signed_authority_no_authentication),
+                                resourceString(R.string.self_signed_authority_continue),
                                 null
                             )
                         }
                     }
                 }
-                on("questions", "Answer questions") {
+                on("questions",
+                    resourceString(R.string.self_signed_authority_answer_questions)) {
                     question(
                         "firstName",
-                        "What first name should be used for the mDL?",
+                        resourceString(R.string.self_signed_authority_question_first_name),
                         "Erika",
-                        "Continue"
+                        resourceString(R.string.self_signed_authority_continue)
                     )
                 }
             }
-            choice("art", "Select the card art for the credential", "Continue") {
-                on("green", "Green") {}
-                on("blue", "Blue") {}
-                on("red", "Red") {}
+            choice("art",
+                resourceString(R.string.self_signed_authority_card_art),
+                resourceString(R.string.self_signed_authority_continue)) {
+                on("green", resourceString(R.string.self_signed_authority_card_art_green)) {}
+                on("blue", resourceString(R.string.self_signed_authority_card_art_blue)) {}
+                on("red", resourceString(R.string.self_signed_authority_card_art_red)) {}
             }
             message("message",
-                "Your application is about to be sent the ID issuer for " +
-                        "verification. You will get notified when the " +
-                        "application is approved.",
-                "Continue",
+                resourceString(R.string.self_signed_authority_application_finish),
+                resourceString(R.string.self_signed_authority_continue),
                 null
             )
         }
@@ -278,12 +278,12 @@ class SelfSignedMdlIssuingAuthority(
     private fun createCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): CredentialConfiguration {
         if (collectedEvidence == null) {
             return CredentialConfiguration(
-                "Utopia mDL (pending)",
+                resourceString(R.string.self_signed_authority_pending_credential_title),
                 createArtwork(
                     Color.rgb(192, 192, 192),
                     Color.rgb(96, 96, 96),
                     null,
-                    "mDL (Pending)",
+                    resourceString(R.string.self_signed_authority_pending_credential_text),
                 ),
                 NameSpacedData.Builder().build()
             )
@@ -375,12 +375,12 @@ class SelfSignedMdlIssuingAuthority(
             .build()
 
         return CredentialConfiguration(
-            "${firstName}'s mDL",
+            resourceString(R.string.self_signed_authority_credential_title, firstName),
             createArtwork(
                 gradientColor.first,
                 gradientColor.second,
                 portrait,
-                "${firstName}'s mDL",
+                resourceString(R.string.self_signed_authority_credential_text, firstName),
             ),
             staticData
         )
@@ -446,4 +446,7 @@ class SelfSignedMdlIssuingAuthority(
         return baos.toByteArray()
     }
 
+    private fun resourceString(id: Int, vararg text: String): String {
+        return application.applicationContext.resources.getString(id, *text)
+    }
 }
