@@ -26,13 +26,13 @@ package com.android.identity.credentialtype
  * for inputting or displaying credentials attributes.
  */
 sealed class CredentialAttributeType {
-    object STRING : CredentialAttributeType()
-    object NUMBER : CredentialAttributeType()
-    object DATE : CredentialAttributeType()
-    object DATE_TIME : CredentialAttributeType()
-    object PICTURE : CredentialAttributeType()
-    object BOOLEAN : CredentialAttributeType()
-    object COMPLEX_TYPE : CredentialAttributeType()
+    object String : CredentialAttributeType()
+    object Number : CredentialAttributeType()
+    object Date : CredentialAttributeType()
+    object DateTime : CredentialAttributeType()
+    object Picture : CredentialAttributeType()
+    object Boolean : CredentialAttributeType()
+    object ComplexType : CredentialAttributeType()
     class StringOptions(val options: List<StringOption>) : CredentialAttributeType()
     class IntegerOptions(val options: List<IntegerOption>) : CredentialAttributeType()
 }

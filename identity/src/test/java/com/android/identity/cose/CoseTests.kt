@@ -4,10 +4,8 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.DiagnosticOption
-import com.android.identity.cbor.dataItem
 import com.android.identity.internal.Util
 import com.android.identity.crypto.Algorithm
-import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
@@ -17,7 +15,6 @@ import com.android.identity.crypto.toEcPublicKey
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
-import com.android.identity.util.Logger
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.BigIntegers
 import org.junit.Assert
@@ -51,7 +48,7 @@ class CoseTests {
                     EcCurve.P256,
                     BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32),
                     BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32)
-                ).toCoseKey().dataItem,
+                ).toCoseKey().toDataItem,
                 setOf(DiagnosticOption.PRETTY_PRINT)
             )
         )
@@ -65,7 +62,7 @@ class CoseTests {
             BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32),
             BigInteger.valueOf(1).sec1EncodeFieldElementAsOctetString(32))
         val coseKey = key.toCoseKey(
-            mapOf(Pair(Cose.COSE_KEY_KID.coseLabel, "name@example.com".toByteArray().dataItem))
+            mapOf(Pair(Cose.COSE_KEY_KID.toCoseLabel, "name@example.com".toByteArray().dataItem))
         )
         Assert.assertEquals(
             "{\n" +
@@ -75,7 +72,7 @@ class CoseTests {
                     "  -3: h'0000000000000000000000000000000000000000000000000000000000000001',\n" +
                     "  2: h'6e616d65406578616d706c652e636f6d'\n" +
                     "}",
-            Cbor.toDiagnostics(coseKey.dataItem, setOf(DiagnosticOption.PRETTY_PRINT))
+            Cbor.toDiagnostics(coseKey.toDataItem, setOf(DiagnosticOption.PRETTY_PRINT))
         )
     }
 
@@ -98,9 +95,9 @@ class CoseTests {
             .build()
         val coseKey = item.asCoseKey
         Assert.assertEquals(Cose.COSE_KEY_TYPE_EC2, coseKey.keyType.asNumber)
-        Assert.assertArrayEquals(id, coseKey.labels[Cose.COSE_KEY_KID.coseLabel]!!.asBstr)
-        Assert.assertArrayEquals(x, coseKey.labels[Cose.COSE_KEY_PARAM_X.coseLabel]!!.asBstr)
-        Assert.assertArrayEquals(y, coseKey.labels[Cose.COSE_KEY_PARAM_Y.coseLabel]!!.asBstr)
+        Assert.assertArrayEquals(id, coseKey.labels[Cose.COSE_KEY_KID.toCoseLabel]!!.asBstr)
+        Assert.assertArrayEquals(x, coseKey.labels[Cose.COSE_KEY_PARAM_X.toCoseLabel]!!.asBstr)
+        Assert.assertArrayEquals(y, coseKey.labels[Cose.COSE_KEY_PARAM_Y.toCoseLabel]!!.asBstr)
 
         // Also check we can get an EcPublicKey from this
         val key = coseKey.ecPublicKey as EcPublicKeyDoubleCoordinate
@@ -162,10 +159,10 @@ class CoseTests {
 
         val coseSign1 = CoseSign1(
             mutableMapOf(
-                Pair(1L.coseLabel, (-7).dataItem)
+                Pair(1L.toCoseLabel, (-7).dataItem)
             ),
             mutableMapOf(
-                Pair(11L.coseLabel, byteArrayOf(1, 1).dataItem)
+                Pair(11L.toCoseLabel, byteArrayOf(1, 1).dataItem)
             ),
             Util.fromHex("8eb33e4ca31d1c465ab05aac34cc6b23d58fef5c083106c4" +
                     "d25a91aef0b0117e2af9a291aa32e14ab834dc56ed2a223444547e01f11d3b0916e5" +
@@ -229,10 +226,10 @@ class CoseTests {
             "754d7cb7a413766aeff13cb2e"
         val coseSign1 = Cbor.decode(Util.fromHex(issuerAuth)).asCoseSign1
 
-        val signatureAlgorithm = coseSign1.protectedHeaders[Cose.COSE_LABEL_ALG.coseLabel]!!.asNumber
+        val signatureAlgorithm = coseSign1.protectedHeaders[Cose.COSE_LABEL_ALG.toCoseLabel]!!.asNumber
         Assert.assertEquals(signatureAlgorithm, Algorithm.ES256.coseAlgorithmIdentifier.toLong())
 
-        val x5chain = coseSign1.unprotectedHeaders[Cose.COSE_LABEL_X5CHAIN.coseLabel]!!.asCertificateChain
+        val x5chain = coseSign1.unprotectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel]!!.asCertificateChain
         Assert.assertEquals(1, x5chain.certificates.size)
         val cert = x5chain.certificates[0].javaX509Certificate
 
@@ -249,7 +246,7 @@ class CoseTests {
         val privateKey = Crypto.createEcPrivateKey(curve)
         val signatureAlgorithm = privateKey.curve.defaultSigningAlgorithm
         val protectedHeaders = mapOf<CoseLabel, DataItem>(
-            Pair(Cose.COSE_LABEL_ALG.coseLabel,
+            Pair(Cose.COSE_LABEL_ALG.toCoseLabel,
                 signatureAlgorithm.coseAlgorithmIdentifier.dataItem
             )
         )

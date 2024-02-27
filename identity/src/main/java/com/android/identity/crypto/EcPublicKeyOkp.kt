@@ -1,11 +1,11 @@
 package com.android.identity.crypto
 
 import com.android.identity.cbor.DataItem
-import com.android.identity.cbor.dataItem
+import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseKey
 import com.android.identity.cose.CoseLabel
-import com.android.identity.cose.coseLabel
+import com.android.identity.cose.toCoseLabel
 
 /**
  * EC Public Key with Octet Key Pairs.
@@ -17,19 +17,23 @@ data class EcPublicKeyOkp(
     val x: ByteArray
 ) : EcPublicKey(curve) {
 
-    override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey {
-        return CoseKey(mapOf(
-            Pair(Cose.COSE_KEY_KTY.coseLabel, Cose.COSE_KEY_TYPE_OKP.dataItem),
-            Pair(Cose.COSE_KEY_PARAM_CRV.coseLabel, curve.coseCurveIdentifier.dataItem),
-            Pair(Cose.COSE_KEY_PARAM_X.coseLabel, x.dataItem)) + additionalLabels)
-    }
+    override fun toCoseKey(additionalLabels: Map<CoseLabel, DataItem>): CoseKey =
+        CoseKey(
+            mapOf(
+                Pair(Cose.COSE_KEY_KTY.toCoseLabel, Cose.COSE_KEY_TYPE_OKP.toDataItem),
+                Pair(Cose.COSE_KEY_PARAM_CRV.toCoseLabel, curve.coseCurveIdentifier.toDataItem),
+                Pair(Cose.COSE_KEY_PARAM_X.toCoseLabel, x.toDataItem)
+            ) + additionalLabels
+        )
 
     init {
         when (curve) {
             EcCurve.ED25519,
             EcCurve.X25519,
             EcCurve.X448,
-            EcCurve.ED448 -> {}
+            EcCurve.ED448 -> {
+            }
+
             else -> throw IllegalArgumentException("Unsupported curve $curve")
         }
     }

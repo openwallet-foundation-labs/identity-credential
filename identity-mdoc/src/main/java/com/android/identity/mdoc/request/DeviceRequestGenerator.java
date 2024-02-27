@@ -36,10 +36,7 @@ import com.android.identity.cose.CoseNumberLabel;
 import com.android.identity.crypto.Algorithm;
 import com.android.identity.crypto.CertificateChain;
 import com.android.identity.crypto.EcPrivateKey;
-import com.android.identity.internal.Util;
-import com.android.identity.util.Logger;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -158,7 +155,7 @@ public final class DeviceRequestGenerator {
 
             Map<CoseLabel, DataItem> protectedHeaders = Map.of(
                     new CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                    DataItemExtensionsKt.getDataItem(signatureAlgorithm.getCoseAlgorithmIdentifier())
+                    DataItemExtensionsKt.getToDataItem(signatureAlgorithm.getCoseAlgorithmIdentifier())
             );
             Map<CoseLabel, DataItem> unprotectedHeaders = Map.of(
                     new CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
@@ -172,7 +169,7 @@ public final class DeviceRequestGenerator {
                     signatureAlgorithm,
                     protectedHeaders,
                     unprotectedHeaders
-            ).getDataItem();
+            ).getToDataItem();
         }
 
         MapBuilder<CborBuilder> mapBuilder = CborMap.Companion.builder();

@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet
 
 import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.RawCbor
 import com.android.identity.credential.Credential
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.CredentialTypeRepository
@@ -35,14 +34,14 @@ private fun renderMdocDataElement(mdocDataElement: MdocDataElement?, value: Byte
     val item = Cbor.decode(value)
     try {
         return when (mdocDataElement?.attribute?.type) {
-            is CredentialAttributeType.STRING -> item.asTstr
+            is CredentialAttributeType.String -> item.asTstr
             /* is CredentialAttributeType.DATE -> TODO */
-            is CredentialAttributeType.DATE_TIME -> item.asDateTimeString.toString()
+            is CredentialAttributeType.DateTime -> item.asDateTimeString.toString()
 
-            is CredentialAttributeType.NUMBER -> item.asNumber.toString()
-            is CredentialAttributeType.PICTURE -> "${value.size} bytes"
-            is CredentialAttributeType.BOOLEAN -> item.asBoolean.toString()
-            is CredentialAttributeType.COMPLEX_TYPE -> Cbor.toDiagnostics(value)
+            is CredentialAttributeType.Number -> item.asNumber.toString()
+            is CredentialAttributeType.Picture -> "${value.size} bytes"
+            is CredentialAttributeType.Boolean -> item.asBoolean.toString()
+            is CredentialAttributeType.ComplexType -> Cbor.toDiagnostics(value)
             is CredentialAttributeType.StringOptions -> {
                 val key = item.asTstr
                 val options =
@@ -90,7 +89,7 @@ private fun visitNamespace(
         val mdocDataElement = mdocCredentialType?.namespaces?.get(namespaceName)?.dataElements?.get(elementIdentifier)
 
         if (mdocDataElement != null &&
-            mdocDataElement.attribute.type == CredentialAttributeType.PICTURE &&
+            mdocDataElement.attribute.type == CredentialAttributeType.Picture &&
             namespaceName == DrivingLicense.MDL_NAMESPACE) {
             when (mdocDataElement.attribute.identifier) {
                 "portrait" -> {

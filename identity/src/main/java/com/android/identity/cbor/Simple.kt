@@ -10,7 +10,7 @@ import kotlin.experimental.or
  */
 class Simple(val value: UInt) : DataItem(MajorType.SPECIAL) {
     init {
-        check(value < 24U || (value >= 32U && value <= 255U))
+        check(value < 24U || (value in 32U..255U))
     }
 
     override fun encode(builder: ByteStringBuilder) {
@@ -40,7 +40,7 @@ class Simple(val value: UInt) : DataItem(MajorType.SPECIAL) {
         }
     }
 
-    override fun equals(other: Any?): Boolean = other is Simple && value.equals(other.value)
+    override fun equals(other: Any?): Boolean = other is Simple && value == other.value
 
     override fun hashCode(): Int = value.hashCode()
 

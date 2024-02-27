@@ -23,7 +23,7 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
          * in time described there. A nested item of another type or a text string that doesn't
          * match the format described in [RFC4287] is invalid.
          */
-        val DATE_TIME_STRING = 0L
+        const val DATE_TIME_STRING = 0L
 
         /**
          * Epoch-based date/time.
@@ -62,7 +62,7 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
          * shorter encoding. Application protocol designers are encouraged to consider these cases
          * and include clear guidelines for handling them.
          */
-        val DATE_TIME_NUMBER = 1L
+        const val DATE_TIME_NUMBER = 1L
 
 
         /**
@@ -76,17 +76,17 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
          * decoded CBOR item is not required for tag validity (but could be offered by a generic
          * decoder as a special option).
          */
-        val ENCODED_CBOR = 24L
+        const val ENCODED_CBOR = 24L
 
         /**
          * CBOR tag for a text string representing a date without a time.
          *
          * See https://datatracker.ietf.org/doc/html/rfc8943.
          */
-        val FULL_DATE_STRING = 1004L
+        const val FULL_DATE_STRING = 1004L
 
         internal fun decode(encodedCbor: ByteArray, offset: Int): Pair<Int, Tagged> {
-            var (itemOffset, tagNumber) = Cbor.decodeLength(encodedCbor, offset)
+            val (itemOffset, tagNumber) = Cbor.decodeLength(encodedCbor, offset)
             val (newItemOffset, taggedItem) = Cbor.decode(encodedCbor, itemOffset)
             return Pair(newItemOffset, Tagged(tagNumber.toLong(), taggedItem))
         }
@@ -94,12 +94,10 @@ class Tagged(val tagNumber: Long, val taggedItem: DataItem) : DataItem(MajorType
 
 
     override fun equals(other: Any?): Boolean =
-        other is Tagged && tagNumber.equals(other.tagNumber) && taggedItem.equals(other.taggedItem)
+        other is Tagged && tagNumber == other.tagNumber && taggedItem == other.taggedItem
 
     override fun hashCode(): Int = tagNumber.hashCode() + 31*taggedItem.hashCode()
 
-    override fun toString(): String {
-        return "TaggedItem($tagNumber, $taggedItem)"
-    }
+    override fun toString(): String = "TaggedItem($tagNumber, $taggedItem)"
 
 }

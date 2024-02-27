@@ -22,7 +22,6 @@ import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.securearea.SecureArea
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
@@ -307,7 +306,7 @@ class ShowDocumentFragment : Fragment() {
     }
 
     private fun isPortraitElement(mdocDataElement: MdocDataElement?): Boolean {
-        if (mdocDataElement?.attribute?.type != CredentialAttributeType.PICTURE) {
+        if (mdocDataElement?.attribute?.type != CredentialAttributeType.Picture) {
             return false
         }
         return listOf("portrait", "fac").contains(mdocDataElement.attribute.identifier)
@@ -332,14 +331,14 @@ class ShowDocumentFragment : Fragment() {
 
     private fun getPresentation(mdocDataElement: MdocDataElement?, value: ByteArray): String {
         return when (mdocDataElement?.attribute?.type) {
-            is CredentialAttributeType.STRING,
-            is CredentialAttributeType.DATE,
-            is CredentialAttributeType.DATE_TIME -> Util.cborDecodeString(value)
+            is CredentialAttributeType.String,
+            is CredentialAttributeType.Date,
+            is CredentialAttributeType.DateTime -> Util.cborDecodeString(value)
 
-            is CredentialAttributeType.NUMBER -> Util.cborDecodeLong(value).toString()
-            is CredentialAttributeType.PICTURE -> String.format("%d bytes", value.size)
-            is CredentialAttributeType.BOOLEAN -> Util.cborDecodeBoolean(value).toString()
-            is CredentialAttributeType.COMPLEX_TYPE -> FormatUtil.cborPrettyPrint(value)
+            is CredentialAttributeType.Number -> Util.cborDecodeLong(value).toString()
+            is CredentialAttributeType.Picture -> String.format("%d bytes", value.size)
+            is CredentialAttributeType.Boolean -> Util.cborDecodeBoolean(value).toString()
+            is CredentialAttributeType.ComplexType -> FormatUtil.cborPrettyPrint(value)
             is CredentialAttributeType.StringOptions -> {
                 val key = Util.cborDecodeString(value)
                 val options =

@@ -69,6 +69,7 @@ class MdocCredentialType private constructor(
         /**
          * Build the [MdocCredentialType].
          */
-        fun build() = MdocCredentialType(docType, namespaces.map { Pair(it.key, it.value.build()) }.toMap())
+        fun build() =
+            MdocCredentialType(docType, namespaces.map { Pair(it.key, it.value.build()) }.toMap())
     }
 }

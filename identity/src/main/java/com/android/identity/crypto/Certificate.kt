@@ -23,7 +23,7 @@ data class Certificate(
     /**
      * Gets an [Bstr] with the encoded X.509 certificate.
      */
-    val dataItem: DataItem
+    val toDataItem: DataItem
         get() = Bstr(encodedCertificate)
 
     private fun getCurve(tbsCertificate: ByteArray): EcCurve {
@@ -80,6 +80,7 @@ data class Certificate(
                         else -> throw IllegalStateException("Unexpected curve OID $ecCurveString")
                     }
                 }
+
                 "1.3.101.110" -> EcCurve.X25519
                 "1.3.101.111" -> EcCurve.X448
                 "1.3.101.112" -> EcCurve.ED25519
@@ -107,14 +108,13 @@ data class Certificate(
     /**
      * Verifies that the certificate was signed with a given EC public key.
      */
-    fun verify(publicKey: EcPublicKey): Boolean {
+    fun verify(publicKey: EcPublicKey): Boolean =
         try {
             this.javaX509Certificate.verify(publicKey.javaPublicKey)
-            return true
+            true
         } catch (e: Exception) {
-            return false
+            false
         }
-    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -125,9 +125,7 @@ data class Certificate(
         return encodedCertificate.contentEquals(other.encodedCertificate)
     }
 
-    override fun hashCode(): Int {
-        return encodedCertificate.contentHashCode()
-    }
+    override fun hashCode(): Int = encodedCertificate.contentHashCode()
 
     companion object {
         /**
@@ -136,9 +134,7 @@ data class Certificate(
          * @param dataItem the data item, must be a [Bstr].
          * @return the certificate.
          */
-        fun fromDataItem(dataItem: DataItem): Certificate {
-            return Certificate(dataItem.asBstr)
-        }
+        fun fromDataItem(dataItem: DataItem): Certificate = Certificate(dataItem.asBstr)
     }
 }
 

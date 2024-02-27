@@ -26,7 +26,6 @@ import com.android.identity.crypto.CertificateChain;
 import com.android.identity.crypto.Crypto;
 import com.android.identity.crypto.EcCurve;
 import com.android.identity.crypto.EcPrivateKey;
-import com.android.identity.internal.Util;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
@@ -98,7 +97,7 @@ public class DeviceRequestGeneratorTest {
 
         Map<String, byte[]> mdlRequestInfo = new HashMap<>();
         mdlRequestInfo.put("foo", Cbor.encode(new Tstr("bar")));
-        mdlRequestInfo.put("bar", Cbor.encode(DataItemExtensionsKt.getDataItem(42)));
+        mdlRequestInfo.put("bar", Cbor.encode(DataItemExtensionsKt.getToDataItem(42)));
 
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
                 .setSessionTranscript(encodedSessionTranscript)
@@ -155,7 +154,7 @@ public class DeviceRequestGeneratorTest {
         Assert.assertNotNull(requestInfo);
         Assert.assertEquals(2, requestInfo.keySet().size());
         Assert.assertArrayEquals(Cbor.encode(new Tstr("bar")), requestInfo.get("foo"));
-        Assert.assertArrayEquals(Cbor.encode(DataItemExtensionsKt.getDataItem(42)), requestInfo.get("bar"));
+        Assert.assertArrayEquals(Cbor.encode(DataItemExtensionsKt.getToDataItem(42)), requestInfo.get("bar"));
 
         docRequest = it.next();
         Assert.assertTrue(docRequest.getReaderAuthenticated());

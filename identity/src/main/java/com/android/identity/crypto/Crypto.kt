@@ -40,7 +40,6 @@ import java.security.SecureRandom
 import java.security.Signature
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.security.spec.KeySpec
 import java.util.Date
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
@@ -58,7 +57,7 @@ import javax.crypto.spec.SecretKeySpec
 object Crypto {
     /**
      * Message digest function.
-     * 
+     *
      * @param algorithm must one of [Algorithm.SHA256], [Algorithm.SHA384], [Algorithm.SHA512].
      * @param message the message to get a digest of.
      * @return the digest.
@@ -73,14 +72,16 @@ object Crypto {
             Algorithm.SHA256 -> "SHA-256"
             Algorithm.SHA384 -> "SHA-384"
             Algorithm.SHA512 -> "SHA-512"
-            else -> { throw IllegalArgumentException("Unsupported algorithm $algorithm")}
+            else -> {
+                throw IllegalArgumentException("Unsupported algorithm $algorithm")
+            }
         }
         return MessageDigest.getInstance(algName).digest(message)
     }
 
     /**
      * Message authentication code function.
-     * 
+     *
      * @param algorithm must be one of [Algorithm.HMAC_SHA256], [Algorithm.HMAC_SHA384],
      * [Algorithm.HMAC_SHA512].
      * @param key the secret key.
@@ -98,17 +99,21 @@ object Crypto {
             Algorithm.HMAC_SHA256 -> "HmacSha256"
             Algorithm.HMAC_SHA384 -> "HmacSha384"
             Algorithm.HMAC_SHA512 -> "HmacSha512"
-            else -> { throw IllegalArgumentException("Unsupported algorithm $algorithm")}
+            else -> {
+                throw IllegalArgumentException("Unsupported algorithm $algorithm")
+            }
         }
-        val mac = Mac.getInstance(algName)
-        mac.init(SecretKeySpec(key, ""))
-        mac.update(message)
-        return mac.doFinal()
+
+        return Mac.getInstance(algName).run {
+            init(SecretKeySpec(key, ""))
+            update(message)
+            doFinal()
+        }
     }
 
     /**
      * Message encryption.
-     * 
+     *
      * @param algorithm must be one of [Algorithm.A128GCM], [Algorithm.A192GCM],
      * [Algorithm.A256GCM].
      * @param key the encryption key.
@@ -128,11 +133,14 @@ object Crypto {
             Algorithm.A128GCM -> {}
             Algorithm.A192GCM -> {}
             Algorithm.A256GCM -> {}
-            else -> { throw IllegalArgumentException("Unsupported algorithm $algorithm")}
+            else -> {
+                throw IllegalArgumentException("Unsupported algorithm $algorithm")
+            }
         }
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
-        return cipher.doFinal(messagePlaintext)
+        return Cipher.getInstance("AES/GCM/NoPadding").run {
+            init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
+            doFinal(messagePlaintext)
+        }
     }
 
     /**
@@ -158,16 +166,19 @@ object Crypto {
             Algorithm.A128GCM -> {}
             Algorithm.A192GCM -> {}
             Algorithm.A256GCM -> {}
-            else -> { throw IllegalArgumentException("Unsupported algorithm $algorithm")}
+            else -> {
+                throw IllegalArgumentException("Unsupported algorithm $algorithm")
+            }
         }
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        try {
-            cipher.init(
-                Cipher.DECRYPT_MODE,
-                SecretKeySpec(key, "AES"),
-                GCMParameterSpec(128, nonce)
-            )
-            return cipher.doFinal(messageCiphertext)
+        return try {
+            Cipher.getInstance("AES/GCM/NoPadding").run {
+                init(
+                    Cipher.DECRYPT_MODE,
+                    SecretKeySpec(key, "AES"),
+                    GCMParameterSpec(128, nonce)
+                )
+                doFinal(messageCiphertext)
+            }
         } catch (e: Exception) {
             throw IllegalStateException("Error decrypting", e)
         }
@@ -255,7 +266,8 @@ object Crypto {
         publicKey: EcPublicKey,
         message: ByteArray,
         algorithm: Algorithm,
-        signature: ByteArray): Boolean {
+        signature: ByteArray
+    ): Boolean {
         val signatureAlgorithm = when (algorithm) {
             Algorithm.UNSET -> throw IllegalArgumentException("Algorithm not set")
             Algorithm.ES256 -> "SHA256withECDSA"
@@ -265,18 +277,22 @@ object Crypto {
                 when (publicKey.curve) {
                     EcCurve.ED25519 -> "Ed25519"
                     EcCurve.ED448 -> "Ed448"
-                    else -> throw IllegalArgumentException("Algorithm $algorithm incompatible " +
-                            "with curve ${publicKey.curve}")
+                    else -> throw IllegalArgumentException(
+                        "Algorithm $algorithm incompatible " +
+                                "with curve ${publicKey.curve}"
+                    )
                 }
             }
+
             else -> throw IllegalArgumentException("Unsupported algorithm $algorithm")
         }
 
-        try {
-            val verifier = Signature.getInstance(signatureAlgorithm)
-            verifier.initVerify(publicKey.javaPublicKey)
-            verifier.update(message)
-            return verifier.verify(signature)
+        return try {
+            Signature.getInstance(signatureAlgorithm).run {
+                initVerify(publicKey.javaPublicKey)
+                update(message)
+                verify(signature)
+            }
         } catch (e: Exception) {
             throw IllegalStateException("Error verifying signature", e)
         }
@@ -288,8 +304,8 @@ object Crypto {
      * @param curve the curve to use.
      */
     @JvmStatic
-    fun createEcPrivateKey(curve: EcCurve): EcPrivateKey {
-        val privateKey = when (curve) {
+    fun createEcPrivateKey(curve: EcCurve): EcPrivateKey =
+        when (curve) {
             EcCurve.P256,
             EcCurve.P384,
             EcCurve.P521,
@@ -304,41 +320,51 @@ object Crypto {
                 val d = (keyPair.private as BCECPrivateKey).d.toByteArray()
                 EcPrivateKeyDoubleCoordinate(curve, d, publicKey.x, publicKey.y)
             }
+
             EcCurve.ED25519 -> {
-                val keyPairGenerator = Ed25519KeyPairGenerator()
-                keyPairGenerator.init(Ed25519KeyGenerationParameters(SecureRandom()))
-                val asymmetricCipherKeyPair = keyPairGenerator.generateKeyPair()
-                val privateKey = asymmetricCipherKeyPair.private as Ed25519PrivateKeyParameters
-                val publicKey = asymmetricCipherKeyPair.public as Ed25519PublicKeyParameters
-                EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                Ed25519KeyPairGenerator().run {
+                    init(Ed25519KeyGenerationParameters(SecureRandom()))
+                    generateKeyPair().run {
+                        val privateKey = this.private as Ed25519PrivateKeyParameters
+                        val publicKey = this.public as Ed25519PublicKeyParameters
+                        EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                    }
+                }
             }
+
             EcCurve.X25519 -> {
-                val keyPairGenerator = X25519KeyPairGenerator()
-                keyPairGenerator.init(X25519KeyGenerationParameters(SecureRandom()))
-                val asymmetricCipherKeyPair = keyPairGenerator.generateKeyPair()
-                val privateKey = asymmetricCipherKeyPair.private as X25519PrivateKeyParameters
-                val publicKey = asymmetricCipherKeyPair.public as X25519PublicKeyParameters
-                EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                X25519KeyPairGenerator().run {
+                    init(X25519KeyGenerationParameters(SecureRandom()))
+                    generateKeyPair().run {
+                        val privateKey = this.private as X25519PrivateKeyParameters
+                        val publicKey = this.public as X25519PublicKeyParameters
+                        EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                    }
+                }
             }
+
             EcCurve.ED448 -> {
-                val keyPairGenerator = Ed448KeyPairGenerator()
-                keyPairGenerator.init(Ed448KeyGenerationParameters(SecureRandom()))
-                val asymmetricCipherKeyPair = keyPairGenerator.generateKeyPair()
-                val privateKey = asymmetricCipherKeyPair.private as Ed448PrivateKeyParameters
-                val publicKey = asymmetricCipherKeyPair.public as Ed448PublicKeyParameters
-                EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                Ed448KeyPairGenerator().run {
+                    init(Ed448KeyGenerationParameters(SecureRandom()))
+                    generateKeyPair().run {
+                        val privateKey = this.private as Ed448PrivateKeyParameters
+                        val publicKey = this.public as Ed448PublicKeyParameters
+                        EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                    }
+                }
             }
+
             EcCurve.X448 -> {
-                val keyPairGenerator = X448KeyPairGenerator()
-                keyPairGenerator.init(X448KeyGenerationParameters(SecureRandom()))
-                val asymmetricCipherKeyPair = keyPairGenerator.generateKeyPair()
-                val privateKey = asymmetricCipherKeyPair.private as X448PrivateKeyParameters
-                val publicKey = asymmetricCipherKeyPair.public as X448PublicKeyParameters
-                EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                X448KeyPairGenerator().run {
+                    init(X448KeyGenerationParameters(SecureRandom()))
+                    generateKeyPair().run {
+                        val privateKey = this.private as X448PrivateKeyParameters
+                        val publicKey = this.public as X448PublicKeyParameters
+                        EcPrivateKeyOkp(curve, privateKey.encoded, publicKey.encoded)
+                    }
+                }
             }
         }
-        return privateKey
-    }
 
     /**
      * Signs data with a key.
@@ -352,59 +378,65 @@ object Crypto {
      * @return the signature.
      */
     @JvmStatic
-    fun sign(key: EcPrivateKey,
-             signatureAlgorithm: Algorithm,
-             message: ByteArray): ByteArray {
-        val spec: KeySpec
-        when (key.curve) {
-            EcCurve.P256,
-            EcCurve.P384,
-            EcCurve.P521,
-            EcCurve.BRAINPOOLP256R1,
-            EcCurve.BRAINPOOLP320R1,
-            EcCurve.BRAINPOOLP384R1,
-            EcCurve.BRAINPOOLP512R1 -> {
-                val signatureAlgorithmName = when (signatureAlgorithm) {
-                    Algorithm.ES256 -> "SHA256withECDSA"
-                    Algorithm.ES384 -> "SHA384withECDSA"
-                    Algorithm.ES512 -> "SHA512withECDSA"
-                    else -> throw IllegalArgumentException(
-                        "Unsupported signing algorithm $signatureAlgorithm for curve ${key.curve}"
-                    )
-                }
-                spec = ECPrivateKeySpec(
-                    BigIntegers.fromUnsignedByteArray(key.d),
-                    ECNamedCurveTable.getParameterSpec(key.curve.SECGName)
+    fun sign(
+        key: EcPrivateKey,
+        signatureAlgorithm: Algorithm,
+        message: ByteArray
+    ): ByteArray = when (key.curve) {
+        EcCurve.P256,
+        EcCurve.P384,
+        EcCurve.P521,
+        EcCurve.BRAINPOOLP256R1,
+        EcCurve.BRAINPOOLP320R1,
+        EcCurve.BRAINPOOLP384R1,
+        EcCurve.BRAINPOOLP512R1 -> {
+            val signatureAlgorithmName = when (signatureAlgorithm) {
+                Algorithm.ES256 -> "SHA256withECDSA"
+                Algorithm.ES384 -> "SHA384withECDSA"
+                Algorithm.ES512 -> "SHA512withECDSA"
+                else -> throw IllegalArgumentException(
+                    "Unsupported signing algorithm $signatureAlgorithm for curve ${key.curve}"
                 )
-                val kf = KeyFactory.getInstance("EC")
-                val privateKey = kf.generatePrivate(spec)
-                return try {
-                    val s = Signature.getInstance(signatureAlgorithmName, BouncyCastleProvider.PROVIDER_NAME)
-                    s.initSign(privateKey)
-                    s.update(message)
-                    s.sign()
-                } catch (e: Exception) {
-                    throw IllegalStateException("Unexpected Exception", e)
-                }
             }
-            EcCurve.ED25519 -> {
-                val privateKey = Ed25519PrivateKeyParameters(key.d, 0)
-                val signer = Ed25519Signer()
-                signer.init(true, privateKey)
-                signer.update(message, 0, message.size)
-                return signer.generateSignature()
+            val spec = ECPrivateKeySpec(
+                BigIntegers.fromUnsignedByteArray(key.d),
+                ECNamedCurveTable.getParameterSpec(key.curve.SECGName)
+            )
+            val kf = KeyFactory.getInstance("EC")
+            val privateKey = kf.generatePrivate(spec)
+            try {
+                Signature.getInstance(signatureAlgorithmName, BouncyCastleProvider.PROVIDER_NAME)
+                    .run {
+                        initSign(privateKey)
+                        update(message)
+                        sign()
+                    }
+            } catch (e: Exception) {
+                throw IllegalStateException("Unexpected Exception", e)
             }
-            EcCurve.ED448 -> {
-                val privateKey = Ed448PrivateKeyParameters(key.d, 0)
-                val signer = Ed448Signer(byteArrayOf())
-                signer.init(true, privateKey)
-                signer.update(message, 0, message.size)
-                return signer.generateSignature()
+        }
+
+        EcCurve.ED25519 -> {
+            val privateKey = Ed25519PrivateKeyParameters(key.d, 0)
+            Ed25519Signer().run {
+                init(true, privateKey)
+                update(message, 0, message.size)
+                generateSignature()
             }
-            EcCurve.X25519,
-            EcCurve.X448 -> {
-                throw IllegalStateException("Key with curve ${key.curve} does not support signing")
+        }
+
+        EcCurve.ED448 -> {
+            val privateKey = Ed448PrivateKeyParameters(key.d, 0)
+            Ed448Signer(byteArrayOf()).run {
+                init(true, privateKey)
+                update(message, 0, message.size)
+                generateSignature()
             }
+        }
+
+        EcCurve.X25519,
+        EcCurve.X448 -> {
+            throw IllegalStateException("Key with curve ${key.curve} does not support signing")
         }
     }
 
@@ -415,9 +447,10 @@ object Crypto {
      * @param otherKey the key from the other party.
      */
     @JvmStatic
-    fun keyAgreement(key: EcPrivateKey,
-                     otherKey: EcPublicKey): ByteArray {
-        val spec: KeySpec
+    fun keyAgreement(
+        key: EcPrivateKey,
+        otherKey: EcPublicKey
+    ): ByteArray =
         when (key.curve) {
             EcCurve.P256,
             EcCurve.P384,
@@ -426,47 +459,50 @@ object Crypto {
             EcCurve.BRAINPOOLP320R1,
             EcCurve.BRAINPOOLP384R1,
             EcCurve.BRAINPOOLP512R1 -> {
-                spec = ECPrivateKeySpec(
+                ECPrivateKeySpec(
                     BigIntegers.fromUnsignedByteArray(key.d),
                     ECNamedCurveTable.getParameterSpec(key.curve.SECGName)
-                )
-                val kf = KeyFactory.getInstance("EC")
-                val privateKey = kf.generatePrivate(spec)
-                return try {
-                    val ka = KeyAgreement.getInstance("ECDH")
-                    ka.init(privateKey)
-                    ka.doPhase(otherKey.javaPublicKey, true)
-                    ka.generateSecret()
-                } catch (e: Exception) {
-                    throw IllegalStateException("Unexpected Exception", e)
+                ).run {
+                    val kf = KeyFactory.getInstance("EC")
+                    val privateKey = kf.generatePrivate(this)
+                    try {
+                        val ka = KeyAgreement.getInstance("ECDH")
+                        ka.init(privateKey)
+                        ka.doPhase(otherKey.javaPublicKey, true)
+                        ka.generateSecret()
+                    } catch (e: Exception) {
+                        throw IllegalStateException("Unexpected Exception", e)
+                    }
                 }
             }
+
             EcCurve.ED25519,
             EcCurve.ED448 -> {
                 throw IllegalStateException("Key with curve ${key.curve} does not support key-agreement")
             }
+
             EcCurve.X25519 -> {
                 check(otherKey is EcPublicKeyOkp)
-                val _otherKey = X25519PublicKeyParameters(otherKey.x, 0)
+                val otherKeyX = X25519PublicKeyParameters(otherKey.x, 0)
                 val privateKey = X25519PrivateKeyParameters(key.d, 0)
                 val ka = X25519Agreement()
                 ka.init(privateKey)
                 val buf = ByteArray(ka.agreementSize)
-                ka.calculateAgreement(_otherKey, buf, 0)
-                return buf
+                ka.calculateAgreement(otherKeyX, buf, 0)
+                buf
             }
+
             EcCurve.X448 -> {
                 check(otherKey is EcPublicKeyOkp)
-                val _otherKey = X448PublicKeyParameters(otherKey.x, 0)
+                val otherKeyX = X448PublicKeyParameters(otherKey.x, 0)
                 val privateKey = X448PrivateKeyParameters(key.d, 0)
                 val ka = X448Agreement()
                 ka.init(privateKey)
                 val buf = ByteArray(ka.agreementSize)
-                ka.calculateAgreement(_otherKey, buf, 0)
-                return buf
+                ka.calculateAgreement(otherKeyX, buf, 0)
+                buf
             }
         }
-    }
 
     /**
      * Data for a X509 extension
@@ -495,15 +531,17 @@ object Crypto {
      * @param extensions list of extensions to put into the certificate.
      */
     @JvmStatic
-    fun createX509v3Certificate(publicKey: EcPublicKey,
-                                signingKey: EcPrivateKey,
-                                signatureAlgorithm: Algorithm,
-                                serial: String,
-                                subject: String,
-                                issuer: String,
-                                validFrom: Instant,
-                                validUntil: Instant,
-                                extensions: List<X509v3Extension>): Certificate {
+    fun createX509v3Certificate(
+        publicKey: EcPublicKey,
+        signingKey: EcPrivateKey,
+        signatureAlgorithm: Algorithm,
+        serial: String,
+        subject: String,
+        issuer: String,
+        validFrom: Instant,
+        validUntil: Instant,
+        extensions: List<X509v3Extension>
+    ): Certificate {
         val signatureAlgorithmString = when (signatureAlgorithm) {
             Algorithm.ES256 -> "SHA256withECDSA"
             Algorithm.ES384 -> "SHA384withECDSA"
@@ -517,10 +555,10 @@ object Crypto {
                     )
                 }
             }
+
             else -> throw IllegalArgumentException("Algorithm cannot be used for signing")
         }
         val certSigningKeyJava = signingKey.javaPrivateKey
-
 
         val certBuilder = JcaX509v3CertificateBuilder(
             X500Name(issuer),
@@ -530,7 +568,7 @@ object Crypto {
             X500Name(subject),
             publicKey.javaPublicKey
         )
-        extensions.forEach() { extension ->
+        extensions.forEach { extension ->
             certBuilder.addExtension(
                 ASN1ObjectIdentifier(extension.oid),
                 extension.isCritical,

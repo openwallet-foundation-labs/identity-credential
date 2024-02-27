@@ -11,13 +11,17 @@ import kotlin.experimental.or
 class CborFloat(val value: Float) : DataItem(MajorType.SPECIAL) {
 
     override fun encode(builder: ByteStringBuilder) {
-        val majorTypeShifted = (majorType.type shl 5).toByte()
-        builder.append(majorTypeShifted.or(26))
-        val raw = value.toRawBits()
-        builder.append((raw shr 24).and(0xff).toByte())
-        builder.append((raw shr 16).and(0xff).toByte())
-        builder.append((raw shr  8).and(0xff).toByte())
-        builder.append((raw shr  0).and(0xff).toByte())
+        builder.run {
+            val majorTypeShifted = (majorType.type shl 5).toByte()
+            append(majorTypeShifted.or(26))
+
+            val raw = value.toRawBits()
+            append((raw shr 24).and(0xff).toByte())
+            append((raw shr 16).and(0xff).toByte())
+            append((raw shr  8).and(0xff).toByte())
+            append((raw shr  0).and(0xff).toByte())
+        }
+
     }
 
     companion object {
@@ -34,7 +38,5 @@ class CborFloat(val value: Float) : DataItem(MajorType.SPECIAL) {
 
     override fun hashCode(): Int = value.hashCode()
 
-    override fun toString(): String {
-        return "CborFloat($value)"
-    }
+    override fun toString(): String = "CborFloat($value)"
 }

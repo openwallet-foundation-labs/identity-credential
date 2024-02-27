@@ -30,7 +30,7 @@ import kotlinx.io.bytestring.ByteStringBuilder
 sealed class DataItem(
     val majorType: MajorType
 ) {
-    abstract internal fun encode(builder: ByteStringBuilder)
+    internal abstract fun encode(builder: ByteStringBuilder)
 
     /**
      * The value of a [Bstr] data item.
@@ -199,7 +199,7 @@ sealed class DataItem(
      */
     fun hasKey(key: String): Boolean {
         require(this is CborMap)
-        return items.get(key.dataItem) != null
+        return items.get(key.toDataItem) != null
     }
 
     /**
@@ -211,7 +211,7 @@ sealed class DataItem(
      */
     fun hasKey(key: Long): Boolean {
         require(this is CborMap)
-        return items.get(key.dataItem) != null
+        return items.get(key.toDataItem) != null
     }
 
     /**
@@ -240,7 +240,7 @@ sealed class DataItem(
      * @throws IllegalStateException if the value doesn't exist in the map.
      */
     operator fun get(key: String): DataItem {
-        return get(key.dataItem)
+        return get(key.toDataItem)
     }
 
     /**
@@ -258,7 +258,7 @@ sealed class DataItem(
                 items[key.toInt()]
             }
             else -> {
-                get(key.dataItem)
+                get(key.toDataItem)
             }
         }
     }
@@ -290,7 +290,7 @@ sealed class DataItem(
      */
     fun getOrDefault(key: String, defaultValue: DataItem): DataItem {
         require(this is CborMap)
-        val value = items.get(key.dataItem)
+        val value = items.get(key.toDataItem)
         if (value == null) {
             return defaultValue
         }
@@ -307,7 +307,7 @@ sealed class DataItem(
      */
     fun getOrDefault(key: Long, defaultValue: DataItem): DataItem {
         require(this is CborMap)
-        val value = items.get(key.dataItem)
+        val value = items.get(key.toDataItem)
         if (value == null) {
             return defaultValue
         }
@@ -335,7 +335,7 @@ sealed class DataItem(
      */
     fun getOrNull(key: String): DataItem? {
         require(this is CborMap)
-        return items.get(key.dataItem)
+        return items.get(key.toDataItem)
     }
 
     /**
@@ -347,7 +347,7 @@ sealed class DataItem(
      */
     fun getOrNull(key: Long): DataItem? {
         require(this is CborMap)
-        return items.get(key.dataItem)
+        return items.get(key.toDataItem)
     }
 
     /**

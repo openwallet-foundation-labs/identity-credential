@@ -46,6 +46,7 @@ enum class EcCurve(val coseCurveIdentifier: Int) {
                 ?: throw IllegalArgumentException("No curve with COSE identifier $coseCurveIdentifier")
     }
 
+
     /**
      * The curve size in bits
      */
@@ -96,4 +97,7 @@ enum class EcCurve(val coseCurveIdentifier: Int) {
             ED448 -> Algorithm.EDDSA
             X448 -> Algorithm.UNSET
         }
+
+    // helper to easily return the size of key in octets
+    val keySizeOctets = (bitSize + 7) / 8
 }

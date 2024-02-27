@@ -196,6 +196,5 @@ class PendingAuthenticationKey {
                 }
             authenticationKeyCounter = map["authenticationKeyCounter"].asNumber
         }
-
     }
 }

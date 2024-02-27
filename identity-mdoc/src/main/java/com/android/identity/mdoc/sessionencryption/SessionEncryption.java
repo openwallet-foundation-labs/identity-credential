@@ -161,7 +161,7 @@ public final class SessionEncryption {
                         ((EcPublicKeyDoubleCoordinate) eReaderKey).getX(),
                         BigIntegers.asUnsignedByteArray(32, BigInteger.valueOf(42)));
             }
-            mapBuilder.putTaggedEncodedCbor("eReaderKey", Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()));
+            mapBuilder.putTaggedEncodedCbor("eReaderKey", Cbor.encode(eReaderKey.toCoseKey(Map.of()).getToDataItem()));
             if (messageCiphertext == null) {
                 throw new IllegalStateException("Data cannot be empty in initial message");
             }

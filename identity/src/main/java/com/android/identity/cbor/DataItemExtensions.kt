@@ -6,37 +6,37 @@ import kotlinx.datetime.toInstant
 /**
  * Extension to get a [Tstr] data item for the value.
  */
-val String.dataItem: Tstr
+val String.toDataItem: Tstr
     get() = Tstr(this)
 
 /**
  * Extension to get a [Bstr] data item for the value.
  */
-val ByteArray.dataItem: Bstr
+val ByteArray.toDataItem: Bstr
     get() = Bstr(this)
 
 /**
  * Extension to get a [CborInt] data item for the value.
  */
-val Byte.dataItem: CborInt
-    get() = this.toLong().dataItem
+val Byte.toDataItem: CborInt
+    get() = this.toLong().toDataItem
 
 /**
  * Extension to get a [CborInt] data item for the value.
  */
-val Short.dataItem: CborInt
-    get() = this.toLong().dataItem
+val Short.toDataItem: CborInt
+    get() = this.toLong().toDataItem
 
 /**
  * Extension to get a [CborInt] data item for the value.
  */
-val Int.dataItem: CborInt
-    get() = this.toLong().dataItem
+val Int.toDataItem: CborInt
+    get() = this.toLong().toDataItem
 
 /**
  * Extension to get a [CborInt] data item for the value.
  */
-val Long.dataItem: CborInt
+val Long.toDataItem: CborInt
     get() = if (this >= 0) {
         Uint(toULong())
     } else {
@@ -46,7 +46,7 @@ val Long.dataItem: CborInt
 /**
  * Extension to get a [Simple] data item for the value.
  */
-val Boolean.dataItem: Simple
+val Boolean.toDataItem: Simple
     get() = if (this) {
         Simple.TRUE
     } else {
@@ -56,19 +56,19 @@ val Boolean.dataItem: Simple
 /**
  * Extension to get a [CborFloat] data item for the value.
  */
-val Float.dataItem: CborFloat
+val Float.toDataItem: CborFloat
     get() = CborFloat(this)
 
 /**
  * Extension to get a [CborDouble] data item for the value.
  */
-val Double.dataItem: CborDouble
+val Double.toDataItem: CborDouble
     get() = CborDouble(this)
 
 /**
  * Extension to get a date-time string data item for a point in time.
  */
-val Instant.dateTimeString: DataItem
+val Instant.toDataItemDateTimeString: DataItem
     get() = Tagged(Tagged.DATE_TIME_STRING, Tstr(this.toString()))
 
 /**
@@ -76,7 +76,7 @@ val Instant.dateTimeString: DataItem
  *
  * The value of the [Long] is interpreted as number of milliseconds since the Epoch.
  */
-val Long.dateTimeString: DataItem
+val Long.toDataItemDateTimeString: DataItem
     get() {
         val instant = Instant.fromEpochMilliseconds(this)
         return Tagged(Tagged.DATE_TIME_STRING, Tstr(instant.toString()))
@@ -86,6 +86,6 @@ val Long.dateTimeString: DataItem
  * Extension to get a date-time string data item for a RFC 3339-formatted string representing a
  * point in time.
  */
-val String.dateTimeString: DataItem
-    get() = this.toInstant().dateTimeString
+val String.toDataItemDateTimeString: DataItem
+    get() = this.toInstant().toDataItemDateTimeString
 

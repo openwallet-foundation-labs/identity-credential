@@ -3,16 +3,15 @@ package com.android.identity.cbor
 /**
  * Array builder.
  */
-class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
+data class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
     /**
      * Adds a new data item.
      *
      * @param item the item to add.
      * @return the builder.
      */
-    fun add(item: DataItem): ArrayBuilder<T> {
+    fun add(item: DataItem) = apply {
         array.items.add(item)
-        return this
     }
 
     /**
@@ -22,9 +21,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param taggedItem the item to add.
      * @return the builder.
      */
-    fun addTagged(tagNumber: Long, taggedItem: DataItem): ArrayBuilder<T> {
+    fun addTagged(tagNumber: Long, taggedItem: DataItem) = apply {
         array.items.add(Tagged(tagNumber, taggedItem))
-        return this
     }
 
     /**
@@ -32,9 +30,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      *
      * @param encodedCbor the bytes of the encoded CBOR.
      */
-    fun addTaggedEncodedCbor(encodedCbor: ByteArray): ArrayBuilder<T> {
+    fun addTaggedEncodedCbor(encodedCbor: ByteArray) = apply {
         array.items.add(Tagged(Tagged.ENCODED_CBOR, Bstr(encodedCbor)))
-        return this
     }
 
     /**
@@ -70,9 +67,7 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      *
      * @return the containing builder.
      */
-    fun end(): T {
-        return parent
-    }
+    fun end(): T = parent
 
     // Convenience adders
 
@@ -82,9 +77,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: ByteArray): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: ByteArray) = apply {
+        add(value.toDataItem)
     }
 
     /**
@@ -93,9 +87,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: String): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: String) = apply {
+        add(value.toDataItem)
     }
 
     /**
@@ -104,9 +97,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: Byte): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: Byte) = apply {
+        add(value.toDataItem)
     }
 
     /**
@@ -115,9 +107,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: Short): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: Short) = apply {
+        add(value.toDataItem)
     }
 
     /**
@@ -126,9 +117,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: Int): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: Int) = apply {
+        add(value.toDataItem)
     }
 
     /**
@@ -137,9 +127,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: Long): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: Long) = apply {
+        add(value.toDataItem)
     }
 
     /**
@@ -148,9 +137,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: Boolean): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: Boolean) = apply {
+        add(value.toDataItem)
     }
 
     /**
@@ -159,9 +147,8 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: Double): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: Double) = apply {
+        add(value.toDataItem)
     }
 
 
@@ -171,8 +158,7 @@ class ArrayBuilder<T>(private val parent: T, private val array: CborArray) {
      * @param value the value to add.
      * @return the builder.
      */
-    fun add(value: Float): ArrayBuilder<T> {
-        add(value.dataItem)
-        return this
+    fun add(value: Float) = apply {
+        add(value.toDataItem)
     }
 }

@@ -335,7 +335,7 @@ public final class DeviceResponseParser {
                         false,
                         Map.of(
                                 new CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                                DataItemExtensionsKt.getDataItem(Algorithm.HMAC_SHA256.getCoseAlgorithmIdentifier())
+                                DataItemExtensionsKt.getToDataItem(Algorithm.HMAC_SHA256.getCoseAlgorithmIdentifier())
                         ),
                         Map.of()
                 ).getTag();

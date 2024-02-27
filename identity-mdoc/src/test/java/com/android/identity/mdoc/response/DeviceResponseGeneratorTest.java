@@ -188,7 +188,7 @@ public class DeviceResponseGeneratorTest {
         //
         Map<CoseLabel, DataItem> protectedHeaders = Map.of(
                 new CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                DataItemExtensionsKt.getDataItem(Algorithm.ES256.getCoseAlgorithmIdentifier())
+                DataItemExtensionsKt.getToDataItem(Algorithm.ES256.getCoseAlgorithmIdentifier())
         );
         Map<CoseLabel, DataItem> unprotectedHeaders = Map.of(
                 new CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
@@ -202,7 +202,7 @@ public class DeviceResponseGeneratorTest {
                         Algorithm.ES256,
                         protectedHeaders,
                         unprotectedHeaders
-                ).getDataItem()
+                ).getToDataItem()
         );
 
         byte[] issuerProvidedAuthenticationData = new StaticAuthDataGenerator(

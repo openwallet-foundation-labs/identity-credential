@@ -752,7 +752,7 @@ public class VerificationHelper {
         mEphemeralKey = Crypto.createEcPrivateKey(engagement.getESenderKey().getCurve());
 
         byte[] encodedEReaderKeyPub = Cbor.encode(
-                mEphemeralKey.getPublicKey().toCoseKey(Map.of()).getDataItem());
+                mEphemeralKey.getPublicKey().toCoseKey(Map.of()).getToDataItem());
         mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(Util.cborBuildTaggedByteString(mDeviceEngagement))

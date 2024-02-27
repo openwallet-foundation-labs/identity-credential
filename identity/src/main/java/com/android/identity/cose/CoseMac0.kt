@@ -24,15 +24,15 @@ data class CoseMac0(
     /**
      * Encodes the COSE_Mac0 as a CBOR data item.
      */
-    val dataItem: DataItem
+    val toDataItem: DataItem
         get() {
             val uphb = CborMap.builder()
-            unprotectedHeaders.forEach() { (label, dataItem) -> uphb.put(label.dataItem, dataItem) }
+            unprotectedHeaders.forEach { (label, dataItem) -> uphb.put(label.toDataItem, dataItem) }
 
             val serializedProtectedHeaders =
-                if (protectedHeaders.size > 0) {
+                if (protectedHeaders.isNotEmpty()) {
                     val phb = CborMap.builder()
-                    protectedHeaders.forEach() { (label, di) -> phb.put(label.dataItem, di) }
+                    protectedHeaders.forEach { (label, di) -> phb.put(label.toDataItem, di) }
                     Cbor.encode(phb.end().build())
                 } else {
                     byteArrayOf()
@@ -64,13 +64,13 @@ data class CoseMac0(
 
             val unprotectedHeaders = mutableMapOf<CoseLabel, DataItem>()
             val uph = dataItem.items[1] as CborMap
-            uph.items.forEach() { (key, value) -> unprotectedHeaders.put(key.asCoseLabel, value) }
+            uph.items.forEach { (key, value) -> unprotectedHeaders.put(key.asCoseLabel, value) }
 
             val protectedHeaders = mutableMapOf<CoseLabel, DataItem>()
             val serializedProtectedHeaders = dataItem.items[0].asBstr
             if (serializedProtectedHeaders.isEmpty()) {
                 val ph = Cbor.decode(serializedProtectedHeaders) as CborMap
-                ph.items.forEach() { (key, value) -> protectedHeaders.put(key.asCoseLabel, value) }
+                ph.items.forEach { (key, value) -> protectedHeaders.put(key.asCoseLabel, value) }
             }
 
             var payloadOrNil: ByteArray? = null

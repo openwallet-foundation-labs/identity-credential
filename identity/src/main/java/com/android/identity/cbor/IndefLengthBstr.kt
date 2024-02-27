@@ -11,7 +11,7 @@ data class IndefLengthBstr(val chunks: List<ByteArray>) : DataItem(MajorType.BYT
     override fun encode(builder: ByteStringBuilder) {
         val majorTypeShifted = (majorType.type shl 5)
         builder.append((majorTypeShifted + 31).toByte())
-        chunks.forEach() {
+        chunks.forEach {
             Cbor.encodeLength(builder, majorType, it.size)
             builder.append(it)
         }

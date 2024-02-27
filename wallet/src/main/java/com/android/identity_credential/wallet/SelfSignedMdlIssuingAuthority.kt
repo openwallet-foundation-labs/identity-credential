@@ -13,8 +13,8 @@ import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Tagged
-import com.android.identity.cbor.dataItem
-import com.android.identity.cbor.dateTimeString
+import com.android.identity.cbor.toDataItem
+import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
@@ -129,7 +129,7 @@ class SelfSignedMdlIssuingAuthority(
         val issuerCertChain = listOf(issuerSigningKeyCert)
         val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_ALG),
-            Algorithm.ES256.coseAlgorithmIdentifier.dataItem
+            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
@@ -143,7 +143,7 @@ class SelfSignedMdlIssuingAuthority(
                 Algorithm.ES256,
                 protectedHeaders,
                 unprotectedHeaders
-            ).dataItem
+            ).toDataItem
         )
 
         val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
@@ -349,8 +349,8 @@ class SelfSignedMdlIssuingAuthority(
             .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
             .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
             .putEntryNumber(MDL_NAMESPACE, "sex", sex)
-            .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(issueDate.dateTimeString))
-            .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.dateTimeString))
+            .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(issueDate.toDataItemDateTimeString))
+            .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.toDataItemDateTimeString))
             .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
             .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
             .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")

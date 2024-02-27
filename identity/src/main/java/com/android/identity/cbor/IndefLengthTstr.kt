@@ -8,7 +8,9 @@ import kotlinx.io.bytestring.ByteStringBuilder
  * @param chunks the chunks in the string.
  */
 data class IndefLengthTstr(val chunks: List<String>) : DataItem(MajorType.UNICODE_STRING) {
+
     override fun encode(builder: ByteStringBuilder) {
+
         val majorTypeShifted = (majorType.type shl 5)
         builder.append((majorTypeShifted + 31).toByte())
         chunks.forEach() {

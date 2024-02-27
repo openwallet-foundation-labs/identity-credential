@@ -246,7 +246,7 @@ public class DeviceRetrievalHelper {
             // This is reverse engagement, we actually haven't connected yet...
             byte[] encodedEDeviceKeyBytes =
                     Cbor.encode(new Tagged(24, new Bstr(
-                            Cbor.encode(mEDeviceKey.toCoseKey(Map.of()).getDataItem()))));
+                            Cbor.encode(mEDeviceKey.toCoseKey(Map.of()).getToDataItem()))));
             mTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
             mTransport.connect();
         }

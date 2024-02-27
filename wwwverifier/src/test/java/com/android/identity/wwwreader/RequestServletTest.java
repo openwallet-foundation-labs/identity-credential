@@ -65,7 +65,6 @@ import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestC
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
 
 // other imports
-import java.math.BigInteger;
 import java.io.IOException;
 import java.security.Security;
 import java.util.Base64;
@@ -175,7 +174,7 @@ public class RequestServletTest {
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKey.getPublicKey(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
-            Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()), dKey);
+            Cbor.encode(eReaderKey.toCoseKey(Map.of()).getToDataItem()), dKey);
 
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKey.getPublicKey(),
@@ -224,7 +223,7 @@ public class RequestServletTest {
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKey.getPublicKey(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
-            Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()), dKey);
+            Cbor.encode(eReaderKey.toCoseKey(Map.of()).getToDataItem()), dKey);
 
         // construct messageData (containing Device Engagement)
         EngagementGenerator eg = new EngagementGenerator(eDeviceKey.getPublicKey(),
@@ -270,7 +269,7 @@ public class RequestServletTest {
         byte[] re = RequestServlet.generateReaderEngagement(eReaderKey.getPublicKey(), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.RE_PROP, re, dKey);
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
-                Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()), dKey);
+                Cbor.encode(eReaderKey.toCoseKey(Map.of()).getToDataItem()), dKey);
 
         // construct messageData (containing Device Engagement)
         DataItem deviceEngagementBytes = sessionTranscript.get(0);
@@ -310,9 +309,9 @@ public class RequestServletTest {
         
         // put items in Datastore
         RequestServlet.setDatastoreProp(ServletConsts.PRIVKEY_PROP,
-                Cbor.encode(eReaderKey.toCoseKey(Map.of()).getDataItem()), dKey);
+                Cbor.encode(eReaderKey.toCoseKey(Map.of()).getToDataItem()), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.DEVKEY_PROP,
-                Cbor.encode(eDeviceKey.getPublicKey().toCoseKey(Map.of()).getDataItem()), dKey);
+                Cbor.encode(eDeviceKey.getPublicKey().toCoseKey(Map.of()).getToDataItem()), dKey);
         RequestServlet.setDatastoreProp(ServletConsts.TRANSCRIPT_PROP,
             Cbor.encode(sessionTranscript), dKey);
         RequestServlet.setOriginInfoStatus(ServletConsts.OI_FAILURE_START +
