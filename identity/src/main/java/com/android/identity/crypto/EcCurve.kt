@@ -17,16 +17,16 @@ enum class EcCurve(val coseCurveIdentifier: Int) {
     P521(3),
 
     /** The curve identifier for brainpoolP256r1  */
-    BRAINPOOLP256R1(-65537),
+    BRAINPOOLP256R1(256),
 
     /** The curve identifier for brainpoolP320r1  */
-    BRAINPOOLP320R1(-65538),
+    BRAINPOOLP320R1(257),
 
     /** The curve identifier for brainpoolP384r1  */
-    BRAINPOOLP384R1(-65539),
+    BRAINPOOLP384R1(258),
 
     /** The curve identifier for brainpoolP512r1  */
-    BRAINPOOLP512R1(-65540),
+    BRAINPOOLP512R1(259),
 
     /** The curve identifier for Ed25519 (EdDSA only)  */
     ED25519(6),
