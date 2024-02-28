@@ -129,8 +129,7 @@ class MdocReaderPrompt(
             AgeVerificationType.Over21 -> requestedElemsIntent["age_over_21"] = false
         }
 
-        val generator = DeviceRequestGenerator()
-            .setSessionTranscript(verification.sessionTranscript)
+        val generator = DeviceRequestGenerator(verification.sessionTranscript)
             .addDocumentRequest(
                 "org.iso.18013.5.1.mDL",
                 mapOf("org.iso.18013.5.1" to requestedElemsIntent),
@@ -228,11 +227,8 @@ class MdocReaderPrompt(
 
     private fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {
         responseBytes?.let { rb ->
-            val parser =
-                DeviceResponseParser()
-            parser.setSessionTranscript(verification.sessionTranscript)
+            val parser = DeviceResponseParser(rb, verification.sessionTranscript)
             parser.setEphemeralReaderKey(verification.eReaderKey)
-            parser.setDeviceResponse(rb)
             return parser.parse()
         } ?: throw IllegalStateException("Response not received")
     }
@@ -632,7 +628,7 @@ private fun ResultsScreen(
                 .clip(RoundedCornerShape(12.dp))
                 .align(Alignment.TopCenter)
         ) {
-            val documents: MutableList<DeviceResponseParser.Document>? = deviceResponse?.documents
+            val documents = deviceResponse?.documents
             val mdoc: DeviceResponseParser.Document? = documents?.get(0)
             if (mdoc != null && "org.iso.18013.5.1" in mdoc.issuerNamespaces) {
                 val portraitBytes = mdoc.getIssuerEntryByteString("org.iso.18013.5.1", "portrait") // could break - need to fail more gracefully

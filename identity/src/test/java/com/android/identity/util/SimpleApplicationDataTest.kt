@@ -16,13 +16,9 @@
 package com.android.identity.util
 
 import com.android.identity.credential.NameSpacedData
-import com.android.identity.util.SimpleApplicationData.Companion.decodeFromCbor
 import org.junit.Assert
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
 
-@RunWith(JUnit4::class)
 class SimpleApplicationDataTest {
     private fun testEncodingConsistency(
         original: SimpleApplicationData,
@@ -42,21 +38,21 @@ class SimpleApplicationDataTest {
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getNameSpacedData("testkey") }
         appData.setData("foo", byteArrayOf(0x50, 0x51, 0x52))
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // do the same thing and assert nothing changes
         appData.setData("foo", byteArrayOf(0x50, 0x51, 0x52))
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setString("foo", "testString")
         Assert.assertEquals("testString", appData.getString("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setNumber("foo", 792L)
         Assert.assertEquals(792L, appData.getNumber("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setBoolean("foo", false)
         Assert.assertEquals(false, appData.getBoolean("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setNameSpacedData(
             "foo", NameSpacedData.Builder()
                 .putEntryString("foo", "bar", "baz")
@@ -66,7 +62,7 @@ class SimpleApplicationDataTest {
             "baz", appData.getNameSpacedData("foo")
                 .getDataElementString("foo", "bar")
         )
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // remove by nulling
         appData.setData("foo", null as ByteArray?)
@@ -80,7 +76,7 @@ class SimpleApplicationDataTest {
         Assert.assertEquals("bar", appData.getString("foo"))
         val numOnDataSetCalled = intArrayOf(0)
         testEncodingConsistency(appData,
-            decodeFromCbor(
+            SimpleApplicationData.decodeFromCbor(
                 appData.encodeAsCbor()
             ) { key: String? -> numOnDataSetCalled[0] += 1 }
         )
@@ -92,16 +88,16 @@ class SimpleApplicationDataTest {
         val appData = SimpleApplicationData({})
         appData.setData("foo", byteArrayOf(0x50, 0x51, 0x52))
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setData("bar", byteArrayOf(0x53, 0x54, 0x55))
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
         Assert.assertArrayEquals(byteArrayOf(0x53, 0x54, 0x55), appData.getData("bar"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // remove by nulling
         appData.setData("bar", null as ByteArray?)
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         Assert.assertFalse(appData.keyExists("bar"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getData("bar") }
     }
@@ -111,16 +107,16 @@ class SimpleApplicationDataTest {
         val appData = SimpleApplicationData({})
         appData.setString("foo", "abc")
         Assert.assertEquals("abc", appData.getString("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setString("bar", "foo")
         Assert.assertEquals("abc", appData.getString("foo"))
         Assert.assertEquals("foo", appData.getString("bar"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // remove by nulling
         appData.setData("bar", null as ByteArray?)
         Assert.assertEquals("abc", appData.getString("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         Assert.assertFalse(appData.keyExists("bar"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getString("bar") }
 
@@ -128,7 +124,7 @@ class SimpleApplicationDataTest {
         appData.setString("bar", "")
         Assert.assertEquals("abc", appData.getString("foo"))
         Assert.assertEquals("", appData.getString("bar"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // non-String values being read as a String
         appData.setNumber("bar", 0L)
@@ -140,7 +136,7 @@ class SimpleApplicationDataTest {
         appData.setData("bar", ByteArray(0))
         Assert.assertEquals("abc", appData.getString("foo"))
         Assert.assertEquals(0, appData.getData("bar").size.toLong())
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setBoolean("bar", true)
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getString("bar") }
     }
@@ -150,16 +146,16 @@ class SimpleApplicationDataTest {
         val appData = SimpleApplicationData({})
         appData.setNumber("foo", 83L)
         Assert.assertEquals(83L, appData.getNumber("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setNumber("bar", 0L)
         Assert.assertEquals(83L, appData.getNumber("foo"))
         Assert.assertEquals(0L, appData.getNumber("bar"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // remove by nulling
         appData.setData("bar", null)
         Assert.assertEquals(83L, appData.getNumber("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         Assert.assertFalse(appData.keyExists("bar"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getString("bar") }
 
@@ -170,7 +166,7 @@ class SimpleApplicationDataTest {
         appData.setData("bar", ByteArray(0))
         Assert.assertEquals(83L, appData.getNumber("foo"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getNumber("bar") }
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setString("bar", "abc")
         Assert.assertEquals(83L, appData.getNumber("foo"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getNumber("bar") }
@@ -184,16 +180,16 @@ class SimpleApplicationDataTest {
         val appData = SimpleApplicationData({})
         appData.setNumber("foo", Long.MAX_VALUE)
         Assert.assertEquals(Long.MAX_VALUE, appData.getNumber("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setNumber("bar", Long.MIN_VALUE)
         Assert.assertEquals(Long.MAX_VALUE, appData.getNumber("foo"))
         Assert.assertEquals(Long.MIN_VALUE, appData.getNumber("bar"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // remove by nulling
         appData.setData("bar", null)
         Assert.assertEquals(Long.MAX_VALUE, appData.getNumber("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         Assert.assertFalse(appData.keyExists("bar"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getString("bar") }
     }
@@ -203,16 +199,16 @@ class SimpleApplicationDataTest {
         val appData = SimpleApplicationData({})
         appData.setBoolean("foo", true)
         Assert.assertEquals(true, appData.getBoolean("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setBoolean("bar", false)
         Assert.assertEquals(true, appData.getBoolean("foo"))
         Assert.assertEquals(false, appData.getBoolean("bar"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // remove by nulling
         appData.setData("bar", null)
         Assert.assertEquals(true, appData.getBoolean("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         Assert.assertFalse(appData.keyExists("bar"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getString("bar") }
 
@@ -223,7 +219,7 @@ class SimpleApplicationDataTest {
         appData.setData("bar", ByteArray(0))
         Assert.assertEquals(true, appData.getBoolean("foo"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getBoolean("bar") }
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setString("bar", "abc")
         Assert.assertEquals(true, appData.getBoolean("foo"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getBoolean("bar") }
@@ -237,22 +233,22 @@ class SimpleApplicationDataTest {
         val appData = SimpleApplicationData({})
         appData.setData("foo", byteArrayOf(0x50, 0x51, 0x52))
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setString("bar", "abc")
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
         Assert.assertEquals("abc", appData.getString("bar"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setNumber("c", 601L)
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
         Assert.assertEquals("abc", appData.getString("bar"))
         Assert.assertEquals(601L, appData.getNumber("c"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
         appData.setBoolean("a", false)
         Assert.assertArrayEquals(byteArrayOf(0x50, 0x51, 0x52), appData.getData("foo"))
         Assert.assertEquals("abc", appData.getString("bar"))
         Assert.assertEquals(601L, appData.getNumber("c"))
         Assert.assertEquals(false, appData.getBoolean("a"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
 
         // override the "foo" key with a String
         appData.setString("foo", "bar")
@@ -260,6 +256,6 @@ class SimpleApplicationDataTest {
         Assert.assertEquals("abc", appData.getString("bar"))
         Assert.assertEquals(601L, appData.getNumber("c"))
         Assert.assertEquals(false, appData.getBoolean("a"))
-        testEncodingConsistency(appData, decodeFromCbor(appData.encodeAsCbor(), {}))
+        testEncodingConsistency(appData, SimpleApplicationData.decodeFromCbor(appData.encodeAsCbor(), {}))
     }
 }

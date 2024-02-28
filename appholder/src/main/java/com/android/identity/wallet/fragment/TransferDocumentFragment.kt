@@ -104,7 +104,9 @@ class TransferDocumentFragment : Fragment() {
                 val doc = viewModel.getSelectedDocuments().first { reqDoc.docType == it.docType }
                 if (reqDoc.readerAuth != null && reqDoc.readerAuthenticated) {
                     val cc = mutableListOf<X509Certificate>()
-                    reqDoc.readerCertificateChain.certificates.forEach() { c -> cc.add(c.javaX509Certificate) }
+                    reqDoc.readerCertificateChain!!.certificates.forEach() { c ->
+                        cc.add(c.javaX509Certificate)
+                    }
                     var certChain: List<X509Certificate> = cc
 
                     val customValidators = CustomValidators.getByDocType(doc.docType)

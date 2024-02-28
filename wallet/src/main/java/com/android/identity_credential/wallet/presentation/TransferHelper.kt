@@ -100,16 +100,13 @@ class TransferHelper(
             }
 
         val credential = credentialStore.lookupCredential(credentialId)!!
-        val request = DeviceRequestParser()
-            .setDeviceRequest(deviceRequest)
-            .setSessionTranscript(deviceRetrievalHelper.sessionTranscript)
-            .parse()
+        val request = DeviceRequestParser(deviceRequest, deviceRetrievalHelper.sessionTranscript).parse()
         val docRequest = request.documentRequests[0]
 
         var trustPoint: TrustPoint? = null
-        if (docRequest.readerAuth != null && docRequest.readerAuthenticated) {
+        if (docRequest.readerAuthenticated) {
             val result = trustManager.verify(
-                docRequest.readerCertificateChain.javaX509Certificates,
+                docRequest.readerCertificateChain!!.javaX509Certificates,
                 customValidators = emptyList()  // not neeeded for reader auth
             )
             if (result.isTrusted && !result.trustPoints.isEmpty()) {
@@ -162,7 +159,7 @@ class TransferHelper(
             val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
             val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
             val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
-            val mso = MobileSecurityObjectParser().setMobileSecurityObject(encodedMso).parse()
+            val mso = MobileSecurityObjectParser(encodedMso).parse()
 
             val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
                 credentialRequest,

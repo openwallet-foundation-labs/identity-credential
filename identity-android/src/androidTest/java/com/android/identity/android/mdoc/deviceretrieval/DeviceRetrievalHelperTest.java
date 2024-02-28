@@ -87,6 +87,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import kotlin.Pair;
 import kotlin.random.Random;
 import kotlinx.datetime.Clock;
 import kotlinx.datetime.Instant;
@@ -297,7 +298,7 @@ public class DeviceRetrievalHelperTest {
                         .add(Simple.Companion.getNULL())
                         .end()
                         .build());
-        SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+        SessionEncryption seReader = new SessionEncryption(SessionEncryption.Role.MDOC_READER,
                 eReaderKey,
                 eDeviceKey.getPublicKey(),
                 encodedSessionTranscript);
@@ -311,7 +312,7 @@ public class DeviceRetrievalHelperTest {
         aamvaNsItems.put("real_id", false);
         mdlItemsToRequest.put(AAMVA_NAMESPACE, aamvaNsItems);
 
-        byte[] encodedDeviceRequest = new DeviceRequestGenerator()
+        byte[] encodedDeviceRequest = new DeviceRequestGenerator(encodedSessionTranscript)
                 .addDocumentRequest(
                         MDL_DOCTYPE,
                         mdlItemsToRequest,
@@ -320,8 +321,7 @@ public class DeviceRetrievalHelperTest {
                         Algorithm.UNSET,
                         null)
                 .generate();
-        byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
-                OptionalLong.empty());
+        byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest, null);
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
             public void onConnecting() {
@@ -348,12 +348,12 @@ public class DeviceRetrievalHelperTest {
             @Override
             public void onMessageReceived() {
                 byte[] data = verifierTransport.getMessage();
-                SessionEncryption.DecryptedMessage decryptedMessage = seReader.decryptMessage(data);
-                Assert.assertFalse(decryptedMessage.getStatus().isPresent());
+                Pair<byte[], Long> decryptedMessage = seReader.decryptMessage(data);
+                Assert.assertNull(decryptedMessage.getSecond());
 
-                DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
-                        .setDeviceResponse(decryptedMessage.getData())
-                        .setSessionTranscript(encodedSessionTranscript)
+                DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser(
+                        decryptedMessage.getFirst(),
+                        encodedSessionTranscript)
                         .setEphemeralReaderKey(eReaderKey)
                         .parse();
                 Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.getStatus());
@@ -374,8 +374,8 @@ public class DeviceRetrievalHelperTest {
 
                 // Send a close message (status 20 is "session termination")
                 verifierTransport.sendMessage(
-                        seReader.encryptMessage(null, OptionalLong.of(
-                                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)));
+                        seReader.encryptMessage(null,
+                                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION));
             }
         }, executor);
 
@@ -393,9 +393,9 @@ public class DeviceRetrievalHelperTest {
 
                     @Override
                     public void onDeviceRequest(@NonNull byte[] deviceRequestBytes) {
-                        DeviceRequestParser parser = new DeviceRequestParser();
-                        parser.setDeviceRequest(deviceRequestBytes);
-                        parser.setSessionTranscript(presentation[0].getSessionTranscript());
+                        DeviceRequestParser parser = new DeviceRequestParser(
+                                deviceRequestBytes,
+                                presentation[0].getSessionTranscript());
                         DeviceRequestParser.DeviceRequest deviceRequest = parser.parse();
 
                         Collection<DeviceRequestParser.DocumentRequest> docRequests =
@@ -536,14 +536,14 @@ public class DeviceRetrievalHelperTest {
                         .add(Simple.Companion.getNULL())
                         .end()
                         .build());
-        SessionEncryption seReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+        SessionEncryption seReader = new SessionEncryption(SessionEncryption.Role.MDOC_READER,
                 eReaderKey,
                 eDeviceKey.getPublicKey(),
                 encodedSessionTranscript);
 
         // Just make an empty request since the verifier will disconnect immediately anyway.
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
-        byte[] encodedDeviceRequest = new DeviceRequestGenerator()
+        byte[] encodedDeviceRequest = new DeviceRequestGenerator(encodedSessionTranscript)
                 .addDocumentRequest(
                         MDL_DOCTYPE,
                         mdlItemsToRequest,
@@ -552,8 +552,7 @@ public class DeviceRetrievalHelperTest {
                         Algorithm.UNSET,
                         null)
                 .generate();
-        byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest,
-                OptionalLong.empty());
+        byte[] sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest, null);
         verifierTransport.setListener(new DataTransport.Listener() {
             @Override
             public void onConnecting() {

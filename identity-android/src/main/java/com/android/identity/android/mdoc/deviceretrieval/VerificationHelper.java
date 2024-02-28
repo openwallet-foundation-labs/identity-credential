@@ -65,6 +65,7 @@ import java.util.concurrent.Executor;
 import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.SimpleValue;
+import kotlin.Pair;
 
 /**
  * Helper used for engaging with and receiving documents from a remote mdoc verifier device.
@@ -762,7 +763,7 @@ public class VerificationHelper {
                 .build().get(0));
         Logger.dCbor(TAG, "SessionTranscript", mEncodedSessionTranscript);
 
-        mSessionEncryptionReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+        mSessionEncryptionReader = new SessionEncryption(SessionEncryption.Role.MDOC_READER,
                 mEphemeralKey,
                 eDeviceKey,
                 mEncodedSessionTranscript);
@@ -948,7 +949,7 @@ public class VerificationHelper {
             return;
         }
 
-        SessionEncryption.DecryptedMessage decryptedMessage = null;
+        Pair <byte[], Long> decryptedMessage = null;
         try {
             decryptedMessage = mSessionEncryptionReader.decryptMessage(data);
         } catch (Exception e) {
@@ -960,13 +961,13 @@ public class VerificationHelper {
         // If there's data in the message, assume it's DeviceResponse (ISO 18013-5
         // currently does not define other kinds of messages).
         //
-        if (decryptedMessage.getData() != null) {
-            Logger.dCbor(TAG, "DeviceResponse received", decryptedMessage.getData());
+        if (decryptedMessage.getFirst() != null) {
+            Logger.dCbor(TAG, "DeviceResponse received", decryptedMessage.getFirst());
             mTimestampResponseReceived = Timestamp.now().toEpochMilli();
-            reportResponseReceived(decryptedMessage.getData());
+            reportResponseReceived(decryptedMessage.getFirst());
         } else {
             // No data, so status must be set...
-            if (!decryptedMessage.getStatus().isPresent()) {
+            if (decryptedMessage.getSecond() == null) {
                 mDataTransport.close();
                 reportError(new Error("No data and no status in SessionData"));
                 return;
@@ -975,8 +976,8 @@ public class VerificationHelper {
 
         // It's possible both data and status is set, for example if the holder only
         // wants to serve a single response.
-        if (decryptedMessage.getStatus().isPresent()) {
-            long statusCode = decryptedMessage.getStatus().getAsLong();
+        if (decryptedMessage.getSecond() != null) {
+            long statusCode = decryptedMessage.getSecond().longValue();
             Logger.d(TAG, "SessionData with status code " + statusCode);
             if (statusCode == Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
                 mDataTransport.close();
@@ -1094,7 +1095,7 @@ public class VerificationHelper {
                 } else {
                     Logger.d(TAG, "Sending generic session termination message");
                     byte[] sessionTermination = mSessionEncryptionReader.encryptMessage(
-                            null, OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION));
+                            null, Constants.SESSION_DATA_STATUS_SESSION_TERMINATION);
                     mDataTransport.sendMessage(sessionTermination);
                 }
             } else {
@@ -1137,7 +1138,7 @@ public class VerificationHelper {
         Logger.dCbor(TAG, "DeviceRequest to send", deviceRequestBytes);
 
         byte[] message = mSessionEncryptionReader.encryptMessage(
-                deviceRequestBytes, OptionalLong.empty());
+                deviceRequestBytes, null);
         Logger.dCbor(TAG, "SessionData to send", message);
         mDataTransport.sendMessage(message);
         mTimestampRequestSent = Timestamp.now().toEpochMilli();
