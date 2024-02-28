@@ -98,7 +98,7 @@
     <!-- Consent Prompt -->
     <string name="consent_prompt_cancel">Cancel</string>
     <string name="consent_prompt_share">Share</string>
-    <string name="consent_prompt_title">\"%1$s\" is requesting the following information</string>
+    <string name="consent_prompt_title">The following information is being requested from \"%1$s\"</string>
 
     <!-- SelfSignedMdlIssuingAuthority -->
     <string name="self_signed_authority_name">Utopia mDL</string>

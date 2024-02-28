@@ -74,9 +74,8 @@ fun ConsentPrompt(
             ConsentDataElement(displayName, dataElement)
         }
 
-    // get title based on verifier name
-    val title =
-        LocalContext.current.getString(R.string.consent_prompt_title, consentData.verifierName)
+    // get title of dialog
+    val title = LocalContext.current.getString(R.string.consent_prompt_title, consentData.documentName)
 
     ModalBottomSheet(
         modifier = Modifier.fillMaxHeight(0.6F),
@@ -99,10 +98,7 @@ fun ConsentPrompt(
             modifier = Modifier
                 .fillMaxWidth()
         ) {
-            DataElementsListView(
-                documentName = consentData.documentName,
-                dataElements = consentDataElements
-            )
+            DataElementsListView(dataElements = consentDataElements)
 
             if (showProgressSpinner.value) {
                 LoadingIndicator(
@@ -141,27 +137,12 @@ fun ConsentPrompt(
  */
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-private fun DataElementsListView(
-    documentName: String,
-    dataElements: List<ConsentDataElement>,
-) {
+private fun DataElementsListView(dataElements: List<ConsentDataElement>) {
     LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
             .focusGroup()
     ) {
-        stickyHeader {
-            DocumentTitleView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(42.dp)
-                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                documentName = documentName
-            )
-        }
-
         val grouped = dataElements.chunked(2).map { pair ->
             if (pair.size == 1) Pair(pair.first(), null)
             else Pair(pair.first(), pair.last())
@@ -251,14 +232,7 @@ private fun DataElementView(
             disabledSelectedContainerColor = Color.Transparent
         ),
         onClick = {},
-        label = { Text(text = documentElement.displayName) },
-        leadingIcon = {
-            Icon(
-                imageVector = Icons.Rounded.Lock,
-                contentDescription = documentElement.displayName,
-                modifier = Modifier.size(FilterChipDefaults.IconSize)
-            )
-        }
+        label = { Text(text = "• ${documentElement.displayName}") },
     )
 }
 

@@ -47,7 +47,9 @@ import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.credentialtype.CredentialType
 import com.android.identity.credentialtype.CredentialTypeRepository
+import com.android.identity.credentialtype.knowntypes.DrivingLicense
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
@@ -146,6 +148,7 @@ class PresentationActivity : ComponentActivity() {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
 
+        credentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
         setContent {
