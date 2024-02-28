@@ -1,21 +1,17 @@
 package com.android.identity.identityctl
 
 import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.CreateCertificateOption
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.X509v3Extension
 import com.android.identity.mdoc.util.MdocUtil
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
-import org.bouncycastle.asn1.x509.BasicConstraints
-import org.bouncycastle.asn1.x509.CRLDistPoint
-import org.bouncycastle.asn1.x509.DistributionPoint
-import org.bouncycastle.asn1.x509.DistributionPointName
 import org.bouncycastle.asn1.x509.Extension
-import org.bouncycastle.asn1.x509.GeneralName
-import org.bouncycastle.asn1.x509.GeneralNames
 import org.bouncycastle.asn1.x509.KeyUsage
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.BigIntegers
@@ -96,7 +92,7 @@ object IdentityCtl {
             crlUrl
         )
 
-        println("Generated IACA certificate and private key.")
+        println("Generated self-signed IACA certificate and private key.")
 
         File(privateKeyOutputFilename).outputStream().bufferedWriter().let {
             it.write(iacaKey.toPem())
@@ -168,6 +164,74 @@ object IdentityCtl {
         println("- Wrote DS certificate to $certificateOutputFilename")
     }
 
+    fun generateReaderRoot(args: Array<String>) {
+        val certificateOutputFilename =
+            getArg(args,"out_certificate","reader_root_certificate.pem")
+        val privateKeyOutputFilename =
+            getArg(args,"out_private_key","reader_root_private_key.pem")
+
+        val subjectAndIssuer =
+            getArg(args,"subject_and_issuer",
+                "CN=OWF Identity Credential TEST Reader CA,C=UT")
+
+        // From 18013-5 Annex B: 3-5 years is recommended
+        //                       Maximum of 20 years after “Not before” date
+        val validityInYears = getArg(args,"validity_in_years","5").toInt()
+        val now = Clock.System.now()
+        val validFrom = now
+        val validUntil = now.plus(DateTimePeriod(years = validityInYears), TimeZone.currentSystemDefault())
+
+        val curveName = getArg(args,"curve","P384")
+        val curve = EcCurve.values().find { curve -> curve.name == curveName }
+            ?: throw IllegalArgumentException("No curve with name $curveName")
+
+        val serial = BigIntegers.fromUnsignedByteArray(Random.Default.nextBytes(16)).toString()
+
+        val readerRootKey = Crypto.createEcPrivateKey(curve)
+
+        val extensions = mutableListOf<X509v3Extension>()
+
+        extensions.add(
+            X509v3Extension(
+                Extension.keyUsage.toString(),
+                true,
+                KeyUsage(KeyUsage.cRLSign + KeyUsage.keyCertSign).encoded
+            )
+        )
+
+        val readerRootCertificate = Crypto.createX509v3Certificate(
+            readerRootKey.publicKey,
+            readerRootKey,
+            null,
+            curve.defaultSigningAlgorithm,
+            serial,
+            subjectAndIssuer,
+            subjectAndIssuer,
+            validFrom,
+            validUntil,
+            setOf(
+                CreateCertificateOption.INCLUDE_SUBJECT_KEY_IDENTIFIER,
+                CreateCertificateOption.INCLUDE_AUTHORITY_KEY_IDENTIFIER_AS_SUBJECT_KEY_IDENTIFIER
+            ),
+            extensions
+        )
+
+        println("Generated self-signed reader root certificate and private key.")
+
+        File(privateKeyOutputFilename).outputStream().bufferedWriter().let {
+            it.write(readerRootKey.toPem())
+            it.close()
+        }
+        println("- Wrote private key to $privateKeyOutputFilename")
+
+        File(certificateOutputFilename).outputStream().bufferedWriter().let {
+            it.write(readerRootCertificate.toPem())
+            it.close()
+        }
+        println("- Wrote reader root certificate to $certificateOutputFilename")
+    }
+
+
     fun usage(args: Array<String>) {
         println(
 """
@@ -190,6 +254,13 @@ Generate an IACA certificate and corresponding private key:
         [--subject_and_issuer 'CN=Utopia TEST DS,C=UT']
         [--validity_in_years 1]
         [--curve P256]
+
+    identityctl generateReaderRoot
+        [--out_certificate reader_root_certificate.pem]
+        [--out_private_key reader_root_private_key.pem]
+        [--subject_and_issuer 'CN=Utopia TEST Reader CA,C=UT']
+        [--validity_in_years 3]
+        [--curve P384]
 """)
     }
 
@@ -204,6 +275,7 @@ Generate an IACA certificate and corresponding private key:
             when (command) {
                 "generateIaca" -> generateIaca(args)
                 "generateDs" -> generateDs(args)
+                "generateReaderRoot" -> generateReaderRoot(args)
                 "help" -> usage(args)
                 else -> {
                     println("Unknown command '$command'")

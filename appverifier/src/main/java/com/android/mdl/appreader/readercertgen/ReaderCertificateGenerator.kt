@@ -1,5 +1,11 @@
 package com.android.mdl.appreader.readercertgen
 
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.javaPrivateKey
+import com.android.identity.crypto.javaPublicKey
+import com.android.identity.crypto.javaX509Certificate
 import com.android.mdl.appreader.readercertgen.CertificateGenerator.generateCertificate
 import org.bouncycastle.asn1.x509.KeyUsage
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -43,15 +49,16 @@ object ReaderCertificateGenerator {
     }
 
     fun createReaderCertificate(
-        dsKeyPair: KeyPair, issuerCert: X509Certificate,
-        issuerPrivateKey: PrivateKey
+        readerKey: EcPrivateKey, //dsKeyPair: KeyPair,
+        readerRootCert: Certificate, // issuerCert: X509Certificate,
+        readerRootKey: EcPrivateKey // issuerPrivateKey: PrivateKey
     ): X509Certificate {
         val data = DataMaterial(
-            subjectDN = "C=UT, CN=Google mDoc Reader",
+            subjectDN = "C=UT, CN=OWF Identity Credential mDoc Reader",
 
             // must match DN of issuer character-by-character
             // TODO change for other generators
-            issuerDN = issuerCert.subjectX500Principal.name,
+            issuerDN = readerRootCert.javaX509Certificate.subjectX500Principal.name,
             // reorders string, do not use
             // return issuerCert.getSubjectX500Principal().getName();
 
@@ -61,19 +68,26 @@ object ReaderCertificateGenerator {
         val certData = CertificateMaterial(
             // TODO change
             serialNumber = BigInteger("476f6f676c655f546573745f44535f31", 16),
-            startDate = EncodingUtil.parseShortISODate("2023-01-01"),
-            endDate = EncodingUtil.parseShortISODate("2024-01-01"),
+            startDate = readerRootCert.javaX509Certificate.notBefore,
+            endDate = readerRootCert.javaX509Certificate.notAfter,
             pathLengthConstraint = CertificateMaterial.PATHLENGTH_NOT_A_CA,
             keyUsage = KeyUsage.digitalSignature,
             // TODO change for reader cert
             extendedKeyUsage = Optional.of("1.0.18013.5.1.6")
         )
 
+        val signingAlgorithm = when (readerRootKey.curve.defaultSigningAlgorithm) {
+            Algorithm.ES256 -> "SHA256withECDSA"
+            Algorithm.ES384 -> "SHA384withECDSA"
+            Algorithm.ES512 -> "SHA512withECDSA"
+            else -> throw IllegalStateException("Unsupported algorithm for reader root")
+        }
+
         val keyData = KeyMaterial(
-            publicKey = dsKeyPair.public,
-            signingAlgorithm = "SHA384WithECDSA",
-            signingKey = issuerPrivateKey,
-            issuerCertificate = Optional.of(issuerCert)
+            publicKey = readerKey.publicKey.javaPublicKey,
+            signingAlgorithm = signingAlgorithm,
+            signingKey = readerRootKey.javaPrivateKey,
+            issuerCertificate = Optional.of(readerRootCert.javaX509Certificate)
         )
 
         // C.1.7.2

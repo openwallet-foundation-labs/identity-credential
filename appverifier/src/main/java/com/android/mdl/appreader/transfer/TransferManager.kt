@@ -25,6 +25,7 @@ import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaPublicKey
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.crypto.toEcPrivateKey
 import com.android.identity.crypto.toEcPublicKey
 import com.android.mdl.appreader.R
@@ -298,12 +299,12 @@ class TransferManager private constructor(private val context: Context) {
                 signatureAlgorithm = curve.defaultSigningAlgorithm
                 readerKey = Crypto.createEcPrivateKey(curve)
 
-                val readerCA = KeysAndCertificates.getGoogleReaderCA(context)
+                val (readerCaCert, readerCaPrivateKey) = KeysAndCertificates.getReaderAuthority(context)
                 val readerCertificate =
                     ReaderCertificateGenerator.createReaderCertificate(
-                        KeyPair(readerKey.publicKey.javaPublicKey, readerKey.javaPrivateKey),
-                        readerCA,
-                        getReaderCAPrivateKey()
+                        readerKey,
+                        readerCaCert,
+                        readerCaPrivateKey
                     )
                 readerCertificateChain = CertificateChain(
                     listOf(Certificate(readerCertificate.encoded))

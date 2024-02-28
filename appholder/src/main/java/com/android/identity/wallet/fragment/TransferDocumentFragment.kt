@@ -123,6 +123,9 @@ class TransferDocumentFragment : Fragment() {
                         binding.txtDocuments.append("- Trusted reader auth used: ($commonName)\n")
                     } else {
                         binding.txtDocuments.append("- Not trusted reader auth used: ($commonName)\n")
+                        if (result.error != null) {
+                            binding.txtDocuments.append("- TrustManager Error: (${result.error})\n")
+                        }
                     }
                 }
                 binding.txtDocuments.append("- ${doc.userVisibleName} (${doc.docType})\n")
