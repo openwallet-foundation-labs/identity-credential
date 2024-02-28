@@ -128,10 +128,10 @@ class MainActivity : ComponentActivity() {
 
     private fun parseResponse(deviceResponseBytes: ByteArray?) {
         resultSize = deviceResponseBytes!!.size
-        val parsedResponse = DeviceResponseParser()
-            .setSessionTranscript(transferHelper.getSessionTranscript())
-            .setDeviceResponse(deviceResponseBytes!!)
-            .parse()
+        val parsedResponse = DeviceResponseParser(
+            deviceResponseBytes,
+            transferHelper.getSessionTranscript()
+        ).parse()
         if (parsedResponse.documents.size < 1) {
             Toast.makeText(applicationContext, "No documents returned", Toast.LENGTH_SHORT).show()
             transferHelper.close()
@@ -203,7 +203,9 @@ class MainActivity : ComponentActivity() {
                         TransferHelper.State.CONNECTED -> {
                             stateDisplay.value = "Connected"
                             Logger.i(TAG, "connected")
-                            val deviceRequestGenerator = DeviceRequestGenerator()
+                            val deviceRequestGenerator = DeviceRequestGenerator(
+                                transferHelper.getSessionTranscript()
+                            )
                             var request =
                                 if (transferHelper.getIncludePortraitInRequest()) {
                                     mapOf(
@@ -228,7 +230,6 @@ class MainActivity : ComponentActivity() {
                                 Algorithm.UNSET,
                                 null
                             )
-                            deviceRequestGenerator.setSessionTranscript(transferHelper.getSessionTranscript())
                             transferHelper.sendRequest(deviceRequestGenerator.generate())
                         }
 

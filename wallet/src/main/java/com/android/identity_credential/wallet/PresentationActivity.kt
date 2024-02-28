@@ -274,10 +274,10 @@ class PresentationActivity : ComponentActivity() {
             return
         }
 
-        val request = DeviceRequestParser()
-            .setDeviceRequest(getDeviceRequest())
-            .setSessionTranscript(deviceRetrievalHelper!!.sessionTranscript)
-            .parse()
+        val request = DeviceRequestParser(
+            getDeviceRequest(),
+            deviceRetrievalHelper!!.sessionTranscript
+        ).parse()
         val docRequest = request.documentRequests[0]
         val requestedDocType: String = docRequest.docType
         val encodedDeviceResponse: ByteArray
@@ -300,7 +300,7 @@ class PresentationActivity : ComponentActivity() {
             val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
             val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
             val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
-            val mso = MobileSecurityObjectParser().setMobileSecurityObject(encodedMso).parse()
+            val mso = MobileSecurityObjectParser(encodedMso).parse()
 
             val credentialRequest = MdocUtil.generateCredentialRequest(docRequest!!)
             val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(

@@ -129,7 +129,7 @@ fun Credential.getViewCredentialData(
     val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
     val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
 
-    val mso = MobileSecurityObjectParser().setMobileSecurityObject(encodedMso).parse()
+    val mso = MobileSecurityObjectParser(encodedMso).parse()
 
     var mdocCredentialType = credentialTypeRepository.getMdocCredentialType(mso.docType)
     for (namespaceName in mso.valueDigestNamespaces) {

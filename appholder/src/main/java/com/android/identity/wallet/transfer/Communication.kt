@@ -27,9 +27,7 @@ class Communication private constructor(
     fun getDeviceRequest(): DeviceRequestParser.DeviceRequest {
         request?.let { requestBytes ->
             deviceRetrievalHelper?.let { presentation ->
-                val parser = DeviceRequestParser()
-                parser.setSessionTranscript(presentation.sessionTranscript)
-                parser.setDeviceRequest(requestBytes.value)
+                val parser = DeviceRequestParser(requestBytes.value, presentation.sessionTranscript)
                 return parser.parse()
             } ?: throw IllegalStateException("Presentation not set")
         } ?: throw IllegalStateException("Request not received")

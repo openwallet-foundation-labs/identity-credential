@@ -249,10 +249,10 @@ class PresentationActivity : ComponentActivity() {
     }
 
     private fun processRequest() {
-        val request = DeviceRequestParser()
-            .setDeviceRequest(transferHelper.getDeviceRequest())
-            .setSessionTranscript(transferHelper.getSessionTranscript())
-            .parse()
+        val request = DeviceRequestParser(
+            transferHelper.getDeviceRequest(),
+            transferHelper.getSessionTranscript()
+        ).parse()
         val docRequest = request.documentRequests[0]
         val credentialRequest = MdocUtil.generateCredentialRequest(docRequest!!)
         val now = Timestamp.now()
