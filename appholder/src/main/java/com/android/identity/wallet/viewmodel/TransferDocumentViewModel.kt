@@ -9,7 +9,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.android.identity.android.legacy.CredentialInvalidatedException
 import com.android.identity.credential.AuthenticationKey
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
@@ -136,6 +135,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                     documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount as Int))
                     cleanUp()
                     onResultReady(result)
+                    /*
                 } catch (e: CredentialInvalidatedException) {
                     logWarning("Credential '${signedDocument.identityCredentialName}' is invalid. Deleting.")
                     documentManager.deleteCredentialByName(signedDocument.identityCredentialName)
@@ -144,6 +144,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                                 + signedDocument.identityCredentialName,
                         Toast.LENGTH_SHORT
                     ).show()
+                     */
                 } catch (e: NoSuchElementException) {
                     logWarning("No requestedDocument for " + signedDocument.documentType)
                 }

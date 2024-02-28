@@ -9,8 +9,6 @@ import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.*
-import com.android.identity.android.legacy.*
 import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData

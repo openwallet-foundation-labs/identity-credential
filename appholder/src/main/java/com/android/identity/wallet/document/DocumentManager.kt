@@ -6,8 +6,6 @@ import android.graphics.Bitmap
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.DataItem
 import co.nstant.`in`.cbor.model.UnicodeString
-import com.android.identity.*
-import com.android.identity.android.legacy.*
 import com.android.identity.credential.Credential
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.credentialtype.CredentialAttributeType
@@ -69,7 +67,7 @@ class DocumentManager private constructor(private val context: Context) {
         documentData.provisionInfo.docName = docName
         try {
             provisionSelfSignedDocument(documentData)
-        } catch (e: IdentityCredentialException) {
+        } catch (e: Exception) {
             throw IllegalStateException("Error creating self signed credential", e)
         }
     }
