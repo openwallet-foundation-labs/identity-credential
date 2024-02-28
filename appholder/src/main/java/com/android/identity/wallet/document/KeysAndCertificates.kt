@@ -99,6 +99,7 @@ object KeysAndCertificates {
             getCertificate(context, R.raw.utms_reader_ca_cer),
             getCertificate(context, R.raw.zetes_reader_ca),
             getCertificate(context, R.raw.zetes_reader_ca_cer),
+            getCertificate(context, R.raw.owf_identity_credential_reader_cert),
         )
 
 }
