@@ -26,9 +26,9 @@ import androidx.core.content.ContextCompat
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
+import com.android.identity.crypto.Crypto
 import com.android.identity.internal.Util
-import com.android.identity.securearea.EcCurve
-import com.android.identity.securearea.SecureArea
+import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
 
 class NfcEngagementHandler : HostApduService() {
@@ -39,8 +39,8 @@ class NfcEngagementHandler : HostApduService() {
     private var engagementHelper: NfcEngagementHelper? = null
 
     private val eDeviceKeyCurve = EcCurve.P256
-    private val eDeviceKeyPair by lazy {
-        Util.createEphemeralKeyPair(eDeviceKeyCurve)
+    private val eDeviceKey by lazy {
+        Crypto.createEcPrivateKey(eDeviceKeyCurve)
     }
     private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
 
@@ -67,7 +67,7 @@ class NfcEngagementHandler : HostApduService() {
             Logger.i(TAG, "onDeviceConnected")
 
             PresentationActivity.startPresentation(applicationContext, transport,
-                engagementHelper!!.handover, eDeviceKeyCurve, eDeviceKeyPair,
+                engagementHelper!!.handover, eDeviceKey,
                 engagementHelper!!.deviceEngagement)
 
             engagementHelper?.close()
@@ -93,8 +93,7 @@ class NfcEngagementHandler : HostApduService() {
             val options = DataTransportOptions.Builder().build()
             val builder = NfcEngagementHelper.Builder(
                 applicationContext,
-                eDeviceKeyPair.public,
-                eDeviceKeyCurve,
+                eDeviceKey.publicKey,
                 options,
                 nfcEngagementListener,
                 ContextCompat.getMainExecutor(applicationContext)

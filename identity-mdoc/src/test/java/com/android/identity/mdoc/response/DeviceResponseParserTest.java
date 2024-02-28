@@ -16,6 +16,15 @@
 
 package com.android.identity.mdoc.response;
 
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DiagnosticOption;
+import com.android.identity.crypto.CertificateChain;
+import com.android.identity.crypto.CertificateKt;
+import com.android.identity.crypto.EcCurve;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPrivateKeyDoubleCoordinate;
+import com.android.identity.crypto.EcPublicKey;
+import com.android.identity.crypto.EcPublicKeyKt;
 import com.android.identity.mdoc.TestVectors;
 import com.android.identity.util.Constants;
 import com.android.identity.internal.Util;
@@ -26,12 +35,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.math.BigInteger;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.Security;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.util.List;
+import java.util.Set;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -59,12 +68,15 @@ public class DeviceResponseParserTest {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         byte[] encodedSessionTranscriptBytes = Util.fromHex(
                 TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
-        byte[] encodedSessionTranscript = Util.cborEncode(
-                Util.cborExtractTaggedAndEncodedCbor(
-                        Util.cborDecode(encodedSessionTranscriptBytes)));
+        byte[] encodedSessionTranscript = Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).getAsTaggedEncodedCbor()
+        );
 
-        PrivateKey eReaderKey = Util.getPrivateKeyFromInteger(new BigInteger(
-                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
+        EcPrivateKey eReaderKey = new EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y));
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
                 .setDeviceResponse(encodedDeviceResponse)
                 .setSessionTranscript(encodedSessionTranscript)
@@ -87,9 +99,11 @@ public class DeviceResponseParserTest {
         Assert.assertNull(d.getValidityInfoExpectedUpdate());
 
         // Check DeviceKey is correctly parsed
-        PublicKey deviceKeyFromVector = Util.getPublicKeyFromIntegers(
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16));
+        EcPublicKey deviceKeyFromVector = EcPublicKeyKt.toEcPublicKey(
+                Util.getPublicKeyFromIntegers(
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X, 16),
+                        new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y, 16)),
+                EcCurve.P256);
         Assert.assertEquals(deviceKeyFromVector, d.getDeviceKey());
 
         // Test example is using a MAC.
@@ -109,26 +123,26 @@ public class DeviceResponseParserTest {
                 d.getIssuerEntryString(MDL_NAMESPACE, "family_name"));
         Assert.assertEquals("123456789",
                 d.getIssuerEntryString(MDL_NAMESPACE, "document_number"));
-        Assert.assertEquals("tag 1004 '2019-10-20'",
-                Util.cborPrettyPrint(d.getIssuerEntryData(MDL_NAMESPACE,
-                        "issue_date")));
-        Assert.assertEquals("tag 1004 '2024-10-20'",
-                Util.cborPrettyPrint(d.getIssuerEntryData(MDL_NAMESPACE,
-                        "expiry_date")));
-        Assert.assertEquals("[\n"
-                        + "  {\n"
-                        + "    'vehicle_category_code' : 'A',\n"
-                        + "    'issue_date' : tag 1004 '2018-08-09',\n"
-                        + "    'expiry_date' : tag 1004 '2024-10-20'\n"
-                        + "  },\n"
-                        + "  {\n"
-                        + "    'vehicle_category_code' : 'B',\n"
-                        + "    'issue_date' : tag 1004 '2017-02-23',\n"
-                        + "    'expiry_date' : tag 1004 '2024-10-20'\n"
-                        + "  }\n"
-                        + "]",
-                Util.cborPrettyPrint(d.getIssuerEntryData(MDL_NAMESPACE,
-                        "driving_privileges")));
+        Assert.assertEquals("1004(\"2019-10-20\")",
+                Cbor.toDiagnostics(d.getIssuerEntryData(MDL_NAMESPACE, "issue_date"),
+                        Set.of(DiagnosticOption.PRETTY_PRINT)));
+        Assert.assertEquals("1004(\"2024-10-20\")",
+                Cbor.toDiagnostics(d.getIssuerEntryData(MDL_NAMESPACE, "expiry_date"),
+                        Set.of(DiagnosticOption.PRETTY_PRINT)));
+        Assert.assertEquals("[\n" +
+                        "  {\n" +
+                        "    \"vehicle_category_code\": \"A\",\n" +
+                        "    \"issue_date\": 1004(\"2018-08-09\"),\n" +
+                        "    \"expiry_date\": 1004(\"2024-10-20\")\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"vehicle_category_code\": \"B\",\n" +
+                        "    \"issue_date\": 1004(\"2017-02-23\"),\n" +
+                        "    \"expiry_date\": 1004(\"2024-10-20\")\n" +
+                        "  }\n" +
+                        "]",
+                Cbor.toDiagnostics(d.getIssuerEntryData(MDL_NAMESPACE, "driving_privileges"),
+                        Set.of(DiagnosticOption.PRETTY_PRINT)));
         Assert.assertArrayEquals(Util.fromHex(
                 TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE_PORTRAIT_DATA),
                 d.getIssuerEntryByteString(MDL_NAMESPACE, "portrait"));
@@ -144,9 +158,9 @@ public class DeviceResponseParserTest {
 
         // Check the returned issuer certificate matches.
         //
-        List<X509Certificate> issuerCertChain = d.getIssuerCertificateChain();
-        Assert.assertEquals(1, issuerCertChain.size());
-        X509Certificate issuerCert = issuerCertChain.get(0);
+        CertificateChain issuerCertChain = d.getIssuerCertificateChain();
+        Assert.assertEquals(1, issuerCertChain.getCertificates().size());
+        X509Certificate issuerCert = CertificateKt.getJavaX509Certificate(issuerCertChain.getCertificates().get(0));
         Assert.assertEquals("C=US, CN=utopia ds", issuerCert.getSubjectX500Principal().toString());
         Assert.assertEquals("C=US, CN=utopia iaca", issuerCert.getIssuerX500Principal().toString());
         Assert.assertArrayEquals(Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DS_CERT),
@@ -167,12 +181,15 @@ public class DeviceResponseParserTest {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         byte[] encodedSessionTranscriptBytes = Util.fromHex(
                 TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
-        byte[] encodedSessionTranscript = Util.cborEncode(
-                Util.cborExtractTaggedAndEncodedCbor(
-                        Util.cborDecode(encodedSessionTranscriptBytes)));
+        byte[] encodedSessionTranscript = Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).getAsTaggedEncodedCbor()
+        );
 
-        PrivateKey eReaderKey = Util.getPrivateKeyFromInteger(new BigInteger(
-                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
+        EcPrivateKey eReaderKey = new EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y));
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
                 .setDeviceResponse(encodedDeviceResponse)
                 .setSessionTranscript(encodedSessionTranscript)
@@ -211,12 +228,15 @@ public class DeviceResponseParserTest {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         byte[] encodedSessionTranscriptBytes = Util.fromHex(
                 TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
-        byte[] encodedSessionTranscript = Util.cborEncode(
-                Util.cborExtractTaggedAndEncodedCbor(
-                        Util.cborDecode(encodedSessionTranscriptBytes)));
+        byte[] encodedSessionTranscript = Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).getAsTaggedEncodedCbor()
+        );
 
-        PrivateKey eReaderKey = Util.getPrivateKeyFromInteger(new BigInteger(
-                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
+        EcPrivateKey eReaderKey = new EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y));
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
                 .setDeviceResponse(encodedDeviceResponse)
                 .setSessionTranscript(encodedSessionTranscript)
@@ -250,12 +270,15 @@ public class DeviceResponseParserTest {
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         byte[] encodedSessionTranscriptBytes = Util.fromHex(
                 TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
-        byte[] encodedSessionTranscript = Util.cborEncode(
-                Util.cborExtractTaggedAndEncodedCbor(
-                        Util.cborDecode(encodedSessionTranscriptBytes)));
+        byte[] encodedSessionTranscript = Cbor.encode(
+                Cbor.decode(encodedSessionTranscriptBytes).getAsTaggedEncodedCbor()
+        );
 
-        PrivateKey eReaderKey = Util.getPrivateKeyFromInteger(new BigInteger(
-                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
+        EcPrivateKey eReaderKey = new EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y));
         DeviceResponseParser.DeviceResponse dr = new DeviceResponseParser()
                 .setDeviceResponse(encodedDeviceResponse)
                 .setSessionTranscript(encodedSessionTranscript)

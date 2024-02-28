@@ -42,12 +42,15 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.cbor.Cbor
 import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.internal.Util
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.CredentialPresentationFormat
@@ -57,8 +60,6 @@ import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.securearea.Algorithm
-import com.android.identity.securearea.EcCurve
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
@@ -69,8 +70,6 @@ import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.security.KeyPair
-import java.security.PublicKey
 import java.util.OptionalLong
 
 class PresentationActivity : ComponentActivity() {
@@ -78,8 +77,7 @@ class PresentationActivity : ComponentActivity() {
         private const val TAG = "PresentationActivity"
         private var transport: DataTransport?
         private var handover: ByteArray?
-        private var eDeviceKeyCurve: EcCurve?
-        private var eDeviceKeyPair: KeyPair?
+        private var eDeviceKey: EcPrivateKey?
         private var deviceEngagement: ByteArray?
         private var state = MutableLiveData<State>()
 
@@ -87,20 +85,16 @@ class PresentationActivity : ComponentActivity() {
             state.value = State.NOT_CONNECTED
             transport = null
             handover = null
-            eDeviceKeyCurve = null
-            eDeviceKeyPair = null
+            eDeviceKey = null
             deviceEngagement = null
         }
 
-        fun startPresentation(
-            context: Context, transport: DataTransport, handover: ByteArray,
-            eDeviceKeyCurve: EcCurve, eDeviceKeyPair: KeyPair, deviceEngagement:
-            ByteArray
-        ) {
+        fun startPresentation(context: Context, transport: DataTransport, handover: ByteArray,
+                              eDeviceKey: EcPrivateKey, deviceEngagement:
+                              ByteArray) {
             this.transport = transport
             this.handover = handover
-            this.eDeviceKeyCurve = eDeviceKeyCurve
-            this.eDeviceKeyPair = eDeviceKeyPair
+            this.eDeviceKey = eDeviceKey
             this.deviceEngagement = deviceEngagement
             Logger.i(TAG, "engagement info set")
 
@@ -260,7 +254,7 @@ class PresentationActivity : ComponentActivity() {
         deviceRetrievalHelper = DeviceRetrievalHelper.Builder(
             applicationContext,
             object : DeviceRetrievalHelper.Listener {
-                override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
+                override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
                     Logger.i(TAG, "onEReaderKeyReceived")
                 }
 
@@ -286,9 +280,7 @@ class PresentationActivity : ComponentActivity() {
 
             },
             ContextCompat.getMainExecutor(applicationContext),
-            eDeviceKeyPair!!,
-            eDeviceKeyCurve!!
-        )
+            eDeviceKey!!)
             .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
             .build()
     }
@@ -400,9 +392,9 @@ class PresentationActivity : ComponentActivity() {
             }
 
             val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
-            val encodedMsoBytes =
-                Util.cborDecode(Util.coseSign1GetData(Util.cborDecode(staticAuthData.issuerAuth)))
-            val encodedMso = Util.cborEncode(Util.cborExtractTaggedAndEncodedCbor(encodedMsoBytes))
+            val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
+            val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
+            val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
             val mso = MobileSecurityObjectParser().setMobileSecurityObject(encodedMso).parse()
 
             val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(

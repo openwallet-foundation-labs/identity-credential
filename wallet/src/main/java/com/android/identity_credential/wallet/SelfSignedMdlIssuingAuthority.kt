@@ -9,14 +9,29 @@ import android.graphics.RadialGradient
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import androidx.annotation.RawRes
+import com.android.identity.cbor.Bstr
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.Tagged
+import com.android.identity.cbor.toDataItem
+import com.android.identity.cbor.toDataItemDateTimeString
+import com.android.identity.cose.Cose
+import com.android.identity.cose.CoseLabel
+import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.NameSpacedData
-import com.android.identity.internal.Util
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
-import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
+import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
@@ -26,29 +41,18 @@ import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.securearea.EcCurve
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity_credential.mrtd.MrtdNfcData
 import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
-import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.cert.X509CertificateHolder
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
-import org.bouncycastle.operator.ContentSigner
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
+import kotlinx.datetime.Clock
 import java.io.ByteArrayOutputStream
-import java.lang.IllegalStateException
-import java.math.BigInteger
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.PublicKey
-import java.security.SecureRandom
-import java.security.cert.X509Certificate
-import java.security.spec.ECGenParameterSpec
-import java.util.Date
+import java.nio.charset.StandardCharsets
 import kotlin.math.ceil
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.days
+
 
 class SelfSignedMdlIssuingAuthority(
     val application: WalletApplication,
@@ -76,7 +80,7 @@ class SelfSignedMdlIssuingAuthority(
         val icon: ByteArray = baos.toByteArray()
         configuration = IssuingAuthorityConfiguration(
             "mDL_Utopia",
-            "Utopia mDL",
+            resourceString(R.string.self_signed_authority_name),
             icon,
             setOf(CredentialPresentationFormat.MDOC_MSO),
             createCredentialConfiguration(null)
@@ -85,7 +89,7 @@ class SelfSignedMdlIssuingAuthority(
 
     override fun createPresentationData(presentationFormat: CredentialPresentationFormat,
                                         credentialConfiguration: CredentialConfiguration,
-                                        authenticationKey: PublicKey
+                                        authenticationKey: EcPublicKey
     ): ByteArray {
         // Right now we only support mdoc
         check(presentationFormat == CredentialPresentationFormat.MDOC_MSO)
@@ -101,11 +105,10 @@ class SelfSignedMdlIssuingAuthority(
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             MDL_DOCTYPE,
-            authenticationKey,
-            EcCurve.P256
+            authenticationKey
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
-        val randomProvider = SecureRandom()
+        val randomProvider = Random.Default
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
             credentialConfiguration.staticData,
             randomProvider,
@@ -116,22 +119,32 @@ class SelfSignedMdlIssuingAuthority(
             val digests = MdocUtil.calculateDigestsForNameSpace(
                 nameSpaceName,
                 issuerNameSpaces,
-                "SHA-256"
+                Algorithm.SHA256
             )
             msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
         }
 
-        ensureIssuerSigningKeys()
+        ensureDocumentSigningKey()
         val mso = msoGenerator.generate()
-        val taggedEncodedMso = Util.cborEncode(Util.cborBuildTaggedByteString(mso))
-        val issuerCertChain = listOf(issuerSigningKeyCert!!)
-        val encodedIssuerAuth = Util.cborEncode(
-            Util.coseSign1Sign(
-                issuerSigningKeyPair!!.private,
-                "SHA256withECDSA", taggedEncodedMso,
-                null,
-                issuerCertChain
-            )
+        val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
+        val issuerCertChain = listOf(documentSigningKeyCert)
+        val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
+            CoseNumberLabel(Cose.COSE_LABEL_ALG),
+            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+        ))
+        val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
+            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+            CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).dataItem
+        ))
+        val encodedIssuerAuth = Cbor.encode(
+            Cose.coseSign1Sign(
+                documentSigningKey,
+                taggedEncodedMso,
+                true,
+                Algorithm.ES256,
+                protectedHeaders,
+                unprotectedHeaders
+            ).toDataItem
         )
 
         val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
@@ -143,47 +156,44 @@ class SelfSignedMdlIssuingAuthority(
         return issuerProvidedAuthenticationData
     }
 
-    var issuerSigningKeyPair: KeyPair? = null
-    var issuerSigningKeyCert: X509Certificate? = null
+    private lateinit var documentSigningKey: EcPrivateKey
+    private lateinit var documentSigningKeyCert: Certificate
 
-    private fun ensureIssuerSigningKeys() {
-        if (issuerSigningKeyPair != null) {
+    private fun getRawResourceAsString(@RawRes resourceId: Int): String {
+        val inputStream = application.applicationContext.resources.openRawResource(resourceId)
+        val bytes = inputStream.readBytes()
+        return String(bytes, StandardCharsets.UTF_8)
+    }
+
+    private fun ensureDocumentSigningKey() {
+        if (this::documentSigningKey.isInitialized) {
             return
         }
-        issuerSigningKeyPair = createIssuingAuthorityKeyPair()
-        issuerSigningKeyCert = getSelfSignedIssuerAuthorityCertificate(issuerSigningKeyPair!!)
-    }
 
-    private fun createIssuingAuthorityKeyPair(): KeyPair {
-        val kpg = KeyPairGenerator.getInstance("EC")
-        val ecSpec = ECGenParameterSpec("secp256r1")
-        kpg.initialize(ecSpec)
-        return kpg.generateKeyPair()
-    }
+        // The IACA and DS certificates and keys can be regenerated using the following steps
+        //
+        // $ ./gradlew --quiet runIdentityCtl --args generateIaca
+        // Generated IACA certificate and private key.
+        // - Wrote private key to iaca_private_key.pem
+        // - Wrote IACA certificate to iaca_certificate.pem
+        //
+        // $ ./gradlew --quiet runIdentityCtl --args generateDs
+        // Generated DS certificate and private key.
+        // - Wrote private key to ds_private_key.pem
+        // - Wrote DS certificate to ds_certificate.pem
+        //
+        // $ mv identityctl/iaca_*.pem wallet/src/main/res/raw/
+        // $ cp wallet/src/main/res/raw/iaca_certificate.pem appverifier/src/main/res/raw/owf_wallet_iaca_root.pem
+        // $ mv identityctl/ds_*.pem wallet/src/main/res/raw/
+        //
 
-    private fun getSelfSignedIssuerAuthorityCertificate(
-        issuerAuthorityKeyPair: KeyPair
-    ): X509Certificate {
-        val issuer: X500Name = X500Name("CN=State Of Utopia")
-        val subject: X500Name = X500Name("CN=State Of Utopia Issuing Authority Signing Key")
-
-        // Valid from now to five years from now.
-        val now = Date()
-        val kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000
-        val expirationDate = Date(now.time + 5 * kMilliSecsInOneYear)
-        val serial = BigInteger("42")
-        val builder = JcaX509v3CertificateBuilder(
-            issuer,
-            serial,
-            now,
-            expirationDate,
-            subject,
-            issuerAuthorityKeyPair.public
+        documentSigningKeyCert = Certificate.fromPem(getRawResourceAsString(R.raw.ds_certificate))
+        Logger.d(TAG, "Cert: " + documentSigningKeyCert.javaX509Certificate.toString())
+        documentSigningKey = EcPrivateKey.fromPem(
+            getRawResourceAsString(R.raw.ds_private_key),
+            documentSigningKeyCert.publicKey
         )
-        val signer: ContentSigner = JcaContentSignerBuilder("SHA256withECDSA")
-            .build(issuerAuthorityKeyPair.private)
-        val certHolder: X509CertificateHolder = builder.build(signer)
-        return JcaX509CertificateConverter().getCertificate(certHolder)
+
     }
 
     override fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {
@@ -195,63 +205,63 @@ class SelfSignedMdlIssuingAuthority(
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
                 "tos",
-                """Here's a long string with TOS. Lorem ipsum dolor sit amet, consectetur
-                    | adipiscing elit. Vivamus dictum vel metus non mattis. Ut mattis,
-                    | ipsum vel hendrerit consectetur, mauris purus ultricies nulla, sit amet
-                    | pulvinar odio lorem sed justo. Aliquam erat volutpat.
-                    | Nulla facilisi. """.trimMargin().replace("\n", ""),
-                "Accept",
-                "Do Not Accept",
+                resourceString(R.string.self_signed_authority_tos),
+                resourceString(R.string.self_signed_authority_accept),
+                resourceString(R.string.self_signed_authority_reject),
             )
-            choice("path", "How do you want to authenticate", "Continue") {
-                on("icaoPassive", "Scan passport") {
+            choice("path",
+                resourceString(R.string.self_signed_authority_authentication_choice),
+                resourceString(R.string.self_signed_authority_continue)) {
+                on("icaoPassive",
+                    resourceString(R.string.self_signed_authority_scan_passport)) {
                     icaoPassiveAuthentication("passive", listOf(1, 2, 7))
                 }
-                on("icaoTunnel", "Scan passport with authentication") {
+                on("icaoTunnel",
+                    resourceString(R.string.self_signed_authority_scan_passport_auth)) {
                     icaoTunnel("tunnel", listOf(1, 2, 7)) {
                         whenChipAuthenticated {
                             message("inform",
-                                "Excellent! You passport supports chip authentication",
-                                "Continue",
+                                resourceString(R.string.self_signed_authority_chip_authentication),
+                                resourceString(R.string.self_signed_authority_continue),
                                 null
                             )
                         }
                         whenActiveAuthenticated {
                             message("inform",
-                                "Nice! You passport supports active authentication",
-                                "Continue",
+                                resourceString(R.string.self_signed_authority_active_authentication),
+                                resourceString(R.string.self_signed_authority_continue),
                                 null
                             )
                         }
                         whenNotAuthenticated {
                             message("inform",
-                                "Your passport only supports passive authentication. " +
-                                        "Who knows, maybe it is a clone? There is no protection.",
-                                "Continue",
+                                resourceString(R.string.self_signed_authority_no_authentication),
+                                resourceString(R.string.self_signed_authority_continue),
                                 null
                             )
                         }
                     }
                 }
-                on("questions", "Answer questions") {
+                on("questions",
+                    resourceString(R.string.self_signed_authority_answer_questions)) {
                     question(
                         "firstName",
-                        "What first name should be used for the mDL?",
+                        resourceString(R.string.self_signed_authority_question_first_name),
                         "Erika",
-                        "Continue"
+                        resourceString(R.string.self_signed_authority_continue)
                     )
                 }
             }
-            choice("art", "Select the card art for the credential", "Continue") {
-                on("green", "Green") {}
-                on("blue", "Blue") {}
-                on("red", "Red") {}
+            choice("art",
+                resourceString(R.string.self_signed_authority_card_art),
+                resourceString(R.string.self_signed_authority_continue)) {
+                on("green", resourceString(R.string.self_signed_authority_card_art_green)) {}
+                on("blue", resourceString(R.string.self_signed_authority_card_art_blue)) {}
+                on("red", resourceString(R.string.self_signed_authority_card_art_red)) {}
             }
             message("message",
-                "Your application is about to be sent the ID issuer for " +
-                        "verification. You will get notified when the " +
-                        "application is approved.",
-                "Continue",
+                resourceString(R.string.self_signed_authority_application_finish),
+                resourceString(R.string.self_signed_authority_continue),
                 null
             )
         }
@@ -268,12 +278,12 @@ class SelfSignedMdlIssuingAuthority(
     private fun createCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): CredentialConfiguration {
         if (collectedEvidence == null) {
             return CredentialConfiguration(
-                "Utopia mDL (pending)",
+                resourceString(R.string.self_signed_authority_pending_credential_title),
                 createArtwork(
                     Color.rgb(192, 192, 192),
                     Color.rgb(96, 96, 96),
                     null,
-                    "mDL (Pending)",
+                    resourceString(R.string.self_signed_authority_pending_credential_text),
                 ),
                 NameSpacedData.Builder().build()
             )
@@ -344,9 +354,9 @@ class SelfSignedMdlIssuingAuthority(
         }
 
 
-        val now = Timestamp.now()
+        val now = Clock.System.now()
         val issueDate = now
-        val expiryDate = Timestamp.ofEpochMilli(issueDate.toEpochMilli() + 5*365*24*3600*1000L)
+        val expiryDate = now + 5.days*365
 
         val staticData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", firstName)
@@ -354,8 +364,8 @@ class SelfSignedMdlIssuingAuthority(
             .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
             .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
             .putEntryNumber(MDL_NAMESPACE, "sex", sex)
-            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(issueDate))
-            .putEntry(MDL_NAMESPACE, "expiry_date", Util.cborEncodeDateTime(expiryDate))
+            .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(issueDate.toDataItemDateTimeString))
+            .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.toDataItemDateTimeString))
             .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
             .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
             .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
@@ -365,12 +375,12 @@ class SelfSignedMdlIssuingAuthority(
             .build()
 
         return CredentialConfiguration(
-            "${firstName}'s mDL",
+            resourceString(R.string.self_signed_authority_credential_title, firstName),
             createArtwork(
                 gradientColor.first,
                 gradientColor.second,
                 portrait,
-                "${firstName}'s mDL",
+                resourceString(R.string.self_signed_authority_credential_text, firstName),
             ),
             staticData
         )
@@ -436,4 +446,7 @@ class SelfSignedMdlIssuingAuthority(
         return baos.toByteArray()
     }
 
+    private fun resourceString(id: Int, vararg text: String): String {
+        return application.applicationContext.resources.getString(id, *text)
+    }
 }

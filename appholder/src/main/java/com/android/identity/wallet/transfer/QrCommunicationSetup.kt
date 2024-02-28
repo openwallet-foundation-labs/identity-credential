@@ -4,6 +4,8 @@ import android.content.Context
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.internal.Util
 import com.android.identity.securearea.SecureArea
 import com.android.identity.wallet.util.PreferencesHelper
@@ -24,7 +26,7 @@ class QrCommunicationSetup(
 
     private val settings = PreferencesHelper.apply { initialize(context) }
     private val connectionSetup = ConnectionSetup(context)
-    private val eDeviceKeyPair = Util.createEphemeralKeyPair(settings.getEphemeralKeyCurveOption())
+    private val eDeviceKey = Crypto.createEcPrivateKey(settings.getEphemeralKeyCurveOption())
 
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
     private lateinit var qrEngagement: QrEngagementHelper
@@ -54,8 +56,7 @@ class QrCommunicationSetup(
                 context,
                 deviceRetrievalHelperListener,
                 context.mainExecutor(),
-                eDeviceKeyPair,
-                settings.getEphemeralKeyCurveOption()
+                eDeviceKey
             )
             builder.useForwardEngagement(
                 transport,
@@ -74,7 +75,7 @@ class QrCommunicationSetup(
     }
 
     private val deviceRetrievalHelperListener = object : DeviceRetrievalHelper.Listener {
-        override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
+        override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
             log("DeviceRetrievalHelper Listener (QR): OnEReaderKeyReceived")
         }
 
@@ -97,8 +98,7 @@ class QrCommunicationSetup(
     fun configure() {
         qrEngagement = QrEngagementHelper.Builder(
             context,
-            eDeviceKeyPair.public,
-            settings.getEphemeralKeyCurveOption(),
+            eDeviceKey.publicKey,
             connectionSetup.getConnectionOptions(),
             qrEngagementListener,
             context.mainExecutor()

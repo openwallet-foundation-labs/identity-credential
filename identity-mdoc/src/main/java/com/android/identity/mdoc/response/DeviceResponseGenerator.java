@@ -19,17 +19,20 @@ package com.android.identity.mdoc.response;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.cbor.ArrayBuilder;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborArray;
+import com.android.identity.cbor.CborBuilder;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.MapBuilder;
+import com.android.identity.cbor.RawCbor;
+import com.android.identity.cbor.Tagged;
 import com.android.identity.util.Constants;
-import com.android.identity.internal.Util;
 
 import java.util.List;
 import java.util.Map;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.UnicodeString;
 
 /**
  * Helper class for building <code>DeviceResponse</code> <a href="http://cbor.io/">CBOR</a>
@@ -51,7 +54,7 @@ public final class DeviceResponseGenerator {
      */
     public DeviceResponseGenerator(long statusCode) {
         mStatusCode = statusCode;
-        mDocumentsBuilder = new CborBuilder().addArray();
+        mDocumentsBuilder = CborArray.Companion.builder();
     }
 
     /**
@@ -105,68 +108,61 @@ public final class DeviceResponseGenerator {
             @Nullable Map<String, Map<String, Long>> errors,
             @NonNull byte[] encodedIssuerAuth) {
 
-        CborBuilder issuerNameSpacesBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> insOuter = issuerNameSpacesBuilder.addMap();
+        MapBuilder<CborBuilder> insOuter = CborMap.Companion.builder();
         for (String ns : issuerNameSpaces.keySet()) {
             ArrayBuilder<MapBuilder<CborBuilder>> insInner = insOuter.putArray(ns);
             for (byte[] encodedIssuerSignedItemBytes : issuerNameSpaces.get(ns)) {
-                insInner.add(Util.cborDecode(encodedIssuerSignedItemBytes));
+                insInner.add(new RawCbor(encodedIssuerSignedItemBytes));
             }
             insInner.end();
         }
-        insOuter.end();
 
-        DataItem issuerSigned = new CborBuilder()
-                .addMap()
-                .put(new UnicodeString("nameSpaces"), issuerNameSpacesBuilder.build().get(0))
-                .put(new UnicodeString("issuerAuth"), Util.cborDecode(encodedIssuerAuth))
+        DataItem issuerSigned = CborMap.Companion.builder()
+                .put("nameSpaces", insOuter.end().build())
+                .put("issuerAuth", new RawCbor(encodedIssuerAuth))
                 .end()
-                .build().get(0);
+                .build();
 
         String deviceAuthType = "";
-        DataItem deviceAuthDataItem = null;
+        byte[] deviceAuth = null;
         if (encodedDeviceSignature != null && encodedDeviceMac != null) {
             throw new IllegalArgumentException("Cannot specify both Signature and MAC");
         } else if (encodedDeviceSignature != null) {
             deviceAuthType = "deviceSignature";
-            deviceAuthDataItem = Util.cborDecode(encodedDeviceSignature);
+            deviceAuth = encodedDeviceSignature;
         } else if (encodedDeviceMac != null) {
             deviceAuthType = "deviceMac";
-            deviceAuthDataItem = Util.cborDecode(encodedDeviceMac);
+            deviceAuth = encodedDeviceMac;
         } else {
             throw new IllegalArgumentException("No authentication mechanism used");
         }
 
-        DataItem deviceSigned = new CborBuilder()
-                .addMap()
-                .put(new UnicodeString("nameSpaces"),
-                        Util.cborBuildTaggedByteString(encodedDeviceNamespaces))
+        DataItem deviceSigned = CborMap.Companion.builder()
+                .put("nameSpaces", new Tagged(24, new Bstr(encodedDeviceNamespaces)))
                 .putMap("deviceAuth")
-                .put(new UnicodeString(deviceAuthType), deviceAuthDataItem)
+                .put(deviceAuthType, new RawCbor(deviceAuth))
                 .end()
                 .end()
-                .build().get(0);
+                .build();
 
-        CborBuilder builder = new CborBuilder();
-        MapBuilder<CborBuilder> mapBuilder = builder.addMap();
+        MapBuilder<CborBuilder> mapBuilder = CborMap.Companion.builder();
         mapBuilder.put("docType", docType);
-        mapBuilder.put(new UnicodeString("issuerSigned"), issuerSigned);
-        mapBuilder.put(new UnicodeString("deviceSigned"), deviceSigned);
+        mapBuilder.put("issuerSigned", issuerSigned);
+        mapBuilder.put("deviceSigned", deviceSigned);
         if (errors != null) {
-            CborBuilder errorsBuilder = new CborBuilder();
-            MapBuilder<CborBuilder> errorsOuterMapBuilder = errorsBuilder.addMap();
+            MapBuilder<CborBuilder> errorsOuterMapBuilder = CborMap.Companion.builder();
             for (String namespaceName : errors.keySet()) {
                 MapBuilder<MapBuilder<CborBuilder>> errorsInnerMapBuilder =
                         errorsOuterMapBuilder.putMap(namespaceName);
                 Map<String, Long> innerMap = errors.get(namespaceName);
                 for (String dataElementName : innerMap.keySet()) {
-                    long value = innerMap.get(dataElementName).longValue();
+                    long value = innerMap.get(dataElementName);
                     errorsInnerMapBuilder.put(dataElementName, value);
                 }
             }
-            mapBuilder.put(new UnicodeString("errors"), errorsBuilder.build().get(0));
+            mapBuilder.put("errors", errorsOuterMapBuilder.end().build());
         }
-        mDocumentsBuilder.add(builder.build().get(0));
+        mDocumentsBuilder.add(mapBuilder.end().build());
         return this;
     }
 
@@ -180,7 +176,7 @@ public final class DeviceResponseGenerator {
      * @return the generator.
      */
     public @NonNull DeviceResponseGenerator addDocument(@NonNull byte[] encodedDocument) {
-        mDocumentsBuilder.add(Util.cborDecode(encodedDocument));
+        mDocumentsBuilder.add(Cbor.decode(encodedDocument));
         return this;
     }
 
@@ -190,10 +186,9 @@ public final class DeviceResponseGenerator {
      * @return the bytes of <code>DeviceResponse</code> CBOR.
      */
     public @NonNull byte[] generate() {
-        CborBuilder deviceResponseBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> mapBuilder = deviceResponseBuilder.addMap();
+        MapBuilder<CborBuilder> mapBuilder = CborMap.Companion.builder();
         mapBuilder.put("version", "1.0");
-        mapBuilder.put(new UnicodeString("documents"), mDocumentsBuilder.end().build().get(0));
+        mapBuilder.put("documents", mDocumentsBuilder.end().build());
         // TODO: The documentErrors map entry should only be present if there is a non-zero
         //  number of elements in the array. Right now we don't have a way for the application
         //  to convey document errors but when we add that API we'll need to do something so
@@ -201,6 +196,6 @@ public final class DeviceResponseGenerator {
         mapBuilder.put("status", mStatusCode);
         mapBuilder.end();
 
-        return Util.cborEncode(deviceResponseBuilder.build().get(0));
+        return Cbor.encode(mapBuilder.end().build());
     }
 }

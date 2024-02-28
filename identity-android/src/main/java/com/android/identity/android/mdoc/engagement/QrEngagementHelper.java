@@ -9,16 +9,18 @@ import androidx.annotation.Nullable;
 
 import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
 
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 import co.nstant.in.cbor.model.SimpleValue;
@@ -47,11 +49,10 @@ public class QrEngagementHelper {
     private static final String TAG = "QrEngagementHelper";
 
     private final Context mContext;
-    private final PublicKey mEDeviceKey;
+    private final EcPublicKey mEDeviceKey;
     private final DataTransportOptions mOptions;
     private final Listener mListener;
     private final Executor mExecutor;
-    private final EcCurve mEDeviceKeyCurve;
     private boolean mInhibitCallbacks;
     private ArrayList<DataTransport> mTransports = new ArrayList<>();
     private byte[] mEncodedDeviceEngagement;
@@ -59,8 +60,7 @@ public class QrEngagementHelper {
     private boolean mReportedDeviceConnecting;
 
     QrEngagementHelper(@NonNull Context context,
-                       @NonNull PublicKey eDeviceKey,
-                       EcCurve eDeviceKeyCurve,
+                       @NonNull EcPublicKey eDeviceKey,
                        @Nullable List<ConnectionMethod> connectionMethods,
                        @Nullable List<DataTransport> transports,
                        @NonNull DataTransportOptions options,
@@ -68,13 +68,13 @@ public class QrEngagementHelper {
                        @NonNull Executor executor) {
         mContext = context;
         mEDeviceKey = eDeviceKey;
-        mEDeviceKeyCurve = eDeviceKeyCurve;
         mListener = listener;
         mExecutor = executor;
         mOptions = options;
 
-        byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
-                Util.cborEncode(Util.cborBuildCoseKey(eDeviceKey, eDeviceKeyCurve))));
+        byte[] encodedEDeviceKeyBytes =
+                Cbor.encode(new Tagged(24, new Bstr(
+                        Cbor.encode(mEDeviceKey.toCoseKey(Map.of()).getToDataItem()))));
 
         // Set EDeviceKey for transports we were given.
         if (transports != null) {
@@ -158,8 +158,8 @@ public class QrEngagementHelper {
         // TODO: Figure out when we need to use version "1.1".
         //
         EngagementGenerator engagementGenerator =
-                new EngagementGenerator(mEDeviceKey, mEDeviceKeyCurve, EngagementGenerator.ENGAGEMENT_VERSION_1_0);
-        engagementGenerator.setConnectionMethods(connectionMethodsSetup);
+                new EngagementGenerator(mEDeviceKey, EngagementGenerator.ENGAGEMENT_VERSION_1_0);
+        engagementGenerator.addConnectionMethods(connectionMethodsSetup);
         mEncodedDeviceEngagement = engagementGenerator.generate();
         mEncodedHandover = Util.cborEncode(SimpleValue.NULL);
         Logger.dCbor(TAG, "QR DE", mEncodedDeviceEngagement);
@@ -365,11 +365,10 @@ public class QrEngagementHelper {
     public static class Builder {
 
         private final Context mContext;
-        private final PublicKey mEDeviceKey;
+        private final EcPublicKey mEDeviceKey;
         private final DataTransportOptions mOptions;
         private final Listener mListener;
         private final Executor mExecutor;
-        private final EcCurve mEDeviceKeyCurve;
         private List<ConnectionMethod> mConnectionMethods;
         private List<DataTransport> mTransports;
 
@@ -384,14 +383,12 @@ public class QrEngagementHelper {
          * @param executor a {@link Executor} to use with the listener.
          */
         public Builder(@NonNull Context context,
-                       @NonNull PublicKey eDeviceKey,
-                       EcCurve eDeviceKeyCurve,
+                       @NonNull EcPublicKey eDeviceKey,
                        @NonNull DataTransportOptions options,
                        @NonNull Listener listener,
                        @NonNull Executor executor) {
             mContext = context;
             mEDeviceKey = eDeviceKey;
-            mEDeviceKeyCurve = eDeviceKeyCurve;
             mOptions = options;
             mListener = listener;
             mExecutor = executor;
@@ -429,7 +426,6 @@ public class QrEngagementHelper {
         public @NonNull QrEngagementHelper build() {
             return new QrEngagementHelper(mContext,
                     mEDeviceKey,
-                    mEDeviceKeyCurve,
                     mConnectionMethods,
                     mTransports,
                     mOptions,

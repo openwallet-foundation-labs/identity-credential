@@ -19,11 +19,15 @@ package com.android.identity.android.credential;
 import android.content.Context;
 
 import com.android.identity.AndroidAttestationExtensionParser;
+import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings;
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
+import com.android.identity.android.securearea.UserAuthenticationType;
+import com.android.identity.android.securearea.UserAuthenticationTypeKt;
 import com.android.identity.android.storage.AndroidStorageEngine;
 import com.android.identity.credential.Credential;
 import com.android.identity.credential.CredentialStore;
 import com.android.identity.credential.PendingAuthenticationKey;
+import com.android.identity.crypto.CertificateKt;
 import com.android.identity.securearea.SecureArea;
 import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.StorageEngine;
@@ -34,6 +38,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 
 // See CredentialStoreTest in non-Android tests for main tests for CredentialStore. These
 // tests are just for the Android-specific bits including attestation.
@@ -79,14 +84,15 @@ public class AndroidKeystoreSecureAreaCredentialStoreTest {
                 credential.createPendingAuthenticationKey(
                         AUTH_KEY_DOMAIN,
                         mSecureArea,
-                        new AndroidKeystoreSecureArea.CreateKeySettings.Builder(authKeyChallenge)
+                        new AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge)
                                 .setUserAuthenticationRequired(true, 30*1000,
-                                        AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_LSKF
-                                                | AndroidKeystoreSecureArea.USER_AUTHENTICATION_TYPE_BIOMETRIC)
+                                        Set.of(UserAuthenticationType.LSKF,
+                                                UserAuthenticationType.BIOMETRIC))
                                 .build(),
                         null);
         AndroidAttestationExtensionParser parser =
-                new AndroidAttestationExtensionParser(pendingAuthenticationKey.getAttestation().get(0));
+                new AndroidAttestationExtensionParser(CertificateKt.getJavaX509Certificate(
+                        pendingAuthenticationKey.getAttestation().getCertificates().get(0)));
         Assert.assertArrayEquals(authKeyChallenge,
                 parser.getAttestationChallenge());
         Assert.assertEquals(AndroidAttestationExtensionParser.SecurityLevel.TRUSTED_ENVIRONMENT,

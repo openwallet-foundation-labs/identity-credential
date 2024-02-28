@@ -16,9 +16,13 @@
 
 package com.android.identity.wwwreader;
 
-import co.nstant.in.cbor.CborBuilder;
-
-import com.android.identity.internal.Util;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborArray;
+import com.android.identity.cbor.DiagnosticOption;
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
@@ -28,9 +32,7 @@ import com.android.identity.mdoc.origininfo.OriginInfoDomain;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
-import com.android.identity.util.CborUtil;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.util.Timestamp;
 import com.google.gson.Gson;
 import java.util.ArrayList;
@@ -43,19 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-
-// imports for key generation
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.ECGenParameterSpec;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
-import java.security.PublicKey;
-import java.security.PrivateKey;
 
 // Java servlet imports
 import java.io.IOException;
@@ -81,6 +70,7 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 /**
  * This servlet performs three main functions:
@@ -241,13 +231,12 @@ public class RequestServlet extends HttpServlet {
     * @return Generated mdoc:// URI
     */
     private static String createMdocUri(Key key) {
-        KeyPair keyPair = generateKeyPair();
-        byte[] re = generateReaderEngagement(keyPair.getPublic(), key);
-  
+        EcPrivateKey readerKey = Crypto.createEcPrivateKey(EcCurve.P256);
+        byte[] re = generateReaderEngagement(readerKey.getPublicKey(), key);
+
         // put ReaderEngagement and generated ephemeral keys into Datastore
         setDatastoreProp(ServletConsts.RE_PROP, re, key);
-        setDatastoreProp(ServletConsts.PUBKEY_PROP, keyPair.getPublic().getEncoded(), key);
-        setDatastoreProp(ServletConsts.PRIVKEY_PROP, keyPair.getPrivate().getEncoded(), key);
+        setDatastoreProp(ServletConsts.PRIVKEY_PROP, Cbor.encode(readerKey.toCoseKey(Map.of()).getToDataItem()), key);
 
         String reStr = Base64.getUrlEncoder().withoutPadding().encodeToString(re).replace("\n","");
   
@@ -263,31 +252,36 @@ public class RequestServlet extends HttpServlet {
       * @return SessionData CBOR message containing DeviceRequest
       */
     private static byte[] createDeviceRequest(byte[] messageData, Key key) {
-        byte[] encodedEngagement = Util.cborMapExtractByteString(Util.cborDecode(messageData),
-            ServletConsts.DE_KEY);
-        log(key, String.format("[%s] Comment: Received Engagement CBOR %s\n", 
+        byte[] encodedEngagement =
+                Cbor.decode(messageData).get("deviceEngagementBytes").getAsBstr();
+        log(key, String.format("[%s] Comment: Received Engagement CBOR %s\n",
             millisToSec(System.currentTimeMillis()), cborPrettyPrint(encodedEngagement)));
-        PublicKey eReaderKeyPublic = getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
-        PrivateKey eReaderKeyPrivate = getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
+        EcPrivateKey eReaderKey = getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
 
         EngagementParser.Engagement engagement = new EngagementParser(encodedEngagement).parse();
-        PublicKey eDeviceKeyPublic = engagement.getESenderKey();
-        setDatastoreProp(ServletConsts.DEVKEY_PROP, eDeviceKeyPublic.getEncoded(), key);
+        EcPublicKey eDeviceKeyPublic = engagement.getESenderKey();
+        byte[] encodedEDeviceKeyPublic = Cbor.encode(eDeviceKeyPublic.toCoseKey(Map.of()).getToDataItem());
+        setDatastoreProp(ServletConsts.DEVKEY_PROP, encodedEDeviceKeyPublic, key);
         verifyOriginInfo(engagement.getOriginInfos(), key);
 
-        byte[] sessionTranscript = buildSessionTranscript(encodedEngagement, eReaderKeyPublic, key);
+        byte[] sessionTranscript = buildSessionTranscript(encodedEngagement, eReaderKey.getPublicKey(), key);
         setDatastoreProp(ServletConsts.TRANSCRIPT_PROP, sessionTranscript, key);
 
         SessionEncryption ser = new SessionEncryption(
                 SessionEncryption.ROLE_MDOC_READER,
-                new KeyPair(eReaderKeyPublic,eReaderKeyPrivate),
+                eReaderKey,
                 eDeviceKeyPublic,
-                EcCurve.P256,
                 sessionTranscript);
         ser.setSendSessionEstablishment(false);
         byte[] dr = new DeviceRequestGenerator()
             .setSessionTranscript(sessionTranscript)
-            .addDocumentRequest(ServletConsts.MDL_DOCTYPE, createMdlItemsToRequest(key), null, null, null)
+            .addDocumentRequest(
+                    ServletConsts.MDL_DOCTYPE,
+                    createMdlItemsToRequest(key),
+                    null,
+                    null,
+                    Algorithm.UNSET,
+                    null)
             .generate();
         return ser.encryptMessage(dr, OptionalLong.empty());
     }
@@ -298,15 +292,13 @@ public class RequestServlet extends HttpServlet {
      * @param eReaderKeyPublic the reader engagement
      * @param key the datastore key
      */
-    public static byte[] buildSessionTranscript(byte[] de, PublicKey eReaderKeyPublic, Key key) {
+    public static byte[] buildSessionTranscript(byte[] de, EcPublicKey eReaderKeyPublic, Key key) {
         byte[] re = getDatastoreProp(ServletConsts.RE_PROP, key);
-        return Util.cborEncode(new CborBuilder()
-            .addArray()
-                .add(Util.cborBuildTaggedByteString(de))
-                .add(Util.cborBuildTaggedByteString(Util.cborEncode(
-                        Util.cborBuildCoseKey(eReaderKeyPublic, EcCurve.P256))))
-                .add(Util.cborBuildTaggedByteString(re))
-            .end().build().get(0));
+        return Cbor.encode(CborArray.Companion.builder()
+                        .addTaggedEncodedCbor(de)
+                        .addTagged(24, eReaderKeyPublic.toCoseKey(Map.of()).getToDataItem())
+                        .addTaggedEncodedCbor(re)
+                        .end().build());
     }
 
     /**
@@ -386,29 +378,14 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return generated readerEngagement CBOR message, using EngagementGenerator
      */
-    public static byte[] generateReaderEngagement(PublicKey publicKey, Key key) {
+    public static byte[] generateReaderEngagement(EcPublicKey publicKey, Key key) {
         EngagementGenerator eg = new EngagementGenerator(publicKey,
-                EcCurve.P256,
                 EngagementGenerator.ENGAGEMENT_VERSION_1_1);
         List<ConnectionMethod> connectionMethods = new ArrayList<>();
         connectionMethods.add(new ConnectionMethodHttp(ServletConsts.ABSOLUTE_URL + "/"
                 + com.google.appengine.api.datastore.KeyFactory.keyToString(key)));
-        eg.setConnectionMethods(connectionMethods);
+        eg.addConnectionMethods(connectionMethods);
         return eg.generate();
-    }
-
-    /**
-     * @return generated ephemeral reader key pair (containing a PublicKey and a PrivateKey)
-     */
-    private static KeyPair generateKeyPair() {
-        try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance(ServletConsts.KEYGEN_INSTANCE);
-            ECGenParameterSpec ecSpec = new ECGenParameterSpec(ServletConsts.KEYGEN_CURVE);
-            kpg.initialize(ecSpec);
-            return kpg.generateKeyPair();
-        } catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
-            throw new IllegalStateException("Error generating ephemeral key-pair", e);
-        }
     }
 
     /**
@@ -435,11 +412,8 @@ public class RequestServlet extends HttpServlet {
      * to indicate termination.
      */
     private static byte[] parseDeviceResponse(byte[] messageData, Key key) throws IOException {
-        PublicKey eReaderKeyPublic =
-            getPublicKey(getDatastoreProp(ServletConsts.PUBKEY_PROP, key));
-        PrivateKey eReaderKeyPrivate =
-            getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
-        PublicKey eDeviceKeyPublic =
+        EcPrivateKey eReaderKey = getPrivateKey(getDatastoreProp(ServletConsts.PRIVKEY_PROP, key));
+        EcPublicKey eDeviceKeyPublic =
             getPublicKey(getDatastoreProp(ServletConsts.DEVKEY_PROP, key));
         byte[] sessionTranscript = getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, key);
 
@@ -447,16 +421,15 @@ public class RequestServlet extends HttpServlet {
         DeviceResponseParser.DeviceResponse dr;
         try {
             ser = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
-                    new KeyPair(eReaderKeyPublic, eReaderKeyPrivate),
+                    eReaderKey,
                     eDeviceKeyPublic,
-                    EcCurve.P256,
                     sessionTranscript);
             ser.setSendSessionEstablishment(false);
             
             dr = new DeviceResponseParser()
                 .setDeviceResponse(ser.decryptMessage(messageData).getData())
                 .setSessionTranscript(sessionTranscript)
-                .setEphemeralReaderKey(eReaderKeyPrivate)
+                .setEphemeralReaderKey(eReaderKey)
                 .parse(); 
         } catch (Exception e) {
             log(key, String.format("[%s] Check: Decrypt response: FAILED\n",
@@ -506,8 +479,8 @@ public class RequestServlet extends HttpServlet {
                 + timestampToString(doc.getValidityInfoValidFrom()));
             arr.add(ServletConsts.CHECKMARK + "Signed: "
                 + timestampToString(doc.getValidityInfoValidUntil()));
-            arr.add(ServletConsts.CHECKMARK + "DeviceKey: " +
-                numBytesAsString(doc.getDeviceKey().getEncoded()));
+            arr.add(ServletConsts.CHECKMARK + "DeviceKey: "
+                    + doc.getDeviceKey());
             List<String> issuerNamespaces = doc.getIssuerNamespaces();
             for (String namespace : issuerNamespaces) {
                 arr.add(ServletConsts.BOLD + "Namespace: " + ServletConsts.BOLD + namespace);
@@ -521,11 +494,14 @@ public class RequestServlet extends HttpServlet {
                             String bytes = Base64.getEncoder().withoutPadding().encodeToString(byteArr);
                             arr.add("portraitBytes" + ": " + bytes);
                             break;
+                        case "issue_date":
+                        case "expiry_date":
+                            byte[] value = doc.getIssuerEntryData(namespace, entry);
+                            val = Cbor.decode(value).getAsTagged().getAsTstr();
+                            break;
                         case "family_name":
                         case "given_name":
                         case "issuing_authority":
-                        case "issue_date":
-                        case "expiry_date":
                         case "DHS_compliance":
                         case "EDL_credential":
                         case "document_number":
@@ -611,25 +587,15 @@ public class RequestServlet extends HttpServlet {
     /**
      * @return PublicKey, converted from a byte array @param arr
      */
-    private static PublicKey getPublicKey(byte[] arr) {
-        try {
-            KeyFactory kf = KeyFactory.getInstance(ServletConsts.KEYGEN_INSTANCE);
-            return kf.generatePublic(new X509EncodedKeySpec(arr));
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new IllegalStateException("Unexpected error", e);
-        }
+    private static EcPublicKey getPublicKey(byte[] arr) {
+        return Cbor.decode(arr).getAsCoseKey().getEcPublicKey();
     }
 
     /**
      * @return PrivateKey, converted from a byte array @param arr
      */
-    private static PrivateKey getPrivateKey(byte[] arr) {
-        try {
-            KeyFactory kf = KeyFactory.getInstance(ServletConsts.KEYGEN_INSTANCE);
-            return kf.generatePrivate(new PKCS8EncodedKeySpec(arr));
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new IllegalStateException("Unexpected error", e);
-        }
+    private static EcPrivateKey getPrivateKey(byte[] arr) {
+        return Cbor.decode(arr).getAsCoseKey().getEcPrivateKey();
     }
 
     /**
@@ -720,8 +686,8 @@ public class RequestServlet extends HttpServlet {
     }
 
     private static String cborPrettyPrint(byte[] encodedCbor) {
-        return CborUtil.toDiagnostics(encodedCbor,
-                        CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT | CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR);
+        return Cbor.toDiagnostics(encodedCbor,
+                Set.of(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR));
     }
 
     /**

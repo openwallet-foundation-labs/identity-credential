@@ -112,7 +112,14 @@ class CredentialType private constructor(
             mandatory: Boolean,
             mdocNamespace: String,
         ) = apply {
-            addMdocAttribute(type, mdocIdentifier, displayName, description, mandatory, mdocNamespace)
+            addMdocAttribute(
+                type,
+                mdocIdentifier,
+                displayName,
+                description,
+                mandatory,
+                mdocNamespace
+            )
             addVcAttribute(type, vcIdentifier, displayName, description)
         }
 
@@ -141,8 +148,7 @@ class CredentialType private constructor(
                 displayName,
                 description,
                 mandatory
-            )
-                ?: throw Exception("The mDoc Credential Type was not initialized")
+            ) ?: throw Exception("The mDoc Credential Type was not initialized")
         }
 
         /**

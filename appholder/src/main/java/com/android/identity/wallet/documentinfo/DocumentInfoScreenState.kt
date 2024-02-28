@@ -1,7 +1,7 @@
 package com.android.identity.wallet.documentinfo
 
 import androidx.compose.runtime.Immutable
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.wallet.document.DocumentColor
 

@@ -24,7 +24,7 @@ import java.util.Collections
  * implementation to use when loading keys and objects using different implementations.
  */
 class SecureAreaRepository {
-    private var privateImplementations: MutableList<SecureArea> = ArrayList()
+    private var privateImplementations = mutableListOf<SecureArea>()
 
     /**
      * All [SecureArea] implementations in the repository.

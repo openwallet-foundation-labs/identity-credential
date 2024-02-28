@@ -15,17 +15,8 @@
  */
 package com.android.identity.credential
 
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborDecoder
-import co.nstant.`in`.cbor.CborException
-import co.nstant.`in`.cbor.builder.ArrayBuilder
-import co.nstant.`in`.cbor.builder.MapBuilder
-import co.nstant.`in`.cbor.model.Array
-import co.nstant.`in`.cbor.model.ByteString
-import co.nstant.`in`.cbor.model.DataItem
-import co.nstant.`in`.cbor.model.Map
-import co.nstant.`in`.cbor.model.UnicodeString
-import com.android.identity.internal.Util
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
@@ -34,7 +25,6 @@ import com.android.identity.util.ApplicationData
 import com.android.identity.util.Logger
 import com.android.identity.util.SimpleApplicationData
 import com.android.identity.util.Timestamp
-import java.io.ByteArrayInputStream
 
 /**
  * This class represents a credential created in [CredentialStore].
@@ -102,7 +92,6 @@ class Credential private constructor(
     val applicationData: ApplicationData
         get() = _applicationData
 
-
     /**
      * Pending authentication keys.
      */
@@ -110,7 +99,6 @@ class Credential private constructor(
     val pendingAuthenticationKeys: List<PendingAuthenticationKey>
         // Return shallow copy b/c backing field may get modified if certify() or delete() is called.
         get() = _pendingAuthenticationKeys.toList()
-
 
     /**
      * Certified authentication keys.
@@ -131,21 +119,19 @@ class Credential private constructor(
 
     internal fun saveCredential() {
         val t0 = Timestamp.now()
-        val builder = CborBuilder()
-        val map: MapBuilder<CborBuilder> = builder.addMap()
-        map.put("applicationData", _applicationData.encodeAsCbor())
-        val pendingAuthenticationKeysArrayBuilder: ArrayBuilder<MapBuilder<CborBuilder>> =
-            map.putArray("pendingAuthenticationKeys")
-        for (pendingAuthenticationKey in _pendingAuthenticationKeys) {
-            pendingAuthenticationKeysArrayBuilder.add(pendingAuthenticationKey.toCbor())
+        val mapBuilder = CborMap.builder().apply {
+            put("applicationData", _applicationData.encodeAsCbor())
+            val pendingAuthenticationKeysArrayBuilder = putArray("pendingAuthenticationKeys")
+            for (pendingAuthenticationKey in _pendingAuthenticationKeys) {
+                pendingAuthenticationKeysArrayBuilder.add(pendingAuthenticationKey.toCbor())
+            }
+            val authenticationKeysArrayBuilder = putArray("authenticationKeys")
+            for (authenticationKey in _authenticationKeys) {
+                authenticationKeysArrayBuilder.add(authenticationKey.toCbor())
+            }
+            put("authenticationKeyCounter", authenticationKeyCounter)
         }
-        val authenticationKeysArrayBuilder: ArrayBuilder<MapBuilder<CborBuilder>> =
-            map.putArray("authenticationKeys")
-        for (authenticationKey in _authenticationKeys) {
-            authenticationKeysArrayBuilder.add(authenticationKey.toCbor())
-        }
-        map.put("authenticationKeyCounter", authenticationKeyCounter)
-        storageEngine.put(CREDENTIAL_PREFIX + name, Util.cborEncode(builder.build().get(0)))
+        storageEngine.put(CREDENTIAL_PREFIX + name, Cbor.encode(mapBuilder.end().build()))
         val t1 = Timestamp.now()
 
         // Saving a credential is a costly affair (often more than 100ms) so log when we're doing
@@ -158,38 +144,22 @@ class Credential private constructor(
 
     private fun loadCredential(): Boolean {
         val data = storageEngine[CREDENTIAL_PREFIX + name] ?: return false
-        val bais = ByteArrayInputStream(data)
-        val dataItems = try {
-            CborDecoder(bais).decode()
-        } catch (e: CborException) {
-            throw IllegalStateException("Error decoding CBOR", e)
-        }
-        check(dataItems.size == 1) { "Expected 1 item, found " + dataItems.size }
-        check(dataItems[0] is Map) { "Item is not a map" }
-
-        val map = dataItems.first() as Map
-        val applicationDataDataItem: DataItem = map[UnicodeString("applicationData")]
-        check(applicationDataDataItem is ByteString) { "applicationData not found or not byte[]" }
+        val map = Cbor.decode(data)
 
         _applicationData = SimpleApplicationData
-            .decodeFromCbor(applicationDataDataItem.bytes) {
+            .decodeFromCbor(map["applicationData"].asBstr) {
                 saveCredential()
             }
 
         _pendingAuthenticationKeys = ArrayList()
-        val pendingAuthenticationKeysDataItem: DataItem =
-            map[UnicodeString("pendingAuthenticationKeys")]
-        check(pendingAuthenticationKeysDataItem is Array) { "pendingAuthenticationKeys not found or not array" }
-        for (item in pendingAuthenticationKeysDataItem.dataItems) {
+        for (item in map["pendingAuthenticationKeys"].asArray) {
             _pendingAuthenticationKeys.add(PendingAuthenticationKey.fromCbor(item, this))
         }
         _authenticationKeys = ArrayList()
-        val authenticationKeysDataItem: DataItem = map[UnicodeString("authenticationKeys")]
-        check(authenticationKeysDataItem is Array) { "authenticationKeys not found or not array" }
-        for (item in authenticationKeysDataItem.dataItems) {
+        for (item in map["authenticationKeys"].asArray) {
             _authenticationKeys.add(AuthenticationKey.fromCbor(item, this))
         }
-        authenticationKeyCounter = Util.cborMapExtractNumber(map, "authenticationKeyCounter")
+        authenticationKeyCounter = map["authenticationKeyCounter"].asNumber
         return true
     }
 
@@ -211,7 +181,6 @@ class Credential private constructor(
         domain: String,
         now: Timestamp?
     ): AuthenticationKey? {
-
         var candidate: AuthenticationKey? = null
         _authenticationKeys.filter {
             it.domain == domain && (
@@ -337,22 +306,20 @@ class Credential private constructor(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
             name: String
-        ): Credential {
-            val credential = Credential(name, storageEngine, secureAreaRepository)
-            credential.saveCredential()
-            return credential
-        }
+        ): Credential =
+            Credential(name, storageEngine, secureAreaRepository).apply { saveCredential() }
 
         // Called by CredentialStore.lookupCredential().
         fun lookup(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
             name: String
-        ): Credential? {
-            val credential = Credential(name, storageEngine, secureAreaRepository)
-            return if (!credential.loadCredential()) {
-                null
-            } else credential
+        ): Credential? = Credential(name, storageEngine, secureAreaRepository).run {
+            if (loadCredential()) {
+                this// return this Credential object
+            } else { // when credential.loadCredential() == false
+                null // return null
+            }
         }
     }
 }

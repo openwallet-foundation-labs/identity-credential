@@ -20,7 +20,7 @@ object VehicleRegistration {
             false,
             "competentAuthority",
             "Competent Authority",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -28,7 +28,7 @@ object VehicleRegistration {
             false,
             "registrationNumber",
             "UN/EU Element A",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -36,7 +36,7 @@ object VehicleRegistration {
             false,
             "validFrom",
             "Custom EKB Element, Valid From",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -44,7 +44,7 @@ object VehicleRegistration {
             false,
             "validUntil",
             "Custom EKB Element, Valid Until",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -52,7 +52,7 @@ object VehicleRegistration {
             false,
             "holderInfo",
             "Personal Data",
-            CredentialAttributeType.COMPLEX_TYPE
+            CredentialAttributeType.ComplexType
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -60,7 +60,7 @@ object VehicleRegistration {
             false,
             "ownershipStatus",
             "Ownership Status",
-            CredentialAttributeType.NUMBER
+            CredentialAttributeType.Number
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -68,7 +68,7 @@ object VehicleRegistration {
             false,
             "name",
             "Name of the Vehicle Owner",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -76,7 +76,7 @@ object VehicleRegistration {
             false,
             "address",
             "Address of the Vehicle Owner",
-            CredentialAttributeType.COMPLEX_TYPE
+            CredentialAttributeType.ComplexType
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -84,7 +84,7 @@ object VehicleRegistration {
             false,
             "streetName",
             "Street Name",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -92,7 +92,7 @@ object VehicleRegistration {
             false,
             "houseNumber",
             "House Number",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -100,7 +100,7 @@ object VehicleRegistration {
             false,
             "houseNumberSuffix",
             "House Number Suffix",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -108,7 +108,7 @@ object VehicleRegistration {
             false,
             "postalCode",
             "Postal Code",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -116,7 +116,7 @@ object VehicleRegistration {
             false,
             "placeOfResidence",
             "Place of Residence",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -124,7 +124,7 @@ object VehicleRegistration {
             false,
             "vehicle",
             "Vehicle",
-            CredentialAttributeType.COMPLEX_TYPE
+            CredentialAttributeType.ComplexType
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -132,7 +132,7 @@ object VehicleRegistration {
             false,
             "make",
             "Make of the Vehicle",
-            CredentialAttributeType.STRING,
+            CredentialAttributeType.String,
         )
 
         .build()

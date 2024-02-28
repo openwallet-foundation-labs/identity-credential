@@ -19,35 +19,39 @@ package com.android.identity.mdoc.response;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborArray;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.DataItemExtensionsKt;
+import com.android.identity.cbor.RawCbor;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.cose.Cose;
+import com.android.identity.cose.CoseMac0;
+import com.android.identity.cose.CoseNumberLabel;
+import com.android.identity.cose.CoseSign1;
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.CertificateChain;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.util.Constants;
 import com.android.identity.util.Logger;
 import com.android.identity.util.Timestamp;
 import com.android.identity.internal.Util;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import javax.crypto.SecretKey;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.UnicodeString;
-import kotlin.Pair;
 
 /**
  * Helper class for parsing the bytes of <code>DeviceResponse</code>
@@ -58,7 +62,7 @@ public final class DeviceResponseParser {
 
     private byte[] mEncodedDeviceResponse;
     private byte[] mEncodedSessionTranscript;
-    private PrivateKey mEReaderKey;
+    private EcPrivateKey mEReaderKey;
 
     /**
      * Constructs a {@link DeviceResponseParser}.
@@ -96,10 +100,12 @@ public final class DeviceResponseParser {
      * <p>This is only required if the <code>DeviceResponse</code> is using
      * the MAC method for device authentication.
      *
+     * TODO: convert to using SecureArea
+     *
      * @param eReaderKey the private part of the reader ephemeral key.
      * @return the <code>DeviceResponseParser</code>.
      */
-    public @NonNull DeviceResponseParser setEphemeralReaderKey(@NonNull PrivateKey eReaderKey) {
+    public @NonNull DeviceResponseParser setEphemeralReaderKey(@NonNull EcPrivateKey eReaderKey) {
         mEReaderKey = eReaderKey;
         return this;
     }
@@ -109,7 +115,7 @@ public final class DeviceResponseParser {
      *
      * <p>It's mandatory to call {@link #setDeviceResponse(byte[])},
      * {@link #setSessionTranscript(byte[])} before this call. If the response is using MAC for
-     * device authentication, {@link #setEphemeralReaderKey(PrivateKey)} must also have been
+     * device authentication, {@link #setEphemeralReaderKey(EcPrivateKey)} must also have been
      * called.
      *
      * <p>This parser will successfully parse responses where issuer-signed data elements fails
@@ -134,7 +140,7 @@ public final class DeviceResponseParser {
             throw new IllegalStateException("sessionTranscript has not been set");
         }
         // mEReaderKey may be omitted if the response is using ECDSA instead of MAC
-        // for device authentiation.
+        // for device authentication.
         DeviceResponse response = new DeviceResponse();
         response.parse(mEncodedDeviceResponse, mEncodedSessionTranscript, mEReaderKey);
         return response;
@@ -154,28 +160,40 @@ public final class DeviceResponseParser {
         // Returns the DeviceKey from the MSO
         //
         private @NonNull
-        Pair<PublicKey, EcCurve> parseIssuerSigned(
+        EcPublicKey parseIssuerSigned(
                 String expectedDocType,
                 DataItem issuerSigned,
                 Document.Builder builder) {
 
-            DataItem issuerAuthDataItem = Util.cborMapExtract(issuerSigned, "issuerAuth");
+            CoseSign1 issuerAuth = issuerSigned.get("issuerAuth").getAsCoseSign1();
 
-            List<X509Certificate> issuerAuthorityCertChain = Util.coseSign1GetX5Chain(
-                    issuerAuthDataItem);
-            if (issuerAuthorityCertChain.size() < 1) {
-                throw new IllegalArgumentException("No x5chain element in issuer signature");
-            }
-            PublicKey issuerAuthorityKey =
-                    issuerAuthorityCertChain.iterator().next().getPublicKey();
+            // 18013-5 clause "9.1.2.4 Signing method and structure for MSO" guarantees
+            // that x5chain is in the unprotected headers and that alg is in the
+            // protected headers...
 
-            boolean issuerSignedAuthenticated = Util.coseSign1CheckSignature(
-                    issuerAuthDataItem, null, issuerAuthorityKey);
-            Logger.d(TAG, "issuerSignedAuthenticated: " + issuerSignedAuthenticated);
+            CertificateChain issuerAuthorityCertChain =
+                    issuerAuth.getUnprotectedHeaders()
+                            .get(new CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN))
+                            .getAsCertificateChain();
+
+            Algorithm signatureAlgorithm =
+                    Algorithm.Companion.fromInt( (int)
+                            issuerAuth.getProtectedHeaders()
+                                    .get(new CoseNumberLabel(Cose.COSE_LABEL_ALG))
+                                    .getAsNumber());
+
+            EcPublicKey documentSigningKey =
+                    issuerAuthorityCertChain.getCertificates().get(0).getPublicKey();
+
+            boolean issuerSignedAuthenticated = Cose.coseSign1Check(
+                    documentSigningKey,
+                    null,
+                    issuerAuth,
+                    signatureAlgorithm);
             builder.setIssuerSignedAuthenticated(issuerSignedAuthenticated);
             builder.setIssuerCertificateChain(issuerAuthorityCertChain);
 
-            byte[] encodedMobileSecurityObject = Util.cborExtractTaggedCbor(Util.coseSign1GetData(issuerAuthDataItem));
+            byte[] encodedMobileSecurityObject = Cbor.decode(issuerAuth.getPayload()).getAsTagged().getAsBstr();
             MobileSecurityObjectParser.MobileSecurityObject parsedMso = new MobileSecurityObjectParser()
                     .setMobileSecurityObject(encodedMobileSecurityObject).parse();
 
@@ -207,37 +225,36 @@ public final class DeviceResponseParser {
                 digestMapping.put(nameSpaceName, parsedMso.getDigestIDs(nameSpaceName));
             }
 
-            PublicKey deviceKey = parsedMso.getDeviceKey();
-            EcCurve deviceKeyCurve = parsedMso.getDeviceKeyCurve();
+            EcPublicKey deviceKey = parsedMso.getDeviceKey();
 
             // nameSpaces may be absent...
-            if (Util.cborMapHasKey(issuerSigned, "nameSpaces")) {
-                DataItem nameSpaces = Util.cborMapExtractMap(issuerSigned, "nameSpaces");
-                Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
-                for (String nameSpace : nameSpacesKeys) {
+            DataItem nameSpaces = issuerSigned.getOrNull("nameSpaces");
+            if (nameSpaces != null) {
+                for (DataItem nameSpaceDataItem : nameSpaces.getAsMap().keySet()) {
+                    String nameSpace = nameSpaceDataItem.getAsTstr();
                     Map<Long, byte[]> innerDigestMapping = digestMapping.get(nameSpace);
                     if (innerDigestMapping == null) {
                         throw new IllegalArgumentException("No digestID MSO entry for namespace "
                                 + nameSpace);
                     }
-                    List<DataItem> elems = Util.cborMapExtractArray(nameSpaces, nameSpace);
-                    for (DataItem elem : elems) {
-                        if (!(elem.hasTag() && elem.getTag().getValue() == 24
-                                && (elem instanceof ByteString))) {
+
+                    DataItem elementsDataItem = nameSpaces.get(nameSpaceDataItem);
+                    for (DataItem elem : elementsDataItem.getAsArray()) {
+                        if (!(elem instanceof Tagged &&
+                                ((Tagged) elem).getTagNumber() == 24 &&
+                                ((Tagged) elem).getAsTagged() instanceof Bstr)) {
                             throw new IllegalArgumentException(
                                     "issuerSignedItemBytes is not a tagged ByteString");
                         }
+
                         // We need the encoded representation with the tag.
-                        byte[] encodedIssuerSignedItem = ((ByteString) elem).getBytes();
-                        byte[] encodedIssuerSignedItemBytes = Util.cborEncode(
-                                Util.cborBuildTaggedByteString(encodedIssuerSignedItem));
+                        byte[] encodedIssuerSignedItemBytes = Cbor.encode(elem);
                         byte[] expectedDigest = digester.digest(encodedIssuerSignedItemBytes);
 
-                        DataItem issuerSignedItem = Util.cborExtractTaggedAndEncodedCbor(elem);
-                        String elementName = Util.cborMapExtractString(issuerSignedItem,
-                                "elementIdentifier");
-                        DataItem elementValue = Util.cborMapExtract(issuerSignedItem, "elementValue");
-                        long digestId = Util.cborMapExtractNumber(issuerSignedItem, "digestID");
+                        DataItem issuerSignedItem = Cbor.decode(elem.getAsTagged().getAsBstr());
+                        String elementName = issuerSignedItem.get("elementIdentifier").getAsTstr();
+                        DataItem elementValue = issuerSignedItem.get("elementValue");
+                        long digestId = issuerSignedItem.get("digestID").getAsNumber();
 
                         byte[] digest = innerDigestMapping.get(digestId);
                         if (digest == null) {
@@ -246,129 +263,154 @@ public final class DeviceResponseParser {
                         }
                         boolean digestMatch = Arrays.equals(expectedDigest, digest);
                         builder.addIssuerEntry(nameSpace, elementName,
-                                Util.cborEncode(elementValue),
+                                Cbor.encode(elementValue),
                                 digestMatch);
                     }
                 }
-            }
-            return new Pair<>(deviceKey, deviceKeyCurve);
+           }
+            return deviceKey;
         }
 
         private void parseDeviceSigned(
                 DataItem deviceSigned,
                 String docType,
                 byte[] encodedSessionTranscript,
-                PublicKey deviceKey,
-                PrivateKey eReaderKey,
+                EcPublicKey deviceKey,
+                EcPrivateKey eReaderKey,
                 Document.Builder builder) {
-            DataItem nameSpacesBytes = Util.cborMapExtract(deviceSigned, "nameSpaces");
-            if (!(nameSpacesBytes.hasTag()
-                    || nameSpacesBytes.getTag().getValue() != 24
-                    || (nameSpacesBytes instanceof ByteString))) {
-                throw new IllegalArgumentException("nameSpaces isn't a tagged ByteString");
-            }
-            byte[] encodedNamespaces = ((ByteString) nameSpacesBytes).getBytes();
+            DataItem nameSpacesBytes = deviceSigned.get("nameSpaces");
+            DataItem nameSpaces = nameSpacesBytes.getAsTaggedEncodedCbor();
 
-            DataItem sessionTranscript = Util.cborDecode(encodedSessionTranscript);
+            DataItem deviceAuth = deviceSigned.get("deviceAuth");
 
-            DataItem deviceAuth = Util.cborMapExtractMap(deviceSigned, "deviceAuth");
-            DataItem deviceSignature = ((co.nstant.in.cbor.model.Map) deviceAuth).get(
-                    new UnicodeString("deviceSignature"));
-            byte[] encodedDeviceAuthentication = Util.cborEncode(new CborBuilder()
-                    .addArray()
+            DataItem deviceAuthentication = CborArray.Companion.builder()
                     .add("DeviceAuthentication")
-                    .add(sessionTranscript)
+                    .add(new RawCbor(encodedSessionTranscript))
                     .add(docType)
-                    .add(Util.cborBuildTaggedByteString(encodedNamespaces))
+                    .add(nameSpacesBytes)
                     .end()
-                    .build().get(0));
+                    .build();
+            byte[] deviceAuthenticationBytes =
+                    Cbor.encode(new Tagged(24, new Bstr(Cbor.encode(deviceAuthentication))));
 
-            boolean deviceSignedAuthenticated;
+            boolean deviceSignedAuthenticated = false;
+
+            DataItem deviceSignature = deviceAuth.getOrNull("deviceSignature");
             if (deviceSignature != null) {
-                byte[] deviceAuthenticationBytes =
-                        Util.cborEncode(
-                                Util.cborBuildTaggedByteString(encodedDeviceAuthentication));
-                deviceSignedAuthenticated = Util.coseSign1CheckSignature(
-                        deviceSignature, deviceAuthenticationBytes, deviceKey);
+
+                CoseSign1 deviceSignatureCoseSign1 = deviceSignature.getAsCoseSign1();
+
+                // 18013-5 clause "9.1.3.6 mdoc ECDSA / EdDSA Authentication" guarantees
+                // that alg is in the protected header
+                //
+                Algorithm signatureAlgorithm =
+                        Algorithm.Companion.fromInt( (int)
+                                deviceSignatureCoseSign1.getProtectedHeaders()
+                                        .get(new CoseNumberLabel(Cose.COSE_LABEL_ALG))
+                                        .getAsNumber());
+                deviceSignedAuthenticated =
+                        Cose.coseSign1Check(deviceKey,
+                                deviceAuthenticationBytes,
+                                deviceSignatureCoseSign1,
+                                signatureAlgorithm);
                 builder.setDeviceSignedAuthenticatedViaSignature(true);
             } else {
-                DataItem deviceMac = ((co.nstant.in.cbor.model.Map) deviceAuth).get(
-                        new UnicodeString("deviceMac"));
-                if (deviceMac == null) {
+                DataItem deviceMacDataItem = deviceAuth.getOrNull("deviceMac");
+                if (deviceMacDataItem == null) {
                     throw new IllegalArgumentException(
                             "Neither deviceSignature nor deviceMac in deviceAuth");
                 }
+                CoseMac0 deviceMac = deviceMacDataItem.getAsCoseMac0();
+                byte[] tagInResponse = deviceMac.getTag();
 
-                SecretKey eMacKey = Util.calcEMacKeyForReader(deviceKey, eReaderKey,
+                byte[] eMacKey = calcEMacKeyForReader(
+                        deviceKey,
+                        eReaderKey,
                         encodedSessionTranscript);
-                byte[] deviceAuthenticationBytes = Util.cborEncode(
-                        Util.cborBuildTaggedByteString(encodedDeviceAuthentication));
-                DataItem expectedMac = Util.coseMac0(eMacKey,
-                        new byte[0],                 // payload
-                        deviceAuthenticationBytes);  // detached content
-                byte[] tagInResponse = Util.coseMac0GetTag(deviceMac);
-                byte[] expectedTag = Util.coseMac0GetTag(expectedMac);
+
+                byte[] expectedTag = Cose.coseMac0(
+                        Algorithm.HMAC_SHA256,
+                        eMacKey,
+                        deviceAuthenticationBytes,
+                        false,
+                        Map.of(
+                                new CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                                DataItemExtensionsKt.getToDataItem(Algorithm.HMAC_SHA256.getCoseAlgorithmIdentifier())
+                        ),
+                        Map.of()
+                ).getTag();
+
                 deviceSignedAuthenticated = Arrays.equals(expectedTag, tagInResponse);
                 if (deviceSignedAuthenticated) {
                     Logger.d(TAG, "Verified DeviceSigned using MAC");
                 } else {
                     Logger.d(TAG, "Device MAC mismatch, got " + Util.toHex(tagInResponse)
-                        + " expected " + Util.toHex(expectedTag));
+                            + " expected " + Util.toHex(expectedTag));
                 }
+
+
             }
             builder.setDeviceSignedAuthenticated(deviceSignedAuthenticated);
 
-
-            DataItem nameSpaces = Util.cborDecode(encodedNamespaces);
-
-            Collection<String> nameSpacesKeys = Util.cborMapExtractMapStringKeys(nameSpaces);
-            for (String nameSpace : nameSpacesKeys) {
-                DataItem innerMap = Util.cborMapExtract(nameSpaces, nameSpace);
-                Collection<String> elementNames = Util.cborMapExtractMapStringKeys(innerMap);
-                for (String elementName : elementNames) {
-                    DataItem elementValue = Util.cborMapExtract(innerMap, elementName);
-                    builder.addDeviceEntry(nameSpace, elementName, Util.cborEncode(elementValue));
+            for (DataItem nameSpaceDataItem : nameSpaces.getAsMap().keySet()) {
+                String nameSpace = nameSpaceDataItem.getAsTstr();
+                DataItem innerMap = nameSpaces.get(nameSpaceDataItem);
+                for (DataItem elementNameDataItem: innerMap.getAsMap().keySet()) {
+                    String elementName = elementNameDataItem.getAsTstr();
+                    DataItem elementValue = innerMap.get(elementNameDataItem);
+                    builder.addDeviceEntry(nameSpace, elementName, Cbor.encode(elementValue));
                 }
             }
         }
 
+        private static @NonNull
+        byte[] calcEMacKeyForReader(
+                @NonNull EcPublicKey authenticationPublicKey,
+                @NonNull EcPrivateKey ephemeralReaderPrivateKey,
+                @NonNull byte[] encodedSessionTranscript) {
+            byte[] sharedSecret = Crypto.keyAgreement(ephemeralReaderPrivateKey, authenticationPublicKey);
+
+            byte[] sessionTranscriptBytes =
+                    Cbor.encode(new Tagged(24, new Bstr(encodedSessionTranscript)));
+
+            byte[] salt = Crypto.digest(Algorithm.SHA256, sessionTranscriptBytes);
+            byte[] info = "EMacKey".getBytes(StandardCharsets.UTF_8);
+            return Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32);
+        }
+
+
         void parse(byte[] encodedDeviceResponse,
                 byte[] encodedSessionTranscript,
-                PrivateKey eReaderKey) {
+                EcPrivateKey eReaderKey) {
             mResultDocuments = null;
 
-            DataItem deviceResponse = Util.cborDecode(encodedDeviceResponse);
+            DataItem deviceResponse = Cbor.decode(encodedDeviceResponse);
 
             ArrayList<Document> documents = new ArrayList<>();
 
-            mVersion = Util.cborMapExtractString(deviceResponse, "version");
+            mVersion = deviceResponse.get("version").getAsTstr();
             if (mVersion.compareTo("1.0") < 0) {
                 throw new IllegalArgumentException("Given version '" + mVersion + "' not >= '1.0'");
             }
 
-            if (Util.cborMapHasKey(deviceResponse, "documents")) {
-                List<DataItem> documentsDataItem = Util.cborMapExtractArray(deviceResponse,
-                        "documents");
-                for (DataItem documentDataItem : documentsDataItem) {
-                    String docType = Util.cborMapExtractString(documentDataItem, "docType");
-                    Document.Builder builder = new Document.Builder(
-                            docType);
+            DataItem documentsDataItem = deviceResponse.getOrNull("documents");
+            if (documentsDataItem != null) {
+                for (DataItem documentItem : documentsDataItem.getAsArray()) {
+                    String docType = documentItem.get("docType").getAsTstr();
+                    Document.Builder builder = new Document.Builder(docType);
 
-                    DataItem issuerSigned = Util.cborMapExtractMap(documentDataItem,
-                            "issuerSigned");
-                    Pair<PublicKey, EcCurve> deviceKeyAndCurve = parseIssuerSigned(docType, issuerSigned, builder);
-                    builder.setDeviceKey(deviceKeyAndCurve.getFirst(), deviceKeyAndCurve.getSecond());
+                    DataItem issuerSignedItem = documentItem.get("issuerSigned");
+                    EcPublicKey deviceKey = parseIssuerSigned(docType, issuerSignedItem, builder);
+                    builder.setDeviceKey(deviceKey);
 
-                    DataItem deviceSigned = Util.cborMapExtractMap(documentDataItem,
-                            "deviceSigned");
-                    parseDeviceSigned(deviceSigned, docType, encodedSessionTranscript, deviceKeyAndCurve.getFirst(),
-                            eReaderKey, builder);
+                    DataItem deviceSigned = documentItem.get("deviceSigned");
+                    parseDeviceSigned(deviceSigned, docType, encodedSessionTranscript, deviceKey, eReaderKey, builder);
 
                     documents.add(builder.build());
                 }
             }
 
-            mResultStatus = Util.cborMapExtractNumber(deviceResponse, "status");
+            mResultStatus = deviceResponse.get("status").getAsNumber();
 
             // TODO: maybe also parse + convey "documentErrors" and "errors" keys in
             //  DeviceResponse map.
@@ -440,7 +482,7 @@ public final class DeviceResponseParser {
         String mDocType;
         Map<String, Map<String, EntryData>> mDeviceData = new LinkedHashMap<>();
         Map<String, Map<String, EntryData>> mIssuerData = new LinkedHashMap<>();
-        List<X509Certificate> mIssuerCertificateChain;
+        CertificateChain mIssuerCertificateChain;
         int mNumIssuerEntryDigestMatchFailures;
         boolean mDeviceSignedAuthenticated;
         boolean mIssuerSignedAuthenticated;
@@ -448,7 +490,7 @@ public final class DeviceResponseParser {
         Timestamp mValidityInfoValidFrom;
         Timestamp mValidityInfoValidUntil;
         Timestamp mValidityInfoExpectedUpdate;
-        PublicKey mDeviceKey;
+        EcPublicKey mDeviceKey;
         boolean mDeviceSignedAuthenticatedViaSignature;
 
         /**
@@ -504,10 +546,10 @@ public final class DeviceResponseParser {
         /**
          * Returns the <code>DeviceKey</code> from the MSO.
          *
-         * @return a {@code PublicKey} representing the <code>DeviceKey</code>.
+         * @return a {@code EcPublicKey} representing the <code>DeviceKey</code>.
          */
         public @NonNull
-        PublicKey getDeviceKey() {
+        EcPublicKey getDeviceKey() {
             return mDeviceKey;
         }
 
@@ -526,7 +568,7 @@ public final class DeviceResponseParser {
          *
          * @return A X.509 certificate chain.
          */
-        public @NonNull List<X509Certificate> getIssuerCertificateChain() {
+        public @NonNull CertificateChain getIssuerCertificateChain() {
             return mIssuerCertificateChain;
         }
 
@@ -635,7 +677,7 @@ public final class DeviceResponseParser {
         public @NonNull String getIssuerEntryString(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getIssuerEntryData(namespaceName, name);
-            return Util.cborDecodeString(value);
+            return Cbor.decode(value).getAsTstr();
         }
 
         /**
@@ -650,7 +692,7 @@ public final class DeviceResponseParser {
         public @NonNull byte[] getIssuerEntryByteString(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getIssuerEntryData(namespaceName, name);
-            return Util.cborDecodeByteString(value);
+            return Cbor.decode(value).getAsBstr();
         }
 
         /**
@@ -664,7 +706,7 @@ public final class DeviceResponseParser {
          */
         public boolean getIssuerEntryBoolean(@NonNull String namespaceName, @NonNull String name) {
             byte[] value = getIssuerEntryData(namespaceName, name);
-            return Util.cborDecodeBoolean(value);
+            return Cbor.decode(value).getAsBoolean();
         }
 
         /**
@@ -678,7 +720,7 @@ public final class DeviceResponseParser {
          */
         public long getIssuerEntryNumber(@NonNull String namespaceName, @NonNull String name) {
             byte[] value = getIssuerEntryData(namespaceName, name);
-            return Util.cborDecodeLong(value);
+            return Cbor.decode(value).getAsNumber();
         }
 
         /**
@@ -693,7 +735,7 @@ public final class DeviceResponseParser {
         public @NonNull Timestamp getIssuerEntryDateTime(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getIssuerEntryData(namespaceName, name);
-            return Util.cborDecodeDateTime(value);
+            return Timestamp.ofEpochMilli(Cbor.decode(value).getAsDateTimeString().toEpochMilliseconds());
         }
 
         // ---
@@ -781,7 +823,7 @@ public final class DeviceResponseParser {
         public @NonNull String getDeviceEntryString(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getDeviceEntryData(namespaceName, name);
-            return Util.cborDecodeString(value);
+            return Cbor.decode(value).getAsTstr();
         }
 
         /**
@@ -796,7 +838,7 @@ public final class DeviceResponseParser {
         public @NonNull byte[] getDeviceEntryByteString(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getDeviceEntryData(namespaceName, name);
-            return Util.cborDecodeByteString(value);
+            return Cbor.decode(value).getAsBstr();
         }
 
         /**
@@ -811,7 +853,7 @@ public final class DeviceResponseParser {
         public boolean getDeviceEntryBoolean(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getDeviceEntryData(namespaceName, name);
-            return Util.cborDecodeBoolean(value);
+            return Cbor.decode(value).getAsBoolean();
         }
 
         /**
@@ -825,7 +867,7 @@ public final class DeviceResponseParser {
          */
         public long getDeviceEntryNumber(@NonNull String namespaceName, @NonNull String name) {
             byte[] value = getDeviceEntryData(namespaceName, name);
-            return Util.cborDecodeLong(value);
+            return Cbor.decode(value).getAsNumber();
         }
 
         /**
@@ -840,7 +882,7 @@ public final class DeviceResponseParser {
         public @NonNull Timestamp getDeviceEntryDateTime(@NonNull String namespaceName,
                 @NonNull String name) {
             byte[] value = getDeviceEntryData(namespaceName, name);
-            return Util.cborDecodeDateTime(value);
+            return Timestamp.ofEpochMilli(Cbor.decode(value).getAsDateTimeString().toEpochMilliseconds());
         }
 
         static class Builder {
@@ -865,7 +907,7 @@ public final class DeviceResponseParser {
                 return this;
             }
 
-            void setIssuerCertificateChain(List<X509Certificate> certificateChain) {
+            void setIssuerCertificateChain(CertificateChain certificateChain) {
                 mResult.mIssuerCertificateChain = certificateChain;
             }
 
@@ -909,9 +951,8 @@ public final class DeviceResponseParser {
                 return this;
             }
 
-            Builder setDeviceKey(@NonNull PublicKey deviceKey, EcCurve deviceKeyCurve) {
+            Builder setDeviceKey(@NonNull EcPublicKey deviceKey) {
                 mResult.mDeviceKey = deviceKey;
-                mResult.mDeviceKeyCurve = deviceKeyCurve;
                 return this;
             }
 

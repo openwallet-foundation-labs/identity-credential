@@ -29,7 +29,5 @@ data class IntegerOption(
     /**
      * Show only the [displayName] in the toString function.
      */
-    override fun toString(): String {
-        return displayName
-    }
+    override fun toString(): String = displayName
 }

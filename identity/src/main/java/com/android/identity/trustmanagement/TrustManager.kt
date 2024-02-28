@@ -31,9 +31,9 @@ import java.security.cert.X509Certificate
  * Key Identifier (extension 2.5.29.35) of the certificate issued by this
  * root CA.
  */
-class TrustManager() {
+class TrustManager {
 
-    private val certificates: MutableMap<String, TrustPoint> = mutableMapOf()
+    private val certificates = mutableMapOf<String, TrustPoint>()
 
     /**
      * Nested class containing the result of the verification of a certificate
@@ -41,36 +41,34 @@ class TrustManager() {
      */
     class TrustResult(
         var isTrusted: Boolean,
-        var trustChain: List<X509Certificate> = emptyList(),
-        var trustPoints: List<TrustPoint> = emptyList(),
+        var trustChain: List<X509Certificate> = listOf(),
+        var trustPoints: List<TrustPoint> = listOf(),
         var error: Throwable? = null
     )
 
     /**
      * Add a [TrustPoint] to the [TrustManager].
      */
-    fun addTrustPoint(trustPoint: TrustPoint) {
-        val key = TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate)
-        if (key != "") {
-            // only certificates with the Subject Key Identifier extension will be added
-            certificates[key] = trustPoint
+    fun addTrustPoint(trustPoint: TrustPoint) =
+        TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate).also { key ->
+            if (key.isNotEmpty()) {
+                certificates[key] = trustPoint
+            }
         }
-    }
+
 
     /**
      * Get all the [TrustPoint]s in the [TrustManager].
      */
-    fun getAllTrustPoints(): List<TrustPoint> {
-        return certificates.values.toList()
-    }
+    fun getAllTrustPoints(): List<TrustPoint> = certificates.values.toList()
 
     /**
      * Remove a [TrustPoint] from the [TrustManager].
      */
-    fun removeTrustPoint(trustPoint: TrustPoint) {
-        val key = TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate)
-        certificates.remove(key)
-    }
+    fun removeTrustPoint(trustPoint: TrustPoint) =
+        TrustManagerUtil.getSubjectKeyIdentifier(trustPoint.certificate).also { key ->
+            certificates.remove(key)
+        }
 
     /**
      * Verify a certificate chain (without the self-signed root certificate)
@@ -91,20 +89,20 @@ class TrustManager() {
     fun verify(
         chain: List<X509Certificate>,
         customValidators: List<PKIXCertPathChecker> = emptyList()
-    ): TrustResult {
+    ): TrustResult =
         try {
             val trustPoints = getAllTrustPoints(chain)
             val completeChain = chain.plus(trustPoints.map { it.certificate })
             try {
                 validateCertificationTrustPath(completeChain, customValidators)
-                return TrustResult(
+                TrustResult(
                     isTrusted = true,
                     trustPoints = trustPoints,
                     trustChain = completeChain
                 )
             } catch (e: Throwable) {
                 // there are validation errors, but the trust chain could be built.
-                return TrustResult(
+                TrustResult(
                     isTrusted = false,
                     trustPoints = trustPoints,
                     trustChain = completeChain,
@@ -113,13 +111,12 @@ class TrustManager() {
             }
         } catch (e: Throwable) {
             // no CA certificate could be found.
-            return TrustResult(
+            TrustResult(
                 isTrusted = false,
                 error = e
             )
         }
 
-    }
 
     private fun getAllTrustPoints(chain: List<X509Certificate>): List<TrustPoint> {
         val result = mutableListOf<TrustPoint>()
@@ -141,18 +138,15 @@ class TrustManager() {
      * Find a CA Certificate for a certificate chain.
      */
     private fun findCaCertificate(chain: List<X509Certificate>): TrustPoint? {
-        var result: TrustPoint? = null
-
         chain.forEach { cert ->
-            run {
-                val key = TrustManagerUtil.getAuthorityKeyIdentifier(cert)
+            TrustManagerUtil.getAuthorityKeyIdentifier(cert).also { key ->
                 // only certificates with an Authority Key Identifier extension will be matched
-                if (key != "" && certificates.containsKey(key)) {
-                    result = certificates[key]!!
+                if (key.isNotEmpty() && certificates.containsKey(key)) {
+                    return certificates[key]
                 }
             }
         }
-        return result
+        return null
     }
 
     /**

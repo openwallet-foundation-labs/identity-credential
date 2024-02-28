@@ -22,8 +22,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.identity.android.mdoc.transport.DataTransportBle;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.android.mdoc.transport.TransmissionProgressListener;
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper;
@@ -38,11 +41,9 @@ import com.android.identity.util.Constants;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
 
-import java.security.KeyPair;
-import java.security.PublicKey;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.OptionalLong;
 import java.util.concurrent.Executor;
 
@@ -68,11 +69,9 @@ import co.nstant.in.cbor.model.UnicodeString;
 public class DeviceRetrievalHelper {
     private static final String TAG = "DeviceRetrievalHelper";
 
-    private KeyPair mEDeviceKeyPair;
-    private EcCurve mEDeviceKeyCurve;
+    private EcPrivateKey mEDeviceKey;
     private Context mContext;
-    private EcCurve mEReaderKeyCurve;
-    private PublicKey mEReaderKey;
+    private EcPublicKey mEReaderKey;
 
     private byte[] mDeviceEngagement;
     private byte[] mHandover;
@@ -99,7 +98,7 @@ public class DeviceRetrievalHelper {
 
     // Note: The report*() methods are safe to call from any thread.
 
-    void reportEReaderKeyReceived(@NonNull PublicKey eReaderKey) {
+    void reportEReaderKeyReceived(@NonNull EcPublicKey eReaderKey) {
         Logger.d(TAG, "reportEReaderKeyReceived: " + eReaderKey);
         final Listener listener = mListener;
         final Executor executor = mListenerExecutor;
@@ -179,10 +178,9 @@ public class DeviceRetrievalHelper {
                     Logger.d(TAG, "onConnected for reverse engagement");
 
                     EngagementGenerator generator = new EngagementGenerator(
-                            mEDeviceKeyPair.getPublic(),
-                            mEDeviceKeyCurve,
+                            mEDeviceKey.getPublicKey(),
                             EngagementGenerator.ENGAGEMENT_VERSION_1_1);
-                    generator.setOriginInfos(mReverseEngagementOriginInfos);
+                    generator.addOriginInfos(mReverseEngagementOriginInfos);
                     mDeviceEngagement = generator.generate();
 
                     // 18013-7 says to use ReaderEngagementBytes for Handover when ReaderEngagement
@@ -246,8 +244,9 @@ public class DeviceRetrievalHelper {
             mReverseEngagementEncodedEReaderKey = Util.cborExtractTaggedCbor(readerEngagement.getESenderKeyBytes());
 
             // This is reverse engagement, we actually haven't connected yet...
-            byte[] encodedEDeviceKeyBytes = Util.cborEncode(Util.cborBuildTaggedByteString(
-                    Util.cborEncode(Util.cborBuildCoseKey(mEDeviceKeyPair.getPublic(), mEDeviceKeyCurve))));
+            byte[] encodedEDeviceKeyBytes =
+                    Cbor.encode(new Tagged(24, new Bstr(
+                            Cbor.encode(mEDeviceKey.toCoseKey(Map.of()).getToDataItem()))));
             mTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes);
             mTransport.connect();
         }
@@ -282,15 +281,7 @@ public class DeviceRetrievalHelper {
                 return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_CBOR_DECODING);
             }
         }
-        DataItem eReaderKeyDataItem = Util.cborDecode(encodedEReaderKey);
-        try {
-            mEReaderKeyCurve = Util.coseKeyGetCurve(eReaderKeyDataItem);
-            mEReaderKey = Util.coseKeyDecode(eReaderKeyDataItem);
-        } catch (IllegalArgumentException
-                 | IllegalStateException e) {
-            Logger.w(TAG, "Error decoding COSE_Key", e);
-            return OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION);
-        }
+        mEReaderKey = Cbor.decode(encodedEReaderKey).getAsCoseKey().getEcPublicKey();
 
         mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
@@ -300,9 +291,8 @@ public class DeviceRetrievalHelper {
                 .end()
                 .build().get(0));
         mSessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC,
-                mEDeviceKeyPair,
+                mEDeviceKey,
                 mEReaderKey,
-                mEReaderKeyCurve,
                 mEncodedSessionTranscript);
 
         reportEReaderKeyReceived(mEReaderKey);
@@ -316,9 +306,8 @@ public class DeviceRetrievalHelper {
                     .end()
                     .build().get(0));
             mAlternateSessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC,
-                    mEDeviceKeyPair,
+                    mEDeviceKey,
                     mEReaderKey,
-                    mEReaderKeyCurve,
                     mEncodedAlternateSessionTranscript);
         }
         return OptionalLong.empty();
@@ -401,7 +390,7 @@ public class DeviceRetrievalHelper {
     /**
      * Gets the session transcript.
      *
-     * <p>This must not be called until {@link Listener#onEReaderKeyReceived(PublicKey)}
+     * <p>This must not be called until {@link Listener#onEReaderKeyReceived(EcPublicKey)}
      * has been called.
      *
      * <p>See <a href="https://www.iso.org/standard/69084.html">ISO/IEC 18013-5</a> for the
@@ -421,14 +410,14 @@ public class DeviceRetrievalHelper {
     /**
      * Gets the ephemeral reader key.
      *
-     * <p>This must not be called until {@link Listener#onEReaderKeyReceived(PublicKey)}
+     * <p>This must not be called until {@link Listener#onEReaderKeyReceived(EcPublicKey)}
      * has been called.
      *
      * @return the ephemeral key received by the reader.
      * @throws IllegalStateException if called before a message is received from the reader.
      */
     public @NonNull
-    PublicKey getEReaderKey() {
+    EcPublicKey getEReaderKey() {
         if (mEReaderKey == null) {
             throw new IllegalStateException("No message received from reader");
         }
@@ -597,7 +586,7 @@ public class DeviceRetrievalHelper {
          *
          * @param eReaderKey the ephemeral reader key.
          */
-        void onEReaderKeyReceived(@NonNull PublicKey eReaderKey);
+        void onEReaderKeyReceived(@NonNull EcPublicKey eReaderKey);
 
         /**
          * Called when the remote verifier device sends a request.
@@ -654,15 +643,13 @@ public class DeviceRetrievalHelper {
          * @param context the application context.
          * @param listener a listener.
          * @param executor a {@link Executor} to use with the listener.
-         * @param eDeviceKeyPair the ephemeral key-pair to use for mdoc session encryption.
          * @throws IllegalStateException if {@link Executor} is {@code null} for a non-{@code null}
          * listener.
          */
         public Builder(@NonNull Context context,
                        @Nullable Listener listener,
                        @Nullable Executor executor,
-                       @NonNull KeyPair eDeviceKeyPair,
-                       EcCurve eDeviceKeyCurve) {
+                       @NonNull EcPrivateKey eDeviceKey) {
             mHelper = new DeviceRetrievalHelper();
             mHelper.mContext = context;
             if (listener != null && executor == null) {
@@ -670,8 +657,7 @@ public class DeviceRetrievalHelper {
             }
             mHelper.mListener = listener;
             mHelper.mListenerExecutor = executor;
-            mHelper.mEDeviceKeyPair = eDeviceKeyPair;
-            mHelper.mEDeviceKeyCurve = eDeviceKeyCurve;
+            mHelper.mEDeviceKey = eDeviceKey;
         }
 
         /**

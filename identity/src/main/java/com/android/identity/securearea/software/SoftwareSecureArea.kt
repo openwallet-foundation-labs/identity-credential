@@ -15,69 +15,27 @@
  */
 package com.android.identity.securearea.software
 
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborDecoder
-import co.nstant.`in`.cbor.CborException
-import co.nstant.`in`.cbor.builder.MapBuilder
-import co.nstant.`in`.cbor.model.Array
-import co.nstant.`in`.cbor.model.ByteString
-import co.nstant.`in`.cbor.model.DataItem
-import co.nstant.`in`.cbor.model.Map
-import co.nstant.`in`.cbor.model.UnicodeString
-import com.android.identity.internal.Util.cborEncode
-import com.android.identity.internal.Util.cborMapExtractBoolean
-import com.android.identity.internal.Util.cborMapExtractByteString
-import com.android.identity.internal.Util.cborMapExtractNumber
-import com.android.identity.internal.Util.computeHkdf
-import com.android.identity.securearea.Algorithm
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.X509v3Extension
 import com.android.identity.securearea.AttestationExtension
-import com.android.identity.securearea.AttestationExtension.encode
-import com.android.identity.securearea.EcCurve
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyPurpose.Companion.encodeSet
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.keyPurposeSet
 import com.android.identity.storage.StorageEngine
-import org.bouncycastle.asn1.ASN1ObjectIdentifier
-import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.operator.OperatorCreationException
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.math.BigInteger
-import java.nio.ByteBuffer
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import java.nio.charset.StandardCharsets
-import java.security.InvalidAlgorithmParameterException
-import java.security.InvalidKeyException
-import java.security.KeyFactory
-import java.security.KeyPairGenerator
-import java.security.NoSuchAlgorithmException
-import java.security.NoSuchProviderException
-import java.security.PrivateKey
-import java.security.PublicKey
-import java.security.Signature
-import java.security.SignatureException
-import java.security.cert.CertificateEncodingException
-import java.security.cert.CertificateException
-import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
-import java.security.spec.ECGenParameterSpec
-import java.security.spec.InvalidKeySpecException
-import java.security.spec.PKCS8EncodedKeySpec
-import java.util.Date
-import java.util.concurrent.TimeUnit
-import javax.crypto.BadPaddingException
-import javax.crypto.Cipher
-import javax.crypto.IllegalBlockSizeException
-import javax.crypto.KeyAgreement
-import javax.crypto.NoSuchPaddingException
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.SecretKeySpec
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.days
 
 /**
  * An implementation of [SecureArea] in software.
@@ -96,11 +54,9 @@ import javax.crypto.spec.SecretKeySpec
  * @param storageEngine the storage engine to use for storing key material.
  */
 class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea {
-    override val identifier: String
-        get() = "SoftwareSecureArea"
+    override val identifier get() = "SoftwareSecureArea"
 
-    override val displayName: String
-        get() = "Software Secure Area"
+    override val displayName get() = "Software Secure Area"
 
     override fun createKey(
         alias: String,
@@ -112,157 +68,91 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
             // Use default settings if user passed in a generic SecureArea.CreateKeySettings.
             SoftwareCreateKeySettings.Builder(createKeySettings.attestationChallenge).build()
         }
-        var kpg: KeyPairGenerator
         try {
-            kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
-            val selfSigningSignatureAlgorithm: String?
-            when (settings.ecCurve) {
-                EcCurve.P256 -> {
-                    kpg.initialize(ECGenParameterSpec("secp256r1"))
-                    selfSigningSignatureAlgorithm = "SHA256withECDSA"
-                }
-
-                EcCurve.P384 -> {
-                    kpg.initialize(ECGenParameterSpec("secp384r1"))
-                    selfSigningSignatureAlgorithm = "SHA384withECDSA"
-                }
-
-                EcCurve.P521 -> {
-                    kpg.initialize(ECGenParameterSpec("secp521r1"))
-                    selfSigningSignatureAlgorithm = "SHA512withECDSA"
-                }
-
-                EcCurve.BRAINPOOLP256R1 -> {
-                    kpg.initialize(ECGenParameterSpec("brainpoolP256r1"))
-                    selfSigningSignatureAlgorithm = "SHA256withECDSA"
-                }
-
-                EcCurve.BRAINPOOLP320R1 -> {
-                    kpg.initialize(ECGenParameterSpec("brainpoolP320r1"))
-                    selfSigningSignatureAlgorithm = "SHA256withECDSA"
-                }
-
-                EcCurve.BRAINPOOLP384R1 -> {
-                    kpg.initialize(ECGenParameterSpec("brainpoolP384r1"))
-                    selfSigningSignatureAlgorithm = "SHA384withECDSA"
-                }
-
-                EcCurve.BRAINPOOLP512R1 -> {
-                    kpg.initialize(ECGenParameterSpec("brainpoolP512r1"))
-                    selfSigningSignatureAlgorithm = "SHA512withECDSA"
-                }
-
-                EcCurve.ED25519 -> {
-                    kpg =
-                        KeyPairGenerator.getInstance("Ed25519", BouncyCastleProvider.PROVIDER_NAME)
-                    selfSigningSignatureAlgorithm = "Ed25519"
-                }
-
-                EcCurve.ED448 -> {
-                    kpg = KeyPairGenerator.getInstance("Ed448", BouncyCastleProvider.PROVIDER_NAME)
-                    selfSigningSignatureAlgorithm = "Ed448"
-                }
-
-                EcCurve.X25519 -> {
-                    kpg = KeyPairGenerator.getInstance("x25519", BouncyCastleProvider.PROVIDER_NAME)
-                    selfSigningSignatureAlgorithm = null // Not possible to self-sign
-                }
-
-                EcCurve.X448 -> {
-                    kpg = KeyPairGenerator.getInstance("x448", BouncyCastleProvider.PROVIDER_NAME)
-                    selfSigningSignatureAlgorithm = null // Not possible to self-sign
-                }
-
-                else -> throw IllegalArgumentException(
-                    "Unknown curve with id " + settings.ecCurve
-                )
+            val privateKey = Crypto.createEcPrivateKey(settings.ecCurve)
+            val mapBuilder = CborMap.builder().apply {
+                put("curve", settings.ecCurve.coseCurveIdentifier.toLong())
+                put("keyPurposes", encodeSet(settings.keyPurposes).toLong())
+                put("passphraseRequired", settings.passphraseRequired)
             }
-            val keyPair = kpg.generateKeyPair()
-            val builder = CborBuilder()
-            val map: MapBuilder<CborBuilder> = builder.addMap()
-            map.put("curve", settings.ecCurve.coseCurveIdentifier.toLong())
-            map.put("keyPurposes", encodeSet(settings.keyPurposes).toLong())
-            map.put("passphraseRequired", settings.passphraseRequired)
+
             if (!settings.passphraseRequired) {
-                map.put("privateKey", keyPair.private.encoded)
+                mapBuilder.put("privateKey", privateKey.toCoseKey().toDataItem)
             } else {
-                val cleartextPrivateKey = keyPair.private.encoded
+                val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem)
                 val secretKey = derivePrivateKeyEncryptionKey(
-                    keyPair.public.encoded,
+                    encodedPublicKey,
                     settings.passphrase
                 )
-                try {
-                    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                    cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-                    val baos = ByteArrayOutputStream()
-                    baos.write(cipher.iv)
-                    baos.write(cipher.doFinal(cleartextPrivateKey))
-                    val encryptedPrivateKey = baos.toByteArray()
-                    map.put("publicKey", keyPair.public.encoded)
-                    map.put("encryptedPrivateKey", encryptedPrivateKey)
-                } catch (e: Exception) {
-                    // such as NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException
-                    throw IllegalStateException("Error encrypting private key", e)
+                val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem)
+                val iv = Random.Default.nextBytes(12)
+                val encryptedPrivateKey = Crypto.encrypt(
+                    Algorithm.A128GCM,
+                    secretKey,
+                    iv,
+                    cleartextPrivateKey
+                )
+                mapBuilder.apply {
+                    put("encodedPublicKey", encodedPublicKey)
+                    put("encryptedPrivateKey", encryptedPrivateKey)
+                    put("encryptedPrivateKeyIv", iv)
                 }
             }
-            val subject = X500Name(settings.subject ?: "CN=SoftwareSecureArea Key")
-            val issuer: X500Name
-            val certSigningKey: PrivateKey?
-            val signatureAlgorithm: String?
+            val subject = settings.subject ?: "CN=SoftwareSecureArea Key"
+            val issuer: String
+            val certSigningKey: EcPrivateKey
+            val signatureAlgorithm: Algorithm
 
             // If an attestation key isn't available, self-sign the certificate (if possible)
             if (settings.attestationKey != null) {
-                issuer =
-                    X500Name(settings.attestationKeyCertification!![0].subjectX500Principal.name)
                 certSigningKey = settings.attestationKey
-                signatureAlgorithm = settings.attestationKeySignatureAlgorithm
+                signatureAlgorithm = settings.attestationKeySignatureAlgorithm!!
+                issuer = settings.attestationKeyIssuer!!
             } else {
                 issuer = subject
-                certSigningKey = keyPair.private
-                checkNotNull(selfSigningSignatureAlgorithm) { "Self-signing not possible with this curve, use an attestation key" }
-                signatureAlgorithm = selfSigningSignatureAlgorithm
-            }
-            var validFrom = Date()
-            if (settings.validFrom != null) {
-                validFrom = Date(settings.validFrom.toEpochMilli())
-            }
-            var validUntil = Date(Date().time + TimeUnit.MILLISECONDS.convert(365, TimeUnit.DAYS))
-            if (settings.validUntil != null) {
-                validUntil = Date(settings.validUntil.toEpochMilli())
-            }
-            val serial = BigInteger.ONE
-            val certBuilder = JcaX509v3CertificateBuilder(
-                issuer,
-                serial,
-                validFrom,
-                validUntil,
-                subject,
-                keyPair.public
-            )
-            certBuilder.addExtension(
-                ASN1ObjectIdentifier(AttestationExtension.ATTESTATION_OID),
-                false,
-                encode(settings.attestationChallenge)
-            )
-            val signer = JcaContentSignerBuilder(signatureAlgorithm).build(certSigningKey)
-            val encodedCert: ByteArray = certBuilder.build(signer).getEncoded()
-            val cf = CertificateFactory.getInstance("X.509")
-            val bais = ByteArrayInputStream(encodedCert)
-            val certificateChain = ArrayList<X509Certificate>()
-            certificateChain.add(cf.generateCertificate(bais) as X509Certificate)
-            if (settings.attestationKeyCertification != null) {
-                certificateChain.addAll(settings.attestationKeyCertification)
-            }
-            val attestationBuilder = map.putArray("attestation")
-            for (certificate in certificateChain) {
-                try {
-                    attestationBuilder.add(certificate.encoded)
-                } catch (e: CertificateEncodingException) {
-                    throw IllegalStateException("Error encoding certificate chain", e)
+                certSigningKey = privateKey
+                signatureAlgorithm = privateKey.curve.defaultSigningAlgorithm
+                check(signatureAlgorithm != Algorithm.UNSET) {
+                    "Self-signing not possible with curve ${privateKey.curve}, use an attestation key"
                 }
             }
+            val validFrom = settings.validFrom?.toEpochMilli()
+                ?.let { Instant.fromEpochMilliseconds(it) }
+                ?: Clock.System.now()
+
+            val validUntil = settings.validUntil?.toEpochMilli()
+                ?.let { Instant.fromEpochMilliseconds(it) }
+                ?: (validFrom + 365.days)
+
+            val certificate = Crypto.createX509v3Certificate(
+                privateKey.publicKey,
+                certSigningKey,
+                null,
+                signatureAlgorithm,
+                "1",
+                subject,
+                issuer,
+                validFrom,
+                validUntil,
+                setOf(),
+                listOf(
+                    X509v3Extension(
+                        AttestationExtension.ATTESTATION_OID,
+                        false,
+                        AttestationExtension.encode(settings.attestationChallenge)
+                    )
+                )
+            )
+            val certs = mutableListOf(certificate)
+            if (settings.attestationKeyCertification != null) {
+                settings.attestationKeyCertification.certificates.forEach() { cert ->
+                    certs.add(cert)
+                }
+            }
+            mapBuilder.put("publicKey", privateKey.publicKey.toCoseKey().toDataItem)
+            val attestationBuilder = mapBuilder.put("attestation", CertificateChain(certs).dataItem)
             attestationBuilder.end()
-            storageEngine.put(PREFIX + alias, cborEncode(builder.build().get(0)))
+            storageEngine.put(PREFIX + alias, Cbor.encode(mapBuilder.end().build()))
         } catch (e: Exception) {
             // such as NoSuchAlgorithmException, CertificateException, InvalidAlgorithmParameterException, OperatorCreationException, IOException, NoSuchProviderException
             throw IllegalStateException("Unexpected exception", e)
@@ -272,26 +162,22 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
     private fun derivePrivateKeyEncryptionKey(
         encodedPublicKey: ByteArray,
         passphrase: String
-    ): SecretKey {
+    ): ByteArray {
         val info = "ICPrivateKeyEncryption1".toByteArray(StandardCharsets.UTF_8)
-        val derivedKey = computeHkdf(
-            "HmacSha256",
-            passphrase.toByteArray(StandardCharsets.UTF_8),
+        return Crypto.hkdf(
+            Algorithm.HMAC_SHA256,
+            passphrase.toByteArray(),
             encodedPublicKey,
             info,
             32
         )
-        return SecretKeySpec(derivedKey, "AES")
     }
 
-    override fun deleteKey(alias: String) {
-        storageEngine.delete(PREFIX + alias)
-    }
+    override fun deleteKey(alias: String) = storageEngine.delete(PREFIX + alias)
 
     private data class KeyData(
-        val curve: EcCurve,
         val keyPurposes: Set<KeyPurpose>,
-        val privateKey: PrivateKey,
+        val privateKey: EcPrivateKey,
     )
 
     @Throws(KeyLockedException::class)
@@ -307,51 +193,27 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         }
         val data = storageEngine[prefix + alias]
             ?: throw IllegalArgumentException("No key with given alias")
-        val bais = ByteArrayInputStream(data)
-        val dataItems = try {
-            CborDecoder(bais).decode()
-        } catch (e: CborException) {
-            throw IllegalStateException("Error decoded CBOR", e)
-        }
-        check(dataItems.size == 1) { "Expected 1 item, found " + dataItems.size }
-        check(dataItems[0] is Map) { "Item is not a map" }
-        val map = dataItems[0] as Map
-        val curve = EcCurve.fromInt(cborMapExtractNumber(map, "curve").toInt())
-        val keyPurposes = KeyPurpose.decodeSet(cborMapExtractNumber(map, "keyPurposes").toInt())
-        val encodedPrivateKey: ByteArray
-        val passphraseRequired = cborMapExtractBoolean(map, "passphraseRequired")
-        encodedPrivateKey = if (passphraseRequired) {
+        val map = Cbor.decode(data)
+        val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
+        val passphraseRequired = map["passphraseRequired"].asBoolean
+        val privateKeyCoseKey = if (passphraseRequired) {
             if (passphrase == null) {
                 throw KeyLockedException("No passphrase provided")
             }
-            val encodedPublicKey = cborMapExtractByteString(map, "publicKey")
-            val encryptedPrivateKey = cborMapExtractByteString(map, "encryptedPrivateKey")
+            val encodedPublicKey = map["encodedPublicKey"].asBstr
+            val encryptedPrivateKey = map["encryptedPrivateKey"].asBstr
+            val iv = map["encryptedPrivateKeyIv"].asBstr
             val secretKey = derivePrivateKeyEncryptionKey(encodedPublicKey, passphrase)
-            try {
-                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-                val byteBuffer = ByteBuffer.wrap(encryptedPrivateKey)
-                val iv = ByteArray(12)
-                byteBuffer[iv]
-                val cipherText = ByteArray(encryptedPrivateKey.size - 12)
-                byteBuffer[cipherText]
-                cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
-                cipher.doFinal(cipherText)
+            val encodedPrivateKey = try {
+                Crypto.decrypt(Algorithm.A128GCM, secretKey, iv, encryptedPrivateKey)
             } catch (e: Exception) {
-                // such as NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException
-                throw KeyLockedException("Error decrypting private key", e)
+                throw KeyLockedException("Error decrypting private key - wrong passphrase?", e)
             }
+            Cbor.decode(encodedPrivateKey).asCoseKey
         } else {
-            cborMapExtractByteString(map, "privateKey")
+            map["privateKey"].asCoseKey
         }
-        val encodedKeySpec = PKCS8EncodedKeySpec(encodedPrivateKey)
-        val privateKey = try {
-            val ecKeyFac = KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
-            ecKeyFac.generatePrivate(encodedKeySpec)
-        } catch (e: Exception) {
-            // such as NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException
-            throw IllegalStateException("Error loading private key", e)
-        }
-        return KeyData(curve, keyPurposes, privateKey)
+        return KeyData(keyPurposes, privateKeyCoseKey.ecPrivateKey)
     }
 
     /**
@@ -366,10 +228,7 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
     fun getPrivateKey(
         alias: String,
         keyUnlockData: KeyUnlockData?
-    ): PrivateKey {
-        val keyData = loadKey(PREFIX, alias, keyUnlockData)
-        return keyData.privateKey
-    }
+    ): EcPrivateKey = loadKey(PREFIX, alias, keyUnlockData).privateKey
 
     @Throws(KeyLockedException::class)
     override fun sign(
@@ -377,89 +236,30 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         signatureAlgorithm: Algorithm,
         dataToSign: ByteArray,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray {
-        val keyData = loadKey(PREFIX, alias, keyUnlockData)
-        require(keyData.keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
-        val signatureAlgorithmName = when (signatureAlgorithm) {
-            Algorithm.ES256 -> "SHA256withECDSA"
-            Algorithm.ES384 -> "SHA384withECDSA"
-            Algorithm.ES512 -> "SHA512withECDSA"
-            Algorithm.EDDSA -> if (keyData.curve === EcCurve.ED25519) {
-                "Ed25519"
-            } else if (keyData.curve === EcCurve.ED448) {
-                "Ed448"
-            } else {
-                throw IllegalArgumentException(
-                    "ALGORITHM_EDDSA can only be used with EC_CURVE_ED_25519 and EC_CURVE_ED_448"
-                )
-            }
-
-            else -> throw IllegalArgumentException(
-                "Unsupported signing algorithm  with id $signatureAlgorithm"
-            )
-        }
-        return try {
-            val s = Signature.getInstance(signatureAlgorithmName, BouncyCastleProvider.PROVIDER_NAME)
-            s.initSign(keyData.privateKey)
-            s.update(dataToSign)
-            s.sign()
-        } catch (e: Exception) {
-            // such as NoSuchAlgorithmException, SignatureException, InvalidKeyException, NoSuchProviderException
-            throw IllegalStateException("Unexpected Exception", e)
-        }
+    ): ByteArray = loadKey(PREFIX, alias, keyUnlockData).run {
+        require(keyPurposes.contains(KeyPurpose.SIGN)) { "Key does not have purpose SIGN" }
+        Crypto.sign(privateKey, signatureAlgorithm, dataToSign)
     }
 
     @Throws(KeyLockedException::class)
     override fun keyAgreement(
         alias: String,
-        otherKey: PublicKey,
+        otherKey: EcPublicKey,
         keyUnlockData: KeyUnlockData?
-    ): ByteArray {
-        val keyData = loadKey(PREFIX, alias, keyUnlockData)
-        require(keyData.keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
-        return try {
-            val ka = KeyAgreement.getInstance("ECDH")
-            ka.init(keyData.privateKey)
-            ka.doPhase(otherKey, true)
-            ka.generateSecret()
-        } catch (e: Exception) {
-            // such as NoSuchAlgorithmException, InvalidKeyException
-            throw IllegalStateException("Unexpected Exception", e)
-        }
+    ): ByteArray = loadKey(PREFIX, alias, keyUnlockData).run {
+        require(keyPurposes.contains(KeyPurpose.AGREE_KEY)) { "Key does not have purpose AGREE_KEY" }
+        Crypto.keyAgreement(privateKey, otherKey)
     }
 
     override fun getKeyInfo(alias: String): SoftwareKeyInfo {
         val data = storageEngine[PREFIX + alias]
             ?: throw IllegalArgumentException("No key with given alias")
-        val bais = ByteArrayInputStream(data)
-        val dataItems = try {
-            CborDecoder(bais).decode()
-        } catch (e: CborException) {
-            throw IllegalStateException("Error decoded CBOR", e)
-        }
-        check(dataItems.size == 1) { "Expected 1 item, found " + dataItems.size }
-        check(dataItems[0] is Map) { "Item is not a map" }
-        val map = dataItems[0] as Map
-        val ecCurve = EcCurve.fromInt(cborMapExtractNumber(map, "curve").toInt())
-        val keyPurposes = KeyPurpose.decodeSet(cborMapExtractNumber(map, "keyPurposes").toInt())
-        val passphraseRequired = cborMapExtractBoolean(map, "passphraseRequired")
-        val attestationDataItem: DataItem = map[UnicodeString("attestation")]
-        check(attestationDataItem is Array) { "attestation not found or not array" }
-        val attestation: MutableList<X509Certificate> = ArrayList()
-        for (item in attestationDataItem.dataItems) {
-            val encodedCert = (item as ByteString).bytes
-            try {
-                val cf = CertificateFactory.getInstance("X.509")
-                val certBais = ByteArrayInputStream(encodedCert)
-                attestation.add(cf.generateCertificate(certBais) as X509Certificate)
-            } catch (e: CertificateException) {
-                throw IllegalStateException("Error decoding certificate blob", e)
-            }
-        }
-        return SoftwareKeyInfo(
-            attestation, keyPurposes, ecCurve, false,
-            passphraseRequired
-        )
+        val map = Cbor.decode(data)
+        val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
+        val passphraseRequired = map["passphraseRequired"].asBoolean
+        val publicKey = map["publicKey"].asCoseKey.ecPublicKey
+        val attestation = map["attestation"].asCertificateChain
+        return SoftwareKeyInfo(publicKey, attestation, keyPurposes, passphraseRequired)
     }
 
     companion object {

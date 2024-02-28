@@ -16,34 +16,34 @@
 
 package com.android.identity.mdoc.request;
 
-import com.android.identity.internal.Util;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DataItemExtensionsKt;
+import com.android.identity.cbor.Tstr;
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.Certificate;
+import com.android.identity.crypto.CertificateChain;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcCurve;
+import com.android.identity.crypto.EcPrivateKey;
 
-import com.android.identity.mdoc.request.DeviceRequestGenerator;
-import com.android.identity.mdoc.request.DeviceRequestParser;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.math.BigInteger;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.Signature;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
-import java.security.spec.ECGenParameterSpec;
-import java.util.ArrayList;
-import java.util.Date;
+import java.security.Security;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import kotlinx.datetime.Clock;
+import kotlinx.datetime.Instant;
 
 // TODO: Add test which generates the exact bytes of {@link
 //  TestVectors#ISO_18013_5_ANNEX_D_DEVICE_REQUEST}.
@@ -57,44 +57,14 @@ public class DeviceRequestGeneratorTest {
     private static final String MVR_DOCTYPE = "org.iso.18013.7.1.mVR";
     private static final String MVR_NAMESPACE = "org.iso.18013.7.1";
 
-    private KeyPair generateReaderKeyPair() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        ECGenParameterSpec ecSpec = new ECGenParameterSpec("secp256r1");
-        kpg.initialize(ecSpec);
-        return kpg.generateKeyPair();
-    }
-
-    private X509Certificate getSelfSignedReaderCertificate(
-            KeyPair readerKeyPair) throws Exception {
-        X500Name issuer = new X500Name("CN=Some Reader Authority");
-        X500Name subject = new X500Name("CN=Some Reader Key");
-
-        // Valid from now to five years from now.
-        Date now = new Date();
-        final long kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000;
-        Date expirationDate = new Date(now.getTime() + 5 * kMilliSecsInOneYear);
-        BigInteger serial = new BigInteger("42");
-        JcaX509v3CertificateBuilder builder =
-                new JcaX509v3CertificateBuilder(issuer,
-                        serial,
-                        now,
-                        expirationDate,
-                        subject,
-                        readerKeyPair.getPublic());
-
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256withECDSA")
-                .build(readerKeyPair.getPrivate());
-        byte[] encodedCert = builder.build(signer).getEncoded();
-
-        CertificateFactory cf = CertificateFactory.getInstance("X.509");
-        ByteArrayInputStream bais = new ByteArrayInputStream(encodedCert);
-        X509Certificate result = (X509Certificate) cf.generateCertificate(bais);
-        return result;
+    @Before
+    public void setUp() {
+        Security.insertProviderAt(new BouncyCastleProvider(), 1);
     }
 
     @Test
     public void testDeviceRequestBuilder() throws Exception {
-        byte[] encodedSessionTranscript = Util.cborEncodeBytestring(new byte[] {0x01, 0x02});
+        byte[] encodedSessionTranscript = Cbor.encode(new Bstr(new byte[] {0x01, 0x02}));
 
         Map<String, Map<String, Boolean>> mdlItemsToRequest = new HashMap<>();
         Map<String, Boolean> mdlNsItems = new HashMap<>();
@@ -110,29 +80,42 @@ public class DeviceRequestGeneratorTest {
         mvrNsItems.put("vehicle_number", true);
         mvrItemsToRequest.put(MVR_NAMESPACE, mvrNsItems);
 
-        KeyPair readerKeyPair = generateReaderKeyPair();
-        ArrayList<X509Certificate> readerCertChain = new ArrayList<>();
-        readerCertChain.add(getSelfSignedReaderCertificate(readerKeyPair));
+        EcPrivateKey readerKey = Crypto.createEcPrivateKey(EcCurve.P256);
+        Instant validFrom = Clock.System.INSTANCE.now();
+        Instant validUntil = Instant.Companion.fromEpochMilliseconds(
+                validFrom.toEpochMilliseconds() + 30L*24*60*60*1000);
+        Certificate readerCert = Crypto.createX509v3Certificate(
+                readerKey.getPublicKey(),
+                readerKey,
+                null,
+                Algorithm.ES256,
+                "1",
+                "CN=Test Key",
+                "CN=Test Key",
+                validFrom,
+                validUntil,
+                Set.of(),
+                List.of()
+        );
+        CertificateChain readerCertChain = new CertificateChain(List.of(readerCert));
 
         Map<String, byte[]> mdlRequestInfo = new HashMap<>();
-        mdlRequestInfo.put("foo", Util.cborEncodeString("bar"));
-        mdlRequestInfo.put("bar", Util.cborEncodeNumber(42));
-
-        BouncyCastleProvider bcProvider = new BouncyCastleProvider();
-        Signature signature = Signature.getInstance("SHA256withECDSA", bcProvider);
-        signature.initSign(readerKeyPair.getPrivate());
+        mdlRequestInfo.put("foo", Cbor.encode(new Tstr("bar")));
+        mdlRequestInfo.put("bar", Cbor.encode(DataItemExtensionsKt.getToDataItem(42)));
 
         byte[] encodedDeviceRequest = new DeviceRequestGenerator()
                 .setSessionTranscript(encodedSessionTranscript)
                 .addDocumentRequest(MDL_DOCTYPE,
                         mdlItemsToRequest,
                         mdlRequestInfo,
-                        signature,
+                        readerKey,
+                        readerKey.getCurve().getDefaultSigningAlgorithm(),
                         readerCertChain)
                 .addDocumentRequest(MVR_DOCTYPE,
                         mvrItemsToRequest,
                         null,
-                        signature,
+                        readerKey,
+                        readerKey.getCurve().getDefaultSigningAlgorithm(),
                         readerCertChain)
                 .generate();
 
@@ -169,14 +152,13 @@ public class DeviceRequestGeneratorTest {
             docRequest.getEntryNames("non-existent");
             Assert.fail();
         } catch (IllegalArgumentException expected) { }
-        Assert.assertEquals(1, docRequest.getReaderCertificateChain().size());
-        Assert.assertEquals(readerCertChain.iterator().next(),
-                docRequest.getReaderCertificateChain().iterator().next());
+        Assert.assertEquals(1, docRequest.getReaderCertificateChain().getCertificates().size());
+        Assert.assertEquals(readerCertChain, docRequest.getReaderCertificateChain());
         Map<String, byte[]> requestInfo = docRequest.getRequestInfo();
         Assert.assertNotNull(requestInfo);
         Assert.assertEquals(2, requestInfo.keySet().size());
-        Assert.assertArrayEquals(Util.cborEncodeString("bar"), requestInfo.get("foo"));
-        Assert.assertArrayEquals(Util.cborEncodeNumber(42), requestInfo.get("bar"));
+        Assert.assertArrayEquals(Cbor.encode(new Tstr("bar")), requestInfo.get("foo"));
+        Assert.assertArrayEquals(Cbor.encode(DataItemExtensionsKt.getToDataItem(42)), requestInfo.get("bar"));
 
         docRequest = it.next();
         Assert.assertTrue(docRequest.getReaderAuthenticated());
@@ -184,9 +166,8 @@ public class DeviceRequestGeneratorTest {
         Assert.assertEquals(1, docRequest.getNamespaces().size());
         Assert.assertEquals(1, docRequest.getEntryNames(MVR_NAMESPACE).size());
         Assert.assertTrue(docRequest.getIntentToRetain(MVR_NAMESPACE, "vehicle_number"));
-        Assert.assertEquals(1, docRequest.getReaderCertificateChain().size());
-        Assert.assertArrayEquals(readerCertChain.iterator().next().getEncoded(),
-                docRequest.getReaderCertificateChain().iterator().next().getEncoded());
+        Assert.assertEquals(1, docRequest.getReaderCertificateChain().getCertificates().size());
+        Assert.assertEquals(readerCertChain, docRequest.getReaderCertificateChain());
         Assert.assertEquals(0, docRequest.getRequestInfo().size());
     }
 

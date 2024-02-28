@@ -1,5 +1,6 @@
 package com.android.identity.issuance
 
+import com.android.identity.crypto.CertificateChain
 import java.security.PublicKey
 import java.security.cert.X509Certificate
 
@@ -16,7 +17,7 @@ data class CredentialPresentationRequest(
      * The attestation for the authentication key that was created and to be referenced
      * in the requested Credential Presentation Object.
      */
-    val authenticationKeyAttestation: List<X509Certificate>,
+    val authenticationKeyAttestation: CertificateChain,
 
     // TODO: include proof that each key exist in the same Secure Hardware as CredentialKey
 )

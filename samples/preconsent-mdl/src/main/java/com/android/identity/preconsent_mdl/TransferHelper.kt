@@ -30,8 +30,9 @@ import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialStore
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.securearea.EcCurve
-import com.android.identity.securearea.SecureArea
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
@@ -234,8 +235,7 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun setConnected(
-        eDeviceKeyPair: KeyPair,
-        eDeviceKeyCurve: EcCurve,
+        eDeviceKey: EcPrivateKey,
         transport: DataTransport,
         deviceEngagement: ByteArray,
         handover: ByteArray
@@ -244,7 +244,7 @@ class TransferHelper private constructor(private val context: Context) {
         deviceRetrievalHelper = DeviceRetrievalHelper.Builder(
             context,
             object : DeviceRetrievalHelper.Listener {
-                override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
+                override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
                     Logger.i(TAG, "onEReaderKeyReceived")
                 }
 
@@ -272,8 +272,7 @@ class TransferHelper private constructor(private val context: Context) {
 
             },
             context.mainExecutor,
-            eDeviceKeyPair,
-            eDeviceKeyCurve)
+            eDeviceKey)
             .useForwardEngagement(transport, deviceEngagement, handover)
             .build()
         connectionMethod = transport.connectionMethod

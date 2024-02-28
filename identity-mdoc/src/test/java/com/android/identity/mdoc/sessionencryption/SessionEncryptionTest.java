@@ -16,27 +16,26 @@
 
 package com.android.identity.mdoc.sessionencryption;
 
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPrivateKeyDoubleCoordinate;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.mdoc.TestVectors;
 import com.android.identity.internal.Util;
-import com.android.identity.securearea.EcCurve;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.util.Constants;
+import com.android.identity.util.Logger;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.math.BigInteger;
-import java.security.KeyPair;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.Security;
 import java.util.OptionalLong;
-
-import co.nstant.in.cbor.model.Array;
-import co.nstant.in.cbor.model.ByteString;
-import co.nstant.in.cbor.model.DataItem;
 
 public class SessionEncryptionTest {
 
@@ -47,41 +46,32 @@ public class SessionEncryptionTest {
 
     @Test
     public void testReaderAgainstVectors() {
-        PublicKey eReaderKeyPublic = Util.getPublicKeyFromIntegers(
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X, 16),
-                new BigInteger(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y, 16));
-        PrivateKey eReaderKeyPrivate = Util.getPrivateKeyFromInteger(new BigInteger(
-                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D, 16));
+        EcPrivateKey eReaderKey = new EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y));
 
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
         byte[] encodedSessionTranscriptBytes = Util.fromHex(
                 TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
 
-        DataItem sessionTranscript = Util.cborExtractTaggedAndEncodedCbor(
-                Util.cborDecode(encodedSessionTranscriptBytes));
-        DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
-        byte[] encodedDeviceEngagement = ((ByteString) deviceEngagementBytes).getBytes();
-        DataItem handover = ((Array) sessionTranscript).getDataItems().get(2);
-        byte[] encodedHandover = Util.cborEncode(handover);
+        DataItem sessionTranscript = Cbor.decode(encodedSessionTranscriptBytes).getAsTaggedEncodedCbor();
+        DataItem deviceEngagementBytes = sessionTranscript.get(0);
+        byte[] encodedDeviceEngagement = deviceEngagementBytes.getAsTagged().getAsBstr();
 
         EngagementParser engagementParser = new EngagementParser(encodedDeviceEngagement);
         EngagementParser.Engagement engagement = engagementParser.parse();
-        PublicKey eDeviceKey = engagement.getESenderKey();
+        EcPublicKey eDeviceKey = engagement.getESenderKey();
 
         SessionEncryption sessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
-                new KeyPair(eReaderKeyPublic, eReaderKeyPrivate),
-                eDeviceKey, 
-                EcCurve.P256,
-                Util.cborEncode(sessionTranscript));
+                eReaderKey,
+                eDeviceKey,
+                Cbor.encode(sessionTranscript));
 
         // Check that encryption works.
         Assert.assertArrayEquals(
-                // Canonicalize b/c cbor-java automatically canonicalizes and the provided test
-                // vector isn't in canonical form. When we update to cbor-java 0.9 we can use
-                // nonCanonical() on CborDecoder and this can be removed.
-                //
-                Util.cborEncode(Util.cborDecode(
-                        Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT))),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT),
                 sessionEncryption.encryptMessage(
                         Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST),
                         OptionalLong.empty()));
@@ -109,34 +99,35 @@ public class SessionEncryptionTest {
 
     @Test
     public void testDeviceAgainstVectors() {
-        PrivateKey eDeviceKeyPrivate = Util.getPrivateKeyFromInteger(new BigInteger(
-                TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D, 16));
+        EcPrivateKey eDeviceKey = new EcPrivateKeyDoubleCoordinate(
+                EcCurve.P256,
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X),
+                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y));
 
         // Strip the #6.24 tag since our API expects just the bytes of SessionTranscript.
         byte[] encodedSessionTranscriptBytes = Util.fromHex(
                 TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
 
-        DataItem sessionTranscript = Util.cborExtractTaggedAndEncodedCbor(
-                Util.cborDecode(encodedSessionTranscriptBytes));
-        byte[] encodedSessionTranscript = Util.cborEncode(sessionTranscript);
-        DataItem deviceEngagementBytes = ((Array) sessionTranscript).getDataItems().get(0);
-        byte[] encodedDeviceEngagement = ((ByteString) deviceEngagementBytes).getBytes();
-        DataItem handover = ((Array) sessionTranscript).getDataItems().get(2);
-        byte[] encodedHandover = Util.cborEncode(handover);
+        DataItem sessionTranscript = Cbor.decode(encodedSessionTranscriptBytes).getAsTaggedEncodedCbor();
+        DataItem deviceEngagementBytes = sessionTranscript.get(0);
+        byte[] encodedDeviceEngagement = deviceEngagementBytes.getAsTagged().getAsBstr();
 
         EngagementParser engagementParser = new EngagementParser(encodedDeviceEngagement);
         EngagementParser.Engagement engagement = engagementParser.parse();
-        PublicKey eDeviceKeyPublic = engagement.getESenderKey();
+        EcPublicKey eDeviceKeyPublic = engagement.getESenderKey();
 
         byte[] sessionEstablishment = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT);
-        byte[] eReaderKeyBytes = Util.cborMapExtractByteString(Util.cborDecode(sessionEstablishment), "eReaderKey");
-        PublicKey eReaderKey = Util.coseKeyDecode(Util.cborDecode(eReaderKeyBytes));
+        EcPublicKey eReaderKey = Cbor.decode(sessionEstablishment)
+                .get("eReaderKey")
+                .getAsTaggedEncodedCbor()
+                .getAsCoseKey()
+                .getEcPublicKey();
 
         SessionEncryption sessionEncryptionDevice = new SessionEncryption(SessionEncryption.ROLE_MDOC,
-                new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
+                eDeviceKey,
                 eReaderKey,
-                EcCurve.P256,
-                encodedSessionTranscript);
+                Cbor.encode(sessionTranscript));
 
         // Check that decryption works.
         SessionEncryption.DecryptedMessage result = sessionEncryptionDevice.decryptMessage(
@@ -167,25 +158,20 @@ public class SessionEncryptionTest {
     }
 
     private void testCurve(EcCurve curve) {
-        KeyPair eReaderKeyPair = Util.createEphemeralKeyPair(curve);
-        PublicKey eReaderKeyPublic = eReaderKeyPair.getPublic();
-        KeyPair eDeviceKeyPair = Util.createEphemeralKeyPair(curve);
-        PublicKey eDeviceKeyPublic = eDeviceKeyPair.getPublic();
-        PrivateKey eDeviceKeyPrivate = eDeviceKeyPair.getPrivate();
+        EcPrivateKey eReaderKey = Crypto.createEcPrivateKey(curve);
+        EcPrivateKey eDeviceKey = Crypto.createEcPrivateKey(curve);
 
         byte[] encodedSessionTranscript = new byte[] {1, 2, 3};
 
         SessionEncryption sessionEncryptionReader = new SessionEncryption(
                 SessionEncryption.ROLE_MDOC_READER,
-                eReaderKeyPair,
-                eDeviceKeyPublic,
-                curve,
+                eReaderKey,
+                eDeviceKey.getPublicKey(),
                 encodedSessionTranscript);
         sessionEncryptionReader.setSendSessionEstablishment(false);
         SessionEncryption sessionEncryptionHolder = new SessionEncryption(SessionEncryption.ROLE_MDOC,
-                new KeyPair(eDeviceKeyPublic, eDeviceKeyPrivate),
-                eReaderKeyPublic,
-                curve,
+                eDeviceKey,
+                eReaderKey.getPublicKey(),
                 encodedSessionTranscript);
 
         for (int i = 1; i <= 3; i++) {

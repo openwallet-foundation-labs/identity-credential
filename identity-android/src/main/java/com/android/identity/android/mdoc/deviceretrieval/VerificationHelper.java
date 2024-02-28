@@ -30,6 +30,10 @@ import android.util.Base64;
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 
+import com.android.identity.cbor.Cbor;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPrivateKey;
+import com.android.identity.crypto.EcPublicKey;
 import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportBle;
@@ -42,8 +46,6 @@ import com.android.identity.mdoc.engagement.EngagementGenerator;
 import com.android.identity.mdoc.engagement.EngagementParser;
 import com.android.identity.mdoc.request.DeviceRequestGenerator;
 import com.android.identity.mdoc.response.DeviceResponseParser;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
 import com.android.identity.util.Constants;
 import com.android.identity.util.Logger;
 import com.android.identity.internal.Util;
@@ -52,12 +54,11 @@ import com.android.identity.util.Timestamp;
 import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.security.KeyPair;
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.OptionalLong;
 import java.util.concurrent.Executor;
 
@@ -87,7 +88,6 @@ public class VerificationHelper {
     public static final int ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER = 2;
     public static final int ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER = 3;
     public static final int ENGAGEMENT_METHOD_REVERSE = 4;
-    private EcCurve mEphemeralKeyCurve;
     private List<ConnectionMethod> mNegotiatedHandoverConnectionMethods;
     private List<DataTransport> mNegotiatedHandoverListeningTransports = new ArrayList<>();;
 
@@ -105,7 +105,7 @@ public class VerificationHelper {
     private Context mContext;
     DataTransport mDataTransport;
     Listener mListener;
-    KeyPair mEphemeralKeyPair;
+    EcPrivateKey mEphemeralKey;
     SessionEncryption mSessionEncryptionReader;
     byte[] mDeviceEngagement;
     byte[] mEncodedSessionTranscript;
@@ -175,8 +175,7 @@ public class VerificationHelper {
 
         // Calculate ReaderEngagement as we're setting up methods
         mReaderEngagementGenerator = new EngagementGenerator(
-                mEphemeralKeyPair.getPublic(),
-                mEphemeralKeyCurve,
+                mEphemeralKey.getPublicKey(),
                 EngagementGenerator.ENGAGEMENT_VERSION_1_1);
 
         mConnectionMethodsForReaderEngagement = new ArrayList<>();
@@ -227,7 +226,7 @@ public class VerificationHelper {
 
         Logger.d(TAG, "All reverse engagement listening transports are now set up");
 
-        mReaderEngagementGenerator.setConnectionMethods(mConnectionMethodsForReaderEngagement);
+        mReaderEngagementGenerator.addConnectionMethods(mConnectionMethodsForReaderEngagement);
         mReaderEngagement = mReaderEngagementGenerator.generate();
         mReaderEngagementGenerator = null;
 
@@ -745,16 +744,15 @@ public class VerificationHelper {
 
         EngagementParser engagementParser = new EngagementParser(deviceEngagement);
         EngagementParser.Engagement engagement = engagementParser.parse();
-        PublicKey eDeviceKey = engagement.getESenderKey();
+        EcPublicKey eDeviceKey = engagement.getESenderKey();
 
         // Create reader ephemeral key with key to match device ephemeral key's curve... this
         // can take a long time (hundreds of milliseconds) so use the precalculated key
         // to avoid delaying the transaction...
-        mEphemeralKeyCurve = engagement.getESenderKeyCurve();
-        mEphemeralKeyPair = Util.createEphemeralKeyPair(mEphemeralKeyCurve);
+        mEphemeralKey = Crypto.createEcPrivateKey(engagement.getESenderKey().getCurve());
 
-        byte[] encodedEReaderKeyPub = Util.cborEncode(Util.cborBuildCoseKey(
-                mEphemeralKeyPair.getPublic(), mEphemeralKeyCurve));
+        byte[] encodedEReaderKeyPub = Cbor.encode(
+                mEphemeralKey.getPublicKey().toCoseKey(Map.of()).getToDataItem());
         mEncodedSessionTranscript = Util.cborEncode(new CborBuilder()
                 .addArray()
                 .add(Util.cborBuildTaggedByteString(mDeviceEngagement))
@@ -765,9 +763,8 @@ public class VerificationHelper {
         Logger.dCbor(TAG, "SessionTranscript", mEncodedSessionTranscript);
 
         mSessionEncryptionReader = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
-                mEphemeralKeyPair,
+                mEphemeralKey,
                 eDeviceKey,
-                mEphemeralKeyCurve,
                 mEncodedSessionTranscript);
         if (mReaderEngagement != null) {
             // No need to include EReaderKey in first message...
@@ -1130,7 +1127,7 @@ public class VerificationHelper {
         if (mDeviceEngagement == null) {
             throw new IllegalStateException("Device engagement is null");
         }
-        if (mEphemeralKeyPair == null) {
+        if (mEphemeralKey == null) {
             throw new IllegalStateException("New object must be created");
         }
         if (mDataTransport == null) {
@@ -1171,17 +1168,8 @@ public class VerificationHelper {
      * @return the ephemeral key used by the reader for session encryption.
      */
     public @NonNull
-    KeyPair getEReaderKeyPair() {
-        return mEphemeralKeyPair;
-    }
-
-    /**
-     * Gets the curve for the ephemeral key used by the reader for session encryption.
-     *
-     * @return the curve for the keys used for session encryption.
-     */
-    public EcCurve getEReaderKeyCurve() {
-        return mEphemeralKeyCurve;
+    EcPrivateKey getEReaderKey() {
+        return mEphemeralKey;
     }
 
     /**

@@ -11,6 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.R
 import com.android.identity.wallet.databinding.FragmentTransferDocumentBinding
@@ -22,6 +23,7 @@ import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.TransferStatus
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.viewmodel.TransferDocumentViewModel
+import java.security.cert.X509Certificate
 
 class TransferDocumentFragment : Fragment() {
     private var _binding: FragmentTransferDocumentBinding? = null
@@ -101,7 +103,10 @@ class TransferDocumentFragment : Fragment() {
                 }
                 val doc = viewModel.getSelectedDocuments().first { reqDoc.docType == it.docType }
                 if (reqDoc.readerAuth != null && reqDoc.readerAuthenticated) {
-                    var certChain = reqDoc.readerCertificateChain
+                    val cc = mutableListOf<X509Certificate>()
+                    reqDoc.readerCertificateChain.certificates.forEach() { c -> cc.add(c.javaX509Certificate) }
+                    var certChain: List<X509Certificate> = cc
+
                     val customValidators = CustomValidators.getByDocType(doc.docType)
                     val result = HolderApp.trustManagerInstance.verify(
                         chain = certChain,

@@ -25,6 +25,8 @@ import androidx.navigation.NavDeepLinkBuilder
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.internal.Util
 import com.android.identity.wallet.R
 import com.android.identity.wallet.transfer.Communication
@@ -43,8 +45,8 @@ class NfcEngagementHandler : HostApduService() {
     private val settings by lazy {
         PreferencesHelper.apply { initialize(applicationContext) }
     }
-    private val eDeviceKeyPair by lazy {
-        Util.createEphemeralKeyPair(settings.getEphemeralKeyCurveOption())
+    private val eDeviceKey by lazy {
+        Crypto.createEcPrivateKey(settings.getEphemeralKeyCurveOption())
     }
     private val nfcEngagementListener = object : NfcEngagementHelper.Listener {
 
@@ -79,8 +81,7 @@ class NfcEngagementHandler : HostApduService() {
                 applicationContext,
                 presentationListener,
                 applicationContext.mainExecutor(),
-                eDeviceKeyPair,
-                settings.getEphemeralKeyCurveOption()
+                eDeviceKey
             )
             builder.useForwardEngagement(
                 transport,
@@ -102,7 +103,7 @@ class NfcEngagementHandler : HostApduService() {
 
     private val presentationListener = object : DeviceRetrievalHelper.Listener {
 
-        override fun onEReaderKeyReceived(eReaderKey: PublicKey) {
+        override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
             log("DeviceRetrievalHelper Listener (NFC): OnEReaderKeyReceived")
         }
 
@@ -132,8 +133,7 @@ class NfcEngagementHandler : HostApduService() {
         val connectionSetup = ConnectionSetup(applicationContext)
         val builder = NfcEngagementHelper.Builder(
             applicationContext,
-            eDeviceKeyPair.public,
-            settings.getEphemeralKeyCurveOption(),
+            eDeviceKey.publicKey,
             connectionSetup.getConnectionOptions(),
             nfcEngagementListener,
             applicationContext.mainExecutor()

@@ -48,7 +48,7 @@ class CredentialStore(
     private val secureAreaRepository: SecureAreaRepository
 ) {
     // Use a cache so the same instance is returned by multiple lookupCredential() calls.
-    private val credentialCache: HashMap<String, Credential> = LinkedHashMap()
+    private val credentialCache = mutableMapOf<String, Credential>()
 
     /**
      * Creates a new credential.
@@ -102,9 +102,9 @@ class CredentialStore(
      *
      * @param name the name of the credential.
      */
-    fun deleteCredential(name: String) {
-        val credential = lookupCredential(name) ?: return
-        credentialCache.remove(name)
-        credential.deleteCredential()
-    }
+    fun deleteCredential(name: String) =
+        lookupCredential(name)?.let { credential ->
+            credentialCache.remove(name)
+            credential.deleteCredential()
+        }
 }

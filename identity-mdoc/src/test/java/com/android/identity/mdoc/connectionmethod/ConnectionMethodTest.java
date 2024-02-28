@@ -16,12 +16,8 @@
 
 package com.android.identity.mdoc.connectionmethod;
 
-import com.android.identity.internal.Util;
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc;
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DiagnosticOption;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,6 +25,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.UUID;
 
 public class ConnectionMethodTest {
@@ -44,10 +41,10 @@ public class ConnectionMethodTest {
                 "  1,\n" +
                 "  1,\n" +
                 "  {\n" +
-                "    0 : 4096,\n" +
-                "    1 : 32768\n" +
+                "    0: 4096,\n" +
+                "    1: 32768\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
+                "]", Cbor.toDiagnostics(cm.toDeviceEngagement(), Set.of(DiagnosticOption.PRETTY_PRINT)));
     }
 
     @Test
@@ -69,12 +66,12 @@ public class ConnectionMethodTest {
                 "  2,\n" +
                 "  1,\n" +
                 "  {\n" +
-                "    0 : true,\n" +
-                "    1 : true,\n" +
-                "    10 : [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01],\n" +
-                "    11 : [0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15, 0x00, 0x00, 0x00, 0x00, 0x3a, 0xde, 0x68, 0xb1]\n" +
+                "    0: true,\n" +
+                "    1: true,\n" +
+                "    10: h'00000000000000000000000000000001',\n" +
+                "    11: h'00000000075bcd15000000003ade68b1'\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
+                "]", Cbor.toDiagnostics(cm.toDeviceEngagement(), Set.of(DiagnosticOption.PRETTY_PRINT)));
 
         // For use in NFC, the UUIDs have to be the same
         UUID uuidBoth = new UUID(0, 2);
@@ -103,11 +100,11 @@ public class ConnectionMethodTest {
                 "  2,\n" +
                 "  1,\n" +
                 "  {\n" +
-                "    0 : false,\n" +
-                "    1 : true,\n" +
-                "    11 : [0x00, 0x00, 0x00, 0x00, 0x07, 0x5b, 0xcd, 0x15, 0x00, 0x00, 0x00, 0x00, 0x3a, 0xde, 0x68, 0xb1]\n" +
+                "    0: false,\n" +
+                "    1: true,\n" +
+                "    11: h'00000000075bcd15000000003ade68b1'\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
+                "]", Cbor.toDiagnostics(cm.toDeviceEngagement(), Set.of(DiagnosticOption.PRETTY_PRINT)));
     }
 
     @Test
@@ -128,11 +125,11 @@ public class ConnectionMethodTest {
                 "  2,\n" +
                 "  1,\n" +
                 "  {\n" +
-                "    0 : true,\n" +
-                "    1 : false,\n" +
-                "    10 : [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01]\n" +
+                "    0: true,\n" +
+                "    1: false,\n" +
+                "    10: h'00000000000000000000000000000001'\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
+                "]", Cbor.toDiagnostics(cm.toDeviceEngagement(), Set.of(DiagnosticOption.PRETTY_PRINT)));
     }
     
     @Test
@@ -152,12 +149,12 @@ public class ConnectionMethodTest {
                 "  3,\n" +
                 "  1,\n" +
                 "  {\n" +
-                "    0 : 'foobar',\n" +
-                "    2 : 42,\n" +
-                "    1 : 43,\n" +
-                "    3 : [0x01, 0x02]\n" +
+                "    0: \"foobar\",\n" +
+                "    2: 42,\n" +
+                "    1: 43,\n" +
+                "    3: h'0102'\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
+                "]", Cbor.toDiagnostics(cm.toDeviceEngagement(), Set.of(DiagnosticOption.PRETTY_PRINT)));
     }
 
     @Test
@@ -170,9 +167,9 @@ public class ConnectionMethodTest {
                 "  4,\n" +
                 "  1,\n" +
                 "  {\n" +
-                "    0 : 'https://www.example.com/mdocReader'\n" +
+                "    0: \"https://www.example.com/mdocReader\"\n" +
                 "  }\n" +
-                "]", Util.cborPrettyPrint(cm.toDeviceEngagement()));
+                "]", Cbor.toDiagnostics(cm.toDeviceEngagement(), Set.of(DiagnosticOption.PRETTY_PRINT)));
     }
 
     @Test

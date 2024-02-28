@@ -93,7 +93,7 @@ class DocumentManager private constructor(private val context: Context) {
 
         for (field in documentData.fields.filter { it.parentId == null }) {
             when (field.fieldType) {
-                is CredentialAttributeType.DATE, CredentialAttributeType.DATE_TIME -> {
+                is CredentialAttributeType.Date, CredentialAttributeType.DateTime -> {
                     val date = UnicodeString(field.getValueString())
                     date.setTag(1004)
                     builder.putEntry(
@@ -103,7 +103,7 @@ class DocumentManager private constructor(private val context: Context) {
                     )
                 }
 
-                is CredentialAttributeType.BOOLEAN -> {
+                is CredentialAttributeType.Boolean -> {
                     builder.putEntryBoolean(
                         field.namespace!!,
                         field.name,
@@ -111,7 +111,7 @@ class DocumentManager private constructor(private val context: Context) {
                     )
                 }
 
-                is CredentialAttributeType.PICTURE -> {
+                is CredentialAttributeType.Picture -> {
                     val bitmap = field.getValueBitmap()
                     val baos = ByteArrayOutputStream()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
@@ -129,7 +129,7 @@ class DocumentManager private constructor(private val context: Context) {
                     }
                 }
 
-                is CredentialAttributeType.COMPLEX_TYPE -> {
+                is CredentialAttributeType.ComplexType -> {
 
                     val dataItem = when (field.isArray) {
                         true -> {
@@ -199,7 +199,7 @@ class DocumentManager private constructor(private val context: Context) {
         val mapBuilder = CborBuilder().addMap()
         for (field in fields) {
             when (field.fieldType) {
-                is CredentialAttributeType.DATE, CredentialAttributeType.DATE_TIME -> {
+                is CredentialAttributeType.Date, CredentialAttributeType.DateTime -> {
                     val date = UnicodeString(field.getValueString())
                     date.setTag(1004)
                     mapBuilder.put(
@@ -208,14 +208,14 @@ class DocumentManager private constructor(private val context: Context) {
                     )
                 }
 
-                is CredentialAttributeType.BOOLEAN -> {
+                is CredentialAttributeType.Boolean -> {
                     mapBuilder.put(
                         field.name,
                         field.getValueBoolean()
                     )
                 }
 
-                is CredentialAttributeType.PICTURE -> {
+                is CredentialAttributeType.Picture -> {
                     val bitmap = field.getValueBitmap()
                     val baos = ByteArrayOutputStream()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
@@ -224,7 +224,7 @@ class DocumentManager private constructor(private val context: Context) {
                 }
 
                 is CredentialAttributeType.IntegerOptions,
-                is CredentialAttributeType.NUMBER-> {
+                is CredentialAttributeType.Number -> {
                     if (field.value != "") {
                         mapBuilder.put(
                             field.name,
@@ -233,7 +233,7 @@ class DocumentManager private constructor(private val context: Context) {
                     }
                 }
 
-                is CredentialAttributeType.COMPLEX_TYPE -> {
+                is CredentialAttributeType.ComplexType -> {
                     val dataItem = when (field.isArray) {
                         true -> {
                             createArrayDataItem(field, documentData)

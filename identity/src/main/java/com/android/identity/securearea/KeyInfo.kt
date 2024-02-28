@@ -1,6 +1,7 @@
 package com.android.identity.securearea
 
-import java.security.cert.X509Certificate
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.EcPublicKey
 
 /**
  * Class with information about a key.
@@ -8,14 +9,12 @@ import java.security.cert.X509Certificate
  * Concrete [SecureArea] implementations may subclass this to provide additional
  * implementation-specific information about the key.
  *
+ * @param publicKey the public part of the key
  * @param attestation the attestation for the key.
  * @param keyPurposes the purposes of the key.
- * @param ecCurve the curve for the key.
- * @param isHardwareBacked whether the key is hardware backed.
  */
 open class KeyInfo protected constructor(
-    val attestation: List<X509Certificate>,
+    val publicKey: EcPublicKey,
+    val attestation: CertificateChain,
     val keyPurposes: Set<KeyPurpose>,
-    val ecCurve: EcCurve,
-    val isHardwareBacked: Boolean
 )

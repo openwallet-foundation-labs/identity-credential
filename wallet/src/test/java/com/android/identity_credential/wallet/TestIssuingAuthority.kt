@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet
 
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
@@ -39,7 +40,7 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
 
     override fun createPresentationData(presentationFormat: CredentialPresentationFormat,
                                         credentialConfiguration: CredentialConfiguration,
-                                        authenticationKey: PublicKey
+                                        authenticationKey: EcPublicKey
     ): ByteArray {
         return byteArrayOf(1, 2, 3)
     }

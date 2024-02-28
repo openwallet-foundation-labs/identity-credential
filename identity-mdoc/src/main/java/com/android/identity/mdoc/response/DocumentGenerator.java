@@ -19,28 +19,30 @@ package com.android.identity.mdoc.response;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.identity.cbor.ArrayBuilder;
+import com.android.identity.cbor.Bstr;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.CborArray;
+import com.android.identity.cbor.CborBuilder;
+import com.android.identity.cbor.CborMap;
+import com.android.identity.cbor.DataItem;
+import com.android.identity.cbor.DataItemExtensionsKt;
+import com.android.identity.cbor.MapBuilder;
+import com.android.identity.cbor.RawCbor;
+import com.android.identity.cbor.Tagged;
+import com.android.identity.cose.Cose;
+import com.android.identity.cose.CoseNumberLabel;
 import com.android.identity.credential.NameSpacedData;
-import com.android.identity.internal.Util;
-import com.android.identity.securearea.Algorithm;
+import com.android.identity.crypto.Crypto;
+import com.android.identity.crypto.EcPublicKey;
+import com.android.identity.crypto.Algorithm;
 import com.android.identity.securearea.KeyLockedException;
 import com.android.identity.securearea.KeyUnlockData;
 import com.android.identity.securearea.SecureArea;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 import java.util.List;
 import java.util.Map;
-
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-
-import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.builder.ArrayBuilder;
-import co.nstant.in.cbor.builder.MapBuilder;
-import co.nstant.in.cbor.model.DataItem;
-import co.nstant.in.cbor.model.UnicodeString;
 
 /**
  * Helper class for building <code>Document</code> <a href="http://cbor.io/">CBOR</a>
@@ -60,7 +62,7 @@ public class DocumentGenerator {
      * Creates a new {@link DocumentGenerator}.
      *
      * <p>At least one of {@link #setDeviceNamespacesSignature(NameSpacedData, SecureArea, String, KeyUnlockData, Algorithm)}
-     * or {@link #setDeviceNamespacesMac(NameSpacedData, SecureArea, String, KeyUnlockData, PublicKey)}
+     * or {@link #setDeviceNamespacesMac(NameSpacedData, SecureArea, String, KeyUnlockData, EcPublicKey)}
      * must be called before {@link #generate()} is called.
      *
      * <p>Issuer-signed data can be set using {@link #setIssuerNamespaces(Map)}.
@@ -117,89 +119,87 @@ public class DocumentGenerator {
                                           @NonNull String keyAlias,
                                           @Nullable KeyUnlockData keyUnlockData,
                                           Algorithm signatureAlgorithm,
-                                          @Nullable PublicKey eReaderKey)
+                                          @Nullable EcPublicKey eReaderKey)
             throws KeyLockedException {
 
-        CborBuilder deviceNameSpacesBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> mapBuilder = deviceNameSpacesBuilder.addMap();
+        MapBuilder<CborBuilder> mapBuilder = CborMap.Companion.builder();
         for (String nameSpaceName : dataElements.getNameSpaceNames()) {
             MapBuilder<MapBuilder<CborBuilder>> nsBuilder = mapBuilder.putMap(nameSpaceName);
             for (String dataElementName : dataElements.getDataElementNames(nameSpaceName)) {
-                nsBuilder.put(
-                        new UnicodeString(dataElementName),
-                        Util.cborDecode(dataElements.getDataElement(nameSpaceName, dataElementName)));
+                nsBuilder.put(dataElementName, new RawCbor(dataElements.getDataElement(nameSpaceName, dataElementName)));
             }
         }
         mapBuilder.end();
-        byte[] encodedDeviceNameSpaces = Util.cborEncode(deviceNameSpacesBuilder.build().get(0));
+        byte[] encodedDeviceNameSpaces = Cbor.encode(mapBuilder.end().build());
 
-        byte[] deviceAuthentication = Util.cborEncode(new CborBuilder()
-                .addArray()
+        byte[] deviceAuthentication = Cbor.encode(CborArray.Companion.builder()
                 .add("DeviceAuthentication")
-                .add(Util.cborDecode(mEncodedSessionTranscript))
+                .add(new RawCbor(mEncodedSessionTranscript))
                 .add(mDocType)
-                .add(Util.cborBuildTaggedByteString(encodedDeviceNameSpaces))
+                .addTaggedEncodedCbor(encodedDeviceNameSpaces)
                 .end()
-                .build().get(0));
+                .build());
 
         byte[] deviceAuthenticationBytes =
-                Util.cborEncode(Util.cborBuildTaggedByteString(deviceAuthentication));
+                Cbor.encode(new Tagged(24, new Bstr(deviceAuthentication)));
 
         byte[] encodedDeviceSignature = null;
         byte[] encodedDeviceMac = null;
         if (signatureAlgorithm != Algorithm.UNSET) {
-            encodedDeviceSignature = Util.cborEncode(Util.coseSign1Sign(
-                    secureArea,
-                    keyAlias,
-                    signatureAlgorithm,
-                    keyUnlockData,
-                    null,
-                    deviceAuthenticationBytes,
-                    null));
+            encodedDeviceSignature = Cbor.encode(
+                    Cose.coseSign1Sign(
+                            secureArea,
+                            keyAlias,
+                            deviceAuthenticationBytes,
+                            true,
+                            signatureAlgorithm,
+                            Map.of(
+                                    new CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                                    DataItemExtensionsKt.getToDataItem(signatureAlgorithm.getCoseAlgorithmIdentifier())
+                            ),
+                            Map.of(),
+                            keyUnlockData).getToDataItem()
+            );
         } else {
-            byte[] sharedSecret = secureArea
-                    .keyAgreement(keyAlias,
-                            eReaderKey,
-                            keyUnlockData);
-
+            byte[] sharedSecret = secureArea.keyAgreement(keyAlias,
+                    eReaderKey,
+                    keyUnlockData);
             byte[] sessionTranscriptBytes =
-                    Util.cborEncode(Util.cborBuildTaggedByteString(mEncodedSessionTranscript));
-
-            byte[] salt;
-            try {
-                salt = MessageDigest.getInstance("SHA-256").digest(sessionTranscriptBytes);
-            } catch (NoSuchAlgorithmException e) {
-                throw new IllegalStateException("Unexpected exception", e);
-            }
+                    Cbor.encode(new Tagged(24, new Bstr(mEncodedSessionTranscript)));
+            byte[] salt = Crypto.digest(Algorithm.SHA256, sessionTranscriptBytes);
             byte[] info = "EMacKey".getBytes(StandardCharsets.UTF_8);
-            byte[] derivedKey = Util.computeHkdf("HmacSha256", sharedSecret, salt, info, 32);
-            SecretKey secretKey = new SecretKeySpec(derivedKey, "");
-
-            encodedDeviceMac = Util.cborEncode(
-                    Util.coseMac0(secretKey,
-                            new byte[0],                 // payload
-                            deviceAuthenticationBytes));  // detached content
+            byte[] eMacKey = Crypto.hkdf(Algorithm.HMAC_SHA256, sharedSecret, salt, info, 32);
+            encodedDeviceMac = Cbor.encode(
+                    Cose.coseMac0(
+                            Algorithm.HMAC_SHA256,
+                            eMacKey,
+                            deviceAuthenticationBytes,
+                            false,
+                            Map.of(
+                                    new CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                                    DataItemExtensionsKt.getToDataItem(Algorithm.HMAC_SHA256.getCoseAlgorithmIdentifier())
+                            ),
+                            Map.of()).getToDataItem()
+            );
         }
 
-        String deviceAuthType = "";
-        DataItem deviceAuthDataItem = null;
+        String deviceAuthType;
+        DataItem deviceAuthDataItem;
         if (encodedDeviceSignature != null) {
             deviceAuthType = "deviceSignature";
-            deviceAuthDataItem = Util.cborDecode(encodedDeviceSignature);
+            deviceAuthDataItem = Cbor.decode(encodedDeviceSignature);
         } else {
             deviceAuthType = "deviceMac";
-            deviceAuthDataItem = Util.cborDecode(encodedDeviceMac);
+            deviceAuthDataItem = Cbor.decode(encodedDeviceMac);
         }
 
-        mDeviceSigned = new CborBuilder()
-                .addMap()
-                .put(new UnicodeString("nameSpaces"),
-                        Util.cborBuildTaggedByteString(encodedDeviceNameSpaces))
+        mDeviceSigned = CborMap.Companion.builder()
+                .putTaggedEncodedCbor("nameSpaces", encodedDeviceNameSpaces)
                 .putMap("deviceAuth")
-                .put(new UnicodeString(deviceAuthType), deviceAuthDataItem)
+                .put(deviceAuthType, deviceAuthDataItem)
                 .end()
                 .end()
-                .build().get(0);
+                .build();
         return this;
     }
 
@@ -251,7 +251,7 @@ public class DocumentGenerator {
                                              @NonNull SecureArea secureArea,
                                              @NonNull String keyAlias,
                                              @Nullable KeyUnlockData keyUnlockData,
-                                             @NonNull PublicKey eReaderKey)
+                                             @NonNull EcPublicKey eReaderKey)
             throws KeyLockedException {
         return setDeviceNamespaces(dataElements,
                 secureArea,
@@ -269,7 +269,7 @@ public class DocumentGenerator {
      *
      * @return the bytes described above.
      * @throws IllegalStateException if one of {@link #setDeviceNamespacesSignature(NameSpacedData, SecureArea, String, KeyUnlockData, Algorithm)}
-     *   or {@link #setDeviceNamespacesMac(NameSpacedData, SecureArea, String, KeyUnlockData, PublicKey)} hasn't been called on the generator.
+     *   or {@link #setDeviceNamespacesMac(NameSpacedData, SecureArea, String, KeyUnlockData, EcPublicKey)} hasn't been called on the generator.
      */
     public @NonNull
     byte[] generate() {
@@ -277,37 +277,29 @@ public class DocumentGenerator {
             throw new IllegalStateException("DeviceSigned isn't set");
         }
 
-        CborBuilder issuerNameSpacesBuilder = null;
+        MapBuilder<CborBuilder> issuerSignedMapBuilder = CborMap.Companion.builder();
         if (mIssuerNamespaces != null) {
-            issuerNameSpacesBuilder = new CborBuilder();
-            MapBuilder<CborBuilder> insOuter = issuerNameSpacesBuilder.addMap();
+            MapBuilder<CborBuilder> insOuter = CborMap.Companion.builder();
             for (String ns : mIssuerNamespaces.keySet()) {
                 ArrayBuilder<MapBuilder<CborBuilder>> insInner = insOuter.putArray(ns);
                 for (byte[] encodedIssuerSignedItemBytes : mIssuerNamespaces.get(ns)) {
-                    insInner.add(Util.cborDecode(encodedIssuerSignedItemBytes));
+                    insInner.add(new RawCbor(encodedIssuerSignedItemBytes));
                 }
                 insInner.end();
             }
             insOuter.end();
+            issuerSignedMapBuilder.put("nameSpaces", insOuter.end().build());
         }
 
-        CborBuilder issuerSignedBuilder = new CborBuilder();
-        MapBuilder<CborBuilder> issuerSignedMapBuilder = issuerSignedBuilder.addMap();
-        if (issuerNameSpacesBuilder != null) {
-            issuerSignedMapBuilder.put(new UnicodeString("nameSpaces"), issuerNameSpacesBuilder.build().get(0));
-        }
-        issuerSignedMapBuilder.put(new UnicodeString("issuerAuth"), Util.cborDecode(mEncodedIssuerAuth));
-        issuerSignedMapBuilder.end();
-        DataItem issuerSigned = issuerSignedBuilder.build().get(0);
+        issuerSignedMapBuilder.put("issuerAuth", new RawCbor(mEncodedIssuerAuth));
+        DataItem issuerSigned = issuerSignedMapBuilder.end().build();
 
-        CborBuilder builder = new CborBuilder();
-        MapBuilder<CborBuilder> mapBuilder = builder.addMap();
+        MapBuilder<CborBuilder> mapBuilder = CborMap.Companion.builder();
         mapBuilder.put("docType", mDocType);
-        mapBuilder.put(new UnicodeString("issuerSigned"), issuerSigned);
-        mapBuilder.put(new UnicodeString("deviceSigned"), mDeviceSigned);
+        mapBuilder.put("issuerSigned", issuerSigned);
+        mapBuilder.put("deviceSigned", mDeviceSigned);
         if (mErrors != null) {
-            CborBuilder errorsBuilder = new CborBuilder();
-            MapBuilder<CborBuilder> errorsOuterMapBuilder = errorsBuilder.addMap();
+            MapBuilder<CborBuilder> errorsOuterMapBuilder = CborMap.Companion.builder();
             for (String namespaceName : mErrors.keySet()) {
                 MapBuilder<MapBuilder<CborBuilder>> errorsInnerMapBuilder =
                         errorsOuterMapBuilder.putMap(namespaceName);
@@ -317,9 +309,9 @@ public class DocumentGenerator {
                     errorsInnerMapBuilder.put(dataElementName, value);
                 }
             }
-            mapBuilder.put(new UnicodeString("errors"), errorsBuilder.build().get(0));
+            mapBuilder.put("errors", errorsOuterMapBuilder.end().build());
         }
 
-        return Util.cborEncode(builder.build().get(0));
+        return Cbor.encode(mapBuilder.end().build());
     }
 }

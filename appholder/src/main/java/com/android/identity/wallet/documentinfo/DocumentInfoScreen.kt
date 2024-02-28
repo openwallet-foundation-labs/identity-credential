@@ -48,7 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.wallet.R
 import com.android.identity.wallet.composables.LoadingIndicator

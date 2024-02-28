@@ -1,10 +1,11 @@
 package com.android.identity.securearea.software
 
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.util.Timestamp
-import java.security.PrivateKey
-import java.security.cert.X509Certificate
 
 /**
  * Class used to indicate key creation settings for software-backed keys.
@@ -18,9 +19,10 @@ class SoftwareCreateKeySettings private constructor(
     val subject: String?,
     val validFrom: Timestamp?,
     val validUntil: Timestamp?,
-    val attestationKey: PrivateKey?,
-    val attestationKeySignatureAlgorithm: String?,
-    val attestationKeyCertification: List<X509Certificate>?
+    val attestationKey: EcPrivateKey?,
+    val attestationKeySignatureAlgorithm: Algorithm?,
+    val attestationKeyIssuer: String?,
+    val attestationKeyCertification: CertificateChain?,
 ) : com.android.identity.securearea.CreateKeySettings(
     attestationChallenge,
     keyPurposes,
@@ -40,13 +42,12 @@ class SoftwareCreateKeySettings private constructor(
         private var subject: String? = null,
         private var validFrom: Timestamp? = null,
         private var validUntil: Timestamp? = null,
-        private var attestationKey: PrivateKey? = null,
-        private var attestationKeySignatureAlgorithm: String? = null,
-        private var attestationKeyCertification: List<X509Certificate>? = null
+        private var attestationKey: EcPrivateKey? = null,
+        private var attestationKeySignatureAlgorithm: Algorithm? = null,
+        private var attestationKeyIssuer: String? = null,
+        private var attestationKeyCertification: CertificateChain? = null
     ) {
-        constructor(challenge: ByteArray) : this(challenge, setOf(KeyPurpose.SIGN)) {
-
-        }
+        constructor(challenge: ByteArray) : this(challenge, setOf(KeyPurpose.SIGN))
 
         /**
          * Sets the attestation key to use for attesting to the key.
@@ -59,12 +60,14 @@ class SoftwareCreateKeySettings private constructor(
          * @return the builder.
          */
         fun setAttestationKey(
-            attestationKey: PrivateKey,
-            attestationKeySignatureAlgorithm: String,
-            attestationKeyCertification: List<X509Certificate>
+            attestationKey: EcPrivateKey,
+            attestationKeySignatureAlgorithm: Algorithm,
+            attestationKeyIssuer: String,
+            attestationKeyCertification: CertificateChain
         ) = apply {
             this.attestationKey = attestationKey
             this.attestationKeySignatureAlgorithm = attestationKeySignatureAlgorithm
+            this.attestationKeyIssuer = attestationKeyIssuer
             this.attestationKeyCertification = attestationKeyCertification
         }
 
@@ -78,7 +81,7 @@ class SoftwareCreateKeySettings private constructor(
          * @throws IllegalArgumentException if no purpose is set.
          */
         fun setKeyPurposes(keyPurposes: Set<KeyPurpose>) = apply {
-            require(!keyPurposes.isEmpty()) { "Purposes cannot be empty" }
+            require(keyPurposes.isNotEmpty()) { "Purposes cannot be empty" }
             this.keyPurposes = keyPurposes
         }
 
@@ -142,7 +145,7 @@ class SoftwareCreateKeySettings private constructor(
                 keyPurposes, attestationChallenge,
                 subject, validFrom, validUntil,
                 attestationKey, attestationKeySignatureAlgorithm,
-                attestationKeyCertification
+                attestationKeyIssuer, attestationKeyCertification
             )
     }
 }

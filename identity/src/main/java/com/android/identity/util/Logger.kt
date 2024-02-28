@@ -15,6 +15,8 @@
  */
 package com.android.identity.util
 
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.internal.Util
 import java.io.File
 import java.io.FileWriter
@@ -120,6 +122,7 @@ object Logger {
             try {
                 fileWriter!!.write(logLine)
                 fileWriter!!.write('\n'.code)
+                fileWriter!!.flush()
             } catch (e: IOException) {
                 if (logPrinter != null) {
                     logPrinter!!.printLn(LEVEL_E, tag, "Error writing log message to file", e)
@@ -206,9 +209,9 @@ object Logger {
         val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + Util.toHex(encodedCbor) +
                 "\n" +
                 "In diagnostic notation:\n" +
-                CborUtil.toDiagnostics(
+                Cbor.toDiagnostics(
                     encodedCbor,
-                    CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT or CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR
+                    setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
                 )
         println(level, tag, sb, null)
     }

@@ -32,14 +32,14 @@ import com.android.identity.android.legacy.PresentationSession;
 import com.android.identity.android.legacy.Utility;
 import com.android.identity.android.mdoc.transport.DataTransport;
 import com.android.identity.android.mdoc.transport.DataTransportOptions;
+import com.android.identity.crypto.EcPublicKeyKt;
 import com.android.identity.internal.Util;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware;
 import com.android.identity.mdoc.engagement.EngagementParser;
-import com.android.identity.securearea.EcCurve;
-import com.android.identity.securearea.SecureArea;
+import com.android.identity.crypto.EcCurve;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.Assert;
@@ -110,8 +110,7 @@ public class NfcEnagementHelperTest {
         Executor executor = Executors.newSingleThreadExecutor();
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
-                session.getEphemeralKeyPair().getPublic(),
-                EcCurve.P256,
+                EcPublicKeyKt.toEcPublicKey(session.getEphemeralKeyPair().getPublic(), EcCurve.P256),
                 new DataTransportOptions.Builder().build(),
                 listener,
                 executor);
@@ -194,7 +193,8 @@ public class NfcEnagementHelperTest {
         EngagementParser.Engagement e = parser.parse();
         Assert.assertEquals("1.0", e.getVersion());
         Assert.assertEquals(0, e.getOriginInfos().size());
-        Assert.assertEquals(session.getEphemeralKeyPair().getPublic(), e.getESenderKey());
+        Assert.assertEquals(session.getEphemeralKeyPair().getPublic(),
+                EcPublicKeyKt.getJavaPublicKey(e.getESenderKey()));
         Assert.assertEquals(0, e.getConnectionMethods().size());
         // Check the synthesized ConnectionMethod (from returned OOB data in HS)
         Assert.assertEquals(connectionMethods.size(), hs.connectionMethods.size());
@@ -251,8 +251,7 @@ public class NfcEnagementHelperTest {
         Executor executor = Executors.newSingleThreadExecutor();
         NfcEngagementHelper.Builder builder = new NfcEngagementHelper.Builder(
                 context,
-                session.getEphemeralKeyPair().getPublic(),
-                EcCurve.P256,
+                EcPublicKeyKt.toEcPublicKey(session.getEphemeralKeyPair().getPublic(), EcCurve.P256),
                 new DataTransportOptions.Builder().build(),
                 listener,
                 executor);
@@ -382,7 +381,8 @@ public class NfcEnagementHelperTest {
         EngagementParser.Engagement e = parser.parse();
         Assert.assertEquals("1.0", e.getVersion());
         Assert.assertEquals(0, e.getOriginInfos().size());
-        Assert.assertEquals(session.getEphemeralKeyPair().getPublic(), e.getESenderKey());
+        Assert.assertEquals(session.getEphemeralKeyPair().getPublic(),
+                EcPublicKeyKt.getJavaPublicKey(e.getESenderKey()));
         Assert.assertEquals(0, e.getConnectionMethods().size());
 
         // Check the synthesized ConnectionMethod (from returned OOB data in HS)... we expect

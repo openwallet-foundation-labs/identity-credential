@@ -25,51 +25,35 @@ import static org.junit.Assert.fail;
 
 import android.content.Context;
 
+import com.android.identity.android.securearea.AndroidKeystoreKeyInfo;
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
 import com.android.identity.android.storage.AndroidStorageEngine;
+import com.android.identity.cbor.Cbor;
+import com.android.identity.cbor.DiagnosticOption;
 import com.android.identity.credential.NameSpacedData;
 import com.android.identity.internal.Util;
-import com.android.identity.securearea.Algorithm;
-import com.android.identity.securearea.EcCurve;
+import com.android.identity.crypto.Algorithm;
+import com.android.identity.crypto.EcCurve;
 import com.android.identity.securearea.KeyPurpose;
-import com.android.identity.securearea.SecureArea;
-import com.android.identity.securearea.SecureAreaRepository;
 import com.android.identity.storage.StorageEngine;
-import com.android.identity.util.CborUtil;
 
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.cert.X509Certificate;
-import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Set;
 
 import co.nstant.in.cbor.CborBuilder;
-import co.nstant.in.cbor.CborEncoder;
-import co.nstant.in.cbor.CborException;
 import co.nstant.in.cbor.model.UnicodeString;
-import co.nstant.in.cbor.model.UnsignedInteger;
 
 @SuppressWarnings("deprecation")
 public class MigrateFromKeystoreICStoreTest {
@@ -158,23 +142,24 @@ public class MigrateFromKeystoreICStoreTest {
                         "    \"int_32\": 24(<< 65537 >>),\n" +
                         "    \"int_64\": 24(<< 4294967297 >>)\n" +
                         "  }\n" +
-                        "}", CborUtil.toDiagnostics(nsd.encodeAsCbor(),
-                CborUtil.DIAGNOSTICS_FLAG_PRETTY_PRINT | CborUtil.DIAGNOSTICS_FLAG_EMBEDDED_CBOR));
+                        "}",
+                Cbor.toDiagnostics(
+                        nsd.encodeAsCbor(),
+                        Set.of(DiagnosticOption.EMBEDDED_CBOR, DiagnosticOption.PRETTY_PRINT)));
 
         String credentialKeyAlias = cred.getCredentialKeyAlias();
         aksSecureArea.createKeyForExistingAlias(credentialKeyAlias);
 
         // Check that CrendentialKey's KeyInfo is correct
-        AndroidKeystoreSecureArea.KeyInfo keyInfo = aksSecureArea.getKeyInfo(credentialKeyAlias);
+        AndroidKeystoreKeyInfo keyInfo = aksSecureArea.getKeyInfo(credentialKeyAlias);
         Assert.assertNotNull(keyInfo);
-        Assert.assertTrue(keyInfo.getAttestation().size() >= 1);
+        Assert.assertTrue(keyInfo.getAttestation().getCertificates().size() >= 1);
         Assert.assertEquals(Set.of(KeyPurpose.SIGN), keyInfo.getKeyPurposes());
-        Assert.assertEquals(EcCurve.P256, keyInfo.getEcCurve());
-        Assert.assertTrue(keyInfo.isHardwareBacked());
+        Assert.assertEquals(EcCurve.P256, keyInfo.getPublicKey().getCurve());
         Assert.assertFalse(keyInfo.isStrongBoxBacked());
         Assert.assertFalse(keyInfo.isUserAuthenticationRequired());
         Assert.assertEquals(0, keyInfo.getUserAuthenticationTimeoutMillis());
-        Assert.assertEquals(0, keyInfo.getUserAuthenticationType());
+        Assert.assertEquals(Set.of(), keyInfo.getUserAuthenticationTypes());
         Assert.assertNull(keyInfo.getAttestKeyAlias());
         Assert.assertNull(keyInfo.getValidFrom());
         Assert.assertNull(keyInfo.getValidUntil());

@@ -3,7 +3,7 @@ package com.android.identity.wallet.settings
 import android.os.Parcelable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.EcCurve
 import kotlinx.parcelize.Parcelize
 
 @Stable

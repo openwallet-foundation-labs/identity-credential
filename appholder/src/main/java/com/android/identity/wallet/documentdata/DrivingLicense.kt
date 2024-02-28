@@ -41,7 +41,7 @@ object DrivingLicense {
             true,
             "issue_date",
             "Date of Issue",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MDL_NAMESPACE,
@@ -49,7 +49,7 @@ object DrivingLicense {
             true,
             "expiry_date",
             "Date of Expiry",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MDL_NAMESPACE,
@@ -57,7 +57,7 @@ object DrivingLicense {
             true,
             "codes",
             "Codes of Driving Privileges",
-            CredentialAttributeType.COMPLEX_TYPE,
+            CredentialAttributeType.ComplexType,
         )
         // details of DrivingPrivilege.codes
         .addDefinition(
@@ -127,7 +127,7 @@ object DrivingLicense {
             true,
             "value",
             "Value",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         ).
             // details of domestic_driving_privileges
         addDefinition(
@@ -136,7 +136,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_class",
             "Domestic Vehicle Class",
-            CredentialAttributeType.COMPLEX_TYPE,
+            CredentialAttributeType.ComplexType,
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -144,7 +144,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_restrictions",
             "Domestic Vehicle Restrictions",
-            CredentialAttributeType.COMPLEX_TYPE
+            CredentialAttributeType.ComplexType
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -152,7 +152,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_endorsements",
             "Domestic Vehicle Endorsements",
-            CredentialAttributeType.COMPLEX_TYPE
+            CredentialAttributeType.ComplexType
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_class
         .addDefinition(
@@ -161,7 +161,7 @@ object DrivingLicense {
             false,
             "domestic_vehicle_class_code",
             "Domestic Vehicle Class Code",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -169,7 +169,7 @@ object DrivingLicense {
             false,
             "domestic_vehicle_class_description",
             "Domestic Vehicle Class Description",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -177,7 +177,7 @@ object DrivingLicense {
             false,
             "issue_date",
             "Date of Issue",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -185,7 +185,7 @@ object DrivingLicense {
             false,
             "expiry_date",
             "Date of Expiry",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_restrictions
         .addDefinition(
@@ -194,7 +194,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_restriction_code",
             "Restriction Code",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -202,7 +202,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_restriction_description",
             "Vehicle Category Description",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_endorsements
         .addDefinition(
@@ -211,7 +211,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_endorsement_code",
             "Endorsement Code",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -219,7 +219,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_endorsement_description",
             "Vehicle Endorsement Description",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .build()
 }

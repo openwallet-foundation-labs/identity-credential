@@ -8,10 +8,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialUtil
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.crypto.Algorithm
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
@@ -24,7 +24,6 @@ import com.android.identity.wallet.document.DocumentInformation
 import com.android.identity.wallet.document.KeysAndCertificates
 import com.android.identity.wallet.selfsigned.ProvisionInfo
 import com.android.identity.wallet.support.SecureAreaSupport
-import com.android.identity.wallet.support.toSecureAreaState
 import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
 import com.android.identity.wallet.util.DocumentData.MVR_DOCTYPE
 import java.io.ByteArrayOutputStream
@@ -33,7 +32,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Random
+import kotlin.random.Random
 
 class ProvisioningUtil private constructor(
     private val context: Context
@@ -129,8 +128,7 @@ class ProvisioningUtil private constructor(
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 docType,
-                pendingAuthKey.attestation.first().publicKey,
-                settings.ecCurve
+                pendingAuthKey.attestation.certificates.first().publicKey
             )
             msoGenerator.setValidityInfo(now, validFrom, validUntil, null)
 
@@ -151,10 +149,9 @@ class ProvisioningUtil private constructor(
                         "portrait" to Util.cborEncodeBytestring(portrait_override)))
             }
 
-            val deterministicRandomProvider = Random(42)
             val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
                 credential.applicationData.getNameSpacedData("credentialData"),
-                deterministicRandomProvider,
+                Random.Default,
                 16,
                 dataElementOverrides
             )
@@ -163,7 +160,7 @@ class ProvisioningUtil private constructor(
                 val digests = MdocUtil.calculateDigestsForNameSpace(
                     nameSpaceName,
                     issuerNameSpaces,
-                    "SHA-256"
+                    Algorithm.SHA256
                 )
                 msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
             }
@@ -283,8 +280,8 @@ class ProvisioningUtil private constructor(
                         issuerDataBytesCount = key.issuerProvidedData.size,
                         usagesCount = key.usageCount,
                         keyPurposes = info.keyPurposes.first(),
-                        ecCurve = info.ecCurve,
-                        isHardwareBacked = info.isHardwareBacked,
+                        ecCurve = info.publicKey.curve,
+                        isHardwareBacked = false,  // TODO: remove
                         secureAreaDisplayName = authKeySecureArea.displayName
                     )
                 }

@@ -168,7 +168,7 @@ object CredentialExtensions {
             Logger.d(TAG, "Fetching ${state.numAvailableCPO} CPOs")
             for (cpo in issuer.credentialGetPresentationObjects(credentialIdentifier)) {
                 val pendingAuthKey = pendingAuthenticationKeys.find {
-                    it.attestation[0].publicKey.equals(cpo.authenticationKey) }
+                    it.attestation.certificates.first().publicKey.equals(cpo.authenticationKey) }
                 if (pendingAuthKey == null) {
                     Logger.w(TAG, "No PendingAuthenticationKey for pubkey ${cpo.authenticationKey}")
                     continue

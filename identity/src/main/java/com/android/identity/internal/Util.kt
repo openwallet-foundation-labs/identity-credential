@@ -35,8 +35,8 @@ import co.nstant.`in`.cbor.model.Special
 import co.nstant.`in`.cbor.model.SpecialType
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
-import com.android.identity.securearea.Algorithm
-import com.android.identity.securearea.EcCurve
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
@@ -67,7 +67,6 @@ import java.security.KeyFactory
 import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
-import java.security.KeyStoreException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.security.NoSuchProviderException
@@ -75,7 +74,6 @@ import java.security.PrivateKey
 import java.security.PublicKey
 import java.security.Signature
 import java.security.SignatureException
-import java.security.UnrecoverableEntryException
 import java.security.cert.CertificateEncodingException
 import java.security.cert.CertificateException
 import java.security.cert.CertificateFactory
@@ -86,14 +84,11 @@ import java.security.spec.ECParameterSpec
 import java.security.spec.ECPoint
 import java.security.spec.ECPrivateKeySpec
 import java.security.spec.ECPublicKeySpec
-import java.security.spec.InvalidKeySpecException
-import java.security.spec.InvalidParameterSpecException
 import java.security.spec.X509EncodedKeySpec
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.text.ParseException
 import java.text.SimpleDateFormat
-import java.util.Arrays
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -147,8 +142,7 @@ object Util {
     }
 
     @JvmStatic
-    fun toHex(bytes: ByteArray): String =
-        toHex(bytes, 0, bytes.size)
+    fun toHex(bytes: ByteArray): String = toHex(bytes, 0, bytes.size)
 
     @JvmStatic
     fun toHex(bytes: ByteArray, from: Int, to: Int): String {
@@ -651,15 +645,13 @@ object Util {
         algorithm: String, data: ByteArray?,
         additionalData: ByteArray?,
         certificateChain: Collection<X509Certificate>?
-    ): DataItem {
-        return try {
-            val s = Signature.getInstance(algorithm)
-            s.initSign(key)
-            coseSign1Sign(s, data, additionalData, certificateChain)
-        } catch (e: Exception) {
-            // can be either NoSuchAlgorithmException, InvalidKeyException or for any exception
-            throw IllegalStateException("Caught exception", e)
-        }
+    ): DataItem = try {
+        val s = Signature.getInstance(algorithm)
+        s.initSign(key)
+        coseSign1Sign(s, data, additionalData, certificateChain)
+    } catch (e: Exception) {
+        // can be either NoSuchAlgorithmException, InvalidKeyException or for any exception
+        throw IllegalStateException("Caught exception", e)
     }
 
     /**
@@ -679,14 +671,20 @@ object Util {
         require(items[0].majorType == MajorType.BYTE_STRING) { "Item 0 (protected headers) is not a byte-string" }
         val encodedProtectedHeaders = (items[0] as ByteString).bytes
         var payload = ByteArray(0)
-        if (items[2].majorType == MajorType.SPECIAL) {
-            require((items[2] as Special).specialType == SpecialType.SIMPLE_VALUE) { "Item 2 (payload) is a special but not a simple value" }
-            val simple: SimpleValue = items[2] as SimpleValue
-            require(simple.simpleValueType == SimpleValueType.NULL) { "Item 2 (payload) is a simple but not the value null" }
-        } else if (items[2].majorType == MajorType.BYTE_STRING) {
-            payload = (items[2] as ByteString).bytes
-        } else {
-            throw IllegalArgumentException("Item 2 (payload) is not nil or byte-string")
+        when (items[2].majorType) {
+            MajorType.SPECIAL -> {
+                require((items[2] as Special).specialType == SpecialType.SIMPLE_VALUE) { "Item 2 (payload) is a special but not a simple value" }
+                val simple: SimpleValue = items[2] as SimpleValue
+                require(simple.simpleValueType == SimpleValueType.NULL) { "Item 2 (payload) is a simple but not the value null" }
+            }
+
+            MajorType.BYTE_STRING -> {
+                payload = (items[2] as ByteString).bytes
+            }
+
+            else -> {
+                throw IllegalArgumentException("Item 2 (payload) is not nil or byte-string")
+            }
         }
         require(items[3].majorType == MajorType.BYTE_STRING) { "Item 3 (signature) is not a byte-string" }
 
@@ -728,27 +726,29 @@ object Util {
         encodedProtectedHeaders: ByteArray,
         payload: ByteArray,
         detachedContent: ByteArray
-    ): ByteArray {
-        val macStructure = CborBuilder()
-        val array: ArrayBuilder<CborBuilder> = macStructure.addArray()
-        array.add("MAC0")
-        array.add(encodedProtectedHeaders)
+    ): ByteArray =
+        CborBuilder().run {
+            addArray().run {
+                add("MAC0")
+                add(encodedProtectedHeaders)
 
-        // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
-        // so external_aad is the empty bstr
-        val emptyExternalAad = ByteArray(0)
-        array.add(emptyExternalAad)
+                // We currently don't support Externally Supplied Data (RFC 8152 section 4.3)
+                // so external_aad is the empty bstr
+                val emptyExternalAad = ByteArray(0)
+                add(emptyExternalAad)
 
-        // Next field is the payload, independently of how it's transported (RFC
-        // 8152 section 4.4). Since our API specifies only one of |data| and
-        // |detachedContent| can be non-empty, it's simply just the non-empty one.
-        if (payload.isNotEmpty()) {
-            array.add(payload)
-        } else {
-            array.add(detachedContent)
+                // Next field is the payload, independently of how it's transported (RFC
+                // 8152 section 4.4). Since our API specifies only one of |data| and
+                // |detachedContent| can be non-empty, it's simply just the non-empty one.
+                if (payload.isNotEmpty()) {
+                    add(payload)
+                } else {
+                    add(detachedContent)
+                }
+            }
+
+            return cborEncode(build().first())
         }
-        return cborEncode(macStructure.build().first())
-    }
 
     @JvmStatic
     fun coseMac0(
@@ -764,8 +764,7 @@ object Util {
         protectedHeadersMap.put(COSE_LABEL_ALG, COSE_ALG_HMAC_256_256)
         val protectedHeadersBytes = cborEncode(protectedHeaders.build().first())
         val toBeMACed = coseBuildToBeMACed(protectedHeadersBytes, data!!, detachedContent!!)
-        val mac: ByteArray
-        mac = try {
+        val mac: ByteArray = try {
             val m = Mac.getInstance("HmacSHA256")
             m.init(key)
             m.update(toBeMACed)
@@ -779,7 +778,7 @@ object Util {
         val array: ArrayBuilder<CborBuilder> = builder.addArray()
         array.add(protectedHeadersBytes)
         /* MapBuilder<ArrayBuilder<CborBuilder>> unprotectedHeaders = */array.addMap()
-        if (data.size == 0) {
+        if (data.isEmpty()) {
             array.add(SimpleValue(SimpleValueType.NULL))
         } else {
             array.add(data)
@@ -837,37 +836,32 @@ object Util {
      * Returns #6.24(bstr) of the given already encoded CBOR
      */
     @JvmStatic
-    fun cborBuildTaggedByteString(encodedCbor: ByteArray): DataItem {
-        val item: DataItem = ByteString(encodedCbor)
-        item.setTag(CBOR_SEMANTIC_TAG_ENCODED_CBOR)
-        return item
-    }
+    fun cborBuildTaggedByteString(encodedCbor: ByteArray): DataItem =
+        (ByteString(encodedCbor) as DataItem).apply {
+            setTag(CBOR_SEMANTIC_TAG_ENCODED_CBOR)
+        }
+
 
     /**
      * For a #6.24(bstr), extracts the bytes.
      */
     @JvmStatic
-    fun cborExtractTaggedCbor(encodedTaggedBytestring: ByteArray): ByteArray {
-        val item = cborDecode(encodedTaggedBytestring)
-        val itemByteString = item.castToByteString()
-        require(!(!item.hasTag() || item.tag.value != CBOR_SEMANTIC_TAG_ENCODED_CBOR)) { "ByteString is not tagged with tag 24" }
-        return itemByteString.bytes
-    }
+    fun cborExtractTaggedCbor(encodedTaggedBytestring: ByteArray): ByteArray =
+        cborDecode(encodedTaggedBytestring).run {
+            require(!(!hasTag() || tag.value != CBOR_SEMANTIC_TAG_ENCODED_CBOR)) { "ByteString is not tagged with tag 24" }
+            castToByteString().bytes
+        }
 
     /**
      * For a #6.24(bstr), extracts the bytes and decodes it and returns
      * the decoded CBOR as a DataItem.
      */
     @JvmStatic
-    fun cborExtractTaggedAndEncodedCbor(item: DataItem): DataItem {
-        val itemByteString = item.castToByteString()
-        require(
-            !(!item.hasTag() || item.tag
-                .value != CBOR_SEMANTIC_TAG_ENCODED_CBOR)
-        ) { "ByteString is not tagged with tag 24" }
-        val encodedCbor = itemByteString.bytes
-        return cborDecode(encodedCbor)
-    }
+    fun cborExtractTaggedAndEncodedCbor(item: DataItem): DataItem =
+        item.castToByteString().run {
+            require(!(!item.hasTag() || item.tag.value != CBOR_SEMANTIC_TAG_ENCODED_CBOR)) { "ByteString is not tagged with tag 24" }
+            cborDecode(bytes)
+        }
 
     /**
      * Returns the empty byte-array if no data is included in the structure.
@@ -933,22 +927,17 @@ object Util {
     fun sec1EncodeFieldElementAsOctetString(
         octetStringSize: Int,
         fieldValue: BigInteger?
-    ): ByteArray {
-        return BigIntegers.asUnsignedByteArray(octetStringSize, fieldValue)
-    }
+    ): ByteArray = BigIntegers.asUnsignedByteArray(octetStringSize, fieldValue)
 
     @JvmStatic
     fun cborBuildCoseKey(
         key: PublicKey,
         curve: EcCurve
-    ): DataItem {
-        val x: ByteArray
-        val y: ByteArray
-        val item: DataItem
+    ): DataItem =
         when (curve) {
             EcCurve.ED25519, EcCurve.ED448 -> {
-                x = (key as BCEdDSAPublicKey).pointEncoding
-                item = CborBuilder()
+                val x = (key as BCEdDSAPublicKey).pointEncoding
+                CborBuilder()
                     .addMap()
                     .put(COSE_KEY_KTY, COSE_KEY_TYPE_OKP)
                     .put(COSE_KEY_PARAM_CRV, curve.coseCurveIdentifier.toLong())
@@ -958,8 +947,8 @@ object Util {
             }
 
             EcCurve.X25519, EcCurve.X448 -> {
-                x = (key as BCXDHPublicKey).uEncoding
-                item = CborBuilder()
+                val x = (key as BCXDHPublicKey).uEncoding
+                CborBuilder()
                     .addMap()
                     .put(COSE_KEY_KTY, COSE_KEY_TYPE_OKP)
                     .put(COSE_KEY_PARAM_CRV, curve.coseCurveIdentifier.toLong())
@@ -972,9 +961,9 @@ object Util {
                 val ecKey = key as ECPublicKey
                 val w = ecKey.w
                 val keySizeBits: Int = curve.bitSize
-                x = sec1EncodeFieldElementAsOctetString((keySizeBits + 7) / 8, w.affineX)
-                y = sec1EncodeFieldElementAsOctetString((keySizeBits + 7) / 8, w.affineY)
-                item = CborBuilder()
+                val x = sec1EncodeFieldElementAsOctetString((keySizeBits + 7) / 8, w.affineX)
+                val y = sec1EncodeFieldElementAsOctetString((keySizeBits + 7) / 8, w.affineY)
+                CborBuilder()
                     .addMap()
                     .put(COSE_KEY_KTY, COSE_KEY_TYPE_EC2)
                     .put(COSE_KEY_PARAM_CRV, curve.coseCurveIdentifier.toLong())
@@ -984,8 +973,6 @@ object Util {
                     .build().first()
             }
         }
-        return item
-    }
 
     // Used for testing only, to create an invalid COSE_Key
     @JvmStatic
@@ -1035,22 +1022,16 @@ object Util {
         checkedStringValue(map.castToMap()[key.toIntegerNumber()])
 
     @JvmStatic
-    fun cborMapExtractArray(map: DataItem, key: String): List<DataItem> {
-        val item = map.castToMap()[key.toUnicodeString()]
-        return item.castToArray().dataItems
-    }
+    fun cborMapExtractArray(map: DataItem, key: String): List<DataItem> =
+        map.castToMap()[key.toUnicodeString()].run { castToArray().dataItems }
 
     @JvmStatic
-    fun cborMapExtractArray(map: DataItem, key: Long): List<DataItem> {
-        val item = map.castToMap()[key.toIntegerNumber()]
-        return item.castToArray().dataItems
-    }
+    fun cborMapExtractArray(map: DataItem, key: Long): List<DataItem> =
+        map.castToMap()[key.toIntegerNumber()].run { castToArray().dataItems }
 
     @JvmStatic
-    fun cborMapExtractMap(map: DataItem, key: String): DataItem {
-        val item = map.castToMap()[key.toUnicodeString()]
-        return item.castToMap()
-    }
+    fun cborMapExtractMap(map: DataItem, key: String): DataItem =
+        map.castToMap()[key.toUnicodeString()].run { castToMap() }
 
     @JvmStatic
     fun cborMapExtractMapStringKeys(map: DataItem): Collection<String> =
@@ -1061,36 +1042,25 @@ object Util {
         map.castToMap().keys.map { checkedLongValue(it) }
 
     @JvmStatic
-    fun cborMapExtractByteString(map: DataItem, key: Long): ByteArray {
-        val item = map.castToMap()[key.toIntegerNumber()]
-        return item.castToByteString().bytes
-    }
+    fun cborMapExtractByteString(map: DataItem, key: Long): ByteArray =
+        map.castToMap()[key.toIntegerNumber()].run { castToByteString().bytes }
 
     @JvmStatic
-    fun cborMapExtractByteString(map: DataItem, key: String): ByteArray {
-        val item = map.castToMap()[key.toUnicodeString()]
-        return item.castToByteString().bytes
-    }
+    fun cborMapExtractByteString(map: DataItem, key: String): ByteArray =
+        map.castToMap()[key.toUnicodeString()].run { castToByteString().bytes }
 
     @JvmStatic
-    fun cborMapExtractBoolean(map: DataItem, key: String): Boolean {
-        val item = map.castToMap()[key.toUnicodeString()]
-        return item.castToSimpleValue().simpleValueType == SimpleValueType.TRUE
-    }
+    fun cborMapExtractBoolean(map: DataItem, key: String): Boolean =
+        map.castToMap()[key.toUnicodeString()].run { castToSimpleValue().simpleValueType == SimpleValueType.TRUE }
+
 
     @JvmStatic
-    fun cborMapExtractBoolean(map: DataItem, key: Long): Boolean {
-        val keyDataItem: DataItem = key.toIntegerNumber()
-        val item = map.castToMap()[keyDataItem]
-        return item.castToSimpleValue().simpleValueType == SimpleValueType.TRUE
-    }
+    fun cborMapExtractBoolean(map: DataItem, key: Long): Boolean =
+        map.castToMap()[key.toIntegerNumber()].run { castToSimpleValue().simpleValueType == SimpleValueType.TRUE }
 
     @JvmStatic
-    fun cborMapExtractDateTime(map: DataItem, key: String): Timestamp {
-        val item = map.castToMap()[key.toUnicodeString()]
-        val unicodeString: UnicodeString = item.castToUnicodeString()
-        return cborDecodeDateTime(unicodeString)
-    }
+    fun cborMapExtractDateTime(map: DataItem, key: String): Timestamp =
+        map.castToMap()[key.toUnicodeString()].run { cborDecodeDateTime(castToUnicodeString()) }
 
     @JvmStatic
     fun cborMapExtract(map: DataItem, key: String): DataItem =
@@ -1224,8 +1194,8 @@ object Util {
         authenticationPublicKey: PublicKey,
         ephemeralReaderPrivateKey: PrivateKey,
         encodedSessionTranscript: ByteArray
-    ): SecretKey {
-        return try {
+    ): SecretKey =
+        try {
             val ka = KeyAgreement.getInstance("ECDH")
             ka.init(ephemeralReaderPrivateKey)
             ka.doPhase(authenticationPublicKey, true)
@@ -1244,16 +1214,6 @@ object Util {
                 ch.code.toByte()
             }.toByteArray()
 
-            //TODO dx cleanup
-//            val info = byteArrayOf(
-//                'E'.code.toByte(),
-//                'M'.code.toByte(),
-//                'a'.code.toByte(),
-//                'c'.code.toByte(),
-//                'K'.code.toByte(),
-//                'e'.code.toByte(),
-//                'y'.code.toByte()
-//            )
             val derivedKey = computeHkdf(
                 "HmacSha256",
                 sharedSecret,
@@ -1266,14 +1226,13 @@ object Util {
             // including InvalidKeyException, NoSuchAlgorithmException
             throw IllegalStateException("Error performing key agreement", e)
         }
-    }
 
     @JvmStatic
-    fun cborPrettyPrint(dataItem: DataItem): String {
-        val sb = StringBuilder()
-        cborPrettyPrintDataItem(sb, 0, dataItem)
-        return sb.toString()
-    }
+    fun cborPrettyPrint(dataItem: DataItem): String =
+        StringBuilder().run {
+            cborPrettyPrintDataItem(this, 0, dataItem)
+            toString()
+        }
 
     @JvmStatic
     fun cborPrettyPrint(encodedBytes: ByteArray): String {
@@ -1605,8 +1564,8 @@ object Util {
     }
 
     @JvmStatic
-    fun getPrivateKeyFromInteger(s: BigInteger): PrivateKey {
-        return try {
+    fun getPrivateKeyFromInteger(s: BigInteger): PrivateKey =
+        try {
             val params = AlgorithmParameters.getInstance("EC")
             params.init(ECGenParameterSpec("secp256r1"))
             val ecParameters = params.getParameterSpec(
@@ -1619,14 +1578,13 @@ object Util {
             // including NoSuchAlgorithmException, InvalidParameterSpecException, InvalidKeySpecException
             throw IllegalStateException(e)
         }
-    }
 
     @JvmStatic
     fun getPublicKeyFromIntegers(
         x: BigInteger,
         y: BigInteger
-    ): PublicKey {
-        return try {
+    ): PublicKey =
+        try {
             val params =
                 AlgorithmParameters.getInstance("EC")
             params.init(ECGenParameterSpec("secp256r1"))
@@ -1643,7 +1601,6 @@ object Util {
             // including NoSuchAlgorithmException, InvalidParameterSpecException, InvalidKeySpecException
             throw IllegalStateException("Unexpected error", e)
         }
-    }
 
     // Returns null on End Of Stream.
     //
@@ -1877,7 +1834,9 @@ object Util {
         } catch (e: CborException) {
             return -1
         }
-        return if (dataItem == null) { -1 } else cborEncode(dataItem).size
+        return if (dataItem == null) {
+            -1
+        } else cborEncode(dataItem).size
     }
 
     /**

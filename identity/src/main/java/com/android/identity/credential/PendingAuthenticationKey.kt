@@ -1,17 +1,15 @@
 package com.android.identity.credential
 
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.builder.MapBuilder
-import co.nstant.`in`.cbor.model.ByteString
-import co.nstant.`in`.cbor.model.DataItem
-import com.android.identity.internal.Util
+import com.android.identity.cbor.Bstr
+import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.DataItem
+import com.android.identity.crypto.CertificateChain
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.ApplicationData
 import com.android.identity.util.Logger
 import com.android.identity.util.SimpleApplicationData
 import com.android.identity.util.Timestamp
-import java.security.cert.X509Certificate
 
 /**
  * An authentication key pending certification.
@@ -86,7 +84,7 @@ class PendingAuthenticationKey {
      *
      * @return An X.509 certificate chain for the pending authentication key.
      */
-    val attestation: List<X509Certificate>
+    val attestation: CertificateChain
         get() = secureArea.getKeyInfo(alias).attestation
 
     /**
@@ -144,17 +142,16 @@ class PendingAuthenticationKey {
     )
 
     fun toCbor(): DataItem {
-        val builder = CborBuilder()
-        val mapBuilder: MapBuilder<CborBuilder> = builder.addMap()
+        val mapBuilder = CborMap.builder()
         mapBuilder.put("alias", alias)
             .put("domain", domain)
             .put("secureAreaIdentifier", secureArea.identifier)
-        if (replacementForAlias != null) {
-            mapBuilder.put("replacementForAlias", replacementForAlias)
-        }
-        mapBuilder.put("applicationData", privateApplicationData.encodeAsCbor())
+            .put("applicationData", privateApplicationData.encodeAsCbor())
             .put("authenticationKeyCounter", authenticationKeyCounter)
-        return builder.build().first()
+        if (replacementForAlias != null) {
+            mapBuilder.put("replacementForAlias", replacementForAlias!!)
+        }
+        return mapBuilder.end().build()
     }
 
     companion object {
@@ -182,34 +179,22 @@ class PendingAuthenticationKey {
         fun fromCbor(
             dataItem: DataItem,
             credential: Credential
-        ): PendingAuthenticationKey {
-            val ret = PendingAuthenticationKey()
-            ret.alias = Util.cborMapExtractString(dataItem, "alias")
-            if (Util.cborMapHasKey(dataItem, "domain")) {
-                ret.domain = Util.cborMapExtractString(dataItem, "domain")
-            } else {
-                ret.domain = ""
-            }
-            ret.credential = credential
-            val secureAreaIdentifier =
-                Util.cborMapExtractString(dataItem, "secureAreaIdentifier")
-            ret.secureArea =
-                credential.secureAreaRepository.getImplementation(secureAreaIdentifier)!!
-            requireNotNull(ret.secureArea) { "Unknown Secure Area $secureAreaIdentifier" }
-            if (Util.cborMapHasKey(dataItem, "replacementForAlias")) {
-                ret.replacementForAlias =
-                    Util.cborMapExtractString(dataItem, "replacementForAlias")
-            }
-            val applicationDataDataItem: DataItem =
-                Util.cborMapExtract(dataItem, "applicationData")
-            check(applicationDataDataItem is ByteString) { "applicationData not found or not byte[]" }
-            ret.privateApplicationData = SimpleApplicationData.decodeFromCbor(
-                applicationDataDataItem.bytes) { ret.credential.saveCredential() }
-            if (Util.cborMapHasKey(dataItem, "authenticationKeyCounter")) {
-                ret.authenticationKeyCounter =
-                    Util.cborMapExtractNumber(dataItem, "authenticationKeyCounter")
-            }
-            return ret
+        ) = PendingAuthenticationKey().apply {
+            val map = dataItem
+            alias = map["alias"].asTstr
+            domain = map["domain"].asTstr
+            val secureAreaIdentifier = map["secureAreaIdentifier"].asTstr
+            secureArea = credential.secureAreaRepository.getImplementation(secureAreaIdentifier)
+                ?: throw IllegalStateException("Unknown Secure Area $secureAreaIdentifier")
+            replacementForAlias = map.getOrNull("replacementForAlias")?.asTstr
+            val applicationDataDataItem = map["applicationData"]
+            check(applicationDataDataItem is Bstr) { "applicationData not found or not byte[]" }
+            this.credential = credential
+            privateApplicationData = SimpleApplicationData
+                .decodeFromCbor(applicationDataDataItem.value) {
+                    credential.saveCredential()
+                }
+            authenticationKeyCounter = map["authenticationKeyCounter"].asNumber
         }
     }
 }

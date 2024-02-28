@@ -14,7 +14,7 @@ object VaccinationDocument {
             false,
             "Result",
             "Test Result",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -22,7 +22,7 @@ object VaccinationDocument {
             false,
             "TypeOfTest",
             "Type of Test",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -30,7 +30,7 @@ object VaccinationDocument {
             false,
             "TimeOfTest",
             "Time of Test",
-            CredentialAttributeType.DATE_TIME
+            CredentialAttributeType.DateTime
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -38,7 +38,7 @@ object VaccinationDocument {
             false,
             "SeCondFulfilled",
             "Second Fulfilled",
-            CredentialAttributeType.BOOLEAN
+            CredentialAttributeType.Boolean
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -46,7 +46,7 @@ object VaccinationDocument {
             false,
             "SeCondType",
             "Second Type",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -54,7 +54,7 @@ object VaccinationDocument {
             false,
             "SeCondExpiry",
             "Second Expiry",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -62,7 +62,7 @@ object VaccinationDocument {
             false,
             "tg",
             "Disease or Agent Targeted",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -70,7 +70,7 @@ object VaccinationDocument {
             false,
             "vp",
             "Vaccine or Prophylaxis",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -78,7 +78,7 @@ object VaccinationDocument {
             false,
             "mp",
             "Vaccine Medicinal Product",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -86,7 +86,7 @@ object VaccinationDocument {
             false,
             "br",
             "Vaccine Brand",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -94,7 +94,7 @@ object VaccinationDocument {
             false,
             "ma",
             "Manufacturer",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -102,7 +102,7 @@ object VaccinationDocument {
             false,
             "bn",
             "Batch/Lot Number of the Vaccine",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -110,7 +110,7 @@ object VaccinationDocument {
             false,
             "dn",
             "Dose Number",
-            CredentialAttributeType.NUMBER
+            CredentialAttributeType.Number
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -118,7 +118,7 @@ object VaccinationDocument {
             false,
             "sd",
             "Total Series of Doses",
-            CredentialAttributeType.NUMBER
+            CredentialAttributeType.Number
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -126,7 +126,7 @@ object VaccinationDocument {
             false,
             "dt",
             "Date of Vaccination",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -142,7 +142,7 @@ object VaccinationDocument {
             false,
             "ao",
             "Administering Organization",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -150,7 +150,7 @@ object VaccinationDocument {
             false,
             "ap",
             "Administering Professional",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -158,7 +158,7 @@ object VaccinationDocument {
             false,
             "nx",
             "Due Date of Next Dose",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -166,7 +166,7 @@ object VaccinationDocument {
             false,
             "is",
             "Certificate Issuer",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -174,7 +174,7 @@ object VaccinationDocument {
             false,
             "ci",
             "Unique Certificate Identifier (UVCI)",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -182,7 +182,7 @@ object VaccinationDocument {
             false,
             "pd",
             "Protection Duration",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -190,7 +190,7 @@ object VaccinationDocument {
             false,
             "vf",
             "Valid From",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -198,7 +198,7 @@ object VaccinationDocument {
             false,
             "vu",
             "Valid Until",
-            CredentialAttributeType.DATE
+            CredentialAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -206,7 +206,7 @@ object VaccinationDocument {
             false,
             "pty",
             "Type of Person Identifier",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -214,7 +214,7 @@ object VaccinationDocument {
             false,
             "pnr",
             "Unique number for the PTY/PIC/(PIA) combination",
-            CredentialAttributeType.STRING
+            CredentialAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -230,7 +230,7 @@ object VaccinationDocument {
             false,
             "pia",
             "Issuing Authority of the PTY",
-            CredentialAttributeType.STRING,
+            CredentialAttributeType.String,
         )
         .build()
 }

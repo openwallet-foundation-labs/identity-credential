@@ -45,6 +45,10 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+
+    lint {
+        lintConfig file('lint.xml')
+    }
 }
 
 dependencies {
@@ -68,6 +72,8 @@ dependencies {
     implementation libs.compose.runtime.livedata
 
     implementation libs.gson // for parcelables
+
+    implementation libs.kotlinx.datetime
     debugImplementation libs.compose.icons
 
     implementation libs.net.sf.scuba.scuba.sc.android
