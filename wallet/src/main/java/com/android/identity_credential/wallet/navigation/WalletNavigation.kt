@@ -12,14 +12,11 @@ import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.destination.about.AboutScreen
 import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWalletScreen
-import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPrompt
-import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPromptData
 import com.android.identity_credential.wallet.ui.destination.credential.CredentialDetailsScreen
 import com.android.identity_credential.wallet.ui.destination.credential.CredentialInfoScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionCredentialScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
-import com.android.identity_credential.wallet.util.unparcelize
 
 /**
  * Defines the correlation of WalletDestination routes to composable screens
@@ -156,45 +153,6 @@ fun WalletNavigation(
             QrEngagementScreen(
                 qrEngagementViewModel = qrEngagementViewModel,
                 onNavigate = navigateTo
-            )
-        }
-
-        /**
-         * Consent Prompt bottom sheet modal dialog expects 4 arguments to show
-         */
-        composable(
-            route = WalletDestination.ConsentPrompt.route,
-            arguments = WalletDestination.ConsentPrompt.getArguments()
-        ) { backStackEntry ->
-            val parcelableCredentialRequest = WalletDestination.ConsentPrompt
-                .Argument.CREDENTIAL_REQUEST
-                .extractParcelableFromBackStackEntry(backStackEntry)
-
-            val docType = WalletDestination.ConsentPrompt
-                .Argument.DOCUMENT_TYPE
-                .extractFromBackStackEntry(backStackEntry)
-
-            val docName = WalletDestination.ConsentPrompt
-                .Argument.DOCUMENT_NAME
-                .extractFromBackStackEntry(backStackEntry)
-
-            val credentialId = WalletDestination.ConsentPrompt
-                .Argument.CREDENTIAL_ID
-                .extractFromBackStackEntry(backStackEntry)
-
-            val verifierName = WalletDestination.ConsentPrompt
-                .Argument.VERIFIER_NAME
-                .extractFromBackStackEntry(backStackEntry) ?: ""
-
-            ConsentPrompt(
-                consentData = ConsentPromptData(
-                    credentialRequest = parcelableCredentialRequest!!.unparcelize(),
-                    docType = docType!!,
-                    documentName = docName!!,
-                    credentialId = credentialId!!, // needed to finish processing request and send response
-                    verifierName = verifierName
-                ),
-                credentialTypeRepository = application.credentialTypeRepository
             )
         }
     }

@@ -18,9 +18,7 @@ package com.android.identity_credential.wallet
 
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,37 +40,18 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
-import com.android.identity.cbor.Cbor
-import com.android.identity.credential.AuthenticationKey
-import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialRequest
-import com.android.identity.credential.NameSpacedData
-import com.android.identity.credentialtype.CredentialType
-import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.credentialtype.knowntypes.DrivingLicense
-import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
-import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
-import com.android.identity.issuance.CredentialPresentationFormat
-import com.android.identity.mdoc.mso.MobileSecurityObjectParser
-import com.android.identity.mdoc.mso.StaticAuthDataParser
-import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.mdoc.response.DocumentGenerator
-import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
+import com.android.identity_credential.wallet.presentation.TransferHelper
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPrompt
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPromptData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.util.OptionalLong
 
 class PresentationActivity : ComponentActivity() {
     companion object {
@@ -91,9 +70,11 @@ class PresentationActivity : ComponentActivity() {
             deviceEngagement = null
         }
 
-        fun startPresentation(context: Context, transport: DataTransport, handover: ByteArray,
-                              eDeviceKey: EcPrivateKey, deviceEngagement:
-                              ByteArray) {
+        fun startPresentation(
+            context: Context, transport: DataTransport, handover: ByteArray,
+            eDeviceKey: EcPrivateKey, deviceEngagement:
+            ByteArray
+        ) {
             this.transport = transport
             this.handover = handover
             this.eDeviceKey = eDeviceKey
@@ -133,9 +114,40 @@ class PresentationActivity : ComponentActivity() {
 
     private var deviceRequest: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
-    private lateinit var sharedPreferences: SharedPreferences
-    private val credentialTypeRepository by lazy {
-        CredentialTypeRepository()
+
+    // Transfer helper facilitates starting processing a presentation request and obtaining the
+    // response bytes once processing has finished. This enables showing one or more dialogs to
+    // the user to accept before sending a response to requesting party.
+    private var transferHelper: TransferHelper? = null
+
+    // define transfer helper builder that can easily build a new TransferHelper once we have a
+    // new instance of DeviceRetrievalHelper
+    private val transferHelperBuilder = TransferHelper.Builder(
+        credentialStore = walletApp.credentialStore,
+        issuingAuthorityRepository = walletApp.issuingAuthorityRepository,
+        context = applicationContext,
+        onError = { errorMsg -> errorToast(errorMsg) }
+    )
+
+    // lambda that is called once the request has finished processing and is ready to be sent to requesting party
+    // sends only if state is in REQUEST_AVAILABLE, updates state to SENT, finishes activity.
+    private val onFinishedProcessingRequest: (ByteArray) -> Unit = { encodedDeviceResponse ->
+        // ensure we are in the right state before sending the response
+        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
+
+        // ensure we have a non-null TransferHelper object
+        checkNotNull(transferHelper)
+
+        // send the response bytes to requesting party
+        transferHelper!!.sendResponse(encodedDeviceResponse)
+
+        // ensure we update UI-bound state value on Main thread
+        lifecycleScope.launch {
+            state.value = State.RESPONSE_SENT
+        }
+
+        // terminate PresentationActivity once "presentation is complete" since a response has been sent to requesting party
+        finish()
     }
 
     override fun onDestroy() {
@@ -147,9 +159,6 @@ class PresentationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
-
-        credentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
-        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
         setContent {
             IdentityCredentialTheme {
@@ -165,7 +174,13 @@ class PresentationActivity : ComponentActivity() {
                         }
 
                         State.CONNECTED -> {
-                            makeDeviceRetrievalHelper()
+                            // on a new connected client, create a new DeviceRetrievalHelper and TransferHelper
+                            makeDeviceRetrievalHelper().run {
+                                deviceRetrievalHelper = this
+                                transferHelper =
+                                    transferHelperBuilder.setDeviceRetrievalHelper(this).build()
+                            }
+
                             stateDisplay.value = "Connected"
                             Logger.i(TAG, "State: Connected")
                         }
@@ -173,18 +188,17 @@ class PresentationActivity : ComponentActivity() {
                         State.REQUEST_AVAILABLE -> {
                             stateDisplay.value = "Request Available"
                             Logger.i(TAG, "State: Request Available")
-                            // start processing request, get params for finishing processing the request
-                            startProcessingRequest()?.let {
-                                // extract 3 values from returned Triple object
-                                val (credential, credentialRequest, docType) = it
-                                // update state object consentPromptData so we can show ConsentPrompt
-                                consentPromptData.value = ConsentPromptData(
-                                    credentialId = credential.name,
-                                    documentName = credential.credentialConfiguration.displayName,
-                                    credentialRequest = credentialRequest,
-                                    docType = docType
-                                )
-                            }
+                            // start processing request and use processed request data to show consent prompt
+                            transferHelper?.startProcessingRequest(getDeviceRequest())
+                                ?.let { requestData ->
+                                    // update state object 'consentPromptData' so we can show ConsentPrompt
+                                    consentPromptData.value = ConsentPromptData(
+                                        credentialId = requestData.credential.name,
+                                        documentName = requestData.credential.credentialConfiguration.displayName,
+                                        credentialRequest = requestData.credentialRequest,
+                                        docType = requestData.docType
+                                    )
+                                }
                         }
 
                         State.RESPONSE_SENT -> {
@@ -226,23 +240,23 @@ class PresentationActivity : ComponentActivity() {
                     }
 
                     // when consent data is available, show consent prompt above activity's UI
-                    val data = consentPromptData.value
-                    if (data != null) {
+                    val consentData = consentPromptData.value
+                    if (consentData != null) {
                         ConsentPrompt(
-                            consentData = data,
-                            credentialTypeRepository = credentialTypeRepository,
+                            consentData = consentData,
+                            credentialTypeRepository = walletApp.credentialTypeRepository,
                             onConfirm = { // user accepted to send requested credential data
                                 // finish processing the request on IO thread
                                 lifecycleScope.launch {
-                                    // finish processing request and send the response
-                                    finishProcessingRequest(
-                                        requestedDocType = data.docType,
-                                        credentialId = data.credentialId,
-                                        credentialRequest = data.credentialRequest
+                                    transferHelper?.finishProcessingRequest(
+                                        requestedDocType = consentData.docType,
+                                        credentialId = consentData.credentialId,
+                                        credentialRequest = consentData.credentialRequest,
+                                        onFinishedProcessing = onFinishedProcessingRequest
                                     )
                                 }
                             },
-                            onCancel = {
+                            onCancel = { // user declined submitting data to requesting party
                                 finish() // close activity
                             }
                         )
@@ -252,11 +266,11 @@ class PresentationActivity : ComponentActivity() {
         }
     }
 
-    private fun makeDeviceRetrievalHelper() {
-        Logger.i(TAG, "making DeviceRetrievalHelper")
-        deviceRetrievalHelper = DeviceRetrievalHelper.Builder(
+    private fun makeDeviceRetrievalHelper() =
+        DeviceRetrievalHelper.Builder(
             applicationContext,
             object : DeviceRetrievalHelper.Listener {
+
                 override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
                     Logger.i(TAG, "onEReaderKeyReceived")
                 }
@@ -283,10 +297,11 @@ class PresentationActivity : ComponentActivity() {
 
             },
             ContextCompat.getMainExecutor(applicationContext),
-            eDeviceKey!!)
+            eDeviceKey!!
+        )
             .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
             .build()
-    }
+
 
     private fun disconnect() {
         Logger.i(TAG, "disconnect")
@@ -297,7 +312,7 @@ class PresentationActivity : ComponentActivity() {
         if (state.value == State.REQUEST_AVAILABLE) {
             val deviceResponseGenerator =
                 DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_GENERAL_ERROR)
-            sendResponse(deviceResponseGenerator.generate())
+            transferHelper?.sendResponse(deviceResponseGenerator.generate())
         }
         deviceRetrievalHelper?.disconnect()
         deviceRetrievalHelper = null
@@ -306,7 +321,7 @@ class PresentationActivity : ComponentActivity() {
         state.value = State.NOT_CONNECTED
     }
 
-    private fun error(msg: String) {
+    private fun errorToast(msg: String) {
         Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
         this.onDestroy()
     }
@@ -316,153 +331,6 @@ class PresentationActivity : ComponentActivity() {
         check(deviceRequest != null) { "No request available " }
         return deviceRequest as ByteArray
     }
-
-    private fun sendResponse(deviceResponseBytes: ByteArray) {
-        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
-        deviceRetrievalHelper!!.sendDeviceResponse(
-            deviceResponseBytes,
-            OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
-        )
-
-        // ensure we update UI-bound state value on Main thread
-        lifecycleScope.launch {
-            state.value = State.RESPONSE_SENT
-        }
-        finish() // terminate PresentationActivity once "presentation is complete" -- response has been sent to requesting party
-    }
-
-
-    /**
-     * Start processing the request for sending requested credential data. Returns 3 values that produce
-     * arguments needed by ConsentPrompt, as well as for sending the response once the user accepts
-     * all prompts (consent, biometrics).
-     *
-     * Returns a triplet of parameters defining. in order,
-     * 1 - the credential being used for responding to requested data - document name is extracted and passed in to ConsentPrompt
-     * 2 - CredentialRequest object containing data elements being requested to see - passed into ConsentPrompt
-     * 3 - Requested document type - used to traverse the cbor tree for finding the display name of each data element - passed into ConsentPrompt
-     */
-    private fun startProcessingRequest(): Triple<Credential, CredentialRequest, String>? {
-        // TODO support more formats
-        val credentialPresentationFormat: CredentialPresentationFormat =
-            CredentialPresentationFormat.MDOC_MSO
-
-        // TODO when selecting a matching credential of the MDOC_MSO format, also use docRequest.docType
-        //     to select a credential of the right doctype
-        val credentialId: String? = firstMatchingCredentialID(credentialPresentationFormat)
-        if (credentialId == null) {
-            error("No matching credentials in wallet")
-            return null
-        }
-        val credential = walletApp.credentialStore.lookupCredential(credentialId)!!
-        val request = DeviceRequestParser()
-            .setDeviceRequest(getDeviceRequest())
-            .setSessionTranscript(deviceRetrievalHelper!!.sessionTranscript)
-            .parse()
-        val docRequest = request.documentRequests[0]
-        val credentialRequest = MdocUtil.generateCredentialRequest(docRequest!!)
-        val requestedDocType: String = docRequest.docType
-        return Triple(
-            credential,
-            credentialRequest,
-            requestedDocType
-        )
-    }
-
-    /**
-     * Finish processing the request and submits the response once the user accepted various prompts
-     * (consent, biometrics, etc..)
-     *
-     * Expects 3 arguments generated from [startProcessingRequest]
-     */
-    private suspend fun finishProcessingRequest(
-        requestedDocType: String,
-        credentialId: String,
-        credentialRequest: CredentialRequest,
-    ) = withContext(Dispatchers.IO) {
-
-        val credential = walletApp.credentialStore.lookupCredential(credentialId)!!
-        val encodedDeviceResponse: ByteArray
-        if (requestedDocType == SelfSignedMdlIssuingAuthority.MDL_DOCTYPE) {
-            val credentialConfiguration = credential.credentialConfiguration
-            val now = Timestamp.now()
-            val authKey: AuthenticationKey
-            try {
-                authKey = credential.findAuthenticationKey(WalletApplication.AUTH_KEY_DOMAIN, now)!!
-            } catch (e: Exception) {
-                error("No valid auth keys, please request more")
-                return@withContext
-            }
-
-            val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
-            val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
-            val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
-            val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
-            val mso = MobileSecurityObjectParser().setMobileSecurityObject(encodedMso).parse()
-
-            val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-                credentialRequest,
-                credentialConfiguration.staticData,
-                staticAuthData
-            )
-
-            val deviceResponseGenerator =
-                DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-            deviceResponseGenerator.addDocument(
-                DocumentGenerator(
-                    mso.docType,
-                    staticAuthData.issuerAuth, deviceRetrievalHelper!!.sessionTranscript
-                )
-                    .setIssuerNamespaces(mergedIssuerNamespaces)
-                    .setDeviceNamespacesSignature(
-                        NameSpacedData.Builder().build(),
-                        authKey.secureArea,
-                        authKey.alias,
-                        null,
-                        Algorithm.ES256
-                    )
-                    .generate()
-            )
-            encodedDeviceResponse = deviceResponseGenerator.generate()
-        } else {
-            error("$requestedDocType not available")
-            return@withContext
-        }
-        sendResponse(encodedDeviceResponse)
-    }
-
-    private fun firstMatchingCredentialID(
-        credentialPresentationFormat: CredentialPresentationFormat
-    ): String? {
-        // prefer the credential which is on-screen if possible
-        val credentialIdFromPager: String? =
-            sharedPreferences.getString(WalletApplication.PREFERENCE_CURRENT_CREDENTIAL_ID, null)
-        if (credentialIdFromPager != null) {
-            if (isCredentialValid(credentialIdFromPager, credentialPresentationFormat)) {
-                return credentialIdFromPager
-            }
-        }
-        val credentialIds = walletApp.credentialStore.listCredentials()
-        for (credentialId in credentialIds) {
-            if (isCredentialValid(credentialId, credentialPresentationFormat)) {
-                return credentialIdFromPager
-            }
-        }
-
-        return null
-    }
-
-    private fun isCredentialValid(
-        credentialId: String,
-        credentialPresentationFormat: CredentialPresentationFormat
-    ): Boolean {
-        val application: WalletApplication = application as WalletApplication
-        val credential = application.credentialStore.lookupCredential(credentialId)!!
-        val issuingAuthorityIdentifier = credential.issuingAuthorityIdentifier
-        val issuer =
-            application.issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
-                ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
-        val credentialFormats = issuer.configuration.credentialFormats
-        return credentialFormats.contains(credentialPresentationFormat)
-    }
 }
+
+

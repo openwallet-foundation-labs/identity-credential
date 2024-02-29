@@ -1,12 +1,9 @@
 package com.android.identity_credential.wallet.navigation
 
-import android.os.Build
 import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import com.android.identity.credential.CredentialRequest
-import com.android.identity_credential.wallet.util.ParcelableCredentialRequest
 
 
 sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
@@ -41,7 +38,6 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
      * Destination: QR Engagement screen
      */
     object QrEngagement : WalletDestination(Route.QR_ENGAGEMENT)
-
 
 
     //////////////////////   Screens with arguments   //////////////////////
@@ -81,76 +77,6 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
         override fun getArguments(): List<NamedNavArgument> =
             Argument.values().map { it.argument }.toList()
     }
-
-    /**
-     * Destination: Consent Prompt modal dialog accepts mandatory arguments
-     */
-    object ConsentPrompt : WalletDestination(Route.CONSENT_PROMPT) {
-        /**
-         * enum class Argument defines all the various (optional) arguments that can be passed to the route (CONSENT_PROMPT)
-         */
-        enum class Argument(val argument: NamedNavArgument) {
-            CREDENTIAL_REQUEST(
-                navArgument("credentialRequest") {
-                    type = CredentialRequestParamType()
-                }
-            ),
-            DOCUMENT_TYPE(
-                navArgument("docType") {
-                    type = NavType.StringType
-                }
-            ),
-
-            DOCUMENT_NAME(
-                navArgument("docName") {
-                    type = NavType.StringType
-                }
-            ),
-
-            CREDENTIAL_ID(
-                navArgument("credentialId") {
-                    type = NavType.StringType
-                }
-            ),
-
-            VERIFIER_NAME(
-                navArgument("verifierName") {
-                    type = NavType.StringType
-                    nullable = true
-                }
-            ),
-            ;
-
-            // easily extract a Parcelable from `backStackEntry`,
-            fun extractParcelableFromBackStackEntry(backStackEntry: NavBackStackEntry) =
-                when (this) {
-                    CREDENTIAL_REQUEST -> {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                            backStackEntry.arguments?.getParcelable(
-                                argument.name,
-                                ParcelableCredentialRequest::class.java
-                            )
-                        else
-                            backStackEntry.arguments?.getParcelable<ParcelableCredentialRequest>(
-                                argument.name
-                            )
-
-                    }
-                    else -> null
-                }
-
-            // easily extract any String argument from `backStackEntry`
-            fun extractFromBackStackEntry(backStackEntry: NavBackStackEntry) =
-                backStackEntry.arguments?.getString(argument.name)
-        }
-
-        /**
-         * Return a list of all arguments that can be optionally passed to this route
-         */
-        override fun getArguments(): List<NamedNavArgument> =
-            Argument.values().map { it.argument }.toList()
-    }
-
 
     /**
      * Destination: the remaining screen after performing a "Pop back stack" operation,
@@ -274,7 +200,6 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     CREDENTIAL_INFO("credential_info", "credentialId={credentialId}&section={section}"),
     PROVISION_CREDENTIAL("provision_credential"),
     QR_ENGAGEMENT("qr_engagement"),
-    CONSENT_PROMPT("consent_prompt"),
 
     // a Route for popping the back stack showing a different Screen
     POP_BACK_STACK("pop_back_stack"),

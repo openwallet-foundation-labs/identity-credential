@@ -71,8 +71,6 @@ dependencies {
     implementation libs.bundles.androidx.crypto
     implementation libs.compose.runtime.livedata
 
-    implementation libs.gson // for parcelables
-
     implementation libs.kotlinx.datetime
     debugImplementation libs.compose.icons
 

@@ -11,18 +11,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -39,9 +35,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.android.identity.credential.CredentialRequest
 import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.util.stringValueFor
 import kotlinx.coroutines.launch
 
 /**
@@ -56,6 +52,19 @@ fun ConsentPrompt(
     onConfirm: () -> Unit = {},
     onCancel: () -> Unit = {}
 ) {
+
+    /**
+     * Extension function for extracting the display name for an element name in a CredentialRequest.DataElement
+     */
+    fun CredentialTypeRepository.getDisplayName(
+        docType: String,
+        dataElement: CredentialRequest.DataElement
+    ) = getMdocCredentialType(docType)?.namespaces
+        ?.get(dataElement.nameSpaceName)?.dataElements?.get(dataElement.dataElementName)
+        ?.attribute?.displayName
+        ?: dataElement.dataElementName
+
+
     // used for bottom sheet
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
@@ -66,16 +75,15 @@ fun ConsentPrompt(
     // get the user-facing display name for each CredentialRequest.DataElement and create a list of ConsentDataElements
     val consentDataElements =
         consentData.credentialRequest.requestedDataElements.map { dataElement ->
-            val displayName = credentialTypeRepository.stringValueFor(
-                docType = consentData.docType,
-                dataElement.nameSpaceName,
-                dataElement.dataElementName
+            val displayName = credentialTypeRepository.getDisplayName(
+                docType = consentData.docType, dataElement = dataElement
             )
             ConsentDataElement(displayName, dataElement)
         }
 
     // get title of dialog
-    val title = LocalContext.current.getString(R.string.consent_prompt_title, consentData.documentName)
+    val title =
+        LocalContext.current.getString(R.string.consent_prompt_title, consentData.documentName)
 
     ModalBottomSheet(
         modifier = Modifier.fillMaxHeight(0.6F),
