@@ -208,7 +208,7 @@ class SimpleIssuingAuthorityProofingGraph {
         override val followUps: Iterable<Node>
             get() = setOf(successfulActiveAuthentication, successfulChipAuthentication, noAuthentication)
 
-        override fun selectFollowUp(response: EvidenceResponse): Node? {
+        override fun selectFollowUp(response: EvidenceResponse): Node {
             val resp = response as EvidenceResponseIcaoNfcTunnelResult
             return when (resp.advancedAuthenticationType) {
                 EvidenceResponseIcaoNfcTunnelResult.AdvancedAuthenticationType.NONE -> noAuthentication
