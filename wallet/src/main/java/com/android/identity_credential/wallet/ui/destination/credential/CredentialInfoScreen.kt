@@ -84,9 +84,9 @@ fun CredentialInfoScreen(
         TextField(stateTimeString, {}, readOnly = true,
                 label = {Text(stringResource(R.string.credential_label_last_refresh))}, modifier = Modifier.fillMaxWidth())
         Divider(thickness = 4.dp, color = MaterialTheme.colorScheme.primary)
-        TextField(credential.authenticationKeys.size.toString(), {}, readOnly = true,
-                label = {Text(stringResource(R.string.credential_label_pending_auth_keys))}, modifier = Modifier.fillMaxWidth())
         TextField(credential.pendingAuthenticationKeys.size.toString(), {}, readOnly = true,
+                label = {Text(stringResource(R.string.credential_label_pending_auth_keys))}, modifier = Modifier.fillMaxWidth())
+        TextField(credential.authenticationKeys.size.toString(), {}, readOnly = true,
                 label = {Text(stringResource(R.string.credential_label_auth_keys))}, modifier = Modifier.fillMaxWidth())
         Row(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
