@@ -60,6 +60,7 @@ class WalletApplication : Application() {
         credentialStore = CredentialStore(storageEngine, secureAreaRepository)
 
         issuingAuthorityRepository = IssuingAuthorityRepository()
-        issuingAuthorityRepository.add(SelfSignedMdlIssuingAuthority(this, storageEngine))
+        issuingAuthorityRepository.add(SelfCertificationIssuingAuthority(this, storageEngine))
+        issuingAuthorityRepository.add(PassportBasedIssuingAuthority(this, storageEngine))
     }
 }
