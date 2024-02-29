@@ -147,9 +147,8 @@ class PresentationActivity : ComponentActivity() {
     // lambda called with a Throwable when an error is encountered
     private val showErrorAndDismiss: (Throwable) -> Unit = { throwable ->
         Toast.makeText(applicationContext, throwable.message, Toast.LENGTH_SHORT).show()
-        this.onDestroy()
+        onDestroy()
     }
-
 
     // lambda that is called once the request has finished processing and is ready to be sent to requesting party
     // sends only if state in REQUEST_AVAILABLE, updates state to SENT, finishes activity.
@@ -197,12 +196,9 @@ class PresentationActivity : ComponentActivity() {
 
                         State.CONNECTED -> {
                             // on a new connected client, create a new DeviceRetrievalHelper and TransferHelper
-                            makeDeviceRetrievalHelper().run {
-                                deviceRetrievalHelper = this
-                                transferHelper =
-                                    transferHelperBuilder.setDeviceRetrievalHelper(this).build()
+                            newDeviceRetrievalHelper().run {
+                                newTransferHelper(this)
                             }
-
                             stateDisplay.value = "Connected"
                             Logger.i(TAG, "State: Connected")
                         }
@@ -290,7 +286,22 @@ class PresentationActivity : ComponentActivity() {
         }
     }
 
-    private fun makeDeviceRetrievalHelper() =
+    /**
+     * Set property transferHelper to a new instance of TransferHelper created with a new instance
+     * of DeviceRetrievalHelper
+     */
+    private fun newTransferHelper(deviceRetrievalHelper: DeviceRetrievalHelper) {
+        // new TransferHelper instance
+        transferHelper =
+            transferHelperBuilder.setDeviceRetrievalHelper(deviceRetrievalHelper).build()
+    }
+
+    /**
+     * Create a new instance of DeviceRetrievalHelper and,
+     * 1. set property deviceRetrievalHelper to point to it
+     * 2. return the new instance so it can be used to create a new TransferHelper
+     */
+    private fun newDeviceRetrievalHelper() =
         DeviceRetrievalHelper.Builder(
             applicationContext,
             object : DeviceRetrievalHelper.Listener {
@@ -324,7 +335,11 @@ class PresentationActivity : ComponentActivity() {
             eDeviceKey!!
         )
             .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
-            .build()
+            .build().apply {
+                // set deviceRetrievalHelper to this newly built instance
+                deviceRetrievalHelper = this
+                // return the instance
+            }
 
 
     private fun disconnect() {

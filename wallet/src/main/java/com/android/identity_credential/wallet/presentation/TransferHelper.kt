@@ -37,7 +37,7 @@ class TransferHelper(
     private val issuingAuthorityRepository: IssuingAuthorityRepository,
     private val context: Context,
     private val deviceRetrievalHelper: DeviceRetrievalHelper,
-    private val onError: (String) -> Unit
+    private val onError: (Throwable) -> Unit
 ) {
 
     /**
@@ -48,7 +48,7 @@ class TransferHelper(
         val issuingAuthorityRepository: IssuingAuthorityRepository,
         val context: Context,
         var deviceRetrievalHelper: DeviceRetrievalHelper? = null,
-        var onError: (String) -> Unit = {},
+        var onError: (Throwable) -> Unit = {},
     ) {
         fun setDeviceRetrievalHelper(deviceRetrievalHelper: DeviceRetrievalHelper) = apply {
             this.deviceRetrievalHelper = deviceRetrievalHelper
@@ -85,7 +85,7 @@ class TransferHelper(
         //     to select a credential of the right doctype
         val credentialId: String = firstMatchingCredentialID(credentialPresentationFormat)
             ?: run {
-                onError("No matching credentials in wallet")
+                onError(IllegalStateException("No matching credentials in wallet"))
                 return null
             }
 
@@ -129,7 +129,7 @@ class TransferHelper(
             val now = Timestamp.now()
             val authKey = credential.findAuthenticationKey(WalletApplication.AUTH_KEY_DOMAIN, now)
                 ?: run {
-                    onError("No valid auth keys, please request more")
+                    onError(IllegalStateException("No valid auth keys, please request more"))
                     return@withContext
                 }
 
@@ -164,7 +164,7 @@ class TransferHelper(
             )
             encodedDeviceResponse = deviceResponseGenerator.generate()
         } else {
-            onError("$requestedDocType not available")
+            onError(IllegalStateException("$requestedDocType not available"))
             return@withContext
         }
         onFinishedProcessing(encodedDeviceResponse)

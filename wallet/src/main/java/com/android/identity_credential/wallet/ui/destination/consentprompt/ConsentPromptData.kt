@@ -1,8 +1,10 @@
 package com.android.identity_credential.wallet.ui.destination.consentprompt
 
+import android.graphics.Bitmap
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.android.identity.credential.CredentialRequest
+import com.android.identity.trustmanagement.TrustPoint
 
 /**
  * ConsentPromptData is passed to ConsentPrompt to show the appropriate requested credentials.
@@ -18,8 +20,10 @@ data class ConsentPromptData(
     val documentName: String,
     // id of credential that provides documentName - used after Consent Prompt succeeds
     val credentialId: String,
-    // hard-coded at the moment to be "Verifier"
-    val verifierName: String = "Verifier"
+    // party requesting to verify user's data
+    val verifier: TrustPoint? = null,
+    // if verifier TrustPoint is present with an icon byte array, process the bytes to bitmap once
+    val verifierIconBitmap: Bitmap? = null
 )
 
 /**
@@ -32,9 +36,3 @@ data class ConsentDataElement(
     val displayName: String,
     val dataElement: CredentialRequest.DataElement
 )
-
-
-
-
-
-
