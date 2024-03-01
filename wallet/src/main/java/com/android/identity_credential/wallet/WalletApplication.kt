@@ -9,8 +9,12 @@ import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.credentialtype.knowntypes.DrivingLicense
+import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.securearea.SecureAreaRepository
+import com.android.identity.trustmanagement.TrustManager
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import com.android.identity_credential.mrtd.mrtdSetLogger
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -34,6 +38,11 @@ class WalletApplication : Application() {
     lateinit var credentialStore: CredentialStore
     lateinit var loggerModel: LoggerModel
     lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
+
+    // lazily instantiate TrustManager
+    val trustManager by lazy {
+        TrustManager()
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -62,5 +71,26 @@ class WalletApplication : Application() {
         issuingAuthorityRepository = IssuingAuthorityRepository()
         issuingAuthorityRepository.add(SelfCertificationIssuingAuthority(this, storageEngine))
         issuingAuthorityRepository.add(PassportBasedIssuingAuthority(this, storageEngine))
+
+        initTrustManager()
+    }
+
+    private fun initTrustManager(){
+        // init Trust Manager
+        // read TrustPoint owf pem cert to manually add an "owf identity credential reader" (appverifier)
+        val owfIdentityCredentialReaderRoot = Certificate.fromPem(
+            String(
+                resources
+                    .openRawResource(R.raw.owf_identity_credential_reader_cert)
+                    .readBytes()
+            )
+        );
+        trustManager.addTrustPoint(
+            TrustPoint(
+                owfIdentityCredentialReaderRoot.javaX509Certificate,
+                displayName = "OWF Identity Credential Reader",
+                null
+            )
+        )
     }
 }
