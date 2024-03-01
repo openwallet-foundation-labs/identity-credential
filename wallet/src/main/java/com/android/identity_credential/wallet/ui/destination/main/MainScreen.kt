@@ -2,7 +2,6 @@ package com.android.identity_credential.wallet.ui.destination.main
 
 import android.Manifest
 import android.content.SharedPreferences
-import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,7 +40,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
@@ -51,8 +48,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.android.identity.credential.CredentialStore
-import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.CardViewModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.R
@@ -62,13 +59,14 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-const val TAG_M = "MainScreen"
+private const val TAG = "MainScreen"
 
 @Composable
 fun MainScreen(
     onNavigate: (String) -> Unit,
     credentialStore: CredentialStore,
     qrEngagementViewModel: QrEngagementViewModel,
+    cardViewModel: CardViewModel,
     sharedPreferences: SharedPreferences,
     permissionTracker: PermissionTracker
 ) {
@@ -110,6 +108,7 @@ fun MainScreen(
             credentialStore = credentialStore,
             sharedPreferences = sharedPreferences,
             qrEngagementViewModel = qrEngagementViewModel,
+            cardViewModel = cardViewModel,
             scope = scope,
             drawerState = drawerState,
             permissionTracker = permissionTracker
@@ -132,6 +131,7 @@ fun MainScreenContent(
     credentialStore: CredentialStore,
     sharedPreferences: SharedPreferences,
     qrEngagementViewModel: QrEngagementViewModel,
+    cardViewModel: CardViewModel,
     scope: CoroutineScope,
     drawerState: DrawerState,
     permissionTracker: PermissionTracker
@@ -142,7 +142,7 @@ fun MainScreenContent(
                 onClick = {
                     scope.launch {
                         drawerState.apply {
-                            Logger.d(TAG_M, "isClosed = $isClosed")
+                            Logger.d(TAG, "isClosed = $isClosed")
                             if (isClosed) open() else close()
                         }
                     }
@@ -154,7 +154,7 @@ fun MainScreenContent(
                 )
             }
         }) {
-        if (credentialStore.listCredentials().isEmpty()) {
+        if (cardViewModel.cards.isEmpty()) {
             MainScreenNoCredentialsAvailable(onNavigate)
         } else {
             // TODO: this can be prettier
@@ -162,7 +162,7 @@ fun MainScreenContent(
             Spacer(modifier = Modifier.weight(0.5f))
             MainScreenCredentialPager(
                 onNavigate = onNavigate,
-                credentialStore = credentialStore,
+                cardViewModel = cardViewModel,
                 sharedPreferences = sharedPreferences
             )
             Row(
@@ -233,17 +233,18 @@ fun MainScreenNoCredentialsAvailable(onNavigate: (String) -> Unit) {
 @Composable
 fun MainScreenCredentialPager(
     onNavigate: (String) -> Unit,
-    credentialStore: CredentialStore,
+    cardViewModel: CardViewModel,
     sharedPreferences: SharedPreferences,
 ) {
-    val credentialIds = credentialStore.listCredentials()
-    val pagerState = rememberPagerState(pageCount = {
-        credentialIds.size
-    })
+    val pagerState = rememberPagerState(pageCount = { cardViewModel.cards.size })
+
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
             sharedPreferences.edit {
-                putString(WalletApplication.PREFERENCE_CURRENT_CREDENTIAL_ID, credentialIds[page])
+                putString(
+                    WalletApplication.PREFERENCE_CURRENT_CREDENTIAL_ID,
+                    cardViewModel.cards[page].id
+                )
             }
         }
     }
@@ -253,36 +254,23 @@ fun MainScreenCredentialPager(
             state = pagerState,
             modifier = Modifier.height(200.dp)
         ) { page ->
-
-            val credentialId = credentialIds[page]
-            val credential = credentialStore.lookupCredential(credentialId)!!
-            val credentialConfiguration = credential.credentialConfiguration
-            val options = BitmapFactory.Options()
-            options.inMutable = true
-            val credentialBitmap = BitmapFactory.decodeByteArray(
-                credentialConfiguration.cardArt,
-                0,
-                credentialConfiguration.cardArt.size,
-                options
-            )
-            val credentialName = credentialConfiguration.displayName
-
+            val card = cardViewModel.cards[page]
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    bitmap = credentialBitmap.asImageBitmap(),
+                    bitmap = card.artwork.asImageBitmap(),
                     contentDescription =
-                        stringResource(R.string.accessibility_artwork_for, credentialName),
+                    stringResource(R.string.accessibility_artwork_for, card.name),
                     modifier = Modifier.clickable(onClick = {
                         onNavigate(
-                            WalletDestination.CredentialInfo
+                            WalletDestination.CardInfo
                                 .getRouteWithArguments(
                                     listOf(
                                         Pair(
-                                            WalletDestination.CredentialInfo.Argument.CREDENTIAL_ID,
-                                            credentialId
+                                            WalletDestination.CardInfo.Argument.CARD_ID,
+                                            card.id
                                         )
                                     )
                                 )

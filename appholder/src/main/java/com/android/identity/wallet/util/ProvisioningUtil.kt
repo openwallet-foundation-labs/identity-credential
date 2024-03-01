@@ -47,8 +47,8 @@ class ProvisioningUtil private constructor(
         nameSpacedData: NameSpacedData,
         provisionInfo: ProvisionInfo,
     ) {
-        val credential = credentialStore.createCredential(
-            provisionInfo.credentialName())
+        val credential = credentialStore.createCredential(provisionInfo.credentialName())
+        credentialStore.addCredential(credential)
         credential.applicationData.setNameSpacedData("credentialData", nameSpacedData)
 
         val authKeySecureArea: SecureArea = provisionInfo.currentSecureArea.secureArea

@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet.ui.destination.provisioncredential
 
 import android.Manifest
-import android.app.Activity
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.camera.view.PreviewView
@@ -44,7 +43,6 @@ import com.android.identity_credential.mrtd.MrtdNfc
 import com.android.identity_credential.mrtd.MrtdNfcDataReader
 import com.android.identity_credential.mrtd.MrtdNfcReader
 import com.android.identity_credential.mrtd.MrtdNfcScanner
-import com.android.identity_credential.wallet.MainActivity
 import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -54,7 +52,7 @@ import com.android.identity_credential.wallet.util.getActivity
 import kotlinx.coroutines.launch
 
 
-const val TAG_ER = "EvidenceRequest"
+private const val TAG = "EvidenceRequest"
 
 @Composable
 fun EvidenceRequestMessageView(
@@ -293,7 +291,7 @@ fun <ResultT> EvidenceRequestIcaoView(
                                             }
                                         onResult(result)
                                     } catch (err: Exception) {
-                                        Logger.e(TAG_ER, "Error scanning MRTD: $err")
+                                        Logger.e(TAG, "Error scanning MRTD: $err")
                                     }
                                 }
                             }

@@ -36,6 +36,9 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
                 NameSpacedData.Builder().build()
             )
         )
+
+        // This is used in testing, see SelfSignedMdlTest
+        deadlineMillis = 3000L
     }
 
     override fun createPresentationData(presentationFormat: CredentialPresentationFormat,

@@ -31,18 +31,42 @@
     <string name="add_screen_title">Add to Wallet</string>
     <string name="add_screen_select_issuer">Select the issuer for provisioning</string>
 
-    <!-- Credential Information screen -->
-    <string name="credential_title">Credential Information</string>
-    <string name="credential_label_name">Credential name</string>
-    <string name="credential_label_issuer">Issuer</string>
-    <string name="credential_label_state">Credential state</string>
-    <string name="credential_label_cpo_pending">CPO pending</string>
-    <string name="credential_label_last_refresh">Last refresh</string>
-    <string name="credential_label_pending_auth_keys">Pending auth keys</string>
-    <string name="credential_label_auth_keys">Auth keys</string>
-    <string name="credential_button_refresh">Refresh</string>
-    <string name="credential_button_view">View</string>
-    <string name="credential_button_delete">Delete</string>
+    <!-- Card Information screen -->
+    <string name="card_info_screen_title">Credential</string>
+    <string name="card_info_screen_confirm_deletion_title">Confirm Deletion</string>
+    <string name="card_info_screen_confirm_deletion_message">Are you sure you want to delete this card?</string>
+    <string name="card_info_screen_confirm_deletion_confirm_button">Delete</string>
+    <string name="card_info_screen_confirm_deletion_dismiss_button">Cancel</string>
+    <string name="card_info_screen_menu_item_check_for_update">Check for Update</string>
+    <string name="card_info_screen_menu_item_show_data">Show Data</string>
+    <string name="card_info_screen_menu_item_show_keys">Show Keys</string>
+    <string name="card_info_screen_menu_item_delete">Delete</string>
+    <string name="card_info_screen_data_name">Name</string>
+    <string name="card_info_screen_data_issuer">Issuer</string>
+    <string name="card_info_screen_data_status">Status</string>
+    <string name="card_info_screen_data_last_update_check">Last Update Check</string>
+
+    <!-- Card Details screen -->
+    <string name="card_details_screen_title">Credential Data</string>
+    <string name="card_details_screen_disclaimer">UNVERIFIED DATA\nDO NOT USE</string>
+    <string name="card_details_screen_flash_pass_lecture">
+        Showing this screen is not a secure way of sharing identity data because the verifier
+        has no way to confirm the authenticity of the data. Use NFC or QR to share identity
+        data in a secure and privacy-preserving manner.
+    </string>
+
+    <!-- Card Keys screen -->
+    <string name="card_keys_screen_title">Credential Keys</string>
+
+    <!-- CardViewModel -->
+    <string name="card_view_model_status_proofing_required">User proofing required</string>
+    <string name="card_view_model_status_proofing_processing">Application is processing</string>
+    <string name="card_view_model_status_proofing_failed">Application not approved</string>
+    <string name="card_view_model_status_configuration_available">Update available</string>
+    <string name="card_view_model_status_ready">Ready to be used</string>
+    <string name="card_view_model_status_deletion_requested">Deletion requested</string>
+    <string name="card_view_model_unknown_issuer">Unknown Issuer</string>
+    <string name="card_view_model_unknown_card_type">Unknown Card Type</string>
 
     <!-- Credential details screen -->
     <string name="details_title">Credential Details</string>

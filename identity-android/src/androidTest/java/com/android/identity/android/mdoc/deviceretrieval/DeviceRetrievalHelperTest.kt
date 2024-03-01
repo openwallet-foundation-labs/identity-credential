@@ -120,9 +120,8 @@ class DeviceRetrievalHelperTest {
         )
 
         // Create the credential...
-        mCredential = credentialStore.createCredential(
-            "testCredential"
-        )
+        mCredential = credentialStore.createCredential("testCredential")
+        credentialStore.addCredential(mCredential)
         val nameSpacedData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")

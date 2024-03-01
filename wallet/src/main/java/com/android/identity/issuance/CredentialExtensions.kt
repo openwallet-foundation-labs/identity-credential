@@ -1,11 +1,14 @@
 package com.android.identity.issuance
 
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialUtil
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import com.android.identity_credential.wallet.WalletApplication
 import java.lang.IllegalArgumentException
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.DurationUnit
@@ -76,17 +79,14 @@ object CredentialExtensions {
      * change has been detected. (TODO: spell out policy and make it customizable.)
      *
      * @param issuingAuthorityRepository a repository of issuing authorities.
+     * @param secureAreaRepository a repository of Secure Area implementations available.
      * @param forceUpdate if true, throttling will be bypassed.
-     * @return The [CredentialState] retrieved from the issuer.
-     * @throws IllegalArgumentException if the issuer isn't know.
+     * @throws IllegalArgumentException if the issuer isn't known.
      */
     suspend fun Credential.housekeeping(
         issuingAuthorityRepository: IssuingAuthorityRepository,
+        secureAreaRepository: SecureAreaRepository,
         forceUpdate: Boolean,
-        numAuthKeys: Int,
-        minValidTimeMillis: Long,
-        secureArea: SecureArea,
-        authKeyDomain: String
     ) {
         if (forceUpdate) {
             Logger.d(TAG, "housekeeping: Forcing update")
@@ -110,6 +110,12 @@ object CredentialExtensions {
 
         val issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
             ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
+
+        // TODO: this should all come from issuer configuration
+        val numAuthKeys = 3
+        val minValidTimeMillis = 30 * 24 * 3600L
+        val secureArea = secureAreaRepository.getImplementation("AndroidKeystoreSecureArea")!!
+        val authKeyDomain = WalletApplication.AUTH_KEY_DOMAIN
 
         // OK, let's see if configuration is available
         refreshState(issuingAuthorityRepository)

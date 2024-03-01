@@ -1,5 +1,6 @@
 package com.android.identity.issuance.simple
 
+import androidx.lifecycle.Observer
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
@@ -19,7 +20,10 @@ import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
+import kotlinx.datetime.Clock
 import java.lang.UnsupportedOperationException
+import java.util.Timer
+import kotlin.concurrent.timerTask
 import kotlin.random.Random
 
 /**
@@ -36,6 +40,25 @@ abstract class SimpleIssuingAuthority(
     }
 
     abstract override val configuration: IssuingAuthorityConfiguration
+
+    private val observers = mutableListOf<IssuingAuthority.Observer>()
+
+    // This can be changed to simulate proofing and requesting CPOs being slow.
+    protected var deadlineMillis: Long = 0L
+
+    override fun startObserving(observer: IssuingAuthority.Observer) {
+        this.observers.add(observer)
+    }
+
+    override fun stopObserving(observer: IssuingAuthority.Observer) {
+        this.observers.remove(observer)
+    }
+
+    private fun emitOnStateChanged(credentialId: String) {
+        for (observer in observers) {
+            observer.onCredentialStateChanged(this, credentialId)
+        }
+    }
 
     open fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {
         throw UnsupportedOperationException("Tunnel not supported")
@@ -234,11 +257,11 @@ abstract class SimpleIssuingAuthority(
     }
 
     fun addCredentialId(credentialId: String) {
-        // Initial state is PROOFING_REQUIRED and set it so proofing takes just one second...
+        // Initial state is PROOFING_REQUIRED
         saveIssuerCredential(
             credentialId,
             IssuerCredential(
-                System.currentTimeMillis() + 3*1000,
+                0L,
                 CredentialCondition.PROOFING_REQUIRED,
                 mutableMapOf(),           // collectedEvidence - initially empty
                 null,  // no initial credential configuration
@@ -250,7 +273,21 @@ abstract class SimpleIssuingAuthority(
     fun setProofingProcessing(credentialId: String) {
         val issuerCredential = loadIssuerCredential(credentialId)
         issuerCredential.state = CredentialCondition.PROOFING_PROCESSING
+
+        val proofingTimeMillis = deadlineMillis
+        issuerCredential.proofingDeadlineMillis = Clock.System.now().toEpochMilliseconds() + proofingTimeMillis
+
         saveIssuerCredential(credentialId, issuerCredential)
+
+        if (proofingTimeMillis == 0L) {
+            Logger.i(TAG, "Emitting onStateChanged on $credentialId for proofing")
+            emitOnStateChanged(credentialId)
+        } else {
+            Timer().schedule(timerTask {
+                Logger.i(TAG, "Emitting onStateChanged on $credentialId for proofing")
+                emitOnStateChanged(credentialId)
+            }, proofingTimeMillis)
+        }
     }
 
     fun addCollectedEvidence(
@@ -277,7 +314,7 @@ abstract class SimpleIssuingAuthority(
         credentialPresentationRequests: List<CredentialPresentationRequest>
     ) {
         val nowMillis = System.currentTimeMillis()
-        val deadlineMillis = nowMillis + 1000L
+        val deadlineTimeMillis = deadlineMillis
 
         val issuerCredential = loadIssuerCredential(credentialId)
         for (request in credentialPresentationRequests) {
@@ -297,11 +334,21 @@ abstract class SimpleIssuingAuthority(
             val cpoRequest = CpoRequest(
                 authenticationKey,
                 presentationData,
-                deadlineMillis,
+                nowMillis + deadlineTimeMillis,
             )
             issuerCredential.cpoRequests.add(cpoRequest)
         }
         saveIssuerCredential(credentialId, issuerCredential)
+
+        if (deadlineTimeMillis == 0L) {
+            Logger.i(TAG, "Emitting onStateChanged on $credentialId for CpoRequest")
+            emitOnStateChanged(credentialId)
+        } else {
+            Timer().schedule(timerTask {
+                Logger.i(TAG, "Emitting onStateChanged on $credentialId for CpoRequest")
+                emitOnStateChanged(credentialId)
+            }, deadlineTimeMillis)
+        }
     }
 
 }

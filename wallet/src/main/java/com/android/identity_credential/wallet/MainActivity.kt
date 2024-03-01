@@ -19,10 +19,8 @@
 package com.android.identity_credential.wallet
 
 import android.Manifest
-import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
-import android.preference.PreferenceManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -45,7 +43,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var application: WalletApplication
     private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
-    private val credentialInformationViewModel: CredentialInformationViewModel by viewModels()
+    private val cardViewModel: CardViewModel by viewModels()
 
     private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
         PermissionTracker(this, mapOf(
@@ -70,6 +68,13 @@ class MainActivity : ComponentActivity() {
 
         permissionTracker.updatePermissions()
 
+        cardViewModel.setData(
+            applicationContext,
+            application.credentialStore,
+            application.issuingAuthorityRepository,
+            application.secureAreaRepository,
+            application.credentialTypeRepository)
+
         setContent {
             IdentityCredentialTheme {
                 // A surface container using the 'background' color from the theme
@@ -83,10 +88,10 @@ class MainActivity : ComponentActivity() {
                         navController,
                         application = application,
                         provisioningViewModel = provisioningViewModel,
-                        credentialInformationViewModel = credentialInformationViewModel,
                         permissionTracker = permissionTracker,
                         sharedPreferences = application.sharedPreferences,
-                        qrEngagementViewModel = qrEngagementViewModel
+                        qrEngagementViewModel = qrEngagementViewModel,
+                        cardViewModel = cardViewModel
                     )
                 }
             }

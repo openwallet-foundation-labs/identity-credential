@@ -13,9 +13,9 @@ interface ProofingFlow {
      *
      * This is the first method that should be called in the flow.
      *
-     * If this returns the empty list it means that proofing is completed. Otherwise the
-     * application needs to return a single piece of evidence matching one of the provided
-     * requests. Use [sendEvidence] to return the evidence.
+     * If this returns the empty list it means that proofing is completed and the application
+     * should call [completeProofing]. Otherwise the application needs to return a single piece
+     * of evidence matching one of the provided requests. Use [sendEvidence] to return the evidence.
      *
      * @return an empty list if no more evidence is required, otherwise a list of evidence requests.
      */
@@ -30,4 +30,9 @@ interface ProofingFlow {
      * @param evidenceResponse the evidence or null if none of the requested evidence can be returned.
      */
     suspend fun sendEvidence(evidenceResponse: EvidenceResponse?)
+
+    /**
+     * To be called when proofing is complete.
+     */
+    suspend fun completeProofing()
 }

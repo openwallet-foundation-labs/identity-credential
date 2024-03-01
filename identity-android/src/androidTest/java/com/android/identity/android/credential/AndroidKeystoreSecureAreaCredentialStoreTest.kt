@@ -60,6 +60,7 @@ class AndroidKeystoreSecureAreaCredentialStoreTest {
         var credential: Credential? = credentialStore.createCredential(
             "testCredential"
         )
+        credentialStore.addCredential(credential!!)
         Assert.assertEquals("testCredential", credential!!.name)
 
         // Create pending authentication key and check its attestation
@@ -96,6 +97,7 @@ class AndroidKeystoreSecureAreaCredentialStoreTest {
         credential = credentialStore.createCredential(
             "testCredential"
         )
+        credentialStore.addCredential(credential)
         Assert.assertEquals("testCredential", credential.name)
         credential = credentialStore.lookupCredential("testCredential")
         Assert.assertNotNull(credential)

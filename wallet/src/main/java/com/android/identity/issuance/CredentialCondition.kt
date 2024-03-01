@@ -44,7 +44,7 @@ enum class CredentialCondition(val value: Int) {
      * The application should initiate the deletion flow when this state
      * has been reached
      */
-    DELETION_REQUIRED(6);
+    DELETION_REQUESTED(6);
 
     companion object {
         fun fromInt(value: Int): CredentialCondition =

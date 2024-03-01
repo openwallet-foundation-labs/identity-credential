@@ -194,8 +194,8 @@ class CreateRequestViewModel : ViewModel() {
         filterNamespace: (String) -> Boolean = { _ -> true },
         filterElement: (MdocDataElement) -> Boolean = { _ -> true }
     ): RequestDocument {
-        val mdocCredentialType =
-            VerifierApp.credentialTypeRepositoryInstance.getMdocCredentialType(docType)!!
+        val mdocCredentialType = VerifierApp.credentialTypeRepositoryInstance
+                .getCredentialTypeForMdoc(docType)!!.mdocCredentialType!!
         return RequestDocument(
             docType,
             mdocCredentialType.namespaces.values.filter { filterNamespace(it.namespace) }

@@ -44,24 +44,13 @@ class CredentialTypeRepository {
         _credentialTypes.add(credentialType)
 
     /**
-     * Get an mdoc credential type by its doc type
+     * Gets the first [CredentialType] in [credentialTypes] with a given mdoc doctype.
      *
-     * @param docType the type of the mdoc credential     *
-     * @return the [MdocCredentialType] when found
+     * @param mdocDocType the mdoc doc type.
+     * @return the [CredentialType] or null if not found.
      */
-    fun getMdocCredentialType(docType: String): MdocCredentialType? =
+    fun getCredentialTypeForMdoc(mdocDocType: String): CredentialType? =
         _credentialTypes.find {
-            it.mdocCredentialType?.docType?.equals(docType) ?: false
-        }?.mdocCredentialType
-
-    /**
-     * Get a VC credential type by its type
-     *
-     * @param type the type of the VC credential     *
-     * @return the [VcCredentialType] when found
-     */
-    fun getVcCredentialType(type: String): VcCredentialType? =
-        _credentialTypes.find {
-            it.vcCredentialType?.type?.equals(type) ?: false
-        }?.vcCredentialType
+            it.mdocCredentialType?.docType?.equals(mdocDocType) ?: false
+        }
 }
