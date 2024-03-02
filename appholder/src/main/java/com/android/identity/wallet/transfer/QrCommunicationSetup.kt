@@ -17,7 +17,6 @@ import java.security.PublicKey
 class QrCommunicationSetup(
     private val context: Context,
     private val onConnecting: () -> Unit,
-    private val onQrEngagementReady: () -> Unit,
     private val onDeviceRetrievalHelperReady: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit,
     private val onNewDeviceRequest: (request: ByteArray) -> Unit,
     private val onDisconnected: (transportSpecificTermination: Boolean) -> Unit,
@@ -35,11 +34,6 @@ class QrCommunicationSetup(
         get() = qrEngagement.deviceEngagementUriEncoded
 
     private val qrEngagementListener = object : QrEngagementHelper.Listener {
-
-        override fun onDeviceEngagementReady() {
-            log("QR Engagement: Device Engagement Ready")
-            onQrEngagementReady()
-        }
 
         override fun onDeviceConnecting() {
             log("QR Engagement: Device Connecting")

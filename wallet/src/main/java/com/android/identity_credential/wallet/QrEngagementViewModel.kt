@@ -57,10 +57,6 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
             eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
             val qrEngagementListener = object : QrEngagementHelper.Listener {
 
-                override fun onDeviceEngagementReady() {
-                    Logger.i(TAG, "QR Engagement: Device Engagement Ready")
-                }
-
                 override fun onDeviceConnecting() {
                     Logger.i(TAG, "onDeviceConnecting")
                 }

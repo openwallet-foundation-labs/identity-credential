@@ -216,7 +216,7 @@ class TransferManager private constructor(private val context: Context) {
             transferStatusLd.value = TransferStatus.READER_ENGAGEMENT_READY
         }
 
-        override fun onDeviceEngagementReceived(connectionMethods: MutableList<ConnectionMethod>) {
+        override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
             // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
             // if both BLE modes are available at the same time.
             mediaPlayer = mediaPlayer ?: MediaPlayer.create(context, R.raw.nfc_connected)
@@ -372,10 +372,10 @@ class TransferManager private constructor(private val context: Context) {
 
     fun getEngagementMethod(): String =
         when (verification?.engagementMethod) {
-            VerificationHelper.ENGAGEMENT_METHOD_QR_CODE -> "QR Code"
-            VerificationHelper.ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER -> "NFC Static Handover"
-            VerificationHelper.ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER -> "NFC Negotiated Handover"
-            VerificationHelper.ENGAGEMENT_METHOD_REVERSE -> "Reverse"
+            VerificationHelper.EngagementMethod.QR_CODE -> "QR Code"
+            VerificationHelper.EngagementMethod.NFC_STATIC_HANDOVER -> "NFC Static Handover"
+            VerificationHelper.EngagementMethod.NFC_NEGOTIATED_HANDOVER -> "NFC Negotiated Handover"
+            VerificationHelper.EngagementMethod.REVERSE -> "Reverse"
             else -> "N/A"
         }
 }

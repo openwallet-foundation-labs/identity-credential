@@ -151,7 +151,7 @@ class MdocReaderPrompt(
                 this@MdocReaderPrompt.readerEngagement = readerEngagement
             }
 
-            override fun onDeviceEngagementReceived(connectionMethods: MutableList<ConnectionMethod>) {
+            override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
                 // Need to disambiguate the connection methods here to get e.g. two ConnectionMethods
                 // if both BLE modes are available at the same time.
                 Logger.d("Listener", "device engagement received")

@@ -200,7 +200,7 @@ class TransferHelper(
     fun sendResponse(deviceResponseBytes: ByteArray) {
         deviceRetrievalHelper.sendDeviceResponse(
             deviceResponseBytes,
-            OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
         )
     }
 
