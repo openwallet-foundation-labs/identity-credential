@@ -26,9 +26,6 @@
 
     <!-- About screen -->
     <string name="about_screen_title">About Wallet</string>
-    <string name="about_screen_text">This application supports provisioning and presentation of real-world identity using the ISO/IEC 18013-5:2021 mdoc credential format.</string>
-    <string name="about_screen_home_page_text">OWF Identity Credential Home Page</string>
-    <string name="about_screen_iaca_cert_text">IACA certificate</string>
 
     <!-- Add to Wallet screen -->
     <string name="add_screen_title">Add to Wallet</string>
