@@ -45,21 +45,16 @@ class Communication private constructor(
             if (progress == max) {
                 log("Completed...")
             }
+            if (progress == max && closeAfterSending) {
+                deviceRetrievalHelper?.disconnect()
+            }
         }
-        if (closeAfterSending) {
-            deviceRetrievalHelper?.sendDeviceResponse(
-                deviceResponse,
-                OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION),
-                progressListener,
-                context.mainExecutor())
-            deviceRetrievalHelper?.disconnect()
-        } else {
-            deviceRetrievalHelper?.sendDeviceResponse(
-                deviceResponse,
-                OptionalLong.empty(),
-                progressListener,
-                context.mainExecutor())
-        }
+
+        deviceRetrievalHelper?.sendDeviceResponse(
+            deviceResponse,
+            OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION),
+            progressListener,
+            context.mainExecutor())
     }
 
     fun stopPresentation(

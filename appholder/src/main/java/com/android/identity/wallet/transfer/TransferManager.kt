@@ -245,11 +245,13 @@ class TransferManager private constructor(private val context: Context) {
             sendSessionTerminationMessage,
             useTransportSpecificSessionTermination
         )
-        disconnect()
+        disconnect(true)
     }
 
-    fun disconnect() {
-        communication.disconnect()
+    fun disconnect(disconnectCommunication: Boolean) {
+        if (disconnectCommunication) {
+            communication.disconnect()
+        }
         qrCommunicationSetup?.close()
         transferStatusLd = MutableLiveData<TransferStatus>()
         destroy()
@@ -264,7 +266,7 @@ class TransferManager private constructor(private val context: Context) {
     fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
         communication.sendResponse(deviceResponse, closeAfterSending)
         if (closeAfterSending) {
-            disconnect()
+            disconnect(false)
         }
     }
 
