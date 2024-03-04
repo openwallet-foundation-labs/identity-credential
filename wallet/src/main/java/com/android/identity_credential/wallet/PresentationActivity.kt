@@ -53,7 +53,7 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPrompt
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPromptData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
-import com.android.identity_credential.wallet.util.byteArrayToBitmap
+
 import kotlinx.coroutines.launch
 
 class PresentationActivity : ComponentActivity() {
@@ -122,19 +122,17 @@ class PresentationActivity : ComponentActivity() {
     // the user to accept before sending a response to requesting party.
     private var transferHelper: TransferHelper? = null
 
-    // get trust manager from WalletApplication
     private val trustManager: TrustManager by lazy {
         walletApp.trustManager
     }
 
-    // for now, reference the first TrustPoint that exists in TrustManager
-    // later, verify trust point much like in [TransferDocumentFragment.onTransferRequested : 111]
+    // For now, reference the first TrustPoint that exists in TrustManager
+    // TODO verify trust point requesting data much like in [TransferDocumentFragment.onTransferRequested : 111]
     private val trustPoint: TrustPoint by lazy {
         trustManager.getAllTrustPoints().first()
     }
 
-    // define transfer helper builder that can easily build a new TransferHelper once we have a
-    // new instance of DeviceRetrievalHelper
+    // Define the Builder for building a TransferHelper once it gets new instance of DeviceRetrievalHelper
     private val transferHelperBuilder: TransferHelper.Builder by lazy {
         TransferHelper.Builder(
             credentialStore = walletApp.credentialStore,
@@ -144,19 +142,17 @@ class PresentationActivity : ComponentActivity() {
         )
     }
 
-    // lambda called with a Throwable when an error is encountered
+    // lambda called whenever an error is encountered during processing of the Presentation request
     private val showErrorAndDismiss: (Throwable) -> Unit = { throwable ->
         Toast.makeText(applicationContext, throwable.message, Toast.LENGTH_SHORT).show()
         onDestroy()
     }
 
-    // lambda that is called once the request has finished processing and is ready to be sent to requesting party
-    // sends only if state in REQUEST_AVAILABLE, updates state to SENT, finishes activity.
+    // lambda called with response bytes once the request has finished processing and is ready to be sent to requesting party
     private val onFinishedProcessingRequest: (ByteArray) -> Unit = { encodedDeviceResponse ->
         // ensure we are in the right state before sending the response
         check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
 
-        // ensure we have a non-null TransferHelper object
         checkNotNull(transferHelper)
 
         // send the response bytes to requesting party
@@ -167,7 +163,7 @@ class PresentationActivity : ComponentActivity() {
             state.value = State.RESPONSE_SENT
         }
 
-        // terminate PresentationActivity once "presentation is complete" since a response has been sent to requesting party
+        // terminate PresentationActivity since "presentation is complete" (once response is sent)
         finish()
     }
 
@@ -209,14 +205,13 @@ class PresentationActivity : ComponentActivity() {
                             // start processing request and use processed request data to show consent prompt
                             transferHelper?.startProcessingRequest(getDeviceRequest())
                                 ?.let { requestData ->
-                                    // update state object 'consentPromptData' so we can show ConsentPrompt
+                                    // update UI state object 'consentPromptData' so we can show ConsentPrompt
                                     consentPromptData.value = ConsentPromptData(
                                         credentialId = requestData.credential.name,
                                         documentName = requestData.credential.credentialConfiguration.displayName,
                                         credentialRequest = requestData.credentialRequest,
                                         docType = requestData.docType,
                                         verifier = trustPoint,
-                                        verifierIconBitmap = byteArrayToBitmap(trustPoint.displayIcon)
                                     )
                                 }
                         }

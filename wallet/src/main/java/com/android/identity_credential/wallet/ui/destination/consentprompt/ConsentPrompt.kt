@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -27,18 +26,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity_credential.wallet.R
+import com.android.identity_credential.wallet.util.toImageBitmap
 import kotlinx.coroutines.launch
 
 /**
@@ -86,7 +83,7 @@ fun ConsentPrompt(
         sheetState = sheetState,
     ) {
 
-        ConsentPromptTitle(consentData = consentData)
+        ConsentPromptHeader(consentData = consentData)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -116,11 +113,11 @@ fun ConsentPrompt(
 }
 
 /**
- * Composable responsible for preparing the title text according to the TrustPoint's availability,
- * and if present, show the icon (if present) along with the title (if present)
+ * Show the title text according to whether there's a TrustPoint's available, and if present, show
+ * the icon too.
  */
 @Composable
-private fun ConsentPromptTitle(consentData: ConsentPromptData) {
+private fun ConsentPromptHeader(consentData: ConsentPromptData) {
     // title of dialog, if verifier is null or verifier.displayName is null, use default text
     val title = if (consentData.verifier?.displayName == null) {
         LocalContext.current.getString(R.string.consent_prompt_title, consentData.documentName)
@@ -137,22 +134,15 @@ private fun ConsentPromptTitle(consentData: ConsentPromptData) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp), horizontalArrangement = Arrangement.Center
     ) {
-        if (consentData.verifierIconBitmap != null) {
+        // show icon if icon bytes are present
+        consentData.verifier?.displayIcon?.let { iconBytes ->
             Icon(
                 modifier = Modifier.size(24.dp),
-                bitmap = consentData.verifierIconBitmap.asImageBitmap(),
-                contentDescription = "",
-                tint = MaterialTheme.colorScheme.primary
-            )
-        } else {
-            Icon(
-                painterResource(id = R.drawable.ic_reader),
-                modifier = Modifier.size(24.dp),
-                contentDescription = "",
-                tint = MaterialTheme.colorScheme.primary
+                // TODO: we're computing a bitmap every recomposition and this could be slow
+                bitmap = iconBytes.toImageBitmap(),
+                contentDescription = stringResource(id = R.string.consent_prompt_icon_description)
             )
         }
-
         Text(
             text = title,
             modifier = Modifier

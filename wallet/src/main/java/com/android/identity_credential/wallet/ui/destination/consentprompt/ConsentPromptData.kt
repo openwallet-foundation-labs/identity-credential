@@ -22,8 +22,6 @@ data class ConsentPromptData(
     val credentialId: String,
     // party requesting to verify user's data
     val verifier: TrustPoint? = null,
-    // if verifier TrustPoint is present with an icon byte array, process the bytes to bitmap once
-    val verifierIconBitmap: Bitmap? = null
 )
 
 /**

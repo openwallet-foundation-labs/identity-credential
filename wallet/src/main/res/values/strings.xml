@@ -148,5 +148,6 @@
     <string name="consent_prompt_share">Share</string>
     <string name="consent_prompt_title">The following information is being requested from \"%1$s\"</string>
     <string name="consent_prompt_title_verifier">%1$s is requesting information from \"%2$s\"</string>
+    <string name="consent_prompt_icon_description">Verifier Icon</string>
 
 </resources>
