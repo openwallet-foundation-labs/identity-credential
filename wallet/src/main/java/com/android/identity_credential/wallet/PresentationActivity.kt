@@ -126,17 +126,12 @@ class PresentationActivity : ComponentActivity() {
         walletApp.trustManager
     }
 
-    // For now, reference the first TrustPoint that exists in TrustManager
-    // TODO verify trust point requesting data much like in [TransferDocumentFragment.onTransferRequested : 111]
-    private val trustPoint: TrustPoint by lazy {
-        trustManager.getAllTrustPoints().first()
-    }
-
     // Define the Builder for building a TransferHelper once it gets new instance of DeviceRetrievalHelper
     private val transferHelperBuilder: TransferHelper.Builder by lazy {
         TransferHelper.Builder(
             credentialStore = walletApp.credentialStore,
             issuingAuthorityRepository = walletApp.issuingAuthorityRepository,
+            trustManager = walletApp.trustManager,
             context = applicationContext,
             onError = showErrorAndDismiss
         )
@@ -211,7 +206,7 @@ class PresentationActivity : ComponentActivity() {
                                         documentName = requestData.credential.credentialConfiguration.displayName,
                                         credentialRequest = requestData.credentialRequest,
                                         docType = requestData.docType,
-                                        verifier = trustPoint,
+                                        verifier = requestData.trustPoint,
                                     )
                                 }
                         }
