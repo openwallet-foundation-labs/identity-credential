@@ -26,7 +26,6 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.navigation.WalletDestination
 
 /**
  * Presents a screen with an app bar on top and possibly a navigation icon in the top left corner.
@@ -35,7 +34,8 @@ import com.android.identity_credential.wallet.navigation.WalletDestination
 fun ScreenWithAppBar(
     title: String,
     navigationIcon: @Composable () -> Unit,
-    body: @Composable ColumnScope.() -> Unit
+    scrollable: Boolean = true,
+    body: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     Scaffold(
@@ -55,11 +55,14 @@ fun ScreenWithAppBar(
             )
         },
     ) { innerPadding ->
+        var modifier = Modifier
+            .fillMaxHeight()
+            .padding(innerPadding)
+        if (scrollable) {
+            modifier = modifier.verticalScroll(rememberScrollState())
+        }
         Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .verticalScroll(rememberScrollState())
-                .padding(innerPadding),
+            modifier = modifier,
             verticalArrangement = Arrangement.Center,
             content = body
         )
@@ -71,7 +74,8 @@ fun ScreenWithAppBar(
 fun ScreenWithAppBarAndBackButton(
     title: String,
     onBackButtonClick: () -> Unit,
-    body: @Composable ColumnScope.() -> Unit
+    scrollable: Boolean = true,
+    body: @Composable ColumnScope.() -> Unit,
 ) {
     ScreenWithAppBar(title, navigationIcon = {
         IconButton(onClick = { onBackButtonClick() }) {
@@ -80,7 +84,7 @@ fun ScreenWithAppBarAndBackButton(
                 contentDescription = stringResource(R.string.accessibility_go_back_icon)
             )
         }
-    }, body = body)
+    }, scrollable = scrollable, body = body)
 }
 
 @Composable
