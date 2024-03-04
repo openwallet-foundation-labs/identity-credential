@@ -104,12 +104,12 @@ class PassportBasedIssuingAuthority(
     private fun createCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): CredentialConfiguration {
         if (collectedEvidence == null) {
             return CredentialConfiguration(
-                resourceString(R.string.self_signed_authority_pending_credential_title),
+                resourceString(R.string.passport_based_authority_pending_credential_title),
                 createArtwork(
                     Color.rgb(192, 192, 192),
                     Color.rgb(96, 96, 96),
                     null,
-                    resourceString(R.string.self_signed_authority_pending_credential_text),
+                    resourceString(R.string.passport_based_authority_pending_credential_text),
                 ),
                 NameSpacedData.Builder().build()
             )
@@ -165,12 +165,13 @@ class PassportBasedIssuingAuthority(
             .build()
 
         return CredentialConfiguration(
-            resourceString(R.string.self_signed_authority_credential_title, firstName),
+            resourceString(R.string.passport_based_authority_credential_title,
+                firstName),
             createArtwork(
                 gradientColor.first,
                 gradientColor.second,
                 portrait,
-                resourceString(R.string.self_signed_authority_credential_text, firstName),
+                resourceString(R.string.self_certification_authority_credential_text, firstName),
             ),
             staticData
         )
