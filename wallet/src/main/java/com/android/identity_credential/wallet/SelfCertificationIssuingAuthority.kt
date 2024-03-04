@@ -48,29 +48,6 @@ class SelfCertificationIssuingAuthority(
                 resourceString(R.string.self_certification_authority_accept),
                 resourceString(R.string.self_certification_authority_reject),
             )
-            question(
-                "firstName",
-                resourceString(R.string.self_certification_authority_question_first_name),
-                "Erika",
-                resourceString(R.string.self_certification_authority_continue)
-            )
-
-            question(
-                "lastName",
-                resourceString(R.string.self_certification_authority_question_last_name),
-                "Mustermann",
-                resourceString(R.string.self_certification_authority_continue)
-            )
-
-            choice(
-                "art",
-                resourceString(R.string.self_certification_authority_card_art),
-                resourceString(R.string.self_certification_authority_continue)
-            ) {
-                on("green", resourceString(R.string.self_certification_authority_card_art_green)) {}
-                on("blue", resourceString(R.string.self_certification_authority_card_art_blue)) {}
-                on("red", resourceString(R.string.self_certification_authority_card_art_red)) {}
-            }
             message(
                 "message",
                 resourceString(R.string.self_certification_authority_application_finish),
@@ -91,66 +68,33 @@ class SelfCertificationIssuingAuthority(
     private fun createCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): CredentialConfiguration {
         if (collectedEvidence == null) {
             return CredentialConfiguration(
-                resourceString(R.string.self_signed_authority_pending_credential_title),
+                resourceString(R.string.self_certification_authority_pending_credential_title),
                 createArtwork(
                     Color.rgb(192, 192, 192),
                     Color.rgb(96, 96, 96),
                     null,
-                    resourceString(R.string.self_signed_authority_pending_credential_text),
+                    resourceString(R.string.self_certification_authority_pending_credential_text),
                 ),
                 NameSpacedData.Builder().build()
             )
         }
 
-        val evidenceWithFirstName = collectedEvidence["firstName"]
-        val evidenceWithLastName = collectedEvidence["lastName"]
-        val firstName = (evidenceWithFirstName as EvidenceResponseQuestionString).answer
-        val lastName = (evidenceWithLastName as EvidenceResponseQuestionString).answer
         val sex = 2L
         val portrait = bitmapData(null, R.drawable.img_erika_portrait)
         val signatureOrUsualMark = bitmapData(null, R.drawable.img_erika_signature)
 
-
-        val cardArtColor =
-            (collectedEvidence["art"] as EvidenceResponseQuestionMultipleChoice).answerId
-        val gradientColor = when (cardArtColor) {
-            "green" -> {
-                Pair(
+        val gradientColor = Pair(
                     Color.rgb(64, 255, 64),
                     Color.rgb(0, 96, 0),
                 )
-            }
-
-            "blue" -> {
-                Pair(
-                    Color.rgb(64, 64, 255),
-                    Color.rgb(0, 0, 96),
-                )
-            }
-
-            "red" -> {
-                Pair(
-                    Color.rgb(255, 64, 64),
-                    Color.rgb(96, 0, 0),
-                )
-            }
-
-            else -> {
-                Pair(
-                    Color.rgb(255, 255, 64),
-                    Color.rgb(96, 96, 0),
-                )
-            }
-        }
-
 
         val now = Clock.System.now()
         val issueDate = now
         val expiryDate = now + 5.days * 365
 
         val staticData =
-            NameSpacedData.Builder().putEntryString(MDL_NAMESPACE, "given_name", firstName)
-                .putEntryString(MDL_NAMESPACE, "family_name", lastName)
+            NameSpacedData.Builder().putEntryString(MDL_NAMESPACE, "given_name", "Erika")
+                .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
                 .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
                 .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
                 .putEntryNumber(MDL_NAMESPACE, "sex", sex).putEntry(
@@ -167,12 +111,12 @@ class SelfCertificationIssuingAuthority(
                 .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true).build()
 
         return CredentialConfiguration(
-            resourceString(R.string.self_signed_authority_credential_title, firstName),
+            resourceString(R.string.self_certification_authority_credential_title, "Erika"),
             createArtwork(
                 gradientColor.first,
                 gradientColor.second,
                 portrait,
-                resourceString(R.string.self_signed_authority_credential_text, firstName),
+                resourceString(R.string.self_certification_authority_credential_text, "Erika"),
             ),
             staticData
         )
