@@ -2,6 +2,7 @@ package com.android.identity_credential.wallet.presentation
 
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialRequest
+import com.android.identity.trustmanagement.TrustPoint
 
 /**
  * Contains data produced after starting to process a Presentation request.
@@ -12,5 +13,6 @@ import com.android.identity.credential.CredentialRequest
 data class PresentationRequestData (
     val credential: Credential,
     val credentialRequest: CredentialRequest,
-    val docType : String
+    val docType : String,
+    val trustPoint : TrustPoint?
 )

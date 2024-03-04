@@ -9,6 +9,7 @@ import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.CredentialPresentationFormat
@@ -19,7 +20,10 @@ import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.trustmanagement.TrustManager
+import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
+import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.SelfSignedMdlIssuingAuthority
 import com.android.identity_credential.wallet.WalletApplication
@@ -35,10 +39,14 @@ import java.util.OptionalLong
 class TransferHelper(
     private val credentialStore: CredentialStore,
     private val issuingAuthorityRepository: IssuingAuthorityRepository,
+    private val trustManager: TrustManager,
     private val context: Context,
     private val deviceRetrievalHelper: DeviceRetrievalHelper,
     private val onError: (Throwable) -> Unit
 ) {
+    companion object {
+        private const val TAG = "TransferHelper"
+    }
 
     /**
      * Builder class returning a new TransferHelper instance with a new deviceRetrievalHelper object.
@@ -46,6 +54,7 @@ class TransferHelper(
     class Builder(
         val credentialStore: CredentialStore,
         val issuingAuthorityRepository: IssuingAuthorityRepository,
+        val trustManager: TrustManager,
         val context: Context,
         var deviceRetrievalHelper: DeviceRetrievalHelper? = null,
         var onError: (Throwable) -> Unit = {},
@@ -57,6 +66,7 @@ class TransferHelper(
         fun build() = TransferHelper(
             credentialStore = credentialStore,
             issuingAuthorityRepository = issuingAuthorityRepository,
+            trustManager = trustManager,
             context = context,
             deviceRetrievalHelper = deviceRetrievalHelper!!,
             onError = onError
@@ -95,12 +105,27 @@ class TransferHelper(
             .setSessionTranscript(deviceRetrievalHelper.sessionTranscript)
             .parse()
         val docRequest = request.documentRequests[0]
+
+        var trustPoint: TrustPoint? = null
+        if (docRequest.readerAuth != null && docRequest.readerAuthenticated) {
+            val result = trustManager.verify(
+                docRequest.readerCertificateChain.javaX509Certificates,
+                customValidators = emptyList()  // not neeeded for reader auth
+            )
+            if (result.isTrusted && !result.trustPoints.isEmpty()) {
+                trustPoint = result.trustPoints.first()
+            } else if (result.error != null) {
+                Logger.w(TAG, "Error finding trustpoint for reader auth", result.error!!)
+            }
+        }
+
         val credentialRequest = MdocUtil.generateCredentialRequest(docRequest!!)
         val requestedDocType: String = docRequest.docType
         return PresentationRequestData(
             credential,
             credentialRequest,
-            requestedDocType
+            requestedDocType,
+            trustPoint
         )
     }
 
