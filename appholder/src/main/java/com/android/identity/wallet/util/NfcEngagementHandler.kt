@@ -27,12 +27,10 @@ import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.internal.Util
 import com.android.identity.wallet.R
 import com.android.identity.wallet.transfer.Communication
 import com.android.identity.wallet.transfer.ConnectionSetup
 import com.android.identity.wallet.transfer.TransferManager
-import java.security.PublicKey
 
 class NfcEngagementHandler : HostApduService() {
 
@@ -40,7 +38,7 @@ class NfcEngagementHandler : HostApduService() {
     private lateinit var communication: Communication
     private lateinit var transferManager: TransferManager
 
-    private var presentation: DeviceRetrievalHelper? = null
+    private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
     private val settings by lazy {
         PreferencesHelper.apply { initialize(applicationContext) }
@@ -70,7 +68,7 @@ class NfcEngagementHandler : HostApduService() {
         }
 
         override fun onDeviceConnected(transport: DataTransport) {
-            if (presentation != null) {
+            if (deviceRetrievalHelper != null) {
                 log("Engagement Listener: Device Connected -> ignored due to active presentation")
                 return
             }
@@ -88,8 +86,8 @@ class NfcEngagementHandler : HostApduService() {
                 engagementHelper.deviceEngagement,
                 engagementHelper.handover
             )
-            presentation = builder.build()
-            communication.setupPresentation(presentation!!)
+            deviceRetrievalHelper = builder.build()
+            communication.deviceRetrievalHelper = deviceRetrievalHelper
             engagementHelper.close()
             transferManager.updateStatus(TransferStatus.CONNECTED)
         }
@@ -175,7 +173,7 @@ class NfcEngagementHandler : HostApduService() {
         //
         val timeoutSeconds = 15
         Handler(Looper.getMainLooper()).postDelayed({
-            if (presentation == null) {
+            if (deviceRetrievalHelper == null) {
                 logWarning("reader didn't connect inside $timeoutSeconds seconds, closing")
                 engagementHelper.close()
             }

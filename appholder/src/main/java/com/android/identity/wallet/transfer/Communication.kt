@@ -16,26 +16,22 @@ class Communication private constructor(
     private var request: DeviceRequest? = null
     var deviceRetrievalHelper: DeviceRetrievalHelper? = null
 
-    fun setupPresentation(deviceRetrievalHelper: DeviceRetrievalHelper) {
-        this.deviceRetrievalHelper = deviceRetrievalHelper
-    }
-
     fun setDeviceRequest(deviceRequest: ByteArray) {
         this.request = DeviceRequest(deviceRequest)
     }
 
-    fun getDeviceRequest(): DeviceRequestParser.DeviceRequest {
+    fun getDeviceRequest(): DeviceRequestParser.DeviceRequest =
         request?.let { requestBytes ->
             deviceRetrievalHelper?.let { presentation ->
-                val parser = DeviceRequestParser(requestBytes.value, presentation.sessionTranscript)
-                return parser.parse()
+                DeviceRequestParser(
+                    requestBytes.value,
+                    presentation.sessionTranscript
+                ).run { parse() }
             } ?: throw IllegalStateException("Presentation not set")
         } ?: throw IllegalStateException("Request not received")
-    }
 
-    fun getSessionTranscript(): ByteArray? {
-        return deviceRetrievalHelper?.sessionTranscript
-    }
+
+    fun getSessionTranscript(): ByteArray? = deviceRetrievalHelper?.sessionTranscript
 
     fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
         val progressListener: (Long, Long) -> Unit = { progress, max ->
@@ -44,19 +40,23 @@ class Communication private constructor(
                 log("Completed...")
             }
         }
-        if (closeAfterSending) {
-            deviceRetrievalHelper?.sendDeviceResponse(
-                deviceResponse,
-                OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION),
-                progressListener,
-                context.mainExecutor())
-            deviceRetrievalHelper?.disconnect()
-        } else {
-            deviceRetrievalHelper?.sendDeviceResponse(
-                deviceResponse,
-                OptionalLong.empty(),
-                progressListener,
-                context.mainExecutor())
+        deviceRetrievalHelper?.run {
+            if (closeAfterSending) {
+                sendDeviceResponse(
+                    deviceResponse,
+                    OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION),
+                    progressListener,
+                    context.mainExecutor()
+                )
+                disconnect()
+            } else {
+                sendDeviceResponse(
+                    deviceResponse,
+                    OptionalLong.empty(),
+                    progressListener,
+                    context.mainExecutor()
+                )
+            }
         }
     }
 
@@ -77,14 +77,13 @@ class Communication private constructor(
         disconnect()
     }
 
-    fun disconnect() {
-        request = null
+    fun disconnect() =
         try {
+            request = null
             deviceRetrievalHelper?.disconnect()
         } catch (e: RuntimeException) {
             log("Error ignored closing presentation", e)
         }
-    }
 
     companion object {
 

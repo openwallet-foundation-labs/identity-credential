@@ -88,14 +88,13 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
         encodedIssuerAuth: ByteArray
     ) = apply {
         val insOuter = CborMap.builder()
-        for (ns in issuerNameSpaces.keys) {
-            val insInner = insOuter.putArray(
-                ns!!
-            )
-            for (encodedIssuerSignedItemBytes in issuerNameSpaces[ns]!!) {
-                insInner.add(RawCbor(encodedIssuerSignedItemBytes!!))
+        for ((ns, encodedIssuerSignedItemBytesList) in issuerNameSpaces) {
+            insOuter.putArray(ns!!).let { insInner ->
+                for (encodedIssuerSignedItemBytes in encodedIssuerSignedItemBytesList) {
+                    insInner.add(RawCbor(encodedIssuerSignedItemBytes!!))
+                }
+                insInner.end()
             }
-            insInner.end()
         }
         val issuerSigned = CborMap.builder()
             .put("nameSpaces", insOuter.end().build())
@@ -104,8 +103,9 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
             .build()
         val deviceAuthType: String
         val deviceAuth: ByteArray?
-        require(!(encodedDeviceSignature != null && encodedDeviceMac != null)) { "" +
-                "Cannot specify both Signature and MAC"
+        require(!(encodedDeviceSignature != null && encodedDeviceMac != null)) {
+            "" +
+                    "Cannot specify both Signature and MAC"
         }
         if (encodedDeviceSignature != null) {
             deviceAuthType = "deviceSignature"
@@ -129,14 +129,10 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
         mapBuilder.put("deviceSigned", deviceSigned)
         if (errors != null) {
             val errorsOuterMapBuilder = CborMap.builder()
-            for (namespaceName in errors.keys) {
-                val errorsInnerMapBuilder = errorsOuterMapBuilder.putMap(
-                    namespaceName!!
-                )
-                val innerMap = errors[namespaceName]!!
-                for (dataElementName in innerMap.keys) {
-                    val value = innerMap[dataElementName]!!
-                    errorsInnerMapBuilder.put(dataElementName!!, value)
+            for ((namespaceName, innerMap) in errors) {
+                val errorsInnerMapBuilder = errorsOuterMapBuilder.putMap(namespaceName!!)
+                for ((dataElementName, value) in innerMap) {
+                    errorsInnerMapBuilder.put(dataElementName!!, value!!)
                 }
             }
             mapBuilder.put("errors", errorsOuterMapBuilder.end().build())
@@ -153,9 +149,8 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
      * 18013-5 section 8.3.2.1.2.2.
      * @return the generator.
      */
-    fun addDocument(encodedDocument: ByteArray): DeviceResponseGenerator {
+    fun addDocument(encodedDocument: ByteArray) = apply {
         mDocumentsBuilder.add(Cbor.decode(encodedDocument))
-        return this
     }
 
     /**
@@ -163,16 +158,16 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
      *
      * @return the bytes of `DeviceResponse` CBOR.
      */
-    fun generate(): ByteArray {
-        val mapBuilder = CborMap.builder()
-        mapBuilder.put("version", "1.0")
-        mapBuilder.put("documents", mDocumentsBuilder.end().build())
-        // TODO: The documentErrors map entry should only be present if there is a non-zero
-        //  number of elements in the array. Right now we don't have a way for the application
-        //  to convey document errors but when we add that API we'll need to do something so
-        //  it is included here.
-        mapBuilder.put("status", mStatusCode)
-        mapBuilder.end()
-        return Cbor.encode(mapBuilder.end().build())
-    }
+    fun generate(): ByteArray =
+        CborMap.builder().run {
+            put("version", "1.0")
+            put("documents", mDocumentsBuilder.end().build())
+            // TODO: The documentErrors map entry should only be present if there is a non-zero
+            //  number of elements in the array. Right now we don't have a way for the application
+            //  to convey document errors but when we add that API we'll need to do something so
+            //  it is included here.
+            put("status", mStatusCode)
+            end()
+            Cbor.encode(end().build())
+        }
 }

@@ -36,10 +36,8 @@ class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
      * @exception IllegalStateException if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun parse(): StaticAuthData {
-        val staticAuthData = StaticAuthData()
-        staticAuthData.parse(encodedStaticAuthData)
-        return staticAuthData
+    fun parse(): StaticAuthData = StaticAuthData().apply {
+        parse(encodedStaticAuthData)
     }
 
     /**
@@ -52,7 +50,7 @@ class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
          */
         lateinit var issuerAuth: ByteArray
 
-        private val _digestIdMapping: MutableMap<String, List<ByteArray>> = mutableMapOf()
+        private val _digestIdMapping = mutableMapOf<String, List<ByteArray>>()
 
         /**
          * The mapping between `Namespace`s and a list of
@@ -62,21 +60,21 @@ class StaticAuthDataParser(private val encodedStaticAuthData: ByteArray) {
             get() = _digestIdMapping
 
         private fun parseDigestIdMapping(digestIdMapping: DataItem) {
-            for (namespaceDataItem in digestIdMapping.asMap.keys) {
-                val namespace = namespaceDataItem.asTstr
-                val namespaceList = digestIdMapping[namespaceDataItem].asArray
-                val innerArray: MutableList<ByteArray> = ArrayList()
-                for (innerKey in namespaceList) {
-                    innerArray.add(Cbor.encode(innerKey))
+            for ((namespaceDataItemKey, namespaceDataItemValue) in digestIdMapping.asMap) {
+                val namespace = namespaceDataItemKey.asTstr
+                namespaceDataItemValue.asArray.let { namespaceList ->
+                    namespaceList.map { innerKey -> Cbor.encode(innerKey) }.also { innerList ->
+                        _digestIdMapping[namespace] = innerList
+                    }
                 }
-                _digestIdMapping[namespace] = innerArray
             }
         }
 
-        internal fun parse(encodedStaticAuthData: ByteArray) {
-            val staticAuthData = Cbor.decode(encodedStaticAuthData)
-            issuerAuth = Cbor.encode(staticAuthData["issuerAuth"])
-            parseDigestIdMapping(staticAuthData["digestIdMapping"])
-        }
+        internal fun parse(encodedStaticAuthData: ByteArray) =
+            Cbor.decode(encodedStaticAuthData).run {
+                issuerAuth = Cbor.encode(this["issuerAuth"])
+                parseDigestIdMapping(this["digestIdMapping"])
+            }
+
     }
 }

@@ -55,11 +55,8 @@ class DeviceRequestParser(
      * @param skipReaderAuthParseAndCheck a flag to skip force skip parsing the reader auth structure.
      * @return the `DeviceRequestParser`.
      */
-    fun setSkipReaderAuthParseAndCheck(
-        skipReaderAuthParseAndCheck: Boolean
-    ): DeviceRequestParser {
+    fun setSkipReaderAuthParseAndCheck(skipReaderAuthParseAndCheck: Boolean) = apply {
         this.skipReaderAuthParseAndCheck = skipReaderAuthParseAndCheck
-        return this
     }
 
     /**
@@ -80,11 +77,12 @@ class DeviceRequestParser(
      * @throws IllegalStateException    if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun parse(): DeviceRequest {
-        val sessionTranscript = Cbor.decode(encodedSessionTranscript)
-        val request = DeviceRequest()
-        request.parse(encodedDeviceRequest, sessionTranscript, skipReaderAuthParseAndCheck)
-        return request
+    fun parse(): DeviceRequest = DeviceRequest().apply {
+        parse(
+            encodedDeviceRequest,
+            Cbor.decode(encodedSessionTranscript),
+            skipReaderAuthParseAndCheck
+        )
     }
 
     /**
@@ -115,8 +113,7 @@ class DeviceRequestParser(
             version = request["version"].asTstr
             require(version.compareTo("1.0") >= 0) { "Given version '$version' not >= '1.0'" }
             var readerCertChain: CertificateChain? = null
-            val docRequests = request.getOrNull("docRequests")
-            if (docRequests != null) {
+            request.getOrNull("docRequests")?.let { docRequests ->
                 val docRequestsDataItems = docRequests.asArray
                 for (docRequestDataItem in docRequestsDataItems) {
                     val itemsRequestBytesDataItem = docRequestDataItem["itemsRequest"]
@@ -135,7 +132,7 @@ class DeviceRequestParser(
                             ]!!.asNumber.toInt()
                         )
                         readerCertChain = readerCertChainDataItem!!.asCertificateChain
-                        val readerKey = readerCertChain.certificates[0].publicKey
+                        val readerKey = readerCertChain!!.certificates[0].publicKey
                         val encodedReaderAuthentication = Cbor.encode(
                             CborArray.builder()
                                 .add("ReaderAuthentication")
@@ -153,9 +150,8 @@ class DeviceRequestParser(
                             signatureAlgorithm
                         )
                     }
-                    val requestInfoDataItem = itemsRequest.getOrNull("requestInfo")
                     val requestInfo: MutableMap<String, ByteArray> = HashMap()
-                    if (requestInfoDataItem != null) {
+                    itemsRequest.getOrNull("requestInfo")?.let { requestInfoDataItem ->
                         for (keyDataItem in requestInfoDataItem.asMap.keys) {
                             val key = keyDataItem.asTstr
                             val encodedValue = Cbor.encode(requestInfoDataItem[keyDataItem])
@@ -165,7 +161,10 @@ class DeviceRequestParser(
                     val docType = itemsRequest["docType"].asTstr
                     val builder = DocumentRequest.Builder(
                         docType,
-                        Cbor.encode(itemsRequest), requestInfo, encodedReaderAuth, readerCertChain,
+                        Cbor.encode(itemsRequest),
+                        requestInfo,
+                        encodedReaderAuth,
+                        readerCertChain,
                         readerAuthenticated
                     )
 
@@ -178,12 +177,11 @@ class DeviceRequestParser(
         }
 
         private fun parseNamespaces(nameSpaces: DataItem, builder: DocumentRequest.Builder) {
-            for (nameSpaceDataItem in nameSpaces.asMap.keys) {
+            for ((nameSpaceDataItem, itemsMap) in nameSpaces.asMap) {
                 val nameSpace = nameSpaceDataItem.asTstr
-                val itemsMap = nameSpaces[nameSpaceDataItem]
-                for (itemKeyDataItem in itemsMap.asMap.keys) {
+                for ((itemKeyDataItem, itemValDataItem) in itemsMap.asMap) {
                     val itemKey = itemKeyDataItem.asTstr
-                    val intentToRetain = itemsMap[itemKeyDataItem].asBoolean
+                    val intentToRetain = itemValDataItem.asBoolean
                     builder.addEntry(nameSpace, itemKey, intentToRetain)
                 }
             }
@@ -247,7 +245,8 @@ class DeviceRequestParser(
         val readerAuthenticated: Boolean
     ) {
 
-        internal val requestMap: MutableMap<String, MutableMap<String, Boolean>> = mutableMapOf()
+        internal val requestMap = mutableMapOf<String, MutableMap<String, Boolean>>()
+
 
         /**
          * Gets the names of namespaces that the reader requested.
@@ -265,7 +264,7 @@ class DeviceRequestParser(
         fun getEntryNames(namespaceName: String): List<String> {
             val innerMap = requestMap[namespaceName]
                 ?: throw IllegalArgumentException("Namespace wasn't requested")
-            return ArrayList(innerMap.keys)
+            return innerMap.keys.toList()
         }
 
         /**
@@ -294,16 +293,11 @@ class DeviceRequestParser(
             readerCertChain: CertificateChain?,
             readerAuthenticated: Boolean
         ) {
-            private val result: DocumentRequest
-
-            init {
-                result = DocumentRequest(
-                    docType,
-                    encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain,
-                    readerAuthenticated
-                )
-            }
-
+            private val result = DocumentRequest(
+                docType,
+                encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain,
+                readerAuthenticated
+            )
             fun addEntry(
                 namespaceName: String,
                 entryName: String,
