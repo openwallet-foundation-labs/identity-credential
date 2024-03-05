@@ -28,13 +28,13 @@ abstract class OriginInfo {
         private const val TAG = "OriginInfo"
 
         @JvmStatic
-        fun decode(oiDataItem: DataItem): OriginInfo? {
-            val type = oiDataItem["type"].asNumber
-            if (type.toInt() == OriginInfoDomain.TYPE) {
-                return OriginInfoDomain.decode(oiDataItem)
+        fun decode(oiDataItem: DataItem): OriginInfo? =
+            oiDataItem["type"].asNumber.let { type ->
+                if (type.toInt() == OriginInfoDomain.TYPE) {
+                    return OriginInfoDomain.decode(oiDataItem)
+                }
+                Logger.w(TAG, "Unsupported type $type")
+                null
             }
-            Logger.w(TAG, "Unsupported type $type")
-            return null
-        }
     }
 }

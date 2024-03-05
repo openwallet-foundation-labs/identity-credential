@@ -40,10 +40,8 @@ class MobileSecurityObjectParser(
      * @exception IllegalStateException if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun parse(): MobileSecurityObject {
-        val mso = MobileSecurityObject()
-        mso.parse(encodedMobileSecurityObject)
-        return mso
+    fun parse(): MobileSecurityObject = MobileSecurityObject().apply {
+        parse(encodedMobileSecurityObject)
     }
 
     /**
@@ -117,9 +115,8 @@ class MobileSecurityObjectParser(
          * @return The mapping present for that namespace if it exists within the ValueDigests,
          * else null.
          */
-        fun getDigestIDs(namespace: String): Map<Long, ByteArray>? {
-            return valueDigests[namespace]
-        }
+        fun getDigestIDs(namespace: String): Map<Long, ByteArray>? = valueDigests[namespace]
+
 
         /**
          * Gets the `AuthorizedNameSpaces` portion of the `keyAuthorizations`
@@ -160,29 +157,28 @@ class MobileSecurityObjectParser(
             deviceKey = deviceKeyInfo["deviceKey"].asCoseKey.ecPublicKey
             _authorizedNameSpaces = null
             _authorizedDataElements = null
-            val keyAuth = deviceKeyInfo.getOrNull("keyAuthorizations")
-            if (keyAuth != null) {
-                val nameSpaces = keyAuth.getOrNull("nameSpaces")
-                if (nameSpaces != null) {
-                    _authorizedNameSpaces = mutableListOf()
-                    for (nameSpaceDataItem in (nameSpaces as CborArray).items) {
-                        _authorizedNameSpaces!!.add(nameSpaceDataItem.asTstr)
-                    }
+            deviceKeyInfo.getOrNull("keyAuthorizations")?.let { keyAuth ->
+                keyAuth.getOrNull("nameSpaces")?.let { nameSpaces ->
+                    _authorizedNameSpaces =
+                        (nameSpaces as CborArray).items.map { it.asTstr }.toMutableList()
                 }
-                val dataElements = keyAuth.getOrNull("dataElements")
-                if (dataElements != null) {
+
+                keyAuth.getOrNull("dataElements")?.let { dataElements ->
                     _authorizedDataElements = mutableMapOf()
                     for (nameSpaceNameDataItem in dataElements.asMap.keys) {
                         val nameSpaceName = nameSpaceNameDataItem.asTstr
-                        val dataElemArray: MutableList<String> = ArrayList()
                         val dataElementDataItems = dataElements[nameSpaceName] as CborArray
-                        for (dataElementIdentifier in dataElementDataItems.items) {
-                            dataElemArray.add(dataElementIdentifier.asTstr)
+                        mutableListOf<String>().let { dataElemList ->
+                            for (dataElementIdentifier in dataElementDataItems.items) {
+                                dataElemList.add(dataElementIdentifier.asTstr)
+                            }
+                            _authorizedDataElements!![nameSpaceName] = dataElemList
                         }
-                        _authorizedDataElements!![nameSpaceName] = dataElemArray
+
                     }
                 }
             }
+
             _deviceKeyInfo = null
             if (deviceKeyInfo.getOrNull("keyInfo") != null) {
                 _deviceKeyInfo = mutableMapOf()
@@ -195,8 +191,10 @@ class MobileSecurityObjectParser(
         }
 
         private fun parseValidityInfo(validityInfo: DataItem) {
-            signed = Timestamp.ofEpochMilli(validityInfo["signed"].asDateTimeString
-                .toEpochMilliseconds())
+            signed = Timestamp.ofEpochMilli(
+                validityInfo["signed"].asDateTimeString
+                    .toEpochMilliseconds()
+            )
             validFrom =
                 Timestamp.ofEpochMilli(validityInfo["validFrom"].asDateTimeString.toEpochMilliseconds())
             validUntil =

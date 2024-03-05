@@ -132,12 +132,12 @@ class MainActivity : ComponentActivity() {
             deviceResponseBytes,
             transferHelper.getSessionTranscript()
         ).parse()
-        if (parsedResponse.documents.size < 1) {
+        if (parsedResponse.documents.isEmpty()) {
             Toast.makeText(applicationContext, "No documents returned", Toast.LENGTH_SHORT).show()
             transferHelper.close()
             return
         }
-        val doc = parsedResponse.documents.get(0)
+        val doc = parsedResponse.documents.first()
         if (!doc.docType.equals(MDL_DOCTYPE)) {
             Toast.makeText(applicationContext, "Expected mDL, got ${doc.docType}", Toast.LENGTH_SHORT).show()
             transferHelper.close()
