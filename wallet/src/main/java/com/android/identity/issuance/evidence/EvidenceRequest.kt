@@ -30,6 +30,13 @@ abstract class EvidenceRequest(
                 if (er.rejectButtonText != null) {
                     mapBuilder.put("rejectButtonText", er.rejectButtonText)
                 }
+                if (er.assets.isNotEmpty()) {
+                    val assetsBuilder = CborMap.builder()
+                    for (entry in er.assets) {
+                        assetsBuilder.put(entry.key, entry.value)
+                    }
+                    mapBuilder.put("assets", assetsBuilder.end().build())
+                }
             }
             EvidenceType.QUESTION_STRING -> {
                 val er = this as EvidenceRequestQuestionString
@@ -73,8 +80,14 @@ abstract class EvidenceRequest(
             val evidenceType = EvidenceType.valueOf(map["evidenceType"].asTstr)
             when (evidenceType) {
                 EvidenceType.MESSAGE -> {
+                    val assets = mutableMapOf<String, ByteArray>()
+                    val assetMap = map["assets"].asMap
+                    for (assetName in assetMap.keys) {
+                        assets[assetName.asTstr] = assetMap[assetName]!!.asBstr
+                    }
                     return EvidenceRequestMessage(
                         map["message"].asTstr,
+                        assets,
                         map["acceptButtonText"].asTstr,
                         map.getOrNull("rejectButtonText")?.asTstr,
                     )

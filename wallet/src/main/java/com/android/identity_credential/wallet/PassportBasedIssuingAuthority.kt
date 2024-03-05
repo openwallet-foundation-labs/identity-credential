@@ -28,6 +28,7 @@ class PassportBasedIssuingAuthority(
 ) : SelfSignedMdlIssuingAuthority(application, storageEngine) {
 
     override lateinit var configuration: IssuingAuthorityConfiguration
+    private val tosAssets: Map<String, ByteArray>;
 
     init {
         val baos = ByteArrayOutputStream()
@@ -44,6 +45,7 @@ class PassportBasedIssuingAuthority(
             setOf(CredentialPresentationFormat.MDOC_MSO),
             createCredentialConfiguration(null)
         )
+        tosAssets = mapOf("mrtd_logo.svg" to resourceBytes(R.raw.mrtd_logo))
     }
 
     override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
@@ -51,6 +53,7 @@ class PassportBasedIssuingAuthority(
             message(
                 "tos",
                 resourceString(R.string.passport_based_authority_tos),
+                tosAssets,
                 resourceString(R.string.passport_based_authority_accept),
                 resourceString(R.string.passport_based_authority_reject),
             )
@@ -59,6 +62,7 @@ class PassportBasedIssuingAuthority(
                     message(
                         "inform",
                         resourceString(R.string.passport_based_authority_chip_authentication),
+                        mapOf(),
                         resourceString(R.string.passport_based_authority_continue),
                         null
                     )
@@ -67,6 +71,7 @@ class PassportBasedIssuingAuthority(
                     message(
                         "inform",
                         resourceString(R.string.passport_based_authority_active_authentication),
+                        mapOf(),
                         resourceString(R.string.passport_based_authority_continue),
                         null
                     )
@@ -75,6 +80,7 @@ class PassportBasedIssuingAuthority(
                     message(
                         "inform",
                         resourceString(R.string.passport_based_authority_no_authentication),
+                        mapOf(),
                         resourceString(R.string.passport_based_authority_continue),
                         null
                     )
@@ -83,6 +89,7 @@ class PassportBasedIssuingAuthority(
             message(
                 "message",
                 resourceString(R.string.passport_based_authority_application_finish),
+                mapOf(),
                 resourceString(R.string.passport_based_authority_continue),
                 null
             )

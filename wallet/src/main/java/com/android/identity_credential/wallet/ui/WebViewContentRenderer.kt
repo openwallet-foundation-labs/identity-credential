@@ -4,19 +4,28 @@ import android.content.Intent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.LinearLayout.LayoutParams
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.io.ByteArrayInputStream
 import java.io.FileNotFoundException
+import java.net.URLDecoder
+import java.util.logging.Handler
 import kotlin.math.roundToInt
 
 /**
@@ -42,9 +51,15 @@ abstract class WebViewContentRenderer {
         color: Color = MaterialTheme.colorScheme.onSurface,
         primaryColor: Color = MaterialTheme.colorScheme.primary,
         linkColor: Color = MaterialTheme.colorScheme.secondary,
-        backgroundColor: Color = MaterialTheme.colorScheme.surface
+        backgroundColor: Color = MaterialTheme.colorScheme.surface,
+        assets: Map<String, ByteArray>? = null
     ) {
-        Box(modifier = modifier) {
+        var contentHeight = remember { mutableIntStateOf(0) }
+        var m = modifier;
+        if (contentHeight.intValue > 0) {
+            m = m.height(contentHeight.intValue.dp)
+        }
+        Box(modifier = m) {
             val bootstrapHtml = getBootstrapHtml(
                 createStyle(
                     color = color,
@@ -53,22 +68,41 @@ abstract class WebViewContentRenderer {
                     backgroundColor = backgroundColor
                 )
             )
-            val client = ClientImpl(bootstrapHtml)
+            val client = ClientImpl(bootstrapHtml, assets)
             AndroidView(factory = { context ->
                 val webView = WebView(context).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
                     )
 
+                    setBackgroundColor(backgroundColor.toArgb())
+
                     settings.javaScriptEnabled = true
 
                     webViewClient = client
                 }
 
+                val mainHandler = android.os.Handler(context.mainLooper)
+
+                val callback = object {
+                    @JavascriptInterface
+                    fun updateHeight(height: Float) {
+                        mainHandler.post {
+                            if (webView.isVerticalScrollBarEnabled) {
+                                contentHeight.intValue = 0
+                            } else {
+                                contentHeight.intValue = height.roundToInt()
+                           }
+                        }
+                    }
+                }
+
                 webView.loadUrl("https://local/")
+                webView.addJavascriptInterface(callback, "Callback")
 
                 webView
             }, update = { webView ->
+                client.assets = assets
                 webView.isHorizontalScrollBarEnabled = false
                 webView.isVerticalScrollBarEnabled = verticalScrolling
                 if (verticalScrolling) {
@@ -123,7 +157,10 @@ abstract class WebViewContentRenderer {
             .padStart(2, '0') + (srgb.blue * 255).roundToInt().toString(16).padStart(2, '0')
     }
 
-    internal class ClientImpl(val bootstrapHtml: String) : WebViewClient() {
+    internal class ClientImpl(
+        val bootstrapHtml: String,
+        var assets: Map<String, ByteArray>?) : WebViewClient() {
+
         var loaded = false
         var deferredCommand = ""
 
@@ -156,8 +193,17 @@ abstract class WebViewContentRenderer {
 
                 null -> resourceNotFound()
                 else -> try {
-                    val stream = context.assets.open("webview$encodedPath")
-                    val mediaType = mediaTypeFromName(encodedPath)
+                    val assets = this.assets
+                    val path = URLDecoder.decode(encodedPath, "UTF-8")
+                    val stream = if (path.endsWith(".js") || assets == null) {
+                        context.assets.open("webview$path")
+                    } else {
+                        // remove leading '/'
+                        val strippedPath = path.substring(1)
+                        val asset = assets[strippedPath] ?: throw FileNotFoundException()
+                        ByteArrayInputStream(asset)
+                    }
+                    val mediaType = mediaTypeFromName(path)
                     WebResourceResponse(mediaType, "", stream)
                 } catch (err: FileNotFoundException) {
                     resourceNotFound()
@@ -176,7 +222,7 @@ private fun mediaTypeFromName(path: String): String =
         "jpg" -> "image/jpeg"
         "jpeg" -> "image/jpeg"
         "png" -> "image/png"
-        "svg" -> "image/xml+svg"
+        "svg" -> "image/svg+xml"
         "md" -> "text/plain"
         else -> "application/octet-stream"
     }

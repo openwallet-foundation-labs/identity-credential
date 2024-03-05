@@ -49,6 +49,7 @@ import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
+import com.android.identity_credential.wallet.ui.MarkdownText
 import com.android.identity_credential.wallet.util.getActivity
 import kotlinx.coroutines.launch
 
@@ -66,20 +67,11 @@ fun EvidenceRequestMessageView(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        if (evidenceRequest.message.length < 100) {
-            Text(
+        MarkdownText(
                 modifier = Modifier.padding(8.dp),
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-                text = evidenceRequest.message
+                content = evidenceRequest.message,
+                assets = evidenceRequest.assets
             )
-        } else {
-            Text(
-                modifier = Modifier.padding(8.dp),
-                text = evidenceRequest.message,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
     }
     Row(
         modifier = Modifier.fillMaxWidth(),

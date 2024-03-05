@@ -28,7 +28,6 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 
 @Composable
 fun AboutScreen(loggerModel: LoggerModel, onNavigate: (String) -> Unit) {
-    val localUriHandler = LocalUriHandler.current
     ScreenWithAppBarAndBackButton(
         title = stringResource(R.string.about_screen_title),
         onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) },
@@ -38,9 +37,11 @@ fun AboutScreen(loggerModel: LoggerModel, onNavigate: (String) -> Unit) {
             modifier = Modifier.weight(1.0f),
             horizontalArrangement = Arrangement.Center
         ) {
-            MarkdownAsset(asset = "about.md",
+            MarkdownAsset(asset = stringResource(R.string.asset_about_md),
                 verticalScrolling = true,
-                modifier = Modifier.fillMaxWidth().fillMaxHeight())
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight())
         }
         if (Logger.isDebugEnabled) {
             DevelopmentTools(loggerModel)

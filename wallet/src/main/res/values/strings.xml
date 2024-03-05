@@ -95,6 +95,7 @@
     <!-- SelfCertificationIssuingAuthority -->
     <string name="self_certification_authority_name">Hard-coded mDL</string>
     <string name="self_certification_authority_tos">
+        ## Hard-coded credential\n\n
         This adds a self-signed credential with hard-coded data for the fictional person
         Erika Mustermann. It will be bound to this device.
     </string>
@@ -113,6 +114,8 @@
     <!-- PassportBasedIssuingAuthority -->
     <string name="passport_based_authority_name">Passport-derived mDL</string>
     <string name="passport_based_authority_tos">
+        ![biometric passport logo](mrtd_logo.svg)\n
+        ## Passport-based credential\n\n
         This adds a self-signed credential derived from the data embedded in the chip of a physical passport.
         It will be bound to this device.
     </string>
@@ -138,4 +141,6 @@
     <string name="consent_prompt_title_verifier">%1$s is requesting information from \"%2$s\"</string>
     <string name="consent_prompt_icon_description">Verifier Icon</string>
 
+    <!-- Asset name (for localized assets -->
+    <string name="asset_about_md">about.md</string>
 </resources>
