@@ -312,8 +312,7 @@ class TransferManager private constructor(private val context: Context) {
 
             }
 
-            val generator = DeviceRequestGenerator()
-                .setSessionTranscript(it.sessionTranscript)
+            val generator = DeviceRequestGenerator(it.sessionTranscript)
             requestDocumentList.getAll().forEach { requestDocument ->
                 generator.addDocumentRequest(
                     requestDocument.docType,
@@ -352,11 +351,8 @@ class TransferManager private constructor(private val context: Context) {
     fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {
         responseBytes?.let { rb ->
             verification?.let { v ->
-                val parser =
-                    DeviceResponseParser()
-                parser.setSessionTranscript(v.sessionTranscript)
+                val parser = DeviceResponseParser(rb, v.sessionTranscript)
                 parser.setEphemeralReaderKey(v.eReaderKey)
-                parser.setDeviceResponse(rb)
                 return parser.parse()
             } ?: throw IllegalStateException("Verification is null")
         } ?: throw IllegalStateException("Response not received")

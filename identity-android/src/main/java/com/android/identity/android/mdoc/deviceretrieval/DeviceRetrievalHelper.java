@@ -51,6 +51,7 @@ import co.nstant.in.cbor.CborBuilder;
 import co.nstant.in.cbor.builder.MapBuilder;
 import co.nstant.in.cbor.model.DataItem;
 import co.nstant.in.cbor.model.UnicodeString;
+import kotlin.Pair;
 
 /**
  * Helper used for establishing engagement with, interacting with, and presenting credentials to a
@@ -290,7 +291,7 @@ public class DeviceRetrievalHelper {
                 .add(Util.cborDecode(mHandover))
                 .end()
                 .build().get(0));
-        mSessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC,
+        mSessionEncryption = new SessionEncryption(SessionEncryption.Role.MDOC,
                 mEDeviceKey,
                 mEReaderKey,
                 mEncodedSessionTranscript);
@@ -305,7 +306,7 @@ public class DeviceRetrievalHelper {
                     .add(Util.cborDecode(mAlternateHandover))
                     .end()
                     .build().get(0));
-            mAlternateSessionEncryption = new SessionEncryption(SessionEncryption.ROLE_MDOC,
+            mAlternateSessionEncryption = new SessionEncryption(SessionEncryption.Role.MDOC,
                     mEDeviceKey,
                     mEReaderKey,
                     mEncodedAlternateSessionTranscript);
@@ -325,12 +326,12 @@ public class DeviceRetrievalHelper {
             return;
         }
 
-        SessionEncryption.DecryptedMessage decryptedMessage = null;
+        Pair<byte[], Long> decryptedMessage = null;
         try {
             decryptedMessage = mSessionEncryption.decryptMessage(data);
         } catch (RuntimeException e) {
             mTransport.sendMessage(mSessionEncryption.encryptMessage(
-                    null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
+                    null, Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION));
             mTransport.close();
             reportError(new Error("Error decrypting message from reader", e));
             return;
@@ -343,7 +344,7 @@ public class DeviceRetrievalHelper {
                 decryptedMessage = mSessionEncryption.decryptMessage(data);
             } catch (RuntimeException e) {
                 mTransport.sendMessage(mSessionEncryption.encryptMessage(
-                        null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
+                        null, Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION));
                 mTransport.close();
                 reportError(new Error("Error decrypting message from reader", e));
                 return;
@@ -352,7 +353,7 @@ public class DeviceRetrievalHelper {
         if (decryptedMessage == null) {
             Logger.d(TAG, "Decryption failed!");
             mTransport.sendMessage(mSessionEncryption.encryptMessage(
-                    null, OptionalLong.of(Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION)));
+                    null, Constants.SESSION_DATA_STATUS_ERROR_SESSION_ENCRYPTION));
             mTransport.close();
             reportError(new Error("Error decrypting message from reader"));
             return;
@@ -361,17 +362,17 @@ public class DeviceRetrievalHelper {
         // If there's data in the message, assume it's DeviceRequest (ISO 18013-5
         // currently does not define other kinds of messages).
         //
-        if (decryptedMessage.getData() != null) {
-            Logger.dCbor(TAG, "DeviceRequest received", decryptedMessage.getData());
+        if (decryptedMessage.getFirst() != null) {
+            Logger.dCbor(TAG, "DeviceRequest received", decryptedMessage.getFirst());
 
-            reportDeviceRequest(decryptedMessage.getData());
+            reportDeviceRequest(decryptedMessage.getFirst());
         } else {
             // No data, so status must be set.
-            if (!decryptedMessage.getStatus().isPresent()) {
+            if (decryptedMessage.getSecond() == null) {
                 mTransport.close();
                 reportError(new Error("No data and no status in SessionData"));
             } else {
-                long statusCode = decryptedMessage.getStatus().getAsLong();
+                long statusCode = decryptedMessage.getSecond().longValue();
 
                 Logger.d(TAG, "Message received from reader with status: " + statusCode);
 
@@ -492,7 +493,8 @@ public class DeviceRetrievalHelper {
                 Logger.dCbor(TAG, "sendDeviceResponse: status is unset and data is",
                         deviceResponseBytes);
             }
-            sessionDataMessage = mSessionEncryption.encryptMessage(deviceResponseBytes, status);
+            sessionDataMessage = mSessionEncryption.encryptMessage(deviceResponseBytes,
+                    status.isPresent() ? status.getAsLong() : null);
         }
         if (mTransport == null) {
             Logger.d(TAG, "sendDeviceResponse: ignoring because transport is unset");

@@ -268,13 +268,12 @@ public class RequestServlet extends HttpServlet {
         setDatastoreProp(ServletConsts.TRANSCRIPT_PROP, sessionTranscript, key);
 
         SessionEncryption ser = new SessionEncryption(
-                SessionEncryption.ROLE_MDOC_READER,
+                SessionEncryption.Role.MDOC_READER,
                 eReaderKey,
                 eDeviceKeyPublic,
                 sessionTranscript);
         ser.setSendSessionEstablishment(false);
-        byte[] dr = new DeviceRequestGenerator()
-            .setSessionTranscript(sessionTranscript)
+        byte[] dr = new DeviceRequestGenerator(sessionTranscript)
             .addDocumentRequest(
                     ServletConsts.MDL_DOCTYPE,
                     createMdlItemsToRequest(key),
@@ -283,7 +282,7 @@ public class RequestServlet extends HttpServlet {
                     Algorithm.UNSET,
                     null)
             .generate();
-        return ser.encryptMessage(dr, OptionalLong.empty());
+        return ser.encryptMessage(dr, null);
     }
 
     /**
@@ -420,15 +419,15 @@ public class RequestServlet extends HttpServlet {
         SessionEncryption ser;
         DeviceResponseParser.DeviceResponse dr;
         try {
-            ser = new SessionEncryption(SessionEncryption.ROLE_MDOC_READER,
+            ser = new SessionEncryption(SessionEncryption.Role.MDOC_READER,
                     eReaderKey,
                     eDeviceKeyPublic,
                     sessionTranscript);
             ser.setSendSessionEstablishment(false);
             
-            dr = new DeviceResponseParser()
-                .setDeviceResponse(ser.decryptMessage(messageData).getData())
-                .setSessionTranscript(sessionTranscript)
+            dr = new DeviceResponseParser(
+                    ser.decryptMessage(messageData).getFirst(),
+                    sessionTranscript)
                 .setEphemeralReaderKey(eReaderKey)
                 .parse(); 
         } catch (Exception e) {
@@ -442,7 +441,7 @@ public class RequestServlet extends HttpServlet {
         String json = new Gson().toJson(buildArrayFromDocuments(dr.getDocuments(), key));
         setDeviceResponse(json, key);
 
-        return ser.encryptMessage(null, OptionalLong.of(20L));
+        return ser.encryptMessage(null, 20L);
     }
 
     /**

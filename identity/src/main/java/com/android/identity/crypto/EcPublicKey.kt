@@ -109,9 +109,7 @@ sealed class EcPublicKey(
                     val curve = EcCurve.fromInt(
                         coseKey.labels[Cose.COSE_KEY_PARAM_CRV.toCoseLabel]!!.asNumber.toInt()
                     )
-                    val keySizeOctets = (curve.bitSize + 7) / 8
                     val x = coseKey.labels[Cose.COSE_KEY_PARAM_X.toCoseLabel]!!.asBstr
-                    check(x.size == keySizeOctets)
                     EcPublicKeyOkp(curve, x)
                 }
 

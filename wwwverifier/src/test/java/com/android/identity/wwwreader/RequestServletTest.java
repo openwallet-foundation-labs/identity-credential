@@ -73,6 +73,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
 
+import kotlin.Pair;
+
 @RunWith(JUnit4.class)
 public class RequestServletTest {
     @Mock private HttpServletRequest request;
@@ -195,13 +197,13 @@ public class RequestServletTest {
         byte[] generatedTranscript =
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryption sed =
-            new SessionEncryption(SessionEncryption.ROLE_MDOC,
+            new SessionEncryption(SessionEncryption.Role.MDOC,
                     eDeviceKey,
                     eReaderKey.getPublicKey(),
                     generatedTranscript);
-        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
-            .setDeviceRequest(sed.decryptMessage(sessionData).getData())
-            .setSessionTranscript(generatedTranscript)
+        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser(
+                sed.decryptMessage(sessionData).getFirst(),
+                generatedTranscript)
             .parse();
 
         Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
@@ -243,13 +245,13 @@ public class RequestServletTest {
         byte[] generatedTranscript =
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryption sed =
-                new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                new SessionEncryption(SessionEncryption.Role.MDOC,
                         eDeviceKey,
                         eReaderKey.getPublicKey(),
                         generatedTranscript);
-        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
-                .setDeviceRequest(sed.decryptMessage(sessionData).getData())
-                .setSessionTranscript(generatedTranscript)
+        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser(
+                sed.decryptMessage(sessionData).getFirst(),
+                generatedTranscript)
                 .parse();
 
         Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
@@ -283,13 +285,13 @@ public class RequestServletTest {
         byte[] generatedTranscript =
             RequestServlet.getDatastoreProp(ServletConsts.TRANSCRIPT_PROP, dKey);
         SessionEncryption sed =
-                new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                new SessionEncryption(SessionEncryption.Role.MDOC,
                         eDeviceKey,
                         eReaderKey.getPublicKey(),
                         generatedTranscript);
-        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser()
-                .setDeviceRequest(sed.decryptMessage(sessionData).getData())
-                .setSessionTranscript(generatedTranscript)
+        DeviceRequestParser.DeviceRequest dr = new DeviceRequestParser(
+                sed.decryptMessage(sessionData).getFirst(),
+                generatedTranscript)
                 .parse();
 
         Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
@@ -324,14 +326,13 @@ public class RequestServletTest {
         // process response
         byte[] responseMessage = byteWriter.toByteArray();
         SessionEncryption sed =
-                new SessionEncryption(SessionEncryption.ROLE_MDOC,
+                new SessionEncryption(SessionEncryption.Role.MDOC,
                         eDeviceKey,
                         eReaderKey.getPublicKey(),
                         Cbor.encode(sessionTranscript));
-        SessionEncryption.DecryptedMessage responseMessageDecrypted =
-            sed.decryptMessage(responseMessage);
-        Assert.assertEquals(responseMessageDecrypted.getData(), null);
-        Assert.assertEquals(responseMessageDecrypted.getStatus(), OptionalLong.of(20));
+        Pair<byte[], Long> responseMessageDecrypted = sed.decryptMessage(responseMessage);
+        Assert.assertEquals(responseMessageDecrypted.getFirst(), null);
+        Assert.assertEquals(responseMessageDecrypted.getSecond().longValue(), 20L);
         String devResponseJSON = RequestServlet.getDeviceResponse(dKey);
         Assert.assertTrue(devResponseJSON.length() > 0);
     }
