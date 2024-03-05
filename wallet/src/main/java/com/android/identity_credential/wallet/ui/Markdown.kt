@@ -30,11 +30,18 @@ private val markdownRenderer = object : WebViewContentRenderer() {
         <script src="js/markdown_it_attrs.js"></script>
         <script src="js/markdown_it_anchor_min.js"></script>
         <script>
+        function reportHeight() {
+            Callback.updateHeight(document.documentElement.offsetHeight);
+        }
         function render(markdownText, css) {
           var md = markdownit().use(markdownItAttrs,
              {allowedAttributes: ['id', 'class']}).use(markdownItAnchor);
           document.getElementById('content').innerHTML = md.render(markdownText);
           document.getElementById('style').textContent = css;
+          reportHeight();
+          for (let image of document.images) {
+            image.addEventListener("load", reportHeight);
+          }
         }
         </script>
         </head>
@@ -52,12 +59,13 @@ fun MarkdownText(
     color: Color = MaterialTheme.colorScheme.onSurface,
     primaryColor: Color = MaterialTheme.colorScheme.primary,
     linkColor: Color = MaterialTheme.colorScheme.secondary,
-    backgroundColor: Color = MaterialTheme.colorScheme.surface
+    backgroundColor: Color = MaterialTheme.colorScheme.surface,
+    assets: Map<String, ByteArray>? = mapOf()  // no assets by default
 ) {
     markdownRenderer.Render(content = content, modifier = modifier,
         verticalScrolling = verticalScrolling, color = color,
         primaryColor = primaryColor, linkColor = linkColor,
-        backgroundColor = backgroundColor)
+        backgroundColor = backgroundColor, assets = assets)
 }
 
 /** Displays markdown-formatted asset with the given name. */
@@ -69,10 +77,11 @@ fun MarkdownAsset(
     color: Color = MaterialTheme.colorScheme.onSurface,
     primaryColor: Color = MaterialTheme.colorScheme.primary,
     linkColor: Color = MaterialTheme.colorScheme.secondary,
-    backgroundColor: Color = MaterialTheme.colorScheme.surface
+    backgroundColor: Color = MaterialTheme.colorScheme.surface,
+    assets: Map<String, ByteArray>? = null  // Android assets by default
 ) {
     markdownRenderer.Render(asset = asset, modifier = modifier,
         verticalScrolling = verticalScrolling, color = color,
         primaryColor = primaryColor, linkColor = linkColor,
-        backgroundColor = backgroundColor)
+        backgroundColor = backgroundColor, assets = assets)
 }

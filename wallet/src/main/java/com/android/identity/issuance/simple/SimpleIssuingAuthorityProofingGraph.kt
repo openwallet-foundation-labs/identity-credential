@@ -34,8 +34,9 @@ class SimpleIssuingAuthorityProofingGraph {
     }
 
     /** Sends [EvidenceRequestMessage]. */
-    fun message(id: String, message: String, acceptButtonText: String, rejectButtonText: String?) {
-        val evidenceRequest = EvidenceRequestMessage(message, acceptButtonText, rejectButtonText)
+    fun message(id: String, message: String, assets: Map<String, ByteArray>,
+                acceptButtonText: String, rejectButtonText: String?) {
+        val evidenceRequest = EvidenceRequestMessage(message, assets, acceptButtonText, rejectButtonText)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 

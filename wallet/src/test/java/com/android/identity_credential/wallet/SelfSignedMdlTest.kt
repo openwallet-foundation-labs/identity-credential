@@ -32,6 +32,7 @@ class SelfSignedMdlTest {
         return listOf<EvidenceRequest>(
             EvidenceRequestMessage(
                 "Here's a long string with TOS",
+                mapOf(),
                 "Accept",
                 "Do Not Accept",
             ),
@@ -49,6 +50,7 @@ class SelfSignedMdlTest {
                 "Your application is about to be sent the ID issuer for " +
                         "verification. You will get notified when the " +
                         "application is approved.",
+                mapOf(),
                 "Continue",
                 null,
             )

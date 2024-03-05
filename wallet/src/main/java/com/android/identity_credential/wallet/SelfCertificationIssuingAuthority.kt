@@ -45,12 +45,14 @@ class SelfCertificationIssuingAuthority(
             message(
                 "tos",
                 resourceString(R.string.self_certification_authority_tos),
+                mapOf(),
                 resourceString(R.string.self_certification_authority_accept),
                 resourceString(R.string.self_certification_authority_reject),
             )
             message(
                 "message",
                 resourceString(R.string.self_certification_authority_application_finish),
+                mapOf(),
                 resourceString(R.string.self_certification_authority_continue),
                 null
             )

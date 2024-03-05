@@ -240,4 +240,12 @@ abstract class SelfSignedMdlIssuingAuthority(
     protected fun resourceString(id: Int, vararg text: String): String {
         return application.applicationContext.resources.getString(id, *text)
     }
+
+    protected fun resourceBytes(id: Int): ByteArray {
+        val stream = application.applicationContext.resources.openRawResource(id)
+        val bytes = stream.readBytes()
+        stream.close()
+        return bytes
+    }
+
 }

@@ -50,6 +50,7 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
             message(
                 "tos",
                 "Here's a long string with TOS",
+                mapOf(),
                 "Accept",
                 "Do Not Accept"
             )
@@ -69,6 +70,7 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
                 "Your application is about to be sent the ID issuer for " +
                         "verification. You will get notified when the " +
                         "application is approved.",
+                mapOf(),
                 "Continue",
                 null,
             )
