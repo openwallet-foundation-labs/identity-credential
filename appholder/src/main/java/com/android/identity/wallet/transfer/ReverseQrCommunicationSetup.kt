@@ -7,13 +7,11 @@ import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.engagement.EngagementParser
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.mainExecutor
-import java.security.PublicKey
 
 class ReverseQrCommunicationSetup(
     private val context: Context,

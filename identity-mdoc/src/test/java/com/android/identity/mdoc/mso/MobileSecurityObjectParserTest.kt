@@ -18,7 +18,6 @@ package com.android.identity.mdoc.mso
 import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.util.Timestamp
 import com.android.identity.util.fromHex

@@ -17,8 +17,8 @@ package com.android.identity.android.storage
 
 import android.util.AtomicFile
 import androidx.test.InstrumentationRegistry
-import com.android.identity.internal.Util
 import com.android.identity.storage.StorageEngine
+import com.android.identity.util.toHex
 import org.junit.Assert
 import org.junit.Test
 import java.io.File
@@ -86,7 +86,7 @@ class AndroidStorageTest {
         storage.put("foo", data)
         var targetFile = File(storageDir, PREFIX + URLEncoder.encode("foo", "UTF-8"))
         var fileContents = AtomicFile(targetFile).readFully()
-        Assert.assertEquals(-1, Util.toHex(fileContents).indexOf(Util.toHex(data)).toLong())
+        Assert.assertEquals(-1, (fileContents.toHex).indexOf(data.toHex).toLong())
 
         // Try again without encryption. The data should start at offset 4.
         storage = AndroidStorageEngine.Builder(context, storageDir)

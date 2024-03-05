@@ -17,7 +17,6 @@ package com.android.identity.util
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
-import com.android.identity.internal.Util
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
@@ -179,7 +178,7 @@ object Logger {
     }
 
     private fun hex(level: Int, tag: String, message: String, data: ByteArray) {
-        val sb = "$message: ${data.size} bytes of data: " + Util.toHex(data)
+        val sb = "$message: ${data.size} bytes of data: " + data.toHex
         println(level, tag, sb, null)
     }
 
@@ -206,7 +205,7 @@ object Logger {
     }
 
     private fun cbor(level: Int, tag: String, message: String, encodedCbor: ByteArray) {
-        val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + Util.toHex(encodedCbor) +
+        val sb = "$message: ${encodedCbor.size} bytes of CBOR: " + encodedCbor.toHex +
                 "\n" +
                 "In diagnostic notation:\n" +
                 Cbor.toDiagnostics(

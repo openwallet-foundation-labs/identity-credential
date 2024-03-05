@@ -4,8 +4,8 @@ import com.android.identity.cbor.Cbor.decode
 import com.android.identity.cbor.Cbor.encode
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
-import com.android.identity.internal.Util.uuidFromBytes
-import com.android.identity.internal.Util.uuidToBytes
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.OptionalInt
 import java.util.UUID
 
@@ -150,5 +150,21 @@ class ConnectionMethodBle(
                 map.getOrNull(OPTION_KEY_PERIPHERAL_SERVER_MODE_BLE_DEVICE_ADDRESS)?.asBstr
             return cm
         }
+
+        private fun uuidToBytes(uuid: UUID): ByteArray {
+            val data = ByteBuffer.allocate(16)
+            data.order(ByteOrder.BIG_ENDIAN)
+            data.putLong(uuid.mostSignificantBits)
+            data.putLong(uuid.leastSignificantBits)
+            return data.array()
+        }
+
+        private fun uuidFromBytes(bytes: ByteArray): UUID {
+            check(bytes.size == 16) { "Expected 16 bytes, found ${bytes.size}" }
+            val data = ByteBuffer.wrap(bytes, 0, 16)
+            data.order(ByteOrder.BIG_ENDIAN)
+            return UUID(data.getLong(0), data.getLong(8))
+        }
+
     }
 }

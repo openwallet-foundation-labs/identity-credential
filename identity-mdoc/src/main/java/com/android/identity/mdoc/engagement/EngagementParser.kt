@@ -19,7 +19,6 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.internal.Util.mdocVersionCompare
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.fromDeviceEngagement
 import com.android.identity.mdoc.origininfo.OriginInfo
@@ -100,7 +99,7 @@ class EngagementParser(private val encodedEngagement: ByteArray) {
             }
             connectionMethods = cms
             val ois = mutableListOf<OriginInfo>()
-            if (mdocVersionCompare(version, "1.1") >= 0) {
+            if (version >= "1.1") {
                 // 18013-7 defines key 5 as having origin info
                 if (map.hasKey(5)) {
                     val originInfoItems: List<DataItem> = (map[5] as CborArray?)!!.items

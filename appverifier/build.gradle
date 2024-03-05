@@ -64,6 +64,7 @@ dependencies {
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
 
+    implementation libs.kotlinx.datetime
     implementation platform(libs.compose.bom)
     implementation libs.bundles.androidx.core
     implementation libs.bundles.androidx.lifecycle

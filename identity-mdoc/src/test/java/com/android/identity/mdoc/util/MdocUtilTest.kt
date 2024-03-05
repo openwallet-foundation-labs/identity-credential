@@ -21,7 +21,6 @@ import com.android.identity.cbor.Tstr
 import com.android.identity.credential.CredentialRequest.DataElement
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.request.DeviceRequestParser

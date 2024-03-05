@@ -30,18 +30,6 @@ import android.security.keystore.KeyProperties;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
-import com.android.identity.android.legacy.AccessControlProfile;
-import com.android.identity.android.legacy.AccessControlProfileId;
-import com.android.identity.android.legacy.IdentityCredential;
-import com.android.identity.android.legacy.IdentityCredentialException;
-import com.android.identity.android.legacy.IdentityCredentialStore;
-import com.android.identity.android.legacy.InvalidReaderSignatureException;
-import com.android.identity.android.legacy.PersonalizationData;
-import com.android.identity.android.legacy.ResultData;
-import com.android.identity.android.legacy.Utility;
-import com.android.identity.android.legacy.WritableIdentityCredential;
-import com.android.identity.internal.Util;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

@@ -24,7 +24,6 @@ import static org.junit.Assume.assumeTrue;
 
 import android.content.Context;
 
-import com.android.identity.internal.Util;
 import com.android.identity.crypto.EcCurve;
 
 import org.junit.Test;

@@ -59,7 +59,6 @@ dependencies {
     implementation libs.bundles.androidx.activity.compose
     implementation libs.bundles.bouncy.castle
     implementation libs.bundles.compose
-    implementation libs.cbor
     implementation libs.exifinterface
     implementation libs.code.scanner
     implementation libs.kotlinx.serialization

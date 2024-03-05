@@ -44,10 +44,11 @@ import androidx.annotation.DoNotInline
 import androidx.annotation.RequiresApi
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
+import com.android.identity.util.HexUtil
 import com.android.identity.util.Logger
+import com.android.identity.util.toHex
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.IOException
@@ -98,7 +99,7 @@ class DataTransportWifiAware(
         var ikm = mEncodedEDeviceKeyBytes
         var info = "NANService".toByteArray()
         var salt = byteArrayOf()
-        serviceName = Util.base16(Crypto.hkdf(Algorithm.HMAC_SHA256, ikm!!, salt, info, 16))
+        serviceName = HexUtil.toHex(Crypto.hkdf(Algorithm.HMAC_SHA256, ikm!!, salt, info, 16), true)
         Logger.d(TAG, String.format("Using calculated service name '$serviceName'"))
 
         // If the passphrase isn't given, derive as per 18013-5.
@@ -154,7 +155,7 @@ class DataTransportWifiAware(
         val passphraseBytes = ByteArray(16)
         val r: Random = SecureRandom()
         r.nextBytes(passphraseBytes)
-        val passphraseInfoPassphrase = Util.base16(passphraseBytes)
+        val passphraseInfoPassphrase = HexUtil.toHex(passphraseBytes, true)
         val wm = context.getSystemService(
             WifiManager::class.java
         )

@@ -22,7 +22,6 @@ import android.icu.util.Calendar;
 import androidx.annotation.NonNull;
 
 import com.android.identity.util.Timestamp;
-import com.android.identity.internal.Util;
 
 import java.util.ArrayList;
 import java.util.Collection;

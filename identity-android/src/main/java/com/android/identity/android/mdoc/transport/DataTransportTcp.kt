@@ -21,11 +21,11 @@ import android.nfc.NdefRecord
 import android.text.format.Formatter
 import android.util.Log
 import android.util.Pair
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.util.Logger
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -110,7 +110,7 @@ class DataTransportTcp(
         try {
             val inputStream = socket!!.getInputStream()
             while (!socket!!.isClosed) {
-                val encodedHeader = Util.readBytes(inputStream, 8)
+                val encodedHeader = readBytes(inputStream, 8)
                     ?: // End Of Stream
                     break
                 if (!(encodedHeader[0] == 'G'.code.toByte() && encodedHeader[1] == 'm'.code.toByte() && encodedHeader[2] == 'D'.code.toByte() && encodedHeader[3] == 'L'.code.toByte())) {
@@ -125,7 +125,7 @@ class DataTransportTcp(
                     errorToReport = Error("Maximum message size exceeded")
                     break
                 }
-                val data = Util.readBytes(inputStream, dataLen)
+                val data = readBytes(inputStream, dataLen)
                 if (data == null) {
                     // End Of Stream
                     errorToReport = Error("End of stream, expected $dataLen bytes")
@@ -321,5 +321,22 @@ class DataTransportTcp(
             val acRecordPayload = baos.toByteArray()
             return Pair(record, acRecordPayload)
         }
+
+        private fun readBytes(inputStream: InputStream, numBytes: Int): ByteBuffer? {
+            val data = ByteBuffer.allocate(numBytes)
+            var offset = 0
+            var numBytesRemaining = numBytes
+            while (numBytesRemaining > 0) {
+                val numRead = inputStream.read(data.array(), offset, numBytesRemaining)
+                if (numRead == -1) {
+                    return null
+                }
+                check(numRead != 0) { "read() returned zero bytes" }
+                numBytesRemaining -= numRead
+                offset += numRead
+            }
+            return data
+        }
+
     }
 }

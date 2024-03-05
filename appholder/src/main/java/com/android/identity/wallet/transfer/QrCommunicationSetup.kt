@@ -6,13 +6,9 @@ import com.android.identity.android.mdoc.engagement.QrEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.internal.Util
-import com.android.identity.securearea.SecureArea
 import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.mainExecutor
-import java.security.KeyPair
-import java.security.PublicKey
 
 class QrCommunicationSetup(
     private val context: Context,

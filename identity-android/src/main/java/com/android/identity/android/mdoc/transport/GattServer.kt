@@ -29,8 +29,8 @@ import android.content.Context
 import android.os.Build
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
-import com.android.identity.internal.Util
 import com.android.identity.util.Logger
+import com.android.identity.util.toHex
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.util.ArrayDeque
@@ -276,7 +276,7 @@ internal class GattServer(
     ) {
         val charUuid = characteristic.uuid
         Logger.d(TAG, "onCharacteristicWriteRequest: ${device.address} $requestId " +
-                "$offset ${characteristic.uuid} ${Util.toHex(value)}")
+                "$offset ${characteristic.uuid} ${value.toHex}")
 
         // If we are connected to a device, ignore write from any other device
         if (currentConnection != null &&
@@ -384,7 +384,7 @@ internal class GattServer(
         if (Logger.isDebugEnabled) {
             Logger.d(
                 TAG, "onDescriptorWriteRequest: ${device.address}" +
-                        "${descriptor.characteristic.uuid} $offset ${Util.toHex(value)}"
+                        "${descriptor.characteristic.uuid} $offset ${value.toHex}"
             )
         }
         if (responseNeeded) {
@@ -418,7 +418,7 @@ internal class GattServer(
                 Logger.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.")
                 mtuSize = 23
             }
-            characteristicValueSizeMemoized = Util.bleCalculateAttributeValueSize(mtuSize)
+            characteristicValueSizeMemoized = DataTransportBle.bleCalculateAttributeValueSize(mtuSize)
             return characteristicValueSizeMemoized
         }
 

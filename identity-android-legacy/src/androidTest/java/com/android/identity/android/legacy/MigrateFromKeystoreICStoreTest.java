@@ -31,7 +31,6 @@ import com.android.identity.android.storage.AndroidStorageEngine;
 import com.android.identity.cbor.Cbor;
 import com.android.identity.cbor.DiagnosticOption;
 import com.android.identity.credential.NameSpacedData;
-import com.android.identity.internal.Util;
 import com.android.identity.crypto.Algorithm;
 import com.android.identity.crypto.EcCurve;
 import com.android.identity.securearea.KeyPurpose;
