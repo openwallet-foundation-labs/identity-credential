@@ -83,9 +83,8 @@ class MobileSecurityObjectGenerator(
         require(!digestIDs.isEmpty()) { "digestIDs must not be empty" }
         digestEmpty = false
         val valueDigestsInner = mValueDigestsOuter.putMap(nameSpace)
-        for (digestID in digestIDs.keys) {
-            val digest = digestIDs[digestID]
-            require(digest!!.size == mDigestSize) {
+        for ((digestID,digest) in digestIDs) {
+            require(digest.size == mDigestSize) {
                 "digest is unexpected length: expected $mDigestSize, got ${digest.size}"
             }
             valueDigestsInner.put(digestID, digest)
@@ -107,9 +106,11 @@ class MobileSecurityObjectGenerator(
     fun setDeviceKeyAuthorizedNameSpaces(
         authorizedNameSpaces: List<String>
     ) = apply {
-        val namespaceSet: MutableSet<String> = HashSet()
-        namespaceSet.addAll(mAuthorizedDataElements.keys)
-        namespaceSet.retainAll(authorizedNameSpaces)
+
+        val namespaceSet = mutableSetOf<String>().apply {
+            addAll(mAuthorizedDataElements.keys)
+            retainAll(authorizedNameSpaces)
+        }
 
         // 18013-5 Section 9.1.2.4 says "If authorization is given for a full namespace (by including
         // the namespace in the AuthorizedNameSpaces array), that namespace shall not be included in
@@ -136,9 +137,11 @@ class MobileSecurityObjectGenerator(
     fun setDeviceKeyAuthorizedDataElements(
         authorizedDataElements: Map<String, List<String>>
     ) = apply {
-        val namespaceSet: MutableSet<String> = HashSet()
-        namespaceSet.addAll(authorizedDataElements.keys)
-        namespaceSet.retainAll(mAuthorizedNameSpaces)
+        val namespaceSet = mutableSetOf<String>().apply {
+            addAll(authorizedDataElements.keys)
+            retainAll(mAuthorizedNameSpaces)
+        }
+
 
         // 18013-5 Section 9.1.2.4 says "If authorization is given for a full namespace (by including
         // the namespace in the AuthorizedNameSpaces array), that namespace shall not be included in
@@ -203,16 +206,16 @@ class MobileSecurityObjectGenerator(
     private fun generateDeviceKeyBuilder(): CborBuilder {
         val deviceKeyMapBuilder = CborMap.builder()
         deviceKeyMapBuilder.put("deviceKey", mDeviceKey.toCoseKey(mapOf()).toDataItem)
-        if (!mAuthorizedNameSpaces.isEmpty() or !mAuthorizedDataElements.isEmpty()) {
+        if (mAuthorizedNameSpaces.isNotEmpty() or !mAuthorizedDataElements.isEmpty()) {
             val keyAuthMapBuilder = deviceKeyMapBuilder.putMap("keyAuthorizations")
-            if (!mAuthorizedNameSpaces.isEmpty()) {
+            if (mAuthorizedNameSpaces.isNotEmpty()) {
                 val authNameSpacesArrayBuilder = keyAuthMapBuilder.putArray("nameSpaces")
                 for (namespace in mAuthorizedNameSpaces) {
                     authNameSpacesArrayBuilder.add(namespace)
                 }
                 authNameSpacesArrayBuilder.end()
             }
-            if (!mAuthorizedDataElements.isEmpty()) {
+            if (mAuthorizedDataElements.isNotEmpty()) {
                 val authDataElemOuter = keyAuthMapBuilder.putMap("dataElements")
                 for (namespace in mAuthorizedDataElements.keys) {
                     val authDataElemInner = authDataElemOuter.putArray(namespace)
@@ -225,29 +228,25 @@ class MobileSecurityObjectGenerator(
             }
             keyAuthMapBuilder.end()
         }
-        if (!mKeyInfo.isEmpty()) {
+        if (mKeyInfo.isNotEmpty()) {
             val keyInfoMapBuilder = deviceKeyMapBuilder.putMap("keyInfo")
-            for (label in mKeyInfo.keys) {
-                keyInfoMapBuilder.put(label, mKeyInfo[label]!!)
+            for ((label, bytes) in mKeyInfo) {
+                keyInfoMapBuilder.put(label, bytes)
             }
             keyInfoMapBuilder.end()
         }
         return deviceKeyMapBuilder.end()
     }
 
-    private fun generateValidityInfoBuilder(): CborBuilder {
-        val validityMapBuilder = CborMap.builder()
-        validityMapBuilder.put("signed", mSigned!!.toEpochMilli().toDataItemDateTimeString)
-        validityMapBuilder.put("validFrom", mValidFrom!!.toEpochMilli().toDataItemDateTimeString)
-        validityMapBuilder.put("validUntil", mValidUntil!!.toEpochMilli().toDataItemDateTimeString)
-        if (mExpectedUpdate != null) {
-            validityMapBuilder.put(
-                "expectedUpdate",
-                mExpectedUpdate!!.toEpochMilli().toDataItemDateTimeString
-            )
+    private fun generateValidityInfoBuilder(): CborBuilder =
+        CborMap.builder().run {
+            put("signed", mSigned!!.toEpochMilli().toDataItemDateTimeString)
+            put("validFrom", mValidFrom!!.toEpochMilli().toDataItemDateTimeString)
+            put("validUntil", mValidUntil!!.toEpochMilli().toDataItemDateTimeString)
+            if (mExpectedUpdate != null)
+                put("expectedUpdate", mExpectedUpdate!!.toEpochMilli().toDataItemDateTimeString)
+            end()
         }
-        return validityMapBuilder.end()
-    }
 
     /**
      * Builds the `MobileSecurityObject` CBOR.
@@ -260,17 +259,18 @@ class MobileSecurityObjectGenerator(
      * @throws IllegalStateException if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun generate(): ByteArray {
-        check(!digestEmpty) { "Must call addDigestIdsForNamespace before generating" }
-        checkNotNull(mSigned) { "Must call setValidityInfo before generating" }
-        val msoMapBuilder = CborMap.builder()
-        msoMapBuilder.put("version", "1.0")
-        msoMapBuilder.put("digestAlgorithm", mDigestAlgorithm)
-        msoMapBuilder.put("docType", mDocType)
-        msoMapBuilder.put("valueDigests", mValueDigestsOuter.end().build())
-        msoMapBuilder.put("deviceKeyInfo", generateDeviceKeyBuilder().build())
-        msoMapBuilder.put("validityInfo", generateValidityInfoBuilder().build())
-        msoMapBuilder.end()
-        return Cbor.encode(msoMapBuilder.end().build())
-    }
+    fun generate(): ByteArray =
+        CborMap.builder().run {
+            check(!digestEmpty) { "Must call addDigestIdsForNamespace before generating" }
+            checkNotNull(mSigned) { "Must call setValidityInfo before generating" }
+
+            put("version", "1.0")
+            put("digestAlgorithm", mDigestAlgorithm)
+            put("docType", mDocType)
+            put("valueDigests", mValueDigestsOuter.end().build())
+            put("deviceKeyInfo", generateDeviceKeyBuilder().build())
+            put("validityInfo", generateValidityInfoBuilder().build())
+            end()
+            Cbor.encode(end().build())
+        }
 }

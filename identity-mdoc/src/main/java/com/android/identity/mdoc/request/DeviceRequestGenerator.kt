@@ -66,32 +66,36 @@ class DeviceRequestGenerator(
         readerKey: EcPrivateKey?,
         signatureAlgorithm: Algorithm,
         readerKeyCertificateChain: CertificateChain?
-    ): DeviceRequestGenerator {
+    ): DeviceRequestGenerator = apply {
         // TODO: Add variant that can sign with SecureArea readerKey
-        val nsBuilder = CborMap.builder()
-        for (namespaceName in itemsToRequest.keys) {
-            val innerMap = itemsToRequest[namespaceName]!!
-            val elemBuilder = nsBuilder.putMap(namespaceName)
-            for (elemName in innerMap.keys) {
-                val intentToRetain = innerMap[elemName]!!
-                elemBuilder.put(elemName, intentToRetain)
+        val nsBuilder = CborMap.builder().apply {
+            for ((namespaceName, innerMap) in itemsToRequest) {
+                putMap(namespaceName).let { elemBuilder ->
+                    for ((elemName, intentToRetain) in innerMap) {
+                        elemBuilder.put(elemName, intentToRetain)
+                    }
+                    elemBuilder.end()
+                }
             }
-            elemBuilder.end()
         }
         nsBuilder.end()
-        val irMapBuilder = CborMap.builder()
-        irMapBuilder.put("docType", docType)
-        irMapBuilder.put("nameSpaces", nsBuilder.end().build())
-        if (requestInfo != null) {
-            val riBuilder = irMapBuilder.putMap("requestInfo")
-            for (key in requestInfo.keys) {
-                val value = requestInfo[key]
-                val valueDataItem = decode(value!!)
-                riBuilder.put(key, valueDataItem)
+
+        val irMapBuilder = CborMap.builder().apply {
+            put("docType", docType)
+            put("nameSpaces", nsBuilder.end().build())
+        }
+        requestInfo?.let {
+            irMapBuilder.putMap("requestInfo").let { riBuilder ->
+                for ((key, value) in requestInfo) {
+                    decode(value).also { valueDataItem ->
+                        riBuilder.put(key, valueDataItem)
+                    }
+                }
+                riBuilder.end()
             }
-            riBuilder.end()
         }
         irMapBuilder.end()
+
         val encodedItemsRequest = encode(irMapBuilder.end().build())
         val itemsRequestBytesDataItem: DataItem = Tagged(24, Bstr(encodedItemsRequest))
         var readerAuth: DataItem? = null
@@ -106,15 +110,20 @@ class DeviceRequestGenerator(
                     .end()
                     .build()
             )
-            val readerAuthenticationBytes = encode(Tagged(24, Bstr(encodedReaderAuthentication)))
-            val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
-                CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
-            ))
-            val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
-                CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                readerKeyCertificateChain.dataItem
-            ))
+            val readerAuthenticationBytes =
+                encode(Tagged(24, Bstr(encodedReaderAuthentication)))
+            val protectedHeaders = mapOf<CoseLabel, DataItem>(
+                Pair(
+                    CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                    signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
+                )
+            )
+            val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
+                Pair(
+                    CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                    readerKeyCertificateChain.dataItem
+                )
+            )
             readerAuth = coseSign1Sign(
                 readerKey,
                 readerAuthenticationBytes,
@@ -124,14 +133,15 @@ class DeviceRequestGenerator(
                 unprotectedHeaders
             ).toDataItem
         }
-        val mapBuilder = CborMap.builder()
-        mapBuilder.put("itemsRequest", itemsRequestBytesDataItem)
-        if (readerAuth != null) {
-            mapBuilder.put("readerAuth", readerAuth)
+
+        CborMap.builder().let { mapBuilder ->
+            mapBuilder.put("itemsRequest", itemsRequestBytesDataItem)
+            if (readerAuth != null) {
+                mapBuilder.put("readerAuth", readerAuth)
+            }
+            val docRequest = mapBuilder.end().build()
+            docRequestsBuilder.add(docRequest)
         }
-        val docRequest = mapBuilder.end().build()
-        docRequestsBuilder.add(docRequest)
-        return this
     }
 
     /**
@@ -139,13 +149,11 @@ class DeviceRequestGenerator(
      *
      * @return the bytes of `DeviceRequest` CBOR.
      */
-    fun generate(): ByteArray {
-        return encode(
-            CborMap.builder()
-                .put("version", "1.0")
-                .put("docRequests", docRequestsBuilder.end().build())
-                .end()
-                .build()
-        )
-    }
+    fun generate(): ByteArray = encode(
+        CborMap.builder()
+            .put("version", "1.0")
+            .put("docRequests", docRequestsBuilder.end().build())
+            .end()
+            .build()
+    )
 }

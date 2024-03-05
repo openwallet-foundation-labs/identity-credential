@@ -43,7 +43,7 @@ import com.android.identity.securearea.SecureArea
  * section 9.1.5.1.
  */
 class DocumentGenerator
-(
+    (
     private val docType: String,
     private val encodedIssuerAuth: ByteArray,
     private val encodedSessionTranscript: ByteArray
@@ -119,10 +119,12 @@ class DocumentGenerator
                     deviceAuthenticationBytes,
                     true,
                     signatureAlgorithm,
-                    mapOf(Pair(
-                        CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                        signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
-                    )),
+                    mapOf(
+                        Pair(
+                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                            signatureAlgorithm.coseAlgorithmIdentifier.toDataItem
+                        )
+                    ),
                     mapOf(),
                     keyUnlockData
                 ).toDataItem
@@ -143,10 +145,12 @@ class DocumentGenerator
                     eMacKey,
                     deviceAuthenticationBytes,
                     false,
-                    mapOf(Pair(
-                        CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                        Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem
-                    )),
+                    mapOf(
+                        Pair(
+                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem
+                        )
+                    ),
                     mapOf()
                 ).toDataItem
             )
@@ -260,15 +264,15 @@ class DocumentGenerator
         }
         issuerSignedMapBuilder.put("issuerAuth", RawCbor(encodedIssuerAuth))
         val issuerSigned = issuerSignedMapBuilder.end().build()
-        val mapBuilder = CborMap.builder()
-        mapBuilder.put("docType", docType)
-        mapBuilder.put("issuerSigned", issuerSigned)
-        mapBuilder.put("deviceSigned", deviceSigned!!)
-        if (errors != null) {
+        val mapBuilder = CborMap.builder().apply {
+            put("docType", docType)
+            put("issuerSigned", issuerSigned)
+            put("deviceSigned", deviceSigned!!)
+        }
+        errors?.let { errMap ->
             val errorsOuterMapBuilder = CborMap.builder()
-            for (namespaceName in errors!!.keys) {
+            for ((namespaceName, innerMap) in errMap) {
                 val errorsInnerMapBuilder = errorsOuterMapBuilder.putMap(namespaceName)
-                val innerMap = errors!![namespaceName]!!
                 for (dataElementName in innerMap.keys) {
                     val value = innerMap[dataElementName]!!
                     errorsInnerMapBuilder.put(dataElementName, value)

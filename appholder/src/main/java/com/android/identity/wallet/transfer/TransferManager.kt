@@ -80,8 +80,8 @@ class TransferManager private constructor(private val context: Context) {
         communication = Communication.getInstance(context)
         reversedQrCommunicationSetup = ReverseQrCommunicationSetup(
             context = context,
-            onPresentationReady = { presentation ->
-                communication.setupPresentation(presentation)
+            onPresentationReady = { deviceRetrievalHelper ->
+                communication.deviceRetrievalHelper = deviceRetrievalHelper
             },
             onNewRequest = { request ->
                 communication.setDeviceRequest(request)
@@ -108,7 +108,7 @@ class TransferManager private constructor(private val context: Context) {
             onConnecting = { transferStatusLd.value = TransferStatus.CONNECTING },
             onQrEngagementReady = { transferStatusLd.value = TransferStatus.QR_ENGAGEMENT_READY },
             onDeviceRetrievalHelperReady = { deviceRetrievalHelper ->
-                communication.setupPresentation(deviceRetrievalHelper)
+                communication.deviceRetrievalHelper = deviceRetrievalHelper
                 transferStatusLd.value = TransferStatus.CONNECTED
             },
             onNewDeviceRequest = { deviceRequest ->

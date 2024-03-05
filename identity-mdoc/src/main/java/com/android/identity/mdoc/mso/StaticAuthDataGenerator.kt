@@ -77,21 +77,22 @@ class StaticAuthDataGenerator(
      *
      * @return the bytes of `StaticAuthData` CBOR.
      */
-    fun generate(): ByteArray {
-        val outerBuilder = CborMap.builder()
-        for (namespace in digestIdMapping.keys) {
-            val innerBuilder = outerBuilder.putArray(namespace)
-            for (encodedIssuerSignedItemMetadata in digestIdMapping[namespace]!!) {
-                innerBuilder.add(RawCbor(encodedIssuerSignedItemMetadata))
+    fun generate(): ByteArray =
+        CborMap.builder().apply {
+            for ((namespace, bytesList) in digestIdMapping) {
+                putArray(namespace).let { innerBuilder ->
+                    bytesList.forEach { encodedIssuerSignedItemMetadata ->
+                        innerBuilder.add(RawCbor(encodedIssuerSignedItemMetadata))
+                    }
+                }
             }
+        }.end().build().let { digestIdMappingItem ->
+            Cbor.encode(
+                CborMap.builder()
+                    .put("digestIdMapping", digestIdMappingItem)
+                    .put("issuerAuth", RawCbor(encodedIssuerAuth))
+                    .end()
+                    .build()
+            )
         }
-        val digestIdMappingItem = outerBuilder.end().build()
-        return Cbor.encode(
-            CborMap.builder()
-                .put("digestIdMapping", digestIdMappingItem)
-                .put("issuerAuth", RawCbor(encodedIssuerAuth))
-                .end()
-                .build()
-        )
-    }
 }

@@ -23,7 +23,7 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.mdoc.sessionencryption.SessionEncryption.Role
 import java.nio.ByteBuffer
 
 /**
@@ -215,11 +215,11 @@ class SessionEncryption(
          * @return a byte array with the encoded CBOR message
          */
         @JvmStatic
-        fun encodeStatus(statusCode: Long): ByteArray {
-            val mapBuilder = CborMap.builder()
-            mapBuilder.put("status", statusCode)
-            mapBuilder.end()
-            return Cbor.encode(mapBuilder.end().build())
-        }
+        fun encodeStatus(statusCode: Long): ByteArray =
+            CborMap.builder().run {
+                put("status", statusCode)
+                end()
+                Cbor.encode(end().build())
+            }
     }
 }

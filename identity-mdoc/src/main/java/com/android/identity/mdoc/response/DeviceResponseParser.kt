@@ -83,13 +83,13 @@ class DeviceResponseParser(
      * @exception IllegalStateException if required data hasn't been set using the setter
      * methods on this class.
      */
-    fun parse(): DeviceResponse {
-        // mEReaderKey may be omitted if the response is using ECDSA instead of MAC
+    fun parse(): DeviceResponse =
+    // mEReaderKey may be omitted if the response is using ECDSA instead of MAC
         // for device authentication.
-        val response = DeviceResponse()
-        response.parse(encodedDeviceResponse, encodedSessionTranscript, eReaderKey)
-        return response
-    }
+        DeviceResponse().apply {
+            parse(encodedDeviceResponse, encodedSessionTranscript, eReaderKey)
+        }
+
 
     /**
      * An object used to represent data parsed from `DeviceResponse`
@@ -98,7 +98,8 @@ class DeviceResponseParser(
      */
     class DeviceResponse {
 
-        val _documents = mutableListOf<Document>()
+        // backing field
+        private val _documents = mutableListOf<Document>()
 
         /**
          * The documents in the device response.
@@ -139,19 +140,23 @@ class DeviceResponseParser(
                 issuerAuth,
                 signatureAlgorithm
             )
-            builder.setIssuerSignedAuthenticated(issuerSignedAuthenticated)
-            builder.setIssuerCertificateChain(issuerAuthorityCertChain)
             val encodedMobileSecurityObject = Cbor.decode(issuerAuth.payload!!).asTagged.asBstr
             val parsedMso = MobileSecurityObjectParser(encodedMobileSecurityObject).parse()
-            builder.setValidityInfoSigned(parsedMso.signed)
-            builder.setValidityInfoValidFrom(parsedMso.validFrom)
-            builder.setValidityInfoValidUntil(parsedMso.validUntil)
+
+            builder.apply {
+                setIssuerSignedAuthenticated(issuerSignedAuthenticated)
+                setIssuerCertificateChain(issuerAuthorityCertChain)
+                setValidityInfoSigned(parsedMso.signed)
+                setValidityInfoValidFrom(parsedMso.validFrom)
+                setValidityInfoValidUntil(parsedMso.validUntil)
+            }
+
             if (parsedMso.expectedUpdate != null) {
                 builder.setValidityInfoExpectedUpdate(parsedMso.expectedUpdate!!)
             }
 
             /* don't care about version for now */
-            val digestAlgorithm = when(parsedMso.digestAlgorithm) {
+            val digestAlgorithm = when (parsedMso.digestAlgorithm) {
                 "SHA-256" -> Algorithm.SHA256
                 "SHA-384" -> Algorithm.SHA384
                 "SHA-512" -> Algorithm.SHA512
@@ -186,7 +191,8 @@ class DeviceResponseParser(
 
                         // We need the encoded representation with the tag.
                         val encodedIssuerSignedItemBytes = Cbor.encode(elem)
-                        val expectedDigest = Crypto.digest(digestAlgorithm, encodedIssuerSignedItemBytes)
+                        val expectedDigest =
+                            Crypto.digest(digestAlgorithm, encodedIssuerSignedItemBytes)
                         val issuerSignedItem = Cbor.decode(elem.asTagged.asBstr)
                         val elementName = issuerSignedItem["elementIdentifier"].asTstr
                         val elementValue = issuerSignedItem["elementValue"]
@@ -195,7 +201,7 @@ class DeviceResponseParser(
                             ?: throw IllegalArgumentException(
                                 "No digestID MSO entry for ID $digestId in namespace $nameSpace"
                             )
-                        val digestMatch =  expectedDigest contentEquals digest
+                        val digestMatch = expectedDigest contentEquals digest
                         builder.addIssuerEntry(
                             nameSpace, elementName,
                             Cbor.encode(elementValue),
@@ -226,7 +232,8 @@ class DeviceResponseParser(
                 .end()
                 .build()
             val deviceAuthenticationBytes = Cbor.encode(
-                Tagged(24, Bstr(Cbor.encode(deviceAuthentication))))
+                Tagged(24, Bstr(Cbor.encode(deviceAuthentication)))
+            )
             val deviceSignedAuthenticated: Boolean
             val deviceSignature = deviceAuth.getOrNull("deviceSignature")
             if (deviceSignature != null) {
@@ -263,17 +270,20 @@ class DeviceResponseParser(
                     eMacKey,
                     deviceAuthenticationBytes,
                     false,
-                    mapOf(Pair(
-                        CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                        Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem
-                    )),
+                    mapOf(
+                        Pair(
+                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                            Algorithm.HMAC_SHA256.coseAlgorithmIdentifier.toDataItem
+                        )
+                    ),
                     mapOf()
                 ).tag
                 deviceSignedAuthenticated = expectedTag contentEquals tagInResponse
                 if (deviceSignedAuthenticated) {
                     Logger.d(TAG, "Verified DeviceSigned using MAC")
                 } else {
-                    Logger.d(TAG,"Device MAC mismatch, got ${Util.toHex(tagInResponse)}"
+                    Logger.d(
+                        TAG, "Device MAC mismatch, got ${Util.toHex(tagInResponse)}"
                                 + " expected ${Util.toHex(expectedTag)}"
                     )
                 }
@@ -361,8 +371,9 @@ class DeviceResponseParser(
         lateinit var issuerCertificateChain: CertificateChain
 
         private data class EntryData(var value: ByteArray, var digestMatch: Boolean)
-        private var deviceData: MutableMap<String, MutableMap<String, EntryData>> = mutableMapOf()
-        private var issuerData: MutableMap<String, MutableMap<String, EntryData>> = mutableMapOf()
+
+        private var deviceData = mutableMapOf<String, MutableMap<String, EntryData>>()
+        private var issuerData = mutableMapOf<String, MutableMap<String, EntryData>>()
 
 
         /**
@@ -498,9 +509,8 @@ class DeviceResponseParser(
         fun getIssuerEntryString(
             namespaceName: String,
             name: String
-        ): String {
-            val value = getIssuerEntryData(namespaceName, name)
-            return Cbor.decode(value).asTstr
+        ): String = getIssuerEntryData(namespaceName, name).let { value ->
+            Cbor.decode(value).asTstr
         }
 
         /**
@@ -514,9 +524,8 @@ class DeviceResponseParser(
         fun getIssuerEntryByteString(
             namespaceName: String,
             name: String
-        ): ByteArray {
-            val value = getIssuerEntryData(namespaceName, name)
-            return Cbor.decode(value).asBstr
+        ): ByteArray = getIssuerEntryData(namespaceName, name).let { value ->
+            Cbor.decode(value).asBstr
         }
 
         /**
@@ -527,10 +536,10 @@ class DeviceResponseParser(
          * @return the decoded data.
          * @exception IllegalArgumentException if the CBOR data isn't in data or not the right type.
          */
-        fun getIssuerEntryBoolean(namespaceName: String, name: String): Boolean {
-            val value = getIssuerEntryData(namespaceName, name)
-            return Cbor.decode(value).asBoolean
-        }
+        fun getIssuerEntryBoolean(namespaceName: String, name: String): Boolean =
+            getIssuerEntryData(namespaceName, name).let { value ->
+                Cbor.decode(value).asBoolean
+            }
 
         /**
          * Like [getIssuerEntryData] but returns the CBOR decoded as a long.
@@ -540,10 +549,10 @@ class DeviceResponseParser(
          * @return the decoded data.
          * @exception IllegalArgumentException if the CBOR data isn't in data or not the right type.
          */
-        fun getIssuerEntryNumber(namespaceName: String, name: String): Long {
-            val value = getIssuerEntryData(namespaceName, name)
-            return Cbor.decode(value).asNumber
-        }
+        fun getIssuerEntryNumber(namespaceName: String, name: String): Long =
+            getIssuerEntryData(namespaceName, name).let { value ->
+                Cbor.decode(value).asNumber
+            }
 
         /**
          * Like [getIssuerEntryData] but returns the CBOR decoded as a [Timestamp].
@@ -556,9 +565,8 @@ class DeviceResponseParser(
         fun getIssuerEntryDateTime(
             namespaceName: String,
             name: String
-        ): Timestamp {
-            val value = getIssuerEntryData(namespaceName, name)
-            return Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
+        ): Timestamp = getIssuerEntryData(namespaceName, name).let { value ->
+            Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
         }
 
         /**
@@ -612,9 +620,8 @@ class DeviceResponseParser(
         fun getDeviceEntryString(
             namespaceName: String,
             name: String
-        ): String {
-            val value = getDeviceEntryData(namespaceName, name)
-            return Cbor.decode(value).asTstr
+        ): String = getDeviceEntryData(namespaceName, name).let { value ->
+            Cbor.decode(value).asTstr
         }
 
         /**
@@ -628,9 +635,8 @@ class DeviceResponseParser(
         fun getDeviceEntryByteString(
             namespaceName: String,
             name: String
-        ): ByteArray {
-            val value = getDeviceEntryData(namespaceName, name)
-            return Cbor.decode(value).asBstr
+        ): ByteArray = getDeviceEntryData(namespaceName, name).let { value ->
+            Cbor.decode(value).asBstr
         }
 
         /**
@@ -644,9 +650,8 @@ class DeviceResponseParser(
         fun getDeviceEntryBoolean(
             namespaceName: String,
             name: String
-        ): Boolean {
-            val value = getDeviceEntryData(namespaceName, name)
-            return Cbor.decode(value).asBoolean
+        ): Boolean = getDeviceEntryData(namespaceName, name).let { value ->
+            Cbor.decode(value).asBoolean
         }
 
         /**
@@ -657,10 +662,10 @@ class DeviceResponseParser(
          * @return the decoded data.
          * @exception IllegalArgumentException if the CBOR data isn't in data or not the right type.
          */
-        fun getDeviceEntryNumber(namespaceName: String, name: String): Long {
-            val value = getDeviceEntryData(namespaceName, name)
-            return Cbor.decode(value).asNumber
-        }
+        fun getDeviceEntryNumber(namespaceName: String, name: String): Long =
+            getDeviceEntryData(namespaceName, name).let { value ->
+                Cbor.decode(value).asNumber
+            }
 
         /**
          * Like [getDeviceEntryData] but returns the CBOR decoded as a [Timestamp].
@@ -673,23 +678,20 @@ class DeviceResponseParser(
         fun getDeviceEntryDateTime(
             namespaceName: String,
             name: String
-        ): Timestamp {
-            val value = getDeviceEntryData(namespaceName, name)
-            return Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
-        }
+        ): Timestamp =
+            getDeviceEntryData(namespaceName, name).let { value ->
+                Timestamp.ofEpochMilli(Cbor.decode(value).asDateTimeString.toEpochMilliseconds())
+            }
 
         internal class Builder(docType: String) {
-            private val result: Document
-
-            init {
-                result = Document()
-                result.docType = docType
+            private val result: Document = Document().apply {
+                this.docType = docType
             }
 
             fun addIssuerEntry(
                 namespaceName: String, name: String, value: ByteArray,
                 digestMatch: Boolean
-            ): Builder {
+            ) = apply {
                 var innerMap = result.issuerData[namespaceName]
                 if (innerMap == null) {
                     innerMap = mutableMapOf()
@@ -702,66 +704,54 @@ class DeviceResponseParser(
                 if (!digestMatch) {
                     result.numIssuerEntryDigestMatchFailures += 1
                 }
-                return this
             }
 
             fun setIssuerCertificateChain(certificateChain: CertificateChain) {
                 result.issuerCertificateChain = certificateChain
             }
 
-            fun addDeviceEntry(namespaceName: String, name: String, value: ByteArray): Builder {
+            fun addDeviceEntry(namespaceName: String, name: String, value: ByteArray) = apply {
                 var innerMap = result.deviceData[namespaceName]
                 if (innerMap == null) {
                     innerMap = LinkedHashMap()
                     result.deviceData[namespaceName] = innerMap
                 }
                 innerMap[name] = EntryData(value, true)
-                return this
             }
 
-            fun setDeviceSignedAuthenticated(deviceSignedAuthenticated: Boolean): Builder {
+            fun setDeviceSignedAuthenticated(deviceSignedAuthenticated: Boolean) = apply {
                 result.deviceSignedAuthenticated = deviceSignedAuthenticated
-                return this
             }
 
-            fun setIssuerSignedAuthenticated(issuerSignedAuthenticated: Boolean): Builder {
+            fun setIssuerSignedAuthenticated(issuerSignedAuthenticated: Boolean) = apply {
                 result.issuerSignedAuthenticated = issuerSignedAuthenticated
-                return this
             }
 
-            fun setValidityInfoSigned(value: Timestamp): Builder {
+            fun setValidityInfoSigned(value: Timestamp) = apply {
                 result.validityInfoSigned = value
-                return this
             }
 
-            fun setValidityInfoValidFrom(value: Timestamp): Builder {
+            fun setValidityInfoValidFrom(value: Timestamp) = apply {
                 result.validityInfoValidFrom = value
-                return this
             }
 
-            fun setValidityInfoValidUntil(value: Timestamp): Builder {
+            fun setValidityInfoValidUntil(value: Timestamp) = apply {
                 result.validityInfoValidUntil = value
-                return this
             }
 
-            fun setValidityInfoExpectedUpdate(value: Timestamp): Builder {
+            fun setValidityInfoExpectedUpdate(value: Timestamp) = apply {
                 result.validityInfoExpectedUpdate = value
-                return this
             }
 
-            fun setDeviceKey(deviceKey: EcPublicKey): Builder {
+            fun setDeviceKey(deviceKey: EcPublicKey) = apply {
                 result.deviceKey = deviceKey
-                return this
             }
 
-            fun setDeviceSignedAuthenticatedViaSignature(value: Boolean): Builder {
+            fun setDeviceSignedAuthenticatedViaSignature(value: Boolean) = apply {
                 result.deviceSignedAuthenticatedViaSignature = value
-                return this
             }
 
-            fun build(): Document {
-                return result
-            }
+            fun build(): Document = result
         }
 
         companion object {

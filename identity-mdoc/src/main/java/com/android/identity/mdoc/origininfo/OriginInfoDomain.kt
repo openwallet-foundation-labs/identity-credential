@@ -20,24 +20,25 @@ import com.android.identity.cbor.DataItem
 
 class OriginInfoDomain(val url: String) : OriginInfo() {
 
-    override fun encode(): DataItem {
-        return builder()
+    override fun encode(): DataItem =
+        builder()
             .put("cat", CAT)
             .put("type", TYPE)
             .putMap("details").put("domain", url).end()
-            .end().build()
-    }
+            .end()
+            .build()
 
     companion object {
         const val CAT: Long = 1
         const val TYPE = 1
+
         @JvmStatic
         fun decode(oiDataItem: DataItem): OriginInfoDomain? {
             val cat = oiDataItem["cat"].asNumber
             val type = oiDataItem["type"].asNumber
             require(cat == 1L && type == 1L) {
-                    "This CBOR object has the wrong category or type. Expected cat = $CAT, " +
-                            "type = $TYPE but got cat = $cat, type = $type"
+                "This CBOR object has the wrong category or type. Expected cat = $CAT, " +
+                        "type = $TYPE but got cat = $cat, type = $type"
             }
             val details = oiDataItem["details"]
             return OriginInfoDomain(details["domain"].asTstr)
