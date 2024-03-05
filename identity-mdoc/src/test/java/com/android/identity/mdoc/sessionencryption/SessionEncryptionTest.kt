@@ -20,10 +20,10 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPrivateKeyDoubleCoordinate
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.engagement.EngagementParser
 import com.android.identity.util.Constants
+import com.android.identity.util.fromHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
@@ -40,15 +40,14 @@ class SessionEncryptionTest {
     fun testReaderAgainstVectors() {
         val eReaderKey: EcPrivateKey = EcPrivateKeyDoubleCoordinate(
             EcCurve.P256,
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y)
+            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y.fromHex
         )
 
         // Strip the #6.24 tag since our APIs expects just the bytes of SessionTranscript.
-        val encodedSessionTranscriptBytes = Util.fromHex(
-            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES
-        )
+        val encodedSessionTranscriptBytes = 
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
         val sessionTranscript = Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor
         val deviceEngagementBytes = sessionTranscript[0]
         val encodedDeviceEngagement = deviceEngagementBytes.asTagged.asBstr
@@ -64,33 +63,33 @@ class SessionEncryptionTest {
 
         // Check that encryption works.
         Assert.assertArrayEquals(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT),
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT.fromHex,
             sessionEncryption.encryptMessage(
-                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST),
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
                 null
             )
         )
 
         // Check that decryption works.
         var result = sessionEncryption.decryptMessage(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA)
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA.fromHex
         )
         Assert.assertNull(result.second)
         Assert.assertArrayEquals(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE),
+            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex,
             result.first
         )
 
         // Check that we parse status correctly.
         result = sessionEncryption.decryptMessage(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION)
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION.fromHex
         )
         Assert.assertEquals(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION, result.second)
         Assert.assertNull(result.first)
 
         // Check we can generate messages with status.
         Assert.assertArrayEquals(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION),
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION.fromHex,
             sessionEncryption.encryptMessage(
                 null,
                 Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
@@ -102,17 +101,16 @@ class SessionEncryptionTest {
     fun testDeviceAgainstVectors() {
         val eDeviceKey: EcPrivateKey = EcPrivateKeyDoubleCoordinate(
             EcCurve.P256,
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D),
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X),
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y)
+            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y.fromHex
         )
 
         // Strip the #6.24 tag since our API expects just the bytes of SessionTranscript.
-        val encodedSessionTranscriptBytes = Util.fromHex(
-            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES
-        )
+        val encodedSessionTranscriptBytes = 
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
         val sessionTranscript = Cbor.decode(encodedSessionTranscriptBytes).asTaggedEncodedCbor
-        val sessionEstablishment = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT)
+        val sessionEstablishment = TestVectors.ISO_18013_5_ANNEX_D_SESSION_ESTABLISHMENT.fromHex
         val eReaderKey = Cbor.decode(sessionEstablishment)["eReaderKey"]
             .asTaggedEncodedCbor.asCoseKey.ecPublicKey
         val sessionEncryptionDevice = SessionEncryption(
@@ -128,22 +126,22 @@ class SessionEncryptionTest {
         )
         Assert.assertNull(result.second)
         Assert.assertArrayEquals(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST),
+            TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
             result.first
         )
 
         // Check that encryption works.
         Assert.assertArrayEquals(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA),
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA.fromHex,
             sessionEncryptionDevice.encryptMessage(
-                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE),
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex,
                 null
             )
         )
 
         // Check that we parse status correctly.
         result = sessionEncryptionDevice.decryptMessage(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION)
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION.fromHex
         )
         Assert.assertEquals(
             Constants.SESSION_DATA_STATUS_SESSION_TERMINATION,
@@ -153,7 +151,7 @@ class SessionEncryptionTest {
 
         // Check we can generate messages with status.
         Assert.assertArrayEquals(
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION),
+            TestVectors.ISO_18013_5_ANNEX_D_SESSION_TERMINATION.fromHex,
             sessionEncryptionDevice.encryptMessage(null, 20L)
         )
     }
@@ -178,7 +176,7 @@ class SessionEncryptionTest {
         for (i in 1..3) {
             // have reader generate sessionEstablishment and check holder decryption of sessionEstablishment
             val mdocRequest = sessionEncryptionReader.encryptMessage(
-                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST),
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
                 null
             )
             var result = sessionEncryptionHolder.decryptMessage(
@@ -186,7 +184,7 @@ class SessionEncryptionTest {
             )
             Assert.assertNull(result.second)
             Assert.assertArrayEquals(
-                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST),
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_REQUEST.fromHex,
                 result.first
             )
             Assert.assertEquals(i.toLong(), sessionEncryptionReader.numMessagesEncrypted.toLong())
@@ -194,13 +192,13 @@ class SessionEncryptionTest {
 
             // have holder generate deviceResponse and check reader decryption of deviceResponse
             val deviceResponse = sessionEncryptionHolder.encryptMessage(
-                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE),
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex,
                 null
             )
             result = sessionEncryptionReader.decryptMessage(deviceResponse)
             Assert.assertNull(result.second)
             Assert.assertArrayEquals(
-                Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE),
+                TestVectors.ISO_18013_5_ANNEX_D_DEVICE_RESPONSE.fromHex,
                 result.first
             )
             Assert.assertEquals(i.toLong(), sessionEncryptionHolder.numMessagesEncrypted.toLong())

@@ -18,7 +18,7 @@ package com.android.identity.android.mdoc.transport
 import android.os.ConditionVariable
 import androidx.test.InstrumentationRegistry
 import androidx.test.filters.SmallTest
-import com.android.identity.internal.Util.fromHex
+import com.android.identity.util.fromHex
 import org.junit.Assert
 import org.junit.Test
 import java.util.concurrent.Executor
@@ -40,8 +40,8 @@ class DataTransportTcpTest {
             DataTransport.Role.MDOC,
             DataTransportOptions.Builder().build()
         )
-        val messageSentByVerifier = fromHex("010203")
-        val messageSentByProver = fromHex("0405")
+        val messageSentByVerifier = "010203".fromHex
+        val messageSentByProver = "0405".fromHex
         val messageReceivedByProver = arrayOf<ByteArray?>(null)
         val messageReceivedByVerifier = arrayOf<ByteArray?>(null)
         val proverMessageReceivedCondVar = ConditionVariable()

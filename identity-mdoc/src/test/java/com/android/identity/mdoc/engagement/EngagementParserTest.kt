@@ -15,16 +15,17 @@
  */
 package com.android.identity.mdoc.engagement
 
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.util.fromHex
+import com.android.identity.util.toHex
 import org.junit.Assert
 import org.junit.Test
 
 class EngagementParserTest {
     @Test
     fun testDeviceRequestEngagementWithVectors() {
-        val deviceEngagement = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT)
+        val deviceEngagement = TestVectors.ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT.fromHex
         val parser = EngagementParser(deviceEngagement)
         val engagement = parser.parse()
         Assert.assertEquals("1.0", engagement.version)
@@ -42,7 +43,7 @@ class EngagementParserTest {
         val eDeviceKeyBytes = engagement.eSenderKeyBytes
         Assert.assertEquals(
             TestVectors.ISO_18013_5_ANNEX_D_E_DEVICE_KEY_BYTES,
-            Util.toHex(eDeviceKeyBytes)
+            eDeviceKeyBytes.toHex
         )
     }
 }
