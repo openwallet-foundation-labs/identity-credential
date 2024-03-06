@@ -262,19 +262,16 @@ public class DeviceRetrievalHelper {
             return OptionalLong.empty();
         }
 
-        // For reverse engagement, we get EReaderKeyBytes via Reverse Engagement...
+        // For reverse engagement, if we received a SessionData message then use the
+        // EReaderKey from the Reverse Engagement. If we received a SessionEstablishment message
+        // then extract the new key from the message
+        DataItem decodedData = Util.cborDecode(data);
         byte[] encodedEReaderKey = null;
-        if (mReverseEngagementEncodedEReaderKey != null) {
+        if (mReverseEngagementEncodedEReaderKey != null && !Util.cborMapHasKey(decodedData, "eReaderKey")) {
             encodedEReaderKey = mReverseEngagementEncodedEReaderKey;
-            // This is unnecessary but a nice warning regardless...
-            DataItem decodedData = Util.cborDecode(data);
-            if (Util.cborMapHasKey(decodedData, "eReaderKey")) {
-                Logger.w(TAG, "Ignoring eReaderKey in SessionEstablishment since we "
-                        + "already got this get in ReaderEngagement");
-            }
         } else {
-            // This is the first message. Extract eReaderKey to set up session encryption...
-            DataItem decodedData = Util.cborDecode(data);
+            // This is the first message or re-consolidation of the curve types.
+            // Extract eReaderKey to set up session encryption...
             try {
                 encodedEReaderKey = Util.cborMapExtractByteString(decodedData, "eReaderKey");
             } catch (IllegalArgumentException e) {
