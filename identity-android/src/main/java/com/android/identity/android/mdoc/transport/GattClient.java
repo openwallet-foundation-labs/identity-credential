@@ -470,7 +470,11 @@ class GattClient extends BluetoothGattCallback {
                 return;
             }
 
-            reportPeerConnected();
+            // Only report peer connected if start value was written to State characteristic.
+            // Should not trigger this callback if end value was written.
+            if (Arrays.equals(characteristic.getValue(), new byte[]{0x01})) {
+                reportPeerConnected();
+            }
 
         } else if (charUuid.equals(mCharacteristicClient2ServerUuid)) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
