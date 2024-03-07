@@ -275,7 +275,7 @@ class TransferHelper private constructor(private val context: Context) {
             eDeviceKey)
             .useForwardEngagement(transport, deviceEngagement, handover)
             .build()
-        connectionMethod = transport.connectionMethod
+        connectionMethod = transport.connectionMethodForTransport
         state.value = State.CONNECTED
     }
 
@@ -291,7 +291,10 @@ class TransferHelper private constructor(private val context: Context) {
 
     fun sendResponse(deviceResponseBytes: ByteArray) {
         check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state"}
-        deviceRetrievalHelper!!.sendDeviceResponse(deviceResponseBytes, OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION))
+        deviceRetrievalHelper!!.sendDeviceResponse(
+            deviceResponseBytes,
+            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+        )
         timestampResponseSent = Timestamp.now().toEpochMilli()
         state.value = State.RESPONSE_SENT
     }

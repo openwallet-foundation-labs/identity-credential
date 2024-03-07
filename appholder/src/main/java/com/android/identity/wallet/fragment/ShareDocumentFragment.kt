@@ -32,14 +32,9 @@ class ShareDocumentFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel.message.set("NFC tap with mdoc verifier device")
+        viewModel.message.set("Scan QR code with mdoc verifier device")
         viewModel.getTransferStatus().observe(viewLifecycleOwner) {
             when (it) {
-                TransferStatus.QR_ENGAGEMENT_READY -> {
-                    viewModel.message.set("Scan QR code with mdoc verifier device")
-                    viewModel.showQrCode()
-                }
-
                 TransferStatus.CONNECTED -> {
                     viewModel.message.set("Connected!")
                     val destination = ShareDocumentFragmentDirections.toTransferDocumentFragment()
@@ -75,6 +70,7 @@ class ShareDocumentFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         viewModel.triggerQrEngagement()
+        viewModel.showQrCode()
     }
 
     private val onBackCallback = object : OnBackPressedCallback(true) {

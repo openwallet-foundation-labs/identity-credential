@@ -117,9 +117,9 @@ class MainActivity : ComponentActivity() {
                 durationMillisRequestToResponse
 
         engagementMethod = when (transferHelper.getEngagementMethod()) {
-            VerificationHelper.ENGAGEMENT_METHOD_QR_CODE -> "QR Code"
-            VerificationHelper.ENGAGEMENT_METHOD_NFC_STATIC_HANDOVER -> "NFC Static Handover"
-            VerificationHelper.ENGAGEMENT_METHOD_NFC_NEGOTIATED_HANDOVER -> "NFC Negotiated Handover"
+            VerificationHelper.EngagementMethod.QR_CODE -> "QR Code"
+            VerificationHelper.EngagementMethod.NFC_STATIC_HANDOVER -> "NFC Static Handover"
+            VerificationHelper.EngagementMethod.NFC_NEGOTIATED_HANDOVER -> "NFC Negotiated Handover"
             else -> "Unknown (${transferHelper.getEngagementMethod()})"
         }
 

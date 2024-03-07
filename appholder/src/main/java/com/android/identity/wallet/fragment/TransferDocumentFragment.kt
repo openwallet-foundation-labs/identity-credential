@@ -54,7 +54,6 @@ class TransferDocumentFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         viewModel.getTransferStatus().observe(viewLifecycleOwner) { transferStatus ->
             when (transferStatus) {
-                TransferStatus.QR_ENGAGEMENT_READY -> log("Engagement Ready")
                 TransferStatus.CONNECTED -> log("Connected")
                 TransferStatus.REQUEST -> onTransferRequested()
                 TransferStatus.REQUEST_SERVED -> onRequestServed()

@@ -34,29 +34,13 @@ class Communication private constructor(
     fun getSessionTranscript(): ByteArray? = deviceRetrievalHelper?.sessionTranscript
 
     fun sendResponse(deviceResponse: ByteArray, closeAfterSending: Boolean) {
-        val progressListener: (Long, Long) -> Unit = { progress, max ->
-            log("Progress: $progress of $max")
-            if (progress == max) {
-                log("Completed...")
-            }
-        }
-        deviceRetrievalHelper?.run {
-            if (closeAfterSending) {
-                sendDeviceResponse(
-                    deviceResponse,
-                    OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION),
-                    progressListener,
-                    context.mainExecutor()
-                )
-                disconnect()
-            } else {
-                sendDeviceResponse(
-                    deviceResponse,
-                    OptionalLong.empty(),
-                    progressListener,
-                    context.mainExecutor()
-                )
-            }
+        if (closeAfterSending) {
+            deviceRetrievalHelper?.sendDeviceResponse(
+                deviceResponse,
+                Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+            deviceRetrievalHelper?.disconnect()
+        } else {
+            deviceRetrievalHelper?.sendDeviceResponse(deviceResponse, null)
         }
     }
 
@@ -70,7 +54,7 @@ class Communication private constructor(
             } else {
                 deviceRetrievalHelper?.sendDeviceResponse(
                     null,
-                    OptionalLong.of(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+                    Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
                 )
             }
         }

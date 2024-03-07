@@ -73,7 +73,7 @@ class ReverseQrCommunicationSetup(
         val transport = DataTransport.fromConnectionMethod(
             context,
             connectionMethod,
-            DataTransport.ROLE_MDOC,
+            DataTransport.Role.MDOC,
             connectionSetup.getConnectionOptions()
         )
 

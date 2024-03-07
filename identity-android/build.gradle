@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.bouncy.castle.bcpkix)
     implementation libs.volley
     implementation libs.kotlinx.datetime
+    implementation libs.kotlinx.io.bytestring
 
     testImplementation libs.androidx.test.espresso
     testImplementation libs.androidx.test.ext.junit

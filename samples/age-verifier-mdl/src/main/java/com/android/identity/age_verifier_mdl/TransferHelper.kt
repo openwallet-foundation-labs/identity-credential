@@ -81,7 +81,7 @@ class TransferHelper private constructor(
             Logger.d(TAG, "onReaderEngagementReady")
         }
 
-        override fun onDeviceEngagementReceived(connectionMethods: MutableList<ConnectionMethod>) {
+        override fun onDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
             Logger.d(TAG, "onDeviceEngagementReceived")
             connectionMethodUsed = connectionMethods.first()
             verificationHelper!!.connect(connectionMethods.first())
@@ -195,7 +195,7 @@ class TransferHelper private constructor(
     }
 
 
-    fun getEngagementMethod(): Int {
+    fun getEngagementMethod(): VerificationHelper.EngagementMethod {
         return verificationHelper!!.engagementMethod
     }
 

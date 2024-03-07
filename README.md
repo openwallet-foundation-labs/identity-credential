@@ -8,7 +8,7 @@ but the current scope also include other credential formats.
 
 ## Identity Credential Libraries
 
-The project includes libraries written in Java and Kotlin:
+The project includes libraries written in Kotlin:
 
 - `identity` provides the core building blocks and which can also be used
    in server-side environments.
@@ -18,6 +18,10 @@ The project includes libraries written in Java and Kotlin:
    run on Android (API 24 or later) and will take advantage of
    Android-specific features including hardware-backed Keystore, NFC, Bluetooth
    Low Energy, and so on.
+- `identity-android-legacy` contains an older version of the APIs for applications
+   not yet migrated to the newer libraries. At some point this library will be
+   removed. Unlike the other libraries and applications, this library is in
+   Java, not Kotlin.
 
 These libraries are intended to be used by Wallet Applications (mobile
 applications on the credential holder's device), Reader Applications (applications
@@ -62,6 +66,11 @@ building blocks
 - An implementation of the ISO/IEC 18013-5:2021 presentation flows including
   QR engagement, NFC engagement (both static and negotiated), device retrieval
   (BLE, Wifi Aware, and NFC)
+
+Currently these libraries require a Java runtime environment but the plan is
+to target [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
+for the libraries and [Compose Multiplatform](https://www.jetbrains.com/lp/compose-multiplatform/)
+for applications and samples.
 
 ### Command-line tool
 
