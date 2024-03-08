@@ -38,17 +38,13 @@ fun durationFromNowText(instant: Instant, now: Instant = Clock.System.now()): St
     } else {
         pastRawTextAndUpdateTime(instant, now)
     }
-    val delayDuration = maxOf(updateAt.minus(now), 16.milliseconds)
+    val delayDuration = maxOf(updateAt - now, 16.milliseconds)
     SideEffect {
         Timer().schedule(delayDuration.inWholeMilliseconds) {
             tick.intValue++
         }
     }
-    return if (instant > now) {
-        stringResource(R.string.duration_time_from_now, text)
-    } else {
-        stringResource(R.string.duration_time_ago, text)
-    }
+    return text
 }
 
 /**
@@ -59,13 +55,22 @@ fun durationFromNowText(instant: Instant, now: Instant = Clock.System.now()): St
 internal fun pastRawTextAndUpdateTime(past: Instant, now: Instant): Pair<String, Instant> {
     val (majorUnit, majorCount) = selectMajorUnit(past, now)
     if (majorUnit == null) {
-        return Pair(stringResource(R.string.duration_now), past.plus(1.seconds))
+        // Less than a minute: special case
+        val duration = now - past
+        if (duration < 10.seconds) {
+            return Pair(stringResource(R.string.duration_just_now), past + 10.seconds)
+        }
+        val smallestUnit = units[units.size - 1]
+        val durationText = stringResource(R.string.duration_less_than_a_minute)
+        return Pair(stringResource(R.string.duration_time_ago, durationText),
+            smallestUnit.addTo(past, 1))
     }
     val majorStr = pluralStringResource(
         majorUnit.pluralResourceId, majorCount.toInt(), majorCount
     )
     val minorUnit = majorUnit.minorUnit()
-        ?: return Pair(majorStr, majorUnit.addTo(past, majorCount + 1))
+        ?: return Pair(stringResource(R.string.duration_time_ago, majorStr),
+            majorUnit.addTo(past, majorCount + 1))
     val minorUnitInstance = majorUnit.addTo(now, -majorCount)
     val minorCount = minorUnit.wholeOf(past, minorUnitInstance)
     val update = minorUnit.addTo(majorUnit.addTo(past, majorCount), minorCount + 1)
@@ -73,9 +78,10 @@ internal fun pastRawTextAndUpdateTime(past: Instant, now: Instant): Pair<String,
         val minorStr = pluralStringResource(
             minorUnit.pluralResourceId, minorCount.toInt(), minorCount
         )
-        return Pair(stringResource(majorUnit.combinerResourceId, majorStr, minorStr), update)
+        return Pair(stringResource(R.string.duration_time_ago,
+            stringResource(majorUnit.combinerResourceId, majorStr, minorStr)), update)
     }
-    return Pair(majorStr, update)
+    return Pair(stringResource(R.string.duration_time_ago, majorStr), update)
 }
 
 /**
@@ -86,13 +92,20 @@ internal fun pastRawTextAndUpdateTime(past: Instant, now: Instant): Pair<String,
 internal fun futureRawTextAndUpdateTime(future: Instant, now: Instant): Pair<String, Instant> {
     val (majorUnit, majorCount) = selectMajorUnit(now, future)
     if (majorUnit == null) {
-        return Pair(stringResource(R.string.duration_now), future)
+        val duration = future - now
+        if (duration < 10.seconds) {
+            return Pair(stringResource(R.string.duration_in_a_few_moments), future)
+        }
+        val durationText = stringResource(R.string.duration_less_than_a_minute)
+        return Pair(
+            stringResource(R.string.duration_time_from_now, durationText), future - 10.seconds)
     }
     val majorStr = pluralStringResource(
         majorUnit.pluralResourceId, majorCount.toInt(), majorCount
     )
     val minorUnit = majorUnit.minorUnit()
-        ?: return Pair(majorStr, majorUnit.addTo(future, -majorCount))
+        ?: return Pair(stringResource(R.string.duration_time_from_now, majorStr),
+              majorUnit.addTo(future, -majorCount))
     val minorUnitInstance = majorUnit.addTo(now, majorCount)
     val minorCount = minorUnit.wholeOf(minorUnitInstance, future)
     val update = minorUnit.addTo(majorUnit.addTo(future, -majorCount), -minorCount)
@@ -100,9 +113,10 @@ internal fun futureRawTextAndUpdateTime(future: Instant, now: Instant): Pair<Str
         val minorStr = pluralStringResource(
             minorUnit.pluralResourceId, minorCount.toInt(), minorCount
         )
-        return Pair(stringResource(majorUnit.combinerResourceId, majorStr, minorStr), update)
+        return Pair(stringResource(R.string.duration_time_from_now,
+            stringResource(majorUnit.combinerResourceId, majorStr, minorStr)), update)
     }
-    return Pair(majorStr, update)
+    return Pair(stringResource(R.string.duration_time_from_now, majorStr), update)
 }
 
 internal sealed class DurationUnit(
@@ -115,44 +129,36 @@ internal sealed class DurationUnit(
     internal abstract fun wholeOf(past: Instant, future: Instant): Long
 }
 
-internal object Second : DurationUnit(R.plurals.duration_second, 0) {
+internal object Minute : DurationUnit(R.plurals.duration_minute, 0) {
     override fun minorUnit(): DurationUnit? = null
 
-    override fun addTo(instant: Instant, num: Long): Instant = instant.plus(num.seconds)
+    override fun addTo(instant: Instant, num: Long): Instant = instant + num.minutes
 
-    override fun wholeOf(past: Instant, future: Instant): Long = future.minus(past).inWholeSeconds
-}
-
-internal object Minute : DurationUnit(R.plurals.duration_minute, R.string.duration_minutes_and_seconds) {
-    override fun minorUnit(): DurationUnit = Second
-
-    override fun addTo(instant: Instant, num: Long): Instant = instant.plus(num.minutes)
-
-    override fun wholeOf(past: Instant, future: Instant): Long = future.minus(past).inWholeMinutes
+    override fun wholeOf(past: Instant, future: Instant): Long = (future - past).inWholeMinutes
 }
 
 internal object Hour : DurationUnit(R.plurals.duration_hour, R.string.duration_hours_and_minutes) {
     override fun minorUnit(): DurationUnit = Minute
 
-    override fun addTo(instant: Instant, num: Long): Instant = instant.plus(num.hours)
+    override fun addTo(instant: Instant, num: Long): Instant = instant + num.hours
 
-    override fun wholeOf(past: Instant, future: Instant): Long = future.minus(past).inWholeHours
+    override fun wholeOf(past: Instant, future: Instant): Long = (future - past).inWholeHours
 }
 
 internal object Day : DurationUnit(R.plurals.duration_day, R.string.duration_days_and_hours) {
     override fun minorUnit(): DurationUnit = Hour
 
-    override fun addTo(instant: Instant, num: Long): Instant = instant.plus(num.days)
+    override fun addTo(instant: Instant, num: Long): Instant = instant + num.days
 
-    override fun wholeOf(past: Instant, future: Instant): Long = future.minus(past).inWholeDays
+    override fun wholeOf(past: Instant, future: Instant): Long = (future - past).inWholeDays
 }
 
 internal object Week : DurationUnit(R.plurals.duration_week, R.string.duration_weeks_and_days) {
     override fun minorUnit(): DurationUnit = Day
 
-    override fun addTo(instant: Instant, num: Long): Instant = instant.plus((7*num).days)
+    override fun addTo(instant: Instant, num: Long): Instant = instant + (7*num).days
 
-    override fun wholeOf(past: Instant, future: Instant): Long = future.minus(past).inWholeDays / 7
+    override fun wholeOf(past: Instant, future: Instant): Long = (future - past).inWholeDays / 7
 }
 
 internal object Month : DurationUnit(R.plurals.duration_month, R.string.duration_months_and_days) {
@@ -175,7 +181,7 @@ internal object Year : DurationUnit(R.plurals.duration_year, R.string.duration_y
         past.yearsUntil(future, TimeZone.currentSystemDefault()).toLong()
 }
 
-private val units = arrayOf(Year, Month, Week, Day, Hour, Minute, Second)
+private val units = arrayOf(Year, Month, Week, Day, Hour, Minute)
 
 private fun selectMajorUnit(past: Instant, future: Instant): Pair<DurationUnit?, Long> {
     for (majorUnit in units) {
