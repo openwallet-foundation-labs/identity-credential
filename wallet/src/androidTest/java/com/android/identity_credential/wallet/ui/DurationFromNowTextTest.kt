@@ -14,33 +14,33 @@ class DurationFromNowTextTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun past_subsecond() {
+    fun past_seconds() {
         // setContent here and below is only needed to be able to call @Composable functions.
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00.2Z")
-            val now = Instant.parse("2021-11-25T15:20:00.4Z")
+            val now = Instant.parse("2021-11-25T15:20:04.4Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("less than a second ago", text)
+            Assert.assertEquals("just now", text)
         }
     }
 
     @Test
-    fun past_seconds_only() {
+    fun past_tens_of_seconds() {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
-            val now = Instant.parse("2021-11-25T15:20:02Z")
+            val now = Instant.parse("2021-11-25T15:20:22Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("2 seconds ago", text)
+            Assert.assertEquals("less than a minute ago", text)
         }
     }
 
     @Test
-    fun past_minutes_and_seconds() {
+    fun past_minutes() {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-11-25T15:21:01Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("one minute and one second ago", text)
+            Assert.assertEquals("1 minute ago", text)
         }
     }
 
@@ -90,7 +90,7 @@ class DurationFromNowTextTest {
             val instant = Instant.parse("2024-02-25T15:20:00Z")
             val now = Instant.parse("2024-03-04T12:20:00Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("one week ago", text)
+            Assert.assertEquals("1 week ago", text)
         }
     }
 
@@ -110,7 +110,7 @@ class DurationFromNowTextTest {
             val instant = Instant.parse("2021-11-25T15:20:00Z")
             val now = Instant.parse("2021-12-25T20:28:59Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("one month ago", text)
+            Assert.assertEquals("1 month ago", text)
         }
     }
 
@@ -120,7 +120,7 @@ class DurationFromNowTextTest {
             val instant = Instant.parse("2021-02-25T15:20:00Z")
             val now = Instant.parse("2021-04-26T20:28:59Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("2 months and one day ago", text)
+            Assert.assertEquals("2 months and 1 day ago", text)
         }
     }
 
@@ -131,7 +131,7 @@ class DurationFromNowTextTest {
             val instant = Instant.parse("2023-02-25T15:20:00Z")
             val now = Instant.parse("2023-03-25T16:20:00Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("one month ago", text)
+            Assert.assertEquals("1 month ago", text)
         }
     }
 
@@ -171,17 +171,17 @@ class DurationFromNowTextTest {
             val instant = Instant.parse("1910-11-25T15:20:00Z")
             val now = Instant.parse("2023-12-26T20:28:59Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("113 years and one month ago", text)
+            Assert.assertEquals("113 years and 1 month ago", text)
         }
     }
 
     @Test
-    fun future_subsecond() {
+    fun future_seconds() {
         composeTestRule.setContent {
             val now = Instant.parse("2021-11-25T15:20:00.2Z")
             val instant = Instant.parse("2021-11-25T15:20:00.4Z")
             val text = durationFromNowText(instant = instant, now = now)
-            Assert.assertEquals("less than a second from now", text)
+            Assert.assertEquals("in a few moments", text)
         }
     }
 
@@ -196,24 +196,24 @@ class DurationFromNowTextTest {
     }
 
     @Test
-    fun past_update_time_subsecond() {
+    fun past_update_time_seconds() {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00.2Z")
             val now = Instant.parse("2021-11-25T15:20:00.4Z")
 
             val (_, updateAt) = pastRawTextAndUpdateTime(instant, now)
-            Assert.assertEquals(Instant.parse("2021-11-25T15:20:01.2Z"), updateAt)
+            Assert.assertEquals(Instant.parse("2021-11-25T15:20:10.2Z"), updateAt)
         }
     }
 
     @Test
-    fun past_update_time_minutes_and_seconds() {
+    fun past_update_time_minutes() {
         composeTestRule.setContent {
             val instant = Instant.parse("2021-11-25T15:20:00.5Z")
             val now = Instant.parse("2021-11-25T15:24:50Z")
 
             val (_, updateAt) = pastRawTextAndUpdateTime(instant, now)
-            Assert.assertEquals(Instant.parse("2021-11-25T15:24:50.5Z"), updateAt)
+            Assert.assertEquals(Instant.parse("2021-11-25T15:25:00.5Z"), updateAt)
         }
     }
 
@@ -229,13 +229,24 @@ class DurationFromNowTextTest {
     }
 
     @Test
-    fun future_update_time_subsecond() {
+    fun future_update_time_seconds() {
         composeTestRule.setContent {
-            val now = Instant.parse("2021-11-25T15:20:00.2Z")
-            val instant = Instant.parse("2021-11-25T15:20:00.4Z")
+            val now = Instant.parse("2021-11-25T15:20:00Z")
+            val instant = Instant.parse("2021-11-25T15:20:09Z")
 
             val (_, updateAt) = futureRawTextAndUpdateTime(instant, now)
             Assert.assertEquals(instant, updateAt)
+        }
+    }
+
+    @Test
+    fun future_update_time_tens_of_seconds() {
+        composeTestRule.setContent {
+            val now = Instant.parse("2021-11-25T15:20:00Z")
+            val instant = Instant.parse("2021-11-25T15:20:49Z")
+
+            val (_, updateAt) = futureRawTextAndUpdateTime(instant, now)
+            Assert.assertEquals(Instant.parse("2021-11-25T15:20:39Z"), updateAt)
         }
     }
 

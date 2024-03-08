@@ -1,31 +1,27 @@
 <resources>
     <!-- TODO: figure out if we have to have separate string for past and future durations -->
     <plurals name="duration_year">
-        <item quantity="one">one year</item>
+        <item quantity="one">%d year</item>
         <item quantity="other">%d years</item>
     </plurals>
     <plurals name="duration_month">
-        <item quantity="one">one month</item>
+        <item quantity="one">%d month</item>
         <item quantity="other">%d months</item>
     </plurals>
     <plurals name="duration_day">
-        <item quantity="one">one day</item>
+        <item quantity="one">%d day</item>
         <item quantity="other">%d days</item>
     </plurals>
     <plurals name="duration_week">
-        <item quantity="one">one week</item>
+        <item quantity="one">%d week</item>
         <item quantity="other">%d weeks</item>
     </plurals>
     <plurals name="duration_hour">
-        <item quantity="one">one hour</item>
+        <item quantity="one">%d hour</item>
         <item quantity="other">%d hours</item>
     </plurals>
     <plurals name="duration_minute">
-        <item quantity="one">one minute</item>
+        <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>
-    </plurals>
-    <plurals name="duration_second">
-        <item quantity="one">one second</item>
-        <item quantity="other">%d seconds</item>
     </plurals>
 </resources>
