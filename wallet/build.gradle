@@ -80,6 +80,9 @@ dependencies {
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso
     androidTestImplementation platform(libs.compose.bom)
+    androidTestImplementation libs.compose.junit4
+    debugImplementation libs.compose.test.manifest
+
     testImplementation libs.bundles.unit.testing
     testRuntimeOnly libs.junit.jupiter.engine
 }

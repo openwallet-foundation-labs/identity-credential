@@ -143,4 +143,16 @@
 
     <!-- Asset name (for localized assets -->
     <string name="asset_about_md">about.md</string>
+
+    <!-- DurationFromNowText -->
+    <string name="duration_now">less than a second</string>
+    <string name="duration_years_and_months">%1$s and %2$s</string>
+    <string name="duration_months_and_days">%1$s and %2$s</string>
+    <string name="duration_weeks_and_days">%1$s and %2$s</string>
+    <string name="duration_days_and_hours">%1$s and %2$s</string>
+    <string name="duration_hours_and_minutes">%1$s and %2$s</string>
+    <string name="duration_minutes_and_seconds">%1$s and %2$s</string>
+    <string name="duration_time_ago">%1$s ago</string>
+    <string name="duration_time_from_now">%1$s from now</string>
+
 </resources>
