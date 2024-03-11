@@ -30,7 +30,6 @@ class SimpleIssuingAuthorityProofingFlow(
         }
         val currentNode = this.currentNode
         if (currentNode == null) {
-            issuingAuthority.setProofingProcessing(credentialId)
             return emptyList()
         }
         return currentNode.requests
@@ -65,6 +64,10 @@ class SimpleIssuingAuthorityProofingFlow(
         val currentNode = this.currentNode ?: throw IllegalStateException("Evidence is not expected")
         issuingAuthority.addCollectedEvidence(credentialId, currentNode.nodeId, evidence)
         this.currentNode = currentNode.selectFollowUp(evidence)
+    }
+
+    override suspend fun completeProofing() {
+        issuingAuthority.setProofingProcessing(credentialId)
     }
 
 }

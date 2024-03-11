@@ -16,6 +16,7 @@
 package com.android.identity.android.storage
 
 import android.content.Context
+import android.os.storage.StorageManager
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.AtomicFile
@@ -108,23 +109,26 @@ class AndroidStorageEngine internal constructor(
     }
 
     override fun put(key: String, data: ByteArray) {
-        val file = AtomicFile(getTargetFile(key))
-        var outputStream: FileOutputStream? = null
-        try {
-            outputStream = file.startWrite()
-            if (useEncryption) {
-                outputStream.write(MAGIC_ENCRYPTED)
-                outputStream.write(encrypt(ensureSecretKey(), data))
-            } else {
-                outputStream.write(MAGIC_NOT_ENCRYPTED)
-                outputStream.write(data)
+        // AtomicFile isn't thread-safe (!) so need to serialize access when writing data.
+        synchronized(this) {
+            val file = AtomicFile(getTargetFile(key))
+            var outputStream: FileOutputStream? = null
+            try {
+                outputStream = file.startWrite()
+                if (useEncryption) {
+                    outputStream.write(MAGIC_ENCRYPTED)
+                    outputStream.write(encrypt(ensureSecretKey(), data))
+                } else {
+                    outputStream.write(MAGIC_NOT_ENCRYPTED)
+                    outputStream.write(data)
+                }
+                file.finishWrite(outputStream)
+            } catch (e: IOException) {
+                if (outputStream != null) {
+                    file.failWrite(outputStream)
+                }
+                throw IllegalStateException("Error writing data", e)
             }
-            file.finishWrite(outputStream)
-        } catch (e: IOException) {
-            if (outputStream != null) {
-                file.failWrite(outputStream)
-            }
-            throw IllegalStateException("Error writing data", e)
         }
     }
 
@@ -174,14 +178,19 @@ class AndroidStorageEngine internal constructor(
         private val context: Context,
         private val storageDirectory: File
     ) {
-        private var useEncryption = true
+        private var useEncryption =
+            !((context.getSystemService(StorageManager::class.java) as StorageManager)
+                .isEncrypted(storageDirectory))
 
         /**
          * Sets whether to encrypt the values stored on disk.
          *
          * Note that keys are not encrypted, only values.
          *
-         * By default this is set to `true`.
+         * By default this is set to `true` only if the given directory to store data files in
+         * isn't encrypted (determined using [StorageManager.isEncrypted]). All Android
+         * devices launching with Android 10 or later has an encrypted data partition meaning
+         * that the encryption of values won't be on by default for such devices.
          *
          * @param useEncryption whether to encrypt values.
          * @return the builder.

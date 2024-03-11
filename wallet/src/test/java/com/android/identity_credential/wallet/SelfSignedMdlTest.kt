@@ -110,8 +110,7 @@ class SelfSignedMdlTest {
         proofingFlow.sendEvidence(
             EvidenceResponseQuestionMultipleChoice(
             (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.keys.iterator().next()
-        )
-        )
+        ))
 
         // Fourth piece of evidence to return...
         evidenceToGet = proofingFlow.getEvidenceRequests()
@@ -121,9 +120,12 @@ class SelfSignedMdlTest {
             .startsWith("Your application is about to be sent"))
         proofingFlow.sendEvidence(EvidenceResponseMessage(true))
 
-        // Check there are no more pieces of evidence to return and it's now processing...
+        // Check there are no more pieces of evidence to return and it's now processing
+        // after we signal that proofing is complete
         evidenceToGet = proofingFlow.getEvidenceRequests()
         Assert.assertEquals(0, evidenceToGet.size)
+        proofingFlow.completeProofing()
+
         Assert.assertEquals(
             CredentialCondition.PROOFING_PROCESSING,
             ia.credentialGetState(credentialId).condition)
@@ -177,8 +179,8 @@ class SelfSignedMdlTest {
             Assert.assertEquals(0, it.numAvailableCPO)
         }
         Assert.assertEquals(0, ia.credentialGetPresentationObjects(credentialId).size)
-        // But it is available after 1 second
-        Thread.sleep(900)
+        // But it is available after 3 seconds
+        Thread.sleep(2900)
         ia.credentialGetState(credentialId).let {
             Assert.assertEquals(CredentialCondition.READY, it.condition)
             Assert.assertEquals(0, it.numPendingCPO)

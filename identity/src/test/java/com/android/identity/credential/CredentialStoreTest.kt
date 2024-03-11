@@ -56,9 +56,7 @@ class CredentialStoreTest {
         )
         Assert.assertEquals(0, credentialStore.listCredentials().size.toLong())
         for (n in 0..9) {
-            credentialStore.createCredential(
-                "testCred$n"
-            )
+            credentialStore.addCredential(credentialStore.createCredential("testCred$n"))
         }
         Assert.assertEquals(10, credentialStore.listCredentials().size.toLong())
         credentialStore.deleteCredential("testCred1")
@@ -73,6 +71,55 @@ class CredentialStoreTest {
     }
 
     @Test
+    fun testObserver() {
+        val credentialStore = CredentialStore(
+            storageEngine,
+            secureAreaRepository
+        )
+
+        val sb = StringBuilder()
+        val observer = object : CredentialStore.Observer {
+            override fun onCredentialAdded(credential: Credential) {
+                sb.append("Added ${credential.name}")
+            }
+
+            override fun onCredentialDeleted(credential: Credential) {
+                sb.append("Deleted ${credential.name}")
+            }
+
+            override fun onCredentialChanged(credential: Credential) {
+                sb.append("Changed ${credential.name}")
+            }
+        }
+        credentialStore.startObserving(observer)
+
+        val cred0 = credentialStore.createCredential("cred0")
+        Assert.assertEquals("", sb.toString())
+        cred0.applicationData.setString("foo", "should not be notified")
+        Assert.assertEquals("", sb.toString())
+        credentialStore.addCredential(cred0)
+        Assert.assertEquals("Added cred0", sb.toString())
+        sb.clear()
+        val cred1 = credentialStore.createCredential("cred1")
+        Assert.assertEquals("", sb.toString())
+        val cred2 = credentialStore.createCredential("cred2")
+        Assert.assertEquals("", sb.toString())
+        credentialStore.addCredential(cred1)
+        Assert.assertEquals("Added cred1", sb.toString())
+        credentialStore.addCredential(cred2)
+        Assert.assertEquals("Added cred1" + "Added cred2", sb.toString())
+        sb.clear()
+        cred2.applicationData.setString("foo", "bar")
+        cred1.applicationData.setString("foo", "bar")
+        Assert.assertEquals("Changed cred2" + "Changed cred1", sb.toString())
+        sb.clear()
+        credentialStore.deleteCredential("cred0")
+        credentialStore.deleteCredential("cred2")
+        credentialStore.deleteCredential("cred1")
+        Assert.assertEquals("Deleted cred0" + "Deleted cred2" + "Deleted cred1", sb.toString())
+    }
+
+    @Test
     fun testCreationDeletion() {
         val credentialStore = CredentialStore(
             storageEngine,
@@ -82,6 +129,7 @@ class CredentialStoreTest {
         val credential = credentialStore.createCredential(
             "testCredential"
         )
+        credentialStore.addCredential(credential)
         Assert.assertEquals("testCredential", credential.name)
 
         val credential2 = credentialStore.lookupCredential("testCredential")
@@ -103,12 +151,10 @@ class CredentialStoreTest {
             storageEngine,
             secureAreaRepository
         )
-        val a = credentialStore.createCredential(
-            "a"
-        )
-        val b = credentialStore.createCredential(
-            "b"
-        )
+        val a = credentialStore.createCredential("a")
+        credentialStore.addCredential(a)
+        val b = credentialStore.createCredential("b")
+        credentialStore.addCredential(b)
         Assert.assertEquals(a, credentialStore.lookupCredential("a"))
         Assert.assertEquals(a, credentialStore.lookupCredential("a"))
         Assert.assertEquals(b, credentialStore.lookupCredential("b"))
@@ -116,6 +162,7 @@ class CredentialStoreTest {
         credentialStore.deleteCredential("a")
         Assert.assertNull(credentialStore.lookupCredential("a"))
         val a_prime = credentialStore.createCredential("a")
+        credentialStore.addCredential(a_prime)
         Assert.assertEquals(a_prime, credentialStore.lookupCredential("a"))
         Assert.assertEquals(a_prime, credentialStore.lookupCredential("a"))
         Assert.assertNotEquals(a_prime, a)
@@ -128,9 +175,8 @@ class CredentialStoreTest {
             storageEngine,
             secureAreaRepository
         )
-        val credential = credentialStore.createCredential(
-            "testCredential"
-        )
+        val credential = credentialStore.createCredential("testCredential")
+        credentialStore.addCredential(credential)
         val nameSpacedData = NameSpacedData.Builder()
             .putEntryString("ns1", "foo1", "bar1")
             .putEntryString("ns1", "foo2", "bar2")
@@ -157,9 +203,8 @@ class CredentialStoreTest {
             storageEngine,
             secureAreaRepository
         )
-        val credential = credentialStore.createCredential(
-            "testCredential"
-        )
+        val credential = credentialStore.createCredential("testCredential")
+        credentialStore.addCredential(credential)
         val timeBeforeValidity = Timestamp.ofEpochMilli(40)
         val timeValidityBegin = Timestamp.ofEpochMilli(50)
         val timeDuringValidity = Timestamp.ofEpochMilli(100)
@@ -320,9 +365,8 @@ class CredentialStoreTest {
             storageEngine,
             secureAreaRepository
         )
-        val credential = credentialStore.createCredential(
-            "testCredential"
-        )
+        val credential = credentialStore.createCredential("testCredential")
+        credentialStore.addCredential(credential)
         Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
 
@@ -407,9 +451,8 @@ class CredentialStoreTest {
             storageEngine,
             secureAreaRepository
         )
-        val credential = credentialStore.createCredential(
-            "testCredential"
-        )
+        val credential = credentialStore.createCredential("testCredential")
+        credentialStore.addCredential(credential)
 
         // We want to check the behavior for when the holder has a birthday and the issuer
         // carefully sends half the MSOs to be used before the birthday (with age_in_years set to
@@ -493,9 +536,8 @@ class CredentialStoreTest {
             storageEngine,
             secureAreaRepository
         )
-        val credential = credentialStore.createCredential(
-            "testCredential"
-        )
+        val credential = credentialStore.createCredential("testCredential")
+        credentialStore.addCredential(credential)
         val appData = credential.applicationData
         Assert.assertFalse(appData.keyExists("key1"))
         Assert.assertThrows(IllegalArgumentException::class.java) { appData.getData("key1") }
@@ -541,9 +583,8 @@ class CredentialStoreTest {
             storageEngine,
             secureAreaRepository
         )
-        var credential: Credential? = credentialStore.createCredential(
-            "testCredential"
-        )
+        var credential: Credential? = credentialStore.createCredential("testCredential")
+        credentialStore.addCredential(credential!!)
         for (n in 0..9) {
             val pendingAuthKey = credential!!.createPendingAuthenticationKey(
                 AUTH_KEY_DOMAIN,
@@ -621,9 +662,8 @@ class CredentialStoreTest {
             storageEngine,
             secureAreaRepository
         )
-        val credential = credentialStore.createCredential(
-            "testCredential"
-        )
+        val credential = credentialStore.createCredential("testCredential")
+        credentialStore.addCredential(credential)
         Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
         for (n in 0..9) {

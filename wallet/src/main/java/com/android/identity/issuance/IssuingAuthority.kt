@@ -22,6 +22,42 @@ interface IssuingAuthority {
     suspend fun credentialGetState(credentialId: String): CredentialState
 
     /**
+     * Sets an observer to be notified when a credential has an updated state.
+     *
+     * Updates might be implemented using a lossy mechanism (e.g. push notifications)
+     * so applications must not rely on getting a callback whenever the state changes.
+     *
+     * The observer can be removed using [stopObserving].
+     *
+     * @param observer the observer.
+     */
+    fun startObserving(observer: Observer)
+
+    /**
+     * Removes the observer previously set with [startObserving].
+     *
+     * @param observer the observer.
+     */
+    fun stopObserving(observer: Observer)
+
+    /**
+     * An interface which can be used to be informed when a credential has changed from
+     * an issuer's point of view.
+     */
+    interface Observer {
+        /**
+         * This is called when a credential's state has changed.
+         *
+         * The application should call [IssuingAuthority.credentialGetState] to collect
+         * the new state.
+         *
+         * @param issuingAuthority the issuing authority.
+         * @param credentialId the credential which state has changed.
+         */
+        fun onCredentialStateChanged(issuingAuthority: IssuingAuthority, credentialId: String)
+    }
+
+    /**
      * Calls the IA to start creating a credential.
      *
      * The result of this flow is credentialId which is an unique identifier for the credential

@@ -45,7 +45,6 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.trustmanagement.TrustManager
-import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.TransferHelper

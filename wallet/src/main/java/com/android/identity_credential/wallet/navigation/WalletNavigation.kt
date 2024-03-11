@@ -5,15 +5,16 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.android.identity_credential.wallet.CredentialInformationViewModel
+import com.android.identity_credential.wallet.CardViewModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.destination.about.AboutScreen
 import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWalletScreen
-import com.android.identity_credential.wallet.ui.destination.credential.CredentialDetailsScreen
-import com.android.identity_credential.wallet.ui.destination.credential.CredentialInfoScreen
+import com.android.identity_credential.wallet.ui.destination.credential.CardDetailsScreen
+import com.android.identity_credential.wallet.ui.destination.credential.CardInfoScreen
+import com.android.identity_credential.wallet.ui.destination.credential.CardKeysScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionCredentialScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
@@ -26,10 +27,10 @@ fun WalletNavigation(
     navController: NavHostController,
     application: WalletApplication,
     provisioningViewModel: ProvisioningViewModel,
-    credentialInformationViewModel: CredentialInformationViewModel,
     permissionTracker: PermissionTracker,
     sharedPreferences: SharedPreferences,
-    qrEngagementViewModel: QrEngagementViewModel
+    qrEngagementViewModel: QrEngagementViewModel,
+    cardViewModel: CardViewModel
 ) {
 
     // lambda navigateTo takes in a route string and navigates to the corresponding Screen
@@ -70,8 +71,9 @@ fun WalletNavigation(
             MainScreen(
                 onNavigate = navigateTo,
                 credentialStore = credentialStore,
-                sharedPreferences = sharedPreferences,
                 qrEngagementViewModel = qrEngagementViewModel,
+                cardViewModel = cardViewModel,
+                sharedPreferences = sharedPreferences,
                 permissionTracker = permissionTracker
             )
         }
@@ -96,36 +98,43 @@ fun WalletNavigation(
         }
 
         /**
-         * Credential Details Screen
-         * Credential Info Screen
+         * Card Info Screen
+         * Card Details Screen
+         * Card Keys Screen
          */
         composable(
-            route = WalletDestination.CredentialInfo.routeWithArgs,
-            arguments = WalletDestination.CredentialInfo.getArguments()
+            route = WalletDestination.CardInfo.routeWithArgs,
+            arguments = WalletDestination.CardInfo.getArguments()
         ) { backStackEntry ->
-            val credentialId = WalletDestination.CredentialInfo
-                .Argument.CREDENTIAL_ID
+            val cardId = WalletDestination.CardInfo
+                .Argument.CARD_ID
                 .extractFromBackStackEntry(backStackEntry) ?: ""
-            val section = WalletDestination.CredentialInfo
+            val section = WalletDestination.CardInfo
                 .Argument.SECTION
                 .extractFromBackStackEntry(backStackEntry)
 
-            if (section == "details") {
-                CredentialDetailsScreen(
-                    credentialId = credentialId,
-                    onNavigate = navigateTo,
-                    credentialStore = application.credentialStore,
-                    credentialTypeRepository = application.credentialTypeRepository
-                )
-            } else {
-                CredentialInfoScreen(
-                    credentialId = credentialId,
-                    onNavigate = navigateTo,
-                    credentialStore = application.credentialStore,
-                    issuingAuthorityRepository = application.issuingAuthorityRepository,
-                    androidKeystoreSecureArea = application.androidKeystoreSecureArea,
-                    credentialInformationViewModel = credentialInformationViewModel
-                )
+            when (section) {
+                "details" -> {
+                    CardDetailsScreen(
+                        cardId = cardId,
+                        cardViewModel = cardViewModel,
+                        onNavigate = navigateTo,
+                    )
+                }
+                "keys" -> {
+                    CardKeysScreen(
+                        cardId = cardId,
+                        cardViewModel = cardViewModel,
+                        onNavigate = navigateTo,
+                    )
+                }
+                else -> {
+                    CardInfoScreen(
+                        cardId = cardId,
+                        cardViewModel = cardViewModel,
+                        onNavigate = navigateTo,
+                    )
+                }
             }
         }
 

@@ -5,7 +5,9 @@ package com.android.identity_credential.wallet.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,7 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.android.identity_credential.wallet.R
 
 /**
@@ -35,6 +39,7 @@ fun ScreenWithAppBar(
     title: String,
     navigationIcon: @Composable () -> Unit,
     scrollable: Boolean = true,
+    actions: @Composable() (RowScope.() -> Unit) = {},
     body: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -52,6 +57,7 @@ fun ScreenWithAppBar(
                 },
                 navigationIcon = navigationIcon,
                 scrollBehavior = scrollBehavior,
+                actions = actions,
             )
         },
     ) { innerPadding ->
@@ -75,6 +81,7 @@ fun ScreenWithAppBarAndBackButton(
     title: String,
     onBackButtonClick: () -> Unit,
     scrollable: Boolean = true,
+    actions: @Composable() (RowScope.() -> Unit) = {},
     body: @Composable ColumnScope.() -> Unit,
 ) {
     ScreenWithAppBar(title, navigationIcon = {
@@ -84,7 +91,28 @@ fun ScreenWithAppBarAndBackButton(
                 contentDescription = stringResource(R.string.accessibility_go_back_icon)
             )
         }
-    }, scrollable = scrollable, body = body)
+    }, scrollable = scrollable, actions = actions, body = body)
+}
+
+@Composable
+fun KeyValuePairText(
+    keyText: String,
+    valueText: String
+) {
+    Column(
+        Modifier
+            .padding(8.dp)
+            .fillMaxWidth()) {
+        Text(
+            text = keyText,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium
+        )
+        Text(
+            text = valueText,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
 }
 
 @Composable

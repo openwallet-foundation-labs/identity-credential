@@ -1,5 +1,7 @@
 package com.android.identity_credential.wallet
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credentialtype.CredentialAttributeType
@@ -11,22 +13,24 @@ import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.util.Logger
 
-const val TAG = "ViewCredentialData"
+private const val TAG = "ViewCredentialData"
 
 /**
- * A class containing information (mainly PII) about a credential.
+ * A class containing human-readable information (mainly PII) about a document.
  *
  * This data is intended to be display to the user, not used in presentations
  * or sent to external parties.
+ *
+ * @param typeName human readable type name of the document, e.g. "Driving License".
+ * @param portrait portrait of the holder, if available
+ * @param signatureOrUsualMark signature or usual mark of the holder, if available
+ * @param attributes key/value pairs with data in the document
  */
-data class ViewCredentialData(
-    val portrait: ByteArray?,
-    val signatureOrUsualMark: ByteArray?,
-    val sections: List<ViewCredentialDataSection>
-)
-
-data class ViewCredentialDataSection(
-    val keyValuePairs: Map<String, String>
+data class DocumentDetails(
+    val typeName: String,
+    val portrait: Bitmap?,
+    val signatureOrUsualMark: Bitmap?,
+    val attributes: Map<String, String>
 )
 
 // TODO: Maybe move to MdocDataElement
@@ -110,19 +114,16 @@ private fun visitNamespace(
     return VisitNamespaceResult(portrait, signatureOrUsualMark, keysAndValues)
 }
 
-fun Credential.getViewCredentialData(
+fun Credential.getUserVisibleDetails(
     credentialTypeRepository: CredentialTypeRepository
-): ViewCredentialData {
+): DocumentDetails {
     if (authenticationKeys.size == 0) {
-        return ViewCredentialData(null, null, listOf())
+        return DocumentDetails("Unknown", null, null, mapOf())
     }
     val authKey = authenticationKeys[0]
 
-    // TODO: add support for other credential formats than just MDOC.
-
-    val sections = mutableListOf<ViewCredentialDataSection>()
-    var portrait: ByteArray? = null
-    var signatureOrUsualMark: ByteArray? = null
+    var portrait: Bitmap? = null
+    var signatureOrUsualMark: Bitmap? = null
 
     val credentialData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
     val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
@@ -131,18 +132,28 @@ fun Credential.getViewCredentialData(
 
     val mso = MobileSecurityObjectParser(encodedMso).parse()
 
-    var mdocCredentialType = credentialTypeRepository.getMdocCredentialType(mso.docType)
+    val credentialType = credentialTypeRepository.getCredentialTypeForMdoc(mso.docType)
+    val kvPairs = mutableMapOf<String, String>()
     for (namespaceName in mso.valueDigestNamespaces) {
         val digestIdMapping = credentialData.digestIdMapping[namespaceName] ?: continue
-        val result = visitNamespace(mdocCredentialType, namespaceName, digestIdMapping)
+        val result = visitNamespace(credentialType?.mdocCredentialType, namespaceName, digestIdMapping)
         if (result.portrait != null) {
-            portrait = result.portrait
+            portrait = BitmapFactory.decodeByteArray(
+                result.portrait,
+                0,
+                result.portrait.size
+            )
         }
         if (result.signatureOrUsualMark != null) {
-            signatureOrUsualMark = result.signatureOrUsualMark
+            signatureOrUsualMark = BitmapFactory.decodeByteArray(
+                result.signatureOrUsualMark,
+                0,
+                result.signatureOrUsualMark.size
+            )
         }
-        sections.add(ViewCredentialDataSection(result.keysAndValues))
+        kvPairs += result.keysAndValues
     }
 
-    return ViewCredentialData(portrait, signatureOrUsualMark, sections)
+    val typeName = credentialType?.displayName ?: mso.docType
+    return DocumentDetails(typeName, portrait, signatureOrUsualMark, kvPairs)
 }

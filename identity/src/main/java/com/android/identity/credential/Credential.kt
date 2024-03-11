@@ -74,12 +74,21 @@ import com.android.identity.util.Timestamp
  *
  * There is nothing mDL/MDOC specific about this type, it can be used for any kind
  * of credential regardless of format, presentation, or issuance protocol used.
+ *
+ * @param name the name of the credential which can be used with [CredentialStore].
  */
 class Credential private constructor(
     val name: String,
     private val storageEngine: StorageEngine,
-    internal val secureAreaRepository: SecureAreaRepository
+    internal val secureAreaRepository: SecureAreaRepository,
+    private val store: CredentialStore
 ) {
+    private var addedToStore = false
+
+    internal fun addToStore() {
+        addedToStore = true
+        saveCredential()
+    }
 
     /**
      * Application specific data.
@@ -118,6 +127,9 @@ class Credential private constructor(
         private set
 
     internal fun saveCredential() {
+        if (!addedToStore) {
+            return
+        }
         val t0 = Timestamp.now()
         val mapBuilder = CborMap.builder().apply {
             put("applicationData", _applicationData.encodeAsCbor())
@@ -140,6 +152,7 @@ class Credential private constructor(
         // authentication keys.
         val durationMillis = t1.toEpochMilli() - t0.toEpochMilli()
         Logger.i(TAG, "Saved credential '$name' to disk in $durationMillis msec")
+        store.emitOnCredentialChanged(this)
     }
 
     private fun loadCredential(): Boolean {
@@ -160,6 +173,7 @@ class Credential private constructor(
             _authenticationKeys.add(AuthenticationKey.fromCbor(item, this))
         }
         authenticationKeyCounter = map["authenticationKeyCounter"].asNumber
+        addedToStore = true
         return true
     }
 
@@ -305,16 +319,18 @@ class Credential private constructor(
         fun create(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
-            name: String
+            name: String,
+            store: CredentialStore
         ): Credential =
-            Credential(name, storageEngine, secureAreaRepository).apply { saveCredential() }
+            Credential(name, storageEngine, secureAreaRepository, store).apply { saveCredential() }
 
         // Called by CredentialStore.lookupCredential().
         fun lookup(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
-            name: String
-        ): Credential? = Credential(name, storageEngine, secureAreaRepository).run {
+            name: String,
+            store: CredentialStore
+        ): Credential? = Credential(name, storageEngine, secureAreaRepository, store).run {
             if (loadCredential()) {
                 this// return this Credential object
             } else { // when credential.loadCredential() == false

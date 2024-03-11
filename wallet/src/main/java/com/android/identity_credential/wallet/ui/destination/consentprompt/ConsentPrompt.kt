@@ -57,7 +57,9 @@ fun ConsentPrompt(
     fun CredentialTypeRepository.getDataElementDisplayName(
         dataElement: CredentialRequest.DataElement,
         docType: String
-    ) = getMdocCredentialType(docType)?.namespaces
+    ) = getCredentialTypeForMdoc(docType)
+        ?.mdocCredentialType
+        ?.namespaces
         ?.get(dataElement.nameSpaceName)?.dataElements?.get(dataElement.dataElementName)
         ?.attribute?.displayName
         ?: dataElement.dataElementName

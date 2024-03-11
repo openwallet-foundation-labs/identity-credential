@@ -96,6 +96,8 @@ class ProvisioningViewModel : ViewModel() {
                     credential!!.let {
                         it.refreshState(issuingAuthorityRepository)
                     }
+                    credentialStore.addCredential(credential!!)
+                    proofingFlow!!.completeProofing()
                 } else {
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }
@@ -129,6 +131,8 @@ class ProvisioningViewModel : ViewModel() {
                     credential!!.let {
                         it.refreshState(issuingAuthorityRepository)
                     }
+                    credentialStore.addCredential(credential!!)
+                    proofingFlow!!.completeProofing()
                 } else {
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }

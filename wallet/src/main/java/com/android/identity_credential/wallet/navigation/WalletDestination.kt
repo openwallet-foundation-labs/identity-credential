@@ -22,18 +22,25 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
 
 
     // Screens with arguments
-    object CredentialInfo : WalletDestination(Route.CREDENTIAL_INFO) {
+    object CardInfo : WalletDestination(Route.CARD_INFO) {
         /**
-         * enum class Argument defines all the various (optional) arguments that can be passed to the route (CREDENTIAL_INFO)
+         * enum class Argument defines all the various (optional) arguments that can be passed to
+         * the route (CARD_INFO)
          */
         enum class Argument(val argument: NamedNavArgument) {
-            CREDENTIAL_ID( // this argument is needed
-                navArgument("credentialId") {
+            CARD_ID( // this argument is needed
+                navArgument("cardId") {
                     type = NavType.StringType
                     nullable = false // and cannot be optional
                 }
             ),
             SECTION( // this argument is optional, sections like 'details' can be passed
+                navArgument("section") {
+                    type = NavType.StringType
+                    nullable = true
+                }
+            ),
+            KEYS( // this argument is optional, sections like 'keys' can be passed
                 navArgument("section") {
                     type = NavType.StringType
                     nullable = true
@@ -122,8 +129,8 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
                     argumentValue
                 }
             val argName = when (this) {
-                is CredentialInfo -> {
-                    enumArgumentObj as CredentialInfo.Argument
+                is CardInfo -> {
+                    enumArgumentObj as CardInfo.Argument
                     enumArgumentObj.argument.name
                 }
 
@@ -155,7 +162,7 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     MAIN("main"),
     ABOUT("about"),
     ADD_TO_WALLET("add_to_wallet"),
-    CREDENTIAL_INFO("credential_info", "credentialId={credentialId}&section={section}"),
+    CARD_INFO("card_info", "cardId={cardId}&section={section}"),
     PROVISION_CREDENTIAL("provision_credential"),
     QR_ENGAGEMENT("qr_engagement"),
 
@@ -163,7 +170,7 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     POP_BACK_STACK("pop_back_stack"),
     ;
 
-    // return route name formatted to show arguments, such as 'credential_info?arg1={, if any are provided
+    // return route name formatted to show arguments, such as 'card_info?arg1={, if any are provided
     val routePathWithArguments: String
         get() = if (argumentsStr.isEmpty()) routeName else "$routeName?$argumentsStr"
 }

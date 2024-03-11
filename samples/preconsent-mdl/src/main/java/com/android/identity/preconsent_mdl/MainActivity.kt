@@ -60,7 +60,6 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
 import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import org.bouncycastle.asn1.x500.X500Name
@@ -103,6 +102,7 @@ class MainActivity : ComponentActivity() {
 
     private fun provisionCredential() {
         val credential = transferHelper.credentialStore.createCredential(CREDENTIAL_ID)
+        transferHelper.credentialStore.addCredential(credential)
 
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(applicationContext.resources, R.drawable.img_erika_portrait)

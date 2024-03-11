@@ -269,7 +269,10 @@ class ShowDocumentFragment : Fragment() {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
                     val mdocDataElement =
-                        VerifierApp.credentialTypeRepositoryInstance.getMdocCredentialType(doc.docType)?.namespaces?.get(ns)?.dataElements?.get(elem)
+                        VerifierApp.credentialTypeRepositoryInstance
+                            .getCredentialTypeForMdoc(doc.docType)
+                            ?.mdocCredentialType
+                            ?.namespaces?.get(ns)?.dataElements?.get(elem)
                     val name = mdocDataElement?.attribute?.displayName ?: elem
                     if (isPortraitElement(mdocDataElement)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
