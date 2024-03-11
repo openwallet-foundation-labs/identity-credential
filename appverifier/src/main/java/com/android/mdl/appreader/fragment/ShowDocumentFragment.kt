@@ -18,7 +18,6 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
-import com.android.identity.cbor.Tagged
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.crypto.javaPublicKey
@@ -340,7 +339,8 @@ class ShowDocumentFragment : Fragment() {
         namespaceName: String,
         dataElementName: String,
         mdocDataElement: MdocDataElement?,
-        value: ByteArray): String {
+        value: ByteArray
+    ): String {
         return try {
             // TODO: Make DataItem.toString() pretty print data elements and use it here instead
             when (mdocDataElement?.attribute?.type) {
@@ -349,6 +349,7 @@ class ShowDocumentFragment : Fragment() {
                 is CredentialAttributeType.Picture -> {
                     String.format("%d bytes", Cbor.decode(value).asBstr.size)
                 }
+
                 is CredentialAttributeType.Boolean -> Cbor.decode(value).asBoolean.toString()
                 is CredentialAttributeType.ComplexType -> FormatUtil.cborPrettyPrint(value)
                 is CredentialAttributeType.StringOptions -> {
@@ -372,9 +373,11 @@ class ShowDocumentFragment : Fragment() {
                 value,
                 setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
             )
-            Logger.w(TAG, "Unexpected exception processing mdoc data element " +
-                "$namespaceName $dataElementName with value $prettyValue and " +
-                    "type ${mdocDataElement?.attribute?.type}", e)
+            Logger.w(
+                TAG, "Unexpected exception processing mdoc data element " +
+                        "$namespaceName $dataElementName with value $prettyValue and " +
+                        "type ${mdocDataElement?.attribute?.type}", e
+            )
             prettyValue
         }
     }

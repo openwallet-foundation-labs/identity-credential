@@ -17,14 +17,16 @@ package com.android.identity.android.mdoc.transport
 
 import android.content.Context
 import android.os.Build
+import com.android.identity.android.util.HelperListener
+import com.android.identity.android.util.launchIfAllowed
 import com.android.identity.android.mdoc.transport.DataTransport.Listener
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
+import kotlinx.coroutines.CoroutineScope
 import java.util.ArrayDeque
-import java.util.Queue
 import java.util.concurrent.Executor
 
 /**
@@ -47,11 +49,14 @@ import java.util.concurrent.Executor
  *
  *
  * This class can be used to implement both provers and verifiers.
+ *
+ *
  */
 abstract class DataTransport(
     protected val context: Context,
     val role: Role,
-    protected val options: DataTransportOptions
+    protected val options: DataTransportOptions,
+    var scope: CoroutineScope? = null
 ) {
     /**
      * Enumeration for the two different sides of a transport.
@@ -65,9 +70,15 @@ abstract class DataTransport(
     }
 
     var inhibitCallbacks = false
-    private var listener: Listener? = null
-    private var listenerExecutor: Executor? = null
-    private val messageReceivedQueue: Queue<ByteArray> = ArrayDeque()
+
+    // nullable backing field for listener
+    private var _listener: Listener? = null
+
+    // non-null listener
+    private val listener: Listener
+        get() = _listener!!
+
+    private val messageReceivedQueue = ArrayDeque<ByteArray>()
 
     /**
      * A [ConnectionMethod] instance that can be used to connect to this transport.
@@ -156,10 +167,9 @@ abstract class DataTransport(
      * @param executor a [Executor] to do the call in or `null` if `listener` is `null`.
      * @throws IllegalStateException if [Executor] is `null` for a non-`null` listener.
      */
-    fun setListener(listener: Listener?, executor: Executor?) {
-        check(!(listener != null && executor == null)) { "Passing null Executor for non-null Listener" }
-        this.listener = listener
-        listenerExecutor = executor
+    fun setListener(listener: Listener?, scope: CoroutineScope? = null) {
+        _listener = listener
+        this.scope = scope
     }
 
     /**
@@ -180,83 +190,35 @@ abstract class DataTransport(
 
     // Note: The report*() methods are safe to call from any thread.
     protected fun reportConnecting() {
-        val listener = listener
-        val executor = listenerExecutor
-        if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onConnecting()
-                }
-            })
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onConnecting() }
     }
 
     protected fun reportConnected() {
         isConnected = true
-        val listener = listener
-        val executor = listenerExecutor
-        if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onConnected()
-                }
-            })
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onConnected() }
     }
 
     protected fun reportDisconnected() {
-        val listener = listener
-        val executor = listenerExecutor
-        if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onDisconnected()
-                }
-            })
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onDisconnected() }
     }
 
     protected fun reportMessageReceived(data: ByteArray) {
         messageReceivedQueue.add(data)
-        val listener = listener
-        val executor = listenerExecutor
-        if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onMessageReceived()
-                }
-            })
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onMessageReceived() }
     }
 
     protected fun reportTransportSpecificSessionTermination() {
-        val listener = listener
-        val executor = listenerExecutor
-        if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onTransportSpecificSessionTermination()
-                }
-            })
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onTransportSpecificSessionTermination() }
     }
 
     protected fun reportError(error: Throwable) {
-        val listener = listener
-        val executor = listenerExecutor
-        if (listener != null && executor != null) {
-            executor.execute(Runnable {
-                if (!inhibitCallbacks) {
-                    listener.onError(error)
-                }
-            })
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onError(error) }
     }
 
     /**
      * Interface for listener.
      */
-    interface Listener {
+    interface Listener : HelperListener {
         /**
          * May be called when attempting to connect and the first sign of progress is seen.
          *
@@ -330,57 +292,96 @@ abstract class DataTransport(
             connectionMethod: ConnectionMethod,
             role: Role,
             options: DataTransportOptions
-        ): DataTransport {
+        ): DataTransport =
             // TODO: move this to DataTransportFactory
-            return if (connectionMethod is ConnectionMethodBle) {
-                DataTransportBle.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else if (connectionMethod is ConnectionMethodNfc) {
-                DataTransportNfc.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else if (connectionMethod is ConnectionMethodWifiAware) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    DataTransportWifiAware.fromConnectionMethod(
+            when (connectionMethod) {
+                is ConnectionMethodBle -> {
+                    DataTransportBle.fromConnectionMethod(
                         context,
                         connectionMethod,
                         role,
                         options
                     )
-                } else {
-                    throw IllegalStateException("Wifi Aware is not supported")
                 }
-            } else if (connectionMethod is ConnectionMethodHttp) {
-                DataTransportHttp.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else if (connectionMethod is ConnectionMethodTcp) {
-                DataTransportTcp.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else if (connectionMethod is ConnectionMethodUdp) {
-                DataTransportUdp.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else {
-                throw IllegalArgumentException("Unknown ConnectionMethod")
+
+                is ConnectionMethodNfc -> {
+                    DataTransportNfc.fromConnectionMethod(
+                        context,
+                        connectionMethod,
+                        role,
+                        options
+                    )
+                }
+
+                is ConnectionMethodWifiAware -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        DataTransportWifiAware.fromConnectionMethod(
+                            context,
+                            connectionMethod,
+                            role,
+                            options
+                        )
+                    } else {
+                        throw IllegalStateException("Wifi Aware is not supported")
+                    }
+                }
+
+                is ConnectionMethodHttp -> {
+                    DataTransportHttp.fromConnectionMethod(
+                        context,
+                        connectionMethod,
+                        role,
+                        options
+                    )
+                }
+
+                is ConnectionMethodTcp -> {
+                    DataTransportTcp.fromConnectionMethod(
+                        context,
+                        connectionMethod,
+                        role,
+                        options
+                    )
+                }
+
+                is ConnectionMethodUdp -> {
+                    DataTransportUdp.fromConnectionMethod(
+                        context,
+                        connectionMethod,
+                        role,
+                        options
+                    )
+                }
+
+                else -> {
+                    throw IllegalArgumentException("Unknown ConnectionMethod")
+                }
             }
-        }
     }
+
+    /**
+     * Private extension function localized to [DataTransport] that wraps around the extension function
+     * [CoroutineScope?.launchIfAllowed] to simplify and prettify listener callbacks.
+     *
+     * For ex, run a coroutine to call "onMessageReceived()" on the Listener instance
+     * scope.launchIfAllowed(inhibitCallbacks, listener) { onMessageReceived() }
+     *
+     * can be simplified to something easier to follow
+     * listener.executeIfAllowed(inhibitCallbacks) { onMessageReceived() }
+     *
+     * @param inhibitCallbacks whether to prevent the callback from being executed/called
+     * @param callback the block of code using Listener as the function type receiver so
+     * function calls are made on "this" Listener instance directly.
+     */
+    private fun Listener?.executeIfAllowed(
+        inhibitCallbacks: Boolean,
+        callback: Listener.() -> Unit
+    ) {
+        scope.launchIfAllowed(
+            inhibitCallbacks = inhibitCallbacks,
+            listener = this,
+            callback = callback
+        )
+    }
+
 }

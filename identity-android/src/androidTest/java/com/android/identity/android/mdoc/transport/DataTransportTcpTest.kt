@@ -19,6 +19,7 @@ import android.os.ConditionVariable
 import androidx.test.InstrumentationRegistry
 import androidx.test.filters.SmallTest
 import com.android.identity.util.fromHex
+import kotlinx.coroutines.test.TestScope
 import org.junit.Assert
 import org.junit.Test
 import java.util.concurrent.Executor
@@ -26,6 +27,9 @@ import java.util.concurrent.Executors
 
 @Suppress("deprecation")
 class DataTransportTcpTest {
+
+    val testScope = TestScope()
+
     @Test
     @SmallTest
     fun connectAndListen() {
@@ -50,7 +54,7 @@ class DataTransportTcpTest {
         val verifierMessageReceivedCondVar = ConditionVariable()
         val verifierPeerConnectedCondVar = ConditionVariable()
         val executor: Executor = Executors.newSingleThreadExecutor()
-        prover.setListener(object : DataTransport.Listener {
+        prover.setListener(scope = testScope, listener = object : DataTransport.Listener {
             override fun onConnecting() {}
             override fun onConnected() {
                 proverPeerConnectedCondVar.open()
@@ -73,8 +77,8 @@ class DataTransportTcpTest {
                 messageReceivedByProver[0] = data!!.clone()
                 proverMessageReceivedCondVar.open()
             }
-        }, executor)
-        verifier.setListener(object : DataTransport.Listener {
+        })
+        verifier.setListener(scope = testScope, listener = object : DataTransport.Listener {
             override fun onConnecting() {}
             override fun onConnected() {
                 verifierPeerConnectedCondVar.open()
@@ -97,7 +101,7 @@ class DataTransportTcpTest {
                 messageReceivedByVerifier[0] = data!!.clone()
                 verifierMessageReceivedCondVar.open()
             }
-        }, executor)
+        })
         prover.connect()
         verifier.setHostAndPort(prover.host, prover.port)
         verifier.connect()

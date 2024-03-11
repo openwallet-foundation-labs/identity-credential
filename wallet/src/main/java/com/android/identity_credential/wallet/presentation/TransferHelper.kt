@@ -60,12 +60,12 @@ class TransferHelper(
      * Builder class returning a new TransferHelper instance with a new deviceRetrievalHelper object.
      */
     class Builder(
-        val credentialStore: CredentialStore,
-        val issuingAuthorityRepository: IssuingAuthorityRepository,
-        val trustManager: TrustManager,
-        val context: Context,
+        private val credentialStore: CredentialStore,
+        private val issuingAuthorityRepository: IssuingAuthorityRepository,
+        private val trustManager: TrustManager,
+        private val context: Context,
         private var deviceRetrievalHelper: DeviceRetrievalHelper? = null,
-        var onError: (Throwable) -> Unit = {},
+        private var onError: (Throwable) -> Unit = {},
     ) {
         fun setDeviceRetrievalHelper(deviceRetrievalHelper: DeviceRetrievalHelper) = apply {
             this.deviceRetrievalHelper = deviceRetrievalHelper
@@ -108,16 +108,17 @@ class TransferHelper(
             }
 
         val credential = credentialStore.lookupCredential(credentialId)!!
-        val request = DeviceRequestParser(deviceRequest, deviceRetrievalHelper.sessionTranscript).parse()
+        val request =
+            DeviceRequestParser(deviceRequest, deviceRetrievalHelper.sessionTranscript).parse()
         val docRequest = request.documentRequests[0]
 
         var trustPoint: TrustPoint? = null
         if (docRequest.readerAuthenticated) {
             val result = trustManager.verify(
                 docRequest.readerCertificateChain!!.javaX509Certificates,
-                customValidators = emptyList()  // not neeeded for reader auth
+                customValidators = emptyList()  // not needed for reader auth
             )
-            if (result.isTrusted && !result.trustPoints.isEmpty()) {
+            if (result.isTrusted && result.trustPoints.isNotEmpty()) {
                 trustPoint = result.trustPoints.first()
             } else if (result.error != null) {
                 Logger.w(TAG, "Error finding trustpoint for reader auth", result.error!!)
@@ -305,13 +306,13 @@ class TransferHelper(
     private fun isCredentialValid(
         credentialId: String,
         credentialPresentationFormat: CredentialPresentationFormat
-    ): Boolean {
-        val credential = credentialStore.lookupCredential(credentialId)!!
-        val issuingAuthorityIdentifier = credential.issuingAuthorityIdentifier
-        val issuer =
-            issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
-                ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
-        val credentialFormats = issuer.configuration.credentialFormats
-        return credentialFormats.contains(credentialPresentationFormat)
-    }
+    ): Boolean =
+        credentialStore.lookupCredential(credentialId)?.let { credential ->
+            issuingAuthorityRepository.lookupIssuingAuthority(credential.issuingAuthorityIdentifier)
+                ?.let { issuer ->
+                    val credentialFormats = issuer.configuration.credentialFormats
+                    credentialFormats.contains(credentialPresentationFormat)
+                }
+                ?: throw IllegalArgumentException("No issuer with id ${credential.issuingAuthorityIdentifier}")
+        } ?: throw IllegalArgumentException("No credential with id $credentialId")
 }

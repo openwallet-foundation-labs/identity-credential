@@ -47,14 +47,19 @@ object NfcUtil {
 
     @JvmField
     val STATUS_WORD_INSTRUCTION_NOT_SUPPORTED = byteArrayOf(0x6d.toByte(), 0x00.toByte())
+
     @JvmField
     val STATUS_WORD_OK = byteArrayOf(0x90.toByte(), 0x00.toByte())
+
     @JvmField
     val STATUS_WORD_FILE_NOT_FOUND = byteArrayOf(0x6a.toByte(), 0x82.toByte())
+
     @JvmField
     val STATUS_WORD_END_OF_FILE_REACHED = byteArrayOf(0x62.toByte(), 0x82.toByte())
+
     @JvmField
     val STATUS_WORD_WRONG_PARAMETERS = byteArrayOf(0x6b.toByte(), 0x00.toByte())
+
     @JvmField
     val STATUS_WORD_WRONG_LENGTH = byteArrayOf(0x67.toByte(), 0x00.toByte())
 
@@ -65,87 +70,94 @@ object NfcUtil {
         }
         val ins = apdu[1].toInt() and 0xff
         val p1 = apdu[2].toInt() and 0xff
-        if (ins == 0xA4) {
-            if (p1 == 0x04) {
-                return COMMAND_TYPE_SELECT_BY_AID
-            } else if (p1 == 0x00) {
-                return COMMAND_TYPE_SELECT_FILE
+        return when (ins) {
+            0xA4 -> {
+                when (p1) {
+                    0x04 -> {
+                        COMMAND_TYPE_SELECT_BY_AID
+                    }
+
+                    0x00 -> {
+                        COMMAND_TYPE_SELECT_FILE
+                    }
+
+                    else -> {
+                        COMMAND_TYPE_OTHER
+                    }
+                }
             }
-        } else if (ins == 0xb0) {
-            return COMMAND_TYPE_READ_BINARY
-        } else if (ins == 0xd6) {
-            return COMMAND_TYPE_UPDATE_BINARY
-        } else if (ins == 0xc0) {
-            return COMMAND_TYPE_RESPONSE
-        } else if (ins == 0xc3) {
-            return COMMAND_TYPE_ENVELOPE
+
+            0xb0 -> COMMAND_TYPE_READ_BINARY
+            0xd6 -> COMMAND_TYPE_UPDATE_BINARY
+            0xc0 -> COMMAND_TYPE_RESPONSE
+            0xc3 -> COMMAND_TYPE_ENVELOPE
+            else -> COMMAND_TYPE_OTHER
         }
-        return COMMAND_TYPE_OTHER
     }
 
     @JvmStatic
-    fun createApduApplicationSelect(aid: ByteArray): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x00)
-        baos.write(0xa4)
-        baos.write(0x04)
-        baos.write(0x00)
-        baos.write(0x07)
-        try {
-            baos.write(aid)
-        } catch (e: IOException) {
-            throw IllegalStateException(e)
+    fun createApduApplicationSelect(aid: ByteArray): ByteArray =
+        ByteArrayOutputStream().run {
+            write(0x00)
+            write(0xa4)
+            write(0x04)
+            write(0x00)
+            write(0x07)
+            try {
+                write(aid)
+            } catch (e: IOException) {
+                throw IllegalStateException(e)
+            }
+            toByteArray()
         }
-        return baos.toByteArray()
-    }
 
     @JvmStatic
-    fun createApduSelectFile(fileId: Int): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x00)
-        baos.write(0xa4)
-        baos.write(0x00)
-        baos.write(0x0c)
-        baos.write(0x02)
-        baos.write(fileId / 0x100)
-        baos.write(fileId and 0xff)
-        return baos.toByteArray()
-    }
+    fun createApduSelectFile(fileId: Int): ByteArray =
+        ByteArrayOutputStream().run {
+            write(0x00)
+            write(0xa4)
+            write(0x00)
+            write(0x0c)
+            write(0x02)
+            write(fileId / 0x100)
+            write(fileId and 0xff)
+            toByteArray()
+        }
 
     @JvmStatic
-    fun createApduReadBinary(offset: Int, length: Int): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x00)
-        baos.write(0xb0)
-        baos.write(offset / 0x100)
-        baos.write(offset and 0xff)
-        require(length != 0) { "Length cannot be zero" }
-        if (length < 0x100) {
-            baos.write(length and 0xff)
-        } else {
-            baos.write(0x00)
-            baos.write(length / 0x100)
-            baos.write(length and 0xff)
+    fun createApduReadBinary(offset: Int, length: Int): ByteArray =
+        ByteArrayOutputStream().run {
+            write(0x00)
+            write(0xb0)
+            write(offset / 0x100)
+            write(offset and 0xff)
+            require(length != 0) { "Length cannot be zero" }
+            if (length < 0x100) {
+                write(length and 0xff)
+            } else {
+                write(0x00)
+                write(length / 0x100)
+                write(length and 0xff)
+            }
+            toByteArray()
         }
-        return baos.toByteArray()
-    }
 
     @JvmStatic
-    fun createApduUpdateBinary(offset: Int, data: ByteArray): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x00)
-        baos.write(0xd6)
-        baos.write(offset / 0x100)
-        baos.write(offset and 0xff)
-        require(data.size < 0x100) { "Data must be shorter than 0x100 bytes" }
-        baos.write(data.size and 0xff)
-        try {
-            baos.write(data)
-        } catch (e: IOException) {
-            throw IllegalArgumentException(e)
+    fun createApduUpdateBinary(offset: Int, data: ByteArray): ByteArray =
+        ByteArrayOutputStream().run {
+            write(0x00)
+            write(0xd6)
+            write(offset / 0x100)
+            write(offset and 0xff)
+            require(data.size < 0x100) { "Data must be shorter than 0x100 bytes" }
+            write(data.size and 0xff)
+            try {
+                write(data)
+            } catch (e: IOException) {
+                throw IllegalArgumentException(e)
+            }
+            toByteArray()
         }
-        return baos.toByteArray()
-    }
 
     @JvmStatic
     fun createNdefMessageServiceSelect(serviceName: String): ByteArray {
@@ -303,8 +315,8 @@ object NfcUtil {
         var validHandoverSelectMessage = false
 
         var phsmEncodedDeviceEngagement: ByteArray? = null
-        var phsmConnectionMethods = mutableListOf<ConnectionMethod>()
-        for (r in m!!.getRecords()) {
+        val phsmConnectionMethods = mutableListOf<ConnectionMethod>()
+        for (r in m.records) {
             // Handle Handover Select record for NFC Forum Connection Handover specification
             // version 1.5 (encoded as 0x15 below).
             //
@@ -312,7 +324,7 @@ object NfcUtil {
                 && Arrays.equals(r.type, "Hs".toByteArray())
             ) {
                 val payload = r.payload
-                if (payload.size >= 1 && payload[0].toInt() == 0x15) {
+                if (payload.isNotEmpty() && payload[0].toInt() == 0x15) {
                     // The NDEF payload of the Handover Select Record SHALL consist of a single
                     // octet that contains the MAJOR_VERSION and MINOR_VERSION numbers,
                     // optionally followed by an embedded NDEF message.
@@ -372,11 +384,11 @@ object NfcUtil {
             throw IllegalArgumentException("Error parsing NDEF message", e)
         }
         val snUtf8 = serviceName.toByteArray()
-        for (r in m.getRecords()) {
+        for (r in m.records) {
             val p = r.payload
             if (r.tnf == NdefRecord.TNF_WELL_KNOWN && Arrays.equals(
                     "Tp".toByteArray(
-                        
+
                     ), r.type
                 ) && p != null && p.size > snUtf8.size + 2 && p[0].toInt() == 0x10 && p[1].toInt() == snUtf8.size && Arrays.equals(
                     snUtf8,
@@ -405,20 +417,13 @@ object NfcUtil {
         val serviceNameLen = p[1].toInt()
         require(p.size == serviceNameLen + 7) { "Unexpected length of body in Service Parameter Record" }
 
-        val psprTnepVersion: Int
-        val psprServiceNameUri: String
-        val psprTnepCommunicationMode: Int
-        val psprTWaitMillis: Double
-        val psprNWait: Int
-        val psprMaxNdefSize: Int
-
-        psprTnepVersion = p[0].toInt() and 0xff
-        psprServiceNameUri = String(p, 2, serviceNameLen)
-        psprTnepCommunicationMode = p[2 + serviceNameLen].toInt() and 0xff
+        val psprTnepVersion: Int = p[0].toInt() and 0xff
+        val psprServiceNameUri: String = String(p, 2, serviceNameLen)
+        val psprTnepCommunicationMode: Int = p[2 + serviceNameLen].toInt() and 0xff
         val wt_int = p[3 + serviceNameLen].toInt() and 0xff
-        psprTWaitMillis = Math.pow(2.0, (wt_int / 4 - 1).toDouble())
-        psprNWait = p[4 + serviceNameLen].toInt() and 0xff
-        psprMaxNdefSize =
+        val psprTWaitMillis: Double = Math.pow(2.0, (wt_int / 4 - 1).toDouble())
+        val psprNWait: Int = p[4 + serviceNameLen].toInt() and 0xff
+        val psprMaxNdefSize: Int =
             (p[5 + serviceNameLen].toInt() and 0xff) * 0x100 + (p[6 + serviceNameLen].toInt() and 0xff)
         return ParsedServiceParameterRecord(
             psprTnepVersion,
@@ -431,37 +436,37 @@ object NfcUtil {
     }
 
     @JvmStatic
-    fun findTnepStatusRecord(ndefMessage: ByteArray): NdefRecord? {
-        var m = try {
-            NdefMessage(ndefMessage)
+    fun findTnepStatusRecord(ndefMessage: ByteArray): NdefRecord? =
+        try {
+            NdefMessage(ndefMessage).records.firstOrNull {
+                it.tnf == NdefRecord.TNF_WELL_KNOWN
+                        && Arrays.equals("Te".toByteArray(), it.type)
+            }
         } catch (e: FormatException) {
             throw IllegalArgumentException("Error parsing NDEF message", e)
         }
-        for (r in m.getRecords()) {
-            if (r.tnf == NdefRecord.TNF_WELL_KNOWN
-                && Arrays.equals("Te".toByteArray(), r.type)
-            ) {
-                return r
+
+
+    private fun getConnectionMethodFromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethod? =
+        Cbor.decode(encodedDeviceRetrievalMethod).let { items ->
+            when (val type = items[0].asNumber) {
+                ConnectionMethodTcp.METHOD_TYPE ->
+                    ConnectionMethodTcp.fromDeviceEngagementTcp(
+                        encodedDeviceRetrievalMethod
+                    )
+
+                ConnectionMethodUdp.METHOD_TYPE ->
+                    ConnectionMethodUdp.fromDeviceEngagementUdp(
+                        encodedDeviceRetrievalMethod
+                    )
+
+                else -> {
+                    Logger.w(TAG, "Unsupported ConnectionMethod type $type in DeviceEngagement")
+                    null
+                }
             }
         }
-        return null
-    }
 
-    private fun getConnectionMethodFromDeviceEngagement(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethod? {
-        val items = Cbor.decode(encodedDeviceRetrievalMethod)
-        val type = items[0].asNumber
-        when (type) {
-            ConnectionMethodTcp.METHOD_TYPE -> return ConnectionMethodTcp.fromDeviceEngagementTcp(
-                encodedDeviceRetrievalMethod
-            )
-
-            ConnectionMethodUdp.METHOD_TYPE -> return ConnectionMethodUdp.fromDeviceEngagementUdp(
-                encodedDeviceRetrievalMethod
-            )
-        }
-        Logger.w(TAG, "Unsupported ConnectionMethod type $type in DeviceEngagement")
-        return null
-    }
 
     @JvmStatic
     fun fromNdefRecord(record: NdefRecord, isForHandoverSelect: Boolean): ConnectionMethod? {
@@ -539,43 +544,58 @@ object NfcUtil {
         connectionMethod: ConnectionMethod,
         auxiliaryReferences: List<String>,
         isForHandoverSelect: Boolean
-    ): Pair<NdefRecord, ByteArray>? {
-        if (connectionMethod is ConnectionMethodBle) {
-            return DataTransportBle.toNdefRecord(
-                connectionMethod,
-                auxiliaryReferences,
-                isForHandoverSelect
-            )
-        } else if (connectionMethod is ConnectionMethodNfc) {
-            return DataTransportNfc.toNdefRecord(
-                connectionMethod,
-                auxiliaryReferences,
-                isForHandoverSelect
-            )
-        } else if (connectionMethod is ConnectionMethodWifiAware) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                return DataTransportWifiAware.toNdefRecord(
+    ): Pair<NdefRecord, ByteArray>? =
+
+        when (connectionMethod) {
+            is ConnectionMethodBle -> {
+                DataTransportBle.toNdefRecord(
                     connectionMethod,
                     auxiliaryReferences,
                     isForHandoverSelect
                 )
             }
-        } else if (connectionMethod is ConnectionMethodTcp) {
-            return DataTransportTcp.toNdefRecord(
-                connectionMethod,
-                auxiliaryReferences,
-                isForHandoverSelect
-            )
-        } else if (connectionMethod is ConnectionMethodUdp) {
-            return DataTransportUdp.toNdefRecord(
-                connectionMethod,
-                auxiliaryReferences,
-                isForHandoverSelect
-            )
+
+            is ConnectionMethodNfc -> {
+                DataTransportNfc.toNdefRecord(
+                    connectionMethod,
+                    auxiliaryReferences,
+                    isForHandoverSelect
+                )
+            }
+
+            is ConnectionMethodWifiAware -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    DataTransportWifiAware.toNdefRecord(
+                        connectionMethod,
+                        auxiliaryReferences,
+                        isForHandoverSelect
+                    )
+                } else {
+                    null
+                }
+            }
+
+            is ConnectionMethodTcp -> {
+                DataTransportTcp.toNdefRecord(
+                    connectionMethod,
+                    auxiliaryReferences,
+                    isForHandoverSelect
+                )
+            }
+
+            is ConnectionMethodUdp -> {
+                DataTransportUdp.toNdefRecord(
+                    connectionMethod,
+                    auxiliaryReferences,
+                    isForHandoverSelect
+                )
+            }
+
+            else -> {
+                Logger.w(TAG, "toNdefRecord: Unsupported ConnectionMethod")
+                null
+            }
         }
-        Logger.w(TAG, "toNdefRecord: Unsupported ConnectionMethod")
-        return null
-    }
 
     data class ParsedHandoverSelectMessage(
         @JvmField

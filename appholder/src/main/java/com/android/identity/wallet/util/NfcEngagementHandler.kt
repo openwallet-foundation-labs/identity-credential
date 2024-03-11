@@ -17,7 +17,6 @@
 package com.android.identity.wallet.util
 
 import android.content.Intent
-import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -25,6 +24,7 @@ import androidx.navigation.NavDeepLinkBuilder
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.android.util.HostApduServiceScoped
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.wallet.R
@@ -32,7 +32,7 @@ import com.android.identity.wallet.transfer.Communication
 import com.android.identity.wallet.transfer.ConnectionSetup
 import com.android.identity.wallet.transfer.TransferManager
 
-class NfcEngagementHandler : HostApduService() {
+class NfcEngagementHandler : HostApduServiceScoped() {
 
     private lateinit var engagementHelper: NfcEngagementHelper
     private lateinit var communication: Communication
@@ -75,18 +75,18 @@ class NfcEngagementHandler : HostApduService() {
 
             log("Engagement Listener: Device Connected via NFC")
 
-            val builder = DeviceRetrievalHelper.Builder(
-                applicationContext,
-                presentationListener,
-                applicationContext.mainExecutor(),
-                eDeviceKey
-            )
-            builder.useForwardEngagement(
-                transport,
-                engagementHelper.deviceEngagement,
-                engagementHelper.handover
-            )
-            deviceRetrievalHelper = builder.build()
+            deviceRetrievalHelper = DeviceRetrievalHelper.Builder(
+                context = applicationContext,
+                listener = presentationListener,
+                scope = serviceScope,
+                eDeviceKey =eDeviceKey,
+                transport = transport
+            ).apply{
+                useForwardEngagement(
+                    engagementHelper.deviceEngagement,
+                    engagementHelper.handover
+                )
+            }.build()
             communication.deviceRetrievalHelper = deviceRetrievalHelper
             engagementHelper.close()
             transferManager.updateStatus(TransferStatus.CONNECTED)
@@ -130,11 +130,11 @@ class NfcEngagementHandler : HostApduService() {
         transferManager.setCommunication(communication)
         val connectionSetup = ConnectionSetup(applicationContext)
         val builder = NfcEngagementHelper.Builder(
-            applicationContext,
-            eDeviceKey.publicKey,
-            connectionSetup.getConnectionOptions(),
-            nfcEngagementListener,
-            applicationContext.mainExecutor()
+            context = applicationContext,
+            eDeviceKey =eDeviceKey.publicKey,
+            options = connectionSetup.getConnectionOptions(),
+            listener = nfcEngagementListener,
+            scope = serviceScope
         )
         if (PreferencesHelper.shouldUseStaticHandover()) {
             builder.useStaticHandover(connectionSetup.getConnectionMethods())

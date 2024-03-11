@@ -16,12 +16,12 @@
 
 package com.android.identity.wallet.util
 
-import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import com.android.identity.android.mdoc.transport.DataTransportNfc
+import com.android.identity.android.util.HostApduServiceScoped
 import com.android.identity.wallet.transfer.TransferManager
 
-class NfcDataTransferHandler : HostApduService() {
+class NfcDataTransferHandler : HostApduServiceScoped() {
 
     private lateinit var transferManager: TransferManager
 

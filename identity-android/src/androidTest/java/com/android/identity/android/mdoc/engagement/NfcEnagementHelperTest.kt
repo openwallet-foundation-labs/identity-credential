@@ -32,6 +32,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.mdoc.engagement.EngagementParser
 import com.android.identity.util.toHex
+import kotlinx.coroutines.test.TestScope
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
@@ -40,11 +41,11 @@ import java.security.Security
 import java.util.Arrays
 import java.util.OptionalLong
 import java.util.UUID
-import java.util.concurrent.Executor
-import java.util.concurrent.Executors
 
 @Suppress("deprecation")
 class NfcEnagementHelperTest {
+    val testSCope = TestScope()
+
     @Before
     fun setup() {
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
@@ -67,13 +68,12 @@ class NfcEnagementHelperTest {
             override fun onDeviceConnected(transport: DataTransport) {}
             override fun onError(error: Throwable) {}
         }
-        val executor: Executor = Executors.newSingleThreadExecutor()
         val builder = NfcEngagementHelper.Builder(
             context,
+            testSCope,
             eDeviceKey.publicKey,
             DataTransportOptions.Builder().build(),
             listener,
-            executor
         )
 
         // Include all ConnectionMethods that can exist in OOB data
@@ -208,13 +208,12 @@ class NfcEnagementHelperTest {
             override fun onDeviceConnected(transport: DataTransport) {}
             override fun onError(error: Throwable) {}
         }
-        val executor: Executor = Executors.newSingleThreadExecutor()
         val builder = NfcEngagementHelper.Builder(
             context,
+            testSCope,
             eDeviceKey.publicKey,
             DataTransportOptions.Builder().build(),
             listener,
-            executor
         )
 
         // Include all ConnectionMethods that can exist in OOB data

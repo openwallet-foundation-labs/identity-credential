@@ -55,7 +55,7 @@ class DataTransportHttp(
     var socket: Socket? = null
     var writerQueue: BlockingQueue<ByteArray> = LinkedTransferQueue()
     var serverSocket: ServerSocket? = null
-    var socketWriterThread: Thread? = null
+    private var socketWriterThread: Thread? = null
     private var _host: String? = null
     var port = 0
     private var _path: String? = null
@@ -87,7 +87,7 @@ class DataTransportHttp(
                         return null
                     }
                 }
-                if (line.length == 0) {
+                if (line.isEmpty()) {
                     // End of headers...
                     if (contentLength == -1) {
                         Logger.w(TAG, "No Content-Length header")
@@ -129,12 +129,12 @@ class DataTransportHttp(
                     setupWritingThread(true)
                     reportConnected()
                     val inputStream = socket!!.getInputStream()
-                    while (!socket!!.isClosed()) {
+                    while (!socket!!.isClosed) {
                         val data = readMessageFromSocket(inputStream)
                         if (data == null) {
                             reportError(Error("Error reading message from socket"))
                             break
-                        } else if (data.size == 0) {
+                        } else if (data.isEmpty()) {
                             // End Of Stream
                             reportDisconnected()
                             break
@@ -169,7 +169,10 @@ class DataTransportHttp(
     private var requestQueue: RequestQueue? = null
 
     private fun connectAsMdoc() {
-        Logger.d(TAG, "Connecting to uri=${connectionMethod!!.uri} (host=$_host port=$port useTls=$useTls)")
+        Logger.d(
+            TAG,
+            "Connecting to uri=${connectionMethod!!.uri} (host=$_host port=$port useTls=$useTls)"
+        )
         requestQueue = Volley.newRequestQueue(context)
 
         // We're not really connected yet but if it doesn't work, we'll fail later...
@@ -196,7 +199,10 @@ class DataTransportHttp(
             "application/cbor",
             { response ->
                 if (Logger.isDebugEnabled) {
-                    Logger.d(TAG, "Received response to HTTP request payload of length " + response.size)
+                    Logger.d(
+                        TAG,
+                        "Received response to HTTP request payload of length " + response.size
+                    )
                 }
                 reportMessageReceived(response)
             }
@@ -231,7 +237,7 @@ class DataTransportHttp(
         socketWriterThread = object : Thread() {
             override fun run() {
                 while (socket!!.isConnected) {
-                    var messageToSend: ByteArray? = null
+                    var messageToSend: ByteArray?
                     try {
                         messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
                         if (messageToSend == null) {
@@ -239,7 +245,7 @@ class DataTransportHttp(
                         }
                         // An empty message is used to convey that the writing thread should be
                         // shut down.
-                        if (messageToSend.size == 0) {
+                        if (messageToSend.isEmpty()) {
                             Logger.d(TAG, "Empty message, shutting down writer")
                             break
                         }
@@ -302,7 +308,7 @@ Content-Type: application/cbor
             }
         }
         if (requestQueue != null) {
-            requestQueue!!.cancelAll { request: Request<*>? -> true }
+            requestQueue!!.cancelAll { _: Request<*>? -> true }
             requestQueue = null
         }
     }
@@ -319,9 +325,7 @@ Content-Type: application/cbor
         reportError(Error("Transport-specific termination message not supported"))
     }
 
-    override fun supportsTransportSpecificTerminationMessage(): Boolean {
-        return false
-    }
+    override fun supportsTransportSpecificTerminationMessage(): Boolean = false
 
     override val connectionMethodForTransport: ConnectionMethod
         get() = connectionMethod!!
@@ -353,13 +357,9 @@ Content-Type: application/cbor
             return Response.success(response.data, HttpHeaderParser.parseCacheHeaders(response))
         }
 
-        override fun getBody(): ByteArray {
-            return body
-        }
+        override fun getBody(): ByteArray = body
 
-        override fun getBodyContentType(): String {
-            return bodyContentType
-        }
+        override fun getBodyContentType(): String = bodyContentType
 
         companion object {
             private const val TAG = "CborRequest"
@@ -371,6 +371,7 @@ Content-Type: application/cbor
 
         // The maximum message size we support.
         private const val MAX_MESSAGE_SIZE = 16 * 1024 * 1024
+
         @Suppress("deprecation")
         private fun getWifiIpAddress(context: Context): String {
             val wifiManager = context.getSystemService(
@@ -400,27 +401,36 @@ Content-Type: application/cbor
                 throw IllegalArgumentException(e)
             }
             val transport = DataTransportHttp(context, role, cm, options)
-            if (uri.getScheme() == "http") {
-                transport.host = uri.getHost()
-                var port = uri.getPort()
-                if (port == -1) {
-                    port = 80
+
+            return when (uri.scheme) {
+                "http" -> {
+                    transport.host = uri.host
+                    var port = uri.port
+                    if (port == -1) {
+                        port = 80
+                    }
+                    transport.port = port
+                    transport.path = uri.path
+                    transport
                 }
-                transport.port = port
-                transport.path = uri.getPath()
-                return transport
-            } else if (uri.getScheme() == "https") {
-                transport.host = uri.getHost()
-                var port = uri.getPort()
-                if (port == -1) {
-                    port = 443
+
+                "https" -> {
+                    transport.host = uri.host
+                    var port = uri.port
+                    if (port == -1) {
+                        port = 443
+                    }
+                    transport.port = port
+                    transport.path = uri.path
+                    transport.useTls = true
+                    transport
+
                 }
-                transport.port = port
-                transport.path = uri.getPath()
-                transport.useTls = true
-                return transport
+
+                else -> {
+                    throw IllegalArgumentException("Unsupported scheme " + uri.scheme)
+                }
             }
-            throw IllegalArgumentException("Unsupported scheme " + uri.getScheme())
         }
     }
 }

@@ -3,7 +3,10 @@ package com.android.identity.android.mdoc.engagement
 import android.content.Context
 import android.net.Uri
 import android.util.Base64
+import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.engagement.QrEngagementHelper.Listener
+import com.android.identity.android.util.HelperListener
+import com.android.identity.android.util.launchIfAllowed
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransport.Companion.fromConnectionMethod
 import com.android.identity.android.mdoc.transport.DataTransportOptions
@@ -16,6 +19,7 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.disambiguate
 import com.android.identity.mdoc.engagement.EngagementGenerator
 import com.android.identity.util.Logger
+import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.Executor
 
 /**
@@ -34,12 +38,12 @@ import java.util.concurrent.Executor
  */
 class QrEngagementHelper internal constructor(
     context: Context,
+    private val scope: CoroutineScope?,
     eDeviceKey: EcPublicKey,
     connectionMethods: List<ConnectionMethod>?,
     transports: List<DataTransport>?,
     options: DataTransportOptions,
-    private val listener: Listener,
-    private val executor: Executor
+    private val listener: Listener
 ) {
     private var inhibitCallbacks = false
     private var transports = mutableListOf<DataTransport>()
@@ -94,7 +98,7 @@ class QrEngagementHelper internal constructor(
         // ThreadPoolExecutor.
         //
         for (transport in this.transports) {
-            transport.setListener(object : DataTransport.Listener {
+            transport.setListener(scope = scope, listener = object : DataTransport.Listener {
                 override fun onConnecting() {
                     Logger.d(TAG, "onConnecting for $transport")
                     peerIsConnecting()
@@ -123,7 +127,7 @@ class QrEngagementHelper internal constructor(
                     Logger.d(TAG, "Received transport-specific session termination")
                     transport.close()
                 }
-            }, executor)
+            })
             Logger.d(TAG, "Connecting to transport $transport")
             transport.connect()
         }
@@ -209,47 +213,23 @@ class QrEngagementHelper internal constructor(
 
     private fun reportDeviceConnecting() {
         Logger.d(TAG, "reportDeviceConnecting")
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onDeviceConnecting()
-                }
-            }
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onDeviceConnecting() }
     }
 
     private fun reportDeviceConnected(transport: DataTransport) {
         Logger.d(TAG, "reportDeviceConnected")
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onDeviceConnected(transport)
-                }
-            }
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onDeviceConnected(transport) }
     }
 
     private fun reportError(error: Throwable) {
         Logger.d(TAG, "reportError: error: ", error)
-        val listener = listener
-        val executor = executor
-        if (listener != null && executor != null) {
-            executor.execute {
-                if (!inhibitCallbacks) {
-                    listener.onError(error)
-                }
-            }
-        }
+        listener.executeIfAllowed(inhibitCallbacks) { onError(error) }
     }
 
     /**
      * Listener interface for [QrEngagementHelper].
      */
-    interface Listener {
+    interface Listener : HelperListener {
         /**
          * Called when a remote mdoc reader is starting to connect.
          */
@@ -295,10 +275,10 @@ class QrEngagementHelper internal constructor(
      */
     class Builder(
         private val context: Context,
+        private val scope: CoroutineScope?,
         private val eDeviceKey: EcPublicKey,
         private val options: DataTransportOptions,
         private val listener: Listener,
-        private val executor: Executor
     ) {
         private var connectionMethods: List<ConnectionMethod>? = null
         private var transports: List<DataTransport>? = null
@@ -332,18 +312,43 @@ class QrEngagementHelper internal constructor(
          */
         fun build(): QrEngagementHelper {
             return QrEngagementHelper(
-                context,
-                eDeviceKey,
-                connectionMethods,
-                transports,
-                options,
-                listener,
-                executor
+                context = context,
+                scope = scope,
+                eDeviceKey = eDeviceKey,
+                connectionMethods = connectionMethods,
+                transports = transports,
+                options = options,
+                listener = listener,
             )
         }
     }
 
     companion object {
         private const val TAG = "QrEngagementHelper"
+    }
+
+    /**
+     * Private extension function localized to [DeviceRetrievalHelper] that wraps around the extension function
+     * [CoroutineScope?.launchIfAllowed] to simplify and prettify listener callbacks.
+     *
+     * For ex, run a coroutine to call "onMessageReceived()" on the Listener instance
+     * scope.launchIfAllowed(inhibitCallbacks, listener) { onMessageReceived() }
+     *
+     * can be simplified to something easier to follow
+     * listener.executeIfAllowed(inhibitCallbacks) { onMessageReceived() }
+     *
+     * @param inhibitCallbacks whether to prevent the callback from being executed/called
+     * @param callback the block of code using Listener as the function type receiver so
+     * function calls are made on "this" Listener instance directly.
+     */
+    private fun Listener?.executeIfAllowed(
+        inhibitCallbacks: Boolean,
+        callback: Listener.() -> Unit
+    ) {
+        scope.launchIfAllowed(
+            inhibitCallbacks = inhibitCallbacks,
+            listener = this,
+            callback = callback
+        )
     }
 }

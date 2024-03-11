@@ -11,10 +11,11 @@ import com.android.identity.mdoc.engagement.EngagementParser
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.log
-import com.android.identity.wallet.util.mainExecutor
+import kotlinx.coroutines.CoroutineScope
 
 class ReverseQrCommunicationSetup(
     private val context: Context,
+    private val scope: CoroutineScope?,
     private val onPresentationReady: (presentation: DeviceRetrievalHelper) -> Unit,
     private val onNewRequest: (request: ByteArray) -> Unit,
     private val onDisconnected: () -> Unit,
@@ -75,14 +76,15 @@ class ReverseQrCommunicationSetup(
             connectionSetup.getConnectionOptions()
         )
 
-        val builder = DeviceRetrievalHelper.Builder(
-            context,
-            presentationListener,
-            context.mainExecutor(),
-            eDeviceKey
-        )
-        builder.useReverseEngagement(transport, encodedReaderEngagement, origins)
-        presentation = builder.build()
+        presentation = DeviceRetrievalHelper.Builder(
+            context = context,
+            scope = scope,
+            listener = presentationListener,
+            eDeviceKey = eDeviceKey,
+            transport = transport
+        ).apply {
+            useReverseEngagement(encodedReaderEngagement, origins)
+        }.build()
         onPresentationReady(requireNotNull(presentation))
     }
 }

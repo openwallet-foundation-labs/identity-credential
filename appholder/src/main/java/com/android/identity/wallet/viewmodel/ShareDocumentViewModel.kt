@@ -5,13 +5,15 @@ import android.view.View
 import androidx.databinding.ObservableField
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.viewModelScope
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.wallet.transfer.TransferManager
 import com.android.identity.wallet.util.TransferStatus
 
 class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
-    private val transferManager = TransferManager.getInstance(app.applicationContext)
+    private val transferManager =
+        TransferManager.getInstance(app.applicationContext)
     var deviceEngagementQr = ObservableField<View>()
     var message = ObservableField<String>()
     private var hasStarted = false
@@ -23,7 +25,11 @@ class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
         originInfos: List<OriginInfo>
     ) {
         if (!hasStarted) {
-            transferManager.startPresentationReverseEngagement(reverseEngagementUri, originInfos)
+            transferManager.startPresentationReverseEngagement(
+                reverseEngagementUri,
+                originInfos,
+                viewModelScope
+            )
             hasStarted = true
         }
     }
@@ -42,6 +48,6 @@ class ShareDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     }
 
     fun triggerQrEngagement() {
-        transferManager.startQrEngagement()
+        transferManager.startQrEngagement(viewModelScope)
     }
 }

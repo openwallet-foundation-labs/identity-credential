@@ -161,6 +161,7 @@ class PresentationActivity : FragmentActivity() {
 
         // terminate PresentationActivity since "presentation is complete" (once response is sent)
         finish()
+
     }
 
     private fun onAuthenticationKeyLocked(authKey: AuthenticationKey) {
@@ -329,8 +330,8 @@ class PresentationActivity : FragmentActivity() {
      */
     private fun newDeviceRetrievalHelper() =
         DeviceRetrievalHelper.Builder(
-            applicationContext,
-            object : DeviceRetrievalHelper.Listener {
+            context = applicationContext,
+            listener = object : DeviceRetrievalHelper.Listener {
 
                 override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
                     Logger.i(TAG, "onEReaderKeyReceived")
@@ -357,15 +358,16 @@ class PresentationActivity : FragmentActivity() {
                 }
 
             },
-            ContextCompat.getMainExecutor(applicationContext),
-            eDeviceKey!!
-        )
-            .useForwardEngagement(transport!!, deviceEngagement!!, handover!!)
-            .build().apply {
-                // set deviceRetrievalHelper to this newly built instance
-                deviceRetrievalHelper = this
-                // return the instance
-            }
+            scope = lifecycleScope,
+            eDeviceKey = eDeviceKey!!,
+            transport = transport!!
+        ).apply {
+            useForwardEngagement(deviceEngagement!!, handover!!)
+        }.build().apply {
+            // set deviceRetrievalHelper to this newly built instance
+            deviceRetrievalHelper = this
+            // return the instance
+        }
 
 
     private fun disconnect() {

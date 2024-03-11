@@ -5,29 +5,22 @@ import android.app.Activity
 import android.content.Context
 import android.media.MediaPlayer
 import android.nfc.NfcAdapter
-import android.os.Build
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
-import com.android.identity.android.mdoc.transport.DataTransportOptions
-import com.android.identity.mdoc.request.DeviceRequestGenerator
-import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
+import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
+import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.javaPrivateKey
-import com.android.identity.crypto.javaPublicKey
-import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.crypto.toEcPrivateKey
-import com.android.identity.crypto.toEcPublicKey
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
+import com.android.identity.mdoc.request.DeviceRequestGenerator
+import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -37,15 +30,13 @@ import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import com.android.mdl.appreader.util.logError
-import org.bouncycastle.jce.provider.BouncyCastleProvider
+import kotlinx.coroutines.CoroutineScope
 import java.security.KeyFactory
-import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.cert.X509Certificate
 import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
-import java.util.concurrent.Executor
 
 class TransferManager private constructor(private val context: Context) {
 
@@ -79,11 +70,11 @@ class TransferManager private constructor(private val context: Context) {
 
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
-    fun initVerificationHelper() {
+    fun initVerificationHelper(scope: CoroutineScope) {
         val builder = VerificationHelper.Builder(
-            context,
-            responseListener,
-            context.mainExecutor()
+            context = context,
+            scope = scope,
+            listener = responseListener
         )
         val options = DataTransportOptions.Builder()
             .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
@@ -110,11 +101,11 @@ class TransferManager private constructor(private val context: Context) {
         usingReverseEngagement = false
     }
 
-    fun initVerificationHelperReverseEngagement() {
+    fun initVerificationHelperReverseEngagement(scope: CoroutineScope) {
         val builder = VerificationHelper.Builder(
-            context,
-            responseListener,
-            context.mainExecutor()
+            context = context,
+            listener = responseListener,
+            scope = scope
         )
         val options = DataTransportOptions.Builder()
             .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
@@ -248,14 +239,6 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    private fun Context.mainExecutor(): Executor {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            mainExecutor
-        } else {
-            ContextCompat.getMainExecutor(context)
-        }
-    }
-
     fun sendRequest(requestDocumentList: RequestDocumentList) {
         if (verification == null)
             throw IllegalStateException("It is necessary to start a new engagement.")
@@ -299,7 +282,9 @@ class TransferManager private constructor(private val context: Context) {
                 signatureAlgorithm = curve.defaultSigningAlgorithm
                 readerKey = Crypto.createEcPrivateKey(curve)
 
-                val (readerCaCert, readerCaPrivateKey) = KeysAndCertificates.getReaderAuthority(context)
+                val (readerCaCert, readerCaPrivateKey) = KeysAndCertificates.getReaderAuthority(
+                    context
+                )
                 val readerCertificate =
                     ReaderCertificateGenerator.createReaderCertificate(
                         readerKey,

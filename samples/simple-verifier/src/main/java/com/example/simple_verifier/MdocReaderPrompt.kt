@@ -69,6 +69,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -157,9 +158,11 @@ class MdocReaderPrompt(
                 Logger.d("Listener", "device engagement received")
                 navController.navigate("ReaderReady/Connecting")
                 vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK))
-                val availableMdocConnectionMethods = ConnectionMethod.disambiguate(connectionMethods)
+                val availableMdocConnectionMethods =
+                    ConnectionMethod.disambiguate(connectionMethods)
                 if (availableMdocConnectionMethods.isNotEmpty()) {
-                    this@MdocReaderPrompt.mdocConnectionMethod = availableMdocConnectionMethods.first()
+                    this@MdocReaderPrompt.mdocConnectionMethod =
+                        availableMdocConnectionMethods.first()
                 }
                 if (hasStarted)
                     throw IllegalStateException("Connection has already started. It is necessary to stop verification before starting a new one.")
@@ -214,9 +217,15 @@ class MdocReaderPrompt(
                 false,
                 true,
                 null,
-                bleUuid)
+                bleUuid
+            )
         )
-        verification = VerificationHelper.Builder(context, responseListener, context.mainExecutor)
+
+        verification = VerificationHelper.Builder(
+            context = context,
+            scope = lifecycleScope,
+            listener = responseListener
+        )
             .setDataTransportOptions(DataTransportOptions.Builder().build())
             .setNegotiatedHandoverConnectionMethods(connectionMethods)
             .build()
@@ -225,13 +234,13 @@ class MdocReaderPrompt(
         }
     }
 
-    private fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {
+    private fun getDeviceResponse(): DeviceResponseParser.DeviceResponse =
         responseBytes?.let { rb ->
-            val parser = DeviceResponseParser(rb, verification.sessionTranscript)
-            parser.setEphemeralReaderKey(verification.eReaderKey)
-            return parser.parse()
+            DeviceResponseParser(rb, verification.sessionTranscript).run {
+                setEphemeralReaderKey(verification.eReaderKey)
+                parse()
+            }
         } ?: throw IllegalStateException("Response not received")
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -250,12 +259,15 @@ class MdocReaderPrompt(
 
         initializeWithContext()
         ageRequested = mdocReaderSettings.getAgeRequested()
-        val adapter = NfcAdapter.getDefaultAdapter(context)
-        adapter.enableReaderMode(
-            activity, readerModeListener,
-            NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
-                    + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
-            null)
+
+        NfcAdapter.getDefaultAdapter(context).run {
+            enableReaderMode(
+                activity, readerModeListener,
+                NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B
+                        + NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
+                null
+            )
+        }
 
         return ComposeView(requireContext()).apply {
             setContent {
@@ -291,7 +303,11 @@ class MdocReaderPrompt(
                         composable(route = "QrScanner") {
                             QrScanner(
                                 onClose = { dismiss() },
-                                qrCodeReturn = { qrText -> verification.setDeviceEngagementFromQrCode(qrText) },
+                                qrCodeReturn = { qrText ->
+                                    verification.setDeviceEngagementFromQrCode(
+                                        qrText
+                                    )
+                                },
                                 modifier = Modifier
                                     .background(MaterialTheme.colorScheme.background)
                                     .fillMaxSize()
@@ -481,7 +497,6 @@ private fun scaleInfiniteTransition(
 }
 
 
-
 @Composable
 private fun ReaderScreen(
     onClose: () -> Unit,
@@ -494,7 +509,7 @@ private fun ReaderScreen(
     Box(
         modifier = modifier,
     ) {
-        Column (
+        Column(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
                 .padding(vertical = 60.dp)
@@ -530,7 +545,7 @@ private fun ReaderScreen(
         }
 
         // center dialog
-        Column (
+        Column(
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -620,7 +635,7 @@ private fun ResultsScreen(
     Box(
         modifier = modifier,
     ) {
-        Column (
+        Column(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
                 .padding(vertical = 40.dp)
@@ -631,7 +646,10 @@ private fun ResultsScreen(
             val documents = deviceResponse?.documents
             val mdoc: DeviceResponseParser.Document? = documents?.get(0)
             if (mdoc != null && "org.iso.18013.5.1" in mdoc.issuerNamespaces) {
-                val portraitBytes = mdoc.getIssuerEntryByteString("org.iso.18013.5.1", "portrait") // could break - need to fail more gracefully
+                val portraitBytes = mdoc.getIssuerEntryByteString(
+                    "org.iso.18013.5.1",
+                    "portrait"
+                ) // could break - need to fail more gracefully
                 val portraitColor: Color
                 val namespaces: List<String> = mdoc.getIssuerEntryNames("org.iso.18013.5.1")
                 var ageError = true
@@ -655,21 +673,21 @@ private fun ResultsScreen(
 
                 if (ageError) {
                     portraitColor = Color.Red
-                }
-                else if (!mdoc.issuerSignedAuthenticated or !mdoc.deviceSignedAuthenticated) {
+                } else if (!mdoc.issuerSignedAuthenticated or !mdoc.deviceSignedAuthenticated) {
                     portraitColor = Color.Red
                     resultDescription = "Person could not prove age"
-                }
-                else {
+                } else {
                     portraitColor = Color.Green
                 }
 
-                Image(modifier = Modifier
-                    .size(200.dp)
-                    .padding(horizontal = 20.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .background(portraitColor),
-                    bitmap = BitmapFactory.decodeByteArray(portraitBytes, 0, portraitBytes.size).asImageBitmap(),
+                Image(
+                    modifier = Modifier
+                        .size(200.dp)
+                        .padding(horizontal = 20.dp)
+                        .align(Alignment.CenterHorizontally)
+                        .background(portraitColor),
+                    bitmap = BitmapFactory.decodeByteArray(portraitBytes, 0, portraitBytes.size)
+                        .asImageBitmap(),
                     contentScale = ContentScale.None,
                     contentDescription = "Portrait image + $resultDescription"
                 )

@@ -12,13 +12,13 @@ import androidx.lifecycle.MutableLiveData
 import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
-import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
@@ -31,6 +31,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.*
 import kotlin.coroutines.resume
@@ -72,7 +73,8 @@ class TransferManager private constructor(private val context: Context) {
 
     fun startPresentationReverseEngagement(
         reverseEngagementUri: String,
-        origins: List<OriginInfo>
+        origins: List<OriginInfo>,
+        scope: CoroutineScope
     ) {
         if (hasStarted) {
             throw IllegalStateException("Transfer has already started.")
@@ -80,6 +82,7 @@ class TransferManager private constructor(private val context: Context) {
         communication = Communication.getInstance(context)
         reversedQrCommunicationSetup = ReverseQrCommunicationSetup(
             context = context,
+            scope = scope,
             onPresentationReady = { deviceRetrievalHelper ->
                 communication.deviceRetrievalHelper = deviceRetrievalHelper
             },
@@ -98,13 +101,14 @@ class TransferManager private constructor(private val context: Context) {
         hasStarted = true
     }
 
-    fun startQrEngagement() {
+    fun startQrEngagement(scope: CoroutineScope) {
         if (hasStarted) {
             throw IllegalStateException("Transfer has already started.")
         }
         communication = Communication.getInstance(context)
         qrCommunicationSetup = QrCommunicationSetup(
             context = context,
+            scope = scope,
             onConnecting = { transferStatusLd.value = TransferStatus.CONNECTING },
             onDeviceRetrievalHelperReady = { deviceRetrievalHelper ->
                 communication.deviceRetrievalHelper = deviceRetrievalHelper
@@ -114,7 +118,7 @@ class TransferManager private constructor(private val context: Context) {
                 communication.setDeviceRequest(deviceRequest)
                 transferStatusLd.value = TransferStatus.REQUEST
             },
-            onDisconnected = { transferStatusLd.value = TransferStatus.DISCONNECTED }
+            onDisconnected = { transferStatusLd.value = TransferStatus.DISCONNECTED },
         ) { error ->
             log("onError: ${error.message}")
             transferStatusLd.value = TransferStatus.ERROR
@@ -185,8 +189,9 @@ class TransferManager private constructor(private val context: Context) {
         if (authKey != null) {
             authKeyToUse = authKey
         } else {
-            authKeyToUse = credential.findAuthenticationKey(ProvisioningUtil.AUTH_KEY_DOMAIN, Timestamp.now())
-                ?: throw IllegalStateException("No auth key available")
+            authKeyToUse =
+                credential.findAuthenticationKey(ProvisioningUtil.AUTH_KEY_DOMAIN, Timestamp.now())
+                    ?: throw IllegalStateException("No auth key available")
         }
 
         if (authKeyToUse.usageCount >= documentInformation.maxUsagesPerKey) {

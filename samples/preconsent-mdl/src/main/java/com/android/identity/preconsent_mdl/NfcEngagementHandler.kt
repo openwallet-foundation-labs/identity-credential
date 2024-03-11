@@ -18,7 +18,6 @@ package com.android.identity.preconsent_mdl
 
 import android.content.Context
 import android.content.Intent
-import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -28,24 +27,25 @@ import com.android.identity.android.mdoc.transport.ConnectionMethodTcp
 import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
+import com.android.identity.android.util.HostApduServiceScoped
 import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
-import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
 import java.util.OptionalLong
 import java.util.UUID
 
-class NfcEngagementHandler : HostApduService() {
+class NfcEngagementHandler : HostApduServiceScoped() {
     companion object {
         private val TAG = "NfcEngagementHandler"
     }
 
     private var engagementHelper: NfcEngagementHelper? = null
 
-    private lateinit var transferHelper : TransferHelper
+    private lateinit var transferHelper: TransferHelper
 
     private val eDeviceKey by lazy {
         Crypto.createEcPrivateKey(EcCurve.P256)
@@ -79,7 +79,8 @@ class NfcEngagementHandler : HostApduService() {
                 eDeviceKey,
                 transport,
                 engagementHelper!!.deviceEngagement,
-                engagementHelper!!.handover
+                engagementHelper!!.handover,
+                serviceScope
             )
             engagementHelper?.close()
             engagementHelper = null
@@ -99,9 +100,11 @@ class NfcEngagementHandler : HostApduService() {
         transferHelper = TransferHelper.getInstance(applicationContext)
 
         val launchAppIntent = Intent(applicationContext, PresentationActivity::class.java)
-        launchAppIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_NO_HISTORY or
-                Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
+        launchAppIntent.addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_NO_HISTORY or
+                    Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
+        )
         applicationContext.startActivity(launchAppIntent)
 
         transferHelper.setEngaging()
@@ -113,21 +116,34 @@ class NfcEngagementHandler : HostApduService() {
         val connectionMethods = mutableListOf<ConnectionMethod>()
         val bleUuid = UUID.randomUUID()
         if (transferHelper.getBleCentralClientDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(
-                false,
-                true,
-                null,
-                bleUuid))
+            connectionMethods.add(
+                ConnectionMethodBle(
+                    false,
+                    true,
+                    null,
+                    bleUuid
+                )
+            )
         }
         if (transferHelper.getBlePeripheralServerDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodBle(
-                true,
-                false,
-                bleUuid,
-                null))
+            connectionMethods.add(
+                ConnectionMethodBle(
+                    true,
+                    false,
+                    bleUuid,
+                    null
+                )
+            )
         }
         if (transferHelper.getWifiAwareDataTransferEnabled()) {
-            connectionMethods.add(ConnectionMethodWifiAware(null, OptionalLong.empty(), OptionalLong.empty(), null))
+            connectionMethods.add(
+                ConnectionMethodWifiAware(
+                    null,
+                    OptionalLong.empty(),
+                    OptionalLong.empty(),
+                    null
+                )
+            )
         }
         if (transferHelper.getNfcDataTransferEnabled()) {
             connectionMethods.add(ConnectionMethodNfc(4096, 32768))
@@ -139,12 +155,13 @@ class NfcEngagementHandler : HostApduService() {
             connectionMethods.add(ConnectionMethodUdp("", 0))
         }
         val builder = NfcEngagementHelper.Builder(
-            applicationContext,
-            eDeviceKey.publicKey,
-            options,
-            nfcEngagementListener,
-            applicationContext.mainExecutor
+            context = applicationContext,
+            scope = serviceScope,
+            eDeviceKey = eDeviceKey.publicKey,
+            options = options,
+            listener = nfcEngagementListener,
         )
+
         if (transferHelper.getNfcNegotiatedHandoverEnabled()) {
             builder.useNegotiatedHandover()
         } else {

@@ -17,20 +17,19 @@
 package com.android.identity_credential.wallet
 
 import android.content.Context
-import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Vibrator
-import androidx.core.content.ContextCompat
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
+import com.android.identity.android.util.HostApduServiceScoped
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
 
-class NfcEngagementHandler : HostApduService() {
+class NfcEngagementHandler : HostApduServiceScoped() {
     companion object {
         private val TAG = "NfcEngagementHandler"
     }
@@ -65,9 +64,11 @@ class NfcEngagementHandler : HostApduService() {
         override fun onDeviceConnected(transport: DataTransport) {
             Logger.i(TAG, "onDeviceConnected")
 
-            PresentationActivity.startPresentation(applicationContext, transport,
+            PresentationActivity.startPresentation(
+                applicationContext, transport,
                 engagementHelper!!.handover, eDeviceKey,
-                engagementHelper!!.deviceEngagement)
+                engagementHelper!!.deviceEngagement
+            )
 
             engagementHelper?.close()
             engagementHelper = null
@@ -86,16 +87,17 @@ class NfcEngagementHandler : HostApduService() {
 
         val application: WalletApplication = application as WalletApplication
 
-        if (application.credentialStore.listCredentials().size > 0
-            && !PresentationActivity.isPresentationActive()) {
+        if (application.credentialStore.listCredentials().isNotEmpty()
+            && !PresentationActivity.isPresentationActive()
+        ) {
 
             val options = DataTransportOptions.Builder().build()
             val builder = NfcEngagementHelper.Builder(
-                applicationContext,
-                eDeviceKey.publicKey,
-                options,
-                nfcEngagementListener,
-                ContextCompat.getMainExecutor(applicationContext)
+                context = applicationContext,
+                scope = serviceScope,
+                eDeviceKey = eDeviceKey.publicKey,
+                options = options,
+                listener = nfcEngagementListener,
             )
             builder.useNegotiatedHandover()
             engagementHelper = builder.build()

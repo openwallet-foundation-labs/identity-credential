@@ -19,6 +19,7 @@ import android.os.ConditionVariable
 import androidx.test.InstrumentationRegistry
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
 import com.android.identity.util.fromHex
+import kotlinx.coroutines.test.TestScope
 import org.junit.Assert
 import org.junit.Test
 import java.util.concurrent.Executor
@@ -26,6 +27,9 @@ import java.util.concurrent.Executors
 
 @Suppress("deprecation")
 class DataTransportHttpTest {
+
+
+    val testScope = TestScope()
 
     // TODO: add tests for TLS support
     @Test
@@ -94,7 +98,7 @@ class DataTransportHttpTest {
         val verifierMessageReceivedCondVar = ConditionVariable()
         val verifierPeerConnectedCondVar = ConditionVariable()
         val executor: Executor = Executors.newSingleThreadExecutor()
-        verifier.setListener(object : DataTransport.Listener {
+        verifier.setListener(scope = testScope, listener = object : DataTransport.Listener {
             override fun onConnecting() {
                 Assert.fail()
             }
@@ -120,7 +124,7 @@ class DataTransportHttpTest {
                 messageReceivedByVerifier[0] = data!!.clone()
                 verifierMessageReceivedCondVar.open()
             }
-        }, executor)
+        })
         verifier.connect()
         val verifierConnectionMethod = verifier.connectionMethodForTransport as ConnectionMethodHttp
         val prover = DataTransportHttp(
@@ -129,7 +133,7 @@ class DataTransportHttpTest {
             verifierConnectionMethod,
             DataTransportOptions.Builder().build()
         )
-        prover.setListener(object : DataTransport.Listener {
+        prover.setListener(scope = testScope, listener = object : DataTransport.Listener {
             override fun onConnecting() {}
             override fun onConnected() {
                 proverPeerConnectedCondVar.open()
@@ -152,7 +156,7 @@ class DataTransportHttpTest {
                 messageReceivedByProver[0] = data!!.clone()
                 proverMessageReceivedCondVar.open()
             }
-        }, executor)
+        })
         prover.connect()
         Assert.assertTrue(proverPeerConnectedCondVar.block(5000))
         prover.sendMessage(messageSentByProver)

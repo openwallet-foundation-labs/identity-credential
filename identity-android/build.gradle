@@ -40,14 +40,17 @@ dependencies {
     implementation libs.volley
     implementation libs.kotlinx.datetime
     implementation libs.kotlinx.io.bytestring
+    implementation libs.kotlinx.coroutines.android
 
     testImplementation libs.androidx.test.espresso
     testImplementation libs.androidx.test.ext.junit
     testImplementation libs.bouncy.castle.bcprov
     testImplementation libs.bundles.unit.testing
 
+
     androidTestImplementation libs.androidx.test.ext.junit
     androidTestImplementation libs.androidx.test.espresso
+    androidTestImplementation libs.kotlinx.coroutines.android.test
 }
 
 tasks.withType(Test) {

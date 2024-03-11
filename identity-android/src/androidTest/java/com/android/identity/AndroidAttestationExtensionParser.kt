@@ -49,44 +49,41 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
     val teeEnforcedAuthorizationTags: Set<Int>
         get() = teeEnforcedAuthorizations.keys
 
-    fun getSoftwareAuthorizationInteger(tag: Int): Optional<Int> {
-        val entry = findAuthorizationListEntry(softwareEnforcedAuthorizations, tag)
-        return Optional.ofNullable(entry)
-            .map { asn1Value: ASN1Primitive -> getIntegerFromAsn1(asn1Value) }
-    }
+    fun getSoftwareAuthorizationInteger(tag: Int): Optional<Int> =
+        findAuthorizationListEntry(softwareEnforcedAuthorizations, tag).let { entry ->
+            Optional.ofNullable(entry)
+                .map { asn1Value: ASN1Primitive -> getIntegerFromAsn1(asn1Value) }
+        }
 
-    fun getSoftwareAuthorizationLong(tag: Int): Optional<Long> {
-        val entry = findAuthorizationListEntry(softwareEnforcedAuthorizations, tag)
-        return Optional.ofNullable(entry)
-            .map { asn1Value: ASN1Primitive -> getLongFromAsn1(asn1Value) }
-    }
+    fun getSoftwareAuthorizationLong(tag: Int): Optional<Long> =
+        findAuthorizationListEntry(softwareEnforcedAuthorizations, tag).let { entry ->
+            Optional.ofNullable(entry)
+                .map { asn1Value: ASN1Primitive -> getLongFromAsn1(asn1Value) }
+        }
 
-    fun getTeeAuthorizationInteger(tag: Int): Optional<Int> {
-        val entry = findAuthorizationListEntry(teeEnforcedAuthorizations, tag)
-        return Optional.ofNullable(entry)
-            .map { asn1Value: ASN1Primitive -> getIntegerFromAsn1(asn1Value) }
-    }
+    fun getTeeAuthorizationInteger(tag: Int): Optional<Int> =
+        findAuthorizationListEntry(teeEnforcedAuthorizations, tag).let { entry ->
+            Optional.ofNullable(entry)
+                .map { asn1Value: ASN1Primitive -> getIntegerFromAsn1(asn1Value) }
+        }
 
-    fun getSoftwareAuthorizationBoolean(tag: Int): Boolean {
-        val entry = findAuthorizationListEntry(softwareEnforcedAuthorizations, tag)
-        return entry != null
-    }
+    fun getSoftwareAuthorizationBoolean(tag: Int): Boolean =
+        findAuthorizationListEntry(softwareEnforcedAuthorizations, tag) != null
 
-    fun getTeeAuthorizationBoolean(tag: Int): Boolean {
-        val entry = findAuthorizationListEntry(teeEnforcedAuthorizations, tag)
-        return entry != null
-    }
+    fun getTeeAuthorizationBoolean(tag: Int): Boolean =
+        findAuthorizationListEntry(teeEnforcedAuthorizations, tag) != null
 
-    fun getSoftwareAuthorizationByteString(tag: Int): Optional<ByteArray> {
-        val entry =
-            findAuthorizationListEntry(softwareEnforcedAuthorizations, tag) as ASN1OctetString?
-        return Optional.ofNullable(entry).map { obj: ASN1OctetString -> obj.octets }
-    }
+    fun getSoftwareAuthorizationByteString(tag: Int): Optional<ByteArray> =
+        (findAuthorizationListEntry(softwareEnforcedAuthorizations, tag) as ASN1OctetString?)
+            .let { entry ->
+                Optional.ofNullable(entry).map { obj: ASN1OctetString -> obj.octets }
+            }
 
-    fun getTeeAuthorizationByteString(tag: Int): Optional<ByteArray> {
-        val entry = findAuthorizationListEntry(teeEnforcedAuthorizations, tag) as ASN1OctetString?
-        return Optional.ofNullable(entry).map { obj: ASN1OctetString -> obj.octets }
-    }
+    fun getTeeAuthorizationByteString(tag: Int): Optional<ByteArray> =
+        (findAuthorizationListEntry(teeEnforcedAuthorizations, tag) as ASN1OctetString?)
+            .let { entry ->
+                Optional.ofNullable(entry).map { obj: ASN1OctetString -> obj.octets }
+            }
 
     init {
         val attestationExtensionBytes = cert.getExtensionValue(KEY_DESCRIPTION_OID)
@@ -144,18 +141,17 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
             return authorizationMap.getOrDefault(tag, null)
         }
 
-        private fun getBooleanFromAsn1(asn1Value: ASN1Encodable): Boolean {
-            return if (asn1Value is ASN1Boolean) {
+        private fun getBooleanFromAsn1(asn1Value: ASN1Encodable): Boolean =
+            if (asn1Value is ASN1Boolean) {
                 asn1Value.isTrue
             } else {
                 throw RuntimeException(
                     "Boolean value expected; found " + asn1Value.javaClass.name + " instead."
                 )
             }
-        }
 
-        private fun getIntegerFromAsn1(asn1Value: ASN1Encodable): Int {
-            return if (asn1Value is ASN1Integer) {
+        private fun getIntegerFromAsn1(asn1Value: ASN1Encodable): Int =
+            if (asn1Value is ASN1Integer) {
                 asn1Value.value.toInt()
             } else if (asn1Value is ASN1Enumerated) {
                 asn1Value.value.toInt()
@@ -164,10 +160,9 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
                     "Integer value expected; found " + asn1Value.javaClass.name + " instead."
                 )
             }
-        }
 
-        private fun getLongFromAsn1(asn1Value: ASN1Encodable): Long {
-            return if (asn1Value is ASN1Integer) {
+        private fun getLongFromAsn1(asn1Value: ASN1Encodable): Long =
+            if (asn1Value is ASN1Integer) {
                 asn1Value.value.toLong()
             } else if (asn1Value is ASN1Enumerated) {
                 asn1Value.value.toLong()
@@ -176,26 +171,22 @@ class AndroidAttestationExtensionParser(cert: X509Certificate) {
                     "Integer value expected; found " + asn1Value.javaClass.name + " instead."
                 )
             }
-        }
 
         private fun getAuthorizationMap(
             authorizationList: Array<ASN1Encodable>
-        ): Map<Int, ASN1Primitive?> {
-            val authorizationMap: MutableMap<Int, ASN1Primitive?> = HashMap()
-            for (entry in authorizationList) {
-                val taggedEntry = entry as ASN1TaggedObject
-                authorizationMap[taggedEntry.tagNo] = taggedEntry.getObject()
+        ): Map<Int, ASN1Primitive?> = mutableMapOf<Int, ASN1Primitive?>().apply {
+            authorizationList.forEach { taggedEntry ->
+                taggedEntry as ASN1TaggedObject
+                this[taggedEntry.tagNo] = taggedEntry.getObject()
             }
-            return authorizationMap
         }
 
-        private fun securityLevelToEnum(securityLevel: Int): SecurityLevel {
-            return when (securityLevel) {
+        private fun securityLevelToEnum(securityLevel: Int): SecurityLevel =
+            when (securityLevel) {
                 KM_SECURITY_LEVEL_SOFTWARE -> SecurityLevel.SOFTWARE
                 KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT -> SecurityLevel.TRUSTED_ENVIRONMENT
                 KM_SECURITY_LEVEL_STRONG_BOX -> SecurityLevel.STRONG_BOX
                 else -> throw IllegalArgumentException("Invalid security level.")
             }
-        }
     }
 }

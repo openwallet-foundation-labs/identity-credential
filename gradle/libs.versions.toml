@@ -40,6 +40,7 @@
     jmrtd-version = "0.7.30"
     mlkit-version = "16.0.0"
     kotlinx-coroutines = "1.8.0-RC2"
+    kotlinx-coroutines-test = "1.8.0"
     kotlinx-io-core = "0.3.1"
     kotlinx-io-bytestring = "0.3.1"
     kotlinx-datetime = "0.5.0"
@@ -64,6 +65,7 @@
     androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "navigation" }
 
     kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref="kotlinx-coroutines" }
+    kotlinx-coroutines-android-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref="kotlinx-coroutines-test" }
     kotlinx-coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref="kotlinx-coroutines" }
 
     compose-bom = { module = "androidx.compose:compose-bom", version.ref="compose-bom" }

@@ -8,10 +8,11 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.log
-import com.android.identity.wallet.util.mainExecutor
+import kotlinx.coroutines.CoroutineScope
 
 class QrCommunicationSetup(
     private val context: Context,
+    private val scope: CoroutineScope?,
     private val onConnecting: () -> Unit,
     private val onDeviceRetrievalHelperReady: (deviceRetrievalHelper: DeviceRetrievalHelper) -> Unit,
     private val onNewDeviceRequest: (request: ByteArray) -> Unit,
@@ -42,18 +43,18 @@ class QrCommunicationSetup(
                 return
             }
             log("OnDeviceConnected via QR: qrEngagement=$qrEngagement")
-            val builder = DeviceRetrievalHelper.Builder(
-                context,
-                deviceRetrievalHelperListener,
-                context.mainExecutor(),
-                eDeviceKey
-            )
-            builder.useForwardEngagement(
-                transport,
-                qrEngagement.deviceEngagement,
-                qrEngagement.handover
-            )
-            deviceRetrievalHelper = builder.build()
+            deviceRetrievalHelper = DeviceRetrievalHelper.Builder(
+                context = context,
+                scope = scope,
+                listener = deviceRetrievalHelperListener,
+                eDeviceKey = eDeviceKey,
+                transport = transport,
+            ).apply {
+                useForwardEngagement(
+                    qrEngagement.deviceEngagement,
+                    qrEngagement.handover
+                )
+            }.build()
             qrEngagement.close()
             onDeviceRetrievalHelperReady(requireNotNull(deviceRetrievalHelper))
         }
@@ -87,11 +88,11 @@ class QrCommunicationSetup(
 
     fun configure() {
         qrEngagement = QrEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            connectionSetup.getConnectionOptions(),
-            qrEngagementListener,
-            context.mainExecutor()
+            context = context,
+            scope = scope,
+            eDeviceKey = eDeviceKey.publicKey,
+            options = connectionSetup.getConnectionOptions(),
+            listener = qrEngagementListener,
         ).setConnectionMethods(connectionSetup.getConnectionMethods())
             .build()
     }

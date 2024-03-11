@@ -22,7 +22,8 @@ import android.nfc.NdefRecord
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.util.Base64
-import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
+import com.android.identity.android.util.HelperListener
+import com.android.identity.android.util.launchIfAllowed
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportBle
 import com.android.identity.android.mdoc.transport.DataTransportBleCentralClientMode
@@ -45,10 +46,10 @@ import com.android.identity.mdoc.sessionencryption.SessionEncryption
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import kotlinx.coroutines.CoroutineScope
 import java.io.IOException
 import java.util.Arrays
 import java.util.Locale
-import java.util.concurrent.Executor
 
 /**
  * Helper used for engaging with and receiving documents from a remote mdoc verifier device.
@@ -64,13 +65,17 @@ import java.util.concurrent.Executor
 // cleaned up at object finalization time.
 class VerificationHelper internal constructor(
     private val context: Context,
+    private val scope: CoroutineScope?,
     private val listener: Listener,
-    private val listenerExecutor: Executor
 ) {
     private var negotiatedHandoverConnectionMethods: List<ConnectionMethod>? = null
     private var negotiatedHandoverListeningTransports = mutableListOf<DataTransport>()
 
-    private var dataTransport: DataTransport? = null
+    private var _dataTransport: DataTransport? = null
+    private val dataTransport: DataTransport
+        get() = _dataTransport!!
+
+
     private var ephemeralKey: EcPrivateKey? = null
     private var sessionEncryptionReader: SessionEncryption? = null
     private var deviceEngagement: ByteArray? = null
@@ -99,6 +104,8 @@ class VerificationHelper internal constructor(
     var engagementMethod: EngagementMethod = EngagementMethod.NOT_ENGAGED
         private set
 
+    private val inhibitCallbacks = false
+
     /**
      * The session transcript.
      *
@@ -122,9 +129,11 @@ class VerificationHelper internal constructor(
      * The amount of time from first NFC interaction until Engagement has been received.
      */
     val tapToEngagementDurationMillis: Long
-        get() = if (timestampNfcTap == 0L) {
-            0
-        } else timestampEngagementReceived - timestampNfcTap
+        get() =
+            if (timestampNfcTap == 0L)
+                0
+            else
+                timestampEngagementReceived - timestampNfcTap
 
     /**
      * The amount of time from when Engagement has been received until the request was sent.
@@ -142,9 +151,7 @@ class VerificationHelper internal constructor(
      * The amount of time spent BLE scanning or 0 if no scanning occurred.
      */
     val scanningTimeMillis: Long
-        get() = if (dataTransport is DataTransportBle) {
-            (dataTransport as DataTransportBle).scanningTimeMillis
-        } else 0
+        get() = (dataTransport as? DataTransportBle)?.scanningTimeMillis ?: 0
 
     private fun start() {
         if (reverseEngagementConnectionMethods != null) {
@@ -176,13 +183,14 @@ class VerificationHelper internal constructor(
             reverseEngagementConnectionMethods!!
         )
         for (cm in disambiguatedMethods) {
-            val transport = DataTransport.fromConnectionMethod(
+            DataTransport.fromConnectionMethod(
                 context, cm, DataTransport.Role.MDOC_READER, options!!
-            )
-            reverseEngagementListeningTransports!!.add(transport)
-            // TODO: we may want to have the DataTransport actually give us a ConnectionMethod,
-            //   for example consider the case where a HTTP-based transport uses a cloud-service
-            //   to relay messages.
+            ).let { transport ->
+                // TODO: we may want to have the DataTransport actually give us a ConnectionMethod,
+                //   for example consider the case where a HTTP-based transport uses a cloud-service
+                //   to relay messages.
+                reverseEngagementListeningTransports!!.add(transport)
+            }
         }
 
         // Careful, we're using the user-provided Executor below so these callbacks might happen
@@ -197,7 +205,7 @@ class VerificationHelper internal constructor(
         )
         connectionMethodsForReaderEngagement = mutableListOf()
         for (transport in reverseEngagementListeningTransports!!) {
-            transport.setListener(object : DataTransport.Listener {
+            transport.setListener(scope = scope, listener = object : DataTransport.Listener {
                 override fun onConnecting() {
                     Logger.d(TAG, "onConnecting for $transport")
                     reverseEngagementPeerIsConnecting()
@@ -228,7 +236,7 @@ class VerificationHelper internal constructor(
                     transport.close()
                     reportDeviceDisconnected(true)
                 }
-            }, listenerExecutor)
+            })
             Logger.d(TAG, "Connecting transport $transport")
             transport.connect()
             connectionMethodsForReaderEngagement!!.add(transport.connectionMethodForTransport)
@@ -241,7 +249,7 @@ class VerificationHelper internal constructor(
     }
 
     fun reverseEngagementPeerIsConnecting() {}
-    
+
     fun reverseEngagementPeerHasConnected(transport: DataTransport) {
         // stop listening on other transports
         //
@@ -253,7 +261,7 @@ class VerificationHelper internal constructor(
             }
         }
         reverseEngagementListeningTransports!!.clear()
-        dataTransport = transport
+        _dataTransport = transport
 
         // We're connected to the remote device but we don't want to let the application
         // know this until we've received the first message with DeviceEngagement CBOR...
@@ -307,7 +315,9 @@ class VerificationHelper internal constructor(
                     reportError(e)
                     return
                 }
-                listenerExecutor.execute { connectWithDataTransport(dataTransport, false) }
+                listener.executeIfAllowed(inhibitCallbacks) {
+                    connectWithDataTransport(dataTransport, false)
+                }
             }
         }
         connectThread.start()
@@ -329,7 +339,7 @@ class VerificationHelper internal constructor(
      * @throws IllegalStateException if called after [connect].
      */
     fun setDeviceEngagementFromQrCode(qrDeviceEngagement: String) {
-        check(dataTransport == null) { "Cannot be called after connect()" }
+        check(_dataTransport == null) { "Cannot be called after connect()" }
         val uri = Uri.parse(qrDeviceEngagement)
         if (uri != null && uri.scheme != null && uri.scheme == "mdoc") {
             val encodedDeviceEngagement = Base64.decode(
@@ -364,15 +374,13 @@ class VerificationHelper internal constructor(
     }
 
     private fun readBinary(isoDep: IsoDep, offset: Int, size: Int): ByteArray? {
-        val apdu: ByteArray
-        val ret: ByteArray
-        apdu = NfcUtil.createApduReadBinary(offset, size)
-        ret = transceive(isoDep, apdu)
+        val apdu: ByteArray = NfcUtil.createApduReadBinary(offset, size)
+        val ret: ByteArray = transceive(isoDep, apdu)
         if (ret.size < 2 || ret[ret.size - 2] != 0x90.toByte() || ret[ret.size - 1] != 0x00.toByte()) {
             Logger.eHex(TAG, "Error sending READ_BINARY command, ret", ret)
             return null
         }
-        return Arrays.copyOfRange(ret, 0, ret.size - 2)
+        return ret.copyOfRange(0, ret.size - 2)
     }
 
     private fun ndefReadMessage(isoDep: IsoDep, tWaitMillis: Double, _nWait: Int): ByteArray? {
@@ -384,8 +392,10 @@ class VerificationHelper internal constructor(
             apdu = NfcUtil.createApduReadBinary(0x0000, 2)
             ret = transceive(isoDep, apdu)
             if (ret.size != 4 || ret[2] != 0x90.toByte() || ret[3] != 0x00.toByte()) {
-                Logger.eHex(TAG, "ndefReadMessage: Malformed response for first " +
-                            "READ_BINARY command for length, ret", ret)
+                Logger.eHex(
+                    TAG, "ndefReadMessage: Malformed response for first " +
+                            "READ_BINARY command for length, ret", ret
+                )
                 return null
             }
             replyLen = (ret[0].toInt() and 0xff) * 256 + (ret[1].toInt() and 0xff)
@@ -396,24 +406,34 @@ class VerificationHelper internal constructor(
             // As per [TNEP] 4.1.7 if the tag sends an empty NDEF message it means that
             // it's requesting extra time... honor this if we can.
             if (nWait > 0) {
-                Logger.d(TAG, "ndefReadMessage: NDEF message with length 0 and $nWait time extensions left")
+                Logger.d(
+                    TAG,
+                    "ndefReadMessage: NDEF message with length 0 and $nWait time extensions left"
+                )
                 try {
                     val waitMillis = Math.ceil(tWaitMillis).toLong()
-                    Logger.d(TAG,"ndefReadMessage: Sleeping $waitMillis ms")
+                    Logger.d(TAG, "ndefReadMessage: Sleeping $waitMillis ms")
                     Thread.sleep(waitMillis)
                 } catch (e: InterruptedException) {
                     throw RuntimeException("Unexpected interrupt", e)
                 }
                 nWait--
             } else {
-                Logger.e(TAG, "ndefReadMessage: NDEF message with length 0 but no time extensions left")
+                Logger.e(
+                    TAG,
+                    "ndefReadMessage: NDEF message with length 0 but no time extensions left"
+                )
                 return null
             }
         } while (true)
         apdu = NfcUtil.createApduReadBinary(0x0002, replyLen)
         ret = transceive(isoDep, apdu)
         if (ret.size != replyLen + 2 || ret[replyLen] != 0x90.toByte() || ret[replyLen + 1] != 0x00.toByte()) {
-            Logger.eHex(TAG, "Malformed response for second READ_BINARY command for payload, ret", ret)
+            Logger.eHex(
+                TAG,
+                "Malformed response for second READ_BINARY command for payload, ret",
+                ret
+            )
             return null
         }
         return ret.copyOfRange(0, ret.size - 2)
@@ -560,9 +580,7 @@ class VerificationHelper internal constructor(
 
                     // First see if we should use negotiated handover..
                     val initialNdefMessage = ndefReadMessage(isoDep, 1.0, 0)
-                    if (initialNdefMessage == null) {
-                        throw IllegalStateException("Error reading initial NDEF message")
-                    }
+                        ?: throw IllegalStateException("Error reading initial NDEF message")
                     val handoverServiceRecord =
                         NfcUtil.findServiceParameterRecordWithName(
                             initialNdefMessage,
@@ -570,10 +588,13 @@ class VerificationHelper internal constructor(
                         )
                     if (handoverServiceRecord == null) {
                         val elapsedTime = System.currentTimeMillis() - timeMillisBegin
-                        Logger.i(TAG,"Time spent in NFC static handover: $elapsedTime ms")
-                        Logger.d(TAG, "No urn:nfc:sn:handover record found - assuming NFC static handover")
+                        Logger.i(TAG, "Time spent in NFC static handover: $elapsedTime ms")
+                        Logger.d(
+                            TAG,
+                            "No urn:nfc:sn:handover record found - assuming NFC static handover"
+                        )
                         val hs = NfcUtil.parseHandoverSelectMessage(initialNdefMessage)
-                                ?: throw IllegalStateException("Error parsing Handover Select message")
+                            ?: throw IllegalStateException("Error parsing Handover Select message")
                         check(!hs.connectionMethods.isEmpty()) { "No connection methods in Handover Select" }
                         if (Logger.isDebugEnabled) {
                             for (cm in hs.connectionMethods) {
@@ -594,11 +615,17 @@ class VerificationHelper internal constructor(
                         reportDeviceEngagementReceived(hs.connectionMethods)
                         return
                     }
-                    Logger.d(TAG, "Service Parameter for urn:nfc:sn:handover found - negotiated handover")
+                    Logger.d(
+                        TAG,
+                        "Service Parameter for urn:nfc:sn:handover found - negotiated handover"
+                    )
                     val spr = NfcUtil.parseServiceParameterRecord(handoverServiceRecord)
-                    Logger.d(TAG, String.format(
+                    Logger.d(
+                        TAG, String.format(
                             "tWait is %.1f ms, nWait is %d, maxNdefSize is %d",
-                            spr.tWaitMillis, spr.nWait, spr.maxNdefSize))
+                            spr.tWaitMillis, spr.nWait, spr.maxNdefSize
+                        )
+                    )
 
                     // Select the service, the resulting NDEF message is specified in
                     // in Tag NDEF Exchange Protocol Technical Specification Version 1.0
@@ -649,7 +676,8 @@ class VerificationHelper internal constructor(
                             && Arrays.equals(r.id, "mdoc".toByteArray())
                         ) {
                             encodedDeviceEngagement = r.payload
-                            Logger.dCbor(TAG,
+                            Logger.dCbor(
+                                TAG,
                                 "Device Engagement from NFC negotiated handover",
                                 encodedDeviceEngagement
                             )
@@ -705,28 +733,35 @@ class VerificationHelper internal constructor(
         // Create reader ephemeral key with key to match device ephemeral key's curve... this
         // can take a long time (hundreds of milliseconds) so use the precalculated key
         // to avoid delaying the transaction...
-        ephemeralKey = Crypto.createEcPrivateKey(engagement.eSenderKey.curve)
-        val encodedEReaderKeyPub: ByteArray = Cbor.encode(
-            ephemeralKey!!.publicKey.toCoseKey().toDataItem
-        )
-        encodedSessionTranscript = Cbor.encode(
-            CborArray.builder()
-                .add(Tagged(24, Bstr(this.deviceEngagement!!)))
-                .add(Tagged(24, Bstr(encodedEReaderKeyPub)))
-                .add(handover)
-                .end()
-                .build()
-        )
-        Logger.dCbor(TAG, "SessionTranscript", encodedSessionTranscript!!)
-        sessionEncryptionReader = SessionEncryption(
-            SessionEncryption.Role.MDOC_READER,
-            ephemeralKey!!,
-            eDeviceKey,
-            encodedSessionTranscript!!
-        )
-        if (readerEngagement != null) {
-            // No need to include EReaderKey in first message...
-            sessionEncryptionReader!!.setSendSessionEstablishment(false)
+        Crypto.createEcPrivateKey(engagement.eSenderKey.curve).let { ephemeralKey ->
+            this.ephemeralKey = ephemeralKey
+            Cbor.encode(
+                ephemeralKey.publicKey.toCoseKey().toDataItem
+            ).let { encodedEReaderKeyPub ->
+                Cbor.encode(
+                    CborArray.builder()
+                        .add(Tagged(24, Bstr(this.deviceEngagement!!)))
+                        .add(Tagged(24, Bstr(encodedEReaderKeyPub)))
+                        .add(handover)
+                        .end()
+                        .build()
+                ).let { encodedSessionTranscript ->
+                    this.encodedSessionTranscript = encodedSessionTranscript
+                    Logger.dCbor(TAG, "SessionTranscript", encodedSessionTranscript)
+                    SessionEncryption(
+                        SessionEncryption.Role.MDOC_READER,
+                        ephemeralKey,
+                        eDeviceKey,
+                        encodedSessionTranscript
+                    ).let { sessionEncryption ->
+                        sessionEncryptionReader = sessionEncryption
+                        if (readerEngagement != null) {
+                            // No need to include EReaderKey in first message...
+                            sessionEncryption.setSendSessionEstablishment(false)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -750,8 +785,10 @@ class VerificationHelper internal constructor(
                     t.close()
                 }
                 negotiatedHandoverListeningTransports.clear()
-                Logger.i(TAG, "Connecting to a warmed-up transport " +
-                        "${warmedUpTransport.connectionMethodForTransport}")
+                Logger.i(
+                    TAG, "Connecting to a warmed-up transport " +
+                            "${warmedUpTransport.connectionMethodForTransport}"
+                )
                 connectWithDataTransport(warmedUpTransport, true)
                 return
             }
@@ -766,7 +803,8 @@ class VerificationHelper internal constructor(
         Logger.i(TAG, "Connecting to transport $connectionMethod")
         connectWithDataTransport(
             DataTransport.fromConnectionMethod(
-                context, connectionMethod, DataTransport.Role.MDOC_READER, options!!),
+                context, connectionMethod, DataTransport.Role.MDOC_READER, options!!
+            ),
             false
         )
     }
@@ -775,7 +813,7 @@ class VerificationHelper internal constructor(
         transport: DataTransport?,
         usingWarmedUpTransport: Boolean
     ) {
-        dataTransport = transport
+        _dataTransport = transport
         if (dataTransport is DataTransportNfc) {
             if (nfcIsoDep == null) {
                 // This can happen if using NFC data transfer with QR code engagement
@@ -783,9 +821,11 @@ class VerificationHelper internal constructor(
                 // weird). In this case we just sit and wait until the tag (reader)
                 // is detected... once detected, this routine can just call connect()
                 // again.
-                Logger.i(TAG,
+                Logger.i(
+                    TAG,
                     "In connect() with NFC data transfer but no ISO dep has been set. " +
-                            "Assuming QR engagement, waiting for mdoc to move into field")
+                            "Assuming QR engagement, waiting for mdoc to move into field"
+                )
                 reportMoveIntoNfcField()
                 return
             }
@@ -793,9 +833,11 @@ class VerificationHelper internal constructor(
         } else if (dataTransport is DataTransportBle) {
             // Helpful warning
             if (options!!.bleClearCache && dataTransport is DataTransportBleCentralClientMode) {
-                Logger.i(TAG,
+                Logger.i(
+                    TAG,
                     "Ignoring bleClearCache flag since it only applies to " +
-                            "BLE mdoc peripheral server mode when acting as a reader")
+                            "BLE mdoc peripheral server mode when acting as a reader"
+                )
             }
         }
 
@@ -818,13 +860,13 @@ class VerificationHelper internal constructor(
 
             override fun onDisconnected() {
                 Logger.d(TAG, "onDisconnected for $dataTransport")
-                dataTransport!!.close()
+                dataTransport.close()
                 reportError(Error("Peer disconnected without proper session termination"))
             }
 
             override fun onError(error: Throwable) {
                 Logger.d(TAG, "onError for $dataTransport: $error")
-                dataTransport!!.close()
+                dataTransport.close()
                 reportError(error)
             }
 
@@ -834,15 +876,15 @@ class VerificationHelper internal constructor(
 
             override fun onTransportSpecificSessionTermination() {
                 Logger.d(TAG, "Received onTransportSpecificSessionTermination")
-                dataTransport!!.close()
+                dataTransport.close()
                 reportDeviceDisconnected(true)
             }
         }
-        dataTransport!!.setListener(listener, listenerExecutor)
+        dataTransport.setListener(listener, scope)
 
         // It's entirely possible the other side already connected to us...
         if (usingWarmedUpTransport) {
-            if (dataTransport!!.isConnected) {
+            if (dataTransport.isConnected) {
                 listener.onConnected()
             }
         } else {
@@ -850,8 +892,8 @@ class VerificationHelper internal constructor(
                 val deviceEngagementDataItem = Cbor.decode(deviceEngagement!!)
                 val security = deviceEngagementDataItem[1]
                 val encodedEDeviceKeyBytes = Cbor.encode(security[1])
-                dataTransport!!.setEDeviceKeyBytes(encodedEDeviceKeyBytes)
-                dataTransport!!.connect()
+                dataTransport.setEDeviceKeyBytes(encodedEDeviceKeyBytes)
+                dataTransport.connect()
             } catch (e: Exception) {
                 reportError(e)
             }
@@ -862,7 +904,7 @@ class VerificationHelper internal constructor(
         Logger.dCbor(TAG, "MessageData", data)
         val map = Cbor.decode(data)
         if (!map.hasKey("deviceEngagementBytes")) {
-            dataTransport!!.close()
+            dataTransport.close()
             reportError(Error("Error extracting DeviceEngagement from MessageData"))
             return
         }
@@ -879,7 +921,7 @@ class VerificationHelper internal constructor(
     }
 
     private fun handleOnMessageReceived() {
-        val data = dataTransport!!.getMessage()
+        val data = dataTransport.getMessage()
         if (data == null) {
             reportError(Error("onMessageReceived but no message"))
             return
@@ -902,7 +944,7 @@ class VerificationHelper internal constructor(
         val decryptedMessage = try {
             sessionEncryptionReader!!.decryptMessage(data)
         } catch (e: Exception) {
-            dataTransport!!.close()
+            dataTransport.close()
             reportError(Error("Error decrypting message from device", e))
             return
         }
@@ -917,7 +959,7 @@ class VerificationHelper internal constructor(
         } else {
             // No data, so status must be set...
             if (decryptedMessage.second == null) {
-                dataTransport!!.close()
+                dataTransport.close()
                 reportError(Error("No data and no status in SessionData"))
                 return
             }
@@ -929,10 +971,10 @@ class VerificationHelper internal constructor(
             val statusCode = decryptedMessage.second
             Logger.d(TAG, "SessionData with status code $statusCode")
             if (statusCode == Constants.SESSION_DATA_STATUS_SESSION_TERMINATION) {
-                dataTransport!!.close()
+                dataTransport.close()
                 reportDeviceDisconnected(false)
             } else {
-                dataTransport!!.close()
+                dataTransport.close()
                 reportError(Error("Expected status code 20, got $statusCode instead"))
             }
         }
@@ -943,31 +985,29 @@ class VerificationHelper internal constructor(
             TAG, "reportDeviceDisconnected: transportSpecificTermination: "
                     + transportSpecificTermination
         )
-        listenerExecutor.execute {
-            listener.onDeviceDisconnected(
-                transportSpecificTermination
-            )
+        listener.executeIfAllowed(inhibitCallbacks) {
+            onDeviceDisconnected(transportSpecificTermination)
         }
     }
 
     fun reportResponseReceived(deviceResponseBytes: ByteArray) {
         Logger.d(TAG, "reportResponseReceived (" + deviceResponseBytes.size + " bytes)")
-        listenerExecutor.execute { listener.onResponseReceived(deviceResponseBytes) }
+        listener.executeIfAllowed(inhibitCallbacks) { onResponseReceived(deviceResponseBytes) }
     }
 
     fun reportMoveIntoNfcField() {
         Logger.d(TAG, "reportMoveIntoNfcField")
-        listenerExecutor.execute { listener.onMoveIntoNfcField() }
+        listener.executeIfAllowed(inhibitCallbacks) { onMoveIntoNfcField() }
     }
 
     fun reportDeviceConnected() {
         Logger.d(TAG, "reportDeviceConnected")
-        listenerExecutor.execute { listener.onDeviceConnected() }
+        listener.executeIfAllowed(inhibitCallbacks) { onDeviceConnected() }
     }
 
     fun reportReaderEngagementReady(readerEngagement: ByteArray) {
         Logger.dCbor(TAG, "reportReaderEngagementReady", readerEngagement)
-        listenerExecutor.execute { listener.onReaderEngagementReady(readerEngagement) }
+        listener.executeIfAllowed(inhibitCallbacks) { onReaderEngagementReady(readerEngagement) }
     }
 
     fun reportDeviceEngagementReceived(connectionMethods: List<ConnectionMethod>) {
@@ -977,13 +1017,13 @@ class VerificationHelper internal constructor(
                 Logger.d(TAG, "  ConnectionMethod: $cm")
             }
         }
-        listenerExecutor.execute { listener.onDeviceEngagementReceived(connectionMethods) }
+        listener.executeIfAllowed(inhibitCallbacks) { onDeviceEngagementReceived(connectionMethods) }
     }
 
     fun reportError(error: Throwable) {
         Logger.d(TAG, "reportError: error: $error")
         error.printStackTrace()
-        listenerExecutor.execute { listener.onError(error) }
+        listener.executeIfAllowed(inhibitCallbacks) { onError(error) }
     }
 
     /**
@@ -1003,7 +1043,7 @@ class VerificationHelper internal constructor(
      * This method is idempotent so it is safe to call multiple times.
      */
     fun disconnect() {
-        for (t in negotiatedHandoverListeningTransports!!) {
+        for (t in negotiatedHandoverListeningTransports) {
             Logger.d(TAG, "Shutting down Negotiated Handover warmed-up transport $t")
             t.close()
         }
@@ -1014,28 +1054,28 @@ class VerificationHelper internal constructor(
             }
             reverseEngagementListeningTransports = null
         }
-        if (dataTransport != null) {
+        if (_dataTransport != null) {
             // Only send session termination message if the session was actually established.
             val sessionEstablished = sessionEncryptionReader!!.numMessagesEncrypted > 0
             if (sendSessionTerminationMessage && sessionEstablished) {
                 if (useTransportSpecificSessionTermination &&
-                    dataTransport!!.supportsTransportSpecificTerminationMessage()
+                    dataTransport.supportsTransportSpecificTerminationMessage()
                 ) {
                     Logger.d(TAG, "Sending transport-specific termination message")
-                    dataTransport!!.sendTransportSpecificTerminationMessage()
+                    dataTransport.sendTransportSpecificTerminationMessage()
                 } else {
                     Logger.d(TAG, "Sending generic session termination message")
                     val sessionTermination = sessionEncryptionReader!!.encryptMessage(
                         null, Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
                     )
-                    dataTransport!!.sendMessage(sessionTermination)
+                    dataTransport.sendMessage(sessionTermination)
                 }
             } else {
                 Logger.d(TAG, "Not sending session termination message")
             }
             Logger.d(TAG, "Shutting down transport")
-            dataTransport!!.close()
-            dataTransport = null
+            dataTransport.close()
+            _dataTransport = null
         }
     }
 
@@ -1057,13 +1097,13 @@ class VerificationHelper internal constructor(
     fun sendRequest(deviceRequestBytes: ByteArray) {
         checkNotNull(deviceEngagement) { "Device engagement is null" }
         checkNotNull(ephemeralKey) { "New object must be created" }
-        checkNotNull(dataTransport) { "Not connected to a remote device" }
+        checkNotNull(_dataTransport) { "Not connected to a remote device" }
         Logger.dCbor(TAG, "DeviceRequest to send", deviceRequestBytes)
         val message = sessionEncryptionReader!!.encryptMessage(
             deviceRequestBytes, null
         )
         Logger.dCbor(TAG, "SessionData to send", message)
-        dataTransport!!.sendMessage(message)
+        dataTransport.sendMessage(message)
         timestampRequestSent = Timestamp.now().toEpochMilli()
     }
 
@@ -1102,9 +1142,9 @@ class VerificationHelper internal constructor(
          * @return `true` if transport specific termination is available, `false`
          * if not or if not connected.
          */
-        get() = if (dataTransport == null) {
+        get() = if (_dataTransport == null) {
             false
-        } else dataTransport!!.supportsTransportSpecificTerminationMessage()
+        } else dataTransport.supportsTransportSpecificTerminationMessage()
 
     /**
      * Sets whether to send session termination message.
@@ -1120,9 +1160,7 @@ class VerificationHelper internal constructor(
      *
      * @param sendSessionTerminationMessage Whether to send session termination message.
      */
-    fun setSendSessionTerminationMessage(
-        sendSessionTerminationMessage: Boolean
-    ) {
+    fun setSendSessionTerminationMessage(sendSessionTerminationMessage: Boolean) {
         this.sendSessionTerminationMessage = sendSessionTerminationMessage
     }
 
@@ -1130,7 +1168,7 @@ class VerificationHelper internal constructor(
     /**
      * Interface for listening to messages from the remote mdoc device.
      */
-    interface Listener {
+    interface Listener : HelperListener {
         /**
          * Called when using reverse engagement and the reader engagement is ready.
          *
@@ -1220,11 +1258,9 @@ class VerificationHelper internal constructor(
      */
     class Builder(
         context: Context,
+        scope: CoroutineScope?,
         listener: Listener,
-        executor: Executor
     ) {
-        private val mHelper: VerificationHelper
-
         /**
          * Creates a new Builder for [VerificationHelper].
          *
@@ -1232,9 +1268,7 @@ class VerificationHelper internal constructor(
          * @param listener listener.
          * @param executor executor.
          */
-        init {
-            mHelper = VerificationHelper(context, listener, executor)
-        }
+        private val mHelper = VerificationHelper(context, scope, listener)
 
         /**
          * Sets the options to use when setting up transports.
@@ -1242,9 +1276,8 @@ class VerificationHelper internal constructor(
          * @param options the options to use.
          * @return the builder.
          */
-        fun setDataTransportOptions(options: DataTransportOptions): Builder {
+        fun setDataTransportOptions(options: DataTransportOptions) = apply {
             mHelper.options = options
-            return this
         }
 
         /**
@@ -1253,15 +1286,14 @@ class VerificationHelper internal constructor(
          * @param connectionMethods a list of connection methods to offer via reverse engagement
          * @return the builder.
          */
-        fun setUseReverseEngagement(connectionMethods: List<ConnectionMethod>): Builder {
+        fun setUseReverseEngagement(connectionMethods: List<ConnectionMethod>) = apply {
             mHelper.reverseEngagementConnectionMethods = connectionMethods
-            return this
         }
 
-        fun setNegotiatedHandoverConnectionMethods(connectionMethods: List<ConnectionMethod>): Builder {
-            mHelper.negotiatedHandoverConnectionMethods = connectionMethods
-            return this
-        }
+        fun setNegotiatedHandoverConnectionMethods(connectionMethods: List<ConnectionMethod>) =
+            apply {
+                mHelper.negotiatedHandoverConnectionMethods = connectionMethods
+            }
 
         /**
          * Builds a [VerificationHelper] with the configuration specified in the builder.
@@ -1288,21 +1320,43 @@ class VerificationHelper internal constructor(
          *
          * @return A [VerificationHelper].
          */
-        fun build(): VerificationHelper {
-            mHelper.start()
-            return mHelper
-        }
+        fun build(): VerificationHelper = mHelper.apply { start() }
     }
 
     companion object {
         private const val TAG = "VerificationHelper"
     }
-    
+
     enum class EngagementMethod {
         NOT_ENGAGED,
         QR_CODE,
         NFC_STATIC_HANDOVER,
         NFC_NEGOTIATED_HANDOVER,
         REVERSE
+    }
+
+    /**
+     * Private extension function localized to [VerificationHelper] that wraps around the extension function
+     * [CoroutineScope?.launchIfAllowed] to simplify and prettify listener callbacks.
+     *
+     * For ex,
+     * scope.launchIfAllowed(inhibitCallbacks, listener) { onMessageReceived() }
+     *
+     * can be reduced/simplified to an easier to understand
+     * listener.executeIfAllowed(inhibitCallbacks) { onMessageReceived() }
+     *
+     * @param inhibitCallbacks whether to prevent the callback from being executed/called
+     * @param callback the block of code using Listener as the function type receiver so
+     * function calls are made on "this" Listener instance directly.
+     */
+    private fun Listener?.executeIfAllowed(
+        inhibitCallbacks: Boolean,
+        callback: Listener.() -> Unit
+    ) {
+        scope.launchIfAllowed(
+            inhibitCallbacks = inhibitCallbacks,
+            listener = this,
+            callback = callback
+        )
     }
 }

@@ -90,11 +90,12 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
                 )
             )
             qrEngagementHelper = QrEngagementHelper.Builder(
-                context,
-                eDeviceKey!!.publicKey,
-                options,
-                qrEngagementListener,
-                ContextCompat.getMainExecutor(context)
+                context = context,
+                scope = viewModelScope,
+                eDeviceKey = eDeviceKey!!.publicKey,
+                options  = options,
+                listener = qrEngagementListener,
+
             ).setConnectionMethods(connectionMethods).build()
             state = State.LISTENING
         }

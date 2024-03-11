@@ -45,8 +45,10 @@ class DataTransportBlePeripheralServerMode(
     options: DataTransportOptions
 ) : DataTransportBle(context, role, connectionMethod, options) {
     private var characteristicStateUuid = UUID.fromString("00000001-a123-48ce-896b-4c76973373e6")
-    private var characteristicClient2ServerUuid = UUID.fromString("00000002-a123-48ce-896b-4c76973373e6")
-    private var characteristicServer2ClientUuid = UUID.fromString("00000003-a123-48ce-896b-4c76973373e6")
+    private var characteristicClient2ServerUuid =
+        UUID.fromString("00000002-a123-48ce-896b-4c76973373e6")
+    private var characteristicServer2ClientUuid =
+        UUID.fromString("00000003-a123-48ce-896b-4c76973373e6")
 
     // Note: Ident UUID not used in peripheral server mode
     /**
@@ -56,7 +58,8 @@ class DataTransportBlePeripheralServerMode(
      * UUID 0000000A-A123-48CE896B-4C76973373E6 and the GATT client (for the _mdoc reader_) should
      * connect to that UUID.
      */
-    private var characteristicL2CAPUuidMdoc = UUID.fromString("0000000a-a123-48ce-896b-4c76973373e6")
+    private var characteristicL2CAPUuidMdoc =
+        UUID.fromString("0000000a-a123-48ce-896b-4c76973373e6")
     private var bluetoothManager: BluetoothManager? = null
     private var bluetoothLeAdvertiser: BluetoothLeAdvertiser? = null
     private var gattClient: GattClient? = null
@@ -89,8 +92,10 @@ class DataTransportBlePeripheralServerMode(
             }
             isConnecting = true
             scanningTimeMillis = System.currentTimeMillis() - timeScanningStartedMillis
-            Logger.i(TAG, "Scanned for $scanningTimeMillis" + " milliseconds. "
-                        + "Connecting to device with address ${result.device.address}")
+            Logger.i(
+                TAG, "Scanned for $scanningTimeMillis" + " milliseconds. "
+                        + "Connecting to device with address ${result.device.address}"
+            )
             connectToDevice(result.device)
             if (scanner != null) {
                 Logger.d(TAG, "Stopped scanning for UUID $serviceUuid")
@@ -113,10 +118,10 @@ class DataTransportBlePeripheralServerMode(
             reportError(Error("BLE scan failed with error code $errorCode"))
         }
     }
-    
+
     private var gattServer: GattServer? = null
     private var l2capClient: L2CAPClient? = null
-    
+
     private fun connectToDevice(device: BluetoothDevice) {
         reportConnecting()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
@@ -135,7 +140,10 @@ class DataTransportBlePeripheralServerMode(
 
     @RequiresApi(api = Build.VERSION_CODES.Q)
     private fun connectL2CAP(device: BluetoothDevice, psm: Int) {
-        l2capClient = L2CAPClient(context, object : L2CAPClient.Listener {
+        l2capClient = L2CAPClient(
+            context = context,
+            scope = scope,
+            listener = object : L2CAPClient.Listener {
             override fun onPeerConnected() {
                 reportConnected()
             }
@@ -161,11 +169,15 @@ class DataTransportBlePeripheralServerMode(
             characteristicL2CAPUuid = characteristicL2CAPUuidMdoc
         }
         gattClient = GattClient(
-            context,
-            serviceUuid!!, encodedEDeviceKeyBytes,
-            characteristicStateUuid, characteristicClient2ServerUuid,
-            characteristicServer2ClientUuid, null,
-            characteristicL2CAPUuid
+            context = context,
+            scope = scope,
+            serviceUuid = serviceUuid!!,
+            encodedEDeviceKeyBytes = encodedEDeviceKeyBytes,
+            characteristicStateUuid = characteristicStateUuid,
+            characteristicClient2ServerUuid = characteristicClient2ServerUuid,
+            characteristicServer2ClientUuid = characteristicServer2ClientUuid,
+            characteristicIdentUuid = null,
+            characteristicL2CAPUuid = characteristicL2CAPUuid
         )
         gattClient!!.listener = object : GattClient.Listener {
             override fun onPeerConnected() {
@@ -217,12 +229,19 @@ class DataTransportBlePeripheralServerMode(
             characteristicL2CAPUuid = characteristicL2CAPUuidMdoc
         }
         gattServer = GattServer(
-            context, bluetoothManager, serviceUuid!!,
-            encodedEDeviceKeyBytes,
-            characteristicStateUuid, characteristicClient2ServerUuid,
-            characteristicServer2ClientUuid, null,
-            characteristicL2CAPUuid
+            context = context,
+            scope = scope,
+            bluetoothManager = bluetoothManager,
+            serviceUuid = serviceUuid!!,
+            encodedEDeviceKeyBytes = encodedEDeviceKeyBytes,
+            characteristicStateUuid = characteristicStateUuid,
+            characteristicClient2ServerUuid = characteristicClient2ServerUuid,
+            characteristicServer2ClientUuid = characteristicServer2ClientUuid,
+            characteristicIdentUuid = null,
+            characteristicL2CAPUuid = characteristicL2CAPUuid
         )
+
+
         gattServer!!.listener = object : GattServer.Listener {
             override fun onPeerConnected() {
                 Logger.d(TAG, "onPeerConnected")
@@ -366,14 +385,10 @@ class DataTransportBlePeripheralServerMode(
     }
 
     override fun sendMessage(data: ByteArray) {
-        require(data.size != 0) { "Data to send cannot be empty" }
-        if (l2capClient != null) {
-            l2capClient!!.sendMessage(data)
-        } else if (gattServer != null) {
-            gattServer!!.sendMessage(data)
-        } else if (gattClient != null) {
-            gattClient!!.sendMessage(data)
-        }
+        require(data.isNotEmpty()) { "Data to send cannot be empty" }
+        l2capClient?.sendMessage(data)
+            ?: gattServer?.sendMessage(data)
+            ?: gattClient?.sendMessage(data)
     }
 
     override fun sendTransportSpecificTerminationMessage() {
@@ -388,14 +403,10 @@ class DataTransportBlePeripheralServerMode(
         gattServer!!.sendTransportSpecificTermination()
     }
 
-    override fun supportsTransportSpecificTerminationMessage(): Boolean {
-        if (gattServer != null) {
-            return gattServer!!.supportsTransportSpecificTerminationMessage()
-        } else if (gattClient != null) {
-            return gattClient!!.supportsTransportSpecificTerminationMessage()
-        }
-        return false
-    }
+    override fun supportsTransportSpecificTerminationMessage(): Boolean =
+        gattServer?.supportsTransportSpecificTerminationMessage()
+            ?: gattClient?.supportsTransportSpecificTerminationMessage()
+            ?: false
 
     companion object {
         private const val TAG = "DataTransportBlePSM" // limit to <= 23 chars

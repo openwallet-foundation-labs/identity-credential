@@ -70,6 +70,7 @@ import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
 import com.android.identity.util.Timestamp
 import com.android.identity.util.Timestamp.Companion.ofEpochMilli
+import kotlinx.coroutines.test.TestScope
 import kotlinx.datetime.Clock.System.now
 import kotlinx.datetime.Instant.Companion.fromEpochMilliseconds
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -102,14 +103,16 @@ class DeviceRetrievalHelperTest {
     private lateinit var mTimeValidityEnd: Timestamp
     private lateinit var mDocumentSignerKey: EcPrivateKey
     private lateinit var mDocumentSignerCert: Certificate
-    
+
+    private val testCoroutineScope = TestScope()
+
     @Before
     fun setUp() {
         // This is needed to prefer BouncyCastle bundled with the app instead of the Conscrypt
         // based implementation included in Android.
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
-        
+
         mStorageEngine = EphemeralStorageEngine()
         mSecureAreaRepository = SecureAreaRepository()
         mSecureArea = SoftwareSecureArea(mStorageEngine)
@@ -218,7 +221,7 @@ class DeviceRetrievalHelperTest {
             mTimeValidityEnd
         )
     }
-    
+
     @Test
     fun testPresentation() {
         val context = InstrumentationRegistry.getTargetContext()
@@ -250,11 +253,11 @@ class DeviceRetrievalHelperTest {
         }
         val eDeviceKey = createEcPrivateKey(EcCurve.P256)
         val qrHelper = QrEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            DataTransportOptions.Builder().build(),
-            qrHelperListener,
-            executor
+            context = context,
+            eDeviceKey = eDeviceKey.publicKey,
+            options = DataTransportOptions.Builder().build(),
+            listener = qrHelperListener,
+            scope = testCoroutineScope
         )
             .setTransports(java.util.List.of(proverTransport))
             .build()
@@ -295,59 +298,61 @@ class DeviceRetrievalHelperTest {
             )
             .generate()
         val sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest, null)
-        verifierTransport.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {}
-            override fun onConnected() {}
-            override fun onDisconnected() {}
-            override fun onTransportSpecificSessionTermination() {
-                Assert.fail()
-            }
+        verifierTransport.setListener(
+            scope = testCoroutineScope,
+            listener = object : DataTransport.Listener {
+                override fun onConnecting() {}
+                override fun onConnected() {}
+                override fun onDisconnected() {}
+                override fun onTransportSpecificSessionTermination() {
+                    Assert.fail()
+                }
 
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
-            }
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
+                }
 
-            override fun onMessageReceived() {
-                val data = verifierTransport.getMessage()
-                val (first, second) = seReader.decryptMessage(
-                    data!!
-                )
-                Assert.assertNull(second)
-                val dr = DeviceResponseParser(
-                    first!!,
-                    encodedSessionTranscript
-                )
-                    .setEphemeralReaderKey(eReaderKey)
-                    .parse()
-                Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.status)
-                Assert.assertEquals("1.0", dr.version)
-                val documents: Collection<DeviceResponseParser.Document> = dr.documents
-                Assert.assertEquals(1, documents.size.toLong())
-                val d = documents.iterator().next()
-                Assert.assertEquals(MDL_DOCTYPE, d.docType)
-                Assert.assertEquals(0, d.deviceNamespaces.size.toLong())
-                Assert.assertEquals(2, d.issuerNamespaces.size.toLong())
-                Assert.assertEquals(2, d.getIssuerEntryNames(MDL_NAMESPACE).size.toLong())
-                Assert.assertEquals(
-                    "Erika",
-                    d.getIssuerEntryString(MDL_NAMESPACE, "given_name")
-                )
-                Assert.assertEquals(
-                    "Mustermann",
-                    d.getIssuerEntryString(MDL_NAMESPACE, "family_name")
-                )
-                Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size.toLong())
-                Assert.assertTrue(d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"))
-
-                // Send a close message (status 20 is "session termination")
-                verifierTransport.sendMessage(
-                    seReader.encryptMessage(
-                        null,
-                        Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                override fun onMessageReceived() {
+                    val data = verifierTransport.getMessage()
+                    val (first, second) = seReader.decryptMessage(
+                        data!!
                     )
-                )
-            }
-        }, executor)
+                    Assert.assertNull(second)
+                    val dr = DeviceResponseParser(
+                        first!!,
+                        encodedSessionTranscript
+                    )
+                        .setEphemeralReaderKey(eReaderKey)
+                        .parse()
+                    Assert.assertEquals(Constants.DEVICE_RESPONSE_STATUS_OK, dr.status)
+                    Assert.assertEquals("1.0", dr.version)
+                    val documents: Collection<DeviceResponseParser.Document> = dr.documents
+                    Assert.assertEquals(1, documents.size.toLong())
+                    val d = documents.iterator().next()
+                    Assert.assertEquals(MDL_DOCTYPE, d.docType)
+                    Assert.assertEquals(0, d.deviceNamespaces.size.toLong())
+                    Assert.assertEquals(2, d.issuerNamespaces.size.toLong())
+                    Assert.assertEquals(2, d.getIssuerEntryNames(MDL_NAMESPACE).size.toLong())
+                    Assert.assertEquals(
+                        "Erika",
+                        d.getIssuerEntryString(MDL_NAMESPACE, "given_name")
+                    )
+                    Assert.assertEquals(
+                        "Mustermann",
+                        d.getIssuerEntryString(MDL_NAMESPACE, "family_name")
+                    )
+                    Assert.assertEquals(1, d.getIssuerEntryNames(AAMVA_NAMESPACE).size.toLong())
+                    Assert.assertTrue(d.getIssuerEntryBoolean(AAMVA_NAMESPACE, "real_id"))
+
+                    // Send a close message (status 20 is "session termination")
+                    verifierTransport.sendMessage(
+                        seReader.encryptMessage(
+                            null,
+                            Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                        )
+                    )
+                }
+            })
         verifierTransport.setHostAndPort(proverTransport.host, proverTransport.port)
         verifierTransport.connect()
         Assert.assertTrue(condVarDeviceConnected.block(5000))
@@ -417,17 +422,17 @@ class DeviceRetrievalHelperTest {
             }
         }
         presentation[0] = DeviceRetrievalHelper.Builder(
-            context,
-            listener,
-            context.mainExecutor,
-            eDeviceKey
-        )
-            .useForwardEngagement(
-                proverTransport,
+            context = context,
+            scope = testCoroutineScope,
+            listener = listener,
+            eDeviceKey = eDeviceKey,
+            transport = proverTransport
+        ).apply {
+            useForwardEngagement(
                 qrHelper.deviceEngagement,
                 qrHelper.handover
             )
-            .build()
+        }.build()
         verifierTransport.sendMessage(sessionEstablishment)
         Assert.assertTrue(condVarDeviceDisconnected.block(5000))
     }
@@ -465,11 +470,11 @@ class DeviceRetrievalHelperTest {
         }
         val eDeviceKey = createEcPrivateKey(EcCurve.P256)
         val qrHelper = QrEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            DataTransportOptions.Builder().build(),
-            qrHelperListener,
-            executor
+            context = context,
+            scope = testCoroutineScope,
+            eDeviceKey = eDeviceKey.publicKey,
+            options = DataTransportOptions.Builder().build(),
+            listener = qrHelperListener
         )
             .setTransports(java.util.List.of(proverTransport))
             .build()
@@ -505,22 +510,24 @@ class DeviceRetrievalHelperTest {
             )
             .generate()
         val sessionEstablishment = seReader.encryptMessage(encodedDeviceRequest, null)
-        verifierTransport.setListener(object : DataTransport.Listener {
-            override fun onConnecting() {}
-            override fun onConnected() {}
-            override fun onDisconnected() {}
-            override fun onTransportSpecificSessionTermination() {
-                Assert.fail()
-            }
+        verifierTransport.setListener(
+            scope = testCoroutineScope,
+            listener = object : DataTransport.Listener {
+                override fun onConnecting() {}
+                override fun onConnected() {}
+                override fun onDisconnected() {}
+                override fun onTransportSpecificSessionTermination() {
+                    Assert.fail()
+                }
 
-            override fun onError(error: Throwable) {
-                throw AssertionError(error)
-            }
+                override fun onError(error: Throwable) {
+                    throw AssertionError(error)
+                }
 
-            override fun onMessageReceived() {
-                Assert.fail()
-            }
-        }, executor)
+                override fun onMessageReceived() {
+                    Assert.fail()
+                }
+            })
         verifierTransport.setHostAndPort(proverTransport.host, proverTransport.port)
         verifierTransport.connect()
         Assert.assertTrue(condVarDeviceConnected.block(5000))
@@ -541,17 +548,17 @@ class DeviceRetrievalHelperTest {
             }
         }
         val presentation = DeviceRetrievalHelper.Builder(
-            context,
-            listener,
-            context.mainExecutor,
-            eDeviceKey
-        )
-            .useForwardEngagement(
-                proverTransport,
+            context = context,
+            scope = testCoroutineScope,
+            listener = listener,
+            eDeviceKey = eDeviceKey,
+            transport = proverTransport
+        ).apply {
+            useForwardEngagement(
                 qrHelper.deviceEngagement,
                 qrHelper.handover
             )
-            .build()
+        }.build()
         verifierTransport.sendMessage(sessionEstablishment)
         Assert.assertTrue(condVarDeviceRequestReceived.block(5000))
         verifierTransport.close()

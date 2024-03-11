@@ -31,7 +31,8 @@ import kotlinx.coroutines.withContext
 
 class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
-    private val transferManager = TransferManager.getInstance(app.applicationContext)
+    private val transferManager =
+        TransferManager.getInstance(app.applicationContext)
     private val documentManager = DocumentManager.getInstance(app.applicationContext)
     private val signedElements = SignedElementsCollection()
     private val requestedElements = mutableListOf<RequestedDocumentData>()
@@ -132,7 +133,12 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                     )
                     transferManager.setResponseServed()
                     val documentsCount = elementsToSend.count()
-                    documentsSent.set(app.getString(R.string.txt_documents_sent, documentsCount as Int))
+                    documentsSent.set(
+                        app.getString(
+                            R.string.txt_documents_sent,
+                            documentsCount as Int
+                        )
+                    )
                     cleanUp()
                     onResultReady(result)
                     /*

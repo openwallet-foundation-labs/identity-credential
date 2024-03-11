@@ -20,8 +20,11 @@ import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.android.identity.android.util.HelperListener
+import com.android.identity.android.util.launchIfAllowed
 import com.android.identity.cbor.Cbor
 import com.android.identity.util.Logger
+import kotlinx.coroutines.CoroutineScope
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.OptionalInt
@@ -29,14 +32,14 @@ import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedTransferQueue
 import java.util.concurrent.TimeUnit
 
-internal class L2CAPServer(val listener: Listener) {
+internal class L2CAPServer(val listener: Listener, private val scope: CoroutineScope?) {
 
     var inhibitCallbacks = false
     private var serverSocket: BluetoothServerSocket? = null
     private var socket: BluetoothSocket? = null
     private val writerQueue: BlockingQueue<ByteArray> = LinkedTransferQueue()
-    var writingThread: Thread? = null
-    
+    private var writingThread: Thread? = null
+
     @RequiresApi(api = Build.VERSION_CODES.Q)
     fun start(bluetoothAdapter: BluetoothAdapter): OptionalInt {
         return try {
@@ -105,7 +108,7 @@ internal class L2CAPServer(val listener: Listener) {
                     if (messageToSend == null) {
                         continue
                     }
-                    if (messageToSend.size == 0) {
+                    if (messageToSend.isEmpty()) {
                         Logger.d(TAG, "Empty message, exiting writer thread")
                         break
                     }
@@ -119,12 +122,11 @@ internal class L2CAPServer(val listener: Listener) {
             reportError(Error("Error using L2CAP socket", e))
         }
         try {
-            // TODO: This is to work aqround a bug in L2CAP
+            // TODO: This is to work faqround a bug in L2CAP
             Thread.sleep(1000)
             socket!!.close()
-        } catch (e: IOException) {
-            Logger.e(TAG, "Error closing socket", e)
-        } catch (e: InterruptedException) {
+        } catch (e: Exception) {
+            // could be IOException, InterruptedException
             Logger.e(TAG, "Error closing socket", e)
         }
     }
@@ -171,31 +173,19 @@ internal class L2CAPServer(val listener: Listener) {
         writerQueue.add(data)
     }
 
-    fun reportPeerConnected() {
-        if (!inhibitCallbacks) {
-            listener.onPeerConnected()
-        }
-    }
+    private fun reportPeerConnected() =
+        listener.executeIfAllowed(inhibitCallbacks) { onPeerConnected() }
 
-    fun reportPeerDisconnected() {
-        if (!inhibitCallbacks) {
-            listener.onPeerDisconnected()
-        }
-    }
+    private fun reportPeerDisconnected() =
+        listener.executeIfAllowed(inhibitCallbacks) { onPeerDisconnected() }
 
-    fun reportMessageReceived(data: ByteArray) {
-        if (!inhibitCallbacks) {
-            listener.onMessageReceived(data)
-        }
-    }
+    private fun reportMessageReceived(data: ByteArray) =
+        listener.executeIfAllowed(inhibitCallbacks) { onMessageReceived(data) }
 
-    fun reportError(error: Throwable) {
-        if (!inhibitCallbacks) {
-            listener.onError(error)
-        }
-    }
+    private fun reportError(error: Throwable) =
+        listener.executeIfAllowed(inhibitCallbacks) { onError(error) }
 
-    internal interface Listener {
+    internal interface Listener : HelperListener {
         fun onPeerConnected()
         fun onPeerDisconnected()
         fun onMessageReceived(data: ByteArray)
@@ -204,5 +194,30 @@ internal class L2CAPServer(val listener: Listener) {
 
     companion object {
         private const val TAG = "L2CAPServer"
+    }
+
+    /**
+     * Private extension function localized to [L2CAPServer] that wraps around the extension function
+     * [CoroutineScope?.launchIfAllowed] to simplify and prettify listener function callbacks.
+     *
+     * For ex, run a coroutine to call "onMessageReceived()" on the Listener instance
+     * scope.launchIfAllowed(inhibitCallbacks, listener) { onMessageReceived() }
+     *
+     * can be simplified to something easier to follow
+     * listener.executeIfAllowed(inhibitCallbacks) { onMessageReceived() }
+     *
+     * @param inhibitCallbacks whether to prevent the callback from being executed/called
+     * @param callback the block of code using Listener as the function type receiver so
+     * function calls are made on "this" Listener instance directly.
+     */
+    private fun Listener?.executeIfAllowed(
+        inhibitCallbacks: Boolean,
+        callback: Listener.() -> Unit
+    ) {
+        scope.launchIfAllowed(
+            inhibitCallbacks = inhibitCallbacks,
+            listener = this,
+            callback = callback
+        )
     }
 }

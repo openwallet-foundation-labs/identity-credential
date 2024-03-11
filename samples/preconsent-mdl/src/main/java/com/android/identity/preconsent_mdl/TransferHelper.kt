@@ -38,6 +38,7 @@ import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import kotlinx.coroutines.CoroutineScope
 import java.io.File
 import java.security.KeyPair
 import java.security.PublicKey
@@ -51,8 +52,10 @@ class TransferHelper private constructor(private val context: Context) {
         val PREFERENCE_KEY_NFC_STATIC_HANDOVER_ENABLED = "nfc_static_handover_enabled"
         val PREFERENCE_KEY_NFC_NEGOTIATED_HANDOVER_ENABLED = "nfc_negotiated_handover_enabled"
 
-        val PREFERENCE_KEY_BLE_CENTRAL_CLIENT_DATA_TRANSFER_ENABLED = "ble_central_client_data_transfer_enabled"
-        val PREFERENCE_KEY_BLE_PERIPHERAL_SERVER_DATA_TRANSFER_ENABLED = "ble_peripheral_server_data_transfer_enabled"
+        val PREFERENCE_KEY_BLE_CENTRAL_CLIENT_DATA_TRANSFER_ENABLED =
+            "ble_central_client_data_transfer_enabled"
+        val PREFERENCE_KEY_BLE_PERIPHERAL_SERVER_DATA_TRANSFER_ENABLED =
+            "ble_peripheral_server_data_transfer_enabled"
         val PREFERENCE_KEY_WIFI_AWARE_DATA_TRANSFER_ENABLED = "wifi_aware_data_transfer_enabled"
         val PREFERENCE_KEY_NFC_DATA_TRANSFER_ENABLED = "nfc_data_transfer_enabled"
         val PREFERENCE_KEY_TCP_DATA_TRANSFER_ENABLED = "tcp_data_transfer_enabled"
@@ -175,7 +178,10 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun getBleCentralClientDataTransferEnabled(): Boolean {
-        return sharedPreferences.getBoolean(PREFERENCE_KEY_BLE_CENTRAL_CLIENT_DATA_TRANSFER_ENABLED, true)
+        return sharedPreferences.getBoolean(
+            PREFERENCE_KEY_BLE_CENTRAL_CLIENT_DATA_TRANSFER_ENABLED,
+            true
+        )
     }
 
     fun setBleCentralClientDataTransferEnabled(enabled: Boolean) {
@@ -185,7 +191,10 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun getBlePeripheralServerDataTransferEnabled(): Boolean {
-        return sharedPreferences.getBoolean(PREFERENCE_KEY_BLE_PERIPHERAL_SERVER_DATA_TRANSFER_ENABLED, false)
+        return sharedPreferences.getBoolean(
+            PREFERENCE_KEY_BLE_PERIPHERAL_SERVER_DATA_TRANSFER_ENABLED,
+            false
+        )
     }
 
     fun setBlePeripheralServerDataTransferEnabled(enabled: Boolean) {
@@ -238,12 +247,14 @@ class TransferHelper private constructor(private val context: Context) {
         eDeviceKey: EcPrivateKey,
         transport: DataTransport,
         deviceEngagement: ByteArray,
-        handover: ByteArray
+        handover: ByteArray,
+        scope: CoroutineScope
     ) {
         scanningDurationMillis = 0
         deviceRetrievalHelper = DeviceRetrievalHelper.Builder(
-            context,
-            object : DeviceRetrievalHelper.Listener {
+            context = context,
+            scope = scope,
+            listener = object : DeviceRetrievalHelper.Listener {
                 override fun onEReaderKeyReceived(eReaderKey: EcPublicKey) {
                     Logger.i(TAG, "onEReaderKeyReceived")
                 }
@@ -269,19 +280,19 @@ class TransferHelper private constructor(private val context: Context) {
                     deviceRetrievalHelper = null
                     state.value = State.NOT_CONNECTED
                 }
-
             },
-            context.mainExecutor,
-            eDeviceKey)
-            .useForwardEngagement(transport, deviceEngagement, handover)
-            .build()
+            eDeviceKey = eDeviceKey,
+            transport = transport
+        ).apply {
+            useForwardEngagement(deviceEngagement, handover)
+        }.build()
         connectionMethod = transport.connectionMethodForTransport
         state.value = State.CONNECTED
     }
 
     fun getDeviceRequest(): ByteArray {
-        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state"}
-        check(deviceRequest != null) { "No request available "}
+        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
+        check(deviceRequest != null) { "No request available " }
         return deviceRequest as ByteArray
     }
 
@@ -290,7 +301,7 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun sendResponse(deviceResponseBytes: ByteArray) {
-        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state"}
+        check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
         deviceRetrievalHelper!!.sendDeviceResponse(
             deviceResponseBytes,
             Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
@@ -308,7 +319,7 @@ class TransferHelper private constructor(private val context: Context) {
     }
 
     fun getEngagementSentToRequestAvailableDurationMillis(): Long {
-        return timestampRequestAvailable - timestampEngagementSent;
+        return timestampRequestAvailable - timestampEngagementSent
     }
 
     fun getRequestToResponseDurationMillis(): Long {
@@ -330,7 +341,8 @@ class TransferHelper private constructor(private val context: Context) {
             return
         }
         if (state.value == State.REQUEST_AVAILABLE) {
-            val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_GENERAL_ERROR)
+            val deviceResponseGenerator =
+                DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_GENERAL_ERROR)
             sendResponse(deviceResponseGenerator.generate())
         }
         deviceRetrievalHelper?.disconnect()

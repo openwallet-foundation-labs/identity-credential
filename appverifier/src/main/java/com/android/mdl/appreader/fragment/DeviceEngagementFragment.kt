@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.mdl.appreader.R
@@ -62,7 +63,7 @@ class DeviceEngagementFragment : Fragment() {
 
         _binding = FragmentDeviceEngagementBinding.inflate(inflater, container, false)
         transferManager = TransferManager.getInstance(requireContext())
-        transferManager.initVerificationHelper()
+        transferManager.initVerificationHelper(lifecycleScope)
         return binding.root
 
     }

@@ -123,17 +123,17 @@ class DataTransportNfc(
         transceiverThread.start()
     }
 
-    private fun buildApduResponse(data: ByteArray, sw1: Int, sw2: Int): ByteArray {
-        val baos = ByteArrayOutputStream()
-        try {
-            baos.write(data)
-        } catch (e: IOException) {
-            throw IllegalStateException(e)
+    private fun buildApduResponse(data: ByteArray, sw1: Int, sw2: Int): ByteArray =
+        ByteArrayOutputStream().run {
+            try {
+                write(data)
+            } catch (e: IOException) {
+                throw IllegalStateException(e)
+            }
+            write(sw1)
+            write(sw2)
+            toByteArray()
         }
-        baos.write(sw1)
-        baos.write(sw2)
-        return baos.toByteArray()
-    }
 
     /**
      * Called by reader when finding the [IsoDep] tag.
@@ -165,7 +165,7 @@ class DataTransportNfc(
                 NfcUtil.COMMAND_TYPE_ENVELOPE -> handleEnvelope(apdu)
                 NfcUtil.COMMAND_TYPE_RESPONSE -> handleResponse()
                 else -> {
-                    Logger.w(TAG,"Unexpected APDU with commandType $commandType")
+                    Logger.w(TAG, "Unexpected APDU with commandType $commandType")
                     NfcUtil.STATUS_WORD_INSTRUCTION_NOT_SUPPORTED
                 }
             }
@@ -351,7 +351,10 @@ class DataTransportNfc(
             le += apdu[leOffset + 2].toInt() and 0xff
             return le
         }
-        Logger.w(TAG, String.format(Locale.US, "leNumBytes is %d bytes which is unsupported", leNumBytes))
+        Logger.w(
+            TAG,
+            String.format(Locale.US, "leNumBytes is %d bytes which is unsupported", leNumBytes)
+        )
         return 0
     }
 
@@ -381,78 +384,78 @@ class DataTransportNfc(
         p1: Int,
         p2: Int,
         data: ByteArray?,
-        le: Int): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(cla)
-        baos.write(ins)
-        baos.write(p1)
-        baos.write(p2)
+        le: Int
+    ): ByteArray = ByteArrayOutputStream().run {
+        write(cla)
+        write(ins)
+        write(p1)
+        write(p2)
         var hasExtendedLc = false
         if (data == null) {
-            baos.write(0)
+            write(0)
         } else if (data.size < 256) {
-            baos.write(data.size)
+            write(data.size)
         } else {
             hasExtendedLc = true
-            baos.write(0x00)
-            baos.write(data.size / 0x100)
-            baos.write(data.size and 0xff)
+            write(0x00)
+            write(data.size / 0x100)
+            write(data.size and 0xff)
         }
         if (data != null && data.size > 0) {
             try {
-                baos.write(data)
+                write(data)
             } catch (e: IOException) {
                 throw IllegalStateException(e)
             }
         }
         if (le > 0) {
             if (le == 256) {
-                baos.write(0x00)
+                write(0x00)
             } else if (le < 256) {
-                baos.write(le)
+                write(le)
             } else {
                 if (!hasExtendedLc) {
-                    baos.write(0x00)
+                    write(0x00)
                 }
                 if (le == 65536) {
-                    baos.write(0x00)
-                    baos.write(0x00)
+                    write(0x00)
+                    write(0x00)
                 } else {
-                    baos.write(le / 0x100)
-                    baos.write(le and 0xff)
+                    write(le / 0x100)
+                    write(le and 0xff)
                 }
             }
         }
-        return baos.toByteArray()
+        toByteArray()
     }
 
-    private fun encapsulateInDo53(data: ByteArray): ByteArray {
-        val baos = ByteArrayOutputStream()
-        baos.write(0x53)
-        if (data.size < 0x80) {
-            baos.write(data.size)
-        } else if (data.size < 0x100) {
-            baos.write(0x81)
-            baos.write(data.size)
-        } else if (data.size < 0x10000) {
-            baos.write(0x82)
-            baos.write(data.size / 0x100)
-            baos.write(data.size and 0xff)
-        } else if (data.size < 0x1000000) {
-            baos.write(0x83)
-            baos.write(data.size / 0x10000)
-            baos.write(data.size / 0x100 and 0xff)
-            baos.write(data.size and 0xff)
-        } else {
-            throw IllegalStateException("Data length cannot be bigger than 0x1000000")
+    private fun encapsulateInDo53(data: ByteArray): ByteArray =
+        ByteArrayOutputStream().run {
+            write(0x53)
+            if (data.size < 0x80) {
+                write(data.size)
+            } else if (data.size < 0x100) {
+                write(0x81)
+                write(data.size)
+            } else if (data.size < 0x10000) {
+                write(0x82)
+                write(data.size / 0x100)
+                write(data.size and 0xff)
+            } else if (data.size < 0x1000000) {
+                write(0x83)
+                write(data.size / 0x10000)
+                write(data.size / 0x100 and 0xff)
+                write(data.size and 0xff)
+            } else {
+                throw IllegalStateException("Data length cannot be bigger than 0x1000000")
+            }
+            try {
+                write(data)
+            } catch (e: IOException) {
+                throw IllegalStateException(e)
+            }
+            toByteArray()
         }
-        try {
-            baos.write(data)
-        } catch (e: IOException) {
-            throw IllegalStateException(e)
-        }
-        return baos.toByteArray()
-    }
 
     private fun extractFromDo53(encapsulatedData: ByteArray): ByteArray? {
         if (encapsulatedData.size < 2) {
@@ -470,21 +473,29 @@ class DataTransportNfc(
             return null
         }
         var offset = 2
-        if (length == 0x80) {
-            Logger.w(TAG, "DO53 first byte of length is 0x80")
-            return null
-        } else if (length == 0x81) {
-            length = encapsulatedData[2].toInt() and 0xff
-            offset = 3
-        } else if (length == 0x82) {
-            length = (encapsulatedData[2].toInt() and 0xff) * 0x100
-            length += encapsulatedData[3].toInt() and 0xff
-            offset = 4
-        } else if (length == 0x83) {
-            length = (encapsulatedData[2].toInt() and 0xff) * 0x10000
-            length += (encapsulatedData[3].toInt() and 0xff) * 0x100
-            length += encapsulatedData[4].toInt() and 0xff
-            offset = 5
+        when (length) {
+            0x80 -> {
+                Logger.w(TAG, "DO53 first byte of length is 0x80")
+                return null
+            }
+
+            0x81 -> {
+                length = encapsulatedData[2].toInt() and 0xff
+                offset = 3
+            }
+
+            0x82 -> {
+                length = (encapsulatedData[2].toInt() and 0xff) * 0x100
+                length += encapsulatedData[3].toInt() and 0xff
+                offset = 4
+            }
+
+            0x83 -> {
+                length = (encapsulatedData[2].toInt() and 0xff) * 0x10000
+                length += (encapsulatedData[3].toInt() and 0xff) * 0x100
+                length += encapsulatedData[4].toInt() and 0xff
+                offset = 5
+            }
         }
         if (encapsulatedData.size != offset + length) {
             Logger.w(TAG, "Malformed BER-TLV encoding, ${encapsulatedData.size} $offset $length")
@@ -538,7 +549,7 @@ class DataTransportNfc(
                         } catch (e: InterruptedException) {
                             continue
                         }
-                        if (messageToSend.size == 0) {
+                        if (messageToSend.isEmpty()) {
                             // This is an indication that we're disconnecting
                             break
                         }
@@ -573,7 +584,8 @@ class DataTransportNfc(
                             val durationSec = (t1 - t0) / 1000.0
                             val bitsPerSec =
                                 ((envelopeCommand.size + envelopeResponse.size) * 8 / durationSec).toInt()
-                            Logger.d(TAG, String.format(
+                            Logger.d(
+                                TAG, String.format(
                                     "transceive() took %.2f sec for %d + %d bytes => %d bits/sec",
                                     durationSec,
                                     envelopeCommand.size,
@@ -585,7 +597,11 @@ class DataTransportNfc(
                             offset += size
                             if (moreChunksComing) {
                                 // Don't care about response.
-                                Logger.dHex(TAG, "envResponse (more chunks coming)", envelopeResponse)
+                                Logger.dHex(
+                                    TAG,
+                                    "envResponse (more chunks coming)",
+                                    envelopeResponse
+                                )
                             } else {
                                 lastEnvelopeResponse = envelopeResponse
                             }
@@ -645,32 +661,38 @@ class DataTransportNfc(
                                 baos.write(grResponse, 0, grrl - 2)
 
                                 // TODO: add runaway check
-                                if (grrStatus == 0x9000) {
-                                    /* If Le ≥ the number of available bytes, the mdoc shall include
-                                     * all available bytes in the response and set the status words
-                                     * to ’90 00’.
-                                     */
-                                    break
-                                } else if (grrStatus == 0x6100) {
-                                    /* If the number of available bytes > Le + 255, the mdoc shall
-                                     * include as many bytes in the response as indicated by Le and
-                                     * shall set the status words to ’61 00’. The mdoc reader shall
-                                     * respond with a GET RESPONSE command where Le is set to the
-                                     * maximum length of the response data field that is supported
-                                     * by both the mdoc and the mdoc reader.
-                                     */
-                                    leForGetResponse = maxTransceiveLength - 10
-                                } else if (grrStatus and 0xff00 == 0x6100) {
-                                    /* If Le < the number of available bytes ≤ Le + 255, the
-                                     * mdoc shall include as many bytes in the response as
-                                     * indicated by Le and shall set the status words to ’61 XX’,
-                                     * where XX is the number of available bytes remaining. The
-                                     * mdoc reader shall respond with a GET RESPONSE command where
-                                     * Le is set to XX.
-                                     */
-                                    leForGetResponse = grrStatus and 0xff
-                                } else {
-                                    reportError(Error("Expected GetResponse APDU status $status"))
+                                when {
+                                    grrStatus == 0x9000 -> {
+                                        /** If Le ≥ the number of available bytes, the mdoc shall include
+                                         * all available bytes in the response and set the status words
+                                         * to ’90 00’.
+                                         */
+                                        break
+                                    }
+
+                                    grrStatus == 0x6100 -> {
+                                        /** If the number of available bytes > Le + 255, the mdoc shall
+                                         * include as many bytes in the response as indicated by Le and
+                                         * shall set the status words to ’61 00’. The mdoc reader shall
+                                         * respond with a GET RESPONSE command where Le is set to the
+                                         * maximum length of the response data field that is supported
+                                         * by both the mdoc and the mdoc reader.
+                                         */
+                                        leForGetResponse = maxTransceiveLength - 10
+                                    }
+
+                                    grrStatus and 0xff00 == 0x6100 -> {
+                                        /** If Le < the number of available bytes ≤ Le + 255, the
+                                         * mdoc shall include as many bytes in the response as
+                                         * indicated by Le and shall set the status words to ’61 XX’,
+                                         * where XX is the number of available bytes remaining. The
+                                         * mdoc reader shall respond with a GET RESPONSE command where
+                                         * Le is set to XX.
+                                         */
+                                        leForGetResponse = grrStatus and 0xff
+                                    }
+
+                                    else -> reportError(Error("Expected GetResponse APDU status $status"))
                                 }
                             }
                             encapsulatedMessage = baos.toByteArray()
@@ -722,7 +744,7 @@ class DataTransportNfc(
 
     companion object {
         private const val TAG = "DataTransportNfc"
-        
+
         @JvmStatic
         fun fromNdefRecord(
             record: NdefRecord,
@@ -793,14 +815,13 @@ class DataTransportNfc(
         fun processCommandApdu(
             hostApduService: HostApduService,
             apdu: ByteArray
-        ): ByteArray? {
-            if (activeTransports.size == 0) {
+        ): ByteArray? =
+            if (activeTransports.isEmpty()) {
                 Logger.w(TAG, "processCommandApdu: No active DataTransportNfc")
-                return null
+                null
+            } else activeTransports[0].run {
+                return nfcDataTransferProcessCommandApdu(hostApduService, apdu)
             }
-            val transport = activeTransports[0]
-            return transport.nfcDataTransferProcessCommandApdu(hostApduService, apdu)
-        }
 
         /**
          * Process remote reader deactivation.
@@ -812,41 +833,44 @@ class DataTransportNfc(
          * @param reason the reason, either [HostApduService.DEACTIVATION_LINK_LOSS] or
          * [HostApduService.DEACTIVATION_DESELECTED].
          */
-        fun onDeactivated(reason: Int) {
-            if (activeTransports.size == 0) {
+        fun onDeactivated(reason: Int) =
+            if (activeTransports.isEmpty()) {
                 Logger.w(TAG, "processCommandApdu: No active DataTransportNfc")
-                return
+            } else activeTransports[0].run {
+                nfcDataTransferOnDeactivated(reason)
             }
-            val transport = activeTransports[0]
-            transport.nfcDataTransferOnDeactivated(reason)
-        }
 
         fun fromConnectionMethod(
             context: Context,
             cm: ConnectionMethodNfc,
             role: Role,
             options: DataTransportOptions
-        ): DataTransport {
+        ): DataTransport = DataTransportNfc(context, role, cm, options).apply {
             // TODO: set mCommandDataFieldMaxLength and mResponseDataFieldMaxLength
-            return DataTransportNfc(context, role, cm, options)
         }
 
-        private fun encodeInt(dataType: Int, value: Int, baos: ByteArrayOutputStream) {
-            if (value < 0x100) {
-                baos.write(0x02) // Length
-                baos.write(dataType)
-                baos.write(value and 0xff)
-            } else if (value < 0x10000) {
-                baos.write(0x03) // Length
-                baos.write(dataType)
-                baos.write(value / 0x100)
-                baos.write(value and 0xff)
-            } else {
-                baos.write(0x04) // Length
-                baos.write(dataType)
-                baos.write(value / 0x10000)
-                baos.write(value / 0x100 and 0xff)
-                baos.write(value and 0xff)
+        private fun encodeInt(dataType: Int, value: Int, baos: ByteArrayOutputStream) = baos.apply {
+            when {
+                value < 0x100 -> {
+                    write(0x02) // Length
+                    write(dataType)
+                    write(value and 0xff)
+                }
+
+                value < 0x10000 -> {
+                    write(0x03) // Length
+                    write(dataType)
+                    write(value / 0x100)
+                    write(value and 0xff)
+                }
+
+                else -> {
+                    write(0x04) // Length
+                    write(dataType)
+                    write(value / 0x10000)
+                    write(value / 0x100 and 0xff)
+                    write(value and 0xff)
+                }
             }
         }
 
@@ -860,11 +884,13 @@ class DataTransportNfc(
             // This is defined by ISO 18013-5 8.2.2.2 Alternative Carrier Record for device
             // retrieval using NFC.
             //
-            var baos = ByteArrayOutputStream()
-            baos.write(0x01) // Version
-            encodeInt(0x01, cm.commandDataFieldMaxLength.toInt(), baos)
-            encodeInt(0x02, cm.responseDataFieldMaxLength.toInt(), baos)
-            val oobData = baos.toByteArray()
+            val oobData = ByteArrayOutputStream().run {
+                write(0x01) // Version
+                encodeInt(0x01, cm.commandDataFieldMaxLength.toInt(), this)
+                encodeInt(0x02, cm.responseDataFieldMaxLength.toInt(), this)
+                toByteArray()
+            }
+
             val record = NdefRecord(
                 NdefRecord.TNF_EXTERNAL_TYPE,
                 "iso.org:18013:nfc".toByteArray(),
@@ -874,23 +900,24 @@ class DataTransportNfc(
 
             // From 7.1 Alternative Carrier Record
             //
-            baos = ByteArrayOutputStream()
-            baos.write(0x01) // CPS: active
-            baos.write(carrierDataReference.size) // Length of carrier data reference
-            try {
-                baos.write(carrierDataReference)
-            } catch (e: IOException) {
-                throw IllegalStateException(e)
+            val acRecordPayload = ByteArrayOutputStream().run {
+                write(0x01) // CPS: active
+                write(carrierDataReference.size) // Length of carrier data reference
+                try {
+                    write(carrierDataReference)
+                } catch (e: IOException) {
+                    throw IllegalStateException(e)
+                }
+                write(auxiliaryReferences.size) // Number of auxiliary references
+                for (auxRef in auxiliaryReferences) {
+                    // Each auxiliary reference consists of a single byte for the length and then as
+                    // many bytes for the reference itself.
+                    val auxRefUtf8 = auxRef.toByteArray()
+                    write(auxRefUtf8.size)
+                    write(auxRefUtf8, 0, auxRefUtf8.size)
+                }
+                toByteArray()
             }
-            baos.write(auxiliaryReferences.size) // Number of auxiliary references
-            for (auxRef in auxiliaryReferences) {
-                // Each auxiliary reference consists of a single byte for the length and then as
-                // many bytes for the reference itself.
-                val auxRefUtf8 = auxRef.toByteArray()
-                baos.write(auxRefUtf8.size)
-                baos.write(auxRefUtf8, 0, auxRefUtf8.size)
-            }
-            val acRecordPayload = baos.toByteArray()
             return Pair(record, acRecordPayload)
         }
     }
