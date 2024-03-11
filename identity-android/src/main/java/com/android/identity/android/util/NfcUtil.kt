@@ -14,12 +14,13 @@ import com.android.identity.android.mdoc.transport.DataTransportTcp
 import com.android.identity.android.mdoc.transport.DataTransportUdp
 import com.android.identity.android.mdoc.transport.DataTransportWifiAware
 import com.android.identity.cbor.Cbor
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.util.Logger
+import com.android.identity.util.fromHex
+import com.android.identity.util.toHex
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.Arrays
@@ -29,10 +30,10 @@ object NfcUtil {
 
     // Defined by NFC Forum
     @JvmField
-    val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION = Util.fromHex("D2760000850101")
+    val AID_FOR_TYPE_4_TAG_NDEF_APPLICATION = "D2760000850101".fromHex
 
     // Defined by 18013-5 Section 8.3.3.1.2 Data retrieval using near field communication (NFC)
-    val AID_FOR_MDL_DATA_TRANSFER = Util.fromHex("A0000002480400")
+    val AID_FOR_MDL_DATA_TRANSFER = "A0000002480400".fromHex
 
     const val COMMAND_TYPE_OTHER = 0
     const val COMMAND_TYPE_SELECT_BY_AID = 1
@@ -215,8 +216,8 @@ object NfcUtil {
                 if (Logger.isDebugEnabled) {
                     Logger.d(
                         TAG, "ConnectionMethod $cm: alternativeCarrierRecord: "
-                                + "${Util.toHex(records.second)} carrierConfigurationRecord: "
-                                + "${Util.toHex(records.first.payload)}"
+                                + "${records.second.toHex} carrierConfigurationRecord: "
+                                + "${records.first.payload.toHex}"
                     )
                 }
                 alternativeCarrierRecords.add(records.second)

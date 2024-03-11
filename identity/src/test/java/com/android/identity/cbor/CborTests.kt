@@ -1,6 +1,7 @@
 package com.android.identity.cbor
 
 import com.android.identity.internal.Util
+import com.android.identity.util.fromHex
 import kotlinx.datetime.Instant
 import org.junit.Assert
 import org.junit.Test
@@ -710,7 +711,7 @@ class CborTests {
     @Test
     fun diagnosticsVectors() {
         for (testVector in diagnosticsTestVectors) {
-            val encodedCbor = Util.fromHex(testVector.hexEncoding)
+            val encodedCbor = testVector.hexEncoding.fromHex
             Assert.assertEquals(testVector.expectedDiagnostics, Cbor.toDiagnostics(encodedCbor))
         }
     }
@@ -774,7 +775,7 @@ class CborTests {
     @Test
     fun nonWellformedThrowsWhenDecoding() {
         for (hexEncodedData in nonWellformedExamples) {
-            val data = Util.fromHex(hexEncodedData.replace(" ", ""))
+            val data = hexEncodedData.replace(" ", "").fromHex
             Assert.assertThrows(IllegalArgumentException::class.java) {
                 Cbor.decode(data)
             }

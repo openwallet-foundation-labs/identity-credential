@@ -17,8 +17,8 @@ package com.android.identity.android.mdoc.transport
 
 import android.os.ConditionVariable
 import androidx.test.InstrumentationRegistry
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
+import com.android.identity.util.fromHex
 import org.junit.Assert
 import org.junit.Test
 import java.util.concurrent.Executor
@@ -84,8 +84,8 @@ class DataTransportHttpTest {
             null,
             DataTransportOptions.Builder().build()
         )
-        val messageSentByVerifier = Util.fromHex("010203")
-        val messageSentByProver = Util.fromHex("0405")
+        val messageSentByVerifier = "010203".fromHex
+        val messageSentByProver = "0405".fromHex
         val messageReceivedByProver = arrayOf<ByteArray?>(null)
         val messageReceivedByVerifier = arrayOf<ByteArray?>(null)
         val proverMessageReceivedCondVar = ConditionVariable()

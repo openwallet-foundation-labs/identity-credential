@@ -19,9 +19,10 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.util.Timestamp
+import com.android.identity.util.fromHex
+import com.android.identity.util.toHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
@@ -156,8 +157,8 @@ class MobileSecurityObjectGeneratorTest {
     fun testFullMSO(digestAlgorithm: String) {
         val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X),
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y)
+            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
         )
         val signedTimestamp = Timestamp.ofEpochMilli(1601559002000L)
         val validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L)
@@ -167,7 +168,7 @@ class MobileSecurityObjectGeneratorTest {
         deviceKeyAuthorizedDataElements["a"] = listOf("1", "2", "f")
         deviceKeyAuthorizedDataElements["b"] = listOf("4", "5", "k")
         val keyInfo: MutableMap<Long, ByteArray> = HashMap()
-        keyInfo[10L] = Util.fromHex("C985")
+        keyInfo[10L] = "C985".fromHex
         val encodedMSO = MobileSecurityObjectGenerator(
             digestAlgorithm,
             "org.iso.18013.5.1.mDL", deviceKeyFromVector
@@ -202,8 +203,8 @@ class MobileSecurityObjectGeneratorTest {
         Assert.assertEquals(deviceKeyAuthorizedDataElements, mso.deviceKeyAuthorizedDataElements)
         Assert.assertEquals(keyInfo.keys, mso.deviceKeyInfo!!.keys)
         Assert.assertEquals(
-            Util.toHex(keyInfo[10L]!!),
-            Util.toHex(mso.deviceKeyInfo!![10L]!!)
+            keyInfo[10L]!!.toHex,
+            mso.deviceKeyInfo!![10L]!!.toHex
         )
         Assert.assertEquals(signedTimestamp, mso.signed)
         Assert.assertEquals(validFromTimestamp, mso.validFrom)
@@ -215,8 +216,8 @@ class MobileSecurityObjectGeneratorTest {
     fun testBasicMSO() {
         val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X),
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y)
+            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
         )
         val signedTimestamp = Timestamp.ofEpochMilli(1601559002000L)
         val validFromTimestamp = Timestamp.ofEpochMilli(1601559002000L)
@@ -270,8 +271,8 @@ class MobileSecurityObjectGeneratorTest {
     fun testMSOExceptions() {
         val deviceKeyFromVector = EcPublicKeyDoubleCoordinate(
             EcCurve.P256,
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X),
-            Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y)
+            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_X.fromHex,
+            TestVectors.ISO_18013_5_ANNEX_D_STATIC_DEVICE_KEY_Y.fromHex
         )
         Assert.assertThrows(
             "expect exception for illegal digestAlgorithm",

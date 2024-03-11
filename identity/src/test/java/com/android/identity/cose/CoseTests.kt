@@ -5,7 +5,6 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.toDataItem
-import com.android.identity.internal.Util
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.securearea.CreateKeySettings
@@ -16,6 +15,7 @@ import com.android.identity.crypto.toEcPublicKey
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
+import com.android.identity.util.fromHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.BigIntegers
 import org.junit.Assert
@@ -83,8 +83,8 @@ class CoseTests {
         //
         //   https://datatracker.ietf.org/doc/html/rfc9052#name-public-keys
         //
-        val x = Util.fromHex("65eda5a12577c2bae829437fe338701a10aaa375e1bb5b5de108de439c08551d")
-        val y = Util.fromHex("1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd0084d19c")
+        val x = "65eda5a12577c2bae829437fe338701a10aaa375e1bb5b5de108de439c08551d".fromHex
+        val y = "1e52ed75701163f7f9e40ddf9f341b3dc9ba860af7e0ca7ca7e9eecd0084d19c".fromHex
         val id = "meriadoc.brandybuck@buckland.example".toByteArray()
         val item = CborMap.builder()
             .put(-1, 1)
@@ -149,8 +149,8 @@ class CoseTests {
         //
         //  https://datatracker.ietf.org/doc/html/rfc9052#name-public-keys
         //
-        val x = Util.fromHex("bac5b11cad8f99f9c72b05cf4b9e26d244dc189f745228255a219a86d6a09eff")
-        val y = Util.fromHex("20138bf82dc1b6d562be0fa54ab7804a3a64b6d72ccfed6b6fb6ed28bbfc117e")
+        val x = "bac5b11cad8f99f9c72b05cf4b9e26d244dc189f745228255a219a86d6a09eff".fromHex
+        val y = "20138bf82dc1b6d562be0fa54ab7804a3a64b6d72ccfed6b6fb6ed28bbfc117e".fromHex
         val coseKey = CborMap.builder()
             .put(-1, 1)
             .put(-2, x)
@@ -165,9 +165,9 @@ class CoseTests {
             mutableMapOf(
                 Pair(11L.toCoseLabel, byteArrayOf(1, 1).toDataItem)
             ),
-            Util.fromHex("8eb33e4ca31d1c465ab05aac34cc6b23d58fef5c083106c4" +
+            ("8eb33e4ca31d1c465ab05aac34cc6b23d58fef5c083106c4" +
                     "d25a91aef0b0117e2af9a291aa32e14ab834dc56ed2a223444547e01f11d3b0916e5" +
-                    "a4c345cacb36"),
+                    "a4c345cacb36").fromHex,
             "This is the content.".toByteArray()
         )
 
@@ -225,7 +225,7 @@ class CoseTests {
             "23032312d31302d30315431333a33303a30325a584059e64205df1e2f708dd6db0847aed7" +
             "9fc7c0201d80fa55badcaf2e1bcf5902e1e5a62e4832044b890ad85aa53f129134775d733" +
             "754d7cb7a413766aeff13cb2e"
-        val coseSign1 = Cbor.decode(Util.fromHex(issuerAuth)).asCoseSign1
+        val coseSign1 = Cbor.decode(issuerAuth.fromHex).asCoseSign1
 
         val signatureAlgorithm = coseSign1.protectedHeaders[Cose.COSE_LABEL_ALG.toCoseLabel]!!.asNumber
         Assert.assertEquals(signatureAlgorithm, Algorithm.ES256.coseAlgorithmIdentifier.toLong())
@@ -237,8 +237,8 @@ class CoseTests {
         Assert.assertEquals("C=US, CN=utopia iaca", cert.issuerX500Principal.toString())
         Assert.assertEquals("C=US, CN=utopia ds", cert.subjectX500Principal.toString())
 
-        val x = Util.fromHex("ace7ab7340e5d9648c5a72a9a6f56745c7aad436a03a43efea77b5fa7b88f019")
-        val y = Util.fromHex("7d57d8983e1b37d3a539f4d588365e38cbbf5b94d68c547b5bc8731dcd2f146b")
+        val x = "ace7ab7340e5d9648c5a72a9a6f56745c7aad436a03a43efea77b5fa7b88f019".fromHex
+        val y = "7d57d8983e1b37d3a539f4d588365e38cbbf5b94d68c547b5bc8731dcd2f146b".fromHex
         val publicKey = EcPublicKeyDoubleCoordinate(EcCurve.P256, x, y)
         Assert.assertEquals(publicKey, cert.publicKey.toEcPublicKey(EcCurve.P256))
     }
