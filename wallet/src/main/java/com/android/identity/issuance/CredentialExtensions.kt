@@ -1,10 +1,11 @@
 package com.android.identity.issuance
 
+import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
+import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialUtil
 import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
@@ -144,8 +145,15 @@ object CredentialExtensions {
                 Logger.d(TAG, "Need to request $numPendingAuthKeysToCreate CPOs")
                 val requestCpoFlow = issuer.credentialRequestPresentationObjects(credentialIdentifier)
                 val authKeyConfig = requestCpoFlow.getAuthenticationKeyConfiguration()
-                // TODO: add e.g. user authentication to AuthKey
-                val authKeySettings = CreateKeySettings(authKeyConfig.challenge)
+                val authKeySettings: CreateKeySettings = if (secureArea is AndroidKeystoreSecureArea) {
+                    AndroidKeystoreCreateKeySettings.Builder(authKeyConfig.challenge)
+                        .setUserAuthenticationRequired(
+                            true, 0,
+                            setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC))
+                        .build()
+                } else {
+                    CreateKeySettings(authKeyConfig.challenge)
+                }
                 CredentialUtil.managedAuthenticationKeyHelper(
                     this,
                     secureArea,
