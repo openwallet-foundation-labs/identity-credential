@@ -2,7 +2,10 @@ package com.android.identity_credential.wallet.presentation
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 import android.preference.PreferenceManager
+import android.widget.Toast
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.cbor.Cbor
 import com.android.identity.credential.AuthenticationKey
@@ -28,12 +31,12 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SelfSignedMdlIssuingAuthority
 import com.android.identity_credential.wallet.WalletApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.util.OptionalLong
 import kotlin.coroutines.resume
 
 /**
@@ -239,7 +242,16 @@ class TransferHelper(
                     )
                     .generate()
             )
-
+            authKey.increaseUsageCount()
+            if (authKey.usageCount > 1) {
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(
+                        context,
+                        context.resources.getString(R.string.presentation_authkey_usage_warning),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
             result = null
         } catch (e: KeyLockedException) {
             result = authKey

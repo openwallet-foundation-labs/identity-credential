@@ -2,6 +2,9 @@ package com.android.identity_credential.wallet
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -29,6 +32,8 @@ import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 
 class CardViewModel : ViewModel() {
@@ -56,12 +61,48 @@ class CardViewModel : ViewModel() {
             Logger.w(TAG, "No credential with id ${card.id}")
             return
         }
+        refreshCredential(credential, true, true)
+    }
+
+    val refreshCredentialMutex = Mutex()
+
+    private fun refreshCredential(
+        credential: Credential,
+        forceUpdate: Boolean,
+        showFeedback: Boolean
+    ) {
+        // For now we run the entire housekeeping sequence in response to
+        // receiving an update from the issuer... this could be an user
+        // preference or for some events - such as new PII - we could pop
+        // up a notification asking if the user would like to update their
+        // credential
+        //
         viewModelScope.launch(Dispatchers.IO) {
-            credential.housekeeping(
-                issuingAuthorityRepository,
-                secureAreaRepository,
-                true,
-            )
+            // Especially during provisioning it's not uncommon to receive multiple
+            // onCredentialStageChanged after each other... this ensures that we're
+            // only running housekeeping() on a single credential at a time.
+            //
+            // TODO: this can be done more elegantly
+            //
+            refreshCredentialMutex.withLock {
+                val numAuthKeysRefreshed = credential.housekeeping(
+                    issuingAuthorityRepository,
+                    secureAreaRepository,
+                    forceUpdate,
+                )
+                if (showFeedback) {
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(
+                            context,
+                            String.format(
+                                context.resources.getQuantityString(R.plurals.refreshed_authkey, numAuthKeysRefreshed),
+                                numAuthKeysRefreshed
+                            ),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
         }
     }
 
@@ -102,18 +143,9 @@ class CardViewModel : ViewModel() {
                 if (credential.issuingAuthorityIdentifier == issuingAuthority.configuration.identifier &&
                             credential.credentialIdentifier == credentialId) {
 
-                    // For now we run the entire housekeeping sequence in response to
-                    // receiving an update from the issuer... this could be an user
-                    // preference or for some events - such as new PII - we could pop
-                    // up a notification asking if the user would like to update their
-                    // credential
-                    viewModelScope.launch(Dispatchers.IO) {
-                        credential.housekeeping(
-                            issuingAuthorityRepository,
-                            secureAreaRepository,
-                            true,
-                        )
-                    }
+                    Logger.i(TAG, "Handling CredentialStateChanged on $credentialId")
+
+                    refreshCredential(credential, true, false)
                 }
             }
         }
