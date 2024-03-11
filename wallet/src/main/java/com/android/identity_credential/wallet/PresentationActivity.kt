@@ -20,7 +20,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -35,16 +34,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
+import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
+import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
+import com.android.identity.android.securearea.UserAuthenticationType
+import com.android.identity.credential.AuthenticationKey
+import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.trustmanagement.TrustManager
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.presentation.TransferHelper
@@ -52,10 +57,10 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPrompt
 import com.android.identity_credential.wallet.ui.destination.consentprompt.ConsentPromptData
 import com.android.identity_credential.wallet.ui.theme.IdentityCredentialTheme
-
 import kotlinx.coroutines.launch
 
-class PresentationActivity : ComponentActivity() {
+// using FragmentActivity in order to support androidx.biometric.BiometricPrompt
+class PresentationActivity : FragmentActivity() {
     companion object {
         private const val TAG = "PresentationActivity"
         private var transport: DataTransport?
@@ -115,15 +120,12 @@ class PresentationActivity : ComponentActivity() {
 
     private var deviceRequest: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
+    private var consentData: ConsentPromptData? = null
 
     // Transfer helper facilitates starting processing a presentation request and obtaining the
     // response bytes once processing has finished. This enables showing one or more dialogs to
     // the user to accept before sending a response to requesting party.
     private var transferHelper: TransferHelper? = null
-
-    private val trustManager: TrustManager by lazy {
-        walletApp.trustManager
-    }
 
     // Define the Builder for building a TransferHelper once it gets new instance of DeviceRetrievalHelper
     private val transferHelperBuilder: TransferHelper.Builder by lazy {
@@ -159,6 +161,48 @@ class PresentationActivity : ComponentActivity() {
 
         // terminate PresentationActivity since "presentation is complete" (once response is sent)
         finish()
+    }
+
+    private fun onAuthenticationKeyLocked(authKey: AuthenticationKey) {
+        val keyInfo = authKey.secureArea.getKeyInfo(authKey.alias)
+        var userAuthenticationTypes = emptySet<UserAuthenticationType>()
+        if (keyInfo is AndroidKeystoreKeyInfo) {
+            userAuthenticationTypes = keyInfo.userAuthenticationTypes
+        }
+
+        val unlockData = AndroidKeystoreKeyUnlockData(authKey.alias)
+        val cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
+
+        showBiometricPrompt(
+            activity = this,
+            title = applicationContext.resources.getString(R.string.presentation_biometric_prompt_title),
+            cryptoObject = cryptoObject,
+            userAuthenticationTypes = userAuthenticationTypes,
+            requireConfirmation = false,
+            onCanceled = { finish() },
+            onSuccess = { finishProcessingRequest(unlockData, authKey) },
+            onError = {exception ->
+                Logger.e(TAG, exception.toString())
+                finish() },
+        )
+    }
+
+    private fun finishProcessingRequest(
+        keyUnlockData: KeyUnlockData? = null,
+        authKey: AuthenticationKey? = null,
+    ) {
+        // finish processing the request on IO thread
+        lifecycleScope.launch {
+            transferHelper?.finishProcessingRequest(
+                requestedDocType = consentData!!.docType,
+                credentialId = consentData!!.credentialId,
+                credentialRequest = consentData!!.credentialRequest,
+                keyUnlockData = keyUnlockData,
+                onFinishedProcessing = onFinishedProcessingRequest,
+                onAuthenticationKeyLocked = { onAuthenticationKeyLocked(it) },
+                authKey = authKey
+            )
+        }
     }
 
     override fun onDestroy() {
@@ -249,21 +293,13 @@ class PresentationActivity : ComponentActivity() {
                     }
 
                     // when consent data is available, show consent prompt above activity's UI
-                    val consentData = consentPromptData.value
+                    consentData = consentPromptData.value
                     if (consentData != null) {
                         ConsentPrompt(
-                            consentData = consentData,
+                            consentData = consentData!!,
                             credentialTypeRepository = walletApp.credentialTypeRepository,
                             onConfirm = { // user accepted to send requested credential data
-                                // finish processing the request on IO thread
-                                lifecycleScope.launch {
-                                    transferHelper?.finishProcessingRequest(
-                                        requestedDocType = consentData.docType,
-                                        credentialId = consentData.credentialId,
-                                        credentialRequest = consentData.credentialRequest,
-                                        onFinishedProcessing = onFinishedProcessingRequest
-                                    )
-                                }
+                                finishProcessingRequest()
                             },
                             onCancel = { // user declined submitting data to requesting party
                                 finish() // close activity

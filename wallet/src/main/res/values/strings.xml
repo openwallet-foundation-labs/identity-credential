@@ -80,6 +80,10 @@
     <string name="provisioning_error">Error provisioning: %1$s</string>
     <string name="provisioning_unexpected">Unexpected state: %1$s</string>
 
+    <!-- Presentation screen -->
+    <string name="presentation_authkey_usage_warning">Using previously used Auth Key</string>
+    <string name="presentation_biometric_prompt_title">Authentication Required</string>
+
     <!-- QR screen -->
     <string name="qr_title">QR Code</string>
     <string name="qr_error_generating">Error generating QR code</string>
@@ -164,6 +168,10 @@
     <string name="consent_prompt_title">The following information is being requested from \"%1$s\"</string>
     <string name="consent_prompt_title_verifier">%1$s is requesting information from \"%2$s\"</string>
     <string name="consent_prompt_icon_description">Verifier Icon</string>
+
+    <!-- Biometric Prompt -->
+    <string name="biometric_prompt_negative_btn_lskf">Use PIN</string>
+    <string name="biometric_prompt_negative_btn_no_lskf">Cancel</string>
 
     <!-- Asset name (for localized assets -->
     <string name="asset_about_md">about.md</string>

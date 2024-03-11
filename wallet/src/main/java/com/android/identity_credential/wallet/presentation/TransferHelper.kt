@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import android.preference.PreferenceManager
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.cbor.Cbor
+import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credential.NameSpacedData
@@ -20,6 +21,8 @@ import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.securearea.KeyLockedException
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Constants
@@ -28,8 +31,10 @@ import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.SelfSignedMdlIssuingAuthority
 import com.android.identity_credential.wallet.WalletApplication
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.OptionalLong
+import kotlin.coroutines.resume
 
 /**
  * Transfer Helper provides helper functions for starting to process a presentation request, as well
@@ -56,7 +61,7 @@ class TransferHelper(
         val issuingAuthorityRepository: IssuingAuthorityRepository,
         val trustManager: TrustManager,
         val context: Context,
-        var deviceRetrievalHelper: DeviceRetrievalHelper? = null,
+        private var deviceRetrievalHelper: DeviceRetrievalHelper? = null,
         var onError: (Throwable) -> Unit = {},
     ) {
         fun setDeviceRetrievalHelper(deviceRetrievalHelper: DeviceRetrievalHelper) = apply {
@@ -69,7 +74,7 @@ class TransferHelper(
             trustManager = trustManager,
             context = context,
             deviceRetrievalHelper = deviceRetrievalHelper!!,
-            onError = onError
+            onError = onError,
         )
     }
 
@@ -128,34 +133,46 @@ class TransferHelper(
 
     /**
      * Finish processing the request and produce response bytes to be sent to requesting party.
-     * This is called once the user accepted various prompts (consent, biometrics, etc..)
+     * This is called once the user accepted various prompts (ie. immediately after the consent prompt,
+     * + after biometric prompt if required)
      *
-     * Expects 3 arguments generated from [startProcessingRequest] along with a callback for when
-     * processing is finished.
+     * At minimum, expects 3 arguments generated from [startProcessingRequest] along with a callback
+     * for when processing is finished as well as a callback in case the authentication key is locked.
+     * In the case of a locked key, this function can be called again with that key which was locked
+     * and its corresponding keyUnlockData.
      *
      * @param requestedDocType the type of credential document requested
      * @param credentialId the id of the credential to send data from
      * @param credentialRequest the object containing list of DataElements for the user to approve
      * @param onFinishedProcessing callback when processing finished to give UI a chance to update
+     * @param onAuthenticationKeyLocked callback when the authentication key is locked to give UI a
+     *                                  chance to prompt user for authentication
+     * @param keyUnlockData key unlock data for a specific authenticated key
+     * @param authKey a specified authentication key
      */
     suspend fun finishProcessingRequest(
         requestedDocType: String,
         credentialId: String,
         credentialRequest: CredentialRequest,
-        onFinishedProcessing: (ByteArray) -> Unit
-    ) = withContext(Dispatchers.IO) {
+        onFinishedProcessing: (ByteArray) -> Unit,
+        onAuthenticationKeyLocked: (authenticationKey: AuthenticationKey) -> Unit,
+        keyUnlockData: KeyUnlockData? = null,
+        authKey: AuthenticationKey? = null
+    ) {
         val credential = credentialStore.lookupCredential(credentialId)!!
+
         val encodedDeviceResponse: ByteArray
         if (requestedDocType == SelfSignedMdlIssuingAuthority.MDL_DOCTYPE) {
             val credentialConfiguration = credential.credentialConfiguration
             val now = Timestamp.now()
-            val authKey = credential.findAuthenticationKey(WalletApplication.AUTH_KEY_DOMAIN, now)
-                ?: run {
-                    onError(IllegalStateException("No valid auth keys, please request more"))
-                    return@withContext
-                }
+            val authKeyToUse: AuthenticationKey = authKey
+                ?: (credential.findAuthenticationKey(WalletApplication.AUTH_KEY_DOMAIN, now)
+                    ?: run {
+                        onError(IllegalStateException("No valid auth keys, please request more"))
+                        return
+                    })
 
-            val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
+            val staticAuthData = StaticAuthDataParser(authKeyToUse.issuerProvidedData).parse()
             val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
             val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
             val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
@@ -169,29 +186,67 @@ class TransferHelper(
 
             val deviceResponseGenerator =
                 DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+
+            // in sep coroutine so that an unexpected error will still allow this function to
+            // finish and send potentially empty response
+            val result = withContext(Dispatchers.IO) { //<- Offload from UI thread
+                addDocumentToResponse(
+                    deviceResponseGenerator = deviceResponseGenerator,
+                    docType = mso.docType,
+                    issuerAuth = staticAuthData.issuerAuth,
+                    mergedIssuerNamespaces = mergedIssuerNamespaces,
+                    authKey = authKeyToUse,
+                    keyUnlockData = keyUnlockData
+                )
+            }
+
+            if (result != null) {
+                onAuthenticationKeyLocked(result)
+                return
+            }
+
+            encodedDeviceResponse = deviceResponseGenerator.generate()
+        } else {
+            onError(IllegalStateException("$requestedDocType not available"))
+            return
+        }
+        onFinishedProcessing(encodedDeviceResponse)
+    }
+
+    private suspend fun addDocumentToResponse(
+        deviceResponseGenerator: DeviceResponseGenerator,
+        docType: String,
+        issuerAuth: ByteArray,
+        mergedIssuerNamespaces: Map<String, MutableList<ByteArray>>,
+        authKey: AuthenticationKey,
+        keyUnlockData: KeyUnlockData?
+    ) = suspendCancellableCoroutine { continuation ->
+        var result: AuthenticationKey?
+
+        try {
             deviceResponseGenerator.addDocument(
                 DocumentGenerator(
-                    mso.docType,
-                    staticAuthData.issuerAuth, deviceRetrievalHelper!!.sessionTranscript
+                    docType,
+                    issuerAuth, deviceRetrievalHelper.sessionTranscript
                 )
                     .setIssuerNamespaces(mergedIssuerNamespaces)
                     .setDeviceNamespacesSignature(
                         NameSpacedData.Builder().build(),
                         authKey.secureArea,
                         authKey.alias,
-                        null,
+                        keyUnlockData,
                         Algorithm.ES256
                     )
                     .generate()
             )
-            encodedDeviceResponse = deviceResponseGenerator.generate()
-        } else {
-            onError(IllegalStateException("$requestedDocType not available"))
-            return@withContext
-        }
-        onFinishedProcessing(encodedDeviceResponse)
-    }
 
+            result = null
+        } catch (e: KeyLockedException) {
+            result = authKey
+        }
+
+        continuation.resume(result)
+    }
 
     /**
      * Send response bytes of credential data to requesting party
