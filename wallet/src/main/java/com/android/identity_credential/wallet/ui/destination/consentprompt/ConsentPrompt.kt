@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet.ui.destination.consentprompt
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,6 +84,7 @@ fun ConsentPrompt(
         modifier = Modifier.fillMaxHeight(0.6F),
         onDismissRequest = { onCancel() },
         sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
 
         ConsentPromptHeader(consentData = consentData)
@@ -229,9 +231,9 @@ private fun DataElementView(
         enabled = false,
         colors = FilterChipDefaults.filterChipColors(
             disabledContainerColor = Color.Transparent,
-            disabledTrailingIconColor = Color.White,
-            disabledLeadingIconColor = Color.White,
-            disabledLabelColor = Color.White,
+            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface,
+            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface,
+            disabledLabelColor = MaterialTheme.colorScheme.onSurface,
             disabledSelectedContainerColor = Color.Transparent
         ),
         onClick = {},
