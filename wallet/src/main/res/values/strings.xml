@@ -81,7 +81,7 @@
     <string name="provisioning_unexpected">Unexpected state: %1$s</string>
 
     <!-- Presentation screen -->
-    <string name="presentation_authkey_usage_warning">Using previously used Auth Key</string>
+    <string name="presentation_authkey_usage_warning">Reused Authentication Key</string>
     <string name="presentation_biometric_prompt_title">Authentication Required</string>
 
     <!-- QR screen -->

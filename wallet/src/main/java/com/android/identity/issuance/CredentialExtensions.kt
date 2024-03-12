@@ -82,13 +82,14 @@ object CredentialExtensions {
      * @param issuingAuthorityRepository a repository of issuing authorities.
      * @param secureAreaRepository a repository of Secure Area implementations available.
      * @param forceUpdate if true, throttling will be bypassed.
+     * @return the number of authentication keys refreshed
      * @throws IllegalArgumentException if the issuer isn't known.
      */
     suspend fun Credential.housekeeping(
         issuingAuthorityRepository: IssuingAuthorityRepository,
         secureAreaRepository: SecureAreaRepository,
         forceUpdate: Boolean,
-    ) {
+    ): Int {
         if (forceUpdate) {
             Logger.d(TAG, "housekeeping: Forcing update")
         } else {
@@ -100,7 +101,7 @@ object CredentialExtensions {
                     "housekeeping: Last update was ${sinceLastUpdate.inWholeSeconds} " +
                             "seconds ago, skipping (limit: ${limit.inWholeSeconds})"
                 )
-                return
+                return 0
             }
             Logger.d(
                 TAG,
@@ -178,6 +179,7 @@ object CredentialExtensions {
             }
         }
 
+        var numAuthKeysRefreshed = 0
         if (state.numAvailableCPO > 0) {
             Logger.d(TAG, "Fetching ${state.numAvailableCPO} CPOs")
             for (cpo in issuer.credentialGetPresentationObjects(credentialIdentifier)) {
@@ -191,10 +193,11 @@ object CredentialExtensions {
                     cpo.presentationData,
                     Timestamp.ofEpochMilli(cpo.validFromMillis),
                     Timestamp.ofEpochMilli(cpo.validUntilMillis))
+                numAuthKeysRefreshed += 1
             }
             refreshState(issuingAuthorityRepository)
         }
-
+        return numAuthKeysRefreshed
     }
 
 }
