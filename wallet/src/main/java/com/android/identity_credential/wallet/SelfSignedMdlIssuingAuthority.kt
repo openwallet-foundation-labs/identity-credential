@@ -108,7 +108,6 @@ abstract class SelfSignedMdlIssuingAuthority(
         ensureDocumentSigningKey()
         val mso = msoGenerator.generate()
         val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
-        val issuerCertChain = listOf(documentSigningKeyCert)
         val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_ALG),
             Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
@@ -222,9 +221,9 @@ abstract class SelfSignedMdlIssuingAuthority(
         }
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.setColor(android.graphics.Color.WHITE)
+        paint.setColor(Color.WHITE)
         paint.textSize = bitmap.width / 10.0f
-        paint.setShadowLayer(2.0f, 1.0f, 1.0f, android.graphics.Color.BLACK)
+        paint.setShadowLayer(2.0f, 1.0f, 1.0f, Color.BLACK)
         val bounds = Rect()
         paint.getTextBounds(artworkText, 0, artworkText.length, bounds)
         val textPadding = bitmap.width/25f

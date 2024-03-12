@@ -17,6 +17,7 @@ package com.android.identity.credential
 
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
+import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 
 /**
@@ -97,8 +98,11 @@ object CredentialUtil {
             numKeysNotNeedingReplacement++
         }
 
-        val numExistingPendingKeys =
+        var numExistingPendingKeys =
             credential.pendingAuthenticationKeys.filter { it.domain == domain }.size
+        if (dryRun) {
+            numExistingPendingKeys += numReplacementsGenerated
+        }
 
         // It's possible we need to generate pending keys that aren't replacements
         val numNonReplacementsToGenerate = (numAuthenticationKeys
