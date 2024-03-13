@@ -82,7 +82,8 @@
 
     <!-- Presentation screen -->
     <string name="presentation_authkey_usage_warning">Reused Authentication Key</string>
-    <string name="presentation_biometric_prompt_title">Authentication Required</string>
+    <string name="presentation_biometric_prompt_title">Use your screen lock</string>
+    <string name="presentation_biometric_prompt_subtitle">Authentication is required to share this information</string>
 
     <!-- QR screen -->
     <string name="qr_title">QR Code</string>
