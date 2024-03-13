@@ -18,10 +18,10 @@
 package com.android.identity.android.mdoc.util
 
 import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.CborEncoder
-import co.nstant.`in`.cbor.model.Map
 import co.nstant.`in`.cbor.model.SimpleValue
+import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.internal.Util
 import com.google.crypto.tink.HybridDecrypt
 import com.google.crypto.tink.HybridEncrypt
@@ -42,8 +42,10 @@ import com.google.crypto.tink.proto.Keyset
 import com.google.crypto.tink.proto.OutputPrefixType
 import com.google.crypto.tink.shaded.protobuf.ByteString
 import com.google.crypto.tink.subtle.EllipticCurves
-import java.io.ByteArrayInputStream
+import org.bouncycastle.util.BigIntegers
 import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.math.BigInteger
 import java.security.AlgorithmParameters
 import java.security.KeyFactory
 import java.security.KeyPair
@@ -55,9 +57,11 @@ import java.security.interfaces.ECPrivateKey
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
 import java.security.spec.ECParameterSpec
+import java.security.spec.ECPoint
 import java.security.spec.ECPublicKeySpec
 import java.security.spec.InvalidKeySpecException
 import java.security.spec.InvalidParameterSpecException
+import java.util.Arrays
 
 
 class CredmanUtil(private val publicKey: PublicKey, private val privateKey: PrivateKey? = null) {
@@ -97,7 +101,7 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
                     .addMap()
                     .put("version", ANDROID_CREDENTIAL_DOCUMENT_VERSION)
                     .putMap("encryptionParameters")
-                    .put("pkEm", Util.publicKeyToUncompressed(encapsulatedPublicKey))
+                    .put("pkEm", publicKeyToUncompressed(encapsulatedPublicKey))
                     .end()
                     .put("cipherText", cipherText)
                     .end()
@@ -115,7 +119,7 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
             }
             val encryptionParameters = Util.cborMapExtractMap(credentialDocument, "encryptionParameters")
             val pkEm = Util.cborMapExtractByteString(encryptionParameters, "pkEm")
-            val encapsulatedPublicKey = Util.publicKeyFromUncompressed(pkEm)
+            val encapsulatedPublicKey = publicKeyFromUncompressed(pkEm)
             val cipherText = Util.cborMapExtractByteString(credentialDocument,"cipherText")
             return Pair(cipherText, encapsulatedPublicKey)
         }
@@ -259,6 +263,60 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
                 throw RuntimeException(e)
             }
         }
+
+        /* Encodes an integer according to Section 2.3.5 Field-Element-to-Octet-String Conversion
+        *  * of SEC 1: Elliptic Curve Cryptography (https://www.secg.org/sec1-v2.pdf).
+        *  */
+        private fun sec1EncodeFieldElementAsOctetString(
+            octetStringSize: Int,
+            fieldValue: BigInteger?
+        ): ByteArray = BigIntegers.asUnsignedByteArray(octetStringSize, fieldValue)
+
+        fun publicKeyToUncompressed(publicKey: PublicKey): ByteArray {
+            val ecKey = publicKey as ECPublicKey
+            val w: ECPoint = ecKey.w
+            val x: ByteArray = sec1EncodeFieldElementAsOctetString(32, w.getAffineX())
+            val y: ByteArray = sec1EncodeFieldElementAsOctetString(32, w.getAffineY())
+            val baos = ByteArrayOutputStream()
+            baos.write(0x04)
+            try {
+                baos.write(x)
+                baos.write(y)
+            } catch (e: IOException) {
+                throw java.lang.RuntimeException(e)
+            }
+            return baos.toByteArray()
+        }
+
+        fun publicKeyFromUncompressed(uncompressedPublicKey: ByteArray): PublicKey {
+            require(uncompressedPublicKey.size == 65) { "Unexpected length " + uncompressedPublicKey.size + ", expected 65" }
+            require(uncompressedPublicKey[0].toInt() == 0x04) { "Unexpected byte " + uncompressedPublicKey[0].toInt() + ", expected 0x04" }
+            val encodedX: ByteArray = Arrays.copyOfRange(uncompressedPublicKey, 1, 33)
+            val encodedY: ByteArray = Arrays.copyOfRange(uncompressedPublicKey, 33, 65)
+            val x = BigInteger(1, encodedX)
+            val y = BigInteger(1, encodedY)
+            return try {
+                val params =
+                    AlgorithmParameters.getInstance("EC")
+                params.init(ECGenParameterSpec("secp256r1"))
+                val ecParameters =
+                    params.getParameterSpec(
+                        ECParameterSpec::class.java
+                    )
+                val ecPoint = ECPoint(x, y)
+                val keySpec =
+                    ECPublicKeySpec(ecPoint, ecParameters)
+                val kf = KeyFactory.getInstance("EC")
+                kf.generatePublic(keySpec) as ECPublicKey
+            } catch (e: NoSuchAlgorithmException) {
+                throw IllegalStateException("Unexpected error", e)
+            } catch (e: InvalidParameterSpecException) {
+                throw IllegalStateException("Unexpected error", e)
+            } catch (e: InvalidKeySpecException) {
+                throw IllegalStateException("Unexpected error", e)
+            }
+        }
+
     }
 
     constructor(keyPair: KeyPair) : this(keyPair.public, keyPair.private)
@@ -361,6 +419,5 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
         val decryptor = privateKeysetHandle!!.getPrimitive(HybridDecrypt::class.java)
         return decryptor.decrypt(encodePublicKey(encapsulatedKey) + cipherText, aad)
     }
-
 
 }

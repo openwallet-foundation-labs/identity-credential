@@ -26,6 +26,12 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.NavDirections
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.crypto.javaPrivateKey
+import com.android.identity.crypto.javaPublicKey
 import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.home.HomeScreen
@@ -40,6 +46,7 @@ import com.google.android.gms.identitycredentials.CredentialOption
 import com.google.android.gms.identitycredentials.GetCredentialRequest
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
 import com.google.android.gms.identitycredentials.IntentHelper
+import java.security.KeyPair
 import java.security.PublicKey
 import java.security.SecureRandom
 
@@ -92,7 +99,7 @@ class RequestOptionsFragment() : Fragment() {
 
     private fun buildJsonRequest(requestDocument: RequestDocument,
                                  nonce: ByteArray,
-                                 requesterIdentityPublicKey: PublicKey): String {
+                                 requesterIdentityPublicKey: EcPublicKey): String {
         val sb = StringBuilder();
 
         sb.append("{\n" +
@@ -105,7 +112,7 @@ class RequestOptionsFragment() : Fragment() {
                 "            \"name\": \"doctype\",\n" +
                 "            \"equal\": \"${requestDocument.docType}\"\n" +
                 "          }")
-        val itemsToRequest = requestDocument.getItemsToRequest()
+        val itemsToRequest = requestDocument.itemsToRequest
         itemsToRequest.forEach { (nameSpaceName, dataElementNamesToIntentToRetainMap) ->
             dataElementNamesToIntentToRetainMap.forEach { (dataElementName, intentToRetain) ->
                 sb.append(",\n" +
@@ -117,7 +124,11 @@ class RequestOptionsFragment() : Fragment() {
         }
 
         val nonceBase64 = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
-        val requesterIdentityBase64 = Base64.encodeToString(Util.publicKeyToUncompressed(requesterIdentityPublicKey), Base64.NO_WRAP or Base64.URL_SAFE)
+        val uncompressed =
+            (requesterIdentityPublicKey as EcPublicKeyDoubleCoordinate).let {
+            byteArrayOf(0x04) + it.x + it.y
+        }
+        val requesterIdentityBase64 = Base64.encodeToString(uncompressed, Base64.NO_WRAP or Base64.URL_SAFE)
         sb.append("\n" +
                 "        ]\n" +
                 "      },\n" +
@@ -136,7 +147,11 @@ class RequestOptionsFragment() : Fragment() {
         val client = IdentityCredentialManager.Companion.getClient(this.requireContext())
         val nonce = ByteArray(16)
         SecureRandom().nextBytes(nonce)
-        val requestIdentityKeyPair = Util.createEphemeralKeyPair(SecureArea.EC_CURVE_P256)
+        val requestIdentityKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val requestIdentityKeyPair = KeyPair(
+            requestIdentityKey.publicKey.javaPublicKey,
+            requestIdentityKey.javaPrivateKey
+        )
 
         // TODO: Right now we just request the first of potentially multiple documents, it
         //  would be nice to request each document in sequence and then display all the
@@ -144,7 +159,7 @@ class RequestOptionsFragment() : Fragment() {
         //  option in the reader.
         val requestedDocuments = calcRequestDocumentList()
         val requestedDocument = requestedDocuments.getAll().get(0)
-        val requestJson = buildJsonRequest(requestedDocument, nonce, requestIdentityKeyPair.public)
+        val requestJson = buildJsonRequest(requestedDocument, nonce, requestIdentityKey.publicKey)
 
         val option = CredentialOption(
             type = "com.credman.IdentityCredential",
@@ -174,8 +189,8 @@ class RequestOptionsFragment() : Fragment() {
                     bundle.putByteArray("nonce", nonce)
 
                     requireActivity().runOnUiThread {
-                        findNavController().navigate(RequestOptionsFragmentDirections.toShowDeviceResponse(
-                            bundle, requestIdentityKeyPair))
+                        findNavController().navigate(RequestOptionsFragmentDirections
+                           .toShowDeviceResponse(bundle, requestIdentityKeyPair))
                     }
                 }
             }

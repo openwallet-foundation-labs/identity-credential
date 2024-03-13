@@ -9,18 +9,22 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
+import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.Credential
-import com.android.identity.credential.Credential.AuthenticationKey
+import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.CredentialRequest
 import com.android.identity.credential.NameSpacedData
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.EcCurve
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
+import com.android.identity.securearea.KeyLockedException
+import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
-import com.android.identity.util.CborUtil
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
@@ -37,22 +41,22 @@ import java.security.PublicKey
 class GetCredentialActivity : FragmentActivity() {
 
     fun addDeviceNamespaces(documentGenerator : DocumentGenerator,
-                            authKey : Credential.AuthenticationKey,
-                            unlockData: SecureArea.KeyUnlockData?) {
+                            authKey : AuthenticationKey,
+                            unlockData: KeyUnlockData?) {
         documentGenerator.setDeviceNamespacesSignature(
             NameSpacedData.Builder().build(),
             authKey.secureArea,
             authKey.alias,
             unlockData,
-            SecureArea.ALGORITHM_ES256)
+            Algorithm.ES256)
     }
 
-    fun doBiometricAuth(authKey : Credential.AuthenticationKey,
+    fun doBiometricAuth(authKey : AuthenticationKey,
                         forceLskf : Boolean,
-                        onBiometricAuthCompleted: (unlockData: SecureArea.KeyUnlockData?) -> Unit) {
+                        onBiometricAuthCompleted: (unlockData: KeyUnlockData?) -> Unit) {
         var title = "To share your credential we need to check that it's you."
-        var unlockData = AndroidKeystoreSecureArea.KeyUnlockData(authKey.alias)
-        var cryptoObject = unlockData.getCryptoObjectForSigning(SecureArea.ALGORITHM_ES256)
+        var unlockData = AndroidKeystoreKeyUnlockData(authKey.alias)
+        var cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
 
         val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Authentication required")
@@ -128,7 +132,7 @@ class GetCredentialActivity : FragmentActivity() {
         val nonceBase64 = params.getString("nonce")
         val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
         val requesterIdentityBase64 = params.getString("requesterIdentity")
-        val requesterIdentity = Util.publicKeyFromUncompressed(
+        val requesterIdentity = CredmanUtil.publicKeyFromUncompressed(
             Base64.decode(requesterIdentityBase64, Base64.NO_WRAP or Base64.URL_SAFE))
         log("responseFormat: $responseFormat nonce: $nonce requester: $requesterIdentity")
         val fields = provider.getJSONObject("selector").getJSONArray("fields")
@@ -163,7 +167,10 @@ class GetCredentialActivity : FragmentActivity() {
             "com.android.mdl.appreader"
         ) // TODO: get from |request|
 
-        val authKey = credential!!.findAuthenticationKey(Timestamp.now())
+        val authKey = credential.findAuthenticationKey(
+            ProvisioningUtil.AUTH_KEY_DOMAIN,
+            Timestamp.now()
+        )
         if (authKey == null) {
             throw IllegalStateException("No authkey")
         }
@@ -182,7 +189,7 @@ class GetCredentialActivity : FragmentActivity() {
             addDeviceNamespaces(documentGenerator, authKey, null)
             completeResponse(authKey, deviceResponseGenerator, documentGenerator,
                 requesterIdentity, encodedSessionTranscript)
-        } catch (e: SecureArea.KeyLockedException) {
+        } catch (e: KeyLockedException) {
             doBiometricAuth(authKey, false) { keyUnlockData ->
                 if (keyUnlockData != null) {
                     addDeviceNamespaces(documentGenerator, authKey, keyUnlockData)

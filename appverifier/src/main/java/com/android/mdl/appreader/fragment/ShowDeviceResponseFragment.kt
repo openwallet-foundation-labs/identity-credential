@@ -22,6 +22,8 @@ import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborEncoder
 import co.nstant.`in`.cbor.model.SimpleValue
 import com.android.identity.android.mdoc.util.CredmanUtil
+import com.android.identity.crypto.javaPublicKey
+import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.util.Logger
@@ -76,12 +78,6 @@ class ShowDeviceResponseFragment : Fragment() {
 
     }
 
-    private fun generatePublicKeyHash(publicKey: PublicKey): ByteArray {
-        val encodedKey = Util.publicKeyToUncompressed(publicKey)
-        val md = MessageDigest.getInstance("SHA-256")
-        return md.digest(encodedKey)
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -103,9 +99,7 @@ class ShowDeviceResponseFragment : Fragment() {
 
         //Logger.dCbor("TAG", "encodedDeviceResponse", encodedDeviceResponse)
 
-        val parser = DeviceResponseParser()
-        parser.setDeviceResponse(encodedDeviceResponse)
-        parser.setSessionTranscript(encodedSessionTranscript)
+        val parser = DeviceResponseParser(encodedDeviceResponse, encodedSessionTranscript)
         val deviceResponse = parser.parse()
 
         val documents = deviceResponse.documents
@@ -163,7 +157,7 @@ class ShowDeviceResponseFragment : Fragment() {
             )
             sb.append("<h3>Doctype: <font color=\"$color\">${doc.docType}</font></h3>")
 
-            var certChain = doc.issuerCertificateChain.toList()
+            var certChain = doc.issuerCertificateChain.javaX509Certificates
             val customValidators = CustomValidators.getByDocType(doc.docType)
             val result = VerifierApp.trustManagerInstance.verify(
                 chain = certChain,
@@ -206,7 +200,7 @@ class ShowDeviceResponseFragment : Fragment() {
             // we saw the same key earlier.
             sb.append("<h6>DeviceKey</h6>")
             val deviceKeySha1 = FormatUtil.encodeToString(
-                MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.encoded)
+                MessageDigest.getInstance("SHA-1").digest(doc.deviceKey.javaPublicKey.encoded)
             )
             sb.append("${getFormattedCheck(true)}SHA-1: ${deviceKeySha1}<br>")
             // TODO: log DeviceKey's that we've seen and show warning if a DeviceKey is seen

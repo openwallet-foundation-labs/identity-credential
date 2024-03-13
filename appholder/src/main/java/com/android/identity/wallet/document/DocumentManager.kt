@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.DataItem
 import co.nstant.`in`.cbor.model.UnicodeString
+import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.credentialtype.CredentialAttributeType
@@ -15,7 +16,6 @@ import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil
-import com.android.identity.util.CborUtil
 import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDocumentInformation
@@ -58,34 +58,15 @@ class DocumentManager private constructor(private val context: Context) {
         return null
     }
 
-    private fun lookupDataElement(
-        mdocCredType: MdocCredentialType,
-        namespaceName: String,
-        dataElementName: String
-    ): MdocDataElement? {
-        // TODO: this should be a method on MdocCredentialType and that type should
-        //  be using hashtables instead of lists for performance reasons.
-        for (ns in mdocCredType.namespaces) {
-            if (ns.namespace.equals(namespaceName)) {
-                for (de in ns.dataElements) {
-                    if (de.attribute.identifier.equals(dataElementName)) {
-                        return de
-                    }
-                }
-            }
-        }
-        return null
-    }
-
     fun getDataElementDisplayName(docTypeName : String,
                                   nameSpaceName : String,
                                   dataElementName : String): String {
-        for (credType in HolderApp.credentialTypeRepositoryInstance.getCredentialTypes()) {
-            if (credType.mdocCredentialType?.docType.equals(docTypeName)) {
-                val mdocDataElement = lookupDataElement(credType.mdocCredentialType!!, nameSpaceName, dataElementName)
-                if (mdocDataElement != null) {
-                    return mdocDataElement.attribute.displayName
-                }
+        val credType = HolderApp.credentialTypeRepositoryInstance.getCredentialTypeForMdoc(docTypeName)
+        if (credType != null) {
+            val mdocDataElement = credType.mdocCredentialType!!
+                .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
+            if (mdocDataElement != null) {
+                return mdocDataElement.attribute.displayName
             }
         }
         return dataElementName
@@ -111,7 +92,7 @@ class DocumentManager private constructor(private val context: Context) {
                 nameSpacedData.getDataElementNames(nameSpaceName).map {dataElementName ->
                     val fieldName = nameSpaceName + "." + dataElementName
                     val valueCbor = nameSpacedData.getDataElement(nameSpaceName, dataElementName)
-                    var valueString = CborUtil.toString(valueCbor)
+                    var valueString = Cbor.toDiagnostics(valueCbor)
                     // Workaround for Credman not supporting images yet
                     if (dataElementName.equals("portrait") || dataElementName.equals("signature_usual_mark")) {
                         valueString = String.format(Locale.US, "%d bytes", valueCbor.size)
