@@ -1,6 +1,7 @@
 package com.android.identity.cbor
 
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.toInstant
 
 /**
@@ -89,3 +90,10 @@ val Long.toDataItemDateTimeString: DataItem
 val String.toDataItemDateTimeString: DataItem
     get() = this.toInstant().toDataItemDateTimeString
 
+/**
+ * Extension to get a full-date data item as specified in RFC 8943.
+ *
+ * The tagged text string is represented as specified by the RFC 3339 full-date production.
+ */
+val LocalDate.toDataItemFullDate: DataItem
+    get() = Tagged(Tagged.FULL_DATE_STRING, Tstr(this.toString()))
