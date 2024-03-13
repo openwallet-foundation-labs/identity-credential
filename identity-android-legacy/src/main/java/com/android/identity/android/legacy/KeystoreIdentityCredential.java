@@ -26,12 +26,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.biometric.BiometricPrompt;
 
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea;
-import com.android.identity.credential.Credential;
 import com.android.identity.credential.CredentialStore;
 import com.android.identity.credential.NameSpacedData;
-import com.android.identity.internal.Util;
-import com.android.identity.securearea.SecureArea;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

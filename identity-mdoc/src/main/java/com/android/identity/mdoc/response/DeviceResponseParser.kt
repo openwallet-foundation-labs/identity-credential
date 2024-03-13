@@ -29,11 +29,11 @@ import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import com.android.identity.util.toHex
 
 /**
  * Helper class for parsing the bytes of `DeviceResponse`
@@ -283,8 +283,8 @@ class DeviceResponseParser(
                     Logger.d(TAG, "Verified DeviceSigned using MAC")
                 } else {
                     Logger.d(
-                        TAG, "Device MAC mismatch, got ${Util.toHex(tagInResponse)}"
-                                + " expected ${Util.toHex(expectedTag)}"
+                        TAG, "Device MAC mismatch, got ${tagInResponse.toHex}"
+                                + " expected ${expectedTag.toHex}"
                     )
                 }
             }

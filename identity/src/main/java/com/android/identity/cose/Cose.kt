@@ -9,10 +9,8 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.internal.Util
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
-import org.bouncycastle.asn1.ASN1Encodable
 import org.bouncycastle.asn1.ASN1InputStream
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
@@ -102,6 +100,13 @@ object Cose {
      */
     const val COSE_LABEL_X5CHAIN = 33L
 
+    private fun stripLeadingZeroes(array: ByteArray): ByteArray {
+        val idx = array.indexOfFirst { it != 0.toByte() }
+        if (idx == -1)
+            return array
+        return array.copyOfRange(idx, array.size)
+    }
+
     /*
      * From RFC 8152 section 8.1 ECDSA:
      *
@@ -120,15 +125,12 @@ object Cose {
         } catch (e: IOException) {
             throw IllegalArgumentException("Error decoding DER signature", e)
         }
-        val asn1Encodables: Array<ASN1Encodable> =
-            Util.castTo(ASN1Sequence::class.java, asn1).toArray()
+        val asn1Encodables = (asn1 as ASN1Sequence).toArray()
         require(asn1Encodables.size == 2) { "Expected two items in sequence" }
-        val r: BigInteger =
-            Util.castTo(ASN1Integer::class.java, asn1Encodables[0].toASN1Primitive()).value
-        val s: BigInteger =
-            Util.castTo(ASN1Integer::class.java, asn1Encodables[1].toASN1Primitive()).value
-        val rBytes = Util.stripLeadingZeroes(r.toByteArray())
-        val sBytes = Util.stripLeadingZeroes(s.toByteArray())
+        val r = (asn1Encodables[0].toASN1Primitive() as ASN1Integer).value
+        val s = (asn1Encodables[1].toASN1Primitive() as ASN1Integer).value
+        val rBytes = stripLeadingZeroes(r.toByteArray())
+        val sBytes = stripLeadingZeroes(s.toByteArray())
         val baos = ByteArrayOutputStream()
         try {
             for (n in 0 until keySize - rBytes.size) {

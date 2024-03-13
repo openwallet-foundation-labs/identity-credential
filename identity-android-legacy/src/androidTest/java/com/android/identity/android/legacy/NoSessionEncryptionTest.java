@@ -29,15 +29,6 @@ import android.content.Context;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.SmallTest;
 
-import com.android.identity.android.legacy.CredentialDataRequest;
-import com.android.identity.android.legacy.CredentialDataResult;
-import com.android.identity.android.legacy.IdentityCredential;
-import com.android.identity.android.legacy.IdentityCredentialStore;
-import com.android.identity.android.legacy.PresentationSession;
-import com.android.identity.android.legacy.ProvisioningTest;
-import com.android.identity.android.legacy.Utility;
-import com.android.identity.internal.Util;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

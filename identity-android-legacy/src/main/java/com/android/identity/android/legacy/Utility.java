@@ -32,7 +32,6 @@ import com.android.identity.mdoc.response.DeviceResponseGenerator;
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator;
 import com.android.identity.crypto.EcCurve;
 import com.android.identity.util.Timestamp;
-import com.android.identity.internal.Util;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

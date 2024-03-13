@@ -35,7 +35,6 @@ dependencies {
     implementation project(':identity-mdoc')
     implementation(libs.androidx.annotation)
     implementation libs.androidx.biometrics
-    implementation libs.cbor
     implementation libs.bouncy.castle.bcprov
     implementation(libs.bouncy.castle.bcpkix)
     implementation libs.volley

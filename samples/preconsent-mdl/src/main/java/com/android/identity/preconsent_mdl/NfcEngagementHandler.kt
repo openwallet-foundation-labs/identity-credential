@@ -29,7 +29,6 @@ import com.android.identity.android.mdoc.transport.ConnectionMethodUdp
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.crypto.Crypto
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc

@@ -26,6 +26,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RawRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,9 +53,20 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.android.identity.cbor.Bstr
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.Tagged
+import com.android.identity.cbor.toDataItem
+import com.android.identity.cbor.toDataItemDateTimeString
+import com.android.identity.cose.Cose
+import com.android.identity.cose.CoseLabel
+import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.internal.Util
+import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
@@ -62,19 +74,10 @@ import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
-import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.cert.X509CertificateHolder
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
-import org.bouncycastle.operator.ContentSigner
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import java.io.ByteArrayOutputStream
-import java.math.BigInteger
-import java.security.KeyPair
-import java.security.KeyPairGenerator
-import java.security.cert.X509Certificate
-import java.security.spec.ECGenParameterSpec
-import java.util.Date
+import java.nio.charset.StandardCharsets
 import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
@@ -109,16 +112,17 @@ class MainActivity : ComponentActivity() {
             .compress(Bitmap.CompressFormat.JPEG, 50, baos)
         val portrait: ByteArray = baos.toByteArray()
 
-        val now = Timestamp.now()
-        val expiryDate = Timestamp.ofEpochMilli(now.toEpochMilli() + 5 * 365 * 24 * 3600 * 1000L)
+        val now = Clock.System.now()
+        val expiryDate = Instant.fromEpochMilliseconds(
+            now.toEpochMilliseconds() + 5 * 365 * 24 * 3600 * 1000L)
 
         val credentialData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
             .putEntryNumber(MDL_NAMESPACE, "sex", 2)
-            .putEntry(MDL_NAMESPACE, "issue_date", Util.cborEncodeDateTime(now))
-            .putEntry(MDL_NAMESPACE, "expiry_date", Util.cborEncodeDateTime(expiryDate))
+            .putEntry(MDL_NAMESPACE, "issue_date", Cbor.encode(now.toDataItemDateTimeString))
+            .putEntry(MDL_NAMESPACE, "expiry_date", Cbor.encode(expiryDate.toDataItemDateTimeString))
             .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
             .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
             .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
@@ -132,7 +136,8 @@ class MainActivity : ComponentActivity() {
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
         val validFrom = now
-        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + 365 * 24 * 3600 * 1000L)
+        val validUntil = Instant.fromEpochMilliseconds(
+            validFrom.toEpochMilliseconds() + 365 * 24 * 3600 * 1000L)
 
         // Create three authentication keys and certify them
         for (n in 0..2) {
@@ -149,7 +154,11 @@ class MainActivity : ComponentActivity() {
                 MDL_DOCTYPE,
                 pendingAuthKey.attestation.certificates[0].publicKey
             )
-            msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
+            msoGenerator.setValidityInfo(
+                Timestamp.ofEpochMilli(timeSigned.toEpochMilliseconds()),
+                Timestamp.ofEpochMilli(validFrom.toEpochMilliseconds()),
+                Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()),
+                null)
             val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
                 credentialData,
                 Random.Default,
@@ -164,63 +173,63 @@ class MainActivity : ComponentActivity() {
                 )
                 msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
             }
-            val issuerKeyPair: KeyPair = generateIssuingAuthorityKeyPair()
-            val issuerCert = getSelfSignedIssuerAuthorityCertificate(issuerKeyPair)
 
+            ensureDocumentSigningKey()
             val mso = msoGenerator.generate()
-            val taggedEncodedMso = Util.cborEncode(Util.cborBuildTaggedByteString(mso))
-            val issuerCertChain = listOf(issuerCert)
-            val encodedIssuerAuth = Util.cborEncode(
-                Util.coseSign1Sign(
-                    issuerKeyPair.private,
-                    "SHA256withECDSA", taggedEncodedMso,
-                    null,
-                    issuerCertChain
-                )
+            val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
+            val protectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
+                CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+            ))
+            val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
+                CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).dataItem
+            ))
+            val encodedIssuerAuth = Cbor.encode(
+                Cose.coseSign1Sign(
+                    documentSigningKey,
+                    taggedEncodedMso,
+                    true,
+                    Algorithm.ES256,
+                    protectedHeaders,
+                    unprotectedHeaders
+                ).toDataItem
             )
 
             val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
-                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, null),
+                issuerNameSpaces,
                 encodedIssuerAuth
             ).generate()
 
-            pendingAuthKey.certify(issuerProvidedAuthenticationData, validFrom, validUntil)
+            pendingAuthKey.certify(
+                issuerProvidedAuthenticationData,
+                Timestamp.ofEpochMilli(validFrom.toEpochMilliseconds()),
+                Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()))
         }
         Logger.d(TAG, "Created credential with name ${credential.name}")
     }
 
-    private fun generateIssuingAuthorityKeyPair(): KeyPair {
-        val kpg = KeyPairGenerator.getInstance("EC")
-        val ecSpec = ECGenParameterSpec("secp256r1")
-        kpg.initialize(ecSpec)
-        return kpg.generateKeyPair()
+    private lateinit var documentSigningKey: EcPrivateKey
+    private lateinit var documentSigningKeyCert: Certificate
+
+    private fun getRawResourceAsString(@RawRes resourceId: Int): String {
+        val inputStream = application.applicationContext.resources.openRawResource(resourceId)
+        val bytes = inputStream.readBytes()
+        return String(bytes, StandardCharsets.UTF_8)
     }
 
-    private fun getSelfSignedIssuerAuthorityCertificate(
-        issuerAuthorityKeyPair: KeyPair
-    ): X509Certificate {
-        val issuer: X500Name = X500Name("CN=State Of Utopia")
-        val subject: X500Name = X500Name("CN=State Of Utopia Issuing Authority Signing Key")
+    private fun ensureDocumentSigningKey() {
+        if (this::documentSigningKey.isInitialized) {
+            return
+        }
 
-        // Valid from now to five years from now.
-        val now = Date()
-        val kMilliSecsInOneYear = 365L * 24 * 60 * 60 * 1000
-        val expirationDate = Date(now.time + 5 * kMilliSecsInOneYear)
-        val serial = BigInteger("42")
-        val builder = JcaX509v3CertificateBuilder(
-            issuer,
-            serial,
-            now,
-            expirationDate,
-            subject,
-            issuerAuthorityKeyPair.public
+        documentSigningKeyCert = Certificate.fromPem(getRawResourceAsString(R.raw.ds_certificate))
+        documentSigningKey = EcPrivateKey.fromPem(
+            getRawResourceAsString(R.raw.ds_private_key),
+            documentSigningKeyCert.publicKey
         )
-        val signer: ContentSigner = JcaContentSignerBuilder("SHA256withECDSA")
-            .build(issuerAuthorityKeyPair.private)
-        val certHolder: X509CertificateHolder = builder.build(signer)
-        return JcaX509CertificateConverter().getCertificate(certHolder)
-    }
 
+    }
 
     private val permissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->

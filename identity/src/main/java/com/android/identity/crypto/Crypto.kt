@@ -1,6 +1,5 @@
 package com.android.identity.crypto
 
-import com.android.identity.internal.Util
 import kotlinx.datetime.Instant
 import kotlinx.io.bytestring.ByteStringBuilder
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
@@ -40,11 +39,13 @@ import org.bouncycastle.util.BigIntegers
 import java.io.ByteArrayInputStream
 import java.math.BigInteger
 import java.security.KeyFactory
+import java.security.KeyPairGenerator
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.security.Signature
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
+import java.security.spec.ECGenParameterSpec
 import java.util.Date
 import javax.crypto.Cipher
 import javax.crypto.KeyAgreement
@@ -318,10 +319,11 @@ object Crypto {
             EcCurve.BRAINPOOLP320R1,
             EcCurve.BRAINPOOLP384R1,
             EcCurve.BRAINPOOLP512R1 -> {
-                val keyPair = Util.createEphemeralKeyPair(curve)
+                val kpg = KeyPairGenerator.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
+                kpg.initialize(ECGenParameterSpec(curve.SECGName))
+                val keyPair = kpg.generateKeyPair()
                 val publicKey = keyPair.public.toEcPublicKey(curve)
                 check(publicKey is EcPublicKeyDoubleCoordinate)
-                val encoded = (keyPair.private as BCECPrivateKey).encoded
                 val d = (keyPair.private as BCECPrivateKey).d.toByteArray()
                 EcPrivateKeyDoubleCoordinate(curve, d, publicKey.x, publicKey.y)
             }

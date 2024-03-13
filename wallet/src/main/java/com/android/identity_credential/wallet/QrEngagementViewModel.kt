@@ -13,13 +13,11 @@ import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.util.Logger
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
-import java.security.KeyPair
 import java.util.UUID
 
 class QrEngagementViewModel(val context: Application) : AndroidViewModel(context)  {

@@ -13,17 +13,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborDecoder
-import co.nstant.`in`.cbor.model.Map
 import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.securearea.userAuthenticationTypeSet
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
 import com.android.identity.credential.AuthenticationKey
-import com.android.identity.internal.Util
 import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
@@ -190,17 +188,17 @@ class AndroidKeystoreSecureAreaSupport(
             userAuthSettings.add(UserAuthenticationType.BIOMETRIC)
         }
 
-        return FormatUtil.cborEncode(CborBuilder()
-            .addMap()
+        return Cbor.encode(
+            CborMap.builder()
             .put("curve", state.authKeyCurveState.authCurve.toEcCurve().coseCurveIdentifier.toLong())
-            .put("purposes", KeyPurpose.encodeSet(
-                setOf(state.mDocAuthOption.mDocAuthentication.toKeyPurpose())).toLong())
+            .put("purposes", KeyPurpose.encodeSet(setOf(state.mDocAuthOption.mDocAuthentication.toKeyPurpose())))
             .put("userAuthEnabled", state.userAuthentication)
             .put("userAuthTimeoutMillis", state.userAuthenticationTimeoutSeconds.toLong() * 1000L)
             .put("userAuthSettings", UserAuthenticationType.encodeSet(userAuthSettings))
             .put("useStrongBox", state.useStrongBox.isEnabled)
             .end()
-            .build().get(0))
+            .build()
+        )
     }
 
     override fun createAuthKeySettingsFromConfiguration(
@@ -209,13 +207,13 @@ class AndroidKeystoreSecureAreaSupport(
         validFrom: Timestamp,
         validUntil: Timestamp
     ): CreateKeySettings {
-        val map = CborDecoder(ByteArrayInputStream(encodedConfiguration)).decode().get(0) as Map
-        val curve = EcCurve.fromInt(Util.cborMapExtractNumber(map, "curve").toInt())
-        val purposes = KeyPurpose.decodeSet(Util.cborMapExtractNumber(map, "purposes"))
-        val userAuthEnabled = Util.cborMapExtractBoolean(map, "userAuthEnabled")
-        val userAuthTimeoutMillis = Util.cborMapExtractNumber(map, "userAuthTimeoutMillis")
-        val userAuthSettings = Util.cborMapExtractNumber(map, "userAuthSettings")
-        val useStrongBox = Util.cborMapExtractBoolean(map, "useStrongBox")
+        val map = Cbor.decode(encodedConfiguration)
+        val curve = EcCurve.fromInt(map["curve"].asNumber.toInt())
+        val purposes = KeyPurpose.decodeSet(map["purposes"].asNumber)
+        val userAuthEnabled = map["userAuthEnabled"].asBoolean
+        val userAuthTimeoutMillis = map["userAuthTimeoutMillis"].asNumber
+        val userAuthSettings = map["userAuthSettings"].asNumber
+        val useStrongBox = map["useStrongBox"].asBoolean
         return AndroidKeystoreCreateKeySettings.Builder(challenge)
             .setEcCurve(curve)
             .setKeyPurposes(purposes)

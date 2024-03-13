@@ -16,12 +16,15 @@ import androidx.activity.OnBackPressedCallback
 import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DiagnosticOption
+import com.android.identity.cbor.Tagged
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
+import com.android.identity.util.Logger
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.databinding.FragmentShowDocumentBinding
@@ -40,6 +43,7 @@ import java.security.cert.X509Certificate
 class ShowDocumentFragment : Fragment() {
 
     companion object {
+        private const val TAG = "ShowDocumentFragment"
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
         private const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
@@ -283,7 +287,7 @@ class ShowDocumentFragment : Fragment() {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
                         signatureBytes = doc.getIssuerEntryByteString(ns, elem)
                     } else {
-                        valueStr = getPresentation(mdocDataElement, value)
+                        valueStr = getPresentation(ns, elem, mdocDataElement, value)
                     }
                     sb.append(
                         "${
@@ -332,33 +336,47 @@ class ShowDocumentFragment : Fragment() {
         return true
     }
 
-    private fun getPresentation(mdocDataElement: MdocDataElement?, value: ByteArray): String {
-        return when (mdocDataElement?.attribute?.type) {
-            is CredentialAttributeType.String,
-            is CredentialAttributeType.Date,
-            is CredentialAttributeType.DateTime -> Util.cborDecodeString(value)
+    private fun getPresentation(
+        namespaceName: String,
+        dataElementName: String,
+        mdocDataElement: MdocDataElement?,
+        value: ByteArray): String {
+        return try {
+            // TODO: Make DataItem.toString() pretty print data elements and use it here instead
+            when (mdocDataElement?.attribute?.type) {
+                is CredentialAttributeType.String -> Cbor.decode(value).asTstr
+                is CredentialAttributeType.Number -> Cbor.decode(value).asNumber.toString()
+                is CredentialAttributeType.Picture -> {
+                    String.format("%d bytes", Cbor.decode(value).asBstr.size)
+                }
+                is CredentialAttributeType.Boolean -> Cbor.decode(value).asBoolean.toString()
+                is CredentialAttributeType.ComplexType -> FormatUtil.cborPrettyPrint(value)
+                is CredentialAttributeType.StringOptions -> {
+                    val key = Cbor.decode(value).asTstr
+                    val options =
+                        (mdocDataElement.attribute.type as CredentialAttributeType.StringOptions).options
+                    options.find { it.value.equals(key) }?.displayName ?: key
+                }
 
-            is CredentialAttributeType.Number -> Util.cborDecodeLong(value).toString()
-            is CredentialAttributeType.Picture -> String.format("%d bytes", value.size)
-            is CredentialAttributeType.Boolean -> Util.cborDecodeBoolean(value).toString()
-            is CredentialAttributeType.ComplexType -> FormatUtil.cborPrettyPrint(value)
-            is CredentialAttributeType.StringOptions -> {
-                val key = Util.cborDecodeString(value)
-                val options =
-                    (mdocDataElement.attribute.type as CredentialAttributeType.StringOptions).options
-                return options.find { it.value.equals(key) }?.displayName?: key
+                is CredentialAttributeType.IntegerOptions -> {
+                    val key = Cbor.decode(value).asNumber
+                    val options =
+                        (mdocDataElement.attribute.type as CredentialAttributeType.IntegerOptions).options
+                    options.find { it.value?.toLong() == key }?.displayName ?: key.toString()
+                }
+
+                else -> FormatUtil.cborPrettyPrint(value)
             }
-
-            is CredentialAttributeType.IntegerOptions -> {
-                val key = Util.cborDecodeLong(value)
-                val options =
-                    (mdocDataElement.attribute.type as CredentialAttributeType.IntegerOptions).options
-                return options.find { it.value?.toLong() == key }?.displayName?: key.toString()
-            }
-
-            else -> FormatUtil.cborPrettyPrint(value)
+        } catch (e: Throwable) {
+            val prettyValue = Cbor.toDiagnostics(
+                value,
+                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+            )
+            Logger.w(TAG, "Unexpected exception processing mdoc data element " +
+                "$namespaceName $dataElementName with value $prettyValue and " +
+                    "type ${mdocDataElement?.attribute?.type}", e)
+            prettyValue
         }
-
     }
 
     private fun Resources.Theme.attr(@AttrRes attribute: Int): TypedValue {

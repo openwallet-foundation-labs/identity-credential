@@ -8,11 +8,19 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
+import com.android.identity.cbor.Bstr
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.Tagged
+import com.android.identity.cose.Cose
+import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialUtil
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.internal.Util
+import com.android.identity.crypto.Certificate
+import com.android.identity.crypto.CertificateChain
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.toEcPrivateKey
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
@@ -146,7 +154,7 @@ class ProvisioningUtil private constructor(
                     mapOf("org.iso.18013.5.1" to listOf("given_name", "portrait"))
                 dataElementOverrides =
                     mapOf("org.iso.18013.5.1" to mapOf(
-                        "portrait" to Util.cborEncodeBytestring(portrait_override)))
+                        "portrait" to Cbor.encode(Bstr(portrait_override))))
             }
 
             val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
@@ -166,7 +174,7 @@ class ProvisioningUtil private constructor(
             }
 
             val mso = msoGenerator.generate()
-            val taggedEncodedMso = Util.cborEncode(Util.cborBuildTaggedByteString(mso))
+            val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
 
             val issuerKeyPair = when (docType) {
                 MVR_DOCTYPE -> KeysAndCertificates.getMekbDsKeyPair(context)
@@ -180,16 +188,20 @@ class ProvisioningUtil private constructor(
                 else -> KeysAndCertificates.getMdlDsCertificate(context)
             }
 
-            val issuerCertChain = ArrayList<X509Certificate>()
-            issuerCertChain.add(issuerCert)
-            val encodedIssuerAuth = Util.cborEncode(
-                Util.coseSign1Sign(
-                    issuerKeyPair.private,
-                    "SHA256withECDSA",
+            val encodedIssuerAuth = Cbor.encode(
+                Cose.coseSign1Sign(
+                    issuerKeyPair.private.toEcPrivateKey(issuerKeyPair.public, EcCurve.P256),
                     taggedEncodedMso,
-                    null,
-                    issuerCertChain
-                )
+                    true,
+                    Algorithm.ES256,
+                    mapOf(
+                        Pair(
+                            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                            CertificateChain(listOf(Certificate(issuerCert.encoded))).dataItem
+                        )
+                    ),
+                    mapOf(),
+                ).toDataItem
             )
 
             val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
