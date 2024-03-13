@@ -16,6 +16,7 @@ import com.android.identity.android.securearea.UserAuthenticationType
  *
  * @param activity the activity hosting the authentication prompt
  * @param title the title for the authentication prompt
+ * @param subtitle the subtitle for the authentication prompt
  * @param cryptoObject a crypto object to be associated with this authentication
  * @param userAuthenticationTypes the set of allowed user authentication types, must contain at
  *                                least one element
@@ -28,6 +29,7 @@ import com.android.identity.android.securearea.UserAuthenticationType
 fun showBiometricPrompt(
     activity: FragmentActivity,
     title: String,
+    subtitle: String,
     cryptoObject: BiometricPrompt.CryptoObject?,
     userAuthenticationTypes: Set<UserAuthenticationType>,
     requireConfirmation: Boolean,
@@ -46,6 +48,7 @@ fun showBiometricPrompt(
     BiometricUserAuthPrompt(
         activity = activity,
         title = title,
+        subtitle = subtitle,
         cryptoObject = cryptoObject,
         userAuthenticationTypes = userAuthenticationTypes,
         requireConfirmation = requireConfirmation,
@@ -58,6 +61,7 @@ fun showBiometricPrompt(
 private class BiometricUserAuthPrompt(
     private val activity: FragmentActivity,
     private val title: String,
+    private val subtitle: String,
     private val cryptoObject: BiometricPrompt.CryptoObject?,
     private val userAuthenticationTypes: Set<UserAuthenticationType>,
     private val requireConfirmation: Boolean,
@@ -125,6 +129,7 @@ private class BiometricUserAuthPrompt(
 
         val biometricPromptInfo = PromptInfo.Builder()
             .setTitle(title)
+            .setSubtitle(subtitle)
             .setNegativeButtonText(negativeTxt)
             .setConfirmationRequired(requireConfirmation)
             .build()
@@ -141,6 +146,7 @@ private class BiometricUserAuthPrompt(
 
         val lskfPromptInfo = PromptInfo.Builder()
             .setTitle(title)
+            .setSubtitle(subtitle)
             .setAllowedAuthenticators(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
             .setConfirmationRequired(requireConfirmation)
             .build()

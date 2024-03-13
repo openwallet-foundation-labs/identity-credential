@@ -176,6 +176,7 @@ class PresentationActivity : FragmentActivity() {
         showBiometricPrompt(
             activity = this,
             title = applicationContext.resources.getString(R.string.presentation_biometric_prompt_title),
+            subtitle = applicationContext.resources.getString(R.string.presentation_biometric_prompt_subtitle),
             cryptoObject = cryptoObject,
             userAuthenticationTypes = userAuthenticationTypes,
             requireConfirmation = false,
