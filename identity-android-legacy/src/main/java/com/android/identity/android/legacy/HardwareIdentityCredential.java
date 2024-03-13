@@ -27,8 +27,6 @@ import androidx.annotation.RequiresApi;
 import androidx.annotation.VisibleForTesting;
 import androidx.biometric.BiometricPrompt;
 
-import com.android.identity.internal.Util;
-
 import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;

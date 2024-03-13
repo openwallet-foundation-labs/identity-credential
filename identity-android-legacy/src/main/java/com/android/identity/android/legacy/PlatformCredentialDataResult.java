@@ -10,8 +10,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
-import com.android.identity.internal.Util;
-
 import java.util.Collection;
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)

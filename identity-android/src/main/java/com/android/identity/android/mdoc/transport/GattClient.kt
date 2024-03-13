@@ -26,8 +26,8 @@ import android.content.Context
 import android.os.Build
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
-import com.android.identity.internal.Util
 import com.android.identity.util.Logger
+import com.android.identity.util.toHex
 import java.io.ByteArrayOutputStream
 import java.lang.reflect.InvocationTargetException
 import java.nio.ByteBuffer
@@ -250,7 +250,7 @@ internal class GattClient(
                 Logger.w(TAG, "MTU not negotiated, defaulting to 23. Performance will suffer.")
                 mtuSize = 23
             }
-            mCharacteristicValueSize = Util.bleCalculateAttributeValueSize(mtuSize)
+            mCharacteristicValueSize = DataTransportBle.bleCalculateAttributeValueSize(mtuSize)
             return mCharacteristicValueSize
         }
 
@@ -263,13 +263,13 @@ internal class GattClient(
         if (characteristic.uuid == characteristicIdentUuid) {
             val identValue = characteristic.value
             if (Logger.isDebugEnabled) {
-                Logger.d(TAG, "Received identValue: ${Util.toHex(identValue)}")
+                Logger.d(TAG, "Received identValue: ${identValue.toHex}")
             }
             // TODO: Don't even request IDENT since it cannot work w/ reverse engagement (there's
             //   no way the mdoc reader knows EDeviceKeyBytes at this point) and it's also optional.
             if (!Arrays.equals(identValue, this.identValue)) {
-                Logger.w(TAG, "Received ident '${Util.toHex(identValue)}' does not match " +
-                            "expected ident '${Util.toHex(this.identValue!!)}'")
+                Logger.w(TAG, "Received ident '${identValue.toHex}' does not match " +
+                            "expected ident '${this.identValue!!.toHex}'")
             }
             afterIdentObtained(gatt)
         } else if (characteristic.uuid == characteristicL2CAPUuid) {

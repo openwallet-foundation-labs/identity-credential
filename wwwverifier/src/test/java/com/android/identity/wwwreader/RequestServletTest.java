@@ -49,7 +49,6 @@ import com.android.identity.cbor.CborMap;
 import com.android.identity.cbor.DataItem;
 import com.android.identity.crypto.EcPrivateKey;
 import com.android.identity.crypto.EcPrivateKeyDoubleCoordinate;
-import com.android.identity.internal.Util;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod;
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp;
 import com.android.identity.mdoc.engagement.EngagementGenerator;
@@ -60,6 +59,7 @@ import com.android.identity.mdoc.sessionencryption.SessionEncryption;
 
 // imports from Datastore
 import com.android.identity.crypto.EcCurve;
+import com.android.identity.util.HexUtil;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
 import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
@@ -90,18 +90,18 @@ public class RequestServletTest {
     private EcPrivateKey eReaderKey =
             new EcPrivateKeyDoubleCoordinate(
                     EcCurve.P256,
-                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
-                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
-                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y)
+                    HexUtil.INSTANCE.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_D),
+                    HexUtil.INSTANCE.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_X),
+                    HexUtil.INSTANCE.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_READER_KEY_Y)
             );
     private EcPrivateKey eDeviceKey =
             new EcPrivateKeyDoubleCoordinate(
                     EcCurve.P256,
-                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D),
-                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X),
-                    Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y)
+                    HexUtil.INSTANCE.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_D),
+                    HexUtil.INSTANCE.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_X),
+                    HexUtil.INSTANCE.fromHex(TestVectors.ISO_18013_5_ANNEX_D_EPHEMERAL_DEVICE_KEY_Y)
             );
-    private byte[] encodedSessionTranscriptBytes = Util.fromHex(
+    private byte[] encodedSessionTranscriptBytes = HexUtil.INSTANCE.fromHex(
         TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES);
     private DataItem sessionTranscript =
             Cbor.decode(encodedSessionTranscriptBytes).getAsTaggedEncodedCbor();
@@ -320,7 +320,7 @@ public class RequestServletTest {
             ServletConsts.OI_FAILURE_END.trim(), dKey);
         RequestServlet.setNumPostRequests(1, dKey);
         
-        byte[] sessionData = Util.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA);
+        byte[] sessionData = HexUtil.INSTANCE.fromHex(TestVectors.ISO_18013_5_ANNEX_D_SESSION_DATA);
         sendPostRequest(sessionData, dKeyStr);
 
         // process response

@@ -30,8 +30,6 @@ import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
-import com.android.identity.internal.Util;
-
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;

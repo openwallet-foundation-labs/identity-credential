@@ -26,12 +26,12 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.Simple
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import com.android.identity.mdoc.engagement.EngagementParser
+import com.android.identity.util.toHex
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
@@ -127,7 +127,7 @@ class NfcEnagementHelperTest {
         Assert.assertNotNull(responseApdu)
         // The response is the CC file followed by STATUS_WORD_OK. Keep in sync with
         // NfcEngagementHelper.handleSelectFile() for the contents.
-        Assert.assertEquals("000f207fff7fff0406e1047fff00ff9000", Util.toHex(responseApdu))
+        Assert.assertEquals("000f207fff7fff0406e1047fff00ff9000", responseApdu.toHex)
 
         // Select NDEF file
         responseApdu = helper.nfcProcessCommandApdu(
@@ -268,7 +268,7 @@ class NfcEnagementHelperTest {
         Assert.assertNotNull(responseApdu)
         // The response is the CC file followed by STATUS_WORD_OK. Keep in sync with
         // NfcEngagementHelper.handleSelectFile() for the contents.
-        Assert.assertEquals("000f207fff7fff0406e1047fff00009000", Util.toHex(responseApdu))
+        Assert.assertEquals("000f207fff7fff0406e1047fff00009000", responseApdu.toHex)
 
         // Select NDEF file
         responseApdu = helper.nfcProcessCommandApdu(

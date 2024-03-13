@@ -4,7 +4,7 @@ import com.android.identity.cbor.Cbor.decode
 import com.android.identity.cbor.Cbor.encode
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
-import com.android.identity.internal.Util.toHex
+import com.android.identity.util.toHex
 import java.util.OptionalLong
 
 /**
@@ -38,7 +38,7 @@ class ConnectionMethodWifiAware(
         }
         if (bandInfoSupportedBands != null) {
             builder.append(":base_info_supported_bands=")
-            builder.append(toHex(bandInfoSupportedBands))
+            builder.append(bandInfoSupportedBands.toHex)
         }
         return builder.toString()
     }

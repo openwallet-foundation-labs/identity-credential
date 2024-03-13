@@ -51,7 +51,6 @@ dependencies {
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
 
-    implementation libs.cbor
     implementation libs.androidx.core.ktx
     implementation libs.androidx.activity.compose
     implementation platform(libs.compose.bom)

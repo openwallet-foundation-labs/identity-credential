@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity;
+package com.android.identity.android.legacy;
 
 public class TestVectors {
    public static final String ISO_18013_5_ANNEX_D_DEVICE_ENGAGEMENT =

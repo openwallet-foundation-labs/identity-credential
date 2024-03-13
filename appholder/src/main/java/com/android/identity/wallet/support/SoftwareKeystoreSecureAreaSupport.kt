@@ -21,11 +21,11 @@ import androidx.navigation.fragment.findNavController
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.CborDecoder
 import co.nstant.`in`.cbor.model.Map
+import com.android.identity.cbor.Cbor
 import com.android.identity.credential.AuthenticationKey
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
-import com.android.identity.internal.Util
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
@@ -199,11 +199,11 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
             initSoftwareAttestationKey()
         }
 
-        val map = CborDecoder(ByteArrayInputStream(encodedConfiguration)).decode().get(0) as Map
-        val curve = EcCurve.fromInt(Util.cborMapExtractNumber(map, "curve").toInt())
-        val purposes = KeyPurpose.decodeSet(Util.cborMapExtractNumber(map, "purposes"))
-        val passphraseRequired = Util.cborMapExtractBoolean(map, "passphraseRequired")
-        val passphrase = Util.cborMapExtractString(map, "passphrase")
+        val map = Cbor.decode(encodedConfiguration)
+        val curve = EcCurve.fromInt(map["curve"].asNumber.toInt())
+        val purposes = KeyPurpose.decodeSet(map["purposes"].asNumber)
+        val passphraseRequired = map["passphraseRequired"].asBoolean
+        val passphrase = map["passphrase"].asTstr
         return SoftwareCreateKeySettings.Builder(challenge)
             .setEcCurve(curve)
             .setKeyPurposes(purposes)

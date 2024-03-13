@@ -23,8 +23,6 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import com.android.identity.internal.Util;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;

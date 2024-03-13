@@ -31,7 +31,6 @@ import androidx.biometric.BiometricPrompt;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
-import com.android.identity.internal.Util;
 import com.android.identity.crypto.EcCurve;
 
 import org.junit.Test;

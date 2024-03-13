@@ -29,8 +29,6 @@ import android.security.keystore.KeyProperties;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.MediumTest;
 
-import com.android.identity.internal.Util;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

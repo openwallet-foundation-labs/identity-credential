@@ -15,7 +15,7 @@
  */
 package com.android.identity.trustmanagement
 
-import com.android.identity.internal.Util
+import com.android.identity.util.toHex
 import org.bouncycastle.asn1.DEROctetString
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.AuthorityKeyIdentifier
@@ -46,7 +46,7 @@ internal object TrustManagerUtil {
             ?: return ""
         val octets = DEROctetString.getInstance(extensionValue).octets
         val subjectKeyIdentifier = SubjectKeyIdentifier.getInstance(octets)
-        return Util.toHex(subjectKeyIdentifier.keyIdentifier)
+        return subjectKeyIdentifier.keyIdentifier.toHex
     }
 
     /**
@@ -58,7 +58,7 @@ internal object TrustManagerUtil {
             ?: return ""
         val octets = DEROctetString.getInstance(extensionValue).octets
         val authorityKeyIdentifier = AuthorityKeyIdentifier.getInstance(octets)
-        return Util.toHex(authorityKeyIdentifier.keyIdentifier)
+        return authorityKeyIdentifier.keyIdentifier.toHex
     }
 
     /**

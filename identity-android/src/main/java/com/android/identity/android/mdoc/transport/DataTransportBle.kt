@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.Locale
 import java.util.OptionalInt
 import java.util.UUID
 
@@ -301,6 +302,32 @@ abstract class DataTransportBle(
             }
             val acRecordPayload = baos.toByteArray()
             return Pair(record, acRecordPayload)
+        }
+
+        internal fun bleCalculateAttributeValueSize(mtuSize: Int): Int {
+            val characteristicValueSize: Int
+            if (mtuSize > 515) {
+                // Bluetooth Core specification Part F section 3.2.9 says "The maximum length of
+                // an attribute value shall be 512 octets". ... this is enforced in Android as
+                // of Android 13 with the effect being that the application only sees the first
+                // 512 bytes.
+                Logger.w(
+                    TAG, String.format(
+                        Locale.US, "MTU size is %d, using 512 as "
+                                + "characteristic value size", mtuSize
+                    )
+                )
+                characteristicValueSize = 512
+            } else {
+                characteristicValueSize = mtuSize - 3
+                Logger.w(
+                    TAG, String.format(
+                        Locale.US, "MTU size is %d, using %d as "
+                                + "characteristic value size", mtuSize, characteristicValueSize
+                    )
+                )
+            }
+            return characteristicValueSize
         }
     }
 }

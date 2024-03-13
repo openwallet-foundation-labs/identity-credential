@@ -26,8 +26,6 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.identity.internal.Util;
-
 import java.lang.annotation.Retention;
 import java.security.PublicKey;
 import java.util.Collection;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.identity.internal;
+package com.android.identity.android.legacy;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;

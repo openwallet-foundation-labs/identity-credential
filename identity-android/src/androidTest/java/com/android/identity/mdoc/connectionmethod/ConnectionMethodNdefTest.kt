@@ -24,7 +24,6 @@ import com.android.identity.android.mdoc.transport.DataTransportBle.Companion.fr
 import com.android.identity.android.util.NfcUtil
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.fromDeviceEngagement
 import com.android.identity.util.fromHex
 import com.android.identity.util.toHex

@@ -1,6 +1,5 @@
 package com.android.identity.cbor
 
-import com.android.identity.internal.Util
 import com.android.identity.util.fromHex
 import kotlinx.datetime.Instant
 import org.junit.Assert

@@ -32,8 +32,6 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509v3Extension
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.internal.Util.issuerSignedItemClearValue
-import com.android.identity.internal.Util.issuerSignedItemSetValue
 import com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData
 import com.android.identity.mdoc.request.DeviceRequestParser.DocumentRequest
 import com.android.identity.util.Logger
@@ -537,4 +535,27 @@ object MdocUtil {
 
         return documentSigningKeyCert
     }
+
+    private fun issuerSignedItemClearValue(encodedIssuerSignedItem: ByteArray): ByteArray {
+        val encodedNullValue = Cbor.encode(Simple.NULL)
+        return issuerSignedItemSetValue(encodedIssuerSignedItem, encodedNullValue)
+    }
+
+    private fun issuerSignedItemSetValue(
+        encodedIssuerSignedItem: ByteArray,
+        encodedElementValue: ByteArray
+    ): ByteArray {
+        val map = Cbor.decode(encodedIssuerSignedItem)
+        val builder = CborMap.builder()
+        for (key in map.asMap.keys) {
+            if (key.asTstr == "elementValue") {
+                builder.put(key, RawCbor(encodedElementValue))
+            } else {
+                builder.put(key, map[key])
+            }
+        }
+        return Cbor.encode(builder.end().build())
+    }
+
+
 }

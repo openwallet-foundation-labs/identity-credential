@@ -22,8 +22,8 @@ import android.security.keystore.KeyProperties
 import android.util.AtomicFile
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
-import com.android.identity.internal.Util.toHex
 import com.android.identity.storage.StorageEngine
+import com.android.identity.util.toHex
 import kotlinx.io.bytestring.ByteStringBuilder
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -99,7 +99,7 @@ class AndroidStorageEngine internal constructor(
             } else if (Arrays.equals(magic, MAGIC_NOT_ENCRYPTED)) {
                 Arrays.copyOfRange(data, MAGIC_SIZE, data.size)
             } else {
-                throw IllegalStateException("Unexpected magic " + toHex(magic))
+                throw IllegalStateException("Unexpected magic ${magic.toHex}")
             }
         } catch (e: FileNotFoundException) {
             null
