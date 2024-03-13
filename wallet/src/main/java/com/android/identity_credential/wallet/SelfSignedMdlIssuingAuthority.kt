@@ -105,6 +105,7 @@ class SelfSignedMdlIssuingAuthority(
             return CredentialConfiguration(
                 resourceString(R.string.utopia_mdl_issuing_authority_pending_credential_title),
                 cardArt,
+                MDL_DOCTYPE,
                 NameSpacedData.Builder().build()
             )
         }
@@ -158,6 +159,7 @@ class SelfSignedMdlIssuingAuthority(
                 .putEntryString(MDL_NAMESPACE, "issuing_authority", "State of Utopia")
                 .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
                 .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
+                .putEntryNumber(AAMVA_NAMESPACE, "sex", sex)
                 .putEntryBoolean(MDL_NAMESPACE, "age_over_18", true)
                 .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true)
                 .build()
@@ -167,6 +169,7 @@ class SelfSignedMdlIssuingAuthority(
         return CredentialConfiguration(
             resourceString(R.string.utopia_mdl_issuing_authority_credential_title, firstName),
             cardArt,
+            MDL_DOCTYPE,
             staticData
         )
     }

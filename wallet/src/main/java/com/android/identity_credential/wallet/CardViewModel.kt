@@ -26,6 +26,7 @@ import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Logger
+import com.android.identity_credential.wallet.credman.CredmanRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -43,6 +44,10 @@ class CardViewModel : ViewModel() {
     private lateinit var issuingAuthorityRepository: IssuingAuthorityRepository
     private lateinit var secureAreaRepository: SecureAreaRepository
     private lateinit var credentialTypeRepository: CredentialTypeRepository
+
+    private fun syncWithCredman() {
+        CredmanRegistry.registerCredentials(context, credentialStore, credentialTypeRepository)
+    }
 
     fun getCard(cardId: String): Card? {
         for (card in cards) {
@@ -116,14 +121,17 @@ class CardViewModel : ViewModel() {
     private val credentialStoreObserver = object : CredentialStore.Observer {
         override fun onCredentialAdded(credential: Credential) {
             addCredential(credential)
+            syncWithCredman()
         }
         
         override fun onCredentialDeleted(credential: Credential) {
             removeCredential(credential)
+            syncWithCredman()
         }
         
         override fun onCredentialChanged(credential: Credential) {
             updateCredential(credential)
+            syncWithCredman()
         }
     }
 
@@ -338,6 +346,8 @@ class CardViewModel : ViewModel() {
         for (issuer in issuingAuthorityRepository.getIssuingAuthorities()) {
             addIssuer(issuer)
         }
+
+        syncWithCredman()
     }
 
     override fun onCleared() {

@@ -17,12 +17,10 @@
 
 package com.android.identity.android.mdoc.util
 
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborEncoder
-import co.nstant.`in`.cbor.model.SimpleValue
-import com.android.identity.crypto.EcPublicKey
-import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
-import com.android.identity.internal.Util
+import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.Simple
 import com.google.crypto.tink.HybridDecrypt
 import com.google.crypto.tink.HybridEncrypt
 import com.google.crypto.tink.InsecureSecretKeyAccess
@@ -95,10 +93,8 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
         fun generateCredentialDocument(cipherText: ByteArray,
                                        encapsulatedPublicKey: PublicKey
         ): ByteArray {
-            val baos = ByteArrayOutputStream()
-            CborEncoder(baos).encode(
-                CborBuilder()
-                    .addMap()
+            return Cbor.encode(
+                CborMap.builder()
                     .put("version", ANDROID_CREDENTIAL_DOCUMENT_VERSION)
                     .putMap("encryptionParameters")
                     .put("pkEm", publicKeyToUncompressed(encapsulatedPublicKey))
@@ -107,20 +103,19 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
                     .end()
                     .build()
             )
-            return baos.toByteArray()
         }
 
         fun parseCredentialDocument(encodedCredentialDocument: ByteArray
         ): Pair<ByteArray, PublicKey> {
-            val credentialDocument = Util.cborDecode(encodedCredentialDocument)
-            val version = Util.cborMapExtractString(credentialDocument, "version")
+            val map = Cbor.decode(encodedCredentialDocument)
+            val version = map["version"].asTstr
             if (!version.equals(ANDROID_CREDENTIAL_DOCUMENT_VERSION)) {
                 throw IllegalArgumentException("Unexpected version $version")
             }
-            val encryptionParameters = Util.cborMapExtractMap(credentialDocument, "encryptionParameters")
-            val pkEm = Util.cborMapExtractByteString(encryptionParameters, "pkEm")
+            val encryptionParameters = map["encryptionParameters"]
+            val pkEm = encryptionParameters["pkEm"].asBstr
             val encapsulatedPublicKey = publicKeyFromUncompressed(pkEm)
-            val cipherText = Util.cborMapExtractByteString(credentialDocument,"cipherText")
+            val cipherText = map["cipherText"].asBstr
             return Pair(cipherText, encapsulatedPublicKey)
         }
 
@@ -141,12 +136,10 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
             publicKey: PublicKey,
             packageName: String
         ): ByteArray {
-            val baos = ByteArrayOutputStream()
-            CborEncoder(baos).encode(
-                CborBuilder()
-                    .addArray() // SessionTranscript
-                    .add(SimpleValue.NULL) // DeviceEngagementBytes
-                    .add(SimpleValue.NULL) // EReaderKeyBytes
+            return Cbor.encode(
+                CborArray.builder()
+                    .add(Simple.NULL) // DeviceEngagementBytes
+                    .add(Simple.NULL) // EReaderKeyBytes
                     .addArray() // AndroidHandover
                     .add(ANDROID_HANDOVER_V1)
                     .add(nonce)
@@ -156,14 +149,11 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
                     .end()
                     .build()
             )
-            return baos.toByteArray()
         }
 
         private fun generateOriginInfoBytes(origin: String): ByteArray {
-            val baos = ByteArrayOutputStream()
-            CborEncoder(baos).encode(
-                CborBuilder()
-                    .addMap()
+            return Cbor.encode(
+                CborMap.builder()
                     .put("cat", 1)
                     .put("type", 1)
                     .putMap("details")
@@ -172,8 +162,6 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
                     .end()
                     .build()
             )
-
-            return baos.toByteArray()
         }
 
         //    SessionTranscript = [
@@ -198,12 +186,10 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
         ): ByteArray {
             val originInfoBytes = generateOriginInfoBytes(origin)
 
-            val baos = ByteArrayOutputStream()
-            CborEncoder(baos).encode(
-                CborBuilder()
-                    .addArray() // SessionTranscript
-                    .add(SimpleValue.NULL) // DeviceEngagementBytes
-                    .add(SimpleValue.NULL) // EReaderKeyBytes
+            return Cbor.encode(
+                CborArray.builder()
+                    .add(Simple.NULL) // DeviceEngagementBytes
+                    .add(Simple.NULL) // EReaderKeyBytes
                     .addArray() // BrowserHandover
                     .add(BROWSER_HANDOVER_V1)
                     .add(nonce)
@@ -213,7 +199,6 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
                     .end()
                     .build()
             )
-            return baos.toByteArray()
         }
 
         private fun generatePublicKeyHash(publicKey: PublicKey): ByteArray {

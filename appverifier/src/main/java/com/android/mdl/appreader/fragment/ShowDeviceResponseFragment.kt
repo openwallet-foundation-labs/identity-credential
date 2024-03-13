@@ -7,26 +7,20 @@ import android.icu.util.GregorianCalendar
 import android.icu.util.TimeZone
 import android.os.Bundle
 import android.text.Html
-import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborEncoder
-import co.nstant.`in`.cbor.model.SimpleValue
 import com.android.identity.android.mdoc.util.CredmanUtil
+import com.android.identity.cbor.Cbor
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificates
-import com.android.identity.internal.Util
 import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.util.Logger
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.databinding.FragmentShowDeviceResponseBinding
@@ -34,12 +28,8 @@ import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.trustmanagement.CustomValidators
 import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.util.FormatUtil
-import com.android.mdl.appreader.util.KeysAndCertificates
-import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
-import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
-import java.security.PublicKey
 import java.security.interfaces.ECPublicKey
 
 /**
@@ -213,6 +203,11 @@ class ShowDeviceResponseFragment : Fragment() {
                 for (elem in doc.getIssuerEntryNames(ns)) {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
+                    val mdocDataElement =
+                        VerifierApp.credentialTypeRepositoryInstance
+                            .getCredentialTypeForMdoc(doc.docType)
+                            ?.mdocCredentialType
+                            ?.namespaces?.get(ns)?.dataElements?.get(elem)
                     if (isPortraitElement(doc.docType, ns, elem)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = doc.getIssuerEntryByteString(ns, elem)
@@ -226,8 +221,10 @@ class ShowDeviceResponseFragment : Fragment() {
                         signatureBytes = doc.getIssuerEntryByteString(ns, elem)
                     } else if (doc.docType == EU_PID_DOCTYPE && ns == EU_PID_NAMESPACE && elem == "biometric_template_finger") {
                         valueStr = String.format("%d bytes", value.size)
+                    } else if (mdocDataElement != null) {
+                        valueStr = mdocDataElement.renderValue(Cbor.decode(value))
                     } else {
-                        valueStr = FormatUtil.cborPrettyPrint(value)
+                        valueStr = Cbor.toDiagnostics(value)
                     }
                     sb.append("${getFormattedCheck(doc.getIssuerEntryDigestMatch(ns, elem))}<b>$elem</b> -> $valueStr<br>")
                 }

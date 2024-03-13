@@ -24,6 +24,13 @@ data class CredentialConfiguration(
      */
     val cardArt: ByteArray,
 
+    // TODO: we need to move mdocDocType and staticData to a per-credential-format map
+
+    /**
+     * The mdoc DocType for the credential.
+     */
+    val mdocDocType: String,
+
     /**
      * Static data in the credential.
      */
@@ -35,6 +42,7 @@ data class CredentialConfiguration(
             return CredentialConfiguration(
                 map["name"].asTstr,
                 map["cardArt"].asBstr,
+                map["mdocDocType"].asTstr,
                 NameSpacedData.fromEncodedCbor(map["staticData"].asBstr)
             )
         }
@@ -46,6 +54,7 @@ data class CredentialConfiguration(
             CborMap.builder()
                 .put("name", displayName)
                 .put("cardArt", cardArt)
+                .put("mdocDocType", mdocDocType)
                 .put("staticData", staticData.encodeAsCbor())
                 .end()
                 .build())

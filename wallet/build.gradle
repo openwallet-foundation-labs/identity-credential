@@ -50,12 +50,26 @@ android {
     }
 }
 
+repositories {
+    google()
+    mavenCentral()
+    mavenLocal()
+    jcenter() {
+        content {
+            includeGroup("org.jetbrains.anko")
+            includeGroup("com.budiyev.android")
+        }
+    }
+}
+
 dependencies {
     implementation project(':identity')
     implementation project(':identity-doctypes')
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
     implementation project(':mrtd-reader')
+
+    implementation 'com.google.android.gms:play-services-identity-credentials:0.0.1-eap01'
 
     implementation libs.kotlinx.coroutines.android
     implementation libs.androidx.core.ktx
