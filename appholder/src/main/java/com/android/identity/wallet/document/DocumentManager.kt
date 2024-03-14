@@ -101,6 +101,14 @@ class DocumentManager private constructor(private val context: Context) {
                     )
                 }
 
+                is CredentialAttributeType.Number -> {
+                    builder.putEntryNumber(
+                        field.namespace!!,
+                        field.name,
+                        field.getValueLong()
+                    )
+                }
+
                 is CredentialAttributeType.Boolean -> {
                     builder.putEntryBoolean(
                         field.namespace!!,
