@@ -8,19 +8,30 @@ package com.android.identity.issuance
  */
 data class IssuingAuthorityConfiguration(
     /**
-     * Unique identifier for the Issuing Authority
+     * Unique identifier for this object
      */
     val identifier: String,
 
     /**
-     * Display name suitable for Issuing Authority-picker.
+     * Display name of the issuing authority suitable, e.g. "Utopia Registry of Identities"
      */
-    val name: String,
+    val issuingAuthorityName: String,
 
     /**
-     * Icon suitable for displaying in an IA-picker. Value is a encoded bitmap.
+     * Artwork for the issuing authority.
+     *
+     * This should be square, e.g. the width and height must be equal.
      */
-    val icon: ByteArray,
+    val issuingAuthorityLogo: ByteArray,
+
+    /**
+     * Description of the document offered by the issuer, e.g. "Utopia Driving License" or
+     * "Utopia National Identification Card"
+     *
+     * This can be used for display in a picker shown to the user. It must include the issuer's
+     * name to allow for disambiguation when multiple items are shown.
+     */
+    val description: String,
 
     /**
      * The credential presentation formats available.

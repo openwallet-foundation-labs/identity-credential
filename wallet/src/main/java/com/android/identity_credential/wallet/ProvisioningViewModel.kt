@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet
 
 import android.os.Looper
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -62,9 +63,9 @@ class ProvisioningViewModel : ViewModel() {
     fun start(
         issuingAuthorityRepository: IssuingAuthorityRepository,
         credentialStore: CredentialStore,
-        issuer: IssuingAuthority
+        issuerIdentifier: String
     ) {
-        this.issuer = issuer
+        issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuerIdentifier)!!
 
         viewModelScope.launch(Dispatchers.IO) {
             try {

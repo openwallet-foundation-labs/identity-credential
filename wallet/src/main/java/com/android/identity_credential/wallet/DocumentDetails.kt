@@ -1,17 +1,17 @@
 package com.android.identity_credential.wallet
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.credential.Credential
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.credentialtype.MdocCredentialType
-import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.credentialtype.knowntypes.DrivingLicense
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
-import com.android.identity.util.Logger
 
 private const val TAG = "ViewCredentialData"
 
@@ -33,42 +33,6 @@ data class DocumentDetails(
     val attributes: Map<String, String>
 )
 
-// TODO: Maybe move to MdocDataElement
-private fun renderMdocDataElement(mdocDataElement: MdocDataElement?, value: ByteArray): String {
-    val item = Cbor.decode(value)
-    try {
-        return when (mdocDataElement?.attribute?.type) {
-            is CredentialAttributeType.String -> item.asTstr
-            /* is CredentialAttributeType.DATE -> TODO */
-            is CredentialAttributeType.DateTime -> item.asDateTimeString.toString()
-
-            is CredentialAttributeType.Number -> item.asNumber.toString()
-            is CredentialAttributeType.Picture -> "${value.size} bytes"
-            is CredentialAttributeType.Boolean -> item.asBoolean.toString()
-            is CredentialAttributeType.ComplexType -> Cbor.toDiagnostics(value)
-            is CredentialAttributeType.StringOptions -> {
-                val key = item.asTstr
-                val options =
-                    (mdocDataElement.attribute.type as CredentialAttributeType.StringOptions).options
-                return options.find { it.value.equals(key) }?.displayName ?: key
-            }
-
-            is CredentialAttributeType.IntegerOptions -> {
-                val key = item.asNumber
-                val options =
-                    (mdocDataElement.attribute.type as CredentialAttributeType.IntegerOptions).options
-                return options.find { it.value?.toLong() == key }?.displayName ?: key.toString()
-            }
-
-            else -> Cbor.toDiagnostics(value)
-        }
-    } catch (e: Exception) {
-        Logger.w(TAG, "Error rendering data element $item", e)
-        return Cbor.toDiagnostics(item)
-    }
-}
-
-
 private data class VisitNamespaceResult(
     val portrait: ByteArray?,
     val signatureOrUsualMark: ByteArray?,
@@ -76,6 +40,7 @@ private data class VisitNamespaceResult(
 )
 
 private fun visitNamespace(
+    context: Context,
     mdocCredentialType: MdocCredentialType?,
     namespaceName: String,
     listOfEncodedIssuerSignedItemBytes: List<ByteArray>,
@@ -92,29 +57,48 @@ private fun visitNamespace(
 
         val mdocDataElement = mdocCredentialType?.namespaces?.get(namespaceName)?.dataElements?.get(elementIdentifier)
 
-        if (mdocDataElement != null &&
-            mdocDataElement.attribute.type == CredentialAttributeType.Picture &&
-            namespaceName == DrivingLicense.MDL_NAMESPACE) {
-            when (mdocDataElement.attribute.identifier) {
-                "portrait" -> {
-                    portrait = elementValue.asBstr
-                    continue
-                }
-                "signature_usual_mark" -> {
-                    signatureOrUsualMark = elementValue.asBstr
-                    continue
+        var elementValueAsString: String? = null
+
+        if (mdocDataElement != null) {
+            elementValueAsString = mdocDataElement.renderValue(
+                value = Cbor.decode(encodedElementValue),
+                trueFalseStrings = Pair(
+                    context.resources.getString(R.string.card_details_boolean_false_value),
+                    context.resources.getString(R.string.card_details_boolean_true_value),
+                )
+            )
+
+            if (mdocDataElement.attribute.type == CredentialAttributeType.Picture &&
+                namespaceName == DrivingLicense.MDL_NAMESPACE) {
+                when (mdocDataElement.attribute.identifier) {
+                    "portrait" -> {
+                        portrait = elementValue.asBstr
+                        continue
+                    }
+
+                    "signature_usual_mark" -> {
+                        signatureOrUsualMark = elementValue.asBstr
+                        continue
+                    }
                 }
             }
         }
 
-        val elementValueAsString = renderMdocDataElement(mdocDataElement, encodedElementValue)
+        if (elementValueAsString == null) {
+            elementValueAsString = Cbor.toDiagnostics(
+                encodedElementValue,
+                setOf(DiagnosticOption.BSTR_PRINT_LENGTH)
+            )
+        }
+
         val elementName = mdocDataElement?.attribute?.displayName ?: elementIdentifier
         keysAndValues[elementName] = elementValueAsString
     }
     return VisitNamespaceResult(portrait, signatureOrUsualMark, keysAndValues)
 }
 
-fun Credential.getUserVisibleDetails(
+fun Credential.renderDocumentDetails(
+    context: Context,
     credentialTypeRepository: CredentialTypeRepository
 ): DocumentDetails {
     if (authenticationKeys.size == 0) {
@@ -136,7 +120,12 @@ fun Credential.getUserVisibleDetails(
     val kvPairs = mutableMapOf<String, String>()
     for (namespaceName in mso.valueDigestNamespaces) {
         val digestIdMapping = credentialData.digestIdMapping[namespaceName] ?: continue
-        val result = visitNamespace(credentialType?.mdocCredentialType, namespaceName, digestIdMapping)
+        val result = visitNamespace(
+            context,
+            credentialType?.mdocCredentialType,
+            namespaceName,
+            digestIdMapping
+        )
         if (result.portrait != null) {
             portrait = BitmapFactory.decodeByteArray(
                 result.portrait,

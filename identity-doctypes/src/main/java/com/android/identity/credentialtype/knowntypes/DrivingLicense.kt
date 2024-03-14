@@ -16,10 +16,16 @@
 
 package com.android.identity.credentialtype.knowntypes
 
+import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.Tagged
+import com.android.identity.cbor.Tstr
+import com.android.identity.cbor.toDataItem
+import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.credentialtype.CredentialAttributeType
 import com.android.identity.credentialtype.CredentialType
 import com.android.identity.credentialtype.IntegerOption
 import com.android.identity.credentialtype.StringOption
+import kotlinx.datetime.LocalDate
 
 /**
  * Object containing the metadata of the Driving License
@@ -35,7 +41,8 @@ object DrivingLicense {
     fun getCredentialType(): CredentialType {
         return CredentialType.Builder("Driving License")
             .addMdocCredentialType("org.iso.18013.5.1.mDL")
-            .addVcCredentialType("Iso18013DriversLicenseCredential")/*
+            .addVcCredentialType("Iso18013DriversLicenseCredential")
+            /*
              * First the attributes that the mDL and VC Credential Type have in common
              */
             .addAttribute(
@@ -44,7 +51,8 @@ object DrivingLicense {
                 "Family Name",
                 "Last name, surname, or primary identifier, of the mDL holder.",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Mustermann".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -52,7 +60,8 @@ object DrivingLicense {
                 "Given Names",
                 "First name(s), other name(s), or secondary identifier, of the mDL holder",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Erika".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Date,
@@ -60,7 +69,8 @@ object DrivingLicense {
                 "Date of Birth",
                 "Day, month and year on which the mDL holder was born. If unknown, approximate date of birth",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                LocalDate.parse("1971-09-01").toDataItemFullDate
             )
             .addAttribute(
                 CredentialAttributeType.Date,
@@ -68,7 +78,8 @@ object DrivingLicense {
                 "Date of Issue",
                 "Date when mDL was issued",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                LocalDate.parse("2024-03-15").toDataItemFullDate
             )
             .addAttribute(
                 CredentialAttributeType.Date,
@@ -76,7 +87,8 @@ object DrivingLicense {
                 "Date of Expiry",
                 "Date when mDL expires",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                LocalDate.parse("2028-09-01").toDataItemFullDate
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -84,7 +96,8 @@ object DrivingLicense {
                 "Issuing Country",
                 "Alpha-2 country code, as defined in ISO 3166-1, of the issuing authority’s country or territory",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "UT".toDataItem  // Note: doesn't exist in ISO-3166-1 Alpha-2
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -92,7 +105,8 @@ object DrivingLicense {
                 "Issuing Authority",
                 "Issuing authority name.",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Utopia Department of Motor Vehicles".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -100,7 +114,8 @@ object DrivingLicense {
                 "License Number",
                 "The number assigned or calculated by the issuing authority.",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "987654321".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Picture,
@@ -108,7 +123,8 @@ object DrivingLicense {
                 "Photo of Holder",
                 "A reproduction of the mDL holder’s portrait.",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                null // TODO: include img_erika_portrait.jpg
             )
             .addAttribute(
                 CredentialAttributeType.ComplexType,
@@ -116,7 +132,20 @@ object DrivingLicense {
                 "Driving Privileges",
                 "Driving privileges of the mDL holder",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                CborArray.builder()
+                    .addMap()
+                    .put("vehicle_category_code", "A")
+                    .put("issue_date", Tagged(1004, Tstr("2018-08-09")))
+                    .put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
+                    .end()
+                    .addMap()
+                    .put("vehicle_category_code", "B")
+                    .put("issue_date", Tagged(1004, Tstr("2017-02-23")))
+                    .put("expiry_date", Tagged(1004, Tstr("2028-09-01")))
+                    .end()
+                    .end()
+                    .build()
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(Options.DISTINGUISHING_SIGN_ISO_IEC_18013_1_ANNEX_F),
@@ -124,7 +153,8 @@ object DrivingLicense {
                 "UN Distinguishing Sign",
                 "Distinguishing sign of the issuing country",
                 true,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "UTO".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -132,7 +162,8 @@ object DrivingLicense {
                 "Administrative Number",
                 "An audit control number assigned by the issuing authority",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "123456789".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -140,7 +171,8 @@ object DrivingLicense {
                 "Sex",
                 "mDL holder’s sex",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                2.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Number,
@@ -148,7 +180,8 @@ object DrivingLicense {
                 "Height",
                 "mDL holder’s height in centimetres",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                175.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Number,
@@ -156,7 +189,8 @@ object DrivingLicense {
                 "Weight",
                 "mDL holder’s weight in kilograms",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                68.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(
@@ -178,7 +212,8 @@ object DrivingLicense {
                 "Eye Color",
                 "mDL holder’s eye color",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "blue".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(
@@ -200,7 +235,8 @@ object DrivingLicense {
                 "Hair Color",
                 "mDL holder’s hair color",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "blond".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -208,7 +244,8 @@ object DrivingLicense {
                 "Place of Birth",
                 "Country and municipality or state/province where the mDL holder was born",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Sample City".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -216,7 +253,8 @@ object DrivingLicense {
                 "Resident Address",
                 "The place where the mDL holder resides and/or may be contacted (street/house number, municipality etc.)",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Sample Street 123, 12345 Sample City, Sample State, Utopia".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Date,
@@ -224,7 +262,8 @@ object DrivingLicense {
                 "Portrait Image Timestamp",
                 "Date when portrait was taken",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                LocalDate.parse("2020-03-14").toDataItemFullDate
             )
             .addAttribute(
                 CredentialAttributeType.Number,
@@ -232,7 +271,8 @@ object DrivingLicense {
                 "Age in Years",
                 "The age of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                53.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Number,
@@ -240,7 +280,8 @@ object DrivingLicense {
                 "Year of Birth",
                 "The year when the mDL holder was born",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                1971.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Boolean,
@@ -248,7 +289,8 @@ object DrivingLicense {
                 "Older Than 18 Years",
                 "Indication whether the mDL holder is as old or older than 18",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                true.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Boolean,
@@ -256,7 +298,8 @@ object DrivingLicense {
                 "Older Than 21 Years",
                 "Indication whether the mDL holder is as old or older than 21",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                true.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Boolean,
@@ -264,7 +307,8 @@ object DrivingLicense {
                 "Older Than 25 Years",
                 "Indication whether the mDL holder is as old or older than 25",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                true.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Boolean,
@@ -272,7 +316,8 @@ object DrivingLicense {
                 "Older Than 62 Years",
                 "Indication whether the mDL holder is as old or older than 62",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                false.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Boolean,
@@ -280,7 +325,8 @@ object DrivingLicense {
                 "Older Than 65 Years",
                 "Indication whether the mDL holder is as old or older than 65",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                false.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -288,7 +334,8 @@ object DrivingLicense {
                 "Issuing Jurisdiction",
                 "Country subdivision code of the jurisdiction that issued the mDL",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Utopia".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -296,7 +343,8 @@ object DrivingLicense {
                 "Nationality",
                 "Nationality of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "UT".toDataItem  // Note: doesn't exist in ISO-3166-1 Alpha-2
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -304,7 +352,8 @@ object DrivingLicense {
                 "Resident City",
                 "The city where the mDL holder lives",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Sample City".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -312,7 +361,8 @@ object DrivingLicense {
                 "Resident State",
                 "The state/province/district where the mDL holder lives",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Sample State".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -320,7 +370,8 @@ object DrivingLicense {
                 "Resident Postal Code",
                 "The postal code of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "12345".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2),
@@ -328,7 +379,8 @@ object DrivingLicense {
                 "Resident Country",
                 "The country where the mDL holder lives",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "UT".toDataItem  // Note: doesn't exist in ISO-3166-1 Alpha-2
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -336,7 +388,8 @@ object DrivingLicense {
                 "Family Name National Characters",
                 "The family name of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Бабіак".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -344,7 +397,8 @@ object DrivingLicense {
                 "Given Name National Characters",
                 "The given name of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                "Ерика".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.Picture,
@@ -352,7 +406,8 @@ object DrivingLicense {
                 "Signature / Usual Mark",
                 "Image of the signature or usual mark of the mDL holder,",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                null  // TODO: include img_erika_signature.jpg
             )
             .addAttribute(
                 CredentialAttributeType.ComplexType,
@@ -361,7 +416,8 @@ object DrivingLicense {
                 "Domestic Driving Privileges",
                 "Vehicle types the license holder is authorized to operate",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(Options.AAMVA_NAME_SUFFIX),
@@ -370,7 +426,8 @@ object DrivingLicense {
                 "Name Suffix",
                 "Name suffix of the individual that has been issued the driver license or identification document.",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null,
             )
             .addAttribute(
                 CredentialAttributeType.IntegerOptions(
@@ -384,7 +441,8 @@ object DrivingLicense {
                 "Organ Donor",
                 "An indicator that denotes whether the credential holder is an organ donor.",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                1.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.IntegerOptions(
@@ -398,7 +456,8 @@ object DrivingLicense {
                 "Veteran",
                 "An indicator that denotes whether the credential holder is a veteran.",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(
@@ -414,7 +473,8 @@ object DrivingLicense {
                 "Family Name Truncation",
                 "A code that indicates whether the field has been truncated",
                 true,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(
@@ -430,7 +490,8 @@ object DrivingLicense {
                 "Given Name Truncation",
                 "A code that indicates whether either the first name or the middle name(s) have been truncated",
                 true,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -439,7 +500,8 @@ object DrivingLicense {
                 "Alias / AKA Family Name",
                 "Other family name by which credential holder is known.",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -448,7 +510,8 @@ object DrivingLicense {
                 "Alias / AKA Given Name",
                 "Other given name by which credential holder is known.",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(Options.AAMVA_NAME_SUFFIX),
@@ -457,7 +520,8 @@ object DrivingLicense {
                 "Alias / AKA Suffix Name",
                 "Other suffix by which credential holder is known.",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.IntegerOptions(
@@ -480,7 +544,8 @@ object DrivingLicense {
                 "Weight Range",
                 "Indicates the approximate weight range of the cardholder",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                3.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(
@@ -500,7 +565,8 @@ object DrivingLicense {
                 "Race / Ethnicity",
                 "Codes for race or ethnicity of the cardholder",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                "W".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.StringOptions(
@@ -515,7 +581,8 @@ object DrivingLicense {
                 "Compliance Type",
                 "DHS required field that indicates compliance",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                "F".toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.IntegerOptions(
@@ -529,7 +596,8 @@ object DrivingLicense {
                 "Limited Duration Document Indicator",
                 "DHS required field that denotes whether the credential holder has temporary lawful status. 1: Temporary lawful status",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.IntegerOptions(
@@ -544,7 +612,8 @@ object DrivingLicense {
                 "EDL Indicator",
                 "Present if the credential is an EDL",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                1.toDataItem
             )
             .addAttribute(
                 CredentialAttributeType.String,
@@ -553,7 +622,8 @@ object DrivingLicense {
                 "Resident County",
                 "The 3-digit county code of the county where the mDL holder lives",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.Date,
@@ -562,7 +632,8 @@ object DrivingLicense {
                 "HAZMAT Endorsement Expiration Date",
                 "Date on which the hazardous material endorsement granted by the document is no longer valid.",
                 true,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.IntegerOptions(Options.SEX_ISO_IEC_5218),
@@ -571,7 +642,8 @@ object DrivingLicense {
                 "Sex",
                 "mDL holder’s sex",
                 true,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                2.toDataItem
             )
             /*
              * Then the attributes that exist only in the mDL Credential Type and not in the VC Credential Type
@@ -582,7 +654,8 @@ object DrivingLicense {
                 "Biometric Template Face",
                 "Facial biometric information of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                null
             )
             .addMdocAttribute(
                 CredentialAttributeType.Picture,
@@ -590,7 +663,8 @@ object DrivingLicense {
                 "Biometric Template Fingerprint",
                 "Fingerprint of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                null
             )
             .addMdocAttribute(
                 CredentialAttributeType.Picture,
@@ -598,7 +672,8 @@ object DrivingLicense {
                 "Biometric Template Signature/Sign",
                 "Signature/sign of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                null
             )
             .addMdocAttribute(
                 CredentialAttributeType.Picture,
@@ -606,7 +681,8 @@ object DrivingLicense {
                 "Biometric Template Iris",
                 "Iris of the mDL holder",
                 false,
-                MDL_NAMESPACE
+                MDL_NAMESPACE,
+                null
             )
             /*
              * Then attributes that exist only in the VC Credential Type and not in the mDL Credential Type
@@ -615,21 +691,27 @@ object DrivingLicense {
                 CredentialAttributeType.Number,
                 "aamva_cdl_indicator",
                 "CDL Indicator",
-                "FMCSA required field that denotes whether the credential is a 'Commercial Driver’s License'or a 'Commercial Learner’s Permit'. This field is either absent or has value '1'(Commercial Driver’s License)."
+                "FMCSA required field that denotes whether the credential is a 'Commercial " +
+                        "Driver’s License' or a 'Commercial Learner’s Permit'. This field is " +
+                        "either absent or has value '1' (Commercial Driver’s License).",
+                null
             )
             .addVcAttribute(
                 CredentialAttributeType.String,
                 "aamva_dhs_compliance_text",
                 "Non-REAL ID Credential Text",
-                "Text, agreed on between the Issuing Authority and DHS, appearing on credentials not meeting REAL ID requirements."
+                "Text, agreed on between the Issuing Authority and DHS, appearing on credentials " +
+                        "not meeting REAL ID requirements.",
+                null
             )
             .addAttribute(
                 CredentialAttributeType.String,
                 "audit_information",
                 "Audit Information",
-                "A string of letters and/or numbers that identifies when, where, and by whom the credential was initially provisioned. ",
+                "A string of letters and/or numbers that identifies when, where, and by whom the credential was initially provisioned.",
                 false,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .addAttribute(
                 CredentialAttributeType.Number,
@@ -637,7 +719,8 @@ object DrivingLicense {
                 "AAMVA Version Number",
                 "A number identifying the version of the AAMVA mDL data element set",
                 true,
-                AAMVA_NAMESPACE
+                AAMVA_NAMESPACE,
+                null
             )
             .build()
     }

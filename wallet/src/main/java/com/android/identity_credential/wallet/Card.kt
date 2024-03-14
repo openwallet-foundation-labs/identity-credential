@@ -12,14 +12,20 @@ data class Card(
     // Display string for the card name.
     val name: String,
 
-    // Display string for the issuer of the card.
-    val issuer: String,
-
     // Display string for the type of the card
     val typeName: String,
 
-    // Display artwork.
-    val artwork: Bitmap,
+    // Card artwork.
+    val cardArtwork: Bitmap,
+
+    // Display string for the issuer of the card.
+    val issuerName: String,
+
+    // Display string for issuer's description of the card.
+    val issuerCardDescription: String,
+
+    // The logo from the issuer.
+    val issuerLogo: Bitmap,
 
     // Point in time that information for the card was last refreshed from the issuer
     val lastRefresh: Instant,

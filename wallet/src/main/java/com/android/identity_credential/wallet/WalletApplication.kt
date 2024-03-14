@@ -81,8 +81,7 @@ class WalletApplication : Application() {
 
         // init IssuingAuthorityRepository
         issuingAuthorityRepository = IssuingAuthorityRepository().apply {
-            add(SelfCertificationIssuingAuthority(this@WalletApplication, storageEngine))
-            add(PassportBasedIssuingAuthority(this@WalletApplication, storageEngine))
+            add(SelfSignedMdlIssuingAuthority(this@WalletApplication, storageEngine))
         }
 
         // init TrustManager

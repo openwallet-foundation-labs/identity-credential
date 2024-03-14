@@ -16,6 +16,8 @@
 
 package com.android.identity.credentialtype
 
+import com.android.identity.cbor.DataItem
+
 /**
  * Class containing the metadata of an attribute/data element/claim of a Credential Type
  *
@@ -23,10 +25,12 @@ package com.android.identity.credentialtype
  * @param identifier the identifier of this attribute.
  * @param displayName the name suitable for display of the attribute.
  * @param description a description of the attribute.
+ * @param sampleValue a sample value for the attribute, if available.
  */
 class CredentialAttribute(
     val type: CredentialAttributeType,
     val identifier: String,
     val displayName: String,
     val description: String,
+    val sampleValue: DataItem?,
 )

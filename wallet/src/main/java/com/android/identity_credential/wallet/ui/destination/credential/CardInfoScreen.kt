@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -146,8 +147,9 @@ fun CardInfoScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    bitmap = card.artwork.asImageBitmap(),
+                    bitmap = card.cardArtwork.asImageBitmap(),
                     contentDescription = stringResource(R.string.accessibility_artwork_for, card.name),
+                    modifier = Modifier.height(200.dp)
                 )
             }
             Row(
@@ -163,7 +165,7 @@ fun CardInfoScreen(
             }
             Spacer(modifier = Modifier.weight(0.5f))
             KeyValuePairText(stringResource(R.string.card_info_screen_data_name), card.name)
-            KeyValuePairText(stringResource(R.string.card_info_screen_data_issuer), card.issuer)
+            KeyValuePairText(stringResource(R.string.card_info_screen_data_issuer), card.issuerName)
             KeyValuePairText(stringResource(R.string.card_info_screen_data_status), card.status)
             KeyValuePairText(
                 stringResource(R.string.card_info_screen_data_last_update_check),
@@ -173,6 +175,16 @@ fun CardInfoScreen(
                     ) else it.toString()
                 }
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    bitmap = card.issuerLogo.asImageBitmap(),
+                    contentDescription = stringResource(R.string.accessibility_artwork_for, card.issuerName),
+                    modifier = Modifier.height(150.dp)
+                )
+            }
         }
     }
 }

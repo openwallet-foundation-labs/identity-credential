@@ -1,0 +1,30 @@
+plugins {
+    id("java-library")
+    id "org.jetbrains.kotlin.jvm"
+    alias libs.plugins.dokka
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+dependencies {
+    implementation project(':identity')
+    implementation libs.kotlinx.datetime
+
+    testImplementation libs.bundles.unit.testing
+}
+
+apply from: '../publish-helper.gradle'
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                // Specify custom artifactId if needed,
+                // otherwise it will use module's name by default.
+                artifactId = "identity-credential"
+            }
+        }
+    }
+}

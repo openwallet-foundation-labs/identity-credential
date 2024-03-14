@@ -16,6 +16,8 @@
 
 package com.android.identity.credentialtype
 
+import com.android.identity.cbor.DataItem
+
 /**
  * Class containing the metadata of a namespace in an mDoc
  * Credential Type.
@@ -45,16 +47,18 @@ class MdocNamespace private constructor(
          * @param displayName the name suitable for display of the attribute.
          * @param description a description of the attribute.
          * @param mandatory indication whether the mDoc attribute is mandatory.
+         * @param sampleValue a sample value for the attribute, if available.
          */
         fun addDataElement(
             type: CredentialAttributeType,
             identifier: String,
             displayName: String,
             description: String,
-            mandatory: Boolean
+            mandatory: Boolean,
+            sampleValue: DataItem?,
         ) = apply {
             dataElements[identifier] = MdocDataElement(
-                CredentialAttribute(type, identifier, displayName, description),
+                CredentialAttribute(type, identifier, displayName, description, sampleValue),
                 mandatory
             )
         }
