@@ -303,21 +303,25 @@ object Cbor {
             MajorType.BYTE_STRING -> {
                 when (item) {
                     is IndefLengthBstr -> {
-                        sb.append("(_")
-                        var count = 0
-                        for (chunk in item.chunks) {
-                            if (count++ == 0) {
-                                sb.append(" h'")
-                            } else {
-                                sb.append(", h'")
+                        if (DiagnosticOption.BSTR_PRINT_LENGTH in options) {
+                            sb.append("indefinite-size byte-string")
+                        } else {
+                            sb.append("(_")
+                            var count = 0
+                            for (chunk in item.chunks) {
+                                if (count++ == 0) {
+                                    sb.append(" h'")
+                                } else {
+                                    sb.append(", h'")
+                                }
+                                for (b in chunk) {
+                                    sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
+                                    sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
+                                }
+                                sb.append('\'')
                             }
-                            for (b in chunk) {
-                                sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
-                                sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
-                            }
-                            sb.append('\'')
+                            sb.append(')')
                         }
-                        sb.append(')')
                     }
 
                     is Bstr -> {
@@ -332,12 +336,19 @@ object Cbor {
                             }
                             sb.append(" >>")
                         } else {
-                            sb.append("h'")
-                            for (b in item.value) {
-                                sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
-                                sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
+                            if (DiagnosticOption.BSTR_PRINT_LENGTH in options) {
+                                when (item.value.size) {
+                                    1 -> sb.append("${item.value.size} byte")
+                                    else -> sb.append("${item.value.size} bytes")
+                                }
+                            } else {
+                                sb.append("h'")
+                                for (b in item.value) {
+                                    sb.append(HEX_DIGITS[b.toInt().and(0xff) shr 4])
+                                    sb.append(HEX_DIGITS[b.toInt().and(0x0f)])
+                                }
+                                sb.append("'")
                             }
-                            sb.append("'")
                         }
                     }
 
