@@ -53,6 +53,7 @@ android {
 
 dependencies {
     implementation project(':identity')
+    implementation project(':identity-doctypes')
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
     implementation project(':mrtd-reader')

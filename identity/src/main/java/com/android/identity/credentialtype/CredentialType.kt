@@ -16,6 +16,8 @@
 
 package com.android.identity.credentialtype
 
+import com.android.identity.cbor.DataItem
+
 /**
  * Class representing the metadata of a Credential Type
  *
@@ -79,6 +81,7 @@ class CredentialType private constructor(
          * @param description a description of the attribute.
          * @param mandatory indication whether the mDoc attribute is mandatory.
          * @param mdocNamespace the namespace of the mDoc attribute.
+         * @param sampleValue a sample value for the attribute, if available.
          */
         fun addAttribute(
             type: CredentialAttributeType,
@@ -86,10 +89,12 @@ class CredentialType private constructor(
             displayName: String,
             description: String,
             mandatory: Boolean,
-            mdocNamespace: String
+            mdocNamespace: String,
+            sampleValue: DataItem? = null,
         ) = apply {
-            addMdocAttribute(type, identifier, displayName, description, mandatory, mdocNamespace)
-            addVcAttribute(type, identifier, displayName, description)
+            addMdocAttribute(type, identifier, displayName, description, mandatory,
+                mdocNamespace, sampleValue)
+            addVcAttribute(type, identifier, displayName, description, sampleValue)
         }
 
         /**
@@ -102,6 +107,7 @@ class CredentialType private constructor(
          * @param description a description of the attribute.
          * @param mandatory indication whether the mDoc attribute is mandatory.
          * @param mdocNamespace the namespace of the mDoc attribute.
+         * @param sampleValue a sample value for the attribute, if available.
          */
         fun addAttribute(
             type: CredentialAttributeType,
@@ -111,6 +117,7 @@ class CredentialType private constructor(
             description: String,
             mandatory: Boolean,
             mdocNamespace: String,
+            sampleValue: DataItem? = null
         ) = apply {
             addMdocAttribute(
                 type,
@@ -118,9 +125,10 @@ class CredentialType private constructor(
                 displayName,
                 description,
                 mandatory,
-                mdocNamespace
+                mdocNamespace,
+                sampleValue
             )
-            addVcAttribute(type, vcIdentifier, displayName, description)
+            addVcAttribute(type, vcIdentifier, displayName, description, sampleValue)
         }
 
         /**
@@ -132,6 +140,7 @@ class CredentialType private constructor(
          * @param description a description of the attribute.
          * @param mandatory indication whether the mDoc attribute is mandatory.
          * @param mdocNamespace the namespace of the mDoc attribute.
+         * @param sampleValue a sample value for the attribute, if available.
          */
         fun addMdocAttribute(
             type: CredentialAttributeType,
@@ -139,7 +148,8 @@ class CredentialType private constructor(
             displayName: String,
             description: String,
             mandatory: Boolean,
-            mdocNamespace: String
+            mdocNamespace: String,
+            sampleValue: DataItem? = null
         ) = apply {
             mdocBuilder?.addDataElement(
                 mdocNamespace,
@@ -147,7 +157,8 @@ class CredentialType private constructor(
                 identifier,
                 displayName,
                 description,
-                mandatory
+                mandatory,
+                sampleValue
             ) ?: throw Exception("The mDoc Credential Type was not initialized")
         }
 
@@ -158,14 +169,16 @@ class CredentialType private constructor(
          * @param identifier the identifier of this attribute.
          * @param displayName a name suitable for display of the attribute.
          * @param description a description of the attribute.
+         * @param sampleValue a sample value for the attribute, if available.
          */
         fun addVcAttribute(
             type: CredentialAttributeType,
             identifier: String,
             displayName: String,
-            description: String
+            description: String,
+            sampleValue: DataItem? = null
         ) = apply {
-            vcBuilder?.addClaim(type, identifier, displayName, description)
+            vcBuilder?.addClaim(type, identifier, displayName, description, sampleValue)
                 ?: throw Exception("The VC Credential Type was not initialized")
         }
 

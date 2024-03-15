@@ -29,7 +29,7 @@
 
     <!-- Add to Wallet screen -->
     <string name="add_screen_title">Add to Wallet</string>
-    <string name="add_screen_select_issuer">Select the issuer for provisioning</string>
+    <string name="add_screen_select_issuer">Select the kind of credential to add</string>
 
     <!-- Card Information screen -->
     <string name="card_info_screen_title">Credential</string>
@@ -54,6 +54,8 @@
         has no way to confirm the authenticity of the data. Use NFC or QR to share identity
         data in a secure and privacy-preserving manner.
     </string>
+    <string name="card_details_boolean_true_value">True</string>
+    <string name="card_details_boolean_false_value">False</string>
 
     <!-- Card Keys screen -->
     <string name="card_keys_screen_title">Credential Keys</string>
@@ -121,47 +123,35 @@
     <string name="accessibility_signature">Signature or Usual Mark of Holder</string>
     <string name="accessibility_qr_code">QR code</string>
 
-    <!-- SelfCertificationIssuingAuthority -->
-    <string name="self_certification_authority_name">Hard-coded mDL</string>
-    <string name="self_certification_authority_tos">
-        ## Hard-coded credential\n\n
-        This adds a self-signed credential with hard-coded data for the fictional person
-        Erika Mustermann. It will be bound to this device.
-    </string>
-    <string name="self_certification_authority_accept">Continue</string>
-    <string name="self_certification_authority_reject">Cancel</string>
-    <string name="self_certification_authority_continue">Continue</string>
-    <string name="self_certification_authority_application_finish">
-        Your application is about to be sent the ID issuer for verification. You will get notified
-        when the application is approved.
-    </string>
-    <string name="self_certification_authority_pending_credential_title">Hard-coded mDL (Pending)</string>
-    <string name="self_certification_authority_pending_credential_text">mDL (Pending)</string>
-    <string name="self_certification_authority_credential_title">%1$s\'s mDL</string>
-    <string name="self_certification_authority_credential_text">%1$s\'s mDL</string>
+    <string name="utopia_mdl_issuing_authority_name">Utopia Department of Motor Vehicles</string>
 
-    <!-- PassportBasedIssuingAuthority -->
-    <string name="passport_based_authority_name">Passport-derived mDL</string>
-    <string name="passport_based_authority_tos">
-        ![biometric passport logo](mrtd_logo.svg)\n
-        ## Passport-based credential\n\n
-        This adds a self-signed credential derived from the data embedded in the chip of a physical passport.
-        It will be bound to this device.
+    <!-- SelfSignedMdlIssuingAuthority -->
+    <string name="utopia_mdl_issuing_authority_description">Utopia Driving License</string>
+    <string name="utopia_mdl_issuing_authority_tos">
+        ## Provisioning a Mobile Driving License (mDL)\n\n
+        In the following screens, information will be collected for provisioning of a mDL.\n\n
+        The mDL can either contain hard-coded data for fictional person or
+        data derived from the chip in an ePassport or eID document.\n\n
+        In this version of the application the mDL is generated and signed on-device. In future
+        versions the collected evidence will be conveyed securely and privately to an issuance
+        server for evaluation and signing of the mDL.\n\n
+        The created mDL will be bound to this device.
     </string>
-    <string name="passport_based_authority_accept">Continue</string>
-    <string name="passport_based_authority_reject">Cancel</string>
-    <string name="passport_based_authority_continue">Continue</string>
-    <string name="passport_based_authority_chip_authentication">Excellent! You passport supports chip authentication.</string>
-    <string name="passport_based_authority_active_authentication">Nice! You passport supports active authentication.</string>
-    <string name="passport_based_authority_no_authentication">Your passport only supports passive authentication.</string>
-    <string name="passport_based_authority_application_finish">
+    <string name="utopia_mdl_issuing_authority_accept">I understand</string>
+    <string name="utopia_mdl_issuing_authority_reject">Cancel</string>
+    <string name="utopia_mdl_issuing_authority_hardcoded_or_derived">Scan ePassport/eID?</string>
+    <string name="utopia_mdl_issuing_authority_hardcoded_option">No, create mDL with hard-coded data</string>
+    <string name="utopia_mdl_issuing_authority_passport_option">Yes, derive the mDL from ePassport/eID</string>
+    <string name="utopia_mdl_issuing_authority_continue">Continue</string>
+    <string name="utopia_mdl_issuing_authority_chip_authentication">Excellent! You passport supports chip authentication.</string>
+    <string name="utopia_mdl_issuing_authority_active_authentication">Nice! You passport supports active authentication.</string>
+    <string name="utopia_mdl_issuing_authority_no_authentication">Your passport only supports passive authentication.</string>
+    <string name="utopia_mdl_issuing_authority_application_finish">
         Your application is about to be sent the ID issuer for verification. You will get notified
         when the application is approved.
     </string>
-    <string name="passport_based_authority_pending_credential_title">Passport-derived mDL (pending)</string>
-    <string name="passport_based_authority_pending_credential_text">mDL (Pending)</string>
-    <string name="passport_based_authority_credential_title">%1$s\'s mDL</string>
-    <string name="passport_based_authority_credential_text">%1$s\'s mDL</string>
+    <string name="utopia_mdl_issuing_authority_pending_credential_title">Utopia mDL (pending)</string>
+    <string name="utopia_mdl_issuing_authority_credential_title">%1$s\'s mDL</string>
 
     <!-- Consent Prompt -->
     <string name="consent_prompt_cancel">Cancel</string>

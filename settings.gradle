@@ -28,7 +28,7 @@ dependencyResolutionManagement {
 rootProject.name = 'Identity Credential'
 
 // Libraries
-include ':identity', ':identity-mdoc', ':identity-android', ':identity-android-legacy', ':mrtd-reader', ':jpeg2k', ':cbor-processor'
+include ':identity', ':identity-doctypes', ':identity-mdoc', ':identity-android', ':identity-android-legacy', ':mrtd-reader', ':jpeg2k', ':cbor-processor'
 // Android apps
 include ':appholder', ':appverifier', ':secure-area-test-app', ':wwwverifier', ':wallet'
 // Server-side apps

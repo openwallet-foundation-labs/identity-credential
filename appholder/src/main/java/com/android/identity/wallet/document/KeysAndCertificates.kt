@@ -2,6 +2,7 @@ package com.android.identity.wallet.document
 
 import android.content.Context
 import com.android.identity.wallet.R
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import java.security.KeyFactory
@@ -38,14 +39,14 @@ object KeysAndCertificates {
     private fun getPrivateKey(context: Context, resourceId: Int): PrivateKey {
         val keyBytes: ByteArray = getKeyBytes(context.resources.openRawResource(resourceId))
         val spec = PKCS8EncodedKeySpec(keyBytes)
-        val kf = KeyFactory.getInstance("EC")
+        val kf = KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
         return kf.generatePrivate(spec)
     }
 
     private fun getPublicKey(context: Context, resourceId: Int): PublicKey {
         val keyBytes: ByteArray = getKeyBytes(context.resources.openRawResource(resourceId))
         val spec = X509EncodedKeySpec(keyBytes)
-        val kf = KeyFactory.getInstance("EC")
+        val kf = KeyFactory.getInstance("EC", BouncyCastleProvider.PROVIDER_NAME)
         return kf.generatePublic(spec)
     }
 

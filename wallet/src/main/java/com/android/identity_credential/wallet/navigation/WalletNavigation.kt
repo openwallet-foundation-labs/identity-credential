@@ -90,10 +90,11 @@ fun WalletNavigation(
          */
         composable(WalletDestination.AddToWallet.route) {
             AddToWalletScreen(
+                cardViewModel = cardViewModel,
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = navigateTo,
-                issuingAuthorityRepository = application.issuingAuthorityRepository,
-                credentialStore = application.credentialStore
+                credentialStore = application.credentialStore,
+                issuingAuthorityRepository = application.issuingAuthorityRepository
             )
         }
 

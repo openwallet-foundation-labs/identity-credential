@@ -133,6 +133,7 @@ class TestCredentialTypeRepository {
                     "",
                     "",
                     "",
+                    null
                 ),
                 false
             ).renderValue(
@@ -151,6 +152,7 @@ class TestCredentialTypeRepository {
                         "",
                         "",
                         "",
+                        null
                     ),
                     false
                 ).renderValue(

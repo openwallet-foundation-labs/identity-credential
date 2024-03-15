@@ -9,11 +9,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
-import com.android.identity.cose.Cose
-import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.AuthenticationKey
 import com.android.identity.credential.Credential
 import com.android.identity.credential.CredentialStore
@@ -37,6 +33,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
 
 class CardViewModel : ViewModel() {
+
+    val issuerDisplayData = mutableStateListOf<IssuerDisplayData>()
 
     val cards = mutableStateListOf<Card>()
 
@@ -155,7 +153,7 @@ class CardViewModel : ViewModel() {
         return context.resources.getString(getStrId)
     }
 
-    private fun createCardForCredential(credential: Credential): Card {
+    private fun createCardForCredential(credential: Credential): Card? {
         val credentialConfiguration = credential.credentialConfiguration
         val options = BitmapFactory.Options()
         options.inMutable = true
@@ -170,7 +168,14 @@ class CardViewModel : ViewModel() {
         if (issuer == null) {
             Logger.w(TAG, "Unknown issuer ${credential.issuingAuthorityIdentifier} for " +
                 "credential ${credential.name}")
+            return null
         }
+        val issuerLogo = BitmapFactory.decodeByteArray(
+            issuer.configuration.issuingAuthorityLogo,
+            0,
+            issuer.configuration.issuingAuthorityLogo.size,
+            options
+        )
 
         val statusString =
             when (credential.state.condition) {
@@ -182,7 +187,7 @@ class CardViewModel : ViewModel() {
                 CredentialCondition.DELETION_REQUESTED -> getStr(R.string.card_view_model_status_deletion_requested)
             }
 
-        val data = credential.getUserVisibleDetails(credentialTypeRepository)
+        val data = credential.renderDocumentDetails(context, credentialTypeRepository)
 
         val keyInfos = mutableStateListOf<CardKeyInfo>()
         for (authKey in credential.authenticationKeys) {
@@ -192,9 +197,11 @@ class CardViewModel : ViewModel() {
         return Card(
             id = credential.name,
             name = credentialConfiguration.displayName,
-            issuer = issuer?.configuration?.name ?: getStr(R.string.card_view_model_unknown_issuer),
-            typeName = data.typeName ?: getStr(R.string.card_view_model_unknown_card_type),
-            artwork = credentialBitmap,
+            issuerName = issuer.configuration.issuingAuthorityName,
+            issuerCardDescription = issuer.configuration.description,
+            typeName = data.typeName,
+            issuerLogo = issuerLogo,
+            cardArtwork = credentialBitmap,
             lastRefresh = Instant.fromEpochMilliseconds(credential.state.timestamp),
             status = statusString,
             attributes = data.attributes,
@@ -266,7 +273,7 @@ class CardViewModel : ViewModel() {
     }
 
     private fun addCredential(credential: Credential) {
-        cards.add(createCardForCredential(credential))
+        createCardForCredential(credential)?.let { cards.add(it) }
     }
 
     private fun removeCredential(credential: Credential) {
@@ -284,7 +291,27 @@ class CardViewModel : ViewModel() {
             Logger.w(TAG, "No card for credential with id ${credential.name}")
             return
         }
-        cards[cardIndex] = createCardForCredential(credential)
+        createCardForCredential(credential)?.let { cards[cardIndex] = it }
+    }
+
+    private fun addIssuer(issuingAuthority: IssuingAuthority) {
+        issuerDisplayData.add(createIssuerDisplayData(issuingAuthority))
+    }
+
+    private fun createIssuerDisplayData(issuingAuthority: IssuingAuthority): IssuerDisplayData {
+        val options = BitmapFactory.Options()
+        options.inMutable = true
+        val issuerLogoBitmap = BitmapFactory.decodeByteArray(
+            issuingAuthority.configuration.issuingAuthorityLogo,
+            0,
+            issuingAuthority.configuration.issuingAuthorityLogo.size,
+            options
+        )
+
+        return IssuerDisplayData(
+            configuration = issuingAuthority.configuration,
+            issuerLogo = issuerLogoBitmap,
+        )
     }
 
     fun setData(
@@ -306,6 +333,10 @@ class CardViewModel : ViewModel() {
         for (credentialId in credentialStore.listCredentials()) {
             val credential = credentialStore.lookupCredential(credentialId)!!
             addCredential(credential)
+        }
+
+        for (issuer in issuingAuthorityRepository.getIssuingAuthorities()) {
+            addIssuer(issuer)
         }
     }
 

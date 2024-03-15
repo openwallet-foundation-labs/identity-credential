@@ -23,6 +23,7 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
             "mDL_SelfSigned",
             "Test IA",
             byteArrayOf(1, 2, 3),
+            "mDL from Test IA",
             setOf(CredentialPresentationFormat.MDOC_MSO),
             CredentialConfiguration(
                 "mDL for Test IA (proofing pending)",

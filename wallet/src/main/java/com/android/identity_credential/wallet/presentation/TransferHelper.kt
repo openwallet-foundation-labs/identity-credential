@@ -32,7 +32,7 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.SelfSignedMdlIssuingAuthority
+import com.android.identity_credential.wallet.SelfSignedMdocIssuingAuthority
 import com.android.identity_credential.wallet.WalletApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -165,7 +165,7 @@ class TransferHelper(
         val credential = credentialStore.lookupCredential(credentialId)!!
 
         val encodedDeviceResponse: ByteArray
-        if (requestedDocType == SelfSignedMdlIssuingAuthority.MDL_DOCTYPE) {
+        if (requestedDocType == SelfSignedMdocIssuingAuthority.MDL_DOCTYPE) {
             val credentialConfiguration = credential.credentialConfiguration
             val now = Timestamp.now()
             val authKeyToUse: AuthenticationKey = authKey
