@@ -5,17 +5,11 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
-import com.android.identity.issuance.evidence.EvidenceRequest
-import com.android.identity.issuance.evidence.EvidenceRequestMessage
-import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
-import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
-import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.storage.EphemeralStorageEngine
-import java.security.PublicKey
 
 class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
     companion object {

@@ -43,7 +43,9 @@
     kotlinx-io-core = "0.3.1"
     kotlinx-io-bytestring = "0.3.1"
     kotlinx-datetime = "0.5.0"
+    ksp = "1.8.20-1.0.11"
     junit = "4.13.2"
+org-jetbrains-kotlin-jvm = "1.8.20"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -84,6 +86,8 @@
     androidx-biometrics = { module = "androidx.biometric:biometric", version.ref = "biometrics" }
     androidx-zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
     androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "androidx-annotation"}
+
+    ksp-symbol-processing-api = {module="com.google.devtools.ksp:symbol-processing-api", version.ref="ksp"}
 
     cbor = { module = "co.nstant.in:cbor", version.ref = "cbor" }
 
@@ -136,3 +140,5 @@
     navigation-safe-args = { id = "androidx.navigation.safeargs.kotlin", version.ref = "navigation_plugin" }
     kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
     parcelable = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
+    ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+    org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "org-jetbrains-kotlin-jvm" }
