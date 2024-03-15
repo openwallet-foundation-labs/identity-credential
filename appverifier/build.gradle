@@ -6,18 +6,6 @@ plugins {
     alias libs.plugins.kapt
 }
 
-repositories {
-    google()
-    mavenCentral()
-    mavenLocal()
-    jcenter() {
-        content {
-            includeGroup("org.jetbrains.anko")
-            includeGroup("com.budiyev.android")
-        }
-    }
-}
-
 android {
     compileSdk libs.versions.compile.sdk.get() as int
 
@@ -77,7 +65,8 @@ dependencies {
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
 
-    implementation 'com.google.android.gms:play-services-identity-credentials:0.0.1-eap01'
+    implementation files('../third-party/play-services-identity-credentials-0.0.1-eap01.aar')
+    implementation libs.bundles.google.play.services
 
     implementation platform(libs.compose.bom)
     implementation libs.bundles.androidx.core
