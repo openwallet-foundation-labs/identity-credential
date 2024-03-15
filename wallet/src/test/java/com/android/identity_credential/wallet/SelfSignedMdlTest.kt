@@ -10,7 +10,6 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
-import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.software.SoftwareSecureArea
@@ -82,14 +81,14 @@ class SelfSignedMdlTest {
         // First piece of evidence to return...
         var evidenceToGet = proofingFlow.getEvidenceRequests()
         Assert.assertEquals(1, evidenceToGet.size)
-        Assert.assertEquals(EvidenceType.MESSAGE, evidenceToGet[0].evidenceType)
+        Assert.assertTrue(evidenceToGet[0] is EvidenceRequestMessage)
         Assert.assertEquals("Here's a long string with TOS", (evidenceToGet[0] as EvidenceRequestMessage).message)
         proofingFlow.sendEvidence(EvidenceResponseMessage(true))
 
         // Second piece of evidence to return...
         evidenceToGet = proofingFlow.getEvidenceRequests()
         Assert.assertEquals(1, evidenceToGet.size)
-        Assert.assertEquals(EvidenceType.QUESTION_STRING, evidenceToGet[0].evidenceType)
+        Assert.assertTrue(evidenceToGet[0] is EvidenceRequestQuestionString)
         Assert.assertEquals(
             "What first name should be used for the mDL?",
             (evidenceToGet[0] as EvidenceRequestQuestionString).message)
@@ -104,18 +103,18 @@ class SelfSignedMdlTest {
         // Third piece of evidence to return...
         evidenceToGet = proofingFlow.getEvidenceRequests()
         Assert.assertEquals(1, evidenceToGet.size)
-        Assert.assertEquals(EvidenceType.QUESTION_MULTIPLE_CHOICE, evidenceToGet[0].evidenceType)
+        Assert.assertTrue(evidenceToGet[0] is EvidenceRequestQuestionMultipleChoice)
         Assert.assertEquals(3,
             (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.size)
         proofingFlow.sendEvidence(
             EvidenceResponseQuestionMultipleChoice(
-            (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.keys.iterator().next()
+                (evidenceToGet[0] as EvidenceRequestQuestionMultipleChoice).possibleValues.keys.iterator().next()
         ))
 
         // Fourth piece of evidence to return...
         evidenceToGet = proofingFlow.getEvidenceRequests()
         Assert.assertEquals(1, evidenceToGet.size)
-        Assert.assertEquals(EvidenceType.MESSAGE, evidenceToGet[0].evidenceType)
+        Assert.assertTrue(evidenceToGet[0] is EvidenceRequestMessage)
         Assert.assertTrue((evidenceToGet[0] as EvidenceRequestMessage).message
             .startsWith("Your application is about to be sent"))
         proofingFlow.sendEvidence(EvidenceResponseMessage(true))

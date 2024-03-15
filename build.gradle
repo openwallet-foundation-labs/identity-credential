@@ -9,6 +9,7 @@ plugins {
     alias libs.plugins.kapt apply false
     alias libs.plugins.parcelable apply false
     alias libs.plugins.dokka
+    alias libs.plugins.org.jetbrains.kotlin.jvm apply false
 }
 
 version = 'YYYYMMDD'

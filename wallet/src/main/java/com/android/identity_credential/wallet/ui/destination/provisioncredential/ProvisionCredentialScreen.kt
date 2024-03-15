@@ -24,7 +24,6 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleCho
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
-import com.android.identity.issuance.evidence.EvidenceType
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
@@ -83,10 +82,10 @@ fun ProvisionCredentialScreen(
             ProvisioningViewModel.State.EVIDENCE_REQUESTS_READY -> {
                 // TODO: for now we just consider the first evidence request
                 val evidenceRequest = provisioningViewModel.evidenceRequests!![0]
-                when (evidenceRequest.evidenceType) {
-                    EvidenceType.QUESTION_STRING -> {
+                when (evidenceRequest) {
+                    is EvidenceRequestQuestionString -> {
                         EvidenceRequestQuestionStringView(
-                            evidenceRequest as EvidenceRequestQuestionString,
+                            evidenceRequest,
                             onAccept = { inputString ->
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseQuestionString(inputString),
@@ -97,18 +96,18 @@ fun ProvisionCredentialScreen(
                         )
                     }
 
-                    EvidenceType.MESSAGE -> {
+                    is EvidenceRequestMessage -> {
                         EvidenceRequestMessageView(
-                            evidenceRequest as EvidenceRequestMessage,
+                            evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,
                             credentialStore = credentialStore
                         )
                     }
 
-                    EvidenceType.QUESTION_MULTIPLE_CHOICE -> {
+                    is EvidenceRequestQuestionMultipleChoice -> {
                         EvidenceRequestQuestionMultipleChoiceView(
-                            evidenceRequest as EvidenceRequestQuestionMultipleChoice,
+                            evidenceRequest,
                             onAccept = { selectedOption ->
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseQuestionMultipleChoice(selectedOption),
@@ -119,9 +118,9 @@ fun ProvisionCredentialScreen(
                         )
                     }
 
-                    EvidenceType.ICAO_9303_PASSIVE_AUTHENTICATION -> {
+                    is EvidenceRequestIcaoPassiveAuthentication -> {
                         EvidenceRequestIcaoPassiveAuthenticationView(
-                            evidenceRequest = evidenceRequest as EvidenceRequestIcaoPassiveAuthentication,
+                            evidenceRequest = evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,
                             credentialStore = credentialStore,
@@ -129,27 +128,12 @@ fun ProvisionCredentialScreen(
                         )
                     }
 
-                    EvidenceType.ICAO_9303_NFC_TUNNEL -> {
+                    is EvidenceRequestIcaoNfcTunnel -> {
                         EvidenceRequestIcaoNfcTunnelView(
-                            evidenceRequest as EvidenceRequestIcaoNfcTunnel,
+                            evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             permissionTracker = permissionTracker
                         )
-                    }
-
-                    else -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                modifier = Modifier.padding(8.dp),
-                                style = MaterialTheme.typography.titleLarge,
-                                textAlign = TextAlign.Center,
-                                text = stringResource(R.string.provisioning_unknown_evidence_type,
-                                    evidenceRequest.evidenceType.toString())
-                            )
-                        }
                     }
                 }
             }

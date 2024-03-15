@@ -2,6 +2,7 @@ plugins {
     id("java-library")
     id "org.jetbrains.kotlin.jvm"
     alias libs.plugins.dokka
+    alias libs.plugins.ksp
 }
 
 java {
@@ -10,6 +11,10 @@ java {
 }
 
 dependencies {
+    implementation project(':cbor-processor')
+
+    ksp project(':cbor-processor')
+
     implementation libs.bouncy.castle.bcprov
     implementation libs.bouncy.castle.bcpkix
     implementation libs.kotlinx.io.bytestring
