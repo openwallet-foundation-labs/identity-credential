@@ -18,6 +18,9 @@ data class CredentialConfiguration(
 
     /**
      * Card-art for the credential.
+     *
+     * This should resemble a physical card and be the same aspect ratio (3 3⁄8 in × 2 1⁄8 in,
+     * see also ISO/IEC 7810 ID-1).
      */
     val cardArt: ByteArray,
 

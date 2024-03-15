@@ -16,6 +16,8 @@
 
 package com.android.identity.credentialtype
 
+import com.android.identity.cbor.DataItem
+
 /**
  * Class containing the metadata of an W3C VC Credential Type.
  */
@@ -38,14 +40,18 @@ class VcCredentialType private constructor(
          * @param identifier the identifier of this claim.
          * @param displayName a name suitable for display of the claim.
          * @param description a description of the claim.
+         * @param sampleValue a sample value for the attribute.
          */
         fun addClaim(
             type: CredentialAttributeType,
             identifier: String,
             displayName: String,
-            description: String
+            description: String,
+            sampleValue: DataItem? = null
         ) = apply {
-            claims[identifier] = CredentialAttribute(type, identifier, displayName, description)
+            claims[identifier] = CredentialAttribute(
+                type, identifier, displayName, description, sampleValue
+            )
         }
 
         /**

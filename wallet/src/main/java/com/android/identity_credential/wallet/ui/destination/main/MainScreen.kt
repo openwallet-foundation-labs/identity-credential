@@ -260,7 +260,7 @@ fun MainScreenCredentialPager(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    bitmap = card.artwork.asImageBitmap(),
+                    bitmap = card.cardArtwork.asImageBitmap(),
                     contentDescription =
                     stringResource(R.string.accessibility_artwork_for, card.name),
                     modifier = Modifier.clickable(onClick = {

@@ -22,6 +22,11 @@ The project includes libraries written in Kotlin:
    not yet migrated to the newer libraries. At some point this library will be
    removed. Unlike the other libraries and applications, this library is in
    Java, not Kotlin.
+- `identity-doctypes` contains known credential document types (for example
+   ISO/IEC 18013-5:2021 mDL and EU PID) along with human-readable descriptions of
+   claims / data elements and also sample data. This is packaged separately from
+   the core `identity` library because its size is non-negligible and not all
+   applications need this or they may bring their own.
 
 These libraries are intended to be used by Wallet Applications (mobile
 applications on the credential holder's device), Reader Applications (applications
