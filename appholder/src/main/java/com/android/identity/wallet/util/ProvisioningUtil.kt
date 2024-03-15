@@ -11,6 +11,7 @@ import android.graphics.Rect
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.Tagged
+import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseNumberLabel
 import com.android.identity.credential.Credential
@@ -194,13 +195,18 @@ class ProvisioningUtil private constructor(
                     taggedEncodedMso,
                     true,
                     Algorithm.ES256,
-                    mapOf(
+                    protectedHeaders = mapOf(
+                        Pair(
+                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+                        )
+                    ),
+                    unprotectedHeaders = mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
                             CertificateChain(listOf(Certificate(issuerCert.encoded))).dataItem
                         )
                     ),
-                    mapOf(),
                 ).toDataItem
             )
 
