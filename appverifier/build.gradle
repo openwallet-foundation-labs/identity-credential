@@ -65,7 +65,9 @@ dependencies {
     implementation project(':identity-mdoc')
     implementation project(':identity-android')
 
-    implementation libs.kotlinx.datetime
+    implementation files('../third-party/play-services-identity-credentials-0.0.1-eap01.aar')
+    implementation libs.bundles.google.play.services
+
     implementation platform(libs.compose.bom)
     implementation libs.bundles.androidx.core
     implementation libs.bundles.androidx.lifecycle

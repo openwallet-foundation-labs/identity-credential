@@ -26,6 +26,9 @@
         <action
             android:id="@+id/toSelectTransport"
             app:destination="@id/selectTransport" />
+        <action
+            android:id="@+id/toShowDeviceResponse"
+            app:destination="@id/showDeviceResponseFragment" />
     </fragment>
     <fragment
         android:id="@+id/settings"
@@ -150,4 +153,20 @@
         android:id="@+id/caCertificateDetails"
         android:name="com.android.mdl.appreader.settings.CaCertificateDetailsFragment"
         android:label="Certificate Details" />
+    <fragment
+        android:id="@+id/showDeviceResponseFragment"
+        android:name="com.android.mdl.appreader.fragment.ShowDeviceResponseFragment"
+        android:label="ShowDeviceResponseFragment">
+        <argument
+            android:name="bundle"
+            app:argType="android.os.Bundle"
+            app:nullable="false" />
+        <argument
+            android:name="requestIdentityKeyPair"
+            app:argType="java.security.KeyPair"
+            app:nullable="false" />
+        <action
+            android:id="@+id/toRequestOptions"
+            app:destination="@id/requestOptions" />
+    </fragment>
 </navigation>

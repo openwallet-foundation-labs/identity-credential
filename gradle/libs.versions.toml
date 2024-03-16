@@ -118,6 +118,10 @@
     kotlinx-io-bytestring = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-bytestring", version.ref = "kotlinx-io-bytestring"}
     kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime"}
 
+    play-services-base = { module = "com.google.android.gms:play-services-base", version = "18.2.0" }
+    play-services-basement = { module = "com.google.android.gms:play-services-basement", version = "18.2.0" }
+    play-services-tasks = { module = "com.google.android.gms:play-services-tasks", version = "18.0.2" }
+
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]
     androidx-lifecycle = ["androidx-lifecycle-extensions", "androidx-lifecycle-livedata", "androidx-lifecycle-viewmodel"]
@@ -128,6 +132,7 @@
     bouncy-castle = ["bouncy-castle-bcprov", "bouncy-castle-bcpkix"]
     ui-testing = ["androidx-test-ext-junit", "androidx-test-espresso", "truth"]
     unit-testing = ["jupiter", "kotlinx-coroutine-test", "truth"]
+    google-play-services = ["play-services-base", "play-services-basement", "play-services-tasks"]
 
 [plugins]
     android-application = { id = "com.android.application", version.ref = "gradle-plugin" }

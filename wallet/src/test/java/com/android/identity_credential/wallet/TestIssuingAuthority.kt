@@ -28,6 +28,7 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
             CredentialConfiguration(
                 "mDL for Test IA (proofing pending)",
                 byteArrayOf(1, 2, 3),
+                "org.iso.18013.5.1.mDL",
                 NameSpacedData.Builder().build()
             )
         )
@@ -84,6 +85,7 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
         return CredentialConfiguration(
             "${firstName}'s Driving License",
             byteArrayOf(1, 2, 3),
+            "org.iso.18013.5.1.mDL",
             NameSpacedData.Builder().build()
         )
     }

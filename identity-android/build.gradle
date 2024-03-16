@@ -40,6 +40,7 @@ dependencies {
     implementation libs.volley
     implementation libs.kotlinx.datetime
     implementation libs.kotlinx.io.bytestring
+    implementation 'com.google.crypto.tink:tink-android:1.9.0'
 
     testImplementation libs.androidx.test.espresso
     testImplementation libs.androidx.test.ext.junit

@@ -3,22 +3,34 @@ package com.android.identity.wallet.document
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.DataItem
 import co.nstant.`in`.cbor.model.UnicodeString
+import com.android.identity.cbor.Cbor
 import com.android.identity.credential.Credential
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.credentialtype.MdocCredentialType
+import com.android.identity.credentialtype.MdocDataElement
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil
+import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDocumentInformation
+import com.android.identity.wallet.util.log
+import com.android.identity.wallet.util.logError
+import com.android.identity.wallet.R
+import com.android.mdl.app.credman.IdentityCredentialEntry
+import com.android.mdl.app.credman.IdentityCredentialField
+import com.android.mdl.app.credman.IdentityCredentialRegistry
+import com.google.android.gms.identitycredentials.IdentityCredentialManager
 import java.io.ByteArrayOutputStream
-import java.util.*
+import java.util.Locale
 
 class DocumentManager private constructor(private val context: Context) {
-
+    val client = IdentityCredentialManager.Companion.getClient(context)
     companion object {
 
         @SuppressLint("StaticFieldLeak")
@@ -46,6 +58,74 @@ class DocumentManager private constructor(private val context: Context) {
         return null
     }
 
+    fun getDataElementDisplayName(docTypeName : String,
+                                  nameSpaceName : String,
+                                  dataElementName : String): String {
+        val credType = HolderApp.credentialTypeRepositoryInstance.getCredentialTypeForMdoc(docTypeName)
+        if (credType != null) {
+            val mdocDataElement = credType.mdocCredentialType!!
+                .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
+            if (mdocDataElement != null) {
+                return mdocDataElement.attribute.displayName
+            }
+        }
+        return dataElementName
+    }
+
+    fun registerDocuments() {
+        val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
+        var idCount = 0L
+        val entries = credentialStore.listCredentials().map {credentialId ->
+            val credential = credentialStore.lookupCredential(credentialId)!!
+            val document = credential.toDocumentInformation()!!
+
+            val fields = mutableListOf<IdentityCredentialField>()
+            fields.add(IdentityCredentialField(
+                name = "doctype",
+                value = document.docType,
+                displayName = "Document Type",
+                displayValue = document.docType
+            ))
+
+            val nameSpacedData = credential.applicationData.getNameSpacedData("credentialData")
+            nameSpacedData.nameSpaceNames.map {nameSpaceName ->
+                nameSpacedData.getDataElementNames(nameSpaceName).map {dataElementName ->
+                    val fieldName = nameSpaceName + "." + dataElementName
+                    val valueCbor = nameSpacedData.getDataElement(nameSpaceName, dataElementName)
+                    var valueString = Cbor.toDiagnostics(valueCbor)
+                    // Workaround for Credman not supporting images yet
+                    if (dataElementName.equals("portrait") || dataElementName.equals("signature_usual_mark")) {
+                        valueString = String.format(Locale.US, "%d bytes", valueCbor.size)
+                    }
+                    val dataElementDisplayName = getDataElementDisplayName(document.docType, nameSpaceName, dataElementName)
+                    fields.add(IdentityCredentialField(
+                        name = fieldName,
+                        value = valueString,
+                        displayName = dataElementDisplayName,
+                        displayValue = valueString
+                    ))
+                    log("Adding field $fieldName ('$dataElementDisplayName') with value '$valueString'")
+                }
+            }
+
+            log("Adding document ${document.userVisibleName}")
+            IdentityCredentialEntry(
+                id = idCount++,
+                format = "mdoc",
+                title = document.userVisibleName,
+                subtitle = context.getString(R.string.app_name),
+                icon = BitmapFactory.decodeResource(context.resources, R.drawable.driving_license_bg),
+                fields = fields.toList(),
+                disclaimer = null,
+                warning = null,
+            )
+        }
+        val registry = IdentityCredentialRegistry(entries)
+        client.registerCredentials(registry.toRegistrationRequest(context))
+            .addOnSuccessListener { log("CredMan registry succeeded") }
+            .addOnFailureListener { logError("CredMan registry failed $it") }
+    }
+
     fun getDocuments(): List<DocumentInformation> {
         val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
         return credentialStore.listCredentials().mapNotNull { documentName ->
@@ -54,12 +134,14 @@ class DocumentManager private constructor(private val context: Context) {
         }
     }
 
+
     fun deleteCredentialByName(documentName: String) {
         val document = getDocumentInformation(documentName)
         document?.let {
             val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
             credentialStore.deleteCredential(documentName)
         }
+        registerDocuments()
     }
 
     fun createSelfSignedDocument(documentData: SelfSignedDocumentData) {
@@ -70,6 +152,7 @@ class DocumentManager private constructor(private val context: Context) {
         } catch (e: Exception) {
             throw IllegalStateException("Error creating self signed credential", e)
         }
+        registerDocuments()
     }
 
     private fun getUniqueDocumentName(

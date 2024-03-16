@@ -6,7 +6,10 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.nfc.NfcAdapter
 import android.os.Bundle
+import android.os.ResultReceiver
 import android.provider.Settings
+import android.util.Base64
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,16 +26,31 @@ import androidx.fragment.app.activityViewModels
 import androidx.navigation.NavDirections
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPublicKey
+import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.crypto.javaPrivateKey
+import com.android.identity.crypto.javaPublicKey
 import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.home.HomeScreen
 import com.android.mdl.appreader.home.CreateRequestViewModel
+import com.android.mdl.appreader.home.RequestingDocumentState
 import com.android.mdl.appreader.theme.ReaderAppTheme
 import com.android.mdl.appreader.transfer.TransferManager
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
+import com.android.mdl.appreader.util.logError
+import com.google.android.gms.identitycredentials.CredentialOption
+import com.google.android.gms.identitycredentials.GetCredentialRequest
+import com.google.android.gms.identitycredentials.IdentityCredentialManager
+import com.google.android.gms.identitycredentials.IntentHelper
+import java.security.KeyPair
+import java.security.PublicKey
+import java.security.SecureRandom
 
-class RequestOptionsFragment : Fragment() {
+class RequestOptionsFragment() : Fragment() {
 
     private val createRequestViewModel: CreateRequestViewModel by activityViewModels()
     private val args: RequestOptionsFragmentArgs by navArgs()
@@ -71,10 +89,115 @@ class RequestOptionsFragment : Fragment() {
                         state = state,
                         onSelectionUpdated = createRequestViewModel::onRequestUpdate,
                         onRequestConfirm = { onRequestConfirmed(it.isCustomMdlRequest) },
-                        onRequestQRCodePreview = { navigateToQRCodeScan(it.isCustomMdlRequest) }
+                        onRequestQRCodePreview = { navigateToQRCodeScan(it.isCustomMdlRequest) },
+                        onRequestViaCredman = {onRequestViaCredman(it)}
                     )
                 }
             }
+        }
+    }
+
+    private fun buildJsonRequest(requestDocument: RequestDocument,
+                                 nonce: ByteArray,
+                                 requesterIdentityPublicKey: EcPublicKey): String {
+        val sb = StringBuilder();
+
+        sb.append("{\n" +
+                "  \"providers\": [\n" +
+                "    {\n" +
+                "      \"responseFormat\": \"mdoc\",\n" +
+                "      \"selector\": {\n" +
+                "        \"fields\": [\n" +
+                "          {\n" +
+                "            \"name\": \"doctype\",\n" +
+                "            \"equal\": \"${requestDocument.docType}\"\n" +
+                "          }")
+        val itemsToRequest = requestDocument.itemsToRequest
+        itemsToRequest.forEach { (nameSpaceName, dataElementNamesToIntentToRetainMap) ->
+            dataElementNamesToIntentToRetainMap.forEach { (dataElementName, intentToRetain) ->
+                sb.append(",\n" +
+                        "          {\n" +
+                        "            \"name\": \"${nameSpaceName}.${dataElementName}\"\n" +
+                        "          }"
+                )
+            }
+        }
+
+        val nonceBase64 = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
+        val uncompressed =
+            (requesterIdentityPublicKey as EcPublicKeyDoubleCoordinate).let {
+            byteArrayOf(0x04) + it.x + it.y
+        }
+        val requesterIdentityBase64 = Base64.encodeToString(uncompressed, Base64.NO_WRAP or Base64.URL_SAFE)
+        sb.append("\n" +
+                "        ]\n" +
+                "      },\n" +
+                "      \"params\": {\n" +
+                "        \"nonce\": \"${nonceBase64}\",\n" +
+                "        \"requesterIdentity\": \"${requesterIdentityBase64}\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  ]\n" +
+                "}")
+        return sb.toString()
+    }
+
+    private fun onRequestViaCredman(state: RequestingDocumentState) {
+
+        val client = IdentityCredentialManager.Companion.getClient(this.requireContext())
+        val nonce = ByteArray(16)
+        SecureRandom().nextBytes(nonce)
+        val requestIdentityKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val requestIdentityKeyPair = KeyPair(
+            requestIdentityKey.publicKey.javaPublicKey,
+            requestIdentityKey.javaPrivateKey
+        )
+
+        // TODO: Right now we just request the first of potentially multiple documents, it
+        //  would be nice to request each document in sequence and then display all the
+        //  results. The only case where this applies is the "Request mDL + micov with linkage"
+        //  option in the reader.
+        val requestedDocuments = calcRequestDocumentList()
+        val requestedDocument = requestedDocuments.getAll().get(0)
+        val requestJson = buildJsonRequest(requestedDocument, nonce, requestIdentityKey.publicKey)
+
+        val option = CredentialOption(
+            type = "com.credman.IdentityCredential",
+            credentialRetrievalData = Bundle(),
+            candidateQueryData = Bundle(),
+            requestMatcher = requestJson,
+            requestType = "",
+            protocolType = "",
+        )
+        client.getCredential(GetCredentialRequest(
+            credentialOptions = listOf(option),
+            data = Bundle(),
+            origin = null,
+            resultReceiver = object: ResultReceiver(null) {
+                override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                    super.onReceiveResult(resultCode, resultData)
+                    Log.i("TAG", "Got a result $resultCode $resultData")
+
+                    val response = IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
+                    val identityToken = Base64.decode(
+                        String(response.credential.data.getByteArray("identityToken")!!),
+                        Base64.NO_WRAP or Base64.URL_SAFE)
+                    //Logger.dCbor("TAG", "identityToken", identityToken!!)
+
+                    val bundle = Bundle()
+                    bundle.putByteArray("identityToken", identityToken)
+                    bundle.putByteArray("nonce", nonce)
+
+                    requireActivity().runOnUiThread {
+                        findNavController().navigate(RequestOptionsFragmentDirections
+                           .toShowDeviceResponse(bundle, requestIdentityKeyPair))
+                    }
+                }
+            }
+        )).addOnSuccessListener {result ->
+            startIntentSenderForResult(result.pendingIntent.intentSender, 777, null, 0, 0, 0, null)
+        }.addOnFailureListener {
+            logError("Error with get-cred intent generation", it)
         }
     }
 
