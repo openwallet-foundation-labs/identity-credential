@@ -47,11 +47,9 @@ abstract class SelfSignedMdocIssuingAuthority(
 ) {
     companion object {
         private const val TAG = "SelfSignedMdlIssuingAuthority"
-
-        val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
-        val MDL_NAMESPACE = "org.iso.18013.5.1"
-        val AAMVA_NAMESPACE = "org.iso.18013.5.1.aamva"
     }
+
+    abstract val docType: String
 
     override fun createPresentationData(presentationFormat: CredentialPresentationFormat,
                                         credentialConfiguration: CredentialConfiguration,
@@ -70,7 +68,7 @@ abstract class SelfSignedMdocIssuingAuthority(
         // Generate an MSO and issuer-signed data for this authentication key.
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
-            MDL_DOCTYPE,
+            docType,
             authenticationKey
         )
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)

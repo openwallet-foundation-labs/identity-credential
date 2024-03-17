@@ -3,12 +3,10 @@ package com.android.identity_credential.wallet
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
-import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.cbor.toDataItemFullDate
 import com.android.identity.credential.NameSpacedData
 import com.android.identity.credentialtype.CredentialType
-import com.android.identity.credentialtype.knowntypes.DrivingLicense
 import com.android.identity.credentialtype.knowntypes.EUPersonalID
 import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.CredentialPresentationFormat
@@ -28,55 +26,54 @@ import kotlinx.datetime.LocalDate
 import java.io.ByteArrayOutputStream
 import kotlin.time.Duration.Companion.days
 
-class SelfSignedMdlIssuingAuthority(
+class SelfSignedEuPidIssuingAuthority(
     application: WalletApplication,
     storageEngine: StorageEngine
 ) : SelfSignedMdocIssuingAuthority(application, storageEngine) {
-
     companion object {
-        private const val MDL_DOCTYPE = DrivingLicense.MDL_DOCTYPE
-        private const val MDL_NAMESPACE = DrivingLicense.MDL_NAMESPACE
-        private const val AAMVA_NAMESPACE = DrivingLicense.AAMVA_NAMESPACE
+        private const val EUPID_NAMESPACE = EUPersonalID.EUPID_NAMESPACE
+        private const val EUPID_DOCTYPE = EUPersonalID.EUPID_DOCTYPE
     }
 
-    override val docType: String = MDL_DOCTYPE
+    override val docType: String = EUPID_DOCTYPE
     override lateinit var configuration: IssuingAuthorityConfiguration
     private val tosAssets: Map<String, ByteArray>;
 
     init {
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(
-            application.applicationContext.resources, R.drawable.utopia_dmv_issuing_authority_logo
+            application.applicationContext.resources,
+            R.drawable.utopia_pid_issuing_authority_logo
         ).compress(Bitmap.CompressFormat.PNG, 90, baos)
         val icon: ByteArray = baos.toByteArray()
         configuration = IssuingAuthorityConfiguration(
-            identifier = "mDL_Utopia",
-            issuingAuthorityName = resourceString(R.string.utopia_mdl_issuing_authority_name),
+            identifier = "euPid_Utopia",
+            issuingAuthorityName = resourceString(R.string.utopia_eu_pid_issuing_authority_name),
             issuingAuthorityLogo = icon,
-            description = resourceString(R.string.utopia_mdl_issuing_authority_description),
+            description = resourceString(R.string.utopia_eu_pid_issuing_authority_description),
             credentialFormats = setOf(CredentialPresentationFormat.MDOC_MSO),
             pendingCredentialInformation = createCredentialConfiguration(null)
         )
-        tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_dmv_issuing_authority_logo))
+        tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_pid_issuing_authority_logo))
     }
 
     override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
                 "tos",
-                resourceString(R.string.utopia_mdl_issuing_authority_tos),
+                resourceString(R.string.utopia_eu_pid_issuing_authority_tos),
                 tosAssets,
-                resourceString(R.string.utopia_mdl_issuing_authority_accept),
-                resourceString(R.string.utopia_mdl_issuing_authority_reject),
+                resourceString(R.string.utopia_eu_pid_issuing_authority_accept),
+                resourceString(R.string.utopia_eu_pid_issuing_authority_reject),
             )
             choice(
                 id = "path",
-                message = resourceString(R.string.utopia_mdl_issuing_authority_hardcoded_or_derived),
+                message = resourceString(R.string.utopia_eu_pid_issuing_authority_hardcoded_or_derived),
                 acceptButtonText = "Continue"
             ) {
-                on(id = "hardcoded", text = resourceString(R.string.utopia_mdl_issuing_authority_hardcoded_option)) {
+                on(id = "hardcoded", text = resourceString(R.string.utopia_eu_pid_issuing_authority_hardcoded_option)) {
                 }
-                on(id = "passport", text = resourceString(R.string.utopia_mdl_issuing_authority_passport_option)) {
+                on(id = "passport", text = resourceString(R.string.utopia_eu_pid_issuing_authority_passport_option)) {
                     icaoTunnel("tunnel", listOf(1, 2, 7)) {
                         whenChipAuthenticated {}
                         whenActiveAuthenticated {}
@@ -86,9 +83,9 @@ class SelfSignedMdlIssuingAuthority(
             }
             message(
                 "message",
-                resourceString(R.string.utopia_mdl_issuing_authority_application_finish),
+                resourceString(R.string.utopia_eu_pid_issuing_authority_application_finish),
                 mapOf(),
-                resourceString(R.string.utopia_mdl_issuing_authority_continue),
+                resourceString(R.string.utopia_eu_pid_issuing_authority_continue),
                 null
             )
         }
@@ -109,15 +106,15 @@ class SelfSignedMdlIssuingAuthority(
     private fun createCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): CredentialConfiguration {
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(
-            application.applicationContext.resources, R.drawable.utopia_driving_license_card_art
+            application.applicationContext.resources, R.drawable.utopia_pid_card_art
         ).compress(Bitmap.CompressFormat.PNG, 90, baos)
         val cardArt: ByteArray = baos.toByteArray()
 
         if (collectedEvidence == null) {
             return CredentialConfiguration(
-                resourceString(R.string.utopia_mdl_issuing_authority_pending_credential_title),
+                resourceString(R.string.utopia_eu_pid_issuing_authority_pending_credential_title),
                 cardArt,
-                MDL_DOCTYPE,
+                EUPID_DOCTYPE,
                 NameSpacedData.Builder().build()
             )
         }
@@ -128,7 +125,10 @@ class SelfSignedMdlIssuingAuthority(
         val issueDate = now
         val expiryDate = now + 365.days * 5
 
-        val credType = application.credentialTypeRepository.getCredentialTypeForMdoc(MDL_DOCTYPE)!!
+        println("foo1 " + application)
+        println("foo2 " + application.credentialTypeRepository)
+        println("foo3 " + EUPID_DOCTYPE)
+        val credType = application.credentialTypeRepository.getCredentialTypeForMdoc(EUPID_DOCTYPE)!!
 
         val path = (collectedEvidence["path"] as EvidenceResponseQuestionMultipleChoice).answerId
         if (path == "hardcoded") {
@@ -151,55 +151,40 @@ class SelfSignedMdlIssuingAuthority(
                 "FEMALE" -> 2L
                 else -> 0L
             }
-            val portrait = bitmapData(decoded.photo, R.drawable.img_erika_portrait)
-            val signatureOrUsualMark = bitmapData(decoded.signature, R.drawable.img_erika_signature)
-
             // Make sure we set at least all the mandatory data elements
             //
             // TODO: get birth_date from passport
             //
             staticData = NameSpacedData.Builder()
-                .putEntryString(MDL_NAMESPACE, "given_name", firstName)
-                .putEntryString(MDL_NAMESPACE, "family_name", lastName)
-                .putEntry(MDL_NAMESPACE, "birth_date",
+                .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
+                .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
+                .putEntry(EUPID_NAMESPACE, "birth_date",
                     Cbor.encode(LocalDate.parse("1970-01-01").toDataItemFullDate))
-                .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
-                .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
-                .putEntryNumber(MDL_NAMESPACE, "sex", sex)
-                .putEntry(MDL_NAMESPACE, "issue_date",
+                .putEntryNumber(EUPID_NAMESPACE, "gender", sex)
+                .putEntry(EUPID_NAMESPACE, "issuance_date",
                     Cbor.encode(issueDate.toDataItemDateTimeString))
-                .putEntry(MDL_NAMESPACE, "expiry_date",
+                .putEntry(EUPID_NAMESPACE, "expiry_date",
                     Cbor.encode(expiryDate.toDataItemDateTimeString)
                 )
-                .putEntryString(MDL_NAMESPACE, "issuing_authority",
-                    resourceString(R.string.utopia_mdl_issuing_authority_name),)
-                .putEntryString(MDL_NAMESPACE, "issuing_country", "UT")
-                .putEntryString(MDL_NAMESPACE, "un_distinguishing_sign", "UTO")
-                .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
-                .putEntry(MDL_NAMESPACE, "driving_privileges",
-                    Cbor.encode(CborArray.builder().end().build()))
-
-                .putEntryBoolean(MDL_NAMESPACE, "age_over_18", true)
-                .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true)
-
-                .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
-                .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
-                .putEntryNumber(AAMVA_NAMESPACE, "sex", sex)
+                .putEntryString(EUPID_NAMESPACE, "issuing_authority",
+                    resourceString(R.string.utopia_eu_pid_issuing_authority_name))
+                .putEntryString(EUPID_NAMESPACE, "issuing_country",
+                    "UT")
+                .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", true)
+                .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", true)
                 .build()
         }
 
-        val firstName = staticData.getDataElementString(MDL_NAMESPACE, "given_name")
+        val firstName = staticData.getDataElementString(EUPID_NAMESPACE, "given_name")
         return CredentialConfiguration(
-            resourceString(R.string.utopia_mdl_issuing_authority_credential_title, firstName),
+            resourceString(R.string.utopia_eu_pid_issuing_authority_credential_title, firstName),
             cardArt,
-            MDL_DOCTYPE,
+            EUPID_DOCTYPE,
             staticData
         )
     }
 
     private fun getSampleData(credentialType: CredentialType): NameSpacedData.Builder {
-        val portrait = bitmapData(null, R.drawable.img_erika_portrait)
-        val signatureOrUsualMark = bitmapData(null, R.drawable.img_erika_signature)
         val builder = NameSpacedData.Builder()
         for ((namespaceName, namespace) in credentialType.mdocCredentialType!!.namespaces) {
             for ((dataElementName, dataElement) in namespace.dataElements) {
@@ -212,10 +197,6 @@ class SelfSignedMdlIssuingAuthority(
                 }
             }
         }
-        // Sample data currently doesn't have portrait or signature_usual_mark
-        builder
-            .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
-            .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
         return builder
     }
 }

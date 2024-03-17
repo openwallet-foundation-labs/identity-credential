@@ -43,8 +43,6 @@ class ShowDocumentFragment : Fragment() {
         private const val TAG = "ShowDocumentFragment"
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
-        private const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
-        private const val EU_PID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
     }
 
     private var _binding: FragmentShowDocumentBinding? = null
@@ -306,8 +304,8 @@ class ShowDocumentFragment : Fragment() {
     }
 
     private fun isPortraitApplicable(docType: String, namespace: String?): Boolean {
-        val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
-        val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
+        val hasPortrait = docType == MDL_DOCTYPE
+        val namespaceContainsPortrait = namespace == MDL_NAMESPACE
         return hasPortrait && namespaceContainsPortrait
     }
 

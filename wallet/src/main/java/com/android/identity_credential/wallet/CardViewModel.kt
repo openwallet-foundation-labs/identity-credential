@@ -58,6 +58,15 @@ class CardViewModel : ViewModel() {
         return null
     }
 
+    fun getCardIndex(cardId: String): Int? {
+        for (n in cards.indices) {
+            if (cards[n].id == cardId) {
+                return n
+            }
+        }
+        return null
+    }
+
     fun refreshCard(card: Card) {
         val credential = credentialStore.lookupCredential(card.id)
         if (credential == null) {

@@ -18,6 +18,7 @@ import com.android.identity_credential.wallet.ui.destination.credential.CardKeys
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionCredentialScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
+import com.android.identity_credential.wallet.ui.destination.settings.SettingsScreen
 
 /**
  * Defines the correlation of WalletDestination routes to composable screens
@@ -73,7 +74,7 @@ fun WalletNavigation(
                 credentialStore = credentialStore,
                 qrEngagementViewModel = qrEngagementViewModel,
                 cardViewModel = cardViewModel,
-                sharedPreferences = sharedPreferences,
+                settingsModel = application.settingsModel,
                 permissionTracker = permissionTracker
             )
         }
@@ -82,7 +83,17 @@ fun WalletNavigation(
          * About Screen
          */
         composable(WalletDestination.About.route) {
-            AboutScreen(onNavigate = navigateTo, loggerModel = application.loggerModel)
+            AboutScreen(onNavigate = navigateTo)
+        }
+
+        /**
+         * Settings Screen
+         */
+        composable(WalletDestination.Settings.route) {
+            SettingsScreen(
+                settingsModel = application.settingsModel,
+                onNavigate = navigateTo
+            )
         }
 
         /**
@@ -133,6 +144,7 @@ fun WalletNavigation(
                     CardInfoScreen(
                         cardId = cardId,
                         cardViewModel = cardViewModel,
+                        settingsModel = application.settingsModel,
                         onNavigate = navigateTo,
                     )
                 }

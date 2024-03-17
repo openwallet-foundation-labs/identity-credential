@@ -32,7 +32,7 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.SelfSignedMdocIssuingAuthority
+import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.WalletApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -45,6 +45,7 @@ import kotlin.coroutines.resume
  * has accepted one or more dialog prompts)
  */
 class TransferHelper(
+    private val settingsModel: SettingsModel,
     private val credentialStore: CredentialStore,
     private val issuingAuthorityRepository: IssuingAuthorityRepository,
     private val trustManager: TrustManager,
@@ -60,6 +61,7 @@ class TransferHelper(
      * Builder class returning a new TransferHelper instance with a new deviceRetrievalHelper object.
      */
     class Builder(
+        val settingsModel: SettingsModel,
         val credentialStore: CredentialStore,
         val issuingAuthorityRepository: IssuingAuthorityRepository,
         val trustManager: TrustManager,
@@ -72,6 +74,7 @@ class TransferHelper(
         }
 
         fun build() = TransferHelper(
+            settingsModel = settingsModel,
             credentialStore = credentialStore,
             issuingAuthorityRepository = issuingAuthorityRepository,
             trustManager = trustManager,
@@ -80,10 +83,6 @@ class TransferHelper(
             onError = onError,
         )
     }
-
-    // used for reading credential visible to user
-    private val sharedPreferences: SharedPreferences =
-        PreferenceManager.getDefaultSharedPreferences(context)
 
     /**
      * Start processing the presentation request and return a [PresentationRequestData] object that
@@ -95,21 +94,25 @@ class TransferHelper(
      */
     fun startProcessingRequest(deviceRequest: ByteArray): PresentationRequestData? {
 
+        // TODO: we currently only look at the first docRequest ... in the future need to process
+        //  all of them sequentially.
+        val request = DeviceRequestParser(deviceRequest, deviceRetrievalHelper.sessionTranscript).parse()
+        val docRequest = request.documentRequests[0]
+
         // TODO support more formats
         val credentialPresentationFormat: CredentialPresentationFormat =
             CredentialPresentationFormat.MDOC_MSO
 
         // TODO when selecting a matching credential of the MDOC_MSO format, also use docRequest.docType
         //     to select a credential of the right doctype
-        val credentialId: String = firstMatchingCredentialID(credentialPresentationFormat)
+        val credentialId: String = findFirstCredentialSatisfyingRequest(
+            settingsModel, credentialPresentationFormat, docRequest)
             ?: run {
                 onError(IllegalStateException("No matching credentials in wallet"))
                 return null
             }
 
         val credential = credentialStore.lookupCredential(credentialId)!!
-        val request = DeviceRequestParser(deviceRequest, deviceRetrievalHelper.sessionTranscript).parse()
-        val docRequest = request.documentRequests[0]
 
         var trustPoint: TrustPoint? = null
         if (docRequest.readerAuthenticated) {
@@ -165,55 +168,49 @@ class TransferHelper(
         val credential = credentialStore.lookupCredential(credentialId)!!
 
         val encodedDeviceResponse: ByteArray
-        if (requestedDocType == SelfSignedMdocIssuingAuthority.MDL_DOCTYPE) {
-            val credentialConfiguration = credential.credentialConfiguration
-            val now = Timestamp.now()
-            val authKeyToUse: AuthenticationKey = authKey
-                ?: (credential.findAuthenticationKey(WalletApplication.AUTH_KEY_DOMAIN, now)
-                    ?: run {
-                        onError(IllegalStateException("No valid auth keys, please request more"))
-                        return
-                    })
+        val credentialConfiguration = credential.credentialConfiguration
+        val now = Timestamp.now()
+        val authKeyToUse: AuthenticationKey = authKey
+            ?: (credential.findAuthenticationKey(WalletApplication.AUTH_KEY_DOMAIN, now)
+                ?: run {
+                    onError(IllegalStateException("No valid auth keys, please request more"))
+                    return
+                })
 
-            val staticAuthData = StaticAuthDataParser(authKeyToUse.issuerProvidedData).parse()
-            val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
-            val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
-            val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
-            val mso = MobileSecurityObjectParser(encodedMso).parse()
+        val staticAuthData = StaticAuthDataParser(authKeyToUse.issuerProvidedData).parse()
+        val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
+        val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
+        val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
+        val mso = MobileSecurityObjectParser(encodedMso).parse()
 
-            val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-                credentialRequest,
-                credentialConfiguration.staticData,
-                staticAuthData
+        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
+            credentialRequest,
+            credentialConfiguration.staticData,
+            staticAuthData
+        )
+
+        val deviceResponseGenerator =
+            DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+
+        // in sep coroutine so that an unexpected error will still allow this function to
+        // finish and send potentially empty response
+        val result = withContext(Dispatchers.IO) { //<- Offload from UI thread
+            addDocumentToResponse(
+                deviceResponseGenerator = deviceResponseGenerator,
+                docType = mso.docType,
+                issuerAuth = staticAuthData.issuerAuth,
+                mergedIssuerNamespaces = mergedIssuerNamespaces,
+                authKey = authKeyToUse,
+                keyUnlockData = keyUnlockData
             )
+        }
 
-            val deviceResponseGenerator =
-                DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-
-            // in sep coroutine so that an unexpected error will still allow this function to
-            // finish and send potentially empty response
-            val result = withContext(Dispatchers.IO) { //<- Offload from UI thread
-                addDocumentToResponse(
-                    deviceResponseGenerator = deviceResponseGenerator,
-                    docType = mso.docType,
-                    issuerAuth = staticAuthData.issuerAuth,
-                    mergedIssuerNamespaces = mergedIssuerNamespaces,
-                    authKey = authKeyToUse,
-                    keyUnlockData = keyUnlockData
-                )
-            }
-
-            if (result != null) {
-                onAuthenticationKeyLocked(result)
-                return
-            }
-
-            encodedDeviceResponse = deviceResponseGenerator.generate()
-        } else {
-            onError(IllegalStateException("$requestedDocType not available"))
+        if (result != null) {
+            onAuthenticationKeyLocked(result)
             return
         }
-        onFinishedProcessing(encodedDeviceResponse)
+
+        onFinishedProcessing(deviceResponseGenerator.generate())
     }
 
     private suspend fun addDocumentToResponse(
@@ -272,39 +269,46 @@ class TransferHelper(
     }
 
     /**
-     * Return the first credential ID that is matched with either in SharedPreferences (credential
-     * that is visible to user) or from CredentialStore.
+     * Return a credential identifier which can satisfy the request.
+     *
+     * If multiple credentials can satisfy the request, preference is given to the currently
+     * focused credential in the main pager.
      *
      * @param credentialPresentationFormat the presentation format type for which credentials are queried
-     * @return the found credential id
+     * @param docRequest the docRequest, including the requested DocType.
+     * @return credential identifier if found, otherwise null.
      */
-    private fun firstMatchingCredentialID(
-        credentialPresentationFormat: CredentialPresentationFormat
+    private fun findFirstCredentialSatisfyingRequest(
+        settingsModel: SettingsModel,
+        credentialPresentationFormat: CredentialPresentationFormat,
+        docRequest: DeviceRequestParser.DocumentRequest,
     ): String? {
         // prefer the credential which is on-screen if possible
-        val credentialIdFromPager: String? = sharedPreferences
-            .getString(WalletApplication.PREFERENCE_CURRENT_CREDENTIAL_ID, null)
+        val credentialIdFromPager: String? = settingsModel.focusedCardId.value
         if (credentialIdFromPager != null
-            && isCredentialValid(credentialIdFromPager, credentialPresentationFormat)
+            && canCredentialSatisfyRequest(credentialIdFromPager, credentialPresentationFormat, docRequest)
         ) {
             return credentialIdFromPager
         }
 
         return credentialStore.listCredentials().firstOrNull { credentialId ->
-            isCredentialValid(credentialId, credentialPresentationFormat)
+            canCredentialSatisfyRequest(credentialId, credentialPresentationFormat, docRequest)
         }
     }
 
     /**
-     * Return whether the passed credential id is valid (it exists in credential store and the
-     * issuing authority recognizes the presentation format)
-     * @param credentialId id of credential to validate
-     * @param credentialPresentationFormat the presentation format for transferring credential data
-     * @return whether the specified credential id is valid for the specified presentation format
+     * Return whether the passed credential id can satisfy the request
+     *
+     * @param credentialId id of credential to check
+     * @param credentialPresentationFormat the request presentation format for transferring
+     * credential data
+     * @param docRequest the DocRequest, including the DocType
+     * @return whether the specified credential id can satisfy the request
      */
-    private fun isCredentialValid(
+    private fun canCredentialSatisfyRequest(
         credentialId: String,
-        credentialPresentationFormat: CredentialPresentationFormat
+        credentialPresentationFormat: CredentialPresentationFormat,
+        docRequest: DeviceRequestParser.DocumentRequest
     ): Boolean {
         val credential = credentialStore.lookupCredential(credentialId)!!
         val issuingAuthorityIdentifier = credential.issuingAuthorityIdentifier
@@ -312,6 +316,15 @@ class TransferHelper(
             issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
                 ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
         val credentialFormats = issuer.configuration.credentialFormats
-        return credentialFormats.contains(credentialPresentationFormat)
+        if (!credentialFormats.contains(credentialPresentationFormat)) {
+            return false;
+        }
+
+        val credConf = credential.credentialConfiguration
+        if (credConf.mdocDocType != docRequest.docType) {
+            return false
+        }
+
+        return true
     }
 }

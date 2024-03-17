@@ -1,6 +1,5 @@
 package com.android.identity_credential.wallet
 
-import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -13,29 +12,50 @@ import com.android.identity.util.Logger
 import com.android.identity_credential.mrtd.mrtdSetLogger
 import java.io.File
 
+class SettingsModel(
+    private val walletApplication: WalletApplication,
+    private val sharedPreferences: SharedPreferences
+) {
+    // Settings that are visible in the Settings screen
+    val developerModeEnabled = MutableLiveData(false)
+    val loggingEnabled = MutableLiveData(false)
 
-class LoggerModel(val application: Application, val sharedPreferences: SharedPreferences) {
+    // Non visible in the Settings screen
+    val focusedCardId = MutableLiveData("")
+
     companion object {
-        const val TAG = "LoggerModel"
+        private const val TAG = "SettingsModel"
+        
+        private const val PREFERENCE_DEVELOPER_MODE_ENABLED = "developer_mode_enabled"
+        private const val PREFERENCE_LOGGING_ENABLED = "logging_enabled"
+        private const val PREFERENCE_FOCUSED_CARD_ID = "focused_card_id"
 
         // Logging
-        const val LOG_FOLDER_NAME = "log"
-        const val LOG_FILE_NAME = "log.txt"
+        private const val LOG_FOLDER_NAME = "log"
+        private const val LOG_FILE_NAME = "log.txt"
     }
 
-    val logToFile = MutableLiveData(false)
-
-    private val logDir = File(application.cacheDir, LOG_FOLDER_NAME)
+    private val logDir = File(walletApplication.cacheDir, LOG_FOLDER_NAME)
     private val logFile = File(logDir, LOG_FILE_NAME)
 
-    fun init() {
-        Logger.setLogPrinter(AndroidLogPrinter())
+    init {
+        developerModeEnabled.value =
+            sharedPreferences.getBoolean(PREFERENCE_DEVELOPER_MODE_ENABLED, false)
+        developerModeEnabled.observeForever { value ->
+            sharedPreferences.edit { putBoolean(PREFERENCE_DEVELOPER_MODE_ENABLED, value) }
+        }
 
-        // Initialize first, start observing later; observer is always called on attachment.
-        this.logToFile.value = sharedPreferences.getBoolean(WalletApplication.LOG_TO_FILE, false)
-        this.logToFile.observeForever { logToFile ->
+        focusedCardId.value = sharedPreferences.getString(PREFERENCE_FOCUSED_CARD_ID, "")
+        focusedCardId.observeForever { value ->
+            sharedPreferences.edit { putString(PREFERENCE_FOCUSED_CARD_ID, value) }
+        }
+
+
+        Logger.setLogPrinter(AndroidLogPrinter())
+        this.loggingEnabled.value = sharedPreferences.getBoolean(PREFERENCE_LOGGING_ENABLED, false)
+        this.loggingEnabled.observeForever { logToFile ->
             sharedPreferences.edit {
-                putBoolean(WalletApplication.LOG_TO_FILE, logToFile)
+                putBoolean(PREFERENCE_LOGGING_ENABLED, logToFile)
             }
             if (logToFile) {
                 logDir.mkdirs()
@@ -59,11 +79,11 @@ class LoggerModel(val application: Application, val sharedPreferences: SharedPre
     }
 
     fun clearLog() {
-        if (logToFile.value!!) {
+        if (loggingEnabled.value!!) {
             Logger.stopLoggingToFile()
         }
         logFile.delete()
-        if (logToFile.value!!) {
+        if (loggingEnabled.value!!) {
             Logger.startLoggingToFile(logFile)
         }
         Logger.i(TAG, "Log cleared")

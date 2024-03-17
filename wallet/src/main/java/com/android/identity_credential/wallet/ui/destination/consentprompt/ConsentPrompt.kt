@@ -72,7 +72,12 @@ fun ConsentPrompt(
 
     // get the user-facing display name for each CredentialRequest.DataElement and create a list of ConsentDataElements
     val consentDataElements =
-        consentData.credentialRequest.requestedDataElements.map { dataElement ->
+        consentData.credentialRequest.requestedDataElements
+            .filter {
+                // This ensures we only show the requested data element if we have it
+                consentData.credentialData.hasDataElement(it.nameSpaceName, it.dataElementName)
+            }
+            .map { dataElement ->
             val displayName = credentialTypeRepository.getDataElementDisplayName(
                 dataElement = dataElement,
                 docType = consentData.docType

@@ -15,6 +15,7 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
     // Screens with no arguments
     object Main : WalletDestination(Route.MAIN)
     object About : WalletDestination(Route.ABOUT)
+    object Settings : WalletDestination(Route.SETTINGS)
     object AddToWallet : WalletDestination(Route.ADD_TO_WALLET)
     object ProvisionCredential : WalletDestination(Route.PROVISION_CREDENTIAL)
 
@@ -161,6 +162,7 @@ abstract class DestinationArguments {
 enum class Route(val routeName: String, val argumentsStr: String = "") {
     MAIN("main"),
     ABOUT("about"),
+    SETTINGS("settings"),
     ADD_TO_WALLET("add_to_wallet"),
     CARD_INFO("card_info", "cardId={cardId}&section={section}"),
     PROVISION_CREDENTIAL("provision_credential"),
