@@ -28,6 +28,12 @@
     <string name="wallet_screen_add">Add to Wallet</string>
     <string name="wallet_screen_permissions">Need permissions</string>
     <string name="wallet_screen_permissions_dismiss">Dismiss</string>
+    <string name="qr_lskf_warning_dismiss_btn">Ok</string>
+    <string name="qr_lskf_warning_dialog_title">Unable to Present Document</string>
+    <string name="qr_lskf_warning_dialog_text">In order to present the document, your device must have a lock-screen pin/password/pattern</string>
+    <string name="add_cred_lskf_warning_dismiss_btn">Ok</string>
+    <string name="add_cred_lskf_warning_dialog_title">Unable to Add Document</string>
+    <string name="add_cred_lskf_warning_dialog_text">In order to add a document to your wallet, your device must have a lock-screen pin/password/pattern</string>
 
     <!-- About screen -->
     <string name="about_screen_title">About Wallet</string>
@@ -100,6 +106,9 @@
     <string name="presentation_authkey_usage_warning">Reused Authentication Key</string>
     <string name="presentation_biometric_prompt_title">Use your screen lock</string>
     <string name="presentation_biometric_prompt_subtitle">Authentication is required to share this information</string>
+    <string name="presentation_lskf_warning_dismiss_btn">Ok</string>
+    <string name="presentation_lskf_warning_dialog_title">Unable to Present Document</string>
+    <string name="presentation_lskf_warning_dialog_text">In order to present the document, your device must have a lock-screen pin/password/pattern</string>
 
     <!-- QR screen -->
     <string name="qr_title">Share using QR code</string>

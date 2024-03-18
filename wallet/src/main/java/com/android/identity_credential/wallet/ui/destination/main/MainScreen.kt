@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet.ui.destination.main
 
 import android.Manifest
+import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
@@ -32,7 +34,6 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -43,11 +44,15 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,11 +60,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.credential.CredentialStore
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.CardViewModel
@@ -67,7 +70,6 @@ import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
-import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 import kotlinx.coroutines.CoroutineScope
@@ -82,7 +84,8 @@ fun MainScreen(
     qrEngagementViewModel: QrEngagementViewModel,
     cardViewModel: CardViewModel,
     settingsModel: SettingsModel,
-    permissionTracker: PermissionTracker
+    permissionTracker: PermissionTracker,
+    context: Context,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -136,7 +139,8 @@ fun MainScreen(
             cardViewModel = cardViewModel,
             scope = scope,
             drawerState = drawerState,
-            permissionTracker = permissionTracker
+            permissionTracker = permissionTracker,
+            context = context
         )
     }
 }
@@ -159,10 +163,32 @@ fun MainScreenContent(
     cardViewModel: CardViewModel,
     scope: CoroutineScope,
     drawerState: DrawerState,
-    permissionTracker: PermissionTracker
+    permissionTracker: PermissionTracker,
+    context: Context,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val haveRequiredPermissions = permissionTracker.granted(blePermissions)
+    var showDeviceLockNotSetupWarning by remember { mutableStateOf(false) }
+
+    if (showDeviceLockNotSetupWarning) {
+        AlertDialog(
+            title = {
+                Text(text = stringResource(R.string.qr_lskf_warning_dialog_title))
+            },
+            text = {
+                Text(text = stringResource(R.string.qr_lskf_warning_dialog_text))
+            },
+            onDismissRequest = { showDeviceLockNotSetupWarning = false },
+            confirmButton = {
+                TextButton(
+                    onClick = { showDeviceLockNotSetupWarning = false }
+                ) {
+                    Text(text = stringResource(R.string.qr_lskf_warning_dismiss_btn))
+                }
+            },
+        )
+    }
+
     ScreenWithAppBar(title = stringResource(R.string.wallet_screen_title),
         navigationIcon = {
             IconButton(
@@ -218,7 +244,7 @@ fun MainScreenContent(
             }
         }) {
         if (cardViewModel.cards.isEmpty()) {
-            MainScreenNoCredentialsAvailable(onNavigate)
+            MainScreenNoCredentialsAvailable(onNavigate, context)
         } else {
 
             Spacer(modifier = Modifier.weight(0.25f))
@@ -263,8 +289,12 @@ fun MainScreenContent(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            qrEngagementViewModel.startQrEngagement()
-                            onNavigate(WalletDestination.QrEngagement.route)
+                            if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
+                                showDeviceLockNotSetupWarning = true
+                            } else {
+                                qrEngagementViewModel.startQrEngagement()
+                                onNavigate(WalletDestination.QrEngagement.route)
+                            }
                         }
                     ) {
                         Icon(
@@ -284,7 +314,30 @@ fun MainScreenContent(
 }
 
 @Composable
-fun MainScreenNoCredentialsAvailable(onNavigate: (String) -> Unit) {
+fun MainScreenNoCredentialsAvailable(
+    onNavigate: (String) -> Unit,
+    context: Context
+) {
+    var showDeviceLockNotSetupWarning by remember { mutableStateOf(false) }
+    if (showDeviceLockNotSetupWarning) {
+        AlertDialog(
+            title = {
+                Text(text = stringResource(R.string.add_cred_lskf_warning_dialog_title))
+            },
+            text = {
+                Text(text = stringResource(R.string.add_cred_lskf_warning_dialog_text))
+            },
+            onDismissRequest = { showDeviceLockNotSetupWarning = false },
+            confirmButton = {
+                TextButton(
+                    onClick = { showDeviceLockNotSetupWarning = false }
+                ) {
+                    Text(text = stringResource(R.string.add_cred_lskf_warning_dismiss_btn))
+                }
+            },
+        )
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
@@ -303,7 +356,12 @@ fun MainScreenNoCredentialsAvailable(onNavigate: (String) -> Unit) {
         horizontalArrangement = Arrangement.Center
     ) {
         Button(onClick = {
-            onNavigate(WalletDestination.AddToWallet.route)
+            if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
+                showDeviceLockNotSetupWarning = true
+            } else {
+                onNavigate(WalletDestination.AddToWallet.route)
+            }
+
         }) {
             Text(stringResource(R.string.wallet_screen_add))
         }
