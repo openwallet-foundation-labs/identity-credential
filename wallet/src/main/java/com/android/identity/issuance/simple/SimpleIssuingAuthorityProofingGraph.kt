@@ -41,8 +41,10 @@ class SimpleIssuingAuthorityProofingGraph {
     }
 
     /** Sends [EvidenceRequestQuestionString]. */
-    fun question(id: String, message: String, defaultValue: String, acceptButtonText: String) {
-        val evidenceRequest = EvidenceRequestQuestionString(message, defaultValue, acceptButtonText)
+    fun question(id: String, message: String, assets: Map<String, ByteArray>,
+                 defaultValue: String, acceptButtonText: String) {
+        val evidenceRequest = EvidenceRequestQuestionString(message, assets,
+            defaultValue, acceptButtonText)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 
@@ -51,10 +53,12 @@ class SimpleIssuingAuthorityProofingGraph {
      *
      * Branches can be configured using [Choices.on] calls.
      */
-    fun choice(id: String, message: String, acceptButtonText: String, initChoices: Choices.() -> Unit) {
+    fun choice(id: String, message: String, assets: Map<String, ByteArray>,
+               acceptButtonText: String, initChoices: Choices.() -> Unit) {
         val choices = Choices()
         choices.initChoices()
-        val request = EvidenceRequestQuestionMultipleChoice(message, choices.choices, acceptButtonText)
+        val request = EvidenceRequestQuestionMultipleChoice(message, assets,
+            choices.choices, acceptButtonText)
         chain.add { followUp ->
             MultipleChoiceNode(id, request, choices.graphs.mapValues { graph ->
                 graph.value.build(followUp)

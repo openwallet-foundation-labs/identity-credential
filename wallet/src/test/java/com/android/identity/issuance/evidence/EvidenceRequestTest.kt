@@ -46,6 +46,7 @@ class EvidenceRequestTest {
     fun cborSerialization_QuestionMultipleChoice() {
         val orig = EvidenceRequestQuestionMultipleChoice(
             "Lorem ipsum",
+            mapOf(),
             mapOf("three" to "3", "seven" to "7", "ace" to "1"),
             "foobar")
         val copy = EvidenceRequest.fromCbor(orig.toCbor())
@@ -56,6 +57,7 @@ class EvidenceRequestTest {
     fun cborSerialization_QuestionString() {
         val orig = EvidenceRequestQuestionString(
             "The meaning of life, the universe, and everything?",
+            mapOf(),
             "42",
             "continue")
         val copy = EvidenceRequest.fromCbor(orig.toCbor())

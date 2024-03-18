@@ -111,9 +111,10 @@ fun EvidenceRequestQuestionStringView(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        Text(
+        MarkdownText(
             modifier = Modifier.padding(8.dp),
-            text = evidenceRequest.message
+            content = evidenceRequest.message,
+            assets = evidenceRequest.assets
         )
     }
 
@@ -147,11 +148,10 @@ fun EvidenceRequestQuestionMultipleChoiceView(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        Text(
+        MarkdownText(
             modifier = Modifier.padding(8.dp),
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center,
-            text = evidenceRequest.message
+            content = evidenceRequest.message,
+            assets = evidenceRequest.assets
         )
     }
 

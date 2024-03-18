@@ -37,11 +37,13 @@ class SelfSignedMdlTest {
             ),
             EvidenceRequestQuestionString(
                 "What first name should be used for the mDL?",
+                mapOf(),
                 "Erika",
                 "Continue",
             ),
             EvidenceRequestQuestionMultipleChoice(
                 "Select the card art for the credential",
+                mapOf(),
                 mapOf("green" to "Green", "blue" to "Blue", "red" to "Red"),
                 "Continue",
             ),

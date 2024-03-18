@@ -56,10 +56,11 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
             question(
                 "name",
                 "What first name should be used for the mDL?",
+                mapOf(),
                 "Erika",
                 "Continue",
             )
-            choice("multi", "Select the card art for the credential", "Continue") {
+            choice("multi", "Select the card art for the credential", mapOf(),"Continue") {
                 on("green", "Green") {}
                 on("blue", "Blue") {}
                 on("red", "Red") {}

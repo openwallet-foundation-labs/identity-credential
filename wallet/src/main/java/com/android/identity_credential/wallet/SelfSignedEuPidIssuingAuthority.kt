@@ -69,6 +69,7 @@ class SelfSignedEuPidIssuingAuthority(
             choice(
                 id = "path",
                 message = resourceString(R.string.utopia_eu_pid_issuing_authority_hardcoded_or_derived),
+                assets = mapOf(),
                 acceptButtonText = "Continue"
             ) {
                 on(id = "hardcoded", text = resourceString(R.string.utopia_eu_pid_issuing_authority_hardcoded_option)) {
