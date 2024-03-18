@@ -269,10 +269,13 @@ class RequestOptionsFragment() : Fragment() {
     override fun onResume() {
         super.onResume()
         checkRequiredPermissions()
-        transferManager.setNdefDeviceEngagement(
-            NfcAdapter.getDefaultAdapter(requireContext()),
-            requireActivity()
-        )
+        val adapter = NfcAdapter.getDefaultAdapter(requireContext())
+        if (adapter != null) {
+            transferManager.setNdefDeviceEngagement(
+                adapter,
+                requireActivity()
+            )
+        }
     }
 
     private fun checkRequiredPermissions() {
