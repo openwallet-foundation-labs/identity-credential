@@ -29,6 +29,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -36,11 +37,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -155,6 +161,8 @@ fun MainScreenContent(
     drawerState: DrawerState,
     permissionTracker: PermissionTracker
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val haveRequiredPermissions = permissionTracker.granted(blePermissions)
     ScreenWithAppBar(title = stringResource(R.string.wallet_screen_title),
         navigationIcon = {
             IconButton(
@@ -172,22 +180,53 @@ fun MainScreenContent(
                     contentDescription = stringResource(R.string.accessibility_menu_icon)
                 )
             }
+        },
+        snackbarHost = {
+            if (!haveRequiredPermissions) {
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    snackbar = {
+                        Snackbar {
+                            Column {
+                                permissionTracker.PermissionRequests(blePermissions)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Button(
+                                        onClick = { it.dismiss() }) {
+                                        Text(stringResource(R.string.wallet_screen_permissions_dismiss))
+                                    }
+                                }
+                            }
+                        }
+                    })
+            }
+        },
+        floatingActionButton = {
+            if (!haveRequiredPermissions) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                "",
+                                duration = SnackbarDuration.Indefinite
+                            )
+                        }
+                    }
+                ) { Text(stringResource(R.string.wallet_screen_permissions)) }
+            }
         }) {
         if (cardViewModel.cards.isEmpty()) {
             MainScreenNoCredentialsAvailable(onNavigate)
         } else {
-            // TODO: this can be prettier
-            permissionTracker.PermissionRequests(blePermissions)
 
             Spacer(modifier = Modifier.weight(0.25f))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                permissionTracker.PermissionCheck(
-                    permissions = blePermissions,
-                    displayPermissionRequest = false
+            if (haveRequiredPermissions) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -206,34 +245,38 @@ fun MainScreenContent(
             }
 
             Spacer(modifier = Modifier.weight(0.25f))
+
             MainScreenCredentialPager(
                 onNavigate = onNavigate,
                 cardViewModel = cardViewModel,
                 settingsModel = settingsModel
             )
+
             Spacer(modifier = Modifier.weight(0.5f))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp, top = 8.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                // TODO: should that be hidden if no bluetooth permission available?
-                OutlinedButton(
-                    onClick = {
-                        qrEngagementViewModel.startQrEngagement()
-                        onNavigate(WalletDestination.QrEngagement.route)
-                    }
+
+            if (haveRequiredPermissions) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp, top = 8.dp),
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.qr_icon),
-                        contentDescription = stringResource(R.string.wallet_screen_qr_icon_content_description),
-                        modifier = Modifier.size(ButtonDefaults.IconSize)
-                    )
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(
-                        text = stringResource(R.string.wallet_screen_show_qr)
-                    )
+                    OutlinedButton(
+                        onClick = {
+                            qrEngagementViewModel.startQrEngagement()
+                            onNavigate(WalletDestination.QrEngagement.route)
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.qr_icon),
+                            contentDescription = stringResource(R.string.wallet_screen_qr_icon_content_description),
+                            modifier = Modifier.size(ButtonDefaults.IconSize)
+                        )
+                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
+                        Text(
+                            text = stringResource(R.string.wallet_screen_show_qr)
+                        )
+                    }
                 }
             }
         }

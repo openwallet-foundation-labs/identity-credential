@@ -26,6 +26,8 @@
     <string name="wallet_screen_show_qr">Show code</string>
     <string name="wallet_screen_empty">No documents in wallet, start by adding one</string>
     <string name="wallet_screen_add">Add to Wallet</string>
+    <string name="wallet_screen_permissions">Need permissions</string>
+    <string name="wallet_screen_permissions_dismiss">Dismiss</string>
 
     <!-- About screen -->
     <string name="about_screen_title">About Wallet</string>
