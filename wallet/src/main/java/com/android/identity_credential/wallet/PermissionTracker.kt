@@ -63,6 +63,19 @@ class PermissionTracker(private val activity: ComponentActivity, private val per
     }
 
     /**
+     * Check if the given set of permissions is granted.
+     */
+    @Composable
+    fun granted(permissions: Iterable<String>): Boolean {
+        for (permission in permissions) {
+            if (!mState[permission]!!.observeAsState().value!!) {
+                return false
+            }
+        }
+        return true
+    }
+
+    /**
      * Ensure that the given set of permissions is granted and show the given content.
      *
      * If some permissions are not granted, display permission request UI in place of the
@@ -71,14 +84,7 @@ class PermissionTracker(private val activity: ComponentActivity, private val per
     @Composable
     fun PermissionCheck(permissions: Iterable<String>, displayPermissionRequest: Boolean = true,
                         content: @Composable () -> Unit) {
-        var allGranted = true
-        for (permission in permissions) {
-            if (!mState[permission]!!.observeAsState().value!!) {
-                allGranted = false
-                break
-            }
-        }
-        if (allGranted) {
+        if (granted(permissions)) {
             content()
         } else if (displayPermissionRequest) {
             Column {

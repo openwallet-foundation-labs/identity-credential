@@ -43,6 +43,8 @@ fun ScreenWithAppBar(
     navigationIcon: @Composable () -> Unit,
     scrollable: Boolean = true,
     actions: @Composable() (RowScope.() -> Unit) = {},
+    snackbarHost: @Composable () -> Unit = {},
+    floatingActionButton: @Composable () -> Unit = {},
     body: @Composable ColumnScope.() -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
@@ -63,6 +65,8 @@ fun ScreenWithAppBar(
                 actions = actions,
             )
         },
+        snackbarHost = snackbarHost,
+        floatingActionButton = floatingActionButton
     ) { innerPadding ->
         var modifier = Modifier
             .fillMaxHeight()
