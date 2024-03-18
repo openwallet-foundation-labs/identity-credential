@@ -98,6 +98,7 @@ fun ConsentPrompt(
 
         Box(
             modifier = Modifier
+                .fillMaxHeight(0.8f)
                 .fillMaxWidth()
         ) {
             DataElementsListView(dataElements = consentDataElements)
