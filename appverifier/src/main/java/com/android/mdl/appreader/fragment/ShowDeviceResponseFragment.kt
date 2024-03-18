@@ -42,8 +42,8 @@ class ShowDeviceResponseFragment : Fragment() {
         private const val MICOV_DOCTYPE = "org.micov.1"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
         private const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
-        private const val EU_PID_DOCTYPE = "eu.europa.ec.eudiw.pid.1"
-        private const val EU_PID_NAMESPACE = "eu.europa.ec.eudiw.pid.1"
+        private const val EU_PID_DOCTYPE = "eu.europa.ec.eudi.pid.1"
+        private const val EU_PID_NAMESPACE = "eu.europa.ec.eudi.pid.1"
     }
 
     private val args: ShowDeviceResponseFragmentArgs by navArgs()
@@ -208,6 +208,7 @@ class ShowDeviceResponseFragment : Fragment() {
                             .getCredentialTypeForMdoc(doc.docType)
                             ?.mdocCredentialType
                             ?.namespaces?.get(ns)?.dataElements?.get(elem)
+                    println("mdocDataElement: $mdocDataElement")
                     if (isPortraitElement(doc.docType, ns, elem)) {
                         valueStr = String.format("(%d bytes, shown above)", value.size)
                         portraitBytes = doc.getIssuerEntryByteString(ns, elem)
@@ -219,14 +220,14 @@ class ShowDeviceResponseFragment : Fragment() {
                     } else if (doc.docType == MDL_DOCTYPE && ns == MDL_NAMESPACE && elem == "signature_usual_mark") {
                         valueStr = String.format("(%d bytes, shown below)", value.size)
                         signatureBytes = doc.getIssuerEntryByteString(ns, elem)
-                    } else if (doc.docType == EU_PID_DOCTYPE && ns == EU_PID_NAMESPACE && elem == "biometric_template_finger") {
-                        valueStr = String.format("%d bytes", value.size)
                     } else if (mdocDataElement != null) {
                         valueStr = mdocDataElement.renderValue(Cbor.decode(value))
                     } else {
                         valueStr = Cbor.toDiagnostics(value)
                     }
-                    sb.append("${getFormattedCheck(doc.getIssuerEntryDigestMatch(ns, elem))}<b>$elem</b> -> $valueStr<br>")
+                    val elemName = mdocDataElement?.attribute?.displayName ?: elem
+                    val checkMark = getFormattedCheck(doc.getIssuerEntryDigestMatch(ns, elem))
+                    sb.append("$checkMark<b>$elemName</b> -> $valueStr<br>")
                 }
                 sb.append("</p><br>")
             }
@@ -235,8 +236,8 @@ class ShowDeviceResponseFragment : Fragment() {
     }
 
     private fun isPortraitApplicable(docType: String, namespace: String?): Boolean{
-        val hasPortrait = docType == MDL_DOCTYPE || docType == EU_PID_DOCTYPE
-        val namespaceContainsPortrait = namespace == MDL_NAMESPACE || namespace == EU_PID_NAMESPACE
+        val hasPortrait = docType == MDL_DOCTYPE
+        val namespaceContainsPortrait = namespace == MDL_NAMESPACE
         return hasPortrait && namespaceContainsPortrait
     }
 

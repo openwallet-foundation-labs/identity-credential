@@ -130,6 +130,7 @@ class PresentationActivity : FragmentActivity() {
     // Define the Builder for building a TransferHelper once it gets new instance of DeviceRetrievalHelper
     private val transferHelperBuilder: TransferHelper.Builder by lazy {
         TransferHelper.Builder(
+            settingsModel = walletApp.settingsModel,
             credentialStore = walletApp.credentialStore,
             issuingAuthorityRepository = walletApp.issuingAuthorityRepository,
             trustManager = walletApp.trustManager,
@@ -248,6 +249,7 @@ class PresentationActivity : FragmentActivity() {
                                     consentPromptData.value = ConsentPromptData(
                                         credentialId = requestData.credential.name,
                                         documentName = requestData.credential.credentialConfiguration.displayName,
+                                        credentialData = requestData.credential.credentialConfiguration.staticData,
                                         credentialRequest = requestData.credentialRequest,
                                         docType = requestData.docType,
                                         verifier = requestData.trustPoint,

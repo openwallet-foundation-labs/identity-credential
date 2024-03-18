@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.CardViewModel
 import com.android.identity_credential.wallet.R
+import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
@@ -47,6 +48,7 @@ private const val TAG = "CardInfoScreen"
 fun CardInfoScreen(
     cardId: String,
     cardViewModel: CardViewModel,
+    settingsModel: SettingsModel,
     onNavigate: (String) -> Unit,
 ) {
     val card = cardViewModel.getCard(cardId)
@@ -115,20 +117,23 @@ fun CardInfoScreen(
                         showMenu = false
                     }
                 )
-                // Maybe only show this item in developer-mode
-                DropdownMenuItem(
-                    text = { Text(text = stringResource(R.string.card_info_screen_menu_item_show_keys)) },
-                    leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
-                    onClick = {
-                        onNavigate(WalletDestination.CardInfo.getRouteWithArguments(
-                            listOf(
-                                Pair(WalletDestination.CardInfo.Argument.CARD_ID, card.id),
-                                Pair(WalletDestination.CardInfo.Argument.SECTION, "keys")
+                if (settingsModel.developerModeEnabled.value == true) {
+                    DropdownMenuItem(
+                        text = { Text(text = stringResource(R.string.card_info_screen_menu_item_show_keys)) },
+                        leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
+                        onClick = {
+                            onNavigate(
+                                WalletDestination.CardInfo.getRouteWithArguments(
+                                    listOf(
+                                        Pair(WalletDestination.CardInfo.Argument.CARD_ID, card.id),
+                                        Pair(WalletDestination.CardInfo.Argument.SECTION, "keys")
+                                    )
+                                )
                             )
-                        ))
-                        showMenu = false
-                    }
-                )
+                            showMenu = false
+                        }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(text = stringResource(R.string.card_info_screen_menu_item_delete)) },
                     leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },

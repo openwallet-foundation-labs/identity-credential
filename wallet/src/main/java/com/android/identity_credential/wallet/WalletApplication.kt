@@ -9,6 +9,7 @@ import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.credential.CredentialStore
 import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.credentialtype.knowntypes.DrivingLicense
+import com.android.identity.credentialtype.knowntypes.EUPersonalID
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.IssuingAuthorityRepository
@@ -25,10 +26,7 @@ class WalletApplication : Application() {
     companion object {
         private const val TAG = "WalletApplication"
 
-        // Preference names
         const val AUTH_KEY_DOMAIN = "mdoc/MSO"
-        const val PREFERENCE_CURRENT_CREDENTIAL_ID = "current_credential_id"
-        const val LOG_TO_FILE = "log_to_file"
     }
 
 
@@ -45,7 +43,7 @@ class WalletApplication : Application() {
     lateinit var issuingAuthorityRepository: IssuingAuthorityRepository
     lateinit var secureAreaRepository: SecureAreaRepository
     lateinit var credentialStore: CredentialStore
-    lateinit var loggerModel: LoggerModel
+    lateinit var settingsModel: SettingsModel
     lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
 
     override fun onCreate() {
@@ -57,13 +55,12 @@ class WalletApplication : Application() {
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
 
-        // init LoggerModel
-        loggerModel = LoggerModel(this, sharedPreferences)
-        loggerModel.init()
+        settingsModel = SettingsModel(this, sharedPreferences)
 
         // init CredentialTypeRepository
         credentialTypeRepository = CredentialTypeRepository()
         credentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
+        credentialTypeRepository.addCredentialType(EUPersonalID.getCredentialType())
 
         // secure storage properties
         val storageDir = File(applicationContext.noBackupFilesDir, "identity")
@@ -82,6 +79,7 @@ class WalletApplication : Application() {
         // init IssuingAuthorityRepository
         issuingAuthorityRepository = IssuingAuthorityRepository().apply {
             add(SelfSignedMdlIssuingAuthority(this@WalletApplication, storageEngine))
+            add(SelfSignedEuPidIssuingAuthority(this@WalletApplication, storageEngine))
         }
 
         // init TrustManager

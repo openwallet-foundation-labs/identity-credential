@@ -6,7 +6,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -69,11 +74,19 @@ fun QrEngagementScreen(
 
             QrEngagementViewModel.State.LISTENING -> {
                 val deviceEngagementUriEncoded = qrEngagementViewModel.qrCode
-                Box(modifier = Modifier.fillMaxSize()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+
+                    Text(text = stringResource(R.string.qr_instructions))
+
+                    Spacer(modifier = Modifier.height(50.dp))
+
                     Image(
                         bitmap = encodeQRCodeAsBitmap(deviceEngagementUriEncoded).asImageBitmap(),
                         contentDescription = stringResource(R.string.accessibility_qr_code),
-                        modifier = Modifier.align(Alignment.Center)
+                        modifier = Modifier.fillMaxWidth(0.75f)
                     )
                 }
             }
@@ -119,7 +132,7 @@ fun QrEngagementScreen(
     }
 }
 
-fun encodeQRCodeAsBitmap(str: String): Bitmap {
+private fun encodeQRCodeAsBitmap(str: String): Bitmap {
     val width = 800
     val result: BitMatrix = try {
         MultiFormatWriter().encode(

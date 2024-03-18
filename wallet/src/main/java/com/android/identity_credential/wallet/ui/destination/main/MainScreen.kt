@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet.ui.destination.main
 
 import android.Manifest
-import android.content.SharedPreferences
 import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -24,26 +23,34 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
@@ -53,6 +60,7 @@ import com.android.identity_credential.wallet.CardViewModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.R
+import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
@@ -67,7 +75,7 @@ fun MainScreen(
     credentialStore: CredentialStore,
     qrEngagementViewModel: QrEngagementViewModel,
     cardViewModel: CardViewModel,
-    sharedPreferences: SharedPreferences,
+    settingsModel: SettingsModel,
     permissionTracker: PermissionTracker
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -90,6 +98,17 @@ fun MainScreen(
                     }
                 )
                 NavigationDrawerItem(
+                    icon = { Icon(imageVector = Icons.Filled.Settings, contentDescription = null) },
+                    label = { Text(text = stringResource(R.string.wallet_drawer_settings)) },
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onNavigate(WalletDestination.Settings.route)
+                        }
+                    }
+                )
+                NavigationDrawerItem(
                     icon = { Icon(imageVector = Icons.Filled.Info, contentDescription = null) },
                     label = { Text(text = stringResource(R.string.wallet_drawer_about)) },
                     selected = false,
@@ -106,7 +125,7 @@ fun MainScreen(
         MainScreenContent(
             onNavigate = onNavigate,
             credentialStore = credentialStore,
-            sharedPreferences = sharedPreferences,
+            settingsModel = settingsModel,
             qrEngagementViewModel = qrEngagementViewModel,
             cardViewModel = cardViewModel,
             scope = scope,
@@ -129,7 +148,7 @@ val blePermissions: List<String> = if (Build.VERSION.SDK_INT >= 31) {
 fun MainScreenContent(
     onNavigate: (String) -> Unit,
     credentialStore: CredentialStore,
-    sharedPreferences: SharedPreferences,
+    settingsModel: SettingsModel,
     qrEngagementViewModel: QrEngagementViewModel,
     cardViewModel: CardViewModel,
     scope: CoroutineScope,
@@ -159,12 +178,9 @@ fun MainScreenContent(
         } else {
             // TODO: this can be prettier
             permissionTracker.PermissionRequests(blePermissions)
-            Spacer(modifier = Modifier.weight(0.5f))
-            MainScreenCredentialPager(
-                onNavigate = onNavigate,
-                cardViewModel = cardViewModel,
-                sharedPreferences = sharedPreferences
-            )
+
+            Spacer(modifier = Modifier.weight(0.25f))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -173,12 +189,28 @@ fun MainScreenContent(
                     permissions = blePermissions,
                     displayPermissionRequest = false
                 ) {
-                    Text(
-                        modifier = Modifier.padding(8.dp),
-                        text = stringResource(R.string.wallet_screen_hold_to_reader)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.nfc_icon),
+                            contentDescription = stringResource(R.string.wallet_screen_nfc_icon_content_description),
+                            modifier = Modifier.size(96.dp),
+                        )
+                        Text(
+                            modifier = Modifier.padding(8.dp),
+                            text = stringResource(R.string.wallet_screen_nfc_presentation_instructions),
+                        )
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.weight(0.25f))
+            MainScreenCredentialPager(
+                onNavigate = onNavigate,
+                cardViewModel = cardViewModel,
+                settingsModel = settingsModel
+            )
             Spacer(modifier = Modifier.weight(0.5f))
             Row(
                 modifier = Modifier
@@ -187,12 +219,18 @@ fun MainScreenContent(
                 horizontalArrangement = Arrangement.Center
             ) {
                 // TODO: should that be hidden if no bluetooth permission available?
-                Button(
+                OutlinedButton(
                     onClick = {
                         qrEngagementViewModel.startQrEngagement()
                         onNavigate(WalletDestination.QrEngagement.route)
                     }
                 ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.qr_icon),
+                        contentDescription = stringResource(R.string.wallet_screen_qr_icon_content_description),
+                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                    )
+                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
                     Text(
                         text = stringResource(R.string.wallet_screen_show_qr)
                     )
@@ -234,18 +272,16 @@ fun MainScreenNoCredentialsAvailable(onNavigate: (String) -> Unit) {
 fun MainScreenCredentialPager(
     onNavigate: (String) -> Unit,
     cardViewModel: CardViewModel,
-    sharedPreferences: SharedPreferences,
+    settingsModel: SettingsModel,
 ) {
-    val pagerState = rememberPagerState(pageCount = { cardViewModel.cards.size })
+    val pagerState = rememberPagerState(
+        initialPage = cardViewModel.getCardIndex(settingsModel.focusedCardId.value!!) ?: 0,
+        pageCount = { cardViewModel.cards.size }
+    )
 
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
-            sharedPreferences.edit {
-                putString(
-                    WalletApplication.PREFERENCE_CURRENT_CREDENTIAL_ID,
-                    cardViewModel.cards[page].id
-                )
-            }
+            settingsModel.focusedCardId.value = cardViewModel.cards[page].id
         }
     }
 
