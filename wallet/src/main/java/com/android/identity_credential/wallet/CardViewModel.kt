@@ -338,6 +338,9 @@ class CardViewModel : ViewModel() {
         secureAreaRepository: SecureAreaRepository,
         credentialTypeRepository: CredentialTypeRepository
     ) {
+        if (this::context.isInitialized) {
+            return
+        }
         this.context = context
         this.credentialStore = credentialStore
         this.issuingAuthorityRepository = issuingAuthorityRepository
