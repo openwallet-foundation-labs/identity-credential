@@ -290,7 +290,7 @@ class DataTransportWifiAware(
                             serviceSpecificInfo: ByteArray, matchFilter: List<ByteArray>
                         ) {
                             Logger.dHex(TAG, "onServiceDiscovered: peer: $peerHandle "
-                                        + " serviceSpecificInfo: ", serviceSpecificInfo)
+                                    + " serviceSpecificInfo: ", serviceSpecificInfo)
                             mSubscribeDiscoverySession!!.sendMessage(
                                 peerHandle,
                                 0,
@@ -300,7 +300,7 @@ class DataTransportWifiAware(
 
                         override fun onMessageReceived(peerHandle: PeerHandle, message: ByteArray) {
                             Logger.dHex(TAG, "onMessageReceived: peer: $peerHandle"
-                                        + " message: ", message)
+                                    + " message: ", message)
                             initiatorOnMessageReceived(mSubscribeDiscoverySession, peerHandle)
                         }
                     }, null)
@@ -382,8 +382,7 @@ class DataTransportWifiAware(
 
         // peerIpv6.getHostAddress() returns something like "fe80::75:baff:fedd:ce16%aware_data0",
         // this is how we get rid of it...
-        val strippedAddress: InetAddress
-        strippedAddress = try {
+        val strippedAddress: InetAddress = try {
             InetAddress.getByAddress(peerIpv6!!.address)
         } catch (e: UnknownHostException) {
             reportError(e)
@@ -459,8 +458,7 @@ class DataTransportWifiAware(
     }
 
     fun writeToSocket(isListener: Boolean, socket: Socket?) {
-        val os: OutputStream
-        os = try {
+        val os: OutputStream = try {
             socket!!.getOutputStream()
         } catch (e: IOException) {
             reportError(e)
@@ -635,13 +633,11 @@ Content-Type: application/CBOR
             cm: ConnectionMethodWifiAware,
             role: Role,
             options: DataTransportOptions
-        ): DataTransport {
-            val t = DataTransportWifiAware(context, role, cm, options)
+        ): DataTransport = DataTransportWifiAware(context, role, cm, options).apply {
             if (cm.passphraseInfoPassphrase != null) {
-                t.setPassphrase(cm.passphraseInfoPassphrase!!)
+                setPassphrase(cm.passphraseInfoPassphrase!!)
             }
             // TODO: set mBandInfoSupportedBands, mChannelInfoChannelNumber, mChannelInfoOperatingClass
-            return t
         }
 
         fun toNdefRecord(
@@ -651,70 +647,73 @@ Content-Type: application/CBOR
         ): Pair<NdefRecord, ByteArray>? {
             // The NdefRecord and its OOB data is defined in "Wi-Fi Aware Specification", table 142.
             //
-            var baos = ByteArrayOutputStream()
-            try {
-                // TODO: use mCipherSuites
-                val cipherSuites = Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128
+            val oobData = ByteArrayOutputStream().run {
+                try {
+                    // TODO: use mCipherSuites
+                    val cipherSuites = Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128
 
-                // Spec says: The NFC Handover Selector shall include the Cipher Suite Info field
-                // with one or multiple NAN Cipher Suite IDs in the WiFi Aware Carrier Configuration
-                // Record to indicate the supported NAN cipher suite(s)."
-                //
-                var numCipherSuitesSupported = 0
-                if (cipherSuites and Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128 != 0) {
-                    numCipherSuitesSupported++
-                }
-                if (cipherSuites and Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256 != 0) {
-                    numCipherSuitesSupported++
-                }
-                baos.write(1 + numCipherSuitesSupported)
-                baos.write(0x01) // Data Type 0x01 - Cipher Suite Info
-                if (cipherSuites and Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128 != 0) {
-                    baos.write(0x01) // NCS-SK-128
-                }
-                if (cipherSuites and Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256 != 0) {
-                    baos.write(0x02) // NCS-SK-256
-                }
+                    // Spec says: The NFC Handover Selector shall include the Cipher Suite Info field
+                    // with one or multiple NAN Cipher Suite IDs in the WiFi Aware Carrier Configuration
+                    // Record to indicate the supported NAN cipher suite(s)."
+                    //
+                    var numCipherSuitesSupported = 0
+                    if (cipherSuites and Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128 != 0) {
+                        numCipherSuitesSupported++
+                    }
+                    if (cipherSuites and Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256 != 0) {
+                        numCipherSuitesSupported++
+                    }
+                    write(1 + numCipherSuitesSupported)
+                    write(0x01) // Data Type 0x01 - Cipher Suite Info
+                    if (cipherSuites and Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_128 != 0) {
+                        write(0x01) // NCS-SK-128
+                    }
+                    if (cipherSuites and Characteristics.WIFI_AWARE_CIPHER_SUITE_NCS_SK_256 != 0) {
+                        write(0x02) // NCS-SK-256
+                    }
 
-                // Spec says: "If the NFC Handover Selector indicates an NCS-SK cipher suite, it
-                // shall include a Pass-phrase Info field in the Wi-Fi Aware Carrier Configuration Record
-                // to specify the selected pass-phrase for the supported cipher suite."
-                //
-                // Additionally, 18013-5 says: "If NFC is used for device engagement, either the
-                // Pass-phrase Info or the DH Info shall be explicitly transferred from the mdoc to
-                // the mdoc reader during device engagement according to the Wi-Fi Alliance
-                // Neighbor Awareness Networking Specification section 12."
-                //
-                if (cm.passphraseInfoPassphrase != null) {
-                    val encodedPassphrase = cm.passphraseInfoPassphrase!!.toByteArray(
-                        
-                    )
-                    baos.write(1 + encodedPassphrase.size)
-                    baos.write(0x03) // Data Type 0x03 - Pass-phrase Info
-                    baos.write(encodedPassphrase)
-                }
+                    // Spec says: "If the NFC Handover Selector indicates an NCS-SK cipher suite, it
+                    // shall include a Pass-phrase Info field in the Wi-Fi Aware Carrier Configuration Record
+                    // to specify the selected pass-phrase for the supported cipher suite."
+                    //
+                    // Additionally, 18013-5 says: "If NFC is used for device engagement, either the
+                    // Pass-phrase Info or the DH Info shall be explicitly transferred from the mdoc to
+                    // the mdoc reader during device engagement according to the Wi-Fi Alliance
+                    // Neighbor Awareness Networking Specification section 12."
+                    //
+                    if (cm.passphraseInfoPassphrase != null) {
+                        val encodedPassphrase = cm.passphraseInfoPassphrase!!.toByteArray(
 
-                // Spec says: "The NFC Handover Selector shall also include a Band Info field in the
-                // Wi-Fi Aware Configuration Record to indicate the supported NAN operating band
-                // (s)."
-                //
-                if (cm.bandInfoSupportedBands != null) {
-                    baos.write(1 + cm.bandInfoSupportedBands!!.size)
-                    baos.write(0x04) // Data Type 0x04 - Band Info
-                    baos.write(cm.bandInfoSupportedBands)
-                }
+                        )
+                        write(1 + encodedPassphrase.size)
+                        write(0x03) // Data Type 0x03 - Pass-phrase Info
+                        write(encodedPassphrase)
+                    }
 
-                // Spec says: "The Channel Info field serves as a placeholder for future
-                // extension, and
-                // may optionally be included in the Wi-Fi Aware Carrier Configuration Record in the
-                // NFC Handover Select message."
-                //
-                // We don't include this for now.
-                //
-            } catch (e: IOException) {
-                throw IllegalStateException(e)
+                    // Spec says: "The NFC Handover Selector shall also include a Band Info field in the
+                    // Wi-Fi Aware Configuration Record to indicate the supported NAN operating band
+                    // (s)."
+                    //
+                    if (cm.bandInfoSupportedBands != null) {
+                        write(1 + cm.bandInfoSupportedBands!!.size)
+                        write(0x04) // Data Type 0x04 - Band Info
+                        write(cm.bandInfoSupportedBands)
+                    }
+
+                    // Spec says: "The Channel Info field serves as a placeholder for future
+                    // extension, and
+                    // may optionally be included in the Wi-Fi Aware Carrier Configuration Record in the
+                    // NFC Handover Select message."
+                    //
+                    // We don't include this for now.
+                    //
+                } catch (e: IOException) {
+                    throw IllegalStateException(e)
+
+                }
+                toByteArray()
             }
-            val oobData = baos.toByteArray()
+
             val record = NdefRecord(
                 NdefRecord.TNF_MIME_MEDIA,
                 "application/vnd.wfa.nan".toByteArray(),
@@ -724,18 +723,19 @@ Content-Type: application/CBOR
 
             // From 7.1 Alternative Carrier Record
             //
-            baos = ByteArrayOutputStream()
-            baos.write(0x01) // CPS: active
-            baos.write(0x01) // Length of carrier data reference ("0")
-            baos.write('W'.code) // Carrier data reference
-            for (auxRef in auxiliaryReferences) {
-                // Each auxiliary reference consists of a single byte for the length and then as
-                // many bytes for the reference itself.
-                val auxRefUtf8 = auxRef.toByteArray()
-                baos.write(auxRefUtf8.size)
-                baos.write(auxRefUtf8, 0, auxRefUtf8.size)
+            val acRecordPayload = ByteArrayOutputStream().run {
+                write(0x01) // CPS: active
+                write(0x01) // Length of carrier data reference ("0")
+                write('W'.code) // Carrier data reference
+                for (auxRef in auxiliaryReferences) {
+                    // Each auxiliary reference consists of a single byte for the length and then as
+                    // many bytes for the reference itself.
+                    val auxRefUtf8 = auxRef.toByteArray()
+                    write(auxRefUtf8.size)
+                    write(auxRefUtf8, 0, auxRefUtf8.size)
+                }
+                toByteArray()
             }
-            val acRecordPayload = baos.toByteArray()
             return Pair(record, acRecordPayload)
         }
     }

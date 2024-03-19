@@ -65,9 +65,11 @@ class NfcEngagementHandler : HostApduService() {
         override fun onDeviceConnected(transport: DataTransport) {
             Logger.i(TAG, "onDeviceConnected")
 
-            PresentationActivity.startPresentation(applicationContext, transport,
+            PresentationActivity.startPresentation(
+                applicationContext, transport,
                 engagementHelper!!.handover, eDeviceKey,
-                engagementHelper!!.deviceEngagement)
+                engagementHelper!!.deviceEngagement
+            )
 
             engagementHelper?.close()
             engagementHelper = null
@@ -86,19 +88,20 @@ class NfcEngagementHandler : HostApduService() {
 
         val application: WalletApplication = application as WalletApplication
 
-        if (application.credentialStore.listCredentials().size > 0
-            && !PresentationActivity.isPresentationActive()) {
-
+        if (application.credentialStore.listCredentials().isNotEmpty()
+            && !PresentationActivity.isPresentationActive()
+        ) {
             val options = DataTransportOptions.Builder().build()
-            val builder = NfcEngagementHelper.Builder(
-                applicationContext,
-                eDeviceKey.publicKey,
-                options,
-                nfcEngagementListener,
-                ContextCompat.getMainExecutor(applicationContext)
-            )
-            builder.useNegotiatedHandover()
-            engagementHelper = builder.build()
+            engagementHelper = NfcEngagementHelper
+                .Builder(
+                    context = applicationContext,
+                    eDeviceKey = eDeviceKey.publicKey,
+                    options = options,
+                    listener = nfcEngagementListener,
+                    executor = ContextCompat.getMainExecutor(applicationContext)
+                )
+                .useNegotiatedHandover()
+                .build()
         }
     }
 
@@ -124,9 +127,9 @@ class NfcEngagementHandler : HostApduService() {
         //
         val timeoutSeconds = 15
         Handler(Looper.getMainLooper()).postDelayed({
-            if (engagementHelper != null) {
+            engagementHelper?.run {
                 Logger.w(TAG, "Reader didn't connect inside $timeoutSeconds seconds, closing")
-                engagementHelper!!.close()
+                close()
             }
         }, timeoutSeconds * 1000L)
     }

@@ -7,23 +7,25 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 
 class ConnectionMethodUdp(val host: String, val port: Int) : ConnectionMethod() {
 
-    override fun toDeviceEngagement(): ByteArray {
-        val mapBuilder = CborMap.builder()
-        mapBuilder.put(OPTION_KEY_HOST, host)
-        mapBuilder.put(OPTION_KEY_PORT, port.toLong())
-        return Cbor.encode(
+    override fun toDeviceEngagement(): ByteArray =
+        Cbor.encode(
             CborArray.builder()
                 .add(METHOD_TYPE)
                 .add(METHOD_MAX_VERSION)
-                .add(mapBuilder.end().build())
+                .add(
+                    CborMap.builder().apply {
+                        put(OPTION_KEY_HOST, host)
+                        put(OPTION_KEY_PORT, port.toLong())
+                    }
+                        .end()
+                        .build()
+                )
                 .end()
                 .build()
         )
-    }
 
-    override fun toString(): String {
-        return "udp:host=$host:port=$port"
-    }
+
+    override fun toString(): String = "udp:host=$host:port=$port"
 
     companion object {
         // NOTE: 18013-5 only allows positive integers, but our codebase also supports negative
@@ -33,19 +35,21 @@ class ConnectionMethodUdp(val host: String, val port: Int) : ConnectionMethod() 
 
         private const val OPTION_KEY_HOST = 0L
         private const val OPTION_KEY_PORT = 1L
+
         @JvmStatic
-        fun fromDeviceEngagementUdp(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodUdp? {
-            val array = Cbor.decode(encodedDeviceRetrievalMethod).asArray
-            val type = array[0].asNumber
-            val version = array[1].asNumber
-            require(type == METHOD_TYPE)
-            if (version > METHOD_MAX_VERSION) {
-                return null
+        fun fromDeviceEngagementUdp(encodedDeviceRetrievalMethod: ByteArray): ConnectionMethodUdp? =
+            Cbor.decode(encodedDeviceRetrievalMethod).asArray.let { array ->
+                val version = array[1].asNumber
+                if (version > METHOD_MAX_VERSION) {
+                    return null
+                }
+                val type = array[0].asNumber
+                require(type == METHOD_TYPE)
+
+                val map = array[2]
+                val host = map[OPTION_KEY_HOST].asTstr
+                val port = map[OPTION_KEY_PORT].asNumber
+                ConnectionMethodUdp(host, port.toInt())
             }
-            val map = array[2]
-            val host = map[OPTION_KEY_HOST].asTstr
-            val port = map[OPTION_KEY_PORT].asNumber
-            return ConnectionMethodUdp(host, port.toInt())
-        }
     }
 }

@@ -20,7 +20,7 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-class QrEngagementViewModel(val context: Application) : AndroidViewModel(context)  {
+class QrEngagementViewModel(val context: Application) : AndroidViewModel(context) {
     companion object {
         private const val TAG = "QrEngagementViewModel"
     }
@@ -46,7 +46,7 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
         state = State.STARTING
 
         viewModelScope.launch(
-            CoroutineExceptionHandler{ _, exception ->
+            CoroutineExceptionHandler { _, exception ->
                 Logger.e(TAG, "CoroutineExceptionHandler got $exception")
                 stopQrConnection()
                 state = State.ERROR
@@ -63,9 +63,11 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
                     Logger.i(TAG, "OnDeviceConnected via QR: qrEngagement=$qrEngagementHelper")
 
                     state = State.CONNECTED
-                    PresentationActivity.startPresentation(context, transport,
+                    PresentationActivity.startPresentation(
+                        context, transport,
                         qrEngagementHelper!!.handover, eDeviceKey!!,
-                        qrEngagementHelper!!.deviceEngagement)
+                        qrEngagementHelper!!.deviceEngagement
+                    )
 
                     qrEngagementHelper?.close()
                     qrEngagementHelper = null
@@ -83,18 +85,20 @@ class QrEngagementViewModel(val context: Application) : AndroidViewModel(context
             val bleUuid = UUID.randomUUID()
             connectionMethods.add(
                 ConnectionMethodBle(
-                    false,
-                    true,
-                    null,
-                    bleUuid
+                    supportsPeripheralServerMode = false,
+                    supportsCentralClientMode = true,
+                    peripheralServerModeUuid = null,
+                    centralClientModeUuid = bleUuid
                 )
             )
+
             qrEngagementHelper = QrEngagementHelper.Builder(
-                context,
-                eDeviceKey!!.publicKey,
-                options,
-                qrEngagementListener,
-                ContextCompat.getMainExecutor(context)
+                context = context,
+                eDeviceKey = eDeviceKey!!.publicKey,
+                options = options,
+                listener = qrEngagementListener,
+                // TODO replace ContextCompat.getMainExecutor with coroutines
+                executor = ContextCompat.getMainExecutor(context)
             ).setConnectionMethods(connectionMethods).build()
             state = State.LISTENING
         }

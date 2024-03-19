@@ -9,25 +9,20 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.mdoc.connectionmethod.ConnectionMethod
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
-import com.android.identity.android.mdoc.transport.DataTransportOptions
-import com.android.identity.mdoc.request.DeviceRequestGenerator
-import com.android.identity.mdoc.response.DeviceResponseParser
-import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
 import androidx.preference.PreferenceManager
+import com.android.identity.android.mdoc.deviceretrieval.VerificationHelper
+import com.android.identity.android.mdoc.transport.DataTransportOptions
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
-import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.javaPrivateKey
-import com.android.identity.crypto.javaPublicKey
-import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.crypto.toEcPrivateKey
-import com.android.identity.crypto.toEcPublicKey
+import com.android.identity.mdoc.connectionmethod.ConnectionMethod
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodBle
+import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
+import com.android.identity.mdoc.request.DeviceRequestGenerator
+import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.readercertgen.ReaderCertificateGenerator
@@ -37,9 +32,7 @@ import com.android.mdl.appreader.util.KeysAndCertificates
 import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import com.android.mdl.appreader.util.logError
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.KeyFactory
-import java.security.KeyPair
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.cert.X509Certificate
@@ -80,55 +73,59 @@ class TransferManager private constructor(private val context: Context) {
     fun getTransferStatus(): LiveData<TransferStatus> = transferStatusLd
 
     fun initVerificationHelper() {
-        val builder = VerificationHelper.Builder(
-            context,
-            responseListener,
-            context.mainExecutor()
-        )
+
         val options = DataTransportOptions.Builder()
             .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
             .setBleClearCache(userPreferences.isBleClearCacheEnabled())
             .build()
 
-        // TODO: read from settings - for now, just hardcode BLE central client mode
-        //  as the only connection-method we over for Negotiated Handover...
-        //
-        val negotiatedHandoverConnectionMethods = mutableListOf<ConnectionMethod>()
-        val bleUuid = UUID.randomUUID()
-        negotiatedHandoverConnectionMethods.add(
-            ConnectionMethodBle(
-                false,
-                true,
-                null,
-                bleUuid
+        verification = VerificationHelper
+            .Builder(
+                context = context,
+                listener = responseListener,
+                executor = context.mainExecutor()
             )
-        )
-        builder.setNegotiatedHandoverConnectionMethods(negotiatedHandoverConnectionMethods)
+            .setNegotiatedHandoverConnectionMethods(
+                // TODO: read from settings - for now, just hardcode BLE central client mode
+                //  as the only connection-method we over for Negotiated Handover...
+                //
+                listOf(
+                    ConnectionMethodBle(
+                        supportsPeripheralServerMode = false,
+                        supportsCentralClientMode = true,
+                        peripheralServerModeUuid = null,
+                        centralClientModeUuid = UUID.randomUUID()
+                    )
+                )
+            )
+            .setDataTransportOptions(options = options)
+            .build()
 
-        builder.setDataTransportOptions(options)
-        verification = builder.build()
         usingReverseEngagement = false
     }
 
     fun initVerificationHelperReverseEngagement() {
-        val builder = VerificationHelper.Builder(
-            context,
-            responseListener,
-            context.mainExecutor()
-        )
         val options = DataTransportOptions.Builder()
             .setBleUseL2CAP(userPreferences.isBleL2capEnabled())
             .setBleClearCache(userPreferences.isBleClearCacheEnabled())
             .build()
-        builder.setDataTransportOptions(options)
-        val methods = ArrayList<ConnectionMethod>()
-        // Passing the empty URI in means that DataTransportHttp will use local IP as host
-        // and the dynamically allocated TCP port as port. So the resulting ConnectionMethodHttp
-        // which will be included in ReaderEngagement CBOR will contain an URI of the
-        // form http://192.168.1.2:18013/mdocreader
-        methods.add(ConnectionMethodHttp(""))
-        builder.setUseReverseEngagement(methods)
-        verification = builder.build()
+
+        verification = VerificationHelper
+            .Builder(
+                context = context,
+                listener = responseListener,
+                executor = context.mainExecutor()
+            )
+            .setDataTransportOptions(options)
+            .setUseReverseEngagement(
+                listOf(
+                    // Passing the empty URI in means that DataTransportHttp will use local IP as host
+                    // and the dynamically allocated TCP port as port. So the resulting ConnectionMethodHttp
+                    // which will be included in ReaderEngagement CBOR will contain an URI of the
+                    // form http://192.168.1.2:18013/mdocreader
+                    ConnectionMethodHttp("")
+                )
+            ).build()
         usingReverseEngagement = true
     }
 
@@ -248,13 +245,14 @@ class TransferManager private constructor(private val context: Context) {
         }
     }
 
-    private fun Context.mainExecutor(): Executor {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+
+    private fun Context.mainExecutor(): Executor =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             mainExecutor
         } else {
+            // TODO replace uses of ContextCompat.getMainExecutor with Coroutine Scope
             ContextCompat.getMainExecutor(context)
         }
-    }
 
     fun sendRequest(requestDocumentList: RequestDocumentList) {
         if (verification == null)
@@ -299,7 +297,9 @@ class TransferManager private constructor(private val context: Context) {
                 signatureAlgorithm = curve.defaultSigningAlgorithm
                 readerKey = Crypto.createEcPrivateKey(curve)
 
-                val (readerCaCert, readerCaPrivateKey) = KeysAndCertificates.getReaderAuthority(context)
+                val (readerCaCert, readerCaPrivateKey) = KeysAndCertificates.getReaderAuthority(
+                    context
+                )
                 val readerCertificate =
                     ReaderCertificateGenerator.createReaderCertificate(
                         readerKey,
@@ -348,15 +348,17 @@ class TransferManager private constructor(private val context: Context) {
         this.mdocConnectionMethod = connectionMethod
     }
 
-    fun getDeviceResponse(): DeviceResponseParser.DeviceResponse {
+    fun getDeviceResponse(): DeviceResponseParser.DeviceResponse =
         responseBytes?.let { rb ->
             verification?.let { v ->
-                val parser = DeviceResponseParser(rb, v.sessionTranscript)
-                parser.setEphemeralReaderKey(v.eReaderKey)
-                return parser.parse()
+                DeviceResponseParser(rb, v.sessionTranscript)
+                    .run {
+                        setEphemeralReaderKey(v.eReaderKey)
+                        parse()
+                    }
             } ?: throw IllegalStateException("Verification is null")
         } ?: throw IllegalStateException("Response not received")
-    }
+    
 
     fun getMdocSessionEncryptionCurve(): EcCurve = verification!!.eReaderKey.curve
 

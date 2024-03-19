@@ -24,7 +24,6 @@ import com.android.identity.mdoc.connectionmethod.ConnectionMethodHttp
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodNfc
 import com.android.identity.mdoc.connectionmethod.ConnectionMethodWifiAware
 import java.util.ArrayDeque
-import java.util.Queue
 import java.util.concurrent.Executor
 
 /**
@@ -47,11 +46,13 @@ import java.util.concurrent.Executor
  *
  *
  * This class can be used to implement both provers and verifiers.
+ *
+ *
  */
 abstract class DataTransport(
     protected val context: Context,
     val role: Role,
-    protected val options: DataTransportOptions
+    protected val options: DataTransportOptions,
 ) {
     /**
      * Enumeration for the two different sides of a transport.
@@ -65,9 +66,17 @@ abstract class DataTransport(
     }
 
     var inhibitCallbacks = false
-    private var listener: Listener? = null
+
+    // nullable backing field for listener
+    private var _listener: Listener? = null
+
+    // non-null listener
+    private val listener: Listener
+        get() = _listener!!
+
     private var listenerExecutor: Executor? = null
-    private val messageReceivedQueue: Queue<ByteArray> = ArrayDeque()
+
+    private val messageReceivedQueue = ArrayDeque<ByteArray>()
 
     /**
      * A [ConnectionMethod] instance that can be used to connect to this transport.
@@ -158,7 +167,7 @@ abstract class DataTransport(
      */
     fun setListener(listener: Listener?, executor: Executor?) {
         check(!(listener != null && executor == null)) { "Passing null Executor for non-null Listener" }
-        this.listener = listener
+        _listener = listener
         listenerExecutor = executor
     }
 
@@ -179,6 +188,9 @@ abstract class DataTransport(
         private set
 
     // Note: The report*() methods are safe to call from any thread.
+
+    // TODO replace executor.execute calls with coroutines
+
     protected fun reportConnecting() {
         val listener = listener
         val executor = listenerExecutor
@@ -330,57 +342,70 @@ abstract class DataTransport(
             connectionMethod: ConnectionMethod,
             role: Role,
             options: DataTransportOptions
-        ): DataTransport {
+        ): DataTransport =
             // TODO: move this to DataTransportFactory
-            return if (connectionMethod is ConnectionMethodBle) {
-                DataTransportBle.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else if (connectionMethod is ConnectionMethodNfc) {
-                DataTransportNfc.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else if (connectionMethod is ConnectionMethodWifiAware) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    DataTransportWifiAware.fromConnectionMethod(
+            when (connectionMethod) {
+                is ConnectionMethodBle -> {
+                    DataTransportBle.fromConnectionMethod(
                         context,
                         connectionMethod,
                         role,
                         options
                     )
-                } else {
-                    throw IllegalStateException("Wifi Aware is not supported")
                 }
-            } else if (connectionMethod is ConnectionMethodHttp) {
-                DataTransportHttp.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else if (connectionMethod is ConnectionMethodTcp) {
-                DataTransportTcp.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else if (connectionMethod is ConnectionMethodUdp) {
-                DataTransportUdp.fromConnectionMethod(
-                    context,
-                    connectionMethod,
-                    role,
-                    options
-                )
-            } else {
-                throw IllegalArgumentException("Unknown ConnectionMethod")
+
+                is ConnectionMethodNfc -> {
+                    DataTransportNfc.fromConnectionMethod(
+                        context,
+                        connectionMethod,
+                        role,
+                        options
+                    )
+                }
+
+                is ConnectionMethodWifiAware -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        DataTransportWifiAware.fromConnectionMethod(
+                            context,
+                            connectionMethod,
+                            role,
+                            options
+                        )
+                    } else {
+                        throw IllegalStateException("Wifi Aware is not supported")
+                    }
+                }
+
+                is ConnectionMethodHttp -> {
+                    DataTransportHttp.fromConnectionMethod(
+                        context,
+                        connectionMethod,
+                        role,
+                        options
+                    )
+                }
+
+                is ConnectionMethodTcp -> {
+                    DataTransportTcp.fromConnectionMethod(
+                        context,
+                        connectionMethod,
+                        role,
+                        options
+                    )
+                }
+
+                is ConnectionMethodUdp -> {
+                    DataTransportUdp.fromConnectionMethod(
+                        context,
+                        connectionMethod,
+                        role,
+                        options
+                    )
+                }
+
+                else -> {
+                    throw IllegalArgumentException("Unknown ConnectionMethod")
+                }
             }
-        }
     }
 }

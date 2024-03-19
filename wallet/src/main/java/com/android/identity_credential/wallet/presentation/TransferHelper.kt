@@ -120,7 +120,7 @@ class TransferHelper(
                 docRequest.readerCertificateChain!!.javaX509Certificates,
                 customValidators = emptyList()  // not neeeded for reader auth
             )
-            if (result.isTrusted && !result.trustPoints.isEmpty()) {
+            if (result.isTrusted && result.trustPoints.isNotEmpty()) {
                 trustPoint = result.trustPoints.first()
             } else if (result.error != null) {
                 Logger.w(TAG, "Error finding trustpoint for reader auth", result.error!!)
@@ -321,10 +321,6 @@ class TransferHelper(
         }
 
         val credConf = credential.credentialConfiguration
-        if (credConf.mdocDocType != docRequest.docType) {
-            return false
-        }
-
-        return true
+        return credConf.mdocDocType == docRequest.docType
     }
 }

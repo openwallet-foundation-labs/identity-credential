@@ -54,7 +54,6 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.util.Logger
-import java.lang.IllegalStateException
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -128,18 +127,32 @@ class MainActivity : ComponentActivity() {
 
     private fun parseResponse(deviceResponseBytes: ByteArray?) {
         resultSize = deviceResponseBytes!!.size
-        val parsedResponse = DeviceResponseParser(
-            deviceResponseBytes,
-            transferHelper.getSessionTranscript()
-        ).parse()
-        if (parsedResponse.documents.isEmpty()) {
-            Toast.makeText(applicationContext, "No documents returned", Toast.LENGTH_SHORT).show()
-            transferHelper.close()
-            return
-        }
-        val doc = parsedResponse.documents.first()
-        if (!doc.docType.equals(MDL_DOCTYPE)) {
-            Toast.makeText(applicationContext, "Expected mDL, got ${doc.docType}", Toast.LENGTH_SHORT).show()
+
+        val doc =
+            DeviceResponseParser(
+                deviceResponseBytes,
+                transferHelper.getSessionTranscript()
+            )
+                .parse().let { parsedResponse ->
+                    if (parsedResponse.documents.isEmpty()) {
+                        Toast.makeText(
+                            applicationContext,
+                            "No documents returned",
+                            Toast.LENGTH_SHORT
+                        )
+                            .show()
+                        transferHelper.close()
+                        return
+                    }
+                    parsedResponse.documents.first()
+                }
+
+        if (doc.docType != MDL_DOCTYPE) {
+            Toast.makeText(
+                applicationContext,
+                "Expected mDL, got ${doc.docType}",
+                Toast.LENGTH_SHORT
+            ).show()
             transferHelper.close()
             return
         }
@@ -148,7 +161,8 @@ class MainActivity : ComponentActivity() {
                 val portraitData = doc.getIssuerEntryByteString(MDL_NAMESPACE, "portrait")
                 val options = BitmapFactory.Options()
                 options.inMutable = true
-                resultPortrait = BitmapFactory.decodeByteArray(portraitData, 0, portraitData.size, options)
+                resultPortrait =
+                    BitmapFactory.decodeByteArray(portraitData, 0, portraitData.size, options)
             } catch (e: IllegalArgumentException) {
                 resultPortrait = null
             }
@@ -184,7 +198,7 @@ class MainActivity : ComponentActivity() {
             IdentityCredentialTheme {
                 val navController = rememberNavController()
 
-                var stateDisplay = remember { mutableStateOf("Idle") }
+                val stateDisplay = remember { mutableStateOf("Idle") }
 
                 transferHelper.getState().observe(this as LifecycleOwner) { state ->
                     when (state) {
@@ -192,26 +206,32 @@ class MainActivity : ComponentActivity() {
                             Logger.i(TAG, "idle")
                             stateDisplay.value = "Idle"
                         }
+
                         TransferHelper.State.ENGAGING -> {
                             Logger.i(TAG, "engaging")
                             stateDisplay.value = "Engaging"
                         }
+
                         TransferHelper.State.CONNECTING -> {
                             Logger.i(TAG, "connecting")
                             stateDisplay.value = "Connecting"
                         }
+
                         TransferHelper.State.CONNECTED -> {
                             stateDisplay.value = "Connected"
                             Logger.i(TAG, "connected")
                             val deviceRequestGenerator = DeviceRequestGenerator(
                                 transferHelper.getSessionTranscript()
                             )
-                            var request =
+                            val request =
                                 if (transferHelper.getIncludePortraitInRequest()) {
                                     mapOf(
                                         Pair(
                                             MDL_NAMESPACE,
-                                            mapOf(Pair("portrait", false), Pair("age_over_21", false))
+                                            mapOf(
+                                                Pair("portrait", false),
+                                                Pair("age_over_21", false)
+                                            )
                                         )
                                     )
                                 } else {
@@ -237,6 +257,7 @@ class MainActivity : ComponentActivity() {
                             Logger.i(TAG, "request sent")
                             stateDisplay.value = "Request Sent"
                         }
+
                         TransferHelper.State.TRANSACTION_COMPLETE -> {
                             transactionError = null
                             if (transferHelper.error != null) {
@@ -251,10 +272,13 @@ class MainActivity : ComponentActivity() {
                             getMetricsForTransaction(transferHelper)
                             navController.navigate("ResultScreen")
                         }
+
+                        null -> {}
                     }
                 }
 
-                val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+                val scrollBehavior =
+                    TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
                 Scaffold(
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 
@@ -298,15 +322,23 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun MainScreen(navController: NavController, stateDisplay: MutableState<String>) {
-        val includePortraitInRequest = remember { mutableStateOf(transferHelper.getIncludePortraitInRequest()) }
-        val bleCentralClientDataTransferEnabled = remember { mutableStateOf(transferHelper.getBleCentralClientDataTransferEnabled()) }
-        val blePeripheralServerDataTransferEnabled = remember { mutableStateOf(transferHelper.getBlePeripheralServerDataTransferEnabled()) }
-        val wifiAwareDataTransferEnabled = remember { mutableStateOf(transferHelper.getWifiAwareDataTransferEnabled()) }
-        val nfcDataTransferEnabled = remember { mutableStateOf(transferHelper.getNfcDataTransferEnabled()) }
-        val tcpDataTransferEnabled = remember { mutableStateOf(transferHelper.getTcpDataTransferEnabled()) }
-        val udpDataTransferEnabled = remember { mutableStateOf(transferHelper.getUdpDataTransferEnabled()) }
+        val includePortraitInRequest =
+            remember { mutableStateOf(transferHelper.getIncludePortraitInRequest()) }
+        val bleCentralClientDataTransferEnabled =
+            remember { mutableStateOf(transferHelper.getBleCentralClientDataTransferEnabled()) }
+        val blePeripheralServerDataTransferEnabled =
+            remember { mutableStateOf(transferHelper.getBlePeripheralServerDataTransferEnabled()) }
+        val wifiAwareDataTransferEnabled =
+            remember { mutableStateOf(transferHelper.getWifiAwareDataTransferEnabled()) }
+        val nfcDataTransferEnabled =
+            remember { mutableStateOf(transferHelper.getNfcDataTransferEnabled()) }
+        val tcpDataTransferEnabled =
+            remember { mutableStateOf(transferHelper.getTcpDataTransferEnabled()) }
+        val udpDataTransferEnabled =
+            remember { mutableStateOf(transferHelper.getUdpDataTransferEnabled()) }
         val l2capEnabled = remember { mutableStateOf(transferHelper.getL2CapEnabled()) }
-        val experimentalPsmEnabled = remember { mutableStateOf(transferHelper.getExperimentalPsmEnabled()) }
+        val experimentalPsmEnabled =
+            remember { mutableStateOf(transferHelper.getExperimentalPsmEnabled()) }
         val debugEnabled = remember { mutableStateOf(transferHelper.getDebugEnabled()) }
 
         Surface(

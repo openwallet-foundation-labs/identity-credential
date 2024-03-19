@@ -84,7 +84,7 @@ class DataTransportUdp(
             }
         }
         socketServerThread.start()
-        if (host == null || host!!.length == 0) {
+        if (host == null || host!!.isEmpty()) {
             host = getWifiIpAddress(context)
         }
         if (this.port == 0) {
@@ -175,7 +175,7 @@ class DataTransportUdp(
                         }
                         // An empty message is used to convey that the writing thread should be
                         // shut down.
-                        if (messageToSend.size == 0) {
+                        if (messageToSend.isEmpty()) {
                             Logger.d(TAG, "Empty message, shutting down writer")
                             break
                         }
@@ -279,19 +279,20 @@ class DataTransportUdp(
 
             // From 7.1 Alternative Carrier Record
             //
-            val baos = ByteArrayOutputStream()
-            baos.write(0x01) // CPS: active
-            baos.write(reference.size)
-            try {
-                baos.write(reference)
-            } catch (e: IOException) {
-                throw IllegalStateException(e)
+            val acRecordPayload = ByteArrayOutputStream().run {
+                write(0x01) // CPS: active
+                write(reference.size)
+                try {
+                    write(reference)
+                } catch (e: IOException) {
+                    throw IllegalStateException(e)
+                }
+                write(0x01) // Number of auxiliary references
+                val auxReference = "mdoc".toByteArray()
+                write(auxReference.size)
+                write(auxReference, 0, auxReference.size)
+                toByteArray()
             }
-            baos.write(0x01) // Number of auxiliary references
-            val auxReference = "mdoc".toByteArray()
-            baos.write(auxReference.size)
-            baos.write(auxReference, 0, auxReference.size)
-            val acRecordPayload = baos.toByteArray()
             return Pair(record, acRecordPayload)
         }
     }

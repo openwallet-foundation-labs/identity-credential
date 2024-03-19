@@ -91,7 +91,7 @@ class DataTransportTcp(
             }
         }
         socketServerThread.start()
-        if (host == null || host!!.length == 0) {
+        if (host == null || host!!.isEmpty()) {
             host = getWifiIpAddress(context)
         }
         if (this.port == 0) {
@@ -184,7 +184,7 @@ class DataTransportTcp(
         socketWriterThread = object : Thread() {
             override fun run() {
                 while (socket!!.isConnected) {
-                    var messageToSend: ByteArray? = null
+                    var messageToSend: ByteArray?
                     try {
                         messageToSend = writerQueue.poll(1000, TimeUnit.MILLISECONDS)
                         if (messageToSend == null) {
@@ -192,7 +192,7 @@ class DataTransportTcp(
                         }
                         // An empty message is used to convey that the writing thread should be
                         // shut down.
-                        if (messageToSend.size == 0) {
+                        if (messageToSend.isEmpty()) {
                             Logger.d(TAG, "Empty message, shutting down writer")
                             break
                         }
@@ -306,19 +306,20 @@ class DataTransportTcp(
 
             // From 7.1 Alternative Carrier Record
             //
-            val baos = ByteArrayOutputStream()
-            baos.write(0x01) // CPS: active
-            baos.write(reference.size)
-            try {
-                baos.write(reference)
-            } catch (e: IOException) {
-                throw IllegalStateException(e)
+            val acRecordPayload = ByteArrayOutputStream().run {
+                write(0x01) // CPS: active
+                write(reference.size)
+                try {
+                    write(reference)
+                } catch (e: IOException) {
+                    throw IllegalStateException(e)
+                }
+                write(0x01) // Number of auxiliary references
+                val auxReference = "mdoc".toByteArray()
+                write(auxReference.size)
+                write(auxReference, 0, auxReference.size)
+                toByteArray()
             }
-            baos.write(0x01) // Number of auxiliary references
-            val auxReference = "mdoc".toByteArray()
-            baos.write(auxReference.size)
-            baos.write(auxReference, 0, auxReference.size)
-            val acRecordPayload = baos.toByteArray()
             return Pair(record, acRecordPayload)
         }
 

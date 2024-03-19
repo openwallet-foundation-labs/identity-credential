@@ -52,13 +52,14 @@ abstract class DataTransportBle(
     init {
         // May be modified during start() to e.g. add the PSM...
         connectionMethodToReturn = ConnectionMethodBle(
-            connectionMethod.supportsPeripheralServerMode,
-            connectionMethod.supportsCentralClientMode,
-            connectionMethod.peripheralServerModeUuid,
-            connectionMethod.centralClientModeUuid
+            supportsPeripheralServerMode = connectionMethod.supportsPeripheralServerMode,
+            supportsCentralClientMode = connectionMethod.supportsCentralClientMode,
+            peripheralServerModeUuid = connectionMethod.peripheralServerModeUuid,
+            centralClientModeUuid = connectionMethod.centralClientModeUuid
         )
         connectionMethodToReturn.peripheralServerModePsm = connectionMethod.peripheralServerModePsm
-        connectionMethodToReturn.peripheralServerModeMacAddress = connectionMethod.peripheralServerModeMacAddress
+        connectionMethodToReturn.peripheralServerModeMacAddress =
+            connectionMethod.peripheralServerModeMacAddress
     }
 
     override val connectionMethodForTransport: ConnectionMethod
@@ -148,10 +149,10 @@ abstract class DataTransportBle(
             // Note that the UUID for both modes is the same if both peripheral and
             // central client mode is used!
             val cm = ConnectionMethodBle(
-                peripheral,
-                centralClient,
-                if (peripheral) uuid else null,
-                if (centralClient) uuid else null
+                supportsPeripheralServerMode = peripheral,
+                supportsCentralClientMode = centralClient,
+                peripheralServerModeUuid = if (peripheral) uuid else null,
+                centralClientModeUuid = if (centralClient) uuid else null
             )
             cm.peripheralServerModePsm = psm
             cm.peripheralServerModeMacAddress = macAddress
@@ -235,50 +236,52 @@ abstract class DataTransportBle(
             // Looking that up it says it's just a sequence of {length, AD type, AD data} where each
             // AD is defined in the "Bluetooth Supplement to the Core Specification" document.
             //
-            var baos = ByteArrayOutputStream()
-            baos.write(0x02)
-            baos.write(0x1c) // LE Role
-            baos.write(leRole)
-            if (uuid != null) {
-                baos.write(0x11) // Complete List of 128-bit Service UUID’s (0x07)
-                baos.write(0x07)
-                val uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
-                uuidBuf.putLong(0, uuid.leastSignificantBits)
-                uuidBuf.putLong(8, uuid.mostSignificantBits)
-                try {
-                    baos.write(uuidBuf.array())
-                } catch (e: IOException) {
-                    throw IllegalStateException(e)
+            val oobData = ByteArrayOutputStream().run {
+                write(0x02)
+                write(0x1c) // LE Role
+                write(leRole)
+                if (uuid != null) {
+                    write(0x11) // Complete List of 128-bit Service UUID’s (0x07)
+                    write(0x07)
+                    val uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
+                    uuidBuf.putLong(0, uuid.leastSignificantBits)
+                    uuidBuf.putLong(8, uuid.mostSignificantBits)
+                    try {
+                        write(uuidBuf.array())
+                    } catch (e: IOException) {
+                        throw IllegalStateException(e)
+                    }
                 }
+                val macAddress = cm.peripheralServerModeMacAddress
+                if (macAddress != null) {
+                    require(macAddress.size == 6) {
+                        "MAC address should be six bytes, found ${macAddress.size}"
+                    }
+                    write(0x07)
+                    write(0x1b) // MAC address
+                    try {
+                        write(macAddress)
+                    } catch (e: IOException) {
+                        throw IllegalStateException(e)
+                    }
+                }
+                val psm = cm.peripheralServerModePsm
+                if (psm.isPresent) {
+                    // TODO: need to actually allocate this number (0x77)
+                    write(0x05) // PSM: 4 bytes
+                    write(0x77)
+                    val psmValue = ByteBuffer.allocate(4)
+                        .order(ByteOrder.LITTLE_ENDIAN)
+                        .putInt(psm.asInt)
+                    try {
+                        write(psmValue.array())
+                    } catch (e: IOException) {
+                        throw IllegalStateException(e)
+                    }
+                }
+                toByteArray()
             }
-            val macAddress = cm.peripheralServerModeMacAddress
-            if (macAddress != null) {
-                require(macAddress.size == 6) {
-                    "MAC address should be six bytes, found ${macAddress.size}"
-                }
-                baos.write(0x07)
-                baos.write(0x1b) // MAC address
-                try {
-                    baos.write(macAddress)
-                } catch (e: IOException) {
-                    throw IllegalStateException(e)
-                }
-            }
-            val psm = cm.peripheralServerModePsm
-            if (psm.isPresent) {
-                // TODO: need to actually allocate this number (0x77)
-                baos.write(0x05) // PSM: 4 bytes
-                baos.write(0x77)
-                val psmValue = ByteBuffer.allocate(4)
-                    .order(ByteOrder.LITTLE_ENDIAN)
-                    .putInt(psm.asInt)
-                try {
-                    baos.write(psmValue.array())
-                } catch (e: IOException) {
-                    throw IllegalStateException(e)
-                }
-            }
-            val oobData = baos.toByteArray()
+
             val record = NdefRecord(
                 NdefRecord.TNF_MIME_MEDIA,
                 "application/vnd.bluetooth.le.oob".toByteArray(),
@@ -288,19 +291,20 @@ abstract class DataTransportBle(
 
             // From 7.1 Alternative Carrier Record
             //
-            baos = ByteArrayOutputStream()
-            baos.write(0x01) // CPS: active
-            baos.write(0x01) // Length of carrier data reference ("0")
-            baos.write('0'.code) // Carrier data reference
-            baos.write(auxiliaryReferences.size) // Number of auxiliary references
-            for (auxRef in auxiliaryReferences) {
-                // Each auxiliary reference consists of a single byte for the length and then as
-                // many bytes for the reference itself.
-                val auxRefUtf8 = auxRef.toByteArray()
-                baos.write(auxRefUtf8.size)
-                baos.write(auxRefUtf8, 0, auxRefUtf8.size)
+            val acRecordPayload = ByteArrayOutputStream().run {
+                write(0x01) // CPS: active
+                write(0x01) // Length of carrier data reference ("0")
+                write('0'.code) // Carrier data reference
+                write(auxiliaryReferences.size) // Number of auxiliary references
+                for (auxRef in auxiliaryReferences) {
+                    // Each auxiliary reference consists of a single byte for the length and then as
+                    // many bytes for the reference itself.
+                    val auxRefUtf8 = auxRef.toByteArray()
+                    write(auxRefUtf8.size)
+                    write(auxRefUtf8, 0, auxRefUtf8.size)
+                }
+                toByteArray()
             }
-            val acRecordPayload = baos.toByteArray()
             return Pair(record, acRecordPayload)
         }
 

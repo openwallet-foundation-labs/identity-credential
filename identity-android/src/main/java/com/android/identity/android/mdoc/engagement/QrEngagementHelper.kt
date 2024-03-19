@@ -207,6 +207,8 @@ class QrEngagementHelper internal constructor(
 
     // Note: The report*() methods are safe to call from any thread.
 
+    // TODO replace executor.execute calls with coroutines
+
     private fun reportDeviceConnecting() {
         Logger.d(TAG, "reportDeviceConnecting")
         val listener = listener
@@ -332,13 +334,13 @@ class QrEngagementHelper internal constructor(
          */
         fun build(): QrEngagementHelper {
             return QrEngagementHelper(
-                context,
-                eDeviceKey,
-                connectionMethods,
-                transports,
-                options,
-                listener,
-                executor
+                context = context,
+                eDeviceKey = eDeviceKey,
+                connectionMethods = connectionMethods,
+                transports = transports,
+                options = options,
+                listener = listener,
+                executor = executor
             )
         }
     }
