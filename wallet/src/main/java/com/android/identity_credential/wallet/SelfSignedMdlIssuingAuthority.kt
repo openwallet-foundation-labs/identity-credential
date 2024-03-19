@@ -72,6 +72,7 @@ class SelfSignedMdlIssuingAuthority(
             choice(
                 id = "path",
                 message = resourceString(R.string.utopia_mdl_issuing_authority_hardcoded_or_derived),
+                assets = mapOf(),
                 acceptButtonText = "Continue"
             ) {
                 on(id = "hardcoded", text = resourceString(R.string.utopia_mdl_issuing_authority_hardcoded_option)) {
@@ -86,9 +87,9 @@ class SelfSignedMdlIssuingAuthority(
             }
             message(
                 "message",
-                resourceString(R.string.utopia_mdl_issuing_authority_application_finish),
-                mapOf(),
-                resourceString(R.string.utopia_mdl_issuing_authority_continue),
+                message = resourceString(R.string.utopia_mdl_issuing_authority_application_finish),
+                assets = mapOf(),
+                acceptButtonText = resourceString(R.string.utopia_mdl_issuing_authority_continue),
                 null
             )
         }
