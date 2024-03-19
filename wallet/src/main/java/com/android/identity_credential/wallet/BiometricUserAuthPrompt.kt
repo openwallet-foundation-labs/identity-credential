@@ -81,7 +81,9 @@ private class BiometricUserAuthPrompt(
             errorString: CharSequence
         ) {
             super.onAuthenticationError(errorCode, errorString)
-            if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON && lskfOnNegativeBtn) {
+            if (setOf(BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+                    BiometricPrompt.ERROR_NO_BIOMETRICS,
+                    BiometricPrompt.ERROR_UNABLE_TO_PROCESS).contains(errorCode) && lskfOnNegativeBtn) {
                 // if no delay is injected, then biometric prompt's auth callbacks would not be called
                 Handler(Looper.getMainLooper()).postDelayed({
                     authenticateLskf()
