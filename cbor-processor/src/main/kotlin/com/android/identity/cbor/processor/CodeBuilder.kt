@@ -26,14 +26,14 @@ class CodeBuilder(
      *
      * Duplicate simple names will cause [IllegalArgumentException]
      */
-    fun importClass(clazz: KSClassDeclaration) {
-        importClass(clazz.qualifiedName!!.asString())
+    fun importQualifiedName(clazz: KSClassDeclaration) {
+        importQualifiedName(clazz.qualifiedName!!.asString())
     }
 
     /**
-     * Import class using its fully-qualified name.
+     * Import class or function using its fully-qualified name.
      */
-    fun importClass(qualifiedName: String) {
+    fun importQualifiedName(qualifiedName: String) {
         val simpleName = qualifiedName.substring(qualifiedName.lastIndexOf('.') + 1)
         if (classesToImport.contains(simpleName)) {
             if (classesToImport[simpleName] == qualifiedName) {
