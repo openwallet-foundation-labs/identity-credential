@@ -389,11 +389,14 @@ class DataTransportBleCentralClientMode(
     }
 
     override fun sendMessage(data: ByteArray) {
-        require(data.isNotEmpty()) { "Data to send cannot be empty" }
-
-        l2capClient?.sendMessage(data)
-            ?: _gattServer?.sendMessage(data)
-            ?: _gattClient?.sendMessage(data)
+        require(data.size != 0) { "Data to send cannot be empty" }
+        if (l2capClient != null) {
+            l2capClient!!.sendMessage(data)
+        } else if (_gattServer != null) {
+            gattServer.sendMessage(data)
+        } else if (_gattClient != null) {
+            gattClient.sendMessage(data)
+        }
     }
 
     override fun sendTransportSpecificTerminationMessage() {
@@ -410,12 +413,16 @@ class DataTransportBleCentralClientMode(
         gattServer.sendTransportSpecificTermination()
     }
 
-    override fun supportsTransportSpecificTerminationMessage(): Boolean =
-        if (l2capClient != null) false else
-            _gattServer?.supportsTransportSpecificTerminationMessage()
-                ?: _gattClient?.supportsTransportSpecificTerminationMessage()
-                ?: false
-
+    override fun supportsTransportSpecificTerminationMessage(): Boolean {
+        if (l2capClient != null) {
+            return false
+        } else if (_gattServer != null) {
+            return gattServer.supportsTransportSpecificTerminationMessage()
+        } else if (_gattClient != null) {
+            return gattClient.supportsTransportSpecificTerminationMessage()
+        }
+        return false
+    }
 
     companion object {
         private const val TAG = "DataTransportBleCCM" // limit to <= 23 chars

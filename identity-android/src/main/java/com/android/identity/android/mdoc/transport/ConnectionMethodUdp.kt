@@ -12,14 +12,10 @@ class ConnectionMethodUdp(val host: String, val port: Int) : ConnectionMethod() 
             CborArray.builder()
                 .add(METHOD_TYPE)
                 .add(METHOD_MAX_VERSION)
-                .add(
-                    CborMap.builder().apply {
-                        put(OPTION_KEY_HOST, host)
-                        put(OPTION_KEY_PORT, port.toLong())
-                    }
-                        .end()
-                        .build()
-                )
+                .addMap().apply {
+                    put(OPTION_KEY_HOST, host)
+                    put(OPTION_KEY_PORT, port.toLong())
+                }.end()
                 .end()
                 .build()
         )

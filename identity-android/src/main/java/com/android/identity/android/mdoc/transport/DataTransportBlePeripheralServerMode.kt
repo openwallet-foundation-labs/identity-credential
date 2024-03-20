@@ -382,10 +382,14 @@ class DataTransportBlePeripheralServerMode(
     }
 
     override fun sendMessage(data: ByteArray) {
-        require(data.isNotEmpty()) { "Data to send cannot be empty" }
-        l2capClient?.sendMessage(data)
-            ?: gattServer?.sendMessage(data)
-            ?: gattClient?.sendMessage(data)
+        require(data.size != 0) { "Data to send cannot be empty" }
+        if (l2capClient != null) {
+            l2capClient!!.sendMessage(data)
+        } else if (gattServer != null) {
+            gattServer!!.sendMessage(data)
+        } else if (gattClient != null) {
+            gattClient!!.sendMessage(data)
+        }
     }
 
     override fun sendTransportSpecificTerminationMessage() {
