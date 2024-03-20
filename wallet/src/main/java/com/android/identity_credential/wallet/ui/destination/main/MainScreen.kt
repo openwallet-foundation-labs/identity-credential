@@ -188,12 +188,9 @@ fun MainScreenContent(
                     snackbar = {
                         Snackbar {
                             Column {
-                                permissionTracker.PermissionRequests(blePermissions)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
+                                permissionTracker.PermissionRequests(blePermissions) {
                                     Button(
+                                        modifier = Modifier.padding(8.dp),
                                         onClick = { it.dismiss() }) {
                                         Text(stringResource(R.string.wallet_screen_permissions_dismiss))
                                     }
