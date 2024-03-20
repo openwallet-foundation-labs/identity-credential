@@ -66,6 +66,7 @@ class MainActivity : ComponentActivity() {
 
         cardViewModel.setData(
             applicationContext,
+            application,
             application.credentialStore,
             application.issuingAuthorityRepository,
             application.secureAreaRepository,

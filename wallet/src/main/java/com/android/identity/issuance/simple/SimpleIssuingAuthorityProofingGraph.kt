@@ -5,6 +5,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnelType
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
+import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponse
@@ -37,6 +38,22 @@ class SimpleIssuingAuthorityProofingGraph {
     fun message(id: String, message: String, assets: Map<String, ByteArray>,
                 acceptButtonText: String, rejectButtonText: String?) {
         val evidenceRequest = EvidenceRequestMessage(message, assets, acceptButtonText, rejectButtonText)
+        chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
+    }
+
+    /** Sends [EvidenceRequestNotificationPermission]. */
+    fun requestNotificationPermission(
+        id: String,
+        permissionNotAvailableMessage: String,
+        assets: Map<String, ByteArray>,
+        grantPermissionButtonText: String,
+        continueWithoutPermissionButtonText: String,
+    ) {
+        val evidenceRequest = EvidenceRequestNotificationPermission(
+            permissionNotAvailableMessage,
+            assets,
+            grantPermissionButtonText,
+            continueWithoutPermissionButtonText)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 

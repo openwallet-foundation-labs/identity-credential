@@ -44,6 +44,7 @@ fun CardKeysScreen(
     val card = cardViewModel.getCard(cardId)
     if (card == null) {
         Logger.w(TAG, "No card with id $cardId")
+        onNavigate(WalletDestination.Main.route)
         return
     }
 

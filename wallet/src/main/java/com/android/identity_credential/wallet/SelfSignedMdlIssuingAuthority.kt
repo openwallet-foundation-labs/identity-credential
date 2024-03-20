@@ -92,6 +92,13 @@ class SelfSignedMdlIssuingAuthority(
                 acceptButtonText = resourceString(R.string.utopia_mdl_issuing_authority_continue),
                 null
             )
+            requestNotificationPermission(
+                "notificationPermission",
+                permissionNotAvailableMessage = resourceString(R.string.permission_post_notifications_rationale_md),
+                grantPermissionButtonText = resourceString(R.string.permission_post_notifications_grant_permission_button_text),
+                continueWithoutPermissionButtonText = resourceString(R.string.permission_post_notifications_continue_without_permission_button_text),
+                assets = mapOf()
+            )
         }
     }
 
@@ -177,6 +184,7 @@ class SelfSignedMdlIssuingAuthority(
                 .putEntryString(MDL_NAMESPACE, "issuing_country", "UT")
                 .putEntryString(MDL_NAMESPACE, "un_distinguishing_sign", "UTO")
                 .putEntryString(MDL_NAMESPACE, "document_number", "1234567890")
+                .putEntryString(MDL_NAMESPACE, "administrative_number", "123456789")
                 .putEntry(MDL_NAMESPACE, "driving_privileges",
                     Cbor.encode(CborArray.builder().end().build()))
 
@@ -196,6 +204,31 @@ class SelfSignedMdlIssuingAuthority(
             MDL_DOCTYPE,
             staticData
         )
+    }
+
+    override fun developerModeRequestUpdate(currentConfiguration: CredentialConfiguration): CredentialConfiguration {
+        // The update consists of just slapping an extra 0 at the end of `administrative_number`
+        val newAdministrativeNumber = try {
+            currentConfiguration.staticData
+                .getDataElementString(MDL_NAMESPACE, "administrative_number")
+        } catch (e: Throwable) {
+            ""
+        } + "0"
+
+
+        val builder = NameSpacedData.Builder(currentConfiguration.staticData)
+        builder.putEntryString(
+            MDL_NAMESPACE,
+            "administrative_number",
+            newAdministrativeNumber
+        )
+
+        return CredentialConfiguration(
+                displayName = currentConfiguration.displayName,
+                cardArt = currentConfiguration.cardArt,
+                mdocDocType = currentConfiguration.mdocDocType,
+                staticData = builder.build(),
+            )
     }
 
     private fun getSampleData(credentialType: CredentialType): NameSpacedData.Builder {

@@ -206,9 +206,16 @@ class NameSpacedData private constructor(
 
     /**
      * A builder for [NameSpacedData].
+     *
+     * The `nameSpacedDataToCopyFrom` parameter is useful in situations where you want
+     * to create a [NameSpacedData] with the same data as a given one except for
+     * needing to change one or more data elements.
+     *
+     * @param nameSpacedDataToCopyFrom the [NameSpacedData] to copy all data from or null.
      */
-    class Builder {
-        private val map = mutableMapOf<String, MutableMap<String, ByteArray>>()
+    class Builder(private val nameSpacedDataToCopyFrom: NameSpacedData? = null) {
+        private val map =
+            nameSpacedDataToCopyFrom?.map ?: mutableMapOf()
 
         /**
          * Adds a raw CBOR value to the builder.

@@ -89,6 +89,13 @@ class SelfSignedEuPidIssuingAuthority(
                 resourceString(R.string.utopia_eu_pid_issuing_authority_continue),
                 null
             )
+            requestNotificationPermission(
+                "notificationPermission",
+                permissionNotAvailableMessage = resourceString(R.string.permission_post_notifications_rationale_md),
+                grantPermissionButtonText = resourceString(R.string.permission_post_notifications_grant_permission_button_text),
+                continueWithoutPermissionButtonText = resourceString(R.string.permission_post_notifications_continue_without_permission_button_text),
+                assets = mapOf()
+            )
         }
     }
 
@@ -173,6 +180,8 @@ class SelfSignedEuPidIssuingAuthority(
                     "UT")
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", true)
                 .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", true)
+                .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")
+                .putEntryString(EUPID_NAMESPACE, "administrative_number", "123456789")
                 .build()
         }
 
@@ -182,6 +191,26 @@ class SelfSignedEuPidIssuingAuthority(
             cardArt,
             EUPID_DOCTYPE,
             staticData
+        )
+    }
+
+    override fun developerModeRequestUpdate(currentConfiguration: CredentialConfiguration): CredentialConfiguration {
+        // The update consists of just slapping an extra 0 at the end of `administrative_number`
+        val newAdministrativeNumber = currentConfiguration.staticData
+            .getDataElementString(EUPID_NAMESPACE, "administrative_number") + "0"
+
+        val builder = NameSpacedData.Builder(currentConfiguration.staticData)
+        builder.putEntryString(
+            EUPID_NAMESPACE,
+            "administrative_number",
+            newAdministrativeNumber
+        )
+
+        return CredentialConfiguration(
+            displayName = currentConfiguration.displayName,
+            cardArt = currentConfiguration.cardArt,
+            mdocDocType = currentConfiguration.mdocDocType,
+            staticData = builder.build(),
         )
     }
 

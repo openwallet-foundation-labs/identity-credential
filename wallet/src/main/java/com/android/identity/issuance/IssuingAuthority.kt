@@ -16,8 +16,7 @@ interface IssuingAuthority {
     /**
      * Performs a network call to the Issuing Authority to get information about a credential.
      *
-     * @throws IllegalArgumentException if the Issuing Authority does not recognize the given
-     *   passed-in credentialId
+     * @throws UnknownCredentialException if the given credentialId isn't valid.
      */
     suspend fun credentialGetState(credentialId: String): CredentialState
 
@@ -82,6 +81,7 @@ interface IssuingAuthority {
      * @param credentialId the credential to perform proofing for.
      * @return a [ProofingFlow] instance.
      * @throws IllegalStateException if not in state [CredentialCondition.PROOFING_REQUIRED].
+     * @throws UnknownCredentialException if the given credentialId isn't valid.
      */
     fun credentialProof(credentialId: String): ProofingFlow
 
@@ -92,6 +92,7 @@ interface IssuingAuthority {
      *
      * @param credentialId the credential to get information about.
      * @throws IllegalStateException if not in condition [CredentialCondition.CONFIGURATION_AVAILABLE].
+     * @throws UnknownCredentialException if the given credentialId isn't valid.
      */
     suspend fun credentialGetConfiguration(credentialId: String): CredentialConfiguration
 
@@ -108,9 +109,9 @@ interface IssuingAuthority {
      *
      * @param credentialId the credential to request presentation objects for.
      * @throws IllegalStateException if not in state [CredentialCondition.READY].
+     * @throws UnknownCredentialException if the given credentialId isn't valid.
      */
     fun credentialRequestPresentationObjects(credentialId: String): RequestPresentationObjectsFlow
-
 
     /**
      * Calls the IA to get available Credential Presentation Objects.
@@ -119,7 +120,42 @@ interface IssuingAuthority {
      * the state is greater than zero. On success, these objects will be removed
      * from the IA server and [numAvailableCredentialPresentationObjects] will
      * be set to 0 in the state.
+     *
+     * @throws UnknownCredentialException if the given credentialId isn't valid.
      */
     suspend fun credentialGetPresentationObjects(credentialId: String):
             List<CredentialPresentationObject>
+
+    /**
+     * Request update of the document data
+     *
+     * This is a developer-mode feature for the application to request a document update
+     * update. This is optional for an issuing authority to implement, it may be a no-op.
+     *
+     * When this is called the issuer should generate a new [CredentialConfiguration], put the
+     * credential into the [CredentialCondition.CONFIGURATION_AVAILABLE] condition
+     * and post a notification to the application if the passed [notifyApplicationOfUpdate]
+     * is set to true. The
+     *
+     * Upon receiving this notification the application will show an UI notification
+     * to the user, delete existing CPOs / AuthKeys, download the new [CredentialConfiguration],
+     * and request new CPOs.
+     *
+     * The sole reason for this feature is to make it easy to test the data update
+     * flow both from an application and an issuer point of view. The [notifyApplicationOfUpdate]
+     * parameter can be set to false used to simulate a lossy notification distribution network.
+     *
+     * @param credentialId the credential to request an update for.
+     * @param requestRemoteDeletion request that the document is deleted.
+     * @param notifyApplicationOfUpdate true if the issuer should send a notification to
+     * the application about this, false to not send a notification
+     * @throws IllegalStateException if not in state [CredentialCondition.READY].
+     * @throws UnknownCredentialException if the given credentialId isn't valid.
+     */
+    suspend fun credentialDeveloperModeRequestUpdate(
+        credentialId: String,
+        requestRemoteDeletion: Boolean,
+        notifyApplicationOfUpdate: Boolean
+    )
+
 }

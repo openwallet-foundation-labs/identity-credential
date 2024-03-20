@@ -23,6 +23,8 @@
         android:required="true" />
     <uses-permission android:name="android.permission.CAMERA" />
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".WalletApplication"
         android:allowBackup="true"

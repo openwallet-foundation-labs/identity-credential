@@ -67,6 +67,42 @@ class NameSpacedDataTest {
         checkNameSpaced(decoded)
     }
 
+    @Test
+    fun testBuilderWithCopy() {
+        val foo = NameSpacedData.Builder()
+            .putEntryString("ns1", "de1", "foo")
+            .putEntryString("ns1", "de2", "bar")
+            .build()
+        Assert.assertEquals(
+            "{\n" +
+                    "  \"ns1\": {\n" +
+                    "    \"de1\": 24(<< \"foo\" >>),\n" +
+                    "    \"de2\": 24(<< \"bar\" >>)\n" +
+                    "  }\n" +
+                    "}",
+            Cbor.toDiagnostics(
+                foo.toCbor(),
+                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+            )
+        )
+
+        val fooModified = NameSpacedData.Builder(foo)
+            .putEntryString("ns1", "de2", "foobar")
+            .build()
+        Assert.assertEquals(
+            "{\n" +
+                    "  \"ns1\": {\n" +
+                    "    \"de1\": 24(<< \"foo\" >>),\n" +
+                    "    \"de2\": 24(<< \"foobar\" >>)\n" +
+                    "  }\n" +
+                    "}",
+            Cbor.toDiagnostics(
+                fooModified.toCbor(),
+                setOf(DiagnosticOption.PRETTY_PRINT, DiagnosticOption.EMBEDDED_CBOR)
+            )
+        )
+    }
+
     private fun checkNameSpaced(nameSpacedData: NameSpacedData) {
         Assert.assertEquals(3, nameSpacedData.nameSpaceNames.size.toLong())
         Assert.assertEquals("ns1", nameSpacedData.nameSpaceNames[0])

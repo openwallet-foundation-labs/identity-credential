@@ -12,6 +12,31 @@
     <string name="permission_bluetooth_scan">Access to bluetooth scanning is needed to send credential data</string>
     <string name="permission_button_grant_permission">Grant Permission</string>
     <string name="permission_button_grant_permissions">Grant Permissions</string>
+    <string name="permission_button_grant">Grant Permission</string>
+    <string name="permission_post_notifications_rationale_md">
+        ## Receive notifications?
+        \n\n
+        If there are updates to your document the issuer will send an updated document to your
+        device. If you are interested, we can send a notification to make you aware of when
+        this happens. This requires granting a permission.
+        \n\n
+        If you previously denied this permission, attempting to grant it again might not do
+        anything and you may need to manually go into Settings and manually enable notifications
+        for this application.
+    </string>
+    <string name="permission_post_notifications_grant_permission_button_text">Grant Permission</string>
+    <string name="permission_post_notifications_continue_without_permission_button_text">No Thanks</string>
+
+    <!-- Notifications about documents -->
+    <string name="notifications_document_application_approved_and_ready_to_use">
+        The application has been reviewed and your document is ready to use.
+    </string>
+    <string name="notifications_document_update_from_issuer">
+        The document has been updated with new information from the issuer.
+    </string>
+    <string name="notifications_document_deleted_by_issuer">
+        The document has been deleted by the issuer.
+    </string>
 
     <!-- Wallet drawer -->
     <string name="wallet_drawer_title">Wallet</string>
@@ -64,6 +89,19 @@
     <string name="card_info_screen_menu_item_check_for_update">Check for Update</string>
     <string name="card_info_screen_menu_item_show_data">Show Data</string>
     <string name="card_info_screen_menu_item_show_keys">Show Keys</string>
+    <string name="card_info_screen_menu_item_request_update">Request Update</string>
+    <string name="card_info_screen_request_update_title">Request Update</string>
+    <string name="card_info_screen_request_update_message">
+        This is a Developer Mode feature to request a document update from the Issuing Authority.
+    </string>
+    <string name="card_info_screen_request_update_remote_deletion_checkbox_string">
+        Request deletion
+    </string>
+    <string name="card_info_screen_request_update_notify_application_checkbox_string">
+        Notify application
+    </string>
+    <string name="card_info_screen_request_update_confirm_button">Request Update</string>
+    <string name="card_info_screen_request_update_dismiss_button">Cancel</string>
     <string name="card_info_screen_menu_item_delete">Delete</string>
     <string name="card_info_screen_data_name">Name</string>
     <string name="card_info_screen_data_issuer">Issuer</string>

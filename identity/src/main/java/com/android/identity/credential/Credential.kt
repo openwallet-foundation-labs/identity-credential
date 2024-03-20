@@ -177,7 +177,7 @@ class Credential private constructor(
         return true
     }
 
-    fun deleteCredential() {
+    internal fun deleteCredential() {
         _pendingAuthenticationKeys.clear()
         _authenticationKeys.clear()
         storageEngine.delete(CREDENTIAL_PREFIX + name)
@@ -263,7 +263,9 @@ class Credential private constructor(
         return pendingAuthenticationKey
     }
 
-    fun removePendingAuthenticationKey(pendingAuthenticationKey: PendingAuthenticationKey) {
+    internal fun removePendingAuthenticationKey(
+        pendingAuthenticationKey: PendingAuthenticationKey
+    ) {
         check(_pendingAuthenticationKeys.remove(pendingAuthenticationKey)) { "Error removing pending authentication key" }
         if (pendingAuthenticationKey.replacementForAlias != null) {
             for (authKey in _authenticationKeys) {
@@ -276,7 +278,7 @@ class Credential private constructor(
         saveCredential()
     }
 
-    fun removeAuthenticationKey(authenticationKey: AuthenticationKey) {
+    internal fun removeAuthenticationKey(authenticationKey: AuthenticationKey) {
         check(_authenticationKeys.remove(authenticationKey)) { "Error removing authentication key" }
         if (authenticationKey.replacementAlias != null) {
             for (pendingAuthKey in _pendingAuthenticationKeys) {
@@ -289,7 +291,7 @@ class Credential private constructor(
         saveCredential()
     }
 
-    fun certifyPendingAuthenticationKey(
+    internal fun certifyPendingAuthenticationKey(
         pendingAuthenticationKey: PendingAuthenticationKey,
         issuerProvidedAuthenticationData: ByteArray,
         validFrom: Timestamp,
@@ -312,11 +314,11 @@ class Credential private constructor(
 
     companion object {
         private const val TAG = "Credential"
-        const val CREDENTIAL_PREFIX = "IC_Credential_"
-        const val AUTHENTICATION_KEY_ALIAS_PREFIX = "IC_AuthenticationKey_"
+        internal const val CREDENTIAL_PREFIX = "IC_Credential_"
+        internal const val AUTHENTICATION_KEY_ALIAS_PREFIX = "IC_AuthenticationKey_"
 
         // Called by CredentialStore.createCredential().
-        fun create(
+        internal fun create(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
             name: String,
@@ -325,7 +327,7 @@ class Credential private constructor(
             Credential(name, storageEngine, secureAreaRepository, store).apply { saveCredential() }
 
         // Called by CredentialStore.lookupCredential().
-        fun lookup(
+        internal fun lookup(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
             name: String,

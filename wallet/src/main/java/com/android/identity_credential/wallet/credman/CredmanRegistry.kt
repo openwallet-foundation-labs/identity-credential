@@ -8,13 +8,10 @@ import com.android.identity.credentialtype.CredentialTypeRepository
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.SelfSignedMdlIssuingAuthority
-import com.android.identity_credential.wallet.WalletApplication
 import com.android.mdl.app.credman.IdentityCredentialEntry
 import com.android.mdl.app.credman.IdentityCredentialField
 import com.android.mdl.app.credman.IdentityCredentialRegistry
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
-import java.util.Locale
 
 private const val TAG = "CredmanRegistry"
 
@@ -92,7 +89,6 @@ object CredmanRegistry {
                             displayValue = valueString
                         )
                     )
-                    Logger.i(TAG, "Adding field $fieldName ('$dataElementDisplayName') with value '$valueString'")
                 }
             }
 

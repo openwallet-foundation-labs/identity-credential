@@ -18,6 +18,7 @@ import com.android.identity.issuance.CredentialCondition
 import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
 import com.android.identity.issuance.CredentialExtensions.credentialIdentifier
 import com.android.identity.issuance.CredentialExtensions.housekeeping
+import com.android.identity.issuance.CredentialExtensions.isDeleted
 import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.CredentialExtensions.state
 import com.android.identity.issuance.IssuingAuthority
@@ -32,6 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Instant
+import java.lang.IllegalArgumentException
 
 class CardViewModel : ViewModel() {
 
@@ -40,6 +42,7 @@ class CardViewModel : ViewModel() {
     val cards = mutableStateListOf<Card>()
 
     private lateinit var context: Context
+    private lateinit var walletApplication: WalletApplication
     private lateinit var credentialStore: CredentialStore
     private lateinit var issuingAuthorityRepository: IssuingAuthorityRepository
     private lateinit var secureAreaRepository: SecureAreaRepository
@@ -76,6 +79,27 @@ class CardViewModel : ViewModel() {
         refreshCredential(credential, true, true)
     }
 
+    fun developerModeRequestUpdate(
+        card: Card,
+        requestRemoteDeletion: Boolean,
+        notifyApplicationOfUpdate: Boolean
+    ) {
+        val credential = credentialStore.lookupCredential(card.id)
+        if (credential == null) {
+            Logger.w(TAG, "No credential with id ${card.id}")
+            return
+        }
+        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(credential.issuingAuthorityIdentifier)
+            ?: throw IllegalArgumentException("No issuer with id ${credential.issuingAuthorityIdentifier}")
+
+        viewModelScope.launch(Dispatchers.IO) {
+            issuer.credentialDeveloperModeRequestUpdate(
+                credential.credentialIdentifier,
+                requestRemoteDeletion,
+                notifyApplicationOfUpdate)
+        }
+    }
+
     val refreshCredentialMutex = Mutex()
 
     private fun refreshCredential(
@@ -98,10 +122,17 @@ class CardViewModel : ViewModel() {
             //
             refreshCredentialMutex.withLock {
                 val numAuthKeysRefreshed = credential.housekeeping(
+                    walletApplication,
                     issuingAuthorityRepository,
                     secureAreaRepository,
                     forceUpdate,
                 )
+                if (credential.isDeleted) {
+                    Logger.i(TAG, "Credential ${credential.name} was deleted, removing")
+                    credentialStore.deleteCredential(credential.name)
+                    return@launch
+                }
+
                 if (showFeedback) {
                     Handler(Looper.getMainLooper()).post {
                         Toast.makeText(
@@ -333,12 +364,14 @@ class CardViewModel : ViewModel() {
 
     fun setData(
         context: Context,
+        walletApplication: WalletApplication,
         credentialStore: CredentialStore,
         issuingAuthorityRepository: IssuingAuthorityRepository,
         secureAreaRepository: SecureAreaRepository,
         credentialTypeRepository: CredentialTypeRepository
     ) {
         this.context = context
+        this.walletApplication = walletApplication
         this.credentialStore = credentialStore
         this.issuingAuthorityRepository = issuingAuthorityRepository
         this.secureAreaRepository = secureAreaRepository

@@ -77,6 +77,7 @@ dependencies {
     implementation libs.bundles.androidx.crypto
     implementation libs.compose.runtime.livedata
     implementation libs.kotlinx.datetime
+    implementation libs.accompanist.permissions
     debugImplementation libs.compose.icons
 
     implementation libs.net.sf.scuba.scuba.sc.android

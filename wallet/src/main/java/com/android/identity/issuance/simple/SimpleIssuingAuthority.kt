@@ -18,6 +18,9 @@ import com.android.identity.issuance.RegisterCredentialFlow
 import com.android.identity.issuance.RequestPresentationObjectsFlow
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.issuance.CredentialExtensions
+import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
+import com.android.identity.issuance.UnknownCredentialException
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import kotlinx.datetime.Clock
@@ -73,6 +76,8 @@ abstract class SimpleIssuingAuthority(
     abstract fun createPresentationData(presentationFormat: CredentialPresentationFormat,
                                         credentialConfiguration: CredentialConfiguration,
                                         authenticationKey: EcPublicKey): ByteArray
+
+    abstract fun developerModeRequestUpdate(currentConfiguration: CredentialConfiguration): CredentialConfiguration
 
     private data class CpoRequest(
         val authenticationKey: EcPublicKey,
@@ -167,13 +172,17 @@ abstract class SimpleIssuingAuthority(
     private fun loadIssuerCredential(credentialId: String): IssuerCredential {
         val encoded = storageEngine.get(credentialId)
         if (encoded == null) {
-            throw IllegalArgumentException("Unknown credentialId")
+            throw UnknownCredentialException("Unknown credentialId")
         }
         return IssuerCredential.fromCbor(encoded)
     }
 
     private fun saveIssuerCredential(credentialId: String, state: IssuerCredential) {
         storageEngine.put(credentialId, state.toCbor())
+    }
+
+    private fun deleteIssuerCredential(credentialId: String) {
+        storageEngine.delete(credentialId)
     }
 
     override suspend fun credentialGetState(credentialId: String): CredentialState {
@@ -222,10 +231,12 @@ abstract class SimpleIssuingAuthority(
         val issuerCredential = loadIssuerCredential(credentialId)
         check(issuerCredential.state == CredentialCondition.CONFIGURATION_AVAILABLE)
         issuerCredential.state = CredentialCondition.READY
-        val credentialConfiguration = generateCredentialConfiguration(issuerCredential.collectedEvidence)
-        issuerCredential.credentialConfiguration = credentialConfiguration
+        if (issuerCredential.credentialConfiguration == null) {
+            issuerCredential.credentialConfiguration =
+                generateCredentialConfiguration(issuerCredential.collectedEvidence)
+        }
         saveIssuerCredential(credentialId, issuerCredential)
-        return credentialConfiguration
+        return issuerCredential.credentialConfiguration!!
     }
 
     override fun credentialRequestPresentationObjects(credentialId: String): RequestPresentationObjectsFlow {
@@ -351,4 +362,26 @@ abstract class SimpleIssuingAuthority(
         }
     }
 
+    override suspend fun credentialDeveloperModeRequestUpdate(
+        credentialId: String,
+        requestRemoteDeletion: Boolean,
+        notifyApplicationOfUpdate: Boolean
+    ) {
+        if (requestRemoteDeletion) {
+            deleteIssuerCredential(credentialId)
+            if (notifyApplicationOfUpdate) {
+                emitOnStateChanged(credentialId)
+            }
+            return
+        }
+
+        val credential = loadIssuerCredential(credentialId)
+        credential.credentialConfiguration = developerModeRequestUpdate(credential.credentialConfiguration!!)
+        credential.state = CredentialCondition.CONFIGURATION_AVAILABLE
+        credential.cpoRequests.clear()
+        saveIssuerCredential(credentialId, credential)
+        if (notifyApplicationOfUpdate) {
+            emitOnStateChanged(credentialId)
+        }
+    }
 }
