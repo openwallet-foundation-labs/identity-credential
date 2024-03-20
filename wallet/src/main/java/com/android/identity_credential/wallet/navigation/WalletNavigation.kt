@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity_credential.wallet.CardViewModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -75,7 +76,8 @@ fun WalletNavigation(
                 qrEngagementViewModel = qrEngagementViewModel,
                 cardViewModel = cardViewModel,
                 settingsModel = application.settingsModel,
-                permissionTracker = permissionTracker
+                permissionTracker = permissionTracker,
+                context = application.applicationContext,
             )
         }
 
