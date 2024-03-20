@@ -7,6 +7,7 @@ import com.android.identity.cose.CoseMac0
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.io.bytestring.ByteStringBuilder
 
 /**
@@ -176,6 +177,20 @@ sealed class DataItem(
             require(this.tagNumber == Tagged.DATE_TIME_STRING)
             require(this.taggedItem is Tstr)
             return Instant.parse(this.taggedItem.value)
+        }
+
+    /**
+     * The date-time from a tstr with tag [Tagged.FULL_DATE_STRING].
+     *
+     * @throws IllegalArgumentException if the data item isn't a tag with tag [Tagged.FULL_DATE_STRING]
+     * containing a tstr with valid date format.
+     */
+    val asDateString: LocalDate
+        get() {
+            require(this is Tagged)
+            require(this.tagNumber == Tagged.FULL_DATE_STRING)
+            require(this.taggedItem is Tstr)
+            return LocalDate.parse(this.taggedItem.value)
         }
 
     /**
