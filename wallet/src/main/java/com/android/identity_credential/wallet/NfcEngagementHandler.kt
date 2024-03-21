@@ -17,6 +17,7 @@
 package com.android.identity_credential.wallet
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import android.os.Handler
@@ -26,6 +27,7 @@ import androidx.core.content.ContextCompat
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransportOptions
+import com.android.identity.android.util.NfcUtil
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.util.Logger
@@ -104,6 +106,29 @@ class NfcEngagementHandler : HostApduService() {
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
         Logger.dHex(TAG, "processCommandApdu", commandApdu)
+
+        // If we don't have the required BLE permissions, tell the reader "No thanks!"
+        // and notify the user that they need to grant permissions
+        for (permission in WalletApplication.MDOC_PROXIMITY_PERMISSIONS) {
+            if (applicationContext.checkSelfPermission(permission) == PackageManager.PERMISSION_DENIED) {
+                Logger.e(TAG, "Don't have permission $permission - sending FILE_NOT_FOUND APDU")
+
+                val walletApplication = application as WalletApplication
+
+                // Make sure the user sees the permissoins SnackBar next time they go to the app...
+                walletApplication.settingsModel.hideMissingProximityPermissionsWarning.value = false
+
+                // This is best effort, user may not have grant POST_NOTIFICATIONS permission..
+                // but if they do, they'll see this notification and tapping on it will bring
+                // them to MainScreen of the wallet app where we show a SnackBar with a button
+                // to help remedy the problem.
+                walletApplication.postNotificationForMissingMdocProximityPermissions()
+
+                // Inform the reader that we can't continue.
+                return NfcUtil.STATUS_WORD_FILE_NOT_FOUND
+            }
+        }
+
         return engagementHelper?.nfcProcessCommandApdu(commandApdu)
     }
 

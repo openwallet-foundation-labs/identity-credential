@@ -72,11 +72,9 @@ fun WalletNavigation(
         composable(WalletDestination.Main.route) {
             MainScreen(
                 onNavigate = navigateTo,
-                credentialStore = credentialStore,
                 qrEngagementViewModel = qrEngagementViewModel,
                 cardViewModel = cardViewModel,
                 settingsModel = application.settingsModel,
-                permissionTracker = permissionTracker,
                 context = application.applicationContext,
             )
         }
