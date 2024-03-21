@@ -106,15 +106,7 @@ fun QrEngagementScreen(
                 )
             }
 
-            // startQrEngagement is called before navigating to this compose, so let user know we're
-            // waiting (until the QR code is generated/errors out)
-            QrEngagementViewModel.State.IDLE -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.width(64.dp),
-                    color = MaterialTheme.colorScheme.secondary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-            }
+            QrEngagementViewModel.State.IDLE -> {}
 
             QrEngagementViewModel.State.ERROR -> {
                 Column {
