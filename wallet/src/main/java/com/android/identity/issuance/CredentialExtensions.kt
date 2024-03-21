@@ -9,6 +9,7 @@ import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.WalletApplication
 import java.lang.IllegalArgumentException
 import kotlin.time.Duration.Companion.hours
@@ -37,6 +38,18 @@ object CredentialExtensions {
         get() = applicationData.getString("credentialIdentifier")
         set(value) { applicationData.setString("credentialIdentifier", value) }
 
+    /**
+     * The number of [CredentialConfiguration] objects downloaded from the issuer.
+     */
+    var Credential.numCredentialConfigurationsDownloaded: Long
+        get() {
+            if (!applicationData.keyExists("numCredentialConfigurationsDownloaded")) {
+                return 0
+            }
+            return applicationData.getNumber("numCredentialConfigurationsDownloaded")
+        }
+        set(value) { applicationData.setNumber("numCredentialConfigurationsDownloaded", value) }
+
     /** The [CredentialConfiguration] received from the issuer */
     var Credential.credentialConfiguration: CredentialConfiguration
         get() = CredentialConfiguration.fromCbor(applicationData.getData("credentialConfiguration"))
@@ -54,20 +67,41 @@ object CredentialExtensions {
         set(value) { applicationData.setData("credentialState", value.toCbor()) }
 
     /**
+     * Set to true if the credential was deleted on the issuer-side.
+     */
+    val Credential.isDeleted: Boolean
+        get() {
+            return try {
+                applicationData.getBoolean("isDeleted")
+            } catch (e: Throwable) {
+                false
+            }
+        }
+
+    /**
      * Gets the credential state from the Issuer and updates the [.state] property with the value.
      *
      * Unlike reading from the [.state] property, this performs network I/O to communicate
      * with the issuer.
      *
+     * If the credential doesn't exist (for example it could have been deleted recently) the
+     * [Credential.isDeleted] property will be set to true and this method returns false.
+     *
      * @param issuingAuthorityRepository a repository of issuing authorities.
-     * @return The [CredentialState] retrieved from the issuer.
+     * @return true if the refresh succeeded, false if the credential is unknown.
      * @throws IllegalArgumentException if the issuer isn't know.
      */
-    suspend fun Credential.refreshState(issuingAuthorityRepository: IssuingAuthorityRepository): CredentialState {
+    suspend fun Credential.refreshState(issuingAuthorityRepository: IssuingAuthorityRepository):
+            Boolean {
         val issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
             ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
-        state = issuer.credentialGetState(credentialIdentifier)
-        return state
+        try {
+            this.state = issuer.credentialGetState(credentialIdentifier)
+            return true
+        } catch (e: UnknownCredentialException) {
+            applicationData.setBoolean("isDeleted", true)
+            return false
+        }
     }
 
     /**
@@ -82,28 +116,29 @@ object CredentialExtensions {
      * @param issuingAuthorityRepository a repository of issuing authorities.
      * @param secureAreaRepository a repository of Secure Area implementations available.
      * @param forceUpdate if true, throttling will be bypassed.
-     * @return the number of authentication keys refreshed
+     * @return the number of authentication keys refreshed or -1 if the credential was deleted
      * @throws IllegalArgumentException if the issuer isn't known.
      */
     suspend fun Credential.housekeeping(
+        walletApplication: WalletApplication,
         issuingAuthorityRepository: IssuingAuthorityRepository,
         secureAreaRepository: SecureAreaRepository,
         forceUpdate: Boolean,
     ): Int {
         if (forceUpdate) {
-            Logger.d(TAG, "housekeeping: Forcing update")
+            Logger.i(TAG, "housekeeping: Forcing update")
         } else {
             val limit = 4.hours
             val sinceLastUpdate = (state.timestamp - System.currentTimeMillis()).toDuration(DurationUnit.MILLISECONDS)
             if (sinceLastUpdate.inWholeHours < 4) {
-                Logger.d(
+                Logger.i(
                     TAG,
                     "housekeeping: Last update was ${sinceLastUpdate.inWholeSeconds} " +
                             "seconds ago, skipping (limit: ${limit.inWholeSeconds})"
                 )
                 return 0
             }
-            Logger.d(
+            Logger.i(
                 TAG,
                 "housekeeping: Last update was ${sinceLastUpdate.inWholeSeconds} " +
                         "seconds ago, proceeding (limit: ${limit.inWholeSeconds} seconds)"
@@ -120,12 +155,42 @@ object CredentialExtensions {
         val authKeyDomain = WalletApplication.AUTH_KEY_DOMAIN
 
         // OK, let's see if configuration is available
-        refreshState(issuingAuthorityRepository)
+        if (!refreshState(issuingAuthorityRepository)) {
+            walletApplication.postNotificationForCredential(
+                this,
+                walletApplication.applicationContext.getString(
+                    R.string.notifications_document_deleted_by_issuer
+                )
+            )
+            return -1
+        }
         if (state.condition == CredentialCondition.CONFIGURATION_AVAILABLE) {
-            // TODO: delete all existing CPOs
-            Logger.d(TAG, "housekeeping: Configuration available, downloading")
+            authenticationKeys.forEach { it.delete() }
+            pendingAuthenticationKeys.forEach { it.delete() }
+
             credentialConfiguration = issuer.credentialGetConfiguration(credentialIdentifier)
-            refreshState(issuingAuthorityRepository)
+
+            // Notify the user that the document is either ready or an update has been downloaded.
+            if (numCredentialConfigurationsDownloaded == 0L) {
+                walletApplication.postNotificationForCredential(
+                    this,
+                    walletApplication.applicationContext.getString(
+                        R.string.notifications_document_application_approved_and_ready_to_use
+                    )
+                )
+            } else {
+                walletApplication.postNotificationForCredential(
+                    this,
+                    walletApplication.applicationContext.getString(
+                        R.string.notifications_document_update_from_issuer
+                    )
+                )
+            }
+            numCredentialConfigurationsDownloaded += 1
+
+            if (!refreshState(issuingAuthorityRepository)) {
+                return -1
+            }
         }
 
         // Request new CPOs if needed
@@ -143,7 +208,6 @@ object CredentialExtensions {
                 minValidTimeMillis,
                 true)
             if (numPendingAuthKeysToCreate > 0) {
-                Logger.d(TAG, "Need to request $numPendingAuthKeysToCreate CPOs")
                 val requestCpoFlow = issuer.credentialRequestPresentationObjects(credentialIdentifier)
                 val authKeyConfig = requestCpoFlow.getAuthenticationKeyConfiguration()
                 val authKeySettings: CreateKeySettings = if (secureArea is AndroidKeystoreSecureArea) {
@@ -175,13 +239,14 @@ object CredentialExtensions {
                     )
                 }
                 requestCpoFlow.sendAuthenticationKeys(credentialPresentationRequests)
-                refreshState(issuingAuthorityRepository)
+                if (!refreshState(issuingAuthorityRepository)) {
+                    return -1
+                }
             }
         }
 
         var numAuthKeysRefreshed = 0
         if (state.numAvailableCPO > 0) {
-            Logger.d(TAG, "Fetching ${state.numAvailableCPO} CPOs")
             for (cpo in issuer.credentialGetPresentationObjects(credentialIdentifier)) {
                 val pendingAuthKey = pendingAuthenticationKeys.find {
                     it.attestation.certificates.first().publicKey.equals(cpo.authenticationKey) }
@@ -195,7 +260,9 @@ object CredentialExtensions {
                     Timestamp.ofEpochMilli(cpo.validUntilMillis))
                 numAuthKeysRefreshed += 1
             }
-            refreshState(issuingAuthorityRepository)
+            if (!refreshState(issuingAuthorityRepository)) {
+                return -1
+            }
         }
         return numAuthKeysRefreshed
     }

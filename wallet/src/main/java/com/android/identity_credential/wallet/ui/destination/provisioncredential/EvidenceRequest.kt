@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet.ui.destination.provisioncredential
 
 import android.Manifest
+import android.os.Build
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.camera.view.PreviewView
@@ -17,6 +18,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,10 +35,12 @@ import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
+import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
+import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
 import com.android.identity.util.Logger
 import com.android.identity_credential.mrtd.MrtdMrzScanner
 import com.android.identity_credential.mrtd.MrtdNfc
@@ -49,6 +53,10 @@ import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.MarkdownText
 import com.android.identity_credential.wallet.util.getActivity
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.coroutines.launch
 
 
@@ -100,6 +108,80 @@ fun EvidenceRequestMessageView(
             Text(evidenceRequest.acceptButtonText)
         }
     }
+}
+
+@OptIn(ExperimentalPermissionsApi::class)
+@Composable
+fun EvidenceRequestNotificationPermissionView(
+    evidenceRequest: EvidenceRequestNotificationPermission,
+    provisioningViewModel: ProvisioningViewModel,
+    issuingAuthorityRepository: IssuingAuthorityRepository,
+    credentialStore: CredentialStore
+) {
+
+    // Only need to request POST_NOTIFICATIONS permission if on Android 13 (Tiramisu) or later.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        // TODO: This is a hack, this check should be done in the model instead of here.
+        SideEffect {
+            provisioningViewModel.provideEvidence(
+                evidence = EvidenceResponseNotificationPermission(true),
+                issuingAuthorityRepository = issuingAuthorityRepository,
+                credentialStore = credentialStore
+            )
+        }
+        return
+    }
+
+    val postNotificationsPermissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+    if (postNotificationsPermissionState.status.isGranted) {
+        provisioningViewModel.provideEvidence(
+            evidence = EvidenceResponseNotificationPermission(true),
+            issuingAuthorityRepository = issuingAuthorityRepository,
+            credentialStore = credentialStore
+        )
+    } else {
+        Column {
+            // We always show the rationale to the user so not need to key off
+            // postNotificationsPermissionState.status.shouldShowRationale, just
+            // always show it.
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                MarkdownText(
+                    modifier = Modifier.padding(8.dp),
+                    content = evidenceRequest.permissionNotGrantedMessage,
+                    assets = evidenceRequest.assets
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Button(
+                    modifier = Modifier.padding(8.dp),
+                    onClick = {
+                        provisioningViewModel.provideEvidence(
+                            evidence = EvidenceResponseNotificationPermission(false),
+                            issuingAuthorityRepository = issuingAuthorityRepository,
+                            credentialStore = credentialStore
+                        )
+                    }) {
+                    Text(evidenceRequest.continueWithoutPermissionButtonText)
+                }
+                Button(
+                    modifier = Modifier.padding(8.dp),
+                    onClick = {
+                        postNotificationsPermissionState.launchPermissionRequest()
+                    }) {
+                    Text(evidenceRequest.grantPermissionButtonText)
+                }
+            }
+        }
+    }
+
 }
 
 @Composable

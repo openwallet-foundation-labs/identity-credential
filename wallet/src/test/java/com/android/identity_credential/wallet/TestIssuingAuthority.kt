@@ -44,6 +44,10 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
         return byteArrayOf(1, 2, 3)
     }
 
+    override fun developerModeRequestUpdate(currentConfiguration: CredentialConfiguration): CredentialConfiguration {
+        return configuration.pendingCredentialInformation
+    }
+
     override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
         return SimpleIssuingAuthorityProofingGraph.create {
             message(

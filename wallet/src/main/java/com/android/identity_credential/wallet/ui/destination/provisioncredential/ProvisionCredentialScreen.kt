@@ -1,5 +1,6 @@
 package com.android.identity_credential.wallet.ui.destination.provisioncredential
 
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
+import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
@@ -98,6 +100,15 @@ fun ProvisionCredentialScreen(
 
                     is EvidenceRequestMessage -> {
                         EvidenceRequestMessageView(
+                            evidenceRequest,
+                            provisioningViewModel = provisioningViewModel,
+                            issuingAuthorityRepository = issuingAuthorityRepository,
+                            credentialStore = credentialStore
+                        )
+                    }
+
+                    is EvidenceRequestNotificationPermission -> {
+                        EvidenceRequestNotificationPermissionView(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,

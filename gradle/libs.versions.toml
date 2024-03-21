@@ -46,6 +46,7 @@
     ksp = "1.8.20-1.0.11"
     junit = "4.13.2"
     org-jetbrains-kotlin-jvm = "1.8.20"
+    accompanist-permissions = "0.34.0"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -121,6 +122,8 @@
     play-services-base = { module = "com.google.android.gms:play-services-base", version = "18.2.0" }
     play-services-basement = { module = "com.google.android.gms:play-services-basement", version = "18.2.0" }
     play-services-tasks = { module = "com.google.android.gms:play-services-tasks", version = "18.0.2" }
+
+    accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist-permissions"}
 
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]
