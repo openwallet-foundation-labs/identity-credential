@@ -10,7 +10,8 @@
     <string name="permission_bluetooth_advertise">This application needs to advertise itself on bluetooth to send credential data</string>
     <string name="permission_bluetooth_connect">Access to bluetooth connection is needed to send credential data</string>
     <string name="permission_bluetooth_scan">Access to bluetooth scanning is needed to send credential data</string>
-    <string name="permission_button_grant">Grant Permission</string>
+    <string name="permission_button_grant_permission">Grant Permission</string>
+    <string name="permission_button_grant_permissions">Grant Permissions</string>
 
     <!-- Wallet drawer -->
     <string name="wallet_drawer_title">Wallet</string>
