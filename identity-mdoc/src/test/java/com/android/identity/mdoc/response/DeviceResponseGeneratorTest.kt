@@ -117,7 +117,7 @@ class DeviceResponseGeneratorTest {
         timeSigned = Timestamp.ofEpochMilli(nowMillis)
         timeValidityBegin = Timestamp.ofEpochMilli(nowMillis + 3600 * 1000)
         timeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        val pendingAuthKey = credential.createPendingAuthenticationKey(
+        authKey = credential.createAuthenticationKey(
             AUTH_KEY_DOMAIN,
             secureArea,
             SoftwareCreateKeySettings.Builder(ByteArray(0))
@@ -125,12 +125,13 @@ class DeviceResponseGeneratorTest {
                 .build(),
             null
         )
+        Assert.assertFalse(authKey.isCertified)
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             DOC_TYPE,
-            pendingAuthKey.attestation.certificates[0].publicKey
+            authKey.attestation.certificates[0].publicKey
         )
         msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
@@ -194,7 +195,7 @@ class DeviceResponseGeneratorTest {
         ).generate()
 
         // Now that we have issuer-provided authentication data we certify the authentication key.
-        authKey = pendingAuthKey.certify(
+        authKey.certify(
             issuerProvidedAuthenticationData,
             timeValidityBegin,
             timeValidityEnd

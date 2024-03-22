@@ -31,9 +31,9 @@ import org.junit.Test
 import java.security.Security
 
 class CredentialStoreTest {
-    lateinit var storageEngine: StorageEngine
-    lateinit var secureArea: SecureArea
-    lateinit var secureAreaRepository: SecureAreaRepository
+    private lateinit var storageEngine: StorageEngine
+    private lateinit var secureArea: SecureArea
+    private lateinit var secureAreaRepository: SecureAreaRepository
 
     // This isn't really used, we only use a single domain.
     private val AUTH_KEY_DOMAIN = "domain"
@@ -212,7 +212,7 @@ class CredentialStoreTest {
         val timeAfterValidity = Timestamp.ofEpochMilli(200)
 
         // By default, we don't have any auth keys nor any pending auth keys.
-        Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(0, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.authenticationKeyCounter)
 
@@ -221,14 +221,14 @@ class CredentialStoreTest {
 
         // Create ten authentication keys...
         for (n in 0..9) {
-            credential.createPendingAuthenticationKey(
+            credential.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
                 null
             )
         }
-        Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(0, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(10, credential.pendingAuthenticationKeys.size.toLong())
         Assert.assertEquals(10, credential.authenticationKeyCounter)
 
@@ -243,7 +243,7 @@ class CredentialStoreTest {
             )
             Assert.assertEquals(n.toLong(), pendingAuthenticationKey.authenticationKeyCounter)
         }
-        Assert.assertEquals(10, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(10, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
 
         // If at a time before anything is valid, should not be able to present
@@ -280,7 +280,7 @@ class CredentialStoreTest {
         }
 
         // All ten auth keys should now have a use count of 1.
-        for (authenticationKey in credential.authenticationKeys) {
+        for (authenticationKey in credential.certifiedAuthenticationKeys) {
             Assert.assertEquals(1, authenticationKey.usageCount.toLong())
         }
 
@@ -294,14 +294,14 @@ class CredentialStoreTest {
         }
 
         // All ten auth keys should now have a use count of 2.
-        for (authenticationKey in credential.authenticationKeys) {
+        for (authenticationKey in credential.certifiedAuthenticationKeys) {
             Assert.assertEquals(2, authenticationKey.usageCount.toLong())
         }
 
         // Create and certify five replacements
         n = 0
         while (n < 5) {
-            credential.createPendingAuthenticationKey(
+            credential.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
@@ -309,7 +309,7 @@ class CredentialStoreTest {
             )
             n++
         }
-        Assert.assertEquals(10, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(10, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(5, credential.pendingAuthenticationKeys.size.toLong())
         Assert.assertEquals(15, credential.authenticationKeyCounter)
         n = 11
@@ -322,7 +322,7 @@ class CredentialStoreTest {
             Assert.assertEquals(n.toLong(), pendingAuthenticationKey.authenticationKeyCounter)
             n++
         }
-        Assert.assertEquals(15, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(15, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
 
         // Simulate ten presentations and check we get the newly created ones
@@ -336,7 +336,7 @@ class CredentialStoreTest {
         }
 
         // All fifteen auth keys should now have a use count of 2.
-        for (authenticationKey in credential.authenticationKeys) {
+        for (authenticationKey in credential.certifiedAuthenticationKeys) {
             Assert.assertEquals(2, authenticationKey.usageCount.toLong())
         }
 
@@ -351,7 +351,7 @@ class CredentialStoreTest {
 
         // All fifteen auth keys should now have a use count of 3. This shows that
         // we're hitting the auth keys evenly (both old and new).
-        for (authenticationKey in credential.authenticationKeys) {
+        for (authenticationKey in credential.certifiedAuthenticationKeys) {
             Assert.assertEquals(3, authenticationKey.usageCount.toLong())
         }
     }
@@ -367,13 +367,13 @@ class CredentialStoreTest {
         )
         val credential = credentialStore.createCredential("testCredential")
         credentialStore.addCredential(credential)
-        Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(0, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
 
         // Create ten pending auth keys and certify four of them
         n = 0
         while (n < 4) {
-            credential.createPendingAuthenticationKey(
+            credential.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
@@ -381,13 +381,13 @@ class CredentialStoreTest {
             )
             n++
         }
-        Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(0, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(4, credential.pendingAuthenticationKeys.size.toLong())
         n = 0
-        for (pendingAuthenticationKey in credential.pendingAuthenticationKeys) {
+        for (authenticationKey in credential.pendingAuthenticationKeys) {
             // Because we check that we serialize things correctly below, make sure
             // the data and validity times vary for each key...
-            val authenticationKey = pendingAuthenticationKey.certify(
+            authenticationKey.certify(
                 byteArrayOf(1, 2, n.toByte()),
                 Timestamp.ofEpochMilli(timeValidityBegin.toEpochMilli() + n),
                 Timestamp.ofEpochMilli(timeValidityEnd.toEpochMilli() + 2 * n)
@@ -398,11 +398,11 @@ class CredentialStoreTest {
             Assert.assertEquals(n.toLong(), authenticationKey.usageCount.toLong())
             n++
         }
-        Assert.assertEquals(4, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(4, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
         n = 0
         while (n < 6) {
-            credential.createPendingAuthenticationKey(
+            credential.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
@@ -410,17 +410,17 @@ class CredentialStoreTest {
             )
             n++
         }
-        Assert.assertEquals(4, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(4, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(6, credential.pendingAuthenticationKeys.size.toLong())
         val credential2 = credentialStore.lookupCredential("testCredential")
         Assert.assertNotNull(credential2)
-        Assert.assertEquals(4, credential2!!.authenticationKeys.size.toLong())
+        Assert.assertEquals(4, credential2!!.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(6, credential2.pendingAuthenticationKeys.size.toLong())
 
         // Now check that what we loaded matches what we created in-memory just above. We
         // use the fact that the order of the keys are preserved across save/load.
-        val it1 = credential.authenticationKeys.iterator()
-        val it2 = credential2.authenticationKeys.iterator()
+        val it1 = credential.certifiedAuthenticationKeys.iterator()
+        val it2 = credential2.certifiedAuthenticationKeys.iterator()
         n = 0
         while (n < 4) {
             val key1 = it1.next()
@@ -471,7 +471,7 @@ class CredentialStoreTest {
         // check it below.
         var n = 0
         while (n < 10) {
-            credential.createPendingAuthenticationKey(
+            credential.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
@@ -521,7 +521,7 @@ class CredentialStoreTest {
         // Examine the authentication keys. The first five should have use count 2, the
         // latter five use count 4.
         n = 0
-        for (authenticationKey in credential.authenticationKeys) {
+        for (authenticationKey in credential.certifiedAuthenticationKeys) {
             if (n++ < 5) {
                 Assert.assertEquals(2, authenticationKey.usageCount.toLong())
             } else {
@@ -586,7 +586,7 @@ class CredentialStoreTest {
         var credential: Credential? = credentialStore.createCredential("testCredential")
         credentialStore.addCredential(credential!!)
         for (n in 0..9) {
-            val pendingAuthKey = credential!!.createPendingAuthenticationKey(
+            val pendingAuthKey = credential.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
@@ -601,8 +601,8 @@ class CredentialStoreTest {
             Assert.assertFalse(pendingAppData.keyExists("non-existent"))
             Assert.assertThrows(IllegalArgumentException::class.java) { pendingAppData.getString("non-existent") }
         }
-        Assert.assertEquals(10, credential!!.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(10, credential.pendingAuthenticationKeys.size.toLong())
+        Assert.assertEquals(0, credential.certifiedAuthenticationKeys.size.toLong())
 
         // Check that it's persisted to disk.
         try {
@@ -622,17 +622,17 @@ class CredentialStoreTest {
             Assert.assertThrows(IllegalArgumentException::class.java) { pendingAppData.getString("non-existent") }
         }
 
-        // Certify and check that data carries over from PendingAuthenticationKey
+        // Certify and check that data carries over from pending AuthenticationKey
         // to AuthenticationKey
         n = 0
-        for (pendingAuthKey in credential.pendingAuthenticationKeys) {
+        for (authKey in credential.pendingAuthenticationKeys) {
             val value = String.format("bar%02d", n++)
-            val pendingAppData = pendingAuthKey.applicationData
+            val pendingAppData = authKey.applicationData
             Assert.assertEquals(value, pendingAppData.getString("foo"))
             Assert.assertEquals(0, pendingAppData.getData("bar").size.toLong())
             Assert.assertFalse(pendingAppData.keyExists("non-existent"))
             Assert.assertThrows(IllegalArgumentException::class.java) { pendingAppData.getString("non-existent") }
-            val authKey = pendingAuthKey.certify(
+            authKey.certify(
                 byteArrayOf(0, n.toByte()),
                 Timestamp.ofEpochMilli(100),
                 Timestamp.ofEpochMilli(200)
@@ -646,7 +646,7 @@ class CredentialStoreTest {
 
         // Check it's persisted to disk.
         n = 0
-        for (authKey in credential.authenticationKeys) {
+        for (authKey in credential.certifiedAuthenticationKeys) {
             val value = String.format("bar%02d", n++)
             val appData = authKey.applicationData
             Assert.assertEquals(value, appData.getString("foo"))
@@ -664,10 +664,10 @@ class CredentialStoreTest {
         )
         val credential = credentialStore.createCredential("testCredential")
         credentialStore.addCredential(credential)
-        Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(0, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
         for (n in 0..9) {
-            val pendingAuthKey = credential.createPendingAuthenticationKey(
+            val pendingAuthKey = credential.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
@@ -680,12 +680,12 @@ class CredentialStoreTest {
             )
         }
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(10, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(10, credential.certifiedAuthenticationKeys.size.toLong())
 
         // Now replace the fifth authentication key
-        val keyToReplace = credential.authenticationKeys[5]
+        val keyToReplace = credential.certifiedAuthenticationKeys[5]
         Assert.assertArrayEquals(byteArrayOf(0, 5), keyToReplace.issuerProvidedData)
-        val pendingAuthKey = credential.createPendingAuthenticationKey(
+        val pendingAuthKey = credential.createAuthenticationKey(
             AUTH_KEY_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
@@ -693,7 +693,7 @@ class CredentialStoreTest {
         )
         // ... it's not replaced until certify() is called
         Assert.assertEquals(1, credential.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(10, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(10, credential.certifiedAuthenticationKeys.size.toLong())
         pendingAuthKey.certify(
             byteArrayOf(1, 0),
             Timestamp.ofEpochMilli(100),
@@ -701,13 +701,13 @@ class CredentialStoreTest {
         )
         // ... now it should be gone.
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(10, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(10, credential.certifiedAuthenticationKeys.size.toLong())
 
         // Check that it was indeed the fifth key that was replaced inspecting issuer-provided data.
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         var count = 0
-        for (authKey in credential.authenticationKeys) {
+        for (authKey in credential.certifiedAuthenticationKeys) {
             val expectedData = arrayOf(
                 byteArrayOf(0, 0),
                 byteArrayOf(0, 1),
@@ -725,8 +725,8 @@ class CredentialStoreTest {
 
         // Test the case where the replacement key is prematurely deleted. The key
         // being replaced should no longer reference it has a replacement...
-        val toBeReplaced = credential.authenticationKeys[0]
-        var replacement = credential.createPendingAuthenticationKey(
+        val toBeReplaced = credential.certifiedAuthenticationKeys[0]
+        var replacement = credential.createAuthenticationKey(
             AUTH_KEY_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
@@ -739,7 +739,7 @@ class CredentialStoreTest {
 
         // Similarly, test the case where the key to be replaced is prematurely deleted.
         // The replacement key should no longer indicate it's a replacement key.
-        replacement = credential.createPendingAuthenticationKey(
+        replacement = credential.createAuthenticationKey(
             AUTH_KEY_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),

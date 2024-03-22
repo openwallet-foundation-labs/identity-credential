@@ -1,9 +1,25 @@
+/*
+ * Copyright 2023 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.android.identity.credential
 
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.CertificateChain
+import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.SecureArea
 import com.android.identity.util.ApplicationData
 import com.android.identity.util.Logger
@@ -11,18 +27,17 @@ import com.android.identity.util.SimpleApplicationData
 import com.android.identity.util.Timestamp
 
 /**
- * A certified authentication key.
+ * An authentication key.
  *
- * To create an instance of this type, an application must first use
- * [Credential.createPendingAuthenticationKey]
- * to create a [PendingAuthenticationKey] and after issuer certification
- * has been received it can be upgraded to a [AuthenticationKey].
+ * To create an instance of this type, an application must use [Credential.createAuthenticationKey].
+ * At this point, the [AuthenticationKey] is not certified. In order to use the [AuthenticationKey]
+ * for provisioning and presentation, call [AuthenticationKey.certify] to certify the key.
  */
 class AuthenticationKey {
     /**
      * The alias for the authentication key.
      *
-     * This can be used together with the [SecureArea] returned by [.getSecureArea]
+     * This can be used together with the [SecureArea] returned by [secureArea]
      */
     lateinit var alias: String
         private set
@@ -30,7 +45,7 @@ class AuthenticationKey {
     /**
      * The domain of the authentication key.
      *
-     * This returns the domain set when the pending authentication key was created.
+     * This returns the domain set when the authentication key was created.
      */
     lateinit var domain: String
         private set
@@ -43,20 +58,38 @@ class AuthenticationKey {
 
     /**
      * The issuer-provided data associated with the key.
+     *
+     * @throws IllegalStateException if the authentication key is not yet certified.
      */
-    lateinit var issuerProvidedData: ByteArray
-        private set
+    private var _issuerProvidedData: ByteArray? = null
+    val issuerProvidedData: ByteArray
+        get() = _issuerProvidedData
+            ?: throw IllegalStateException("This authentication key is not yet certified")
 
     /**
      * The point in time the issuer-provided data is valid from.
+     *
+     * @throws IllegalStateException if the authentication key is not yet certified.
      */
-    lateinit var validFrom: Timestamp
-        private set
+    private var _validFrom: Timestamp? = null
+    val validFrom: Timestamp
+        get() = _validFrom
+            ?: throw IllegalStateException("This authentication key is not yet certified")
 
     /**
      * The point in time the issuer-provided data is valid until.
+     *
+     * @throws IllegalStateException if the authentication key is not yet certified.
      */
-    lateinit var validUntil: Timestamp
+    private var _validUntil: Timestamp? = null
+    val validUntil: Timestamp
+        get() = _validUntil
+            ?: throw IllegalStateException("This authentication key is not yet certified")
+
+    /**
+     * Indicates whether the authentication key has been certified yet.
+     */
+    var isCertified: Boolean = false
         private set
 
     private lateinit var privateApplicationData: SimpleApplicationData
@@ -75,14 +108,16 @@ class AuthenticationKey {
      * The authentication key counter.
      *
      * This is the value of the Credential's Authentication Key Counter
-     * at the time the pending authentication key for this authentication key
-     * was created.
+     * at the time this authentication key was created.
      */
     var authenticationKeyCounter: Long = 0
         private set
 
     /**
-     * The X.509 certificate chain for the authentication key
+     * The X.509 certificate chain for the authentication key.
+     *
+     * The application should send this key to the issuer which should create issuer-provided
+     * data (e.g. an MSO if using ISO/IEC 18013-5:2021) using the key as the `DeviceKey`.
      */
     val attestation: CertificateChain
         get() = secureArea.getKeyInfo(alias).attestation
@@ -91,18 +126,16 @@ class AuthenticationKey {
      * The secure area for the authentication key.
      *
      * This can be used together with the alias returned by [alias].
-     *
-     * @return The [SecureArea] used.
      */
     lateinit var secureArea: SecureArea
 
     private lateinit var credential: Credential
 
     internal var replacementAlias: String? = null
+    internal var replacementForAlias: String? = null
 
     /**
      * Deletes the authentication key.
-     *
      *
      * After deletion, this object should no longer be used.
      */
@@ -125,22 +158,31 @@ class AuthenticationKey {
             .put("domain", domain)
             .put("secureAreaIdentifier", secureArea.identifier)
             .put("usageCount", usageCount.toLong())
-            .put("data", issuerProvidedData)
-            .put("validFrom", validFrom.toEpochMilli())
-            .put("validUntil", validUntil.toEpochMilli())
+            .put("isCertified", isCertified)
             .put("applicationData", privateApplicationData.encodeAsCbor())
             .put("authenticationKeyCounter", authenticationKeyCounter)
+
+        if (replacementForAlias != null) {
+            mapBuilder.put("replacementForAlias", replacementForAlias!!)
+        }
         if (replacementAlias != null) {
             mapBuilder.put("replacementAlias", replacementAlias!!)
         }
+
+        if (isCertified) {
+            mapBuilder.put("data", _issuerProvidedData!!)
+                .put("validFrom", _validFrom!!.toEpochMilli())
+                .put("validUntil", _validUntil!!.toEpochMilli())
+        }
+
         return mapBuilder.end().build()
     }
 
     /**
-     * The pending auth key that will replace this key once certified or `null` if no
+     * The auth key that will replace this key once certified or `null` if no
      * key is designated to replace this key.
      */
-    val replacement: PendingAuthenticationKey?
+    val replacement: AuthenticationKey?
         get() = credential.pendingAuthenticationKeys.firstOrNull { it.alias == replacementAlias }
             .also {
                 if (it == null && replacementAlias != null) {
@@ -151,34 +193,67 @@ class AuthenticationKey {
                 }
             }
 
+    /**
+     * The auth key that will be replaced by this key once it's been certified.
+     */
+    val replacementFor: AuthenticationKey?
+        get() = credential.certifiedAuthenticationKeys.firstOrNull { it.alias == replacementForAlias }
+            .also {
+                if (it == null && replacementForAlias != null) {
+                    Logger.w(
+                        TAG, "Key with alias $replacementForAlias which " +
+                            "is intended to be replaced does not exist"
+                    )
+                }
+            }
 
-    fun setReplacementAlias(alias: String) {
-        replacementAlias = alias
-        credential.saveCredential()
+    /**
+     * Certifies the authentication key.
+     *
+     * @param issuerProvidedAuthenticationData the issuer-provided static authentication data.
+     * @param validFrom the point in time before which the data is not valid.
+     * @param validUntil the point in time after which the data is not valid.
+     */
+    fun certify(
+        issuerProvidedAuthenticationData: ByteArray,
+        validFrom: Timestamp,
+        validUntil: Timestamp
+    ) {
+        check(!isCertified) { "AuthenticationKey is already certified" }
+        isCertified = true
+        _issuerProvidedData = issuerProvidedAuthenticationData
+        _validFrom = validFrom
+        _validUntil = validUntil
+
+        replacementFor?.delete()
+        replacementForAlias = null
+
+        credential.certifyPendingAuthenticationKey(this)
     }
 
     companion object {
         const val TAG = "AuthenticationKey"
 
-        fun create(
-            pendingAuthenticationKey: PendingAuthenticationKey,
-            issuerProvidedAuthenticationData: ByteArray,
-            validFrom: Timestamp,
-            validUntil: Timestamp,
+        internal fun create(
+            alias: String,
+            domain: String,
+            secureArea: SecureArea,
+            createKeySettings: CreateKeySettings,
+            asReplacementFor: AuthenticationKey?,
             credential: Credential
-        ) = AuthenticationKey().apply {
-            alias = pendingAuthenticationKey.alias
-            domain = pendingAuthenticationKey.domain
-            issuerProvidedData = issuerProvidedAuthenticationData
-            this.validFrom = validFrom
-            this.validUntil = validUntil
+        ) = AuthenticationKey().run {
+            this.alias = alias
+            this.domain = domain
+            this.secureArea = secureArea
+            this.secureArea.createKey(alias, createKeySettings)
+            replacementForAlias = asReplacementFor?.alias
             this.credential = credential
-            secureArea = pendingAuthenticationKey.secureArea
-            privateApplicationData = pendingAuthenticationKey.privateApplicationData
-            authenticationKeyCounter = pendingAuthenticationKey.authenticationKeyCounter
+            privateApplicationData = SimpleApplicationData { credential.saveCredential() }
+            authenticationKeyCounter = credential.authenticationKeyCounter
+            this
         }
 
-        fun fromCbor(
+        internal fun fromCbor(
             dataItem: DataItem,
             credential: Credential
         ) = AuthenticationKey().apply {
@@ -189,10 +264,20 @@ class AuthenticationKey {
             secureArea = credential.secureAreaRepository.getImplementation(secureAreaIdentifier)
                 ?: throw IllegalStateException("Unknown Secure Area $secureAreaIdentifier")
             usageCount = map["usageCount"].asNumber.toInt()
-            issuerProvidedData = map["data"].asBstr
-            validFrom = Timestamp.ofEpochMilli(map["validFrom"].asNumber)
-            validUntil = Timestamp.ofEpochMilli(map["validUntil"].asNumber)
+            isCertified = map["isCertified"].asBoolean
+
+            if (isCertified) {
+                _issuerProvidedData = map["data"].asBstr
+                _validFrom = Timestamp.ofEpochMilli(map["validFrom"].asNumber)
+                _validUntil = Timestamp.ofEpochMilli(map["validUntil"].asNumber)
+            } else {
+                _issuerProvidedData = null
+                _validFrom = null
+                _validUntil = null
+            }
+
             replacementAlias = map.getOrNull("replacementAlias")?.asTstr
+            replacementForAlias = map.getOrNull("replacementForAlias")?.asTstr
             val applicationDataDataItem = map["applicationData"]
             check(applicationDataDataItem is Bstr) { "applicationData not found or not byte[]" }
             this.credential = credential

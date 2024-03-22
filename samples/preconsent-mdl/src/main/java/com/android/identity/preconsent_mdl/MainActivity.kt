@@ -141,7 +141,7 @@ class MainActivity : ComponentActivity() {
 
         // Create three authentication keys and certify them
         for (n in 0..2) {
-            val pendingAuthKey = credential.createPendingAuthenticationKey(
+            val pendingAuthKey = credential.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 transferHelper.androidKeystoreSecureArea,
                 CreateKeySettings("".toByteArray()),

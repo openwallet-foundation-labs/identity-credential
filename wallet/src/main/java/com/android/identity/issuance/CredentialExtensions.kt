@@ -165,7 +165,7 @@ object CredentialExtensions {
             return -1
         }
         if (state.condition == CredentialCondition.CONFIGURATION_AVAILABLE) {
-            authenticationKeys.forEach { it.delete() }
+            certifiedAuthenticationKeys.forEach { it.delete() }
             pendingAuthenticationKeys.forEach { it.delete() }
 
             credentialConfiguration = issuer.credentialGetConfiguration(credentialIdentifier)
@@ -251,7 +251,7 @@ object CredentialExtensions {
                 val pendingAuthKey = pendingAuthenticationKeys.find {
                     it.attestation.certificates.first().publicKey.equals(cpo.authenticationKey) }
                 if (pendingAuthKey == null) {
-                    Logger.w(TAG, "No PendingAuthenticationKey for pubkey ${cpo.authenticationKey}")
+                    Logger.w(TAG, "No pending AuthenticationKey for pubkey ${cpo.authenticationKey}")
                     continue
                 }
                 pendingAuthKey.certify(

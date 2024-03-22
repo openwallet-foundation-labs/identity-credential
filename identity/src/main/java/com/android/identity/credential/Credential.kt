@@ -54,15 +54,17 @@ import com.android.identity.util.Timestamp
  * data includes the *Mobile Security Object* which includes the authentication
  * key and is signed by the issuer. This is used for anti-cloning and to return data signed
  * by the device. The way it works in this API is that the application can use
- * [.createPendingAuthenticationKey]
- * to get a [PendingAuthenticationKey]. With this in hand, the application can use
- * [PendingAuthenticationKey.attestation] and send the attestation
+ * [createAuthenticationKey]
+ * to get an [AuthenticationKey]. With this in hand, the application can use
+ * [AuthenticationKey.attestation] and send the attestation
  * to the issuer for certification. The issuer will then craft credential-format
  * specific data (for ISO/IEC 18013-5:2021 it will be a signed MSO which references
  * the public part of the newly created authentication key) and send it back
  * to the app. The application can then call
- * [PendingAuthenticationKey.certify] to
- * upgrade the [PendingAuthenticationKey] to a [AuthenticationKey].
+ * [AuthenticationKey.certify] which would add any issuer provided authentication data to the
+ * key and make it ready for use in presentation. To retrieve all keys
+ * which still require certification, use [pendingAuthenticationKeys], and to retrieve all
+ * certified keys, use [certifiedAuthenticationKeys].
  *
  * At credential presentation time the application first receives the request
  * from a remote reader using a specific credential presentation protocol, such
@@ -102,26 +104,26 @@ class Credential private constructor(
         get() = _applicationData
 
     /**
-     * Pending authentication keys.
+     * Authentication keys which still need to be certified
      */
-    private var _pendingAuthenticationKeys = mutableListOf<PendingAuthenticationKey>()
-    val pendingAuthenticationKeys: List<PendingAuthenticationKey>
+    private var _pendingAuthenticationKeys = mutableListOf<AuthenticationKey>()
+    val pendingAuthenticationKeys: List<AuthenticationKey>
         // Return shallow copy b/c backing field may get modified if certify() or delete() is called.
         get() = _pendingAuthenticationKeys.toList()
 
     /**
      * Certified authentication keys.
      */
-    private var _authenticationKeys = mutableListOf<AuthenticationKey>()
-    val authenticationKeys: List<AuthenticationKey>
+    private var _certifiedAuthenticationKeys = mutableListOf<AuthenticationKey>()
+    val certifiedAuthenticationKeys: List<AuthenticationKey>
         // Return shallow copy b/c backing field may get modified if certify() or delete() is called.
-        get() = _authenticationKeys.toList()
+        get() = _certifiedAuthenticationKeys.toList()
 
     /**
      * Authentication key counter.
      *
      * This is a number which starts at 0 and is increased by one for every call
-     * to [.createPendingAuthenticationKey].
+     * to [createAuthenticationKey].
      */
     var authenticationKeyCounter: Long = 0
         private set
@@ -137,8 +139,8 @@ class Credential private constructor(
             for (pendingAuthenticationKey in _pendingAuthenticationKeys) {
                 pendingAuthenticationKeysArrayBuilder.add(pendingAuthenticationKey.toCbor())
             }
-            val authenticationKeysArrayBuilder = putArray("authenticationKeys")
-            for (authenticationKey in _authenticationKeys) {
+            val authenticationKeysArrayBuilder = putArray("certifiedAuthenticationKeys")
+            for (authenticationKey in _certifiedAuthenticationKeys) {
                 authenticationKeysArrayBuilder.add(authenticationKey.toCbor())
             }
             put("authenticationKeyCounter", authenticationKeyCounter)
@@ -166,11 +168,11 @@ class Credential private constructor(
 
         _pendingAuthenticationKeys = ArrayList()
         for (item in map["pendingAuthenticationKeys"].asArray) {
-            _pendingAuthenticationKeys.add(PendingAuthenticationKey.fromCbor(item, this))
+            _pendingAuthenticationKeys.add(AuthenticationKey.fromCbor(item, this))
         }
-        _authenticationKeys = ArrayList()
-        for (item in map["authenticationKeys"].asArray) {
-            _authenticationKeys.add(AuthenticationKey.fromCbor(item, this))
+        _certifiedAuthenticationKeys = ArrayList()
+        for (item in map["certifiedAuthenticationKeys"].asArray) {
+            _certifiedAuthenticationKeys.add(AuthenticationKey.fromCbor(item, this))
         }
         authenticationKeyCounter = map["authenticationKeyCounter"].asNumber
         addedToStore = true
@@ -179,12 +181,12 @@ class Credential private constructor(
 
     internal fun deleteCredential() {
         _pendingAuthenticationKeys.clear()
-        _authenticationKeys.clear()
+        _certifiedAuthenticationKeys.clear()
         storageEngine.delete(CREDENTIAL_PREFIX + name)
     }
 
     /**
-     * Finds a suitable authentication key to use.
+     * Finds a suitable certified authentication key to use.
      *
      * @param domain The domain to pick the authentication key from.
      * @param now Pass current time to ensure that the selected slot's validity period or
@@ -196,7 +198,7 @@ class Credential private constructor(
         now: Timestamp?
     ): AuthenticationKey? {
         var candidate: AuthenticationKey? = null
-        _authenticationKeys.filter {
+        _certifiedAuthenticationKeys.filter {
             it.domain == domain && (
                     now != null
                             && (now.toEpochMilli() >= it.validFrom.toEpochMilli())
@@ -219,12 +221,9 @@ class Credential private constructor(
     /**
      * Creates a new authentication key.
      *
-     *
-     * This returns a [PendingAuthenticationKey] which should be sent to the
-     * credential issuer for certification. Use
-     * [PendingAuthenticationKey.certify] when certification
+     * This returns an [AuthenticationKey] which should be sent to the credential
+     * issuer for certification. Use [AuthenticationKey.certify] when certification
      * has been obtained.
-     *
      *
      * For a higher-level way of managing authentication keys, see
      * [CredentialUtil.managedAuthenticationKeyHelper].
@@ -234,22 +233,22 @@ class Credential private constructor(
      * @param createKeySettings settings for the authentication key.
      * @param asReplacementFor if not `null`, replace the given authentication key
      * with this one, once it has been certified.
-     * @return a [PendingAuthenticationKey].
+     * @return an [AuthenticationKey].
      * @throws IllegalArgumentException if `asReplacementFor` is not null and the given
      * key already has a pending key intending to replace it.
      */
-    fun createPendingAuthenticationKey(
+    fun createAuthenticationKey(
         domain: String,
         secureArea: SecureArea,
         createKeySettings: CreateKeySettings,
         asReplacementFor: AuthenticationKey?
-    ): PendingAuthenticationKey {
+    ): AuthenticationKey {
         check(asReplacementFor?.replacement == null) {
             "The given key already has an existing pending key intending to replace it"
         }
         val alias =
             AUTHENTICATION_KEY_ALIAS_PREFIX + name + "_authKey_" + authenticationKeyCounter++
-        val pendingAuthenticationKey = PendingAuthenticationKey.create(
+        val authenticationKey = AuthenticationKey.create(
             alias,
             domain,
             secureArea,
@@ -257,29 +256,27 @@ class Credential private constructor(
             asReplacementFor,
             this
         )
-        _pendingAuthenticationKeys.add(pendingAuthenticationKey)
-        asReplacementFor?.setReplacementAlias(pendingAuthenticationKey.alias)
+        _pendingAuthenticationKeys.add(authenticationKey)
+        asReplacementFor?.replacementAlias = authenticationKey.alias
         saveCredential()
-        return pendingAuthenticationKey
+        return authenticationKey
     }
 
-    internal fun removePendingAuthenticationKey(
-        pendingAuthenticationKey: PendingAuthenticationKey
-    ) {
-        check(_pendingAuthenticationKeys.remove(pendingAuthenticationKey)) { "Error removing pending authentication key" }
-        if (pendingAuthenticationKey.replacementForAlias != null) {
-            for (authKey in _authenticationKeys) {
-                if (authKey.alias == pendingAuthenticationKey.replacementForAlias) {
+
+    internal fun removeAuthenticationKey(authenticationKey: AuthenticationKey) {
+        val listToModify = if (authenticationKey.isCertified) _certifiedAuthenticationKeys
+            else _pendingAuthenticationKeys
+        check(listToModify.remove(authenticationKey)) { "Error removing authentication key" }
+
+        if (authenticationKey.replacementForAlias != null) {
+            for (authKey in _certifiedAuthenticationKeys) {
+                if (authKey.alias == authenticationKey.replacementForAlias) {
                     authKey.replacementAlias = null
                     break
                 }
             }
         }
-        saveCredential()
-    }
 
-    internal fun removeAuthenticationKey(authenticationKey: AuthenticationKey) {
-        check(_authenticationKeys.remove(authenticationKey)) { "Error removing authentication key" }
         if (authenticationKey.replacementAlias != null) {
             for (pendingAuthKey in _pendingAuthenticationKeys) {
                 if (pendingAuthKey.alias == authenticationKey.replacementAlias) {
@@ -291,23 +288,18 @@ class Credential private constructor(
         saveCredential()
     }
 
+    /**
+     * Certifies the authentication key. Should only be called by [AuthenticationKey.certify]
+     *
+     * @param issuerProvidedAuthenticationData the issuer-provided static authentication data.
+     * @param validFrom the point in time before which the data is not valid.
+     * @param validUntil the point in time after which the data is not valid.
+     */
     internal fun certifyPendingAuthenticationKey(
-        pendingAuthenticationKey: PendingAuthenticationKey,
-        issuerProvidedAuthenticationData: ByteArray,
-        validFrom: Timestamp,
-        validUntil: Timestamp
+        authenticationKey: AuthenticationKey
     ): AuthenticationKey {
-        check(_pendingAuthenticationKeys.remove(pendingAuthenticationKey)) { "Error removing pending authentication key" }
-        val authenticationKey = AuthenticationKey.create(
-            pendingAuthenticationKey,
-            issuerProvidedAuthenticationData,
-            validFrom,
-            validUntil,
-            this
-        )
-        _authenticationKeys.add(authenticationKey)
-        val authKeyToDelete = pendingAuthenticationKey.replacementFor
-        authKeyToDelete?.delete()
+        check(_pendingAuthenticationKeys.remove(authenticationKey)) { "Error removing authentication key from pending list" }
+        _certifiedAuthenticationKeys.add(authenticationKey)
         saveCredential()
         return authenticationKey
     }
