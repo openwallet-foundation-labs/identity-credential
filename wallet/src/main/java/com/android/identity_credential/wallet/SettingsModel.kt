@@ -22,6 +22,7 @@ class SettingsModel(
 
     // Non visible in the Settings screen
     val focusedCardId = MutableLiveData("")
+    val hideMissingProximityPermissionsWarning = MutableLiveData(false)
 
     companion object {
         private const val TAG = "SettingsModel"
@@ -29,6 +30,8 @@ class SettingsModel(
         private const val PREFERENCE_DEVELOPER_MODE_ENABLED = "developer_mode_enabled"
         private const val PREFERENCE_LOGGING_ENABLED = "logging_enabled"
         private const val PREFERENCE_FOCUSED_CARD_ID = "focused_card_id"
+        private const val PREFERENCE_HIDE_MISSING_PROXIMITY_PERMISSIONS_WARNING =
+            "hide_missing_proximity_permissions_warning"
 
         // Logging
         private const val LOG_FOLDER_NAME = "log"
@@ -74,6 +77,17 @@ class SettingsModel(
                 Log.WARN -> if (err == null) Logger.w(tag, msg) else Logger.w(tag, msg, err)
                 Log.ERROR -> if (err == null) Logger.e(tag, msg) else Logger.e(tag, msg, err)
                 else -> throw IllegalArgumentException("Unknown level: $level")
+            }
+        }
+
+        hideMissingProximityPermissionsWarning.value =
+            sharedPreferences.getBoolean(
+                PREFERENCE_HIDE_MISSING_PROXIMITY_PERMISSIONS_WARNING,
+                false
+            )
+        hideMissingProximityPermissionsWarning.observeForever {
+            sharedPreferences.edit {
+                putBoolean(PREFERENCE_HIDE_MISSING_PROXIMITY_PERMISSIONS_WARNING, it)
             }
         }
     }

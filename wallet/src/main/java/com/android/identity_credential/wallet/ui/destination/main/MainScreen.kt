@@ -1,8 +1,6 @@
 package com.android.identity_credential.wallet.ui.destination.main
 
-import android.Manifest
 import android.content.Context
-import android.os.Build
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -31,18 +29,17 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
@@ -63,15 +60,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.credential.CredentialStore
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.CardViewModel
-import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
+import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBar
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -80,11 +78,9 @@ private const val TAG = "MainScreen"
 @Composable
 fun MainScreen(
     onNavigate: (String) -> Unit,
-    credentialStore: CredentialStore,
     qrEngagementViewModel: QrEngagementViewModel,
     cardViewModel: CardViewModel,
     settingsModel: SettingsModel,
-    permissionTracker: PermissionTracker,
     context: Context,
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -133,43 +129,61 @@ fun MainScreen(
     ) {
         MainScreenContent(
             onNavigate = onNavigate,
-            credentialStore = credentialStore,
             settingsModel = settingsModel,
             qrEngagementViewModel = qrEngagementViewModel,
             cardViewModel = cardViewModel,
             scope = scope,
             drawerState = drawerState,
-            permissionTracker = permissionTracker,
             context = context
         )
     }
 }
 
-val blePermissions: List<String> = if (Build.VERSION.SDK_INT >= 31) {
-    listOf(
-        Manifest.permission.BLUETOOTH_ADVERTISE,
-        Manifest.permission.BLUETOOTH_SCAN,
-        Manifest.permission.BLUETOOTH_CONNECT)
-} else {
-    listOf(Manifest.permission.ACCESS_FINE_LOCATION)
-}
-
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MainScreenContent(
     onNavigate: (String) -> Unit,
-    credentialStore: CredentialStore,
     settingsModel: SettingsModel,
     qrEngagementViewModel: QrEngagementViewModel,
     cardViewModel: CardViewModel,
     scope: CoroutineScope,
     drawerState: DrawerState,
-    permissionTracker: PermissionTracker,
     context: Context,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val haveRequiredPermissions = permissionTracker.granted(blePermissions)
-    var showDeviceLockNotSetupWarning by remember { mutableStateOf(false) }
+    val hasProximityPresentationPermissions = rememberMultiplePermissionsState(
+        WalletApplication.MDOC_PROXIMITY_PERMISSIONS
+    )
 
+    var showProximityPresentationPermissionsMissing by remember { mutableStateOf(false) }
+    if (showProximityPresentationPermissionsMissing) {
+        AlertDialog(
+            title = {
+                Text(stringResource(R.string.proximity_permissions_qr_alert_dialog_title))
+            },
+            text = {
+                Text(stringResource(R.string.proximity_permissions_qr_alert_dialog_content))
+            },
+            onDismissRequest = { showProximityPresentationPermissionsMissing = false },
+            dismissButton = {
+                TextButton(onClick = { showProximityPresentationPermissionsMissing = false }) {
+                    Text(stringResource(R.string.proximity_permissions_qr_alert_dialog_dismiss_button))
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showProximityPresentationPermissionsMissing = false
+                        hasProximityPresentationPermissions.launchMultiplePermissionRequest()
+                    }
+                ) {
+                    Text(stringResource(R.string.proximity_permissions_qr_alert_dialog_confirm_button))
+                }
+            },
+        )
+    }
+
+
+    var showDeviceLockNotSetupWarning by remember { mutableStateOf(false) }
     if (showDeviceLockNotSetupWarning) {
         AlertDialog(
             title = {
@@ -189,6 +203,7 @@ fun MainScreenContent(
         )
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
     ScreenWithAppBar(title = stringResource(R.string.wallet_screen_title),
         navigationIcon = {
             IconButton(
@@ -207,63 +222,48 @@ fun MainScreenContent(
                 )
             }
         },
-        snackbarHost = {
-            if (!haveRequiredPermissions) {
-                SnackbarHost(
-                    hostState = snackbarHostState,
-                    snackbar = {
-                        Snackbar {
-                            Column {
-                                permissionTracker.PermissionRequests(blePermissions) {
-                                    Button(
-                                        modifier = Modifier.padding(8.dp),
-                                        onClick = { it.dismiss() }) {
-                                        Text(stringResource(R.string.wallet_screen_permissions_dismiss))
-                                    }
-                                }
-                            }
-                        }
-                    })
-            }
-        },
-        floatingActionButton = {
-            if (!haveRequiredPermissions) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                "",
-                                duration = SnackbarDuration.Indefinite
-                            )
-                        }
-                    }
-                ) { Text(stringResource(R.string.wallet_screen_permissions)) }
-            }
-        }) {
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+    ) {
         if (cardViewModel.cards.isEmpty()) {
             MainScreenNoCredentialsAvailable(onNavigate, context)
         } else {
+            if (!hasProximityPresentationPermissions.allPermissionsGranted &&
+                !settingsModel.hideMissingProximityPermissionsWarning.value!!) {
+                LaunchedEffect(snackbarHostState) {
+                    when (snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.proximity_permissions_snackbar_text),
+                        actionLabel = context.getString(R.string.proximity_permissions_snackbar_action_label),
+                        duration = SnackbarDuration.Indefinite,
+                        withDismissAction = true
+                    )) {
+                        SnackbarResult.Dismissed -> {
+                            settingsModel.hideMissingProximityPermissionsWarning.value = true
+                        }
+                        SnackbarResult.ActionPerformed -> {
+                            hasProximityPresentationPermissions.launchMultiplePermissionRequest()
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.weight(0.25f))
 
-            if (haveRequiredPermissions) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.nfc_icon),
-                            contentDescription = stringResource(R.string.wallet_screen_nfc_icon_content_description),
-                            modifier = Modifier.size(96.dp),
-                        )
-                        Text(
-                            modifier = Modifier.padding(8.dp),
-                            text = stringResource(R.string.wallet_screen_nfc_presentation_instructions),
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(id = R.drawable.nfc_icon),
+                        contentDescription = stringResource(R.string.wallet_screen_nfc_icon_content_description),
+                        modifier = Modifier.size(96.dp),
+                    )
+                    Text(
+                        modifier = Modifier.padding(8.dp),
+                        text = stringResource(R.string.wallet_screen_nfc_presentation_instructions),
+                    )
                 }
             }
 
@@ -277,33 +277,35 @@ fun MainScreenContent(
 
             Spacer(modifier = Modifier.weight(0.5f))
 
-            if (haveRequiredPermissions) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 20.dp, top = 8.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
-                                showDeviceLockNotSetupWarning = true
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp, top = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        if (!AndroidKeystoreSecureArea.Capabilities(context).secureLockScreenSetup) {
+                            showDeviceLockNotSetupWarning = true
+                        } else {
+                            if (!hasProximityPresentationPermissions.allPermissionsGranted) {
+                                showProximityPresentationPermissionsMissing = true
                             } else {
                                 qrEngagementViewModel.startQrEngagement()
                                 onNavigate(WalletDestination.QrEngagement.route)
                             }
                         }
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.qr_icon),
-                            contentDescription = stringResource(R.string.wallet_screen_qr_icon_content_description),
-                            modifier = Modifier.size(ButtonDefaults.IconSize)
-                        )
-                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                        Text(
-                            text = stringResource(R.string.wallet_screen_show_qr)
-                        )
-                    }
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.qr_icon),
+                        contentDescription = stringResource(R.string.wallet_screen_qr_icon_content_description),
+                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                    )
+                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
+                    Text(
+                        text = stringResource(R.string.wallet_screen_show_qr)
+                    )
                 }
             }
         }

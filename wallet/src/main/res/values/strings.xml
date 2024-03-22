@@ -27,6 +27,20 @@
     <string name="permission_post_notifications_grant_permission_button_text">Grant Permission</string>
     <string name="permission_post_notifications_continue_without_permission_button_text">No Thanks</string>
 
+    <!-- Proximity presentation permissions -->
+    <string name="proximity_permissions_snackbar_text">Permissions required for proximity presentations</string>
+    <string name="proximity_permissions_snackbar_action_label">Grant</string>
+    <string name="proximity_permissions_qr_alert_dialog_title">Missing Permissions</string>
+    <string name="proximity_permissions_qr_alert_dialog_content">
+        Proximity presentation requires permissions to be granted.
+    </string>
+    <string name="proximity_permissions_qr_alert_dialog_dismiss_button">Cancel</string>
+    <string name="proximity_permissions_qr_alert_dialog_confirm_button">Grant Permission</string>
+    <string name="proximity_permissions_nfc_notification_title">Missing Permissions</string>
+    <string name="proximity_permissions_nfc_notification_content">
+        Proximity presentation requires permissions to be granted.
+    </string>
+
     <!-- Notifications about documents -->
     <string name="notifications_document_application_approved_and_ready_to_use">
         The application has been reviewed and your document is ready to use.

@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet
 
 import android.Manifest
-import android.app.Activity
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,11 +8,10 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
 import android.preference.PreferenceManager
 import androidx.core.app.ActivityCompat
-import androidx.core.app.ComponentActivity
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.res.ResourcesCompat
@@ -34,7 +32,6 @@ import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.util.toByteArray
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.security.Security
 
@@ -44,7 +41,23 @@ class WalletApplication : Application() {
 
         private const val NOTIFICATION_CHANNEL_ID = "walletNotifications"
 
+        private const val NOTIFICATION_ID_FOR_MISSING_PROXIMITY_PRESENTATION_PERMISSIONS = 42
+
         const val AUTH_KEY_DOMAIN = "mdoc/MSO"
+
+        // The permissions needed to perform 18013-5 presentations. This only include the
+        // BLE permissions because that's the only transport we currently support in the
+        // application.
+        val MDOC_PROXIMITY_PERMISSIONS: List<String> =
+            if (Build.VERSION.SDK_INT >= 31) {
+                listOf(
+                    Manifest.permission.BLUETOOTH_ADVERTISE,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                )
+            } else {
+                listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
     }
 
 
@@ -109,7 +122,7 @@ class WalletApplication : Application() {
 
         val notificationChannel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
-            "Wallet",
+            resources.getString(R.string.app_name),
             NotificationManager.IMPORTANCE_HIGH
         )
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -140,11 +153,42 @@ class WalletApplication : Application() {
         )
     )
 
+    fun postNotificationForMissingMdocProximityPermissions() {
+        // Go to main page, the user can request the permission there
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE)
+
+        val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_name)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher))
+            .setContentTitle(applicationContext.getString(R.string.proximity_permissions_nfc_notification_title))
+            .setContentText(applicationContext.getString(R.string.proximity_permissions_nfc_notification_content))
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+
+        NotificationManagerCompat.from(applicationContext).notify(
+            NOTIFICATION_ID_FOR_MISSING_PROXIMITY_PRESENTATION_PERMISSIONS,
+            builder.build())
+    }
+
     fun postNotificationForCredential(
         credential: Credential,
         message: String,
     ) {
-
         // TODO: include data so the user is brought to the info page for the credential
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
