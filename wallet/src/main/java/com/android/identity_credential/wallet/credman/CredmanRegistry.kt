@@ -40,10 +40,14 @@ object CredmanRegistry {
         documentTypeRepository: DocumentTypeRepository
     ) {
         var idCount = 0L
-        val entries = documentStore.listDocuments().map { credentialId ->
+        val entries = mutableListOf<IdentityCredentialEntry>()
+        for (documentId in documentStore.listDocuments()) {
 
-            val credential = documentStore.lookupDocument(credentialId)!!
-            val credConf = credential.documentConfiguration
+            val document = documentStore.lookupDocument(documentId)
+            if (document == null) {
+                continue
+            }
+            val credConf = document.documentConfiguration
 
             val credentialType = documentTypeRepository.getDocumentTypeForMdoc(credConf.mdocDocType)
 
@@ -69,8 +73,8 @@ object CredmanRegistry {
                         ?.renderValue(
                             value = Cbor.decode(valueCbor),
                             trueFalseStrings = Pair(
-                                context.resources.getString(R.string.card_details_boolean_false_value),
-                                context.resources.getString(R.string.card_details_boolean_true_value)
+                                context.resources.getString(R.string.document_details_boolean_false_value),
+                                context.resources.getString(R.string.document_details_boolean_true_value)
                             )
                         )
                         ?: Cbor.toDiagnostics(valueCbor)
@@ -101,17 +105,18 @@ object CredmanRegistry {
                 options
             )
 
-
             Logger.i(TAG, "Adding document ${credConf.displayName}")
-            IdentityCredentialEntry(
-                id = idCount++,
-                format = "mdoc",
-                title = credConf.displayName,
-                subtitle = context.getString(R.string.app_name),
-                icon = credBitmap,
-                fields = fields.toList(),
-                disclaimer = null,
-                warning = null,
+            entries.add(
+                IdentityCredentialEntry(
+                    id = idCount++,
+                    format = "mdoc",
+                    title = credConf.displayName,
+                    subtitle = context.getString(R.string.app_name),
+                    icon = credBitmap,
+                    fields = fields.toList(),
+                    disclaimer = null,
+                    warning = null,
+                )
             )
         }
         val registry = IdentityCredentialRegistry(entries)

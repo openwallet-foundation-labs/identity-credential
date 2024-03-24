@@ -63,8 +63,8 @@ private fun visitNamespace(
             elementValueAsString = mdocDataElement.renderValue(
                 value = Cbor.decode(encodedElementValue),
                 trueFalseStrings = Pair(
-                    context.resources.getString(R.string.card_details_boolean_false_value),
-                    context.resources.getString(R.string.card_details_boolean_true_value),
+                    context.resources.getString(R.string.document_details_boolean_false_value),
+                    context.resources.getString(R.string.document_details_boolean_true_value),
                 )
             )
 

@@ -16,15 +16,17 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.CardKeyInfo
-import com.android.identity_credential.wallet.CardViewModel
+import com.android.identity_credential.wallet.CredentialInfo
+import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.KeyValuePairText
@@ -32,18 +34,18 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.util.asFormattedDateTimeInCurrentTimezone
 
 
-private const val TAG = "CardKeysScreen"
+private const val TAG = "CredentialInfoScreen"
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun CardKeysScreen(
-    cardId: String,
-    cardViewModel: CardViewModel,
+fun CredentialInfoScreen(
+    documentId: String,
+    documentModel: DocumentModel,
     onNavigate: (String) -> Unit
 ) {
-    val card = cardViewModel.getCard(cardId)
-    if (card == null) {
-        Logger.w(TAG, "No card with id $cardId")
+    val documentInfo = documentModel.getDocumentInfo(documentId)
+    if (documentInfo == null) {
+        Logger.w(TAG, "No document with id $documentId")
         onNavigate(WalletDestination.Main.route)
         return
     }
@@ -53,21 +55,35 @@ fun CardKeysScreen(
         modifier = Modifier.fillMaxHeight()
     ) {
 
-        val pagerState = rememberPagerState(pageCount = { card.keyInfos.size })
+        val pagerState = rememberPagerState(pageCount = { documentInfo.credentialInfos.size })
 
         ScreenWithAppBarAndBackButton(
-            title = stringResource(R.string.card_keys_screen_title),
+            title = stringResource(R.string.credential_info_screen_title),
             onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }
         ) {
 
-            Column {
-                HorizontalPager(
-                    state = pagerState,
-                ) { page ->
-                    CardKeyInfo(card.keyInfos[page], page, card.keyInfos.size)
+            if (documentInfo.credentialInfos.size == 0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        modifier = Modifier.padding(8.dp),
+                        text = stringResource(R.string.credential_info_screen_no_credentials),
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+            } else {
+                Column {
+                    HorizontalPager(
+                        state = pagerState,
+                    ) { page ->
+                        CredentialInfo(documentInfo.credentialInfos[page], page, documentInfo.credentialInfos.size)
+                    }
                 }
             }
-
         }
 
         Row(
@@ -101,21 +117,21 @@ fun CardKeysScreen(
 
 
 @Composable
-private fun CardKeyInfo(cardKeyInfo: CardKeyInfo,
-                        keyIndex: Int,
-                        numKeys: Int) {
+private fun CredentialInfo(credentialInfo: CredentialInfo,
+                           credentialIndex: Int,
+                           numCredentials: Int) {
     Column(Modifier.padding(8.dp)) {
-        KeyValuePairText("Key Number ", "${keyIndex + 1} of ${numKeys}")
-        KeyValuePairText("Description", cardKeyInfo.description)
-        for ((key, value) in cardKeyInfo.details) {
+        KeyValuePairText("Credential Number ", "${credentialIndex + 1} of ${numCredentials}")
+        KeyValuePairText("Description", credentialInfo.description)
+        for ((key, value) in credentialInfo.details) {
             KeyValuePairText(key, value)
         }
-        KeyValuePairText("Usage Count", "${cardKeyInfo.usageCount}")
-        KeyValuePairText("Signed At", cardKeyInfo.signedAt.asFormattedDateTimeInCurrentTimezone)
-        KeyValuePairText("Valid From", cardKeyInfo.validFrom.asFormattedDateTimeInCurrentTimezone)
-        KeyValuePairText("Valid Until", cardKeyInfo.validUntil.asFormattedDateTimeInCurrentTimezone)
+        KeyValuePairText("Usage Count", "${credentialInfo.usageCount}")
+        KeyValuePairText("Signed At", credentialInfo.signedAt.asFormattedDateTimeInCurrentTimezone)
+        KeyValuePairText("Valid From", credentialInfo.validFrom.asFormattedDateTimeInCurrentTimezone)
+        KeyValuePairText("Valid Until", credentialInfo.validUntil.asFormattedDateTimeInCurrentTimezone)
         KeyValuePairText("Expected Update",
-            cardKeyInfo?.expectedUpdate?.asFormattedDateTimeInCurrentTimezone ?: "Not Set"
+            credentialInfo?.expectedUpdate?.asFormattedDateTimeInCurrentTimezone ?: "Not Set"
         )
     }
 }

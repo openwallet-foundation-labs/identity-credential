@@ -79,6 +79,7 @@ dependencies {
     implementation libs.compose.runtime.livedata
     implementation libs.kotlinx.datetime
     implementation libs.accompanist.permissions
+    implementation libs.androidx.work
     debugImplementation libs.compose.icons
 
     implementation libs.net.sf.scuba.scuba.sc.android

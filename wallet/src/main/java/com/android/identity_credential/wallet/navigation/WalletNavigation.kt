@@ -5,16 +5,16 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.android.identity_credential.wallet.CardViewModel
+import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.destination.about.AboutScreen
 import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWalletScreen
-import com.android.identity_credential.wallet.ui.destination.document.CardDetailsScreen
-import com.android.identity_credential.wallet.ui.destination.document.CardInfoScreen
-import com.android.identity_credential.wallet.ui.destination.document.CardKeysScreen
+import com.android.identity_credential.wallet.ui.destination.document.DocumentDetailsScreen
+import com.android.identity_credential.wallet.ui.destination.document.DocumentInfoScreen
+import com.android.identity_credential.wallet.ui.destination.document.CredentialInfoScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
 import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionDocumentScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
@@ -31,7 +31,7 @@ fun WalletNavigation(
     permissionTracker: PermissionTracker,
     sharedPreferences: SharedPreferences,
     qrEngagementViewModel: QrEngagementViewModel,
-    cardViewModel: CardViewModel
+    documentModel: DocumentModel
 ) {
 
     // lambda navigateTo takes in a route string and navigates to the corresponding Screen
@@ -72,7 +72,7 @@ fun WalletNavigation(
             MainScreen(
                 onNavigate = navigateTo,
                 qrEngagementViewModel = qrEngagementViewModel,
-                cardViewModel = cardViewModel,
+                documentModel = documentModel,
                 settingsModel = application.settingsModel,
                 context = application.applicationContext,
             )
@@ -100,7 +100,7 @@ fun WalletNavigation(
          */
         composable(WalletDestination.AddToWallet.route) {
             AddToWalletScreen(
-                cardViewModel = cardViewModel,
+                documentModel = documentModel,
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = navigateTo,
                 documentStore = application.documentStore,
@@ -108,11 +108,6 @@ fun WalletNavigation(
             )
         }
 
-        /**
-         * Card Info Screen
-         * Card Details Screen
-         * Card Keys Screen
-         */
         composable(
             route = WalletDestination.CardInfo.routeWithArgs,
             arguments = WalletDestination.CardInfo.getArguments()
@@ -126,23 +121,24 @@ fun WalletNavigation(
 
             when (section) {
                 "details" -> {
-                    CardDetailsScreen(
-                        cardId = cardId,
-                        cardViewModel = cardViewModel,
+                    DocumentDetailsScreen(
+                        documentId = cardId,
+                        documentModel = documentModel,
                         onNavigate = navigateTo,
                     )
                 }
                 "keys" -> {
-                    CardKeysScreen(
-                        cardId = cardId,
-                        cardViewModel = cardViewModel,
+                    CredentialInfoScreen(
+                        documentId = cardId,
+                        documentModel = documentModel,
                         onNavigate = navigateTo,
                     )
                 }
                 else -> {
-                    CardInfoScreen(
-                        cardId = cardId,
-                        cardViewModel = cardViewModel,
+                    DocumentInfoScreen(
+                        context = application.applicationContext,
+                        documentId = cardId,
+                        documentModel = documentModel,
                         settingsModel = application.settingsModel,
                         onNavigate = navigateTo,
                     )

@@ -156,9 +156,6 @@ class SelfSignedEuPidIssuingAuthority(
         val issueDate = now
         val expiryDate = now + 365.days * 5
 
-        println("foo1 " + application)
-        println("foo2 " + application.documentTypeRepository)
-        println("foo3 " + EUPID_DOCTYPE)
         val credType = application.documentTypeRepository.getDocumentTypeForMdoc(EUPID_DOCTYPE)!!
 
         val path = (collectedEvidence["path"] as EvidenceResponseQuestionMultipleChoice).answerId

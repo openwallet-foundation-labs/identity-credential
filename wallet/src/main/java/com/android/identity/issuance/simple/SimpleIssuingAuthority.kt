@@ -21,6 +21,9 @@ import com.android.identity.issuance.UnknownDocumentException
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity_credential.mrtd.MrtdAccessData
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import java.lang.UnsupportedOperationException
 import java.util.Timer
@@ -42,22 +45,17 @@ abstract class SimpleIssuingAuthority(
 
     abstract override val configuration: IssuingAuthorityConfiguration
 
-    private val observers = mutableListOf<IssuingAuthority.Observer>()
-
     // This can be changed to simulate proofing and requesting CPOs being slow.
     protected var deadlineMillis: Long = 0L
 
-    override fun startObserving(observer: IssuingAuthority.Observer) {
-        this.observers.add(observer)
-    }
+    private val _eventFlow = MutableSharedFlow<Pair<IssuingAuthority, String>>()
 
-    override fun stopObserving(observer: IssuingAuthority.Observer) {
-        this.observers.remove(observer)
-    }
+    override val eventFlow
+        get() = _eventFlow.asSharedFlow()
 
-    private fun emitOnStateChanged(documentId: String) {
-        for (observer in observers) {
-            observer.onDocumentStateChanged(this, documentId)
+    private fun emitOnStateChanged(credentialId: String) {
+        runBlocking {
+            _eventFlow.emit(Pair(this@SimpleIssuingAuthority, credentialId))
         }
     }
 

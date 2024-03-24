@@ -1,5 +1,6 @@
 package com.android.identity_credential.wallet.ui.destination.document
 
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,33 +36,56 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.android.identity.android.securearea.ScreenLockRequiredException
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.CardViewModel
+import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 import com.android.identity_credential.wallet.ui.durationFromNowText
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 
-private const val TAG = "CardInfoScreen"
+private const val TAG = "DocumentInfoScreen"
 
 @Composable
-fun CardInfoScreen(
-    cardId: String,
-    cardViewModel: CardViewModel,
+fun DocumentInfoScreen(
+    context: Context,
+    documentId: String,
+    documentModel: DocumentModel,
     settingsModel: SettingsModel,
     onNavigate: (String) -> Unit,
 ) {
-    val card = cardViewModel.getCard(cardId)
+    val coroutineScope = rememberCoroutineScope()
+
+    val card = documentModel.getDocumentInfo(documentId)
     if (card == null) {
-        Logger.w(TAG, "No card with id $cardId")
+        Logger.w(TAG, "No card with id $documentId")
         onNavigate(WalletDestination.Main.route)
         return
     }
 
+    var showErrorMessage by remember { mutableStateOf<String?>(null) }
+    if (showErrorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { showErrorMessage = null },
+            title = { Text(text = stringResource(R.string.document_info_screen_error_dialog_title)) },
+            text = {
+                Text(showErrorMessage!!)
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showErrorMessage = null
+                    }) {
+                    Text(stringResource(R.string.document_info_screen_error_dialog_confirm_button))
+                }
+            }
+        )
+    }
 
     var showRequestUpdateDialog by remember { mutableStateOf(false) }
     if (showRequestUpdateDialog) {
@@ -68,17 +93,17 @@ fun CardInfoScreen(
         val notifyApplicationCheckedState = remember { mutableStateOf(true) }
         AlertDialog(
             onDismissRequest = { showRequestUpdateDialog = false },
-            title = { Text(text = stringResource(R.string.card_info_screen_request_update_title)) },
+            title = { Text(text = stringResource(R.string.document_info_screen_request_update_title)) },
             text = {
                 Column() {
-                    Text(stringResource(R.string.card_info_screen_request_update_message))
+                    Text(stringResource(R.string.document_info_screen_request_update_message))
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(checked = remoteDeletionCheckedState.value, onCheckedChange = {
                             remoteDeletionCheckedState.value = it
                         })
-                        Text(stringResource(R.string.card_info_screen_request_update_remote_deletion_checkbox_string))
+                        Text(stringResource(R.string.document_info_screen_request_update_remote_deletion_checkbox_string))
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -86,7 +111,7 @@ fun CardInfoScreen(
                         Checkbox(checked = notifyApplicationCheckedState.value, onCheckedChange = {
                             notifyApplicationCheckedState.value = it
                         })
-                        Text(stringResource(R.string.card_info_screen_request_update_notify_application_checkbox_string))
+                        Text(stringResource(R.string.document_info_screen_request_update_notify_application_checkbox_string))
                     }
                 }
             },
@@ -94,18 +119,22 @@ fun CardInfoScreen(
                 Button(
                     onClick = {
                         showRequestUpdateDialog = false
-                        cardViewModel.developerModeRequestUpdate(
-                            card,
-                            remoteDeletionCheckedState.value,
-                            notifyApplicationCheckedState.value)
+
+                        coroutineScope.launch {
+                            documentModel.developerModeRequestUpdate(
+                                card,
+                                remoteDeletionCheckedState.value,
+                                notifyApplicationCheckedState.value
+                            )
+                        }
                     }) {
-                    Text(stringResource(R.string.card_info_screen_request_update_confirm_button))
+                    Text(stringResource(R.string.document_info_screen_request_update_confirm_button))
                 }
             },
             dismissButton = {
                 Button(
                     onClick = { showRequestUpdateDialog = false }) {
-                    Text(stringResource(R.string.card_info_screen_request_update_dismiss_button))
+                    Text(stringResource(R.string.document_info_screen_request_update_dismiss_button))
                 }
             }
         )
@@ -115,24 +144,24 @@ fun CardInfoScreen(
     if (showDeleteConfirmationDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmationDialog = false },
-            title = { Text(text = stringResource(R.string.card_info_screen_confirm_deletion_title)) },
+            title = { Text(text = stringResource(R.string.document_info_screen_confirm_deletion_title)) },
             text = {
-                Text(stringResource(R.string.card_info_screen_confirm_deletion_message))
+                Text(stringResource(R.string.document_info_screen_confirm_deletion_message))
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showDeleteConfirmationDialog = false
-                        cardViewModel.deleteCard(card)
+                        documentModel.deleteCard(card)
                         onNavigate(WalletDestination.PopBackStack.route)
                     }) {
-                    Text(stringResource(R.string.card_info_screen_confirm_deletion_confirm_button))
+                    Text(stringResource(R.string.document_info_screen_confirm_deletion_confirm_button))
                 }
             },
             dismissButton = {
                 Button(
                     onClick = { showDeleteConfirmationDialog = false }) {
-                    Text(stringResource(R.string.card_info_screen_confirm_deletion_dismiss_button))
+                    Text(stringResource(R.string.document_info_screen_confirm_deletion_dismiss_button))
                 }
             }
         )
@@ -140,7 +169,7 @@ fun CardInfoScreen(
 
     var showMenu by remember { mutableStateOf(false) }
     ScreenWithAppBarAndBackButton(
-        title = stringResource(R.string.card_info_screen_title),
+        title = stringResource(R.string.document_info_screen_title),
         onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) },
         actions = {
             IconButton(onClick = { showMenu = true }) {
@@ -151,20 +180,29 @@ fun CardInfoScreen(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text(text = stringResource(R.string.card_info_screen_menu_item_check_for_update)) },
+                    text = { Text(text = stringResource(R.string.document_info_screen_menu_item_check_for_update)) },
                     leadingIcon = { Icon(Icons.Outlined.Refresh, contentDescription = null) },
                     onClick = {
-                        cardViewModel.refreshCard(card)
                         showMenu = false
+
+                        coroutineScope.launch {
+                            try {
+                                documentModel.refreshCard(card)
+                            } catch (e: ScreenLockRequiredException) {
+                                showErrorMessage = context.getString(R.string.document_info_screen_refresh_error_missing_screenlock)
+                            } catch (e: Exception) {
+                                showErrorMessage = "Unexpected exception while refreshing: $e"
+                            }
+                        }
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(text = stringResource(R.string.card_info_screen_menu_item_show_data)) },
+                    text = { Text(text = stringResource(R.string.document_info_screen_menu_item_show_data)) },
                     leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
                     onClick = {
                         onNavigate(WalletDestination.CardInfo.getRouteWithArguments(
                             listOf(
-                                Pair(WalletDestination.CardInfo.Argument.CARD_ID, card.id),
+                                Pair(WalletDestination.CardInfo.Argument.CARD_ID, card.documentId),
                                 Pair(WalletDestination.CardInfo.Argument.SECTION, "details")
                             )
                         ))
@@ -172,7 +210,7 @@ fun CardInfoScreen(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text(text = stringResource(R.string.card_info_screen_menu_item_delete)) },
+                    text = { Text(text = stringResource(R.string.document_info_screen_menu_item_delete)) },
                     leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null) },
                     onClick = {
                         showMenu = false
@@ -182,7 +220,7 @@ fun CardInfoScreen(
                 if (settingsModel.developerModeEnabled.value == true) {
                     Divider()
                     DropdownMenuItem(
-                        text = { Text(text = stringResource(R.string.card_info_screen_menu_item_show_keys)) },
+                        text = { Text(text = stringResource(R.string.document_info_screen_menu_item_show_credentials)) },
                         leadingIcon = {
                             Icon(
                                 painter = painterResource(id = R.drawable.experiment_icon),
@@ -193,7 +231,7 @@ fun CardInfoScreen(
                             onNavigate(
                                 WalletDestination.CardInfo.getRouteWithArguments(
                                     listOf(
-                                        Pair(WalletDestination.CardInfo.Argument.CARD_ID, card.id),
+                                        Pair(WalletDestination.CardInfo.Argument.CARD_ID, card.documentId),
                                         Pair(WalletDestination.CardInfo.Argument.SECTION, "keys")
                                     )
                                 )
@@ -202,7 +240,7 @@ fun CardInfoScreen(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text(text = stringResource(R.string.card_info_screen_menu_item_request_update)) },
+                        text = { Text(text = stringResource(R.string.document_info_screen_menu_item_request_update)) },
                         leadingIcon = {
                             Icon(
                                 painter = painterResource(id = R.drawable.experiment_icon),
@@ -225,7 +263,7 @@ fun CardInfoScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    bitmap = card.cardArtwork.asImageBitmap(),
+                    bitmap = card.documentArtwork.asImageBitmap(),
                     contentDescription = stringResource(R.string.accessibility_artwork_for, card.name),
                     modifier = Modifier.height(200.dp)
                 )
@@ -242,11 +280,11 @@ fun CardInfoScreen(
                 )
             }
             Spacer(modifier = Modifier.weight(0.5f))
-            KeyValuePairText(stringResource(R.string.card_info_screen_data_name), card.name)
-            KeyValuePairText(stringResource(R.string.card_info_screen_data_issuer), card.issuerName)
-            KeyValuePairText(stringResource(R.string.card_info_screen_data_status), card.status)
+            KeyValuePairText(stringResource(R.string.document_info_screen_data_name), card.name)
+            KeyValuePairText(stringResource(R.string.document_info_screen_data_issuer), card.issuerName)
+            KeyValuePairText(stringResource(R.string.document_info_screen_data_status), card.status)
             KeyValuePairText(
-                stringResource(R.string.card_info_screen_data_last_update_check),
+                stringResource(R.string.document_info_screen_data_last_update_check),
                 durationFromNowText(card.lastRefresh).replaceFirstChar {
                     if (it.isLowerCase()) it.titlecase(
                         Locale.US

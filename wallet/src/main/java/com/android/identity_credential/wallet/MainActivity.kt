@@ -39,7 +39,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var application: WalletApplication
     private val qrEngagementViewModel: QrEngagementViewModel by viewModels()
     private val provisioningViewModel: ProvisioningViewModel by viewModels()
-    private val cardViewModel: CardViewModel by viewModels()
 
     private val permissionTracker: PermissionTracker = if (Build.VERSION.SDK_INT >= 31) {
         PermissionTracker(this, mapOf(
@@ -57,20 +56,17 @@ class MainActivity : ComponentActivity() {
         ))
     }
 
+    override fun onStart() {
+        super.onStart()
+        application.settingsModel.updateScreenLockIsSetup()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         application = getApplication() as WalletApplication
 
         permissionTracker.updatePermissions()
-
-        cardViewModel.setData(
-            applicationContext,
-            application,
-            application.documentStore,
-            application.issuingAuthorityRepository,
-            application.secureAreaRepository,
-            application.documentTypeRepository)
 
         setContent {
             IdentityCredentialTheme {
@@ -88,7 +84,7 @@ class MainActivity : ComponentActivity() {
                         permissionTracker = permissionTracker,
                         sharedPreferences = application.sharedPreferences,
                         qrEngagementViewModel = qrEngagementViewModel,
-                        cardViewModel = cardViewModel
+                        documentModel = application.documentModel
                     )
                 }
             }
