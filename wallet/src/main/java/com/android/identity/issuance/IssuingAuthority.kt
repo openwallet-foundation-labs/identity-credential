@@ -1,5 +1,7 @@
 package com.android.identity.issuance
 
+import kotlinx.coroutines.flow.SharedFlow
+
 /**
  * An interface representing an Issuing Authority.
  *
@@ -21,40 +23,11 @@ interface IssuingAuthority {
     suspend fun documentGetState(documentId: String): DocumentState
 
     /**
-     * Sets an observer to be notified when a document has an updated state.
-     *
-     * Updates might be implemented using a lossy mechanism (e.g. push notifications)
-     * so applications must not rely on getting a callback whenever the state changes.
-     *
-     * The observer can be removed using [stopObserving].
-     *
-     * @param observer the observer.
+     * A [SharedFlow] which can be used to listen for when a credential has changed state
+     * on the issuer side. The first element in the pair is an [IssuingAuthority], the second
+     * element is the `credentialId`.
      */
-    fun startObserving(observer: Observer)
-
-    /**
-     * Removes the observer previously set with [startObserving].
-     *
-     * @param observer the observer.
-     */
-    fun stopObserving(observer: Observer)
-
-    /**
-     * An interface which can be used to be informed when a document has changed from
-     * an issuer's point of view.
-     */
-    interface Observer {
-        /**
-         * This is called when a document's state has changed.
-         *
-         * The application should call [IssuingAuthority.documentGetState] to collect
-         * the new state.
-         *
-         * @param issuingAuthority the issuing authority.
-         * @param documentId the document which state has changed.
-         */
-        fun onDocumentStateChanged(issuingAuthority: IssuingAuthority, documentId: String)
-    }
+    val eventFlow: SharedFlow<Pair<IssuingAuthority, String>>
 
     /**
      * Calls the IA to start creating a document.

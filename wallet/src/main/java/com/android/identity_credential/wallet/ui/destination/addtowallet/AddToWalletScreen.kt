@@ -20,7 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.IssuingAuthorityRepository
-import com.android.identity_credential.wallet.CardViewModel
+import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
@@ -28,7 +28,7 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 
 @Composable
 fun AddToWalletScreen(
-    cardViewModel: CardViewModel,
+    documentModel: DocumentModel,
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
     documentStore: DocumentStore,
@@ -50,7 +50,7 @@ fun AddToWalletScreen(
             )
         }
 
-        for (issuerDisplayData in cardViewModel.issuerDisplayData) {
+        for (issuerDisplayData in documentModel.issuerDisplayData) {
             /*
             ListItem(
                 headlineContent = { Text(issuerDisplayData.configuration.description) },

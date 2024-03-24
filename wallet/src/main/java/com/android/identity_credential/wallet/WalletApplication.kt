@@ -5,6 +5,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -15,6 +16,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.res.ResourcesCompat
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.Worker
+import androidx.work.WorkerParameters
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.document.Document
@@ -34,6 +42,10 @@ import com.android.identity_credential.wallet.util.toByteArray
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.security.Security
+import java.util.concurrent.TimeUnit
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.toJavaDuration
 
 class WalletApplication : Application() {
     companion object {
@@ -75,6 +87,7 @@ class WalletApplication : Application() {
     lateinit var secureAreaRepository: SecureAreaRepository
     lateinit var documentStore: DocumentStore
     lateinit var settingsModel: SettingsModel
+    lateinit var documentModel: DocumentModel
     lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
 
     override fun onCreate() {
@@ -120,6 +133,16 @@ class WalletApplication : Application() {
             displayIconResourceId = R.drawable.owf_identity_credential_reader_display_icon
         )
 
+        documentModel = DocumentModel(
+            applicationContext,
+            settingsModel,
+            documentStore,
+            issuingAuthorityRepository,
+            secureAreaRepository,
+            documentTypeRepository,
+            this
+        )
+
         val notificationChannel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
             resources.getString(R.string.app_name),
@@ -127,6 +150,42 @@ class WalletApplication : Application() {
         )
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(notificationChannel)
+
+        // Configure a worker for invoking cardModel.periodicSyncForAllCredentials()
+        // on a daily basis.
+        //
+        val workRequest =
+            PeriodicWorkRequestBuilder<SyncCredentialWithIssuerWorker>(
+                1, TimeUnit.DAYS
+            ).setConstraints(
+                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+            ).setInitialDelay(
+                Random.Default.nextInt(1, 24).hours.toJavaDuration()
+            ).build()
+        WorkManager.getInstance(applicationContext)
+            .enqueueUniquePeriodicWork(
+                "PeriodicSyncWithIssuers",
+                ExistingPeriodicWorkPolicy.KEEP,
+                workRequest
+            )
+    }
+
+    class SyncCredentialWithIssuerWorker(
+        context: Context,
+        params: WorkerParameters
+    ) : Worker(context, params) {
+        override fun doWork(): Result {
+            Logger.i(TAG, "Starting periodic syncing work")
+            try {
+                val walletApplication = applicationContext as WalletApplication
+                walletApplication.documentModel.periodicSyncForAllDocuments()
+            } catch (e: Throwable) {
+                Logger.i(TAG, "Ending periodic syncing work (failed)", e)
+                return Result.failure()
+            }
+            Logger.i(TAG, "Ending periodic syncing work (success)")
+            return Result.success()
+        }
     }
 
     /**
