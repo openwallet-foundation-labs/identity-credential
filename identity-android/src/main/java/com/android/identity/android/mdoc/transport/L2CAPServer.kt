@@ -122,9 +122,8 @@ internal class L2CAPServer(val listener: Listener) {
             // TODO: This is to work aqround a bug in L2CAP
             Thread.sleep(1000)
             socket!!.close()
-        } catch (e: IOException) {
-            Logger.e(TAG, "Error closing socket", e)
-        } catch (e: InterruptedException) {
+        } catch (e: Exception) {
+            // could be IOException, InterruptedException
             Logger.e(TAG, "Error closing socket", e)
         }
     }
@@ -167,6 +166,7 @@ internal class L2CAPServer(val listener: Listener) {
         }
     }
 
+    // TODO have listeners run callbacks in coroutines
     fun sendMessage(data: ByteArray) {
         writerQueue.add(data)
     }

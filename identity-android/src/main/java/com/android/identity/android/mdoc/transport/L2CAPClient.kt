@@ -112,9 +112,8 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
             // TODO: This is to work around a bug in L2CAP
             Thread.sleep(1000)
             socket!!.close()
-        } catch (e: IOException) {
-            Logger.e(TAG, "Error closing socket", e)
-        } catch (e: InterruptedException) {
+        } catch (e: Exception) {
+            // could be IOException, InterruptedException
             Logger.e(TAG, "Error closing socket", e)
         }
     }
@@ -159,6 +158,8 @@ internal class L2CAPClient(private val context: Context, val listener: Listener)
     fun sendMessage(data: ByteArray) {
         writerQueue.add(data)
     }
+
+    // TODO have listeners run callbacks in coroutines
 
     fun reportPeerConnected() {
         if (!inhibitCallbacks) {

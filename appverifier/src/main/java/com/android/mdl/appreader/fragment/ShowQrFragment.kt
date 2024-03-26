@@ -40,8 +40,9 @@ class ShowQrFragment : Fragment() {
     ): View {
 
         _binding = FragmentShowQrBinding.inflate(inflater, container, false)
-        transferManager = TransferManager.getInstance(requireContext())
-        transferManager.initVerificationHelperReverseEngagement()
+        transferManager = TransferManager.getInstance(requireContext()).apply {
+            initVerificationHelperReverseEngagement()
+        }
         return binding.root
     }
 
@@ -69,9 +70,11 @@ class ShowQrFragment : Fragment() {
         return bitmap
     }
 
-    private fun getViewForReaderEngagementQrCode(readerEngagement : ByteArray): View {
-        val base64Encoded = Base64.encodeToString(readerEngagement,
-            Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+    private fun getViewForReaderEngagementQrCode(readerEngagement: ByteArray): View {
+        val base64Encoded = Base64.encodeToString(
+            readerEngagement,
+            Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+        )
         val uriEncoded = Uri.Builder()
             .scheme("mdoc://")
             .encodedOpaquePart(base64Encoded)
@@ -101,11 +104,13 @@ class ShowQrFragment : Fragment() {
 
                 TransferStatus.CONNECTED -> {
                     logDebug("Connected")
-                    val requestedDocuments = createRequestViewModel.calculateRequestDocumentList(false)
+                    val requestedDocuments =
+                        createRequestViewModel.calculateRequestDocumentList(false)
                     findNavController().navigate(
                         ShowQrFragmentDirections.actionShowQrToTransfer(requestedDocuments)
                     )
                 }
+
                 else -> {}
             }
         }

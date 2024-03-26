@@ -29,7 +29,6 @@ import com.android.identity.crypto.Crypto
 import com.android.identity.util.Logger
 import com.android.identity.util.toHex
 import java.io.ByteArrayOutputStream
-import java.lang.reflect.InvocationTargetException
 import java.nio.ByteBuffer
 import java.util.ArrayDeque
 import java.util.Arrays
@@ -60,7 +59,8 @@ internal class GattClient(
     private var l2capClient: L2CAPClient? = null
 
     // This is what the 16-bit UUID 0x29 0x02 is encoded like.
-    private var clientCharacteristicConfigUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+    private var clientCharacteristicConfigUuid =
+        UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     private var incomingMessage = ByteArrayOutputStream()
     private var writingQueue: Queue<ByteArray> = ArrayDeque()
     private var writingQueueTotalChunks = 0
@@ -100,22 +100,17 @@ internal class GattClient(
         Logger.d(TAG, "Application requested clearing BLE Service Cache")
         // BluetoothGatt.refresh() is not public API but can be accessed via introspection...
         try {
-            val refreshMethod = gatt.javaClass.getMethod("refresh")
-            var result = false
-            if (refreshMethod != null) {
-                result = refreshMethod.invoke(gatt) as Boolean
+            gatt.javaClass.getMethod("refresh").let { refreshMethod ->
+                val result = refreshMethod.invoke(gatt) as Boolean
+                if (result) {
+                    Logger.d(TAG, "BluetoothGatt.refresh() invoked successfully")
+                } else {
+                    Logger.e(TAG, "BluetoothGatt.refresh() invoked but returned false")
+                }
             }
-            if (result) {
-                Logger.d(TAG, "BluetoothGatt.refresh() invoked successfully")
-            } else {
-                Logger.e(TAG, "BluetoothGatt.refresh() invoked but returned false")
-            }
-        } catch (e: NoSuchMethodException) {
-            Logger.e(TAG, "Getting BluetoothGatt.refresh() failed with NoSuchMethodException", e)
-        } catch (e: IllegalAccessException) {
-            Logger.e(TAG, "Getting BluetoothGatt.refresh() failed with IllegalAccessException", e)
-        } catch (e: InvocationTargetException) {
-            Logger.e(TAG, "Getting BluetoothGatt.refresh() failed with InvocationTargetException", e)
+        } catch (e: Exception) {
+            // could be NoSuchMethodException, IllegalAccessException, InvocationTargetException
+            Logger.e(TAG, "Getting BluetoothGatt.refresh() failed with ", e)
         }
     }
 
@@ -241,7 +236,7 @@ internal class GattClient(
 
     private var mCharacteristicValueSize = 0
     private val characteristicValueSize: Int
-        private get() {
+        get() {
             if (mCharacteristicValueSize > 0) {
                 return mCharacteristicValueSize
             }
@@ -260,58 +255,72 @@ internal class GattClient(
         characteristic: BluetoothGattCharacteristic,
         status: Int
     ) {
-        if (characteristic.uuid == characteristicIdentUuid) {
-            val identValue = characteristic.value
-            if (Logger.isDebugEnabled) {
-                Logger.d(TAG, "Received identValue: ${identValue.toHex}")
+        when (characteristic.uuid) {
+            characteristicIdentUuid -> {
+                val identValue = characteristic.value
+                if (Logger.isDebugEnabled) {
+                    Logger.d(TAG, "Received identValue: ${identValue.toHex}")
+                }
+                // TODO: Don't even request IDENT since it cannot work w/ reverse engagement (there's
+                //   no way the mdoc reader knows EDeviceKeyBytes at this point) and it's also optional.
+                if (!Arrays.equals(identValue, this.identValue)) {
+                    Logger.w(
+                        TAG, "Received ident '${identValue.toHex}' does not match " +
+                                "expected ident '${this.identValue!!.toHex}'"
+                    )
+                }
+                afterIdentObtained(gatt)
             }
-            // TODO: Don't even request IDENT since it cannot work w/ reverse engagement (there's
-            //   no way the mdoc reader knows EDeviceKeyBytes at this point) and it's also optional.
-            if (!Arrays.equals(identValue, this.identValue)) {
-                Logger.w(TAG, "Received ident '${identValue.toHex}' does not match " +
-                            "expected ident '${this.identValue!!.toHex}'")
+
+            characteristicL2CAPUuid -> {
+                if (!usingL2CAP) {
+                    reportError(
+                        Error(
+                            "Unexpected read for L2CAP characteristic "
+                                    + characteristic.uuid + ", L2CAP not supported"
+                        )
+                    )
+                    return
+                }
+                l2capClient = L2CAPClient(
+                    context = context,
+                    listener = object : L2CAPClient.Listener {
+                        override fun onPeerConnected() {
+                            reportPeerConnected()
+                        }
+
+                        override fun onPeerDisconnected() {
+                            reportPeerDisconnected()
+                        }
+
+                        override fun onMessageReceived(data: ByteArray) {
+                            reportMessageReceived(data)
+                        }
+
+                        override fun onError(error: Throwable) {
+                            reportError(error)
+                        }
+                    })
+                val psmValue = characteristic.value
+                var psmSized = ByteArray(4)
+                if (psmValue.size < 4) {
+                    // Add 00 on left if psm length is lower than 4
+                    System.arraycopy(psmValue, 0, psmSized, 4 - psmValue.size, psmValue.size)
+                } else {
+                    psmSized = psmValue
+                }
+                val psm = ByteBuffer.wrap(psmSized).getInt()
+                l2capClient!!.connect(this.gatt!!.device, psm)
             }
-            afterIdentObtained(gatt)
-        } else if (characteristic.uuid == characteristicL2CAPUuid) {
-            if (!usingL2CAP) {
+
+            else -> {
                 reportError(
                     Error(
-                        "Unexpected read for L2CAP characteristic "
-                                + characteristic.uuid + ", L2CAP not supported"
+                        "Unexpected onCharacteristicRead for characteristic " +
+                                "$characteristic.uuid + expected $characteristicIdentUuid"
                     )
                 )
-                return
             }
-            l2capClient = L2CAPClient(context, object : L2CAPClient.Listener {
-                override fun onPeerConnected() {
-                    reportPeerConnected()
-                }
-
-                override fun onPeerDisconnected() {
-                    reportPeerDisconnected()
-                }
-
-                override fun onMessageReceived(data: ByteArray) {
-                    reportMessageReceived(data)
-                }
-
-                override fun onError(error: Throwable) {
-                    reportError(error)
-                }
-            })
-            val psmValue = characteristic.value
-            var psmSized = ByteArray(4)
-            if (psmValue.size < 4) {
-                // Add 00 on left if psm length is lower than 4
-                System.arraycopy(psmValue, 0, psmSized, 4 - psmValue.size, psmValue.size)
-            } else {
-                psmSized = psmValue
-            }
-            val psm = ByteBuffer.wrap(psmSized).getInt()
-            l2capClient!!.connect(this.gatt!!.device, psm)
-        } else {
-            reportError(Error("Unexpected onCharacteristicRead for characteristic " +
-                    "$characteristic.uuid + expected $characteristicIdentUuid"))
         }
     }
 
@@ -360,9 +369,11 @@ internal class GattClient(
         descriptor: BluetoothGattDescriptor,
         status: Int
     ) {
-        Logger.d(TAG,
+        Logger.d(
+            TAG,
             "onDescriptorWrite: $descriptor.uuid " +
-            "characteristic=${descriptor.characteristic.uuid} status=$status")
+                    "characteristic=${descriptor.characteristic.uuid} status=$status"
+        )
         try {
             val charUuid = descriptor.characteristic.uuid
             if (charUuid == characteristicServer2ClientUuid && descriptor.uuid == clientCharacteristicConfigUuid) {
@@ -393,9 +404,12 @@ internal class GattClient(
                     reportError(Error("Error writing to state characteristic"))
                 }
             } else {
-                reportError(Error(
+                reportError(
+                    Error(
                         "Unexpected onDescriptorWrite for characteristic UUID $charUuid" +
-                                " and descriptor UUID ${descriptor.uuid}"))
+                                " and descriptor UUID ${descriptor.uuid}"
+                    )
+                )
             }
         } catch (e: SecurityException) {
             reportError(e)
@@ -447,9 +461,11 @@ internal class GattClient(
             }
             incomingMessage.write(data, 1, data.size - 1)
             val isLast = (data[0].toInt() == 0x00)
-            Logger.d(TAG,
+            Logger.d(
+                TAG,
                 "Received chunk with ${data.size} bytes (last=$isLast), " +
-                        "incomingMessage.length=${incomingMessage.toByteArray().size}")
+                        "incomingMessage.length=${incomingMessage.toByteArray().size}"
+            )
             if (data[0].toInt() == 0x00) {
                 // Last message.
                 val entireMessage = incomingMessage.toByteArray()
@@ -457,13 +473,18 @@ internal class GattClient(
                 reportMessageReceived(entireMessage)
             } else if (data[0].toInt() == 0x01) {
                 if (data.size != characteristicValueSize) {
-                    Logger.w(TAG,
+                    Logger.w(
+                        TAG,
                         "Server2Client received ${data.size} bytes which is not the " +
-                                "expected $characteristicValueSize bytes")
+                                "expected $characteristicValueSize bytes"
+                    )
                 }
             } else {
-                reportError(Error("Invalid first byte ${data[0]} in Server2Client data chunk, " +
-                        "expected 0 or 1")
+                reportError(
+                    Error(
+                        "Invalid first byte ${data[0]} in Server2Client data chunk, " +
+                                "expected 0 or 1"
+                    )
                 )
             }
         } else if (characteristic.uuid == characteristicStateUuid) {
@@ -486,7 +507,7 @@ internal class GattClient(
             return
         }
         val chunk = writingQueue.poll() ?: return
-        if (chunk.size == 0) {
+        if (chunk.isEmpty()) {
             Logger.d(TAG, "Chunk is length 0, shutting down GattClient")
             try {
                 gatt!!.disconnect()
@@ -498,7 +519,7 @@ internal class GattClient(
             return
         }
         val isLast = chunk[0].toInt() == 0x00
-        Logger.d(TAG,"Sending chunk with ${chunk.size} bytes (last=$isLast)")
+        Logger.d(TAG, "Sending chunk with ${chunk.size} bytes (last=$isLast)")
         characteristicClient2Server!!.setValue(chunk)
         try {
             if (!gatt!!.writeCharacteristic(characteristicClient2Server)) {
@@ -559,6 +580,8 @@ internal class GattClient(
             reportError(e)
         }
     }
+
+    // TODO have listeners run callbacks in coroutines
 
     private fun reportPeerConnected() {
         if (listener != null && !inhibitCallbacks) {

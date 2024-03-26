@@ -79,12 +79,11 @@ class DataTransportOptions internal constructor(
          *
          * @return the built [DataTransportOptions] instance.
          */
-        fun build(): DataTransportOptions {
-            return DataTransportOptions(
+        fun build(): DataTransportOptions =
+            DataTransportOptions(
                 bleUseL2CAP,
                 bleClearCache,
                 experimentalBleL2CAPPsmInEngagement
             )
-        }
     }
 }

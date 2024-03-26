@@ -43,17 +43,20 @@ class QrCommunicationSetup(
             }
             log("OnDeviceConnected via QR: qrEngagement=$qrEngagement")
             val builder = DeviceRetrievalHelper.Builder(
-                context,
-                deviceRetrievalHelperListener,
-                context.mainExecutor(),
-                eDeviceKey
+                context = context,
+                listener = deviceRetrievalHelperListener,
+                executor = context.mainExecutor(),
+                eDeviceKey = eDeviceKey
             )
-            builder.useForwardEngagement(
-                transport,
-                qrEngagement.deviceEngagement,
-                qrEngagement.handover
-            )
-            deviceRetrievalHelper = builder.build()
+            deviceRetrievalHelper =
+                builder
+                    .useForwardEngagement(
+                        transport = transport,
+                        deviceEngagement = qrEngagement.deviceEngagement,
+                        handover = qrEngagement.handover
+                    )
+                    .build()
+
             qrEngagement.close()
             onDeviceRetrievalHelperReady(requireNotNull(deviceRetrievalHelper))
         }
@@ -87,20 +90,19 @@ class QrCommunicationSetup(
 
     fun configure() {
         qrEngagement = QrEngagementHelper.Builder(
-            context,
-            eDeviceKey.publicKey,
-            connectionSetup.getConnectionOptions(),
-            qrEngagementListener,
-            context.mainExecutor()
+            context = context,
+            eDeviceKey = eDeviceKey.publicKey,
+            options = connectionSetup.getConnectionOptions(),
+            listener = qrEngagementListener,
+            executor = context.mainExecutor()
         ).setConnectionMethods(connectionSetup.getConnectionMethods())
             .build()
     }
 
-    fun close() {
+    fun close() =
         try {
             qrEngagement.close()
         } catch (exception: RuntimeException) {
             log("Error closing QR engagement", exception)
         }
-    }
 }

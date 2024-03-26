@@ -57,10 +57,8 @@ class ReverseQrCommunicationSetup(
             uri.encodedSchemeSpecificPart,
             Base64.URL_SAFE or Base64.NO_PADDING
         )
-        val engagement = EngagementParser(
-            encodedReaderEngagement
-        ).parse()
-        if (engagement.connectionMethods.size == 0) {
+        val engagement = EngagementParser(encodedReaderEngagement).parse()
+        if (engagement.connectionMethods.isEmpty()) {
             throw IllegalStateException("No connection methods in engagement")
         }
 
@@ -69,20 +67,21 @@ class ReverseQrCommunicationSetup(
         log("Using connection method $connectionMethod")
 
         val transport = DataTransport.fromConnectionMethod(
-            context,
-            connectionMethod,
-            DataTransport.Role.MDOC,
-            connectionSetup.getConnectionOptions()
+            context = context,
+            connectionMethod = connectionMethod,
+            role = DataTransport.Role.MDOC,
+            options = connectionSetup.getConnectionOptions()
         )
 
-        val builder = DeviceRetrievalHelper.Builder(
-            context,
-            presentationListener,
-            context.mainExecutor(),
-            eDeviceKey
-        )
-        builder.useReverseEngagement(transport, encodedReaderEngagement, origins)
-        presentation = builder.build()
+        presentation = DeviceRetrievalHelper
+            .Builder(
+                context = context,
+                listener = presentationListener,
+                executor = context.mainExecutor(),
+                eDeviceKey = eDeviceKey
+            )
+            .useReverseEngagement(transport, encodedReaderEngagement, origins)
+            .build()
         onPresentationReady(requireNotNull(presentation))
     }
 }

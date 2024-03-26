@@ -53,40 +53,41 @@ class AndroidStorageEngine internal constructor(
     private val storageDirectory: File,
     private val useEncryption: Boolean
 ) : StorageEngine {
-    private fun getTargetFile(key: String): File {
-        return try {
+    private fun getTargetFile(key: String): File =
+        try {
             val fileName = PREFIX + URLEncoder.encode(key, "UTF-8")
             File(storageDirectory, fileName)
         } catch (e: UnsupportedEncodingException) {
             throw IllegalStateException(e)
         }
-    }
 
-    private fun ensureSecretKey(): SecretKey {
-        val keyAlias = PREFIX + "_KeyFor_" + storageDirectory
-        return try {
+    private fun ensureSecretKey(): SecretKey =
+        try {
+            val keyAlias = PREFIX + "_KeyFor_" + storageDirectory
             val ks = KeyStore.getInstance("AndroidKeyStore")
             ks.load(null)
             val entry = ks.getEntry(keyAlias, null)
             if (entry != null) {
-                return (entry as KeyStore.SecretKeyEntry).secretKey
+                (entry as KeyStore.SecretKeyEntry).secretKey
+            } else {
+                val builder =
+                    KeyGenParameterSpec.Builder(
+                        keyAlias,
+                        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+                    )
+                        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                        .setKeySize(128)
+
+                KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
+                    .run {
+                        init(builder.build())
+                        generateKey()
+                    }
             }
-            val kg = KeyGenerator.getInstance(
-                KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore"
-            )
-            val builder = KeyGenParameterSpec.Builder(
-                keyAlias,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(128)
-            kg.init(builder.build())
-            kg.generateKey()
         } catch (e: Exception) {
             throw IllegalStateException("Error loading secret key", e)
         }
-    }
 
     override fun get(key: String): ByteArray? {
         val file = AtomicFile(getTargetFile(key))
@@ -132,38 +133,31 @@ class AndroidStorageEngine internal constructor(
         }
     }
 
-    override fun delete(key: String) {
-        val file = AtomicFile(getTargetFile(key))
-        file.delete()
-    }
+    override fun delete(key: String) = AtomicFile(getTargetFile(key)).run { delete() }
 
     override fun deleteAll() {
-        val fileList = storageDirectory.listFiles() ?: return
-        for (file in fileList) {
-            val name = file.name
-            if (!name.startsWith(PREFIX)) {
-                continue
-            }
-            file.delete()
+        storageDirectory.listFiles()?.let { fileList ->
+            fileList.filter { it.name.startsWith(PREFIX) }.forEach { it.delete() }
         }
     }
 
     override fun enumerate(): Collection<String> {
-        val ret = ArrayList<String>()
-        val fileList = storageDirectory.listFiles()
-        if (fileList != null) {
-            for (file in fileList) {
-                val name = file.name
-                if (!name.startsWith(PREFIX)) {
-                    continue
+        val ret = mutableListOf<String>()
+        storageDirectory.listFiles()?.let { fileList ->
+            fileList
+                .filter { it.name.startsWith(PREFIX) }
+                .forEach { file ->
+                    try {
+                        URLDecoder.decode(file.name.substring(PREFIX.length), "UTF-8")
+                            .let { name ->
+                                name?.let { decodedName ->
+                                    ret.add(decodedName)
+                                }
+                            }
+                    } catch (e: UnsupportedEncodingException) {
+                        throw IllegalStateException(e)
+                    }
                 }
-                try {
-                    val decodedName = URLDecoder.decode(name.substring(PREFIX.length), "UTF-8")
-                    ret.add(decodedName)
-                } catch (e: UnsupportedEncodingException) {
-                    throw IllegalStateException(e)
-                }
-            }
         }
         return ret
     }
@@ -204,9 +198,7 @@ class AndroidStorageEngine internal constructor(
          *
          * @return a [AndroidStorageEngine].
          */
-        fun build(): AndroidStorageEngine {
-            return AndroidStorageEngine(context, storageDirectory, useEncryption)
-        }
+        fun build(): AndroidStorageEngine = AndroidStorageEngine(context, storageDirectory, useEncryption)
     }
 
     companion object {
@@ -236,7 +228,8 @@ class AndroidStorageEngine internal constructor(
                 for (item in array) {
                     val encryptedChunk = item.asBstr
                     val iv = encryptedChunk.sliceArray(IntRange(0, 11))
-                    val cipherText = encryptedChunk.sliceArray(IntRange(12, encryptedChunk.size - 1))
+                    val cipherText =
+                        encryptedChunk.sliceArray(IntRange(12, encryptedChunk.size - 1))
                     val cipher = Cipher.getInstance("AES/GCM/NoPadding")
                     cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
                     val decryptedChunk = cipher.doFinal(cipherText)
