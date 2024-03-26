@@ -105,6 +105,9 @@ class CborSymbolProcessor(
 
         with(CodeBuilder()) {
             importQualifiedName(dataItemClass)
+            importQualifiedName(classDeclaration)
+
+            generateSerialization(this, classDeclaration)
 
             line("val $baseName.toDataItem: DataItem")
             block("get()") {
@@ -148,6 +151,9 @@ class CborSymbolProcessor(
         val baseName = classDeclaration.simpleName.asString()
         with(CodeBuilder()) {
             importQualifiedName(dataItemClass)
+            importQualifiedName(classDeclaration)
+
+            generateSerialization(this, classDeclaration)
 
             var hadMergedMap = false
 
@@ -161,7 +167,14 @@ class CborSymbolProcessor(
                 classDeclaration.getAllProperties().forEach { property ->
                     val name = property.simpleName.asString()
                     val type = property.type.resolve()
-                    optionalBlock(if (type.isMarkedNullable) "if ($name != null)" else null) {
+                    val (source, condition) = if (type.isMarkedNullable) {
+                        val valueVar = varName(name)
+                        line("val $valueVar = this.$name")
+                        Pair(valueVar, "if ($valueVar != null)")
+                    } else {
+                        Pair("this.$name", null)
+                    }
+                    optionalBlock(condition) {
                         if (findAnnotation(property, annotationMerge) != null) {
                             if (hadMergedMap) {
                                 logger.error("@$annotationMerge can be used only on a single field")
@@ -171,11 +184,11 @@ class CborSymbolProcessor(
                                 hadMergedMap = true
                                 addSerializedMapValues(
                                     this, "builder",
-                                    "this.$name", type
+                                    source, type
                                 )
                             }
                         } else {
-                            val code = serializeValue(this, "this.$name", type)
+                            val code = serializeValue(this, source, type)
                             line("builder.put(\"$name\", $code)")
                         }
                     }
@@ -188,9 +201,11 @@ class CborSymbolProcessor(
 
             emptyLine()
             block("fun ${deserializerName(classDeclaration)}($dataItem: DataItem): $baseName") {
+                val constructorParameters = mutableListOf<String>()
                 classDeclaration.getAllProperties().forEach { property ->
                     val fieldName = property.simpleName.asString()
                     val name = varName(fieldName)
+                    constructorParameters.add(name)
                     val type = property.type.resolve()
                     if (findAnnotation(property, annotationMerge) != null) {
                         if (type.declaration.qualifiedName!!.asString() == "kotlin.collections.Map") {
@@ -217,13 +232,13 @@ class CborSymbolProcessor(
                 line {
                     append("return $baseName(")
                     var first = true
-                    classDeclaration.getAllProperties().forEach { property ->
+                    constructorParameters.forEach { parameter ->
                         if (first) {
                             first = false
                         } else {
                             append(", ")
                         }
-                        append(property.simpleName.asString())
+                        append(parameter)
                     }
                     append(")")
                 }
@@ -331,7 +346,7 @@ class CborSymbolProcessor(
                     return map
                 }
 
-            "kotlin.collections.List" ->
+            "kotlin.collections.List", "kotlin.collections.Set" ->
                 with(codeBuilder) {
                     val array = varName("array")
                     val arrayBuilder = varName("arrayBuilder")
@@ -411,10 +426,15 @@ class CborSymbolProcessor(
                     map
                 }
 
-            "kotlin.collections.List" ->
+            "kotlin.collections.List", "kotlin.collections.Set" ->
                 with(codeBuilder) {
                     val array = varName("array")
-                    line("val $array = mutableListOf<${typeArguments(this, type)}>()")
+                    val builder = if (qualifiedName == "kotlin.collections.Set") {
+                        "mutableSetOf"
+                    } else {
+                        "mutableListOf"
+                    }
+                    line("val $array = $builder<${typeArguments(this, type)}>()")
                     block("for (value in $code.asArray)") {
                         val value = deserializeValue(
                             this, "value",
@@ -498,6 +518,25 @@ class CborSymbolProcessor(
                 codeBuilder.importQualifiedName(qualifiedName)
                 return type.declaration.simpleName.asString()
             }
+        }
+    }
+
+    private fun generateSerialization(
+        codeBuilder: CodeBuilder, classDeclaration: KSClassDeclaration) {
+
+        codeBuilder.importQualifiedName("com.android.identity.cbor.Cbor")
+        val baseName = classDeclaration.simpleName.asString()
+
+        codeBuilder.block("fun $baseName.toCbor(): ByteArray") {
+            line("return Cbor.encode(toDataItem)")
+        }
+        codeBuilder.emptyLine()
+
+        if (hasCompanion(classDeclaration)) {
+            codeBuilder.block("fun $baseName.Companion.fromCbor(data: ByteArray): $baseName") {
+                line("return $baseName.fromDataItem(Cbor.decode(data))")
+            }
+            codeBuilder.emptyLine()
         }
     }
 }
