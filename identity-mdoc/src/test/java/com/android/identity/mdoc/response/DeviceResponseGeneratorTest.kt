@@ -24,12 +24,12 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.credential.AuthenticationKey
-import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialRequest
-import com.android.identity.credential.CredentialRequest.DataElement
-import com.android.identity.credential.CredentialStore
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.DocumentRequest.DataElement
+import com.android.identity.document.DocumentStore
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
@@ -63,7 +63,7 @@ class DeviceResponseGeneratorTest {
     private lateinit var secureAreaRepository: SecureAreaRepository
 
     private lateinit  var authKey: AuthenticationKey
-    private lateinit  var credential: Credential
+    private lateinit  var document: Document
     private lateinit  var timeSigned: Timestamp
     private lateinit  var timeValidityBegin: Timestamp
     private lateinit  var timeValidityEnd: Timestamp
@@ -78,22 +78,22 @@ class DeviceResponseGeneratorTest {
         secureAreaRepository = SecureAreaRepository()
         secureArea = SoftwareSecureArea(storageEngine)
         secureAreaRepository.addImplementation(secureArea)
-        provisionCredential()
+        provisionDocument()
     }
 
     // This isn't really used, we only use a single domain.
     private val AUTH_KEY_DOMAIN = "domain"
     
     @Throws(Exception::class)
-    private fun provisionCredential() {
-        val credentialStore = CredentialStore(
+    private fun provisionDocument() {
+        val documentStore = DocumentStore(
             storageEngine,
             secureAreaRepository
         )
 
-        // Create the credential...
-        credential = credentialStore.createCredential(
-            "testCredential"
+        // Create the document...
+        document = documentStore.createDocument(
+            "testDocument"
         )
         val nameSpacedData = NameSpacedData.Builder()
             .putEntryString("ns1", "foo1", "bar1")
@@ -102,7 +102,7 @@ class DeviceResponseGeneratorTest {
             .putEntryString("ns2", "bar1", "foo1")
             .putEntryString("ns2", "bar2", "foo2")
             .build()
-        credential.applicationData.setNameSpacedData("credentialData", nameSpacedData)
+        document.applicationData.setNameSpacedData("documentData", nameSpacedData)
         val overrides: MutableMap<String, Map<String, ByteArray>> = HashMap()
         val overridesForNs1: MutableMap<String, ByteArray> = HashMap()
         overridesForNs1["foo3"] = Cbor.encode(Tstr("bar3_override"))
@@ -117,7 +117,7 @@ class DeviceResponseGeneratorTest {
         timeSigned = Timestamp.ofEpochMilli(nowMillis)
         timeValidityBegin = Timestamp.ofEpochMilli(nowMillis + 3600 * 1000)
         timeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        authKey = credential.createAuthenticationKey(
+        authKey = document.createAuthenticationKey(
             AUTH_KEY_DOMAIN,
             secureArea,
             SoftwareCreateKeySettings.Builder(ByteArray(0))
@@ -206,8 +206,8 @@ class DeviceResponseGeneratorTest {
     @Throws(Exception::class)
     fun testDocumentGeneratorEcdsa() {
 
-        // OK, now do the request... request a strict subset of the data in the credential
-        // and also request data not in the credential.
+        // OK, now do the request... request a strict subset of the data in the document
+        // and also request data not in the document.
         val dataElements = listOf(
             DataElement("ns1", "foo1", false, false),
             DataElement("ns1", "foo2", false, false),
@@ -216,13 +216,13 @@ class DeviceResponseGeneratorTest {
             DataElement("ns2", "does_not_exist", false, false),
             DataElement("ns_does_not_exist", "boo", false, false)
         )
-        val request = CredentialRequest(dataElements)
+        val request = DocumentRequest(dataElements)
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
         val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData)
             .parse()
         val mergedIssuerNamespaces: Map<String, List<ByteArray>> = MdocUtil.mergeIssuerNamesSpaces(
             request,
-            credential.applicationData.getNameSpacedData("credentialData"),
+            document.applicationData.getNameSpacedData("documentData"),
             staticAuthData
         )
         val deviceResponseGenerator = DeviceResponseGenerator(0)
@@ -297,13 +297,13 @@ class DeviceResponseGeneratorTest {
             DataElement("ns2", "does_not_exist", false, false),
             DataElement("ns_does_not_exist", "boo", false, false)
         )
-        val request = CredentialRequest(dataElements)
+        val request = DocumentRequest(dataElements)
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
         val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData)
             .parse()
         val mergedIssuerNamespaces: Map<String, List<ByteArray>> = MdocUtil.mergeIssuerNamesSpaces(
             request,
-            credential.applicationData.getNameSpacedData("credentialData"),
+            document.applicationData.getNameSpacedData("documentData"),
             staticAuthData
         )
         val eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256)
@@ -344,13 +344,13 @@ class DeviceResponseGeneratorTest {
             DataElement("ns2", "does_not_exist", false, false),
             DataElement("ns_does_not_exist", "boo", false, false)
         )
-        val request = CredentialRequest(dataElements)
+        val request = DocumentRequest(dataElements)
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
         val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData)
             .parse()
         val mergedIssuerNamespaces: Map<String, List<ByteArray>> = MdocUtil.mergeIssuerNamesSpaces(
             request,
-            credential.applicationData.getNameSpacedData("credentialData"),
+            document.applicationData.getNameSpacedData("documentData"),
             staticAuthData
         )
 
@@ -477,13 +477,13 @@ class DeviceResponseGeneratorTest {
             DataElement("ns2", "does_not_exist", false, false),
             DataElement("ns_does_not_exist", "boo", false, false)
         )
-        val request = CredentialRequest(dataElements)
+        val request = DocumentRequest(dataElements)
         val encodedSessionTranscript = Cbor.encode(Tstr("Doesn't matter"))
         val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData)
             .parse()
         val mergedIssuerNamespaces: Map<String, List<ByteArray>> = MdocUtil.mergeIssuerNamesSpaces(
             request,
-            credential.applicationData.getNameSpacedData("credentialData"),
+            document.applicationData.getNameSpacedData("documentData"),
             staticAuthData
         )
         val deviceResponseGenerator = DeviceResponseGenerator(0)
@@ -545,6 +545,6 @@ class DeviceResponseGeneratorTest {
     }
 
     companion object {
-        const val DOC_TYPE = "com.example.credential_xyz"
+        const val DOC_TYPE = "com.example.document_xyz"
     }
 }

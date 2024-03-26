@@ -18,8 +18,8 @@ package com.android.identity.util
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.toDataItem
-import com.android.identity.credential.NameSpacedData
-import com.android.identity.credential.NameSpacedData.Companion.fromEncodedCbor
+import com.android.identity.document.NameSpacedData
+import com.android.identity.document.NameSpacedData.Companion.fromEncodedCbor
 
 /**
  * An implementation of [ApplicationData] using a [LinkedHashMap] as in-memory backing.

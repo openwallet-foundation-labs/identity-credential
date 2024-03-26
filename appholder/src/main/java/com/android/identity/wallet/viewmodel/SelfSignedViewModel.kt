@@ -5,9 +5,9 @@ import android.view.View
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.MdocCredentialType
-import com.android.identity.credentialtype.MdocDataElement
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.MdocDocumentType
+import com.android.identity.documenttype.MdocDataElement
 import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.document.DocumentManager
 import com.android.identity.wallet.documentdata.MdocComplexTypeDefinition
@@ -34,11 +34,11 @@ class SelfSignedViewModel(val app: Application) :
 
     init {
         loading.value = View.GONE
-        for (credentialType in HolderApp.credentialTypeRepositoryInstance.credentialTypes
-            .filter { it.mdocCredentialType != null }) {
+        for (documentType in HolderApp.documentTypeRepositoryInstance.documentTypes
+            .filter { it.mdocDocumentType != null }) {
             id = 1 // reset the id to 1
-            fieldsByDocType[credentialType.mdocCredentialType?.docType!!] =
-                createFields(credentialType.mdocCredentialType!!)
+            fieldsByDocType[documentType.mdocDocumentType?.docType!!] =
+                createFields(documentType.mdocDocumentType!!)
         }
     }
 
@@ -58,15 +58,15 @@ class SelfSignedViewModel(val app: Application) :
         }
     }
 
-    private fun createFields(mdocCredentialType: MdocCredentialType): MutableList<Field> {
+    private fun createFields(mdocDocumentType: MdocDocumentType): MutableList<Field> {
         val fields: MutableList<Field> = mutableListOf()
-        val complexTypes = MdocComplexTypeRepository.getComplexTypes(mdocCredentialType.docType)
-        for (namespace in mdocCredentialType.namespaces.values) {
+        val complexTypes = MdocComplexTypeRepository.getComplexTypes(mdocDocumentType.docType)
+        for (namespace in mdocDocumentType.namespaces.values) {
             val namespaceComplexTypes =
                 complexTypes?.namespaces?.find { it.namespace == namespace.namespace }
             for (dataElement in namespace.dataElements.values) {
                 when (dataElement.attribute.type) {
-                    is CredentialAttributeType.ComplexType -> {
+                    is DocumentAttributeType.ComplexType -> {
                         val complexTypeDefinitions = namespaceComplexTypes?.dataElements?.filter {
                             it.parentIdentifiers.contains(dataElement.attribute.identifier)
                         }
@@ -145,7 +145,7 @@ class SelfSignedViewModel(val app: Application) :
         val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (i in 0..arrayLength - 1) {
             for (childElement in childElements) {
-                if (childElement.type is CredentialAttributeType.ComplexType) {
+                if (childElement.type is DocumentAttributeType.ComplexType) {
 
                     if (dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }) {
                         val childField = Field(
@@ -216,7 +216,7 @@ class SelfSignedViewModel(val app: Application) :
 
         val childElements = dataElements.filter { it.parentIdentifiers.contains(parentField.name) }
         for (childElement in childElements) {
-            if (childElement.type is CredentialAttributeType.ComplexType) {
+            if (childElement.type is DocumentAttributeType.ComplexType) {
                 val isArray = dataElements.any { it.parentIdentifiers.contains(childElement.identifier) && it.partOfArray }
                 val childField = Field(
                     id++,
@@ -260,11 +260,11 @@ class SelfSignedViewModel(val app: Application) :
 
     fun addOptions(field: Field, dataElement: MdocDataElement) {
         when (dataElement.attribute.type) {
-            is CredentialAttributeType.StringOptions -> field.stringOptions =
-                (dataElement.attribute.type as CredentialAttributeType.StringOptions).options
+            is DocumentAttributeType.StringOptions -> field.stringOptions =
+                (dataElement.attribute.type as DocumentAttributeType.StringOptions).options
 
-            is CredentialAttributeType.IntegerOptions -> field.integerOptions =
-                (dataElement.attribute.type as CredentialAttributeType.IntegerOptions).options
+            is DocumentAttributeType.IntegerOptions -> field.integerOptions =
+                (dataElement.attribute.type as DocumentAttributeType.IntegerOptions).options
 
             else -> {}
         }
@@ -272,10 +272,10 @@ class SelfSignedViewModel(val app: Application) :
 
     fun addOptions(field: Field, dataElement: MdocComplexTypeDefinition) {
         when (dataElement.type) {
-            is CredentialAttributeType.StringOptions -> field.stringOptions =
+            is DocumentAttributeType.StringOptions -> field.stringOptions =
                 dataElement.type.options
 
-            is CredentialAttributeType.IntegerOptions -> field.integerOptions =
+            is DocumentAttributeType.IntegerOptions -> field.integerOptions =
                 dataElement.type.options
 
             else -> {}

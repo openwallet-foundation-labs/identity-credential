@@ -52,7 +52,7 @@ class DeviceRequestParserTest {
         )
         val request = parser.parse()
         Assert.assertEquals("1.0", request.version)
-        val docRequests = request.documentRequests
+        val docRequests = request.docRequests
         Assert.assertEquals(1, docRequests.size.toLong())
         val dr = docRequests.iterator().next()
         Assert.assertEquals(MDL_DOCTYPE, dr.docType)
@@ -113,7 +113,7 @@ class DeviceRequestParserTest {
         )
         val request = parser.parse()
         Assert.assertEquals("1.0", request.version)
-        val docRequests = request.documentRequests
+        val docRequests = request.docRequests
         Assert.assertEquals(1, docRequests.size.toLong())
         val dr = docRequests.iterator().next()
         Assert.assertEquals(MDL_DOCTYPE, dr.docType)
@@ -173,7 +173,7 @@ class DeviceRequestParserTest {
             encodedSessionTranscript
         ).parse()
         Assert.assertEquals("1.0", deviceRequest.version)
-        val documentRequests = deviceRequest.documentRequests
+        val documentRequests = deviceRequest.docRequests
         Assert.assertTrue(documentRequests.get(0).readerAuthenticated);
     }
 

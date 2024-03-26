@@ -3,7 +3,7 @@ package com.android.identity.wallet.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.wallet.R
 
 object SampleDataProvider {
@@ -18,7 +18,7 @@ object SampleDataProvider {
         context: Context,
         namespace: String,
         identifier: String,
-        type: CredentialAttributeType,
+        type: DocumentAttributeType,
         identifierParent: String? = null
     ): Any? {
         return when (namespace) {
@@ -236,7 +236,7 @@ object SampleDataProvider {
         }
     }
 
-    fun getSampleValue(namespace: String, identifier: String, type: CredentialAttributeType, index: Int): Any? {
+    fun getSampleValue(namespace: String, identifier: String, type: DocumentAttributeType, index: Int): Any? {
         return when (namespace) {
             MDL_NAMESPACE -> when (identifier) {
                 "vehicle_category_code" -> when (index) {
@@ -319,23 +319,23 @@ object SampleDataProvider {
         }
     }
 
-    private fun defaultValue(type: CredentialAttributeType): Any? {
+    private fun defaultValue(type: DocumentAttributeType): Any? {
         return when (type) {
-            is CredentialAttributeType.String -> "-"
-            is CredentialAttributeType.Number -> 0
-            is CredentialAttributeType.Date,
-            is CredentialAttributeType.DateTime -> "2100-01-01"
+            is DocumentAttributeType.String -> "-"
+            is DocumentAttributeType.Number -> 0
+            is DocumentAttributeType.Date,
+            is DocumentAttributeType.DateTime -> "2100-01-01"
 
-            is CredentialAttributeType.Picture -> Bitmap.createBitmap(
+            is DocumentAttributeType.Picture -> Bitmap.createBitmap(
                 200,
                 200,
                 Bitmap.Config.ARGB_8888
             )
 
-            is CredentialAttributeType.Boolean -> false
-            is CredentialAttributeType.StringOptions,
-            is CredentialAttributeType.IntegerOptions,
-            is CredentialAttributeType.ComplexType -> null
+            is DocumentAttributeType.Boolean -> false
+            is DocumentAttributeType.StringOptions,
+            is DocumentAttributeType.IntegerOptions,
+            is DocumentAttributeType.ComplexType -> null
         }
     }
 }

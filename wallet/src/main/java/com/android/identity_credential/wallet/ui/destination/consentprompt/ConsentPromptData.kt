@@ -1,10 +1,9 @@
 package com.android.identity_credential.wallet.ui.destination.consentprompt
 
-import android.graphics.Bitmap
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
-import com.android.identity.credential.CredentialRequest
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.NameSpacedData
 import com.android.identity.trustmanagement.TrustPoint
 
 /**
@@ -14,7 +13,7 @@ import com.android.identity.trustmanagement.TrustPoint
 @Immutable
 data class ConsentPromptData(
     // Object extracted from the document request
-    val credentialRequest: CredentialRequest,
+    val documentRequest: DocumentRequest,
     // requested doc type
     val docType: String,
     // document name of credential being used to respond with requested data
@@ -28,12 +27,12 @@ data class ConsentPromptData(
 )
 
 /**
- * ConsentDataElement is a wrapper of CredentialRequest.DataElement providing the user-facing display name
+ * ConsentDataElement is a wrapper of documentRequest.DataElement providing the user-facing display name
  * for each element.
  */
 @Stable
 @Immutable
 data class ConsentDataElement(
     val displayName: String,
-    val dataElement: CredentialRequest.DataElement
+    val dataElement: DocumentRequest.DataElement
 )

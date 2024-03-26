@@ -223,8 +223,8 @@
         Your application is about to be sent the ID issuer for verification. You will get notified
         when the application is approved.
     </string>
-    <string name="utopia_mdl_issuing_authority_pending_credential_title">Utopia mDL (pending)</string>
-    <string name="utopia_mdl_issuing_authority_credential_title">%1$s\'s mDL</string>
+    <string name="utopia_mdl_issuing_authority_pending_document_title">Utopia mDL (pending)</string>
+    <string name="utopia_mdl_issuing_authority_document_title">%1$s\'s mDL</string>
 
     <!-- SelfSignedEuPidIssuingAuthority -->
     <string name="utopia_eu_pid_issuing_authority_description">Utopia Personal Information Document</string>
@@ -249,8 +249,8 @@
         Your application is about to be sent the ID issuer for verification. You will get notified
         when the application is approved.
     </string>
-    <string name="utopia_eu_pid_issuing_authority_pending_credential_title">Utopia PID (pending)</string>
-    <string name="utopia_eu_pid_issuing_authority_credential_title">%1$s\'s PID</string>
+    <string name="utopia_eu_pid_issuing_authority_pending_document_title">Utopia PID (pending)</string>
+    <string name="utopia_eu_pid_issuing_authority_document_title">%1$s\'s PID</string>
 
     <!-- Consent Prompt -->
     <string name="consent_prompt_cancel">Cancel</string>

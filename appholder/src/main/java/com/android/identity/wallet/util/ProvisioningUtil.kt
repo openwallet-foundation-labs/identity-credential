@@ -14,9 +14,9 @@ import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialUtil
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentUtil
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
@@ -47,78 +47,78 @@ class ProvisioningUtil private constructor(
 ) {
 
     val secureAreaRepository = SecureAreaRepository()
-    val credentialStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        HolderApp.createCredentialStore(context, secureAreaRepository)
+    val documentStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        HolderApp.createDocumentStore(context, secureAreaRepository)
     }
 
     fun provisionSelfSigned(
         nameSpacedData: NameSpacedData,
         provisionInfo: ProvisionInfo,
     ) {
-        val credential = credentialStore.createCredential(provisionInfo.credentialName())
-        credentialStore.addCredential(credential)
-        credential.applicationData.setNameSpacedData("credentialData", nameSpacedData)
+        val document = documentStore.createDocument(provisionInfo.documentName())
+        documentStore.addDocument(document)
+        document.applicationData.setNameSpacedData("documentData", nameSpacedData)
 
         val authKeySecureArea: SecureArea = provisionInfo.currentSecureArea.secureArea
 
-        // Store all settings for the credential that are not SecureArea specific
-        credential.applicationData.setString(USER_VISIBLE_NAME, provisionInfo.docName)
-        credential.applicationData.setString(DOCUMENT_TYPE, provisionInfo.docType)
-        credential.applicationData.setString(DATE_PROVISIONED, dateTimeFormatter.format(ZonedDateTime.now()))
-        credential.applicationData.setNumber(CARD_ART, provisionInfo.docColor.toLong())
-        credential.applicationData.setBoolean(IS_SELF_SIGNED, true)
-        credential.applicationData.setNumber(MAX_USAGES_PER_KEY, provisionInfo.maxUseMso.toLong())
-        credential.applicationData.setNumber(VALIDITY_IN_DAYS, provisionInfo.validityInDays.toLong())
-        credential.applicationData.setNumber(MIN_VALIDITY_IN_DAYS, provisionInfo.minValidityInDays.toLong())
-        credential.applicationData.setNumber(LAST_TIME_USED, -1)
-        credential.applicationData.setString(AUTH_KEY_SECURE_AREA_IDENTIFIER, authKeySecureArea.identifier)
-        credential.applicationData.setNumber(NUM_AUTH_KEYS, provisionInfo.numberMso.toLong())
+        // Store all settings for the document that are not SecureArea specific
+        document.applicationData.setString(USER_VISIBLE_NAME, provisionInfo.docName)
+        document.applicationData.setString(DOCUMENT_TYPE, provisionInfo.docType)
+        document.applicationData.setString(DATE_PROVISIONED, dateTimeFormatter.format(ZonedDateTime.now()))
+        document.applicationData.setNumber(CARD_ART, provisionInfo.docColor.toLong())
+        document.applicationData.setBoolean(IS_SELF_SIGNED, true)
+        document.applicationData.setNumber(MAX_USAGES_PER_KEY, provisionInfo.maxUseMso.toLong())
+        document.applicationData.setNumber(VALIDITY_IN_DAYS, provisionInfo.validityInDays.toLong())
+        document.applicationData.setNumber(MIN_VALIDITY_IN_DAYS, provisionInfo.minValidityInDays.toLong())
+        document.applicationData.setNumber(LAST_TIME_USED, -1)
+        document.applicationData.setString(AUTH_KEY_SECURE_AREA_IDENTIFIER, authKeySecureArea.identifier)
+        document.applicationData.setNumber(NUM_AUTH_KEYS, provisionInfo.numberMso.toLong())
 
         // Store settings for auth-key creation, these are all SecureArea-specific and we store
         // them in a single blob at AUTH_KEY_SETTINGS
         val support = SecureAreaSupport.getInstance(context, authKeySecureArea)
-        credential.applicationData.setData(
+        document.applicationData.setData(
             AUTH_KEY_SETTINGS,
             support.createAuthKeySettingsConfiguration(provisionInfo.secureAreaSupportState))
 
         // Create initial batch of auth keys
-        refreshAuthKeys(credential, provisionInfo.docType)
+        refreshAuthKeys(document, provisionInfo.docType)
     }
 
-    private fun ProvisionInfo.credentialName(): String {
+    private fun ProvisionInfo.documentName(): String {
         val regex = Regex("[^A-Za-z0-9 ]")
         return regex.replace(docName, "").replace(" ", "_").lowercase()
     }
 
-    fun trackUsageTimestamp(credential: Credential) {
+    fun trackUsageTimestamp(document: Document) {
         val now = Timestamp.now()
-        credential.applicationData.setNumber(LAST_TIME_USED, now.toEpochMilli())
+        document.applicationData.setNumber(LAST_TIME_USED, now.toEpochMilli())
     }
 
-    fun refreshAuthKeys(credential: Credential, docType: String) {
-        val secureAreaIdentifier = credential.applicationData.getString(AUTH_KEY_SECURE_AREA_IDENTIFIER)
-        val minValidTimeDays = credential.applicationData.getNumber(MIN_VALIDITY_IN_DAYS)
-        val maxUsagesPerKey = credential.applicationData.getNumber(MAX_USAGES_PER_KEY)
-        val numAuthKeys = credential.applicationData.getNumber(NUM_AUTH_KEYS)
-        val validityInDays = credential.applicationData.getNumber(VALIDITY_IN_DAYS).toInt()
+    fun refreshAuthKeys(document: Document, docType: String) {
+        val secureAreaIdentifier = document.applicationData.getString(AUTH_KEY_SECURE_AREA_IDENTIFIER)
+        val minValidTimeDays = document.applicationData.getNumber(MIN_VALIDITY_IN_DAYS)
+        val maxUsagesPerKey = document.applicationData.getNumber(MAX_USAGES_PER_KEY)
+        val numAuthKeys = document.applicationData.getNumber(NUM_AUTH_KEYS)
+        val validityInDays = document.applicationData.getNumber(VALIDITY_IN_DAYS).toInt()
 
         val now = Timestamp.now()
         val validFrom = now
         val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + validityInDays*86400*1000L)
 
         val secureArea = secureAreaRepository.getImplementation(secureAreaIdentifier)
-            ?: throw IllegalStateException("No Secure Area with id ${secureAreaIdentifier} for credential ${credential.name}")
+            ?: throw IllegalStateException("No Secure Area with id ${secureAreaIdentifier} for document ${document.name}")
 
         val support = SecureAreaSupport.getInstance(context, secureArea)
         val settings = support.createAuthKeySettingsFromConfiguration(
-            credential.applicationData.getData(AUTH_KEY_SETTINGS),
+            document.applicationData.getData(AUTH_KEY_SETTINGS),
             "challenge".toByteArray(),
             validFrom,
             validUntil
         )
 
-        val pendingKeysCount = CredentialUtil.managedAuthenticationKeyHelper(
-            credential,
+        val pendingKeysCount = DocumentUtil.managedAuthenticationKeyHelper(
+            document,
             secureArea,
             settings,
             AUTH_KEY_DOMAIN,
@@ -132,7 +132,7 @@ class ProvisioningUtil private constructor(
             return
         }
 
-        for (pendingAuthKey in credential.pendingAuthenticationKeys) {
+        for (pendingAuthKey in document.pendingAuthenticationKeys) {
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 docType,
@@ -145,7 +145,7 @@ class ProvisioningUtil private constructor(
             var dataElementExceptions: Map<String, List<String>>? = null
             var dataElementOverrides: Map<String, Map<String, ByteArray>>? = null
             if (docType.equals("org.iso.18013.5.1.mDL")) {
-                val portrait = credential.applicationData.getNameSpacedData("credentialData")
+                val portrait = document.applicationData.getNameSpacedData("documentData")
                     .getDataElementByteString("org.iso.18013.5.1", "portrait")
                 val portrait_override = overridePortrait(portrait,
                     pendingAuthKey.authenticationKeyCounter)
@@ -158,7 +158,7 @@ class ProvisioningUtil private constructor(
             }
 
             val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-                credential.applicationData.getNameSpacedData("credentialData"),
+                document.applicationData.getNameSpacedData("documentData"),
                 Random.Default,
                 16,
                 dataElementOverrides
@@ -280,12 +280,12 @@ class ProvisioningUtil private constructor(
         val defaultSecureArea: SecureArea
             get() = requireNotNull(instance?.secureAreaRepository?.implementations?.first())
 
-        fun Credential?.toDocumentInformation(): DocumentInformation? {
+        fun Document?.toDocumentInformation(): DocumentInformation? {
             return this?.let {
 
                 val authKeySecureAreaIdentifier = it.applicationData.getString(AUTH_KEY_SECURE_AREA_IDENTIFIER)
                 val authKeySecureArea = instance!!.secureAreaRepository.getImplementation(authKeySecureAreaIdentifier)
-                    ?: throw IllegalStateException("No Secure Area with id ${authKeySecureAreaIdentifier} for credential ${it.name}")
+                    ?: throw IllegalStateException("No Secure Area with id ${authKeySecureAreaIdentifier} for document ${it.name}")
 
                 val authKeys = certifiedAuthenticationKeys.map { key ->
                     val info = authKeySecureArea.getKeyInfo(key.alias)

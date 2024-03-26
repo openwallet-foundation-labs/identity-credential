@@ -19,17 +19,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import co.nstant.`in`.cbor.CborBuilder
-import co.nstant.`in`.cbor.CborDecoder
-import co.nstant.`in`.cbor.model.Map
 import com.android.identity.cbor.Cbor
-import com.android.identity.credential.AuthenticationKey
+import com.android.identity.document.AuthenticationKey
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
-import com.android.identity.crypto.X509v3Extension
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
@@ -47,7 +44,6 @@ import com.android.identity.wallet.support.softwarekeystore.SoftwareAuthKeyCurve
 import com.android.identity.wallet.util.FormatUtil
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import java.io.ByteArrayInputStream
 import kotlin.time.Duration.Companion.days
 
 class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {

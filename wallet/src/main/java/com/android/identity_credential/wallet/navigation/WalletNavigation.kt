@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity_credential.wallet.CardViewModel
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -13,11 +12,11 @@ import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.ui.destination.about.AboutScreen
 import com.android.identity_credential.wallet.ui.destination.addtowallet.AddToWalletScreen
-import com.android.identity_credential.wallet.ui.destination.credential.CardDetailsScreen
-import com.android.identity_credential.wallet.ui.destination.credential.CardInfoScreen
-import com.android.identity_credential.wallet.ui.destination.credential.CardKeysScreen
+import com.android.identity_credential.wallet.ui.destination.document.CardDetailsScreen
+import com.android.identity_credential.wallet.ui.destination.document.CardInfoScreen
+import com.android.identity_credential.wallet.ui.destination.document.CardKeysScreen
 import com.android.identity_credential.wallet.ui.destination.main.MainScreen
-import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionCredentialScreen
+import com.android.identity_credential.wallet.ui.destination.provisioncredential.ProvisionDocumentScreen
 import com.android.identity_credential.wallet.ui.destination.qrengagement.QrEngagementScreen
 import com.android.identity_credential.wallet.ui.destination.settings.SettingsScreen
 
@@ -61,7 +60,7 @@ fun WalletNavigation(
         }
     }
 
-    val credentialStore = application.credentialStore
+    val credentialStore = application.documentStore
     NavHost(
         navController = navController,
         startDestination = WalletDestination.Main.route
@@ -104,7 +103,7 @@ fun WalletNavigation(
                 cardViewModel = cardViewModel,
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = navigateTo,
-                credentialStore = application.credentialStore,
+                documentStore = application.documentStore,
                 issuingAuthorityRepository = application.issuingAuthorityRepository
             )
         }
@@ -152,15 +151,15 @@ fun WalletNavigation(
         }
 
         /**
-         * Provision Credential Screen
+         * Provision document Screen
          */
-        composable(WalletDestination.ProvisionCredential.route) {
-            ProvisionCredentialScreen(
+        composable(WalletDestination.ProvisionDocument.route) {
+            ProvisionDocumentScreen(
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = navigateTo,
                 permissionTracker = permissionTracker,
                 issuingAuthorityRepository = application.issuingAuthorityRepository,
-                credentialStore = application.credentialStore
+                documentStore = application.documentStore
             )
         }
 

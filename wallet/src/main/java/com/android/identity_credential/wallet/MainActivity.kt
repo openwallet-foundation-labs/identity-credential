@@ -67,10 +67,10 @@ class MainActivity : ComponentActivity() {
         cardViewModel.setData(
             applicationContext,
             application,
-            application.credentialStore,
+            application.documentStore,
             application.issuingAuthorityRepository,
             application.secureAreaRepository,
-            application.credentialTypeRepository)
+            application.documentTypeRepository)
 
         setContent {
             IdentityCredentialTheme {

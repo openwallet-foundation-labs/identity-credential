@@ -1,6 +1,6 @@
 package com.android.identity.wallet.transfer
 
-import com.android.identity.credential.AuthenticationKey
+import com.android.identity.document.AuthenticationKey
 
 sealed class AddDocumentToResponseResult {
 

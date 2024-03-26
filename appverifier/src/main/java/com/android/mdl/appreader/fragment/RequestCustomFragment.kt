@@ -65,9 +65,9 @@ class RequestCustomFragment : Fragment() {
                     newCheckBox(
                         ns.key,
                         el,
-                        VerifierApp.credentialTypeRepositoryInstance
-                            .getCredentialTypeForMdoc(requestDocument.docType)
-                            ?.mdocCredentialType
+                        VerifierApp.documentTypeRepositoryInstance
+                            .getDocumentTypeForMdoc(requestDocument.docType)
+                            ?.mdocDocumentType
                             ?.namespaces?.get(ns.key)?.dataElements?.get(el)?.attribute?.displayName
                             ?: el,
                         vm.isSelectedDataItem(ns.key, el)

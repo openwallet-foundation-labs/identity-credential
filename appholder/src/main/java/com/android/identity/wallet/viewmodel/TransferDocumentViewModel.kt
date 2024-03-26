@@ -2,14 +2,13 @@ package com.android.identity.wallet.viewmodel
 
 import android.app.Application
 import android.view.View
-import android.widget.Toast
 import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.android.identity.credential.AuthenticationKey
+import com.android.identity.document.AuthenticationKey
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.securearea.KeyUnlockData
@@ -56,7 +55,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     fun getTransferStatus(): LiveData<TransferStatus> =
         transferManager.getTransferStatus()
 
-    fun getRequestedDocuments(): Collection<DeviceRequestParser.DocumentRequest> =
+    fun getRequestedDocuments(): Collection<DeviceRequestParser.DocRequest> =
         transferManager.documentRequests()
 
     fun getDocuments() = documentManager.getDocuments()
@@ -140,7 +139,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
                     logWarning("Credential '${signedDocument.identityCredentialName}' is invalid. Deleting.")
                     documentManager.deleteCredentialByName(signedDocument.identityCredentialName)
                     Toast.makeText(
-                        app.applicationContext, "Deleting invalid credential "
+                        app.applicationContext, "Deleting invalid document "
                                 + signedDocument.identityCredentialName,
                         Toast.LENGTH_SHORT
                     ).show()
@@ -163,7 +162,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
     }
 
     private fun requestedElementsFrom(
-        requestedDocument: DeviceRequestParser.DocumentRequest
+        requestedDocument: DeviceRequestParser.DocRequest
     ): ArrayList<RequestedElement> {
         val result = arrayListOf<RequestedElement>()
         requestedDocument.namespaces.forEach { namespace ->

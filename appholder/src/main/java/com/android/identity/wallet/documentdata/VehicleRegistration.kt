@@ -1,7 +1,7 @@
 package com.android.identity.wallet.documentdata
 
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.knowntypes.Options
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.knowntypes.Options
 
 object VehicleRegistration {
     const val MVR_NAMESPACE = "nl.rdw.mekb.1"
@@ -12,7 +12,7 @@ object VehicleRegistration {
             false,
             "issuingCountry",
             "Country Code",
-            CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
+            DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -20,7 +20,7 @@ object VehicleRegistration {
             false,
             "competentAuthority",
             "Competent Authority",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -28,7 +28,7 @@ object VehicleRegistration {
             false,
             "registrationNumber",
             "UN/EU Element A",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -36,7 +36,7 @@ object VehicleRegistration {
             false,
             "validFrom",
             "Custom EKB Element, Valid From",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -44,7 +44,7 @@ object VehicleRegistration {
             false,
             "validUntil",
             "Custom EKB Element, Valid Until",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -52,7 +52,7 @@ object VehicleRegistration {
             false,
             "holderInfo",
             "Personal Data",
-            CredentialAttributeType.ComplexType
+            DocumentAttributeType.ComplexType
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -60,7 +60,7 @@ object VehicleRegistration {
             false,
             "ownershipStatus",
             "Ownership Status",
-            CredentialAttributeType.Number
+            DocumentAttributeType.Number
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -68,7 +68,7 @@ object VehicleRegistration {
             false,
             "name",
             "Name of the Vehicle Owner",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -76,7 +76,7 @@ object VehicleRegistration {
             false,
             "address",
             "Address of the Vehicle Owner",
-            CredentialAttributeType.ComplexType
+            DocumentAttributeType.ComplexType
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -84,7 +84,7 @@ object VehicleRegistration {
             false,
             "streetName",
             "Street Name",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -92,7 +92,7 @@ object VehicleRegistration {
             false,
             "houseNumber",
             "House Number",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -100,7 +100,7 @@ object VehicleRegistration {
             false,
             "houseNumberSuffix",
             "House Number Suffix",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -108,7 +108,7 @@ object VehicleRegistration {
             false,
             "postalCode",
             "Postal Code",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -116,7 +116,7 @@ object VehicleRegistration {
             false,
             "placeOfResidence",
             "Place of Residence",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -124,7 +124,7 @@ object VehicleRegistration {
             false,
             "vehicle",
             "Vehicle",
-            CredentialAttributeType.ComplexType
+            DocumentAttributeType.ComplexType
         )
         .addDefinition(
             MVR_NAMESPACE,
@@ -132,7 +132,7 @@ object VehicleRegistration {
             false,
             "make",
             "Make of the Vehicle",
-            CredentialAttributeType.String,
+            DocumentAttributeType.String,
         )
 
         .build()

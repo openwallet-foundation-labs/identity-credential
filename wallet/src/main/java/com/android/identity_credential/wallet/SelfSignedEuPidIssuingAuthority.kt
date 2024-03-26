@@ -5,11 +5,11 @@ import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.cbor.toDataItemFullDate
-import com.android.identity.credential.NameSpacedData
-import com.android.identity.credentialtype.CredentialType
-import com.android.identity.credentialtype.knowntypes.EUPersonalID
-import com.android.identity.issuance.CredentialConfiguration
-import com.android.identity.issuance.CredentialPresentationFormat
+import com.android.identity.document.NameSpacedData
+import com.android.identity.documenttype.DocumentType
+import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.issuance.DocumentConfiguration
+import com.android.identity.issuance.DocumentPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
@@ -51,8 +51,8 @@ class SelfSignedEuPidIssuingAuthority(
             issuingAuthorityName = resourceString(R.string.utopia_eu_pid_issuing_authority_name),
             issuingAuthorityLogo = icon,
             description = resourceString(R.string.utopia_eu_pid_issuing_authority_description),
-            credentialFormats = setOf(CredentialPresentationFormat.MDOC_MSO),
-            pendingCredentialInformation = createCredentialConfiguration(null)
+            documentFormats = setOf(DocumentPresentationFormat.MDOC_MSO),
+            pendingDocumentInformation = createDocumentConfiguration(null)
         )
         tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_pid_issuing_authority_logo))
     }
@@ -107,11 +107,11 @@ class SelfSignedEuPidIssuingAuthority(
         return (collectedEvidence["tos"] as EvidenceResponseMessage).acknowledged
     }
 
-    override fun generateCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration {
-        return createCredentialConfiguration(collectedEvidence)
+    override fun generateDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>): DocumentConfiguration {
+        return createDocumentConfiguration(collectedEvidence)
     }
 
-    private fun createCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): CredentialConfiguration {
+    private fun createDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): DocumentConfiguration {
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(
             application.applicationContext.resources, R.drawable.utopia_pid_card_art
@@ -119,8 +119,8 @@ class SelfSignedEuPidIssuingAuthority(
         val cardArt: ByteArray = baos.toByteArray()
 
         if (collectedEvidence == null) {
-            return CredentialConfiguration(
-                resourceString(R.string.utopia_eu_pid_issuing_authority_pending_credential_title),
+            return DocumentConfiguration(
+                resourceString(R.string.utopia_eu_pid_issuing_authority_pending_document_title),
                 cardArt,
                 EUPID_DOCTYPE,
                 NameSpacedData.Builder().build()
@@ -134,9 +134,9 @@ class SelfSignedEuPidIssuingAuthority(
         val expiryDate = now + 365.days * 5
 
         println("foo1 " + application)
-        println("foo2 " + application.credentialTypeRepository)
+        println("foo2 " + application.documentTypeRepository)
         println("foo3 " + EUPID_DOCTYPE)
-        val credType = application.credentialTypeRepository.getCredentialTypeForMdoc(EUPID_DOCTYPE)!!
+        val credType = application.documentTypeRepository.getDocumentTypeForMdoc(EUPID_DOCTYPE)!!
 
         val path = (collectedEvidence["path"] as EvidenceResponseQuestionMultipleChoice).answerId
         if (path == "hardcoded") {
@@ -186,15 +186,15 @@ class SelfSignedEuPidIssuingAuthority(
         }
 
         val firstName = staticData.getDataElementString(EUPID_NAMESPACE, "given_name")
-        return CredentialConfiguration(
-            resourceString(R.string.utopia_eu_pid_issuing_authority_credential_title, firstName),
+        return DocumentConfiguration(
+            resourceString(R.string.utopia_eu_pid_issuing_authority_document_title, firstName),
             cardArt,
             EUPID_DOCTYPE,
             staticData
         )
     }
 
-    override fun developerModeRequestUpdate(currentConfiguration: CredentialConfiguration): CredentialConfiguration {
+    override fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration {
         // The update consists of just slapping an extra 0 at the end of `administrative_number`
         val newAdministrativeNumber = currentConfiguration.staticData
             .getDataElementString(EUPID_NAMESPACE, "administrative_number") + "0"
@@ -206,7 +206,7 @@ class SelfSignedEuPidIssuingAuthority(
             newAdministrativeNumber
         )
 
-        return CredentialConfiguration(
+        return DocumentConfiguration(
             displayName = currentConfiguration.displayName,
             cardArt = currentConfiguration.cardArt,
             mdocDocType = currentConfiguration.mdocDocType,
@@ -214,9 +214,9 @@ class SelfSignedEuPidIssuingAuthority(
         )
     }
 
-    private fun getSampleData(credentialType: CredentialType): NameSpacedData.Builder {
+    private fun getSampleData(documentType: DocumentType): NameSpacedData.Builder {
         val builder = NameSpacedData.Builder()
-        for ((namespaceName, namespace) in credentialType.mdocCredentialType!!.namespaces) {
+        for ((namespaceName, namespace) in documentType.mdocDocumentType!!.namespaces) {
             for ((dataElementName, dataElement) in namespace.dataElements) {
                 if (dataElement.attribute.sampleValue != null) {
                     builder.putEntry(

@@ -26,8 +26,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.biometric.BiometricPrompt;
 
-import com.android.identity.credential.CredentialStore;
-import com.android.identity.credential.NameSpacedData;
+import com.android.identity.document.DocumentStore;
+import com.android.identity.document.NameSpacedData;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -823,7 +823,7 @@ class KeystoreIdentityCredential extends IdentityCredential {
      * Gets all the {@link PersonalizationData.NamespaceData} as a {@link NameSpacedData}.
      *
      * <p>This can be used with {@link #getCredentialKeyAlias()} to migrate this credential
-     * to {@link CredentialStore} without reprovisioning.
+     * to {@link DocumentStore} without reprovisioning.
      *
      * @return the credential data, as a {@link NameSpacedData}.
      */

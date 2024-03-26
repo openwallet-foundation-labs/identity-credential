@@ -7,12 +7,12 @@ class IssuingAuthorityRepository {
     private val issuingAuthorities: MutableList<IssuingAuthority> = mutableListOf()
 
     private val observer = object : IssuingAuthority.Observer {
-        override fun onCredentialStateChanged(
+        override fun onDocumentStateChanged(
             issuingAuthority: IssuingAuthority,
-            credentialId: String
+            documentId: String
         ) {
             for (repoObserver in observers) {
-                repoObserver.onCredentialStateChanged(issuingAuthority, credentialId)
+                repoObserver.onDocumentStateChanged(issuingAuthority, documentId)
             }
         }
     }
@@ -50,7 +50,7 @@ class IssuingAuthorityRepository {
     private val observers = mutableListOf<Observer>()
 
     /**
-     * Sets an observer to be notified when a credential has an updated state.
+     * Sets an observer to be notified when a document has an updated state.
      *
      * Updates might be implemented using a lossy mechanism (e.g. push notifications)
      * so applications must not rely on getting a callback whenever the state changes.
@@ -74,20 +74,20 @@ class IssuingAuthorityRepository {
 
 
     /**
-     * An interface which can be used to be informed when a credential has changed from
+     * An interface which can be used to be informed when a document has changed from
      * in one of the registered [IssuingAuthority] instances.
      */
     interface Observer {
         /**
-         * This is called when a credential's state has changed.
+         * This is called when a document's state has changed.
          *
-         * The application should call [IssuingAuthority.credentialGetState] to collect
+         * The application should call [IssuingAuthority.documentGetState] to collect
          * the new state.
          *
          * @param issuingAuthority the issuing authority.
-         * @param credentialId the credential which state has changed.
+         * @param documentId the document which state has changed.
          */
-        fun onCredentialStateChanged(issuingAuthority: IssuingAuthority, credentialId: String)
+        fun onDocumentStateChanged(issuingAuthority: IssuingAuthority, documentId: String)
     }
 
 

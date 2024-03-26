@@ -35,7 +35,7 @@ import com.android.identity.util.Logger
 import java.util.concurrent.Executor
 
 /**
- * Helper used for establishing engagement with, interacting with, and presenting credentials to a
+ * Helper used for establishing engagement with, interacting with, and presenting documents to a
  * remote *mdoc reader* device.
  *
  *

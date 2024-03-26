@@ -62,7 +62,7 @@ import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
@@ -95,17 +95,17 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var transferHelper: TransferHelper
 
-    private fun provisionCredentials() {
-        if (transferHelper.credentialStore.lookupCredential(CREDENTIAL_ID) == null) {
-            provisionCredential()
+    private fun provisionDocuments() {
+        if (transferHelper.documentStore.lookupDocument(CREDENTIAL_ID) == null) {
+            provisionDocument()
         } else {
-            Logger.d(TAG, "Already have credential $CREDENTIAL_ID")
+            Logger.d(TAG, "Already have document $CREDENTIAL_ID")
         }
     }
 
-    private fun provisionCredential() {
-        val credential = transferHelper.credentialStore.createCredential(CREDENTIAL_ID)
-        transferHelper.credentialStore.addCredential(credential)
+    private fun provisionDocument() {
+        val document = transferHelper.documentStore.createDocument(CREDENTIAL_ID)
+        transferHelper.documentStore.addDocument(document)
 
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(applicationContext.resources, R.drawable.img_erika_portrait)
@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
         val expiryDate = Instant.fromEpochMilliseconds(
             now.toEpochMilliseconds() + 5 * 365 * 24 * 3600 * 1000L)
 
-        val credentialData = NameSpacedData.Builder()
+        val documentData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
@@ -130,8 +130,8 @@ class MainActivity : ComponentActivity() {
             .putEntryBoolean(MDL_NAMESPACE, "age_over_18", true)
             .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true)
             .build()
-        credential.applicationData.setNameSpacedData("credentialData", credentialData)
-        credential.applicationData.setString("docType", MDL_DOCTYPE)
+        document.applicationData.setNameSpacedData("documentData", documentData)
+        document.applicationData.setString("docType", MDL_DOCTYPE)
 
         // Create AuthKeys and MSOs, make sure they're valid for a long time
         val timeSigned = now
@@ -141,7 +141,7 @@ class MainActivity : ComponentActivity() {
 
         // Create three authentication keys and certify them
         for (n in 0..2) {
-            val pendingAuthKey = credential.createAuthenticationKey(
+            val pendingAuthKey = document.createAuthenticationKey(
                 AUTH_KEY_DOMAIN,
                 transferHelper.androidKeystoreSecureArea,
                 CreateKeySettings("".toByteArray()),
@@ -160,7 +160,7 @@ class MainActivity : ComponentActivity() {
                 Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()),
                 null)
             val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-                credentialData,
+                documentData,
                 Random.Default,
                 16,
                 null
@@ -206,7 +206,7 @@ class MainActivity : ComponentActivity() {
                 Timestamp.ofEpochMilli(validFrom.toEpochMilliseconds()),
                 Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()))
         }
-        Logger.d(TAG, "Created credential with name ${credential.name}")
+        Logger.d(TAG, "Created document with name ${document.name}")
     }
 
     private lateinit var documentSigningKey: EcPrivateKey
@@ -264,7 +264,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         transferHelper = TransferHelper.getInstance(applicationContext)
-        provisionCredentials()
+        provisionDocuments()
 
         val permissionsNeeded = appPermissions.filter { permission ->
             ContextCompat.checkSelfPermission(

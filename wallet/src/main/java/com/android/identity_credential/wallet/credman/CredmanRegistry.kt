@@ -3,9 +3,9 @@ package com.android.identity_credential.wallet.credman
 import android.content.Context
 import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
-import com.android.identity.credential.CredentialStore
-import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
+import com.android.identity.document.DocumentStore
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.util.Logger
 import com.android.identity_credential.wallet.R
 import com.android.mdl.app.credman.IdentityCredentialEntry
@@ -18,14 +18,14 @@ private const val TAG = "CredmanRegistry"
 object CredmanRegistry {
 
     private fun getDataElementDisplayName(
-        credentialTypeRepository: CredentialTypeRepository,
+        documentTypeRepository: DocumentTypeRepository,
         docTypeName: String,
         nameSpaceName: String,
         dataElementName: String
     ): String {
-        val credType = credentialTypeRepository.getCredentialTypeForMdoc(docTypeName)
+        val credType = documentTypeRepository.getDocumentTypeForMdoc(docTypeName)
         if (credType != null) {
-            val mdocDataElement = credType.mdocCredentialType!!
+            val mdocDataElement = credType.mdocDocumentType!!
                 .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
             if (mdocDataElement != null) {
                 return mdocDataElement.attribute.displayName
@@ -36,16 +36,16 @@ object CredmanRegistry {
 
     fun registerCredentials(
         context: Context,
-        credentialStore: CredentialStore,
-        credentialTypeRepository: CredentialTypeRepository
+        documentStore: DocumentStore,
+        documentTypeRepository: DocumentTypeRepository
     ) {
         var idCount = 0L
-        val entries = credentialStore.listCredentials().map { credentialId ->
+        val entries = documentStore.listDocuments().map { credentialId ->
 
-            val credential = credentialStore.lookupCredential(credentialId)!!
-            val credConf = credential.credentialConfiguration
+            val credential = documentStore.lookupDocument(credentialId)!!
+            val credConf = credential.documentConfiguration
 
-            val credentialType = credentialTypeRepository.getCredentialTypeForMdoc(credConf.mdocDocType)
+            val credentialType = documentTypeRepository.getDocumentTypeForMdoc(credConf.mdocDocType)
 
             val fields = mutableListOf<IdentityCredentialField>()
             fields.add(
@@ -63,7 +63,7 @@ object CredmanRegistry {
                     val fieldName = nameSpaceName + "." + dataElementName
                     val valueCbor = nameSpacedData.getDataElement(nameSpaceName, dataElementName)
 
-                    val mdocDataElement = credentialType?.mdocCredentialType?.namespaces
+                    val mdocDataElement = credentialType?.mdocDocumentType?.namespaces
                         ?.get(nameSpaceName)?.dataElements?.get(dataElementName)
                     val valueString = mdocDataElement
                         ?.renderValue(
@@ -76,7 +76,7 @@ object CredmanRegistry {
                         ?: Cbor.toDiagnostics(valueCbor)
 
                     val dataElementDisplayName = getDataElementDisplayName(
-                        credentialTypeRepository,
+                        documentTypeRepository,
                         credConf.mdocDocType,
                         nameSpaceName,
                         dataElementName

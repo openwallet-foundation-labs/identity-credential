@@ -1,7 +1,7 @@
 package com.android.identity_credential.wallet.presentation
 
-import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialRequest
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentRequest
 import com.android.identity.trustmanagement.TrustPoint
 
 /**
@@ -11,8 +11,8 @@ import com.android.identity.trustmanagement.TrustPoint
  * produce the response data to send to the party who initiated the Presentation.
  */
 data class PresentationRequestData (
-    val credential: Credential,
-    val credentialRequest: CredentialRequest,
+    val document: Document,
+    val documentRequest: DocumentRequest,
     val docType : String,
     val trustPoint : TrustPoint?
 )

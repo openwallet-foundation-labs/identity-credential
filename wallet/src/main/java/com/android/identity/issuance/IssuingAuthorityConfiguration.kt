@@ -3,8 +3,8 @@ package com.android.identity.issuance
 /**
  * Configuration data for the issuing authority.
  *
- * This data is static and available to the application before any credentials are provisioned.
- * It can be used to present a menu of available credentials to the user.
+ * This data is static and available to the application before any documents are provisioned.
+ * It can be used to present a menu of available documents to the user.
  */
 data class IssuingAuthorityConfiguration(
     /**
@@ -34,12 +34,12 @@ data class IssuingAuthorityConfiguration(
     val description: String,
 
     /**
-     * The credential presentation formats available.
+     * The document presentation formats available.
      */
-    val credentialFormats: Set<CredentialPresentationFormat>,
+    val documentFormats: Set<DocumentPresentationFormat>,
 
     /**
-     * A [CredentialConfiguration] that can be used while proofing is pending for a credential.
+     * A [DocumentConfiguration] that can be used while proofing is pending for a document.
      */
-    val pendingCredentialInformation: CredentialConfiguration
+    val pendingDocumentInformation: DocumentConfiguration
 )

@@ -15,7 +15,7 @@ import co.nstant.`in`.cbor.model.SimpleValue
 import co.nstant.`in`.cbor.model.SimpleValueType
 import co.nstant.`in`.cbor.model.UnicodeString
 import co.nstant.`in`.cbor.model.UnsignedInteger
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.NameSpacedData
 import com.android.identity.wallet.util.DocumentData.EU_PID_DOCTYPE
 import com.android.identity.wallet.util.DocumentData.EU_PID_NAMESPACE
 import com.android.identity.wallet.util.DocumentData.MDL_DOCTYPE

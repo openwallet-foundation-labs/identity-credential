@@ -17,7 +17,7 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
     object About : WalletDestination(Route.ABOUT)
     object Settings : WalletDestination(Route.SETTINGS)
     object AddToWallet : WalletDestination(Route.ADD_TO_WALLET)
-    object ProvisionCredential : WalletDestination(Route.PROVISION_CREDENTIAL)
+    object ProvisionDocument : WalletDestination(Route.PROVISION_DOCUMENT)
 
     object QrEngagement : WalletDestination(Route.QR_ENGAGEMENT)
 
@@ -165,7 +165,7 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     SETTINGS("settings"),
     ADD_TO_WALLET("add_to_wallet"),
     CARD_INFO("card_info", "cardId={cardId}&section={section}"),
-    PROVISION_CREDENTIAL("provision_credential"),
+    PROVISION_DOCUMENT("provision_document"),
     QR_ENGAGEMENT("qr_engagement"),
 
     // a Route for popping the back stack showing a different Screen

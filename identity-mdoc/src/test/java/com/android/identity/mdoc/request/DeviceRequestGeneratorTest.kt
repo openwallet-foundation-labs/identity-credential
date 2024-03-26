@@ -100,9 +100,9 @@ class DeviceRequestGeneratorTest {
         )
             .parse()
         Assert.assertEquals("1.0", deviceRequest.version)
-        val documentRequests = deviceRequest.documentRequests
+        val documentRequests = deviceRequest.docRequests
         Assert.assertEquals(2, documentRequests.size.toLong())
-        val it = deviceRequest.documentRequests.iterator()
+        val it = deviceRequest.docRequests.iterator()
         var docRequest = it.next()
         Assert.assertTrue(docRequest.readerAuthenticated)
         Assert.assertEquals(MDL_DOCTYPE, docRequest.docType)

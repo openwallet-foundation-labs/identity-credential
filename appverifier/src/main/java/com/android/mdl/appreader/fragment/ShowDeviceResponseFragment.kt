@@ -204,9 +204,9 @@ class ShowDeviceResponseFragment : Fragment() {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
                     val mdocDataElement =
-                        VerifierApp.credentialTypeRepositoryInstance
-                            .getCredentialTypeForMdoc(doc.docType)
-                            ?.mdocCredentialType
+                        VerifierApp.documentTypeRepositoryInstance
+                            .getDocumentTypeForMdoc(doc.docType)
+                            ?.mdocDocumentType
                             ?.namespaces?.get(ns)?.dataElements?.get(elem)
                     println("mdocDataElement: $mdocDataElement")
                     if (isPortraitElement(doc.docType, ns, elem)) {

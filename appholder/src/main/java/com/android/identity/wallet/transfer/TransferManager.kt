@@ -9,9 +9,9 @@ import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.credential.AuthenticationKey
-import com.android.identity.credential.CredentialRequest
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.request.DeviceRequestParser
@@ -66,8 +66,8 @@ class TransferManager private constructor(private val context: Context) {
         transferStatusLd.value = status
     }
 
-    fun documentRequests(): Collection<DeviceRequestParser.DocumentRequest> {
-        return communication.getDeviceRequest().documentRequests
+    fun documentRequests(): Collection<DeviceRequestParser.DocRequest> {
+        return communication.getDeviceRequest().docRequests
     }
 
     fun startPresentationReverseEngagement(
@@ -159,7 +159,7 @@ class TransferManager private constructor(private val context: Context) {
 
     @Throws(IllegalStateException::class)
     suspend fun addDocumentToResponse(
-        credentialName: String,
+        documentName: String,
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
         deviceResponseGenerator: DeviceResponseGenerator,
@@ -169,23 +169,23 @@ class TransferManager private constructor(private val context: Context) {
         var result: AddDocumentToResponseResult
         var signingKeyUsageLimitPassed = false
         val documentManager = DocumentManager.getInstance(context)
-        val documentInformation = documentManager.getDocumentInformation(credentialName)
+        val documentInformation = documentManager.getDocumentInformation(documentName)
         requireValidProperty(documentInformation) { "Document not found!" }
 
-        val credential = requireNotNull(documentManager.getCredentialByName(credentialName))
+        val document = requireNotNull(documentManager.getDocumentByName(documentName))
         val dataElements = issuerSignedEntriesToRequest.keys.flatMap { key ->
             issuerSignedEntriesToRequest.getOrDefault(key, emptyList()).map { value ->
-                CredentialRequest.DataElement(key, value, false)
+                DocumentRequest.DataElement(key, value, false)
             }
         }
 
-        val request = CredentialRequest(dataElements)
+        val request = DocumentRequest(dataElements)
 
         val authKeyToUse: AuthenticationKey
         if (authKey != null) {
             authKeyToUse = authKey
         } else {
-            authKeyToUse = credential.findAuthenticationKey(ProvisioningUtil.AUTH_KEY_DOMAIN, Timestamp.now())
+            authKeyToUse = document.findAuthenticationKey(ProvisioningUtil.AUTH_KEY_DOMAIN, Timestamp.now())
                 ?: throw IllegalStateException("No auth key available")
         }
 
@@ -197,7 +197,7 @@ class TransferManager private constructor(private val context: Context) {
         val staticAuthData = StaticAuthDataParser(authKeyToUse.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
             request,
-            credential.applicationData.getNameSpacedData("credentialData"),
+            document.applicationData.getNameSpacedData("documentData"),
             staticAuthData
         )
 
@@ -228,7 +228,7 @@ class TransferManager private constructor(private val context: Context) {
             deviceResponseGenerator.addDocument(data)
             log("Increasing usage count on ${authKeyToUse.alias}")
             authKeyToUse.increaseUsageCount()
-            ProvisioningUtil.getInstance(context).trackUsageTimestamp(credential)
+            ProvisioningUtil.getInstance(context).trackUsageTimestamp(document)
             result = AddDocumentToResponseResult.DocumentAdded(signingKeyUsageLimitPassed)
         } catch (lockedException: KeyLockedException) {
             result = AddDocumentToResponseResult.DocumentLocked(authKeyToUse)
@@ -271,8 +271,8 @@ class TransferManager private constructor(private val context: Context) {
         val documentManager = DocumentManager.getInstance(context)
         val documentInformation = documentManager.getDocumentInformation(documentName)
 
-        val credential = requireNotNull(documentManager.getCredentialByName(documentName))
-        val nameSpacedData = credential.applicationData.getNameSpacedData("credentialData")
+        val document = requireNotNull(documentManager.getDocumentByName(documentName))
+        val nameSpacedData = document.applicationData.getNameSpacedData("documentData")
         return DocumentDataReader(documentInformation?.docType ?: "").read(nameSpacedData)
     }
 

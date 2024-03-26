@@ -1,7 +1,6 @@
 package com.android.identity_credential.wallet.ui.destination.consentprompt
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,8 +32,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.identity.credential.CredentialRequest
-import com.android.identity.credentialtype.CredentialTypeRepository
+import com.android.identity.document.DocumentRequest
+import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.util.toImageBitmap
 import kotlinx.coroutines.launch
@@ -47,19 +46,19 @@ import kotlinx.coroutines.launch
 @Composable
 fun ConsentPrompt(
     consentData: ConsentPromptData,
-    credentialTypeRepository: CredentialTypeRepository,
+    documentTypeRepository: DocumentTypeRepository,
     onConfirm: () -> Unit = {},
     onCancel: () -> Unit = {}
 ) {
 
     /**
-     * Extension function for extracting the display name for an element name in a CredentialRequest.DataElement
+     * Extension function for extracting the display name for an element name in a documentRequest.DataElement
      */
-    fun CredentialTypeRepository.getDataElementDisplayName(
-        dataElement: CredentialRequest.DataElement,
+    fun DocumentTypeRepository.getDataElementDisplayName(
+        dataElement: DocumentRequest.DataElement,
         docType: String
-    ) = getCredentialTypeForMdoc(docType)
-        ?.mdocCredentialType
+    ) = getDocumentTypeForMdoc(docType)
+        ?.mdocDocumentType
         ?.namespaces
         ?.get(dataElement.nameSpaceName)?.dataElements?.get(dataElement.dataElementName)
         ?.attribute?.displayName
@@ -70,15 +69,15 @@ fun ConsentPrompt(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
-    // get the user-facing display name for each CredentialRequest.DataElement and create a list of ConsentDataElements
+    // get the user-facing display name for each documentRequest.DataElement and create a list of ConsentDataElements
     val consentDataElements =
-        consentData.credentialRequest.requestedDataElements
+        consentData.documentRequest.requestedDataElements
             .filter {
                 // This ensures we only show the requested data element if we have it
                 consentData.credentialData.hasDataElement(it.nameSpaceName, it.dataElementName)
             }
             .map { dataElement ->
-            val displayName = credentialTypeRepository.getDataElementDisplayName(
+            val displayName = documentTypeRepository.getDataElementDisplayName(
                 dataElement = dataElement,
                 docType = consentData.docType
             )

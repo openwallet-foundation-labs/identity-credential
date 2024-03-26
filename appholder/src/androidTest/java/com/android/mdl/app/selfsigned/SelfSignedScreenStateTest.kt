@@ -5,8 +5,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
-import com.android.identity.credentialtype.knowntypes.EUPersonalID
-import com.android.identity.credentialtype.knowntypes.VehicleRegistration
+import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.wallet.document.DocumentColor
@@ -47,8 +47,8 @@ class SelfSignedScreenStateTest {
 
     @Test
     fun updateDocumentType() {
-        val personalId = EUPersonalID.getCredentialType().mdocCredentialType?.docType!!
-        val name= EUPersonalID.getCredentialType().displayName
+        val personalId = EUPersonalID.getDocumentType().mdocDocumentType?.docType!!
+        val name= EUPersonalID.getDocumentType().displayName
         val viewModel = AddSelfSignedViewModel(savedStateHandle)
 
         viewModel.updateDocumentType(personalId, name)
@@ -71,8 +71,8 @@ class SelfSignedScreenStateTest {
 
     @Test
     fun updateDocumentTypeAfterNameUpdate() {
-        val registration = VehicleRegistration.getCredentialType().mdocCredentialType?.docType!!
-        val name = VehicleRegistration.getCredentialType().displayName
+        val registration = VehicleRegistration.getDocumentType().mdocDocumentType?.docType!!
+        val name = VehicleRegistration.getDocumentType().displayName
         val viewModel = AddSelfSignedViewModel(savedStateHandle)
 
         viewModel.updateDocumentName(":irrelevant:")

@@ -18,14 +18,14 @@ package com.android.identity.mdoc.util
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.cbor.Tstr
-import com.android.identity.credential.CredentialRequest.DataElement
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.DocumentRequest.DataElement
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.util.MdocUtil.calculateDigestsForNameSpace
-import com.android.identity.mdoc.util.MdocUtil.generateCredentialRequest
+import com.android.identity.mdoc.util.MdocUtil.generateDocumentRequest
 import com.android.identity.mdoc.util.MdocUtil.generateIssuerNameSpaces
 import com.android.identity.mdoc.util.MdocUtil.stripIssuerNameSpaces
 import com.android.identity.util.fromHex
@@ -266,7 +266,7 @@ class MdocUtilTest {
     }
 
     @Test
-    fun testGenerateCredentialRequest() {
+    fun testGenerateDocumentRequest() {
         val encodedSessionTranscriptBytes =
             TestVectors.ISO_18013_5_ANNEX_D_SESSION_TRANSCRIPT_BYTES.fromHex
         val encodedSessionTranscript = Cbor.encode(
@@ -285,7 +285,7 @@ class MdocUtilTest {
             DataElement("org.iso.18013.5.1", "expiry_date", true, false),
             DataElement("org.iso.18013.5.1", "portrait", false, false)
         )
-        val cr = generateCredentialRequest(request.documentRequests[0])
+        val cr = generateDocumentRequest(request.docRequests[0])
         Assert.assertEquals(elementsInRequest.size.toLong(), cr.requestedDataElements.size.toLong())
         var n = 0
         for ((nameSpaceName, dataElementName, intentToRetain) in cr.requestedDataElements) {

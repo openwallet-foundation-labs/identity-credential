@@ -43,11 +43,11 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.credential.AuthenticationKey
+import com.android.identity.document.AuthenticationKey
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
+import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
@@ -131,7 +131,7 @@ class PresentationActivity : FragmentActivity() {
     private val transferHelperBuilder: TransferHelper.Builder by lazy {
         TransferHelper.Builder(
             settingsModel = walletApp.settingsModel,
-            credentialStore = walletApp.credentialStore,
+            documentStore = walletApp.documentStore,
             issuingAuthorityRepository = walletApp.issuingAuthorityRepository,
             trustManager = walletApp.trustManager,
             context = applicationContext,
@@ -198,7 +198,7 @@ class PresentationActivity : FragmentActivity() {
             transferHelper?.finishProcessingRequest(
                 requestedDocType = consentData!!.docType,
                 credentialId = consentData!!.credentialId,
-                credentialRequest = consentData!!.credentialRequest,
+                documentRequest = consentData!!.documentRequest,
                 keyUnlockData = keyUnlockData,
                 onFinishedProcessing = onFinishedProcessingRequest,
                 onAuthenticationKeyLocked = { onAuthenticationKeyLocked(it) },
@@ -247,10 +247,10 @@ class PresentationActivity : FragmentActivity() {
                                 ?.let { requestData ->
                                     // update UI state object 'consentPromptData' so we can show ConsentPrompt
                                     consentPromptData.value = ConsentPromptData(
-                                        credentialId = requestData.credential.name,
-                                        documentName = requestData.credential.credentialConfiguration.displayName,
-                                        credentialData = requestData.credential.credentialConfiguration.staticData,
-                                        credentialRequest = requestData.credentialRequest,
+                                        credentialId = requestData.document.name,
+                                        documentName = requestData.document.documentConfiguration.displayName,
+                                        credentialData = requestData.document.documentConfiguration.staticData,
+                                        documentRequest = requestData.documentRequest,
                                         docType = requestData.docType,
                                         verifier = requestData.trustPoint,
                                     )
@@ -300,7 +300,7 @@ class PresentationActivity : FragmentActivity() {
                     if (consentData != null) {
                         ConsentPrompt(
                             consentData = consentData!!,
-                            credentialTypeRepository = walletApp.credentialTypeRepository,
+                            documentTypeRepository = walletApp.documentTypeRepository,
                             onConfirm = { // user accepted to send requested credential data
                                 finishProcessingRequest()
                             },

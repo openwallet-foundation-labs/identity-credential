@@ -17,14 +17,14 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.res.ResourcesCompat
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
-import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialStore
-import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.credentialtype.knowntypes.DrivingLicense
-import com.android.identity.credentialtype.knowntypes.EUPersonalID
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentStore
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
+import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.trustmanagement.TrustManager
@@ -70,10 +70,10 @@ class WalletApplication : Application() {
     }
 
     // late instantiations
-    lateinit var credentialTypeRepository: CredentialTypeRepository
+    lateinit var documentTypeRepository: DocumentTypeRepository
     lateinit var issuingAuthorityRepository: IssuingAuthorityRepository
     lateinit var secureAreaRepository: SecureAreaRepository
-    lateinit var credentialStore: CredentialStore
+    lateinit var documentStore: DocumentStore
     lateinit var settingsModel: SettingsModel
     lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
 
@@ -88,10 +88,10 @@ class WalletApplication : Application() {
 
         settingsModel = SettingsModel(this, sharedPreferences)
 
-        // init CredentialTypeRepository
-        credentialTypeRepository = CredentialTypeRepository()
-        credentialTypeRepository.addCredentialType(DrivingLicense.getCredentialType())
-        credentialTypeRepository.addCredentialType(EUPersonalID.getCredentialType())
+        // init documentTypeRepository
+        documentTypeRepository = DocumentTypeRepository()
+        documentTypeRepository.addDocumentType(DrivingLicense.getDocumentType())
+        documentTypeRepository.addDocumentType(EUPersonalID.getDocumentType())
 
         // secure storage properties
         val storageDir = File(applicationContext.noBackupFilesDir, "identity")
@@ -104,8 +104,8 @@ class WalletApplication : Application() {
         secureAreaRepository = SecureAreaRepository()
         secureAreaRepository.addImplementation(androidKeystoreSecureArea)
 
-        // init CredentialStore
-        credentialStore = CredentialStore(storageEngine, secureAreaRepository)
+        // init documentStore
+        documentStore = DocumentStore(storageEngine, secureAreaRepository)
 
         // init IssuingAuthorityRepository
         issuingAuthorityRepository = IssuingAuthorityRepository().apply {
@@ -185,11 +185,11 @@ class WalletApplication : Application() {
             builder.build())
     }
 
-    fun postNotificationForCredential(
-        credential: Credential,
+    fun postNotificationForDocument(
+        document: Document,
         message: String,
     ) {
-        // TODO: include data so the user is brought to the info page for the credential
+        // TODO: include data so the user is brought to the info page for the document
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -199,10 +199,10 @@ class WalletApplication : Application() {
             intent,
             PendingIntent.FLAG_IMMUTABLE)
 
-        val cardArt = credential.credentialConfiguration.cardArt
+        val cardArt = document.documentConfiguration.cardArt
         val bitmap = BitmapFactory.decodeByteArray(cardArt, 0, cardArt.size)
 
-        val title = credential.credentialConfiguration.displayName
+        val title = document.documentConfiguration.displayName
         val builder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_name)
             .setLargeIcon(bitmap)
@@ -219,7 +219,7 @@ class WalletApplication : Application() {
             return
         }
 
-        val notificationId = credential.name.hashCode()
+        val notificationId = document.name.hashCode()
         NotificationManagerCompat.from(applicationContext).notify(notificationId, builder.build())
     }
 }

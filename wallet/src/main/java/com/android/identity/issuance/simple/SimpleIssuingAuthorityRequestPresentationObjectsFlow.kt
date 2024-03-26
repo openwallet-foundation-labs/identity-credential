@@ -1,7 +1,7 @@
 package com.android.identity.issuance.simple
 
 import com.android.identity.issuance.AuthenticationKeyConfiguration
-import com.android.identity.issuance.CredentialPresentationRequest
+import com.android.identity.issuance.DocumentPresentationRequest
 import com.android.identity.issuance.RequestPresentationObjectsFlow
 
 class SimpleIssuingAuthorityRequestPresentationObjectsFlow(
@@ -12,8 +12,8 @@ class SimpleIssuingAuthorityRequestPresentationObjectsFlow(
         return AuthenticationKeyConfiguration(byteArrayOf(1, 2, 3))
     }
 
-    override suspend fun sendAuthenticationKeys(credentialPresentationRequests: List<CredentialPresentationRequest>) {
+    override suspend fun sendAuthenticationKeys(documentPresentationRequests: List<DocumentPresentationRequest>) {
         // TODO: should check attestations
-        issuingAuthority.addCpoRequests(credentialId, credentialPresentationRequests)
+        issuingAuthority.addCpoRequests(credentialId, documentPresentationRequests)
     }
 }

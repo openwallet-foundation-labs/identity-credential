@@ -1,17 +1,16 @@
 package com.android.identity_credential.wallet
 
 import android.os.Looper
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialStore
-import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
-import com.android.identity.issuance.CredentialExtensions.credentialIdentifier
-import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
-import com.android.identity.issuance.CredentialExtensions.refreshState
-import com.android.identity.issuance.CredentialRegistrationResponse
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentStore
+import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.issuance.DocumentExtensions.documentIdentifier
+import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
+import com.android.identity.issuance.DocumentExtensions.refreshState
+import com.android.identity.issuance.DocumentRegistrationResponse
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.ProofingFlow
@@ -50,19 +49,19 @@ class ProvisioningViewModel : ViewModel() {
     fun reset() {
         state.value = State.IDLE
         error = null
-        credential = null
+        document = null
         proofingFlow = null
         evidenceRequests = null
     }
 
     private var proofingFlow: ProofingFlow? = null
 
-    var credential: Credential? = null
+    var document: Document? = null
     var evidenceRequests: List<EvidenceRequest>? = null
 
     fun start(
         issuingAuthorityRepository: IssuingAuthorityRepository,
-        credentialStore: CredentialStore,
+        documentStore: DocumentStore,
         issuerIdentifier: String
     ) {
         issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuerIdentifier)!!
@@ -70,43 +69,43 @@ class ProvisioningViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 state.value = State.CREDENTIAL_REGISTRATION
-                val createCredentialKeyFlow = this@ProvisioningViewModel.issuer.registerCredential()
-                val credentialRegistrationConfiguration =
-                    createCredentialKeyFlow.getCredentialRegistrationConfiguration()
-                val issuerCredentialIdentifier = credentialRegistrationConfiguration.identifier
-                val response = CredentialRegistrationResponse()
-                createCredentialKeyFlow.sendCredentialRegistrationResponse(response)
+                val createDocumentKeyFlow = this@ProvisioningViewModel.issuer.registerDocument()
+                val documentRegistrationConfiguration =
+                    createDocumentKeyFlow.getDocumentRegistrationConfiguration()
+                val issuerDocumentIdentifier = documentRegistrationConfiguration.identifier
+                val response = DocumentRegistrationResponse()
+                createDocumentKeyFlow.sendDocumentRegistrationResponse(response)
 
-                val credentialIdentifier =
-                    issuer.configuration.identifier + "_" + issuerCredentialIdentifier
-                credential = credentialStore.createCredential(credentialIdentifier)
-                val pendingCredConf = issuer.configuration.pendingCredentialInformation
+                val documentIdentifier =
+                    issuer.configuration.identifier + "_" + issuerDocumentIdentifier
+                document = documentStore.createDocument(documentIdentifier)
+                val pendingCredConf = issuer.configuration.pendingDocumentInformation
 
-                credential!!.let {
+                document!!.let {
                     it.issuingAuthorityIdentifier = issuer.configuration.identifier
-                    it.credentialIdentifier = issuerCredentialIdentifier
-                    it.credentialConfiguration = pendingCredConf
+                    it.documentIdentifier = issuerDocumentIdentifier
+                    it.documentConfiguration = pendingCredConf
                     it.refreshState(issuingAuthorityRepository)
                 }
 
-                proofingFlow = issuer.credentialProof(issuerCredentialIdentifier)
+                proofingFlow = issuer.documentProof(issuerDocumentIdentifier)
                 evidenceRequests = proofingFlow!!.getEvidenceRequests()
                 Logger.d(TAG, "ers0 ${evidenceRequests!!.size}")
                 if (evidenceRequests!!.size == 0) {
                     state.value = State.PROOFING_COMPLETE
-                    credential!!.let {
+                    document!!.let {
                         it.refreshState(issuingAuthorityRepository)
                     }
-                    credentialStore.addCredential(credential!!)
+                    documentStore.addDocument(document!!)
                     proofingFlow!!.completeProofing()
                 } else {
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }
             } catch (e: Throwable) {
-                if (credential != null) {
-                    credentialStore.deleteCredential(credential!!.name)
+                if (document != null) {
+                    documentStore.deleteDocument(document!!.name)
                 }
-                Logger.w(TAG, "Error registering Credential", e)
+                Logger.w(TAG, "Error registering Document", e)
                 e.printStackTrace()
                 error = e
                 state.value = State.FAILED
@@ -117,7 +116,7 @@ class ProvisioningViewModel : ViewModel() {
     fun provideEvidence(
         evidence: EvidenceResponse,
         issuingAuthorityRepository: IssuingAuthorityRepository,
-        credentialStore: CredentialStore
+        documentStore: DocumentStore
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -129,17 +128,17 @@ class ProvisioningViewModel : ViewModel() {
                 Logger.d(TAG, "ers1 ${evidenceRequests!!.size}")
                 if (evidenceRequests!!.size == 0) {
                     state.value = State.PROOFING_COMPLETE
-                    credential!!.let {
+                    document!!.let {
                         it.refreshState(issuingAuthorityRepository)
                     }
-                    credentialStore.addCredential(credential!!)
+                    documentStore.addDocument(document!!)
                     proofingFlow!!.completeProofing()
                 } else {
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }
             } catch (e: Throwable) {
-                if (credential != null) {
-                    credentialStore.deleteCredential(credential!!.name)
+                if (document != null) {
+                    documentStore.deleteDocument(document!!.name)
                 }
                 Logger.w(TAG, "Error submitting evidence", e)
                 e.printStackTrace()
