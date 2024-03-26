@@ -1,9 +1,7 @@
 package com.android.identity.issuance
 
-import java.security.cert.X509Certificate
-
 /**
- * A flow used to create new Credential Presentation Objects (CPOs).
+ * A flow used to create new Document Presentation Objects (CPOs). // TODO come back and rename CPO
  */
 interface RequestPresentationObjectsFlow {
 
@@ -21,13 +19,13 @@ interface RequestPresentationObjectsFlow {
     /**
      * Sends authentication key attestations to the issuer.
      *
-     * If this succeeds, the issuer will schedule generation of Credential Presentation Objects
+     * If this succeeds, the issuer will schedule generation of document Presentation Objects
      * for each given authentication key. It is permissible for the application to send
      * authentication keys that have already been sent.
      *
-     * @param credentialPresentationRequests a list of authentication keys, each representing a
-     *   request for a Credential Presentation Object along with the format requested.
+     * @param documentPresentationRequests a list of authentication keys, each representing a
+     *   request for a document Presentation Object along with the format requested.
      * @throws IllegalArgumentException if the issuer rejects the one or more of the requests.
      */
-    suspend fun sendAuthenticationKeys(credentialPresentationRequests: List<CredentialPresentationRequest>)
+    suspend fun sendAuthenticationKeys(documentPresentationRequests: List<DocumentPresentationRequest>)
 }

@@ -1,18 +1,14 @@
 package com.android.identity_credential.wallet.ui.destination.addtowallet
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,7 +18,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.identity.credential.CredentialStore
+import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity_credential.wallet.CardViewModel
 import com.android.identity_credential.wallet.ProvisioningViewModel
@@ -35,7 +31,7 @@ fun AddToWalletScreen(
     cardViewModel: CardViewModel,
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
-    credentialStore: CredentialStore,
+    documentStore: DocumentStore,
     issuingAuthorityRepository: IssuingAuthorityRepository
 ) {
     ScreenWithAppBarAndBackButton(
@@ -84,10 +80,10 @@ fun AddToWalletScreen(
                     provisioningViewModel.reset()
                     provisioningViewModel.start(
                         issuingAuthorityRepository = issuingAuthorityRepository,
-                        credentialStore = credentialStore,
+                        documentStore = documentStore,
                         issuerIdentifier = issuerDisplayData.configuration.identifier
                     )
-                    onNavigate(WalletDestination.ProvisionCredential.route)
+                    onNavigate(WalletDestination.ProvisionDocument.route)
                 }) {
                 Row(
                     modifier = Modifier.fillMaxWidth()

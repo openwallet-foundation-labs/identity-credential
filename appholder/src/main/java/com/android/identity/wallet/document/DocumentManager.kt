@@ -8,11 +8,9 @@ import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.DataItem
 import co.nstant.`in`.cbor.model.UnicodeString
 import com.android.identity.cbor.Cbor
-import com.android.identity.credential.Credential
-import com.android.identity.credential.NameSpacedData
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.MdocCredentialType
-import com.android.identity.credentialtype.MdocDataElement
+import com.android.identity.document.Document
+import com.android.identity.document.NameSpacedData
+import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil
@@ -44,16 +42,16 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun getDocumentInformation(documentName: String): DocumentInformation? {
-        val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
-        val credential = credentialStore.lookupCredential(documentName)
-        return credential.toDocumentInformation()
+        val documentStore = ProvisioningUtil.getInstance(context).documentStore
+        val document = documentStore.lookupDocument(documentName)
+        return document.toDocumentInformation()
     }
 
-    fun getCredentialByName(documentName: String): Credential? {
+    fun getDocumentByName(documentName: String): Document? {
         val documentInfo = getDocumentInformation(documentName)
         documentInfo?.let {
-            val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
-            return credentialStore.lookupCredential(documentName)
+            val documentStore = ProvisioningUtil.getInstance(context).documentStore
+            return documentStore.lookupDocument(documentName)
         }
         return null
     }
@@ -61,9 +59,9 @@ class DocumentManager private constructor(private val context: Context) {
     fun getDataElementDisplayName(docTypeName : String,
                                   nameSpaceName : String,
                                   dataElementName : String): String {
-        val credType = HolderApp.credentialTypeRepositoryInstance.getCredentialTypeForMdoc(docTypeName)
+        val credType = HolderApp.documentTypeRepositoryInstance.getDocumentTypeForMdoc(docTypeName)
         if (credType != null) {
-            val mdocDataElement = credType.mdocCredentialType!!
+            val mdocDataElement = credType.mdocDocumentType!!
                 .namespaces[nameSpaceName]?.dataElements?.get(dataElementName)
             if (mdocDataElement != null) {
                 return mdocDataElement.attribute.displayName
@@ -73,21 +71,21 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun registerDocuments() {
-        val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
+        val documentStore = ProvisioningUtil.getInstance(context).documentStore
         var idCount = 0L
-        val entries = credentialStore.listCredentials().map {credentialId ->
-            val credential = credentialStore.lookupCredential(credentialId)!!
-            val document = credential.toDocumentInformation()!!
+        val entries = documentStore.listDocuments().map { documentId ->
+            val document = documentStore.lookupDocument(documentId)!!
+            val documentInformation = document.toDocumentInformation()!!
 
             val fields = mutableListOf<IdentityCredentialField>()
             fields.add(IdentityCredentialField(
                 name = "doctype",
-                value = document.docType,
+                value = documentInformation.docType,
                 displayName = "Document Type",
-                displayValue = document.docType
+                displayValue = documentInformation.docType
             ))
 
-            val nameSpacedData = credential.applicationData.getNameSpacedData("credentialData")
+            val nameSpacedData = document.applicationData.getNameSpacedData("documentData")
             nameSpacedData.nameSpaceNames.map {nameSpaceName ->
                 nameSpacedData.getDataElementNames(nameSpaceName).map {dataElementName ->
                     val fieldName = nameSpaceName + "." + dataElementName
@@ -97,7 +95,7 @@ class DocumentManager private constructor(private val context: Context) {
                     if (dataElementName.equals("portrait") || dataElementName.equals("signature_usual_mark")) {
                         valueString = String.format(Locale.US, "%d bytes", valueCbor.size)
                     }
-                    val dataElementDisplayName = getDataElementDisplayName(document.docType, nameSpaceName, dataElementName)
+                    val dataElementDisplayName = getDataElementDisplayName(documentInformation.docType, nameSpaceName, dataElementName)
                     fields.add(IdentityCredentialField(
                         name = fieldName,
                         value = valueString,
@@ -108,11 +106,11 @@ class DocumentManager private constructor(private val context: Context) {
                 }
             }
 
-            log("Adding document ${document.userVisibleName}")
+            log("Adding document ${documentInformation.userVisibleName}")
             IdentityCredentialEntry(
                 id = idCount++,
                 format = "mdoc",
-                title = document.userVisibleName,
+                title = documentInformation.userVisibleName,
                 subtitle = context.getString(R.string.app_name),
                 icon = BitmapFactory.decodeResource(context.resources, R.drawable.driving_license_bg),
                 fields = fields.toList(),
@@ -127,10 +125,10 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun getDocuments(): List<DocumentInformation> {
-        val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
-        return credentialStore.listCredentials().mapNotNull { documentName ->
-            val credential = credentialStore.lookupCredential(documentName)
-            credential.toDocumentInformation()
+        val documentStore = ProvisioningUtil.getInstance(context).documentStore
+        return documentStore.listDocuments().mapNotNull { documentName ->
+            val document = documentStore.lookupDocument(documentName)
+            document.toDocumentInformation()
         }
     }
 
@@ -138,8 +136,8 @@ class DocumentManager private constructor(private val context: Context) {
     fun deleteCredentialByName(documentName: String) {
         val document = getDocumentInformation(documentName)
         document?.let {
-            val credentialStore = ProvisioningUtil.getInstance(context).credentialStore
-            credentialStore.deleteCredential(documentName)
+            val documentStore = ProvisioningUtil.getInstance(context).documentStore
+            documentStore.deleteDocument(documentName)
         }
         registerDocuments()
     }
@@ -150,7 +148,7 @@ class DocumentManager private constructor(private val context: Context) {
         try {
             provisionSelfSignedDocument(documentData)
         } catch (e: Exception) {
-            throw IllegalStateException("Error creating self signed credential", e)
+            throw IllegalStateException("Error creating self signed document", e)
         }
         registerDocuments()
     }
@@ -160,8 +158,8 @@ class DocumentManager private constructor(private val context: Context) {
         docName: String = documentData.provisionInfo.docName,
         count: Int = 1
     ): String {
-        val store = ProvisioningUtil.getInstance(context).credentialStore
-        store.listCredentials().forEach { name ->
+        val store = ProvisioningUtil.getInstance(context).documentStore
+        store.listDocuments().forEach { name ->
             if (name == docName) {
                 return getUniqueDocumentName(documentData, "$docName ($count)", count + 1)
             }
@@ -174,7 +172,7 @@ class DocumentManager private constructor(private val context: Context) {
 
         for (field in documentData.fields.filter { it.parentId == null }) {
             when (field.fieldType) {
-                is CredentialAttributeType.Date, CredentialAttributeType.DateTime -> {
+                is DocumentAttributeType.Date, DocumentAttributeType.DateTime -> {
                     val date = UnicodeString(field.getValueString())
                     date.setTag(1004)
                     builder.putEntry(
@@ -184,7 +182,7 @@ class DocumentManager private constructor(private val context: Context) {
                     )
                 }
 
-                is CredentialAttributeType.Number -> {
+                is DocumentAttributeType.Number -> {
                     builder.putEntryNumber(
                         field.namespace!!,
                         field.name,
@@ -192,7 +190,7 @@ class DocumentManager private constructor(private val context: Context) {
                     )
                 }
 
-                is CredentialAttributeType.Boolean -> {
+                is DocumentAttributeType.Boolean -> {
                     builder.putEntryBoolean(
                         field.namespace!!,
                         field.name,
@@ -200,7 +198,7 @@ class DocumentManager private constructor(private val context: Context) {
                     )
                 }
 
-                is CredentialAttributeType.Picture -> {
+                is DocumentAttributeType.Picture -> {
                     val bitmap = field.getValueBitmap()
                     val baos = ByteArrayOutputStream()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
@@ -208,7 +206,7 @@ class DocumentManager private constructor(private val context: Context) {
                     builder.putEntryByteString(field.namespace!!, field.name, bytes)
                 }
 
-                is CredentialAttributeType.IntegerOptions -> {
+                is DocumentAttributeType.IntegerOptions -> {
                     if (field.hasValue()) {
                         builder.putEntryNumber(
                             field.namespace!!,
@@ -218,7 +216,7 @@ class DocumentManager private constructor(private val context: Context) {
                     }
                 }
 
-                is CredentialAttributeType.ComplexType -> {
+                is DocumentAttributeType.ComplexType -> {
 
                     val dataItem = when (field.isArray) {
                         true -> {
@@ -288,7 +286,7 @@ class DocumentManager private constructor(private val context: Context) {
         val mapBuilder = CborBuilder().addMap()
         for (field in fields) {
             when (field.fieldType) {
-                is CredentialAttributeType.Date, CredentialAttributeType.DateTime -> {
+                is DocumentAttributeType.Date, DocumentAttributeType.DateTime -> {
                     val date = UnicodeString(field.getValueString())
                     date.setTag(1004)
                     mapBuilder.put(
@@ -297,14 +295,14 @@ class DocumentManager private constructor(private val context: Context) {
                     )
                 }
 
-                is CredentialAttributeType.Boolean -> {
+                is DocumentAttributeType.Boolean -> {
                     mapBuilder.put(
                         field.name,
                         field.getValueBoolean()
                     )
                 }
 
-                is CredentialAttributeType.Picture -> {
+                is DocumentAttributeType.Picture -> {
                     val bitmap = field.getValueBitmap()
                     val baos = ByteArrayOutputStream()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos)
@@ -312,8 +310,8 @@ class DocumentManager private constructor(private val context: Context) {
                     mapBuilder.put(field.name, bytes)
                 }
 
-                is CredentialAttributeType.IntegerOptions,
-                is CredentialAttributeType.Number -> {
+                is DocumentAttributeType.IntegerOptions,
+                is DocumentAttributeType.Number -> {
                     if (field.value != "") {
                         mapBuilder.put(
                             field.name,
@@ -322,7 +320,7 @@ class DocumentManager private constructor(private val context: Context) {
                     }
                 }
 
-                is CredentialAttributeType.ComplexType -> {
+                is DocumentAttributeType.ComplexType -> {
                     val dataItem = when (field.isArray) {
                         true -> {
                             createArrayDataItem(field, documentData)
@@ -346,7 +344,7 @@ class DocumentManager private constructor(private val context: Context) {
 
     fun refreshAuthKeys(documentName: String) {
         val documentInformation = requireNotNull(getDocumentInformation(documentName))
-        val credential = requireNotNull(getCredentialByName(documentName))
-        ProvisioningUtil.getInstance(context).refreshAuthKeys(credential, documentInformation.docType)
+        val document = requireNotNull(getDocumentByName(documentName))
+        ProvisioningUtil.getInstance(context).refreshAuthKeys(document, documentInformation.docType)
     }
 }

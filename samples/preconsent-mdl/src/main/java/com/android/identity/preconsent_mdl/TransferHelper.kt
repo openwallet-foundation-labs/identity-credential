@@ -27,10 +27,9 @@ import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
-import com.android.identity.credential.CredentialStore
+import com.android.identity.document.DocumentStore
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.response.DeviceResponseGenerator
-import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.securearea.SecureAreaRepository
@@ -39,9 +38,6 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import java.io.File
-import java.security.KeyPair
-import java.security.PublicKey
-import java.util.OptionalLong
 
 class TransferHelper private constructor(private val context: Context) {
 
@@ -74,7 +70,7 @@ class TransferHelper private constructor(private val context: Context) {
 
     var secureAreaRepository: SecureAreaRepository
     var androidKeystoreSecureArea: AndroidKeystoreSecureArea
-    var credentialStore: CredentialStore
+    var documentStore: DocumentStore
 
     private var sharedPreferences: SharedPreferences
     private var storageEngine: StorageEngine
@@ -106,7 +102,7 @@ class TransferHelper private constructor(private val context: Context) {
         secureAreaRepository = SecureAreaRepository();
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine);
         secureAreaRepository.addImplementation(androidKeystoreSecureArea);
-        credentialStore = CredentialStore(storageEngine, secureAreaRepository)
+        documentStore = DocumentStore(storageEngine, secureAreaRepository)
         state.value = State.NOT_CONNECTED
     }
 

@@ -1,26 +1,23 @@
 package com.android.identity.issuance.simple
 
-import androidx.lifecycle.Observer
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.RawCbor
-import com.android.identity.issuance.CredentialCondition
-import com.android.identity.issuance.CredentialConfiguration
-import com.android.identity.issuance.CredentialPresentationFormat
-import com.android.identity.issuance.CredentialPresentationObject
-import com.android.identity.issuance.CredentialPresentationRequest
-import com.android.identity.issuance.CredentialState
+import com.android.identity.issuance.DocumentCondition
+import com.android.identity.issuance.DocumentConfiguration
+import com.android.identity.issuance.DocumentPresentationFormat
+import com.android.identity.issuance.DocumentPresentationObject
+import com.android.identity.issuance.DocumentPresentationRequest
+import com.android.identity.issuance.DocumentState
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.ProofingFlow
-import com.android.identity.issuance.RegisterCredentialFlow
+import com.android.identity.issuance.RegisterDocumentFlow
 import com.android.identity.issuance.RequestPresentationObjectsFlow
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.issuance.CredentialExtensions
-import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
-import com.android.identity.issuance.UnknownCredentialException
+import com.android.identity.issuance.UnknownDocumentException
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import kotlinx.datetime.Clock
@@ -57,9 +54,9 @@ abstract class SimpleIssuingAuthority(
         this.observers.remove(observer)
     }
 
-    private fun emitOnStateChanged(credentialId: String) {
+    private fun emitOnStateChanged(documentId: String) {
         for (observer in observers) {
-            observer.onCredentialStateChanged(this, credentialId)
+            observer.onDocumentStateChanged(this, documentId)
         }
     }
 
@@ -71,13 +68,13 @@ abstract class SimpleIssuingAuthority(
 
     // Collected evidence responses are keyed by graph node ids.
     abstract fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean
-    abstract fun generateCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration
+    abstract fun generateDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>): DocumentConfiguration
 
-    abstract fun createPresentationData(presentationFormat: CredentialPresentationFormat,
-                                        credentialConfiguration: CredentialConfiguration,
+    abstract fun createPresentationData(presentationFormat: DocumentPresentationFormat,
+                                        documentConfiguration: DocumentConfiguration,
                                         authenticationKey: EcPublicKey): ByteArray
 
-    abstract fun developerModeRequestUpdate(currentConfiguration: CredentialConfiguration): CredentialConfiguration
+    abstract fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration
 
     private data class CpoRequest(
         val authenticationKey: EcPublicKey,
@@ -107,19 +104,19 @@ abstract class SimpleIssuingAuthority(
         }
     }
 
-    // The Credential as seen from the issuer's perspective
-    private data class IssuerCredential(
+    // The document as seen from the issuer's perspective
+    private data class IssuerDocument(
         var proofingDeadlineMillis: Long,
-        var state: CredentialCondition,
+        var state: DocumentCondition,
         var collectedEvidence: MutableMap<String, EvidenceResponse>,
-        var credentialConfiguration: CredentialConfiguration?,
+        var documentConfiguration: DocumentConfiguration?,
         var cpoRequests: MutableList<CpoRequest>
     ) {
         companion object {
-            fun fromCbor(encodedData: ByteArray): IssuerCredential {
+            fun fromCbor(encodedData: ByteArray): IssuerDocument {
                 val map = Cbor.decode(encodedData)
                 val stateAsInt = map["state"].asNumber.toInt()
-                val state = CredentialCondition.values().firstOrNull {it.ordinal == stateAsInt}
+                val state = DocumentCondition.values().firstOrNull {it.ordinal == stateAsInt}
                     ?: throw IllegalArgumentException("Unknown state with value $stateAsInt")
 
                 val collectedEvidence = mutableMapOf<String, EvidenceResponse>()
@@ -134,16 +131,16 @@ abstract class SimpleIssuingAuthority(
                     cpoRequests.add(CpoRequest.fromCbor(Cbor.encode(cpoRequestDataItem)))
                 }
 
-                val credentialConfiguration: CredentialConfiguration? =
-                    map.getOrNull("credentialConfiguration")?.let {
-                        CredentialConfiguration.fromCbor(it.asBstr)
+                val documentConfiguration: DocumentConfiguration? =
+                    map.getOrNull("documentConfiguration")?.let {
+                        DocumentConfiguration.fromCbor(it.asBstr)
                     }
 
-                return IssuerCredential(
+                return IssuerDocument(
                     map["proofingDeadline"].asNumber,
                     state,
                     collectedEvidence,
-                    credentialConfiguration,
+                    documentConfiguration,
                     cpoRequests,
                 )
             }
@@ -162,97 +159,97 @@ abstract class SimpleIssuingAuthority(
                 .put("state", state.ordinal.toLong())
                 .put("collectedEvidence", ceMapBuilder.end().build())
                 .put("cpoRequests", cpoArrayBuilder.end().build())
-            if (credentialConfiguration != null) {
-                mapBuilder.put("credentialConfiguration", credentialConfiguration!!.toCbor())
+            if (documentConfiguration != null) {
+                mapBuilder.put("documentConfiguration", documentConfiguration!!.toCbor())
             }
             return Cbor.encode(mapBuilder.end().build())
         }
     }
 
-    private fun loadIssuerCredential(credentialId: String): IssuerCredential {
-        val encoded = storageEngine.get(credentialId)
+    private fun loadIssuerDocument(documentId: String): IssuerDocument {
+        val encoded = storageEngine.get(documentId)
         if (encoded == null) {
-            throw UnknownCredentialException("Unknown credentialId")
+            throw UnknownDocumentException("Unknown documentId")
         }
-        return IssuerCredential.fromCbor(encoded)
+        return IssuerDocument.fromCbor(encoded)
     }
 
-    private fun saveIssuerCredential(credentialId: String, state: IssuerCredential) {
-        storageEngine.put(credentialId, state.toCbor())
+    private fun saveIssuerDocument(documentId: String, state: IssuerDocument) {
+        storageEngine.put(documentId, state.toCbor())
     }
 
-    private fun deleteIssuerCredential(credentialId: String) {
-        storageEngine.delete(credentialId)
+    private fun deleteIssuerDocument(documentId: String) {
+        storageEngine.delete(documentId)
     }
 
-    override suspend fun credentialGetState(credentialId: String): CredentialState {
+    override suspend fun documentGetState(documentId: String): DocumentState {
         val nowMillis = System.currentTimeMillis()
 
-        val issuerCredential = loadIssuerCredential(credentialId)
+        val issuerDocument = loadIssuerDocument(documentId)
 
         // Evaluate proofing, if deadline has passed...
-        if (issuerCredential.state == CredentialCondition.PROOFING_PROCESSING) {
-            if (nowMillis >= issuerCredential.proofingDeadlineMillis) {
-                issuerCredential.state =
-                    if (checkEvidence(issuerCredential.collectedEvidence)) {
-                        CredentialCondition.CONFIGURATION_AVAILABLE
+        if (issuerDocument.state == DocumentCondition.PROOFING_PROCESSING) {
+            if (nowMillis >= issuerDocument.proofingDeadlineMillis) {
+                issuerDocument.state =
+                    if (checkEvidence(issuerDocument.collectedEvidence)) {
+                        DocumentCondition.CONFIGURATION_AVAILABLE
                     } else {
-                        CredentialCondition.PROOFING_FAILED
+                        DocumentCondition.PROOFING_FAILED
                     }
-                saveIssuerCredential(credentialId, issuerCredential)
+                saveIssuerDocument(documentId, issuerDocument)
             }
         }
 
         // Calculate pending/available depending on deadline
         var numPendingCPOs = 0
         var numAvailableCPOs = 0
-        for (cpoRequest in issuerCredential.cpoRequests) {
+        for (cpoRequest in issuerDocument.cpoRequests) {
             if (nowMillis >= cpoRequest.deadlineMillis) {
                 numAvailableCPOs += 1
             } else {
                 numPendingCPOs += 1
             }
         }
-        return CredentialState(nowMillis, issuerCredential.state, numPendingCPOs, numAvailableCPOs)
+        return DocumentState(nowMillis, issuerDocument.state, numPendingCPOs, numAvailableCPOs)
     }
 
 
-    override fun registerCredential(): RegisterCredentialFlow {
-        val credentialId = "Credential_${System.currentTimeMillis()}_${Random.nextInt()}"
-        return SimpleIssuingAuthorityRegisterCredentialFlow(this, credentialId)
+    override fun registerDocument(): RegisterDocumentFlow {
+        val documentId = "Document_${System.currentTimeMillis()}_${Random.nextInt()}"
+        return SimpleIssuingAuthorityRegisterDocumentFlow(this, documentId)
     }
 
-    override fun credentialProof(credentialId: String): ProofingFlow {
-        return SimpleIssuingAuthorityProofingFlow(this, credentialId,
+    override fun documentProof(documentId: String): ProofingFlow {
+        return SimpleIssuingAuthorityProofingFlow(this, documentId,
             getProofingGraphRoot(), this::createNfcTunnelHandler)
     }
 
-    override suspend fun credentialGetConfiguration(credentialId: String): CredentialConfiguration {
-        val issuerCredential = loadIssuerCredential(credentialId)
-        check(issuerCredential.state == CredentialCondition.CONFIGURATION_AVAILABLE)
-        issuerCredential.state = CredentialCondition.READY
-        if (issuerCredential.credentialConfiguration == null) {
-            issuerCredential.credentialConfiguration =
-                generateCredentialConfiguration(issuerCredential.collectedEvidence)
+    override suspend fun documentGetConfiguration(documentId: String): DocumentConfiguration {
+        val issuerDocument = loadIssuerDocument(documentId)
+        check(issuerDocument.state == DocumentCondition.CONFIGURATION_AVAILABLE)
+        issuerDocument.state = DocumentCondition.READY
+        if (issuerDocument.documentConfiguration == null) {
+            issuerDocument.documentConfiguration =
+                generateDocumentConfiguration(issuerDocument.collectedEvidence)
         }
-        saveIssuerCredential(credentialId, issuerCredential)
-        return issuerCredential.credentialConfiguration!!
+        saveIssuerDocument(documentId, issuerDocument)
+        return issuerDocument.documentConfiguration!!
     }
 
-    override fun credentialRequestPresentationObjects(credentialId: String): RequestPresentationObjectsFlow {
-        return SimpleIssuingAuthorityRequestPresentationObjectsFlow(this, credentialId)
+    override fun documentRequestPresentationObjects(documentId: String): RequestPresentationObjectsFlow {
+        return SimpleIssuingAuthorityRequestPresentationObjectsFlow(this, documentId)
     }
 
-    override suspend fun credentialGetPresentationObjects(credentialId: String): List<CredentialPresentationObject> {
+    override suspend fun documentGetPresentationObjects(documentId: String): List<DocumentPresentationObject> {
         val nowMillis = System.currentTimeMillis()
         val validFromMillis = nowMillis
         val validUntilMillis = nowMillis + 30*24*3600*1000L
-        val issuerCredential = loadIssuerCredential(credentialId)
-        val availableCPOs = mutableListOf<CredentialPresentationObject>()
+        val issuerDocument = loadIssuerDocument(documentId)
+        val availableCPOs = mutableListOf<DocumentPresentationObject>()
         val pendingCPOs = mutableListOf<CpoRequest>()
-        for (cpoRequest in issuerCredential.cpoRequests) {
+        for (cpoRequest in issuerDocument.cpoRequests) {
             if (nowMillis >= cpoRequest.deadlineMillis) {
-                availableCPOs.add(CredentialPresentationObject(
+                availableCPOs.add(DocumentPresentationObject(
                     cpoRequest.authenticationKey,
                     validFromMillis,
                     validUntilMillis,
@@ -262,57 +259,57 @@ abstract class SimpleIssuingAuthority(
                 pendingCPOs.add(cpoRequest)
             }
         }
-        issuerCredential.cpoRequests = pendingCPOs
-        saveIssuerCredential(credentialId, issuerCredential)
+        issuerDocument.cpoRequests = pendingCPOs
+        saveIssuerDocument(documentId, issuerDocument)
         return availableCPOs
     }
 
-    fun addCredentialId(credentialId: String) {
+    fun addDocumentId(documentId: String) {
         // Initial state is PROOFING_REQUIRED
-        saveIssuerCredential(
-            credentialId,
-            IssuerCredential(
+        saveIssuerDocument(
+            documentId,
+            IssuerDocument(
                 0L,
-                CredentialCondition.PROOFING_REQUIRED,
+                DocumentCondition.PROOFING_REQUIRED,
                 mutableMapOf(),           // collectedEvidence - initially empty
-                null,  // no initial credential configuration
+                null,  // no initial document configuration
                 mutableListOf()           // cpoRequests - initially empty
             )
         )
     }
 
-    fun setProofingProcessing(credentialId: String) {
-        val issuerCredential = loadIssuerCredential(credentialId)
-        issuerCredential.state = CredentialCondition.PROOFING_PROCESSING
+    fun setProofingProcessing(documentId: String) {
+        val issuerDocument = loadIssuerDocument(documentId)
+        issuerDocument.state = DocumentCondition.PROOFING_PROCESSING
 
         val proofingTimeMillis = deadlineMillis
-        issuerCredential.proofingDeadlineMillis = Clock.System.now().toEpochMilliseconds() + proofingTimeMillis
+        issuerDocument.proofingDeadlineMillis = Clock.System.now().toEpochMilliseconds() + proofingTimeMillis
 
-        saveIssuerCredential(credentialId, issuerCredential)
+        saveIssuerDocument(documentId, issuerDocument)
 
         if (proofingTimeMillis == 0L) {
-            Logger.i(TAG, "Emitting onStateChanged on $credentialId for proofing")
-            emitOnStateChanged(credentialId)
+            Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing")
+            emitOnStateChanged(documentId)
         } else {
             Timer().schedule(timerTask {
-                Logger.i(TAG, "Emitting onStateChanged on $credentialId for proofing")
-                emitOnStateChanged(credentialId)
+                Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing")
+                emitOnStateChanged(documentId)
             }, proofingTimeMillis)
         }
     }
 
     fun addCollectedEvidence(
-          credentialId: String, nodeId: String, evidenceResponse: EvidenceResponse) {
-        val issuerCredential = loadIssuerCredential(credentialId)
-        issuerCredential.collectedEvidence[nodeId] = evidenceResponse
-        saveIssuerCredential(credentialId, issuerCredential)
+        documentId: String, nodeId: String, evidenceResponse: EvidenceResponse) {
+        val issuerDocument = loadIssuerDocument(documentId)
+        issuerDocument.collectedEvidence[nodeId] = evidenceResponse
+        saveIssuerDocument(documentId, issuerDocument)
     }
 
     private fun hasCpoRequestForAuthenticationKey(
-        issuerCredential: IssuerCredential,
+        issuerDocument: IssuerDocument,
         authenticationKey: EcPublicKey
     ) : Boolean {
-        for (cpoRequest in issuerCredential.cpoRequests) {
+        for (cpoRequest in issuerDocument.cpoRequests) {
             if (cpoRequest.authenticationKey.equals(authenticationKey)) {
                 return true
             }
@@ -321,16 +318,16 @@ abstract class SimpleIssuingAuthority(
     }
 
     fun addCpoRequests(
-        credentialId: String,
-        credentialPresentationRequests: List<CredentialPresentationRequest>
+        documentId: String,
+        documentPresentationRequests: List<DocumentPresentationRequest>
     ) {
         val nowMillis = System.currentTimeMillis()
         val deadlineTimeMillis = deadlineMillis
 
-        val issuerCredential = loadIssuerCredential(credentialId)
-        for (request in credentialPresentationRequests) {
+        val issuerDocument = loadIssuerDocument(documentId)
+        for (request in documentPresentationRequests) {
             // Skip if we already have a request for the authentication key
-            if (hasCpoRequestForAuthenticationKey(issuerCredential,
+            if (hasCpoRequestForAuthenticationKey(issuerDocument,
                     request.authenticationKeyAttestation.certificates.first().publicKey)) {
                 Logger.d(TAG, "Already has cpoRequest for attestation with key " +
                         "${request.authenticationKeyAttestation.certificates.first().publicKey}")
@@ -338,8 +335,8 @@ abstract class SimpleIssuingAuthority(
             }
             val authenticationKey = request.authenticationKeyAttestation.certificates.first().publicKey
             val presentationData = createPresentationData(
-                request.credentialPresentationFormat,
-                issuerCredential.credentialConfiguration!!,
+                request.documentPresentationFormat,
+                issuerDocument.documentConfiguration!!,
                 authenticationKey
             )
             val cpoRequest = CpoRequest(
@@ -347,41 +344,41 @@ abstract class SimpleIssuingAuthority(
                 presentationData,
                 nowMillis + deadlineTimeMillis,
             )
-            issuerCredential.cpoRequests.add(cpoRequest)
+            issuerDocument.cpoRequests.add(cpoRequest)
         }
-        saveIssuerCredential(credentialId, issuerCredential)
+        saveIssuerDocument(documentId, issuerDocument)
 
         if (deadlineTimeMillis == 0L) {
-            Logger.i(TAG, "Emitting onStateChanged on $credentialId for CpoRequest")
-            emitOnStateChanged(credentialId)
+            Logger.i(TAG, "Emitting onStateChanged on $documentId for CpoRequest")
+            emitOnStateChanged(documentId)
         } else {
             Timer().schedule(timerTask {
-                Logger.i(TAG, "Emitting onStateChanged on $credentialId for CpoRequest")
-                emitOnStateChanged(credentialId)
+                Logger.i(TAG, "Emitting onStateChanged on $documentId for CpoRequest")
+                emitOnStateChanged(documentId)
             }, deadlineTimeMillis)
         }
     }
 
-    override suspend fun credentialDeveloperModeRequestUpdate(
-        credentialId: String,
+    override suspend fun documentDeveloperModeRequestUpdate(
+        documentId: String,
         requestRemoteDeletion: Boolean,
         notifyApplicationOfUpdate: Boolean
     ) {
         if (requestRemoteDeletion) {
-            deleteIssuerCredential(credentialId)
+            deleteIssuerDocument(documentId)
             if (notifyApplicationOfUpdate) {
-                emitOnStateChanged(credentialId)
+                emitOnStateChanged(documentId)
             }
             return
         }
 
-        val credential = loadIssuerCredential(credentialId)
-        credential.credentialConfiguration = developerModeRequestUpdate(credential.credentialConfiguration!!)
-        credential.state = CredentialCondition.CONFIGURATION_AVAILABLE
-        credential.cpoRequests.clear()
-        saveIssuerCredential(credentialId, credential)
+        val document = loadIssuerDocument(documentId)
+        document.documentConfiguration = developerModeRequestUpdate(document.documentConfiguration!!)
+        document.state = DocumentCondition.CONFIGURATION_AVAILABLE
+        document.cpoRequests.clear()
+        saveIssuerDocument(documentId, document)
         if (notifyApplicationOfUpdate) {
-            emitOnStateChanged(credentialId)
+            emitOnStateChanged(documentId)
         }
     }
 }

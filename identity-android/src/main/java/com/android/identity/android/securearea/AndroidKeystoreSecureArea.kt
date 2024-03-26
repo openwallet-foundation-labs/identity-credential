@@ -73,7 +73,7 @@ import javax.crypto.KeyAgreement
  *
  * Any key created will be attested to by the Secure Hardware, using
  * [Android Keystore Key Attestation](https://developer.android.com/training/articles/security-key-attestation).
- * This gives remote parties (such as real-world identity credential issuers) a high level of
+ * This gives remote parties (such as real-world identity document issuers) a high level of
  * assurance that the private part of the key exists only in Secure Hardware and also gives a
  * strong signal about the general state of the device (including whether
  * [verified boot](https://source.android.com/docs/security/features/verifiedboot)
@@ -158,7 +158,7 @@ class AndroidKeystoreSecureArea(
 
                 // Android KeyStore tries to be "helpful" by creating keys in Software if
                 // the Secure World (Keymint) lacks support for the requested feature, for
-                // example ECDH. This will never work (for RWI, the credential issuer will
+                // example ECDH. This will never work (for RWI, the document issuer will
                 // detect it when examining the attestation) so just bail early if this
                 // is the case.
                 if (aSettings.useStrongBox) {

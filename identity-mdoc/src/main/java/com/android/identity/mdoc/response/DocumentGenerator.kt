@@ -25,7 +25,7 @@ import com.android.identity.cbor.Tagged
 import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcPublicKey

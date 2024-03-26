@@ -23,7 +23,7 @@ import com.android.identity.crypto.EcPublicKey
  *
  * This interface exists to abstract the underlying secure area used
  * used for creation of key material and other security objects related
- * to credentials.
+ * to documents.
  */
 interface SecureArea {
     /**

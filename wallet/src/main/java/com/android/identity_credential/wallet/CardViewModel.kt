@@ -10,17 +10,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.cbor.Cbor
-import com.android.identity.credential.AuthenticationKey
-import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialStore
-import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.issuance.CredentialCondition
-import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
-import com.android.identity.issuance.CredentialExtensions.credentialIdentifier
-import com.android.identity.issuance.CredentialExtensions.housekeeping
-import com.android.identity.issuance.CredentialExtensions.isDeleted
-import com.android.identity.issuance.CredentialExtensions.issuingAuthorityIdentifier
-import com.android.identity.issuance.CredentialExtensions.state
+import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentStore
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.issuance.DocumentCondition
+import com.android.identity.issuance.DocumentExtensions.documentConfiguration
+import com.android.identity.issuance.DocumentExtensions.documentIdentifier
+import com.android.identity.issuance.DocumentExtensions.housekeeping
+import com.android.identity.issuance.DocumentExtensions.isDeleted
+import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
+import com.android.identity.issuance.DocumentExtensions.state
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
@@ -43,13 +43,13 @@ class CardViewModel : ViewModel() {
 
     private lateinit var context: Context
     private lateinit var walletApplication: WalletApplication
-    private lateinit var credentialStore: CredentialStore
+    private lateinit var documentStore: DocumentStore
     private lateinit var issuingAuthorityRepository: IssuingAuthorityRepository
     private lateinit var secureAreaRepository: SecureAreaRepository
-    private lateinit var credentialTypeRepository: CredentialTypeRepository
+    private lateinit var documentTypeRepository: DocumentTypeRepository
 
     private fun syncWithCredman() {
-        CredmanRegistry.registerCredentials(context, credentialStore, credentialTypeRepository)
+        CredmanRegistry.registerCredentials(context, documentStore, documentTypeRepository)
     }
 
     fun getCard(cardId: String): Card? {
@@ -71,12 +71,12 @@ class CardViewModel : ViewModel() {
     }
 
     fun refreshCard(card: Card) {
-        val credential = credentialStore.lookupCredential(card.id)
-        if (credential == null) {
-            Logger.w(TAG, "No credential with id ${card.id}")
+        val document = documentStore.lookupDocument(card.id)
+        if (document == null) {
+            Logger.w(TAG, "No document with id ${card.id}")
             return
         }
-        refreshCredential(credential, true, true)
+        refreshDocument(document, true, true)
     }
 
     fun developerModeRequestUpdate(
@@ -84,26 +84,26 @@ class CardViewModel : ViewModel() {
         requestRemoteDeletion: Boolean,
         notifyApplicationOfUpdate: Boolean
     ) {
-        val credential = credentialStore.lookupCredential(card.id)
-        if (credential == null) {
-            Logger.w(TAG, "No credential with id ${card.id}")
+        val document = documentStore.lookupDocument(card.id)
+        if (document == null) {
+            Logger.w(TAG, "No document with id ${card.id}")
             return
         }
-        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(credential.issuingAuthorityIdentifier)
-            ?: throw IllegalArgumentException("No issuer with id ${credential.issuingAuthorityIdentifier}")
+        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(document.issuingAuthorityIdentifier)
+            ?: throw IllegalArgumentException("No issuer with id ${document.issuingAuthorityIdentifier}")
 
         viewModelScope.launch(Dispatchers.IO) {
-            issuer.credentialDeveloperModeRequestUpdate(
-                credential.credentialIdentifier,
+            issuer.documentDeveloperModeRequestUpdate(
+                document.documentIdentifier,
                 requestRemoteDeletion,
                 notifyApplicationOfUpdate)
         }
     }
 
-    val refreshCredentialMutex = Mutex()
+    private val refreshDocumentMutex = Mutex()
 
-    private fun refreshCredential(
-        credential: Credential,
+    private fun refreshDocument(
+        document: Document,
         forceUpdate: Boolean,
         showFeedback: Boolean
     ) {
@@ -111,25 +111,25 @@ class CardViewModel : ViewModel() {
         // receiving an update from the issuer... this could be an user
         // preference or for some events - such as new PII - we could pop
         // up a notification asking if the user would like to update their
-        // credential
+        // document
         //
         viewModelScope.launch(Dispatchers.IO) {
             // Especially during provisioning it's not uncommon to receive multiple
-            // onCredentialStageChanged after each other... this ensures that we're
-            // only running housekeeping() on a single credential at a time.
+            // onDocumentStageChanged after each other... this ensures that we're
+            // only running housekeeping() on a single document at a time.
             //
             // TODO: this can be done more elegantly
             //
-            refreshCredentialMutex.withLock {
-                val numAuthKeysRefreshed = credential.housekeeping(
+            refreshDocumentMutex.withLock {
+                val numAuthKeysRefreshed = document.housekeeping(
                     walletApplication,
                     issuingAuthorityRepository,
                     secureAreaRepository,
                     forceUpdate,
                 )
-                if (credential.isDeleted) {
-                    Logger.i(TAG, "Credential ${credential.name} was deleted, removing")
-                    credentialStore.deleteCredential(credential.name)
+                if (document.isDeleted) {
+                    Logger.i(TAG, "Document ${document.name} was deleted, removing")
+                    documentStore.deleteDocument(document.name)
                     return@launch
                 }
 
@@ -150,48 +150,49 @@ class CardViewModel : ViewModel() {
     }
 
     fun deleteCard(card: Card) {
-        val credential = credentialStore.lookupCredential(card.id)
-        if (credential == null) {
-            Logger.w(TAG, "No credential with id ${card.id}")
+        val document = documentStore.lookupDocument(card.id)
+        if (document == null) {
+            Logger.w(TAG, "No document with id ${card.id}")
             return
         }
-        credentialStore.deleteCredential(credential.name)
+        documentStore.deleteDocument(document.name)
     }
 
-    private val credentialStoreObserver = object : CredentialStore.Observer {
-        override fun onCredentialAdded(credential: Credential) {
-            addCredential(credential)
+    private val documentStoreObserver = object : DocumentStore.Observer {
+        override fun onDocumentAdded(document: Document) {
+            addDocument(document)
             syncWithCredman()
         }
         
-        override fun onCredentialDeleted(credential: Credential) {
-            removeCredential(credential)
+        override fun onDocumentDeleted(document: Document) {
+            removeDocument(document)
             syncWithCredman()
         }
         
-        override fun onCredentialChanged(credential: Credential) {
-            updateCredential(credential)
+        override fun onDocumentChanged(document: Document) {
+            updateDocument(document)
             syncWithCredman()
         }
     }
 
     private val issuingAuthorityRepositoryObserver = object : IssuingAuthorityRepository.Observer {
-        override fun onCredentialStateChanged(
+        override fun onDocumentStateChanged(
             issuingAuthority: IssuingAuthority,
-            credentialId: String
+            documentId: String
         ) {
-            // Find the local [Credential] instance, if any
-            for (id in credentialStore.listCredentials()) {
-                val credential = credentialStore.lookupCredential(id)
-                if (credential == null) {
+            // Find the local [Document] instance, if any
+            for (id in documentStore.listDocuments()) {
+                val document = documentStore.lookupDocument(id)
+                if (document == null) {
                     continue
                 }
-                if (credential.issuingAuthorityIdentifier == issuingAuthority.configuration.identifier &&
-                            credential.credentialIdentifier == credentialId) {
+                if (document.issuingAuthorityIdentifier == issuingAuthority.configuration.identifier &&
+                            document.documentIdentifier == documentId
+                ) {
 
-                    Logger.i(TAG, "Handling CredentialStateChanged on $credentialId")
+                    Logger.i(TAG, "Handling DocumentStateChanged on $documentId")
 
-                    refreshCredential(credential, true, false)
+                    refreshDocument(document, true, false)
                 }
             }
         }
@@ -201,21 +202,21 @@ class CardViewModel : ViewModel() {
         return context.resources.getString(getStrId)
     }
 
-    private fun createCardForCredential(credential: Credential): Card? {
-        val credentialConfiguration = credential.credentialConfiguration
+    private fun createCardForDocument(document: Document): Card? {
+        val documentConfiguration = document.documentConfiguration
         val options = BitmapFactory.Options()
         options.inMutable = true
-        val credentialBitmap = BitmapFactory.decodeByteArray(
-            credentialConfiguration.cardArt,
+        val documentBitmap = BitmapFactory.decodeByteArray(
+            documentConfiguration.cardArt,
             0,
-            credentialConfiguration.cardArt.size,
+            documentConfiguration.cardArt.size,
             options
         )
 
-        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(credential.issuingAuthorityIdentifier)
+        val issuer = issuingAuthorityRepository.lookupIssuingAuthority(document.issuingAuthorityIdentifier)
         if (issuer == null) {
-            Logger.w(TAG, "Unknown issuer ${credential.issuingAuthorityIdentifier} for " +
-                "credential ${credential.name}")
+            Logger.w(TAG, "Unknown issuer ${document.issuingAuthorityIdentifier} for " +
+                "document ${document.name}")
             return null
         }
         val issuerLogo = BitmapFactory.decodeByteArray(
@@ -226,31 +227,31 @@ class CardViewModel : ViewModel() {
         )
 
         val statusString =
-            when (credential.state.condition) {
-                CredentialCondition.PROOFING_REQUIRED -> getStr(R.string.card_view_model_status_proofing_required)
-                CredentialCondition.PROOFING_PROCESSING -> getStr(R.string.card_view_model_status_proofing_processing)
-                CredentialCondition.PROOFING_FAILED -> getStr(R.string.card_view_model_status_proofing_failed)
-                CredentialCondition.CONFIGURATION_AVAILABLE -> getStr(R.string.card_view_model_status_configuration_available)
-                CredentialCondition.READY -> getStr(R.string.card_view_model_status_ready)
-                CredentialCondition.DELETION_REQUESTED -> getStr(R.string.card_view_model_status_deletion_requested)
+            when (document.state.condition) {
+                DocumentCondition.PROOFING_REQUIRED -> getStr(R.string.card_view_model_status_proofing_required)
+                DocumentCondition.PROOFING_PROCESSING -> getStr(R.string.card_view_model_status_proofing_processing)
+                DocumentCondition.PROOFING_FAILED -> getStr(R.string.card_view_model_status_proofing_failed)
+                DocumentCondition.CONFIGURATION_AVAILABLE -> getStr(R.string.card_view_model_status_configuration_available)
+                DocumentCondition.READY -> getStr(R.string.card_view_model_status_ready)
+                DocumentCondition.DELETION_REQUESTED -> getStr(R.string.card_view_model_status_deletion_requested)
             }
 
-        val data = credential.renderDocumentDetails(context, credentialTypeRepository)
+        val data = document.renderDocumentDetails(context, documentTypeRepository)
 
         val keyInfos = mutableStateListOf<CardKeyInfo>()
-        for (authKey in credential.certifiedAuthenticationKeys) {
+        for (authKey in document.certifiedAuthenticationKeys) {
             keyInfos.add(createCardInfoForAuthKey(authKey))
         }
 
         return Card(
-            id = credential.name,
-            name = credentialConfiguration.displayName,
+            id = document.name,
+            name = documentConfiguration.displayName,
             issuerName = issuer.configuration.issuingAuthorityName,
             issuerCardDescription = issuer.configuration.description,
             typeName = data.typeName,
             issuerLogo = issuerLogo,
-            cardArtwork = credentialBitmap,
-            lastRefresh = Instant.fromEpochMilliseconds(credential.state.timestamp),
+            cardArtwork = documentBitmap,
+            lastRefresh = Instant.fromEpochMilliseconds(document.state.timestamp),
             status = statusString,
             attributes = data.attributes,
             attributePortrait = data.portrait,
@@ -261,8 +262,8 @@ class CardViewModel : ViewModel() {
 
     private fun createCardInfoForAuthKey(authKey: AuthenticationKey): CardKeyInfo {
 
-        val credentialData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
-        val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
+        val documentData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
+        val issuerAuthCoseSign1 = Cbor.decode(documentData.issuerAuth).asCoseSign1
         val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
         val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
         val mso = MobileSecurityObjectParser(encodedMso).parse()
@@ -320,26 +321,26 @@ class CardViewModel : ViewModel() {
         )
     }
 
-    private fun addCredential(credential: Credential) {
-        createCardForCredential(credential)?.let { cards.add(it) }
+    private fun addDocument(document: Document) {
+        createCardForDocument(document)?.let { cards.add(it) }
     }
 
-    private fun removeCredential(credential: Credential) {
-        val cardIndex = cards.indexOfFirst { it.id == credential.name }
+    private fun removeDocument(document: Document) {
+        val cardIndex = cards.indexOfFirst { it.id == document.name }
         if (cardIndex < 0) {
-            Logger.w(TAG, "No card for credential with id ${credential.name}")
+            Logger.w(TAG, "No card for document with id ${document.name}")
             return
         }
         cards.removeAt(cardIndex)
     }
 
-    private fun updateCredential(credential: Credential) {
-        val cardIndex = cards.indexOfFirst { it.id == credential.name }
+    private fun updateDocument(document: Document) {
+        val cardIndex = cards.indexOfFirst { it.id == document.name }
         if (cardIndex < 0) {
-            Logger.w(TAG, "No card for credential with id ${credential.name}")
+            Logger.w(TAG, "No card for document with id ${document.name}")
             return
         }
-        createCardForCredential(credential)?.let { cards[cardIndex] = it }
+        createCardForDocument(document)?.let { cards[cardIndex] = it }
     }
 
     private fun addIssuer(issuingAuthority: IssuingAuthority) {
@@ -365,24 +366,24 @@ class CardViewModel : ViewModel() {
     fun setData(
         context: Context,
         walletApplication: WalletApplication,
-        credentialStore: CredentialStore,
+        documentStore: DocumentStore,
         issuingAuthorityRepository: IssuingAuthorityRepository,
         secureAreaRepository: SecureAreaRepository,
-        credentialTypeRepository: CredentialTypeRepository
+        documentTypeRepository: DocumentTypeRepository
     ) {
         this.context = context
         this.walletApplication = walletApplication
-        this.credentialStore = credentialStore
+        this.documentStore = documentStore
         this.issuingAuthorityRepository = issuingAuthorityRepository
         this.secureAreaRepository = secureAreaRepository
-        this.credentialTypeRepository = credentialTypeRepository
+        this.documentTypeRepository = documentTypeRepository
 
-        credentialStore.startObserving(credentialStoreObserver)
+        documentStore.startObserving(documentStoreObserver)
         issuingAuthorityRepository.startObserving(issuingAuthorityRepositoryObserver)
 
-        for (credentialId in credentialStore.listCredentials()) {
-            val credential = credentialStore.lookupCredential(credentialId)!!
-            addCredential(credential)
+        for (documentId in documentStore.listDocuments()) {
+            val document = documentStore.lookupDocument(documentId)!!
+            addDocument(document)
         }
 
         for (issuer in issuingAuthorityRepository.getIssuingAuthorities()) {
@@ -394,8 +395,8 @@ class CardViewModel : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
-        if (this::credentialStore.isInitialized) {
-            credentialStore.stopObserving(credentialStoreObserver)
+        if (this::documentStore.isInitialized) {
+            documentStore.stopObserving(documentStoreObserver)
             issuingAuthorityRepository.stopObserving(issuingAuthorityRepositoryObserver)
         }
     }

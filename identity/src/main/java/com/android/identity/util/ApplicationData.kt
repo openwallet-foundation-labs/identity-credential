@@ -15,16 +15,17 @@
  */
 package com.android.identity.util
 
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.NameSpacedData
 
 /**
  * An interface to an object storing application data in a key-value pair manner.
  *
  * This interface exists to support applications which wish to store additional data it wants to
- * associate with any object, such as a [Credential] or [AuthenticationKey].
+ * associate with any object, such as a [com.android.identity.document.Document] or
+ * [com.android.identity.document.AuthenticationKey].
  *
- * For example, on a [Credential] object one could use this to store the document
- * type (e.g. DocType for 18013-5 credentials), user-visible name, logos/background, state,
+ * For example, on a [com.android.identity.document.Document] object one could use this to store the
+ * document type (e.g. DocType for 18013-5 documents), user-visible name, logos/background, state,
  * and so on.
  */
 interface ApplicationData {

@@ -1,7 +1,7 @@
 package com.android.mdl.appreader.home
 
 import androidx.lifecycle.ViewModel
-import com.android.identity.credentialtype.MdocDataElement
+import com.android.identity.documenttype.MdocDataElement
 import com.android.mdl.appreader.VerifierApp
 import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
@@ -194,11 +194,11 @@ class CreateRequestViewModel : ViewModel() {
         filterNamespace: (String) -> Boolean = { _ -> true },
         filterElement: (MdocDataElement) -> Boolean = { _ -> true }
     ): RequestDocument {
-        val mdocCredentialType = VerifierApp.credentialTypeRepositoryInstance
-                .getCredentialTypeForMdoc(docType)!!.mdocCredentialType!!
+        val mdocDocumentType = VerifierApp.documentTypeRepositoryInstance
+                .getDocumentTypeForMdoc(docType)!!.mdocDocumentType!!
         return RequestDocument(
             docType,
-            mdocCredentialType.namespaces.values.filter { filterNamespace(it.namespace) }
+            mdocDocumentType.namespaces.values.filter { filterNamespace(it.namespace) }
                 .map {
                     Pair(
                         it.namespace,

@@ -10,9 +10,9 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.credential.AuthenticationKey
-import com.android.identity.credential.CredentialRequest
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
@@ -118,7 +118,7 @@ class GetCredentialActivity : FragmentActivity() {
         val callingAppInfo = extractCallingAppInfo(intent)
         //log("CredId: $credentialId ${request!!.credentialOptions.get(0).requestMatcher}")
 
-        val dataElements = mutableListOf<CredentialRequest.DataElement>()
+        val dataElements = mutableListOf<DocumentRequest.DataElement>()
 
         val json = JSONObject(request!!.credentialOptions.get(0).requestMatcher)
         val provider = json.getJSONArray("providers").getJSONObject(0)
@@ -140,7 +140,7 @@ class GetCredentialActivity : FragmentActivity() {
                 val nameSpaceName = name.substring(0, finalDot)
                 val dataElementName = name.substring(finalDot + 1)
                 dataElements.add(
-                    CredentialRequest.DataElement(
+                    DocumentRequest.DataElement(
                         nameSpaceName,
                         dataElementName,
                         false
@@ -149,12 +149,12 @@ class GetCredentialActivity : FragmentActivity() {
             }
         }
 
-        val credentialRequest = CredentialRequest(dataElements)
+        val documentRequest = DocumentRequest(dataElements)
 
-        val credentialStore = ProvisioningUtil.getInstance(applicationContext).credentialStore
-        val credentialName = credentialStore.listCredentials().get(credentialId.toInt())
-        val credential = credentialStore.lookupCredential(credentialName)
-        val nameSpacedData = credential!!.applicationData.getNameSpacedData("credentialData")
+        val documentStore = ProvisioningUtil.getInstance(applicationContext).documentStore
+        val documentName = documentStore.listDocuments().get(credentialId.toInt())
+        val document = documentStore.lookupDocument(documentName)
+        val nameSpacedData = document!!.applicationData.getNameSpacedData("documentData")
 
         val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
             nonce,
@@ -162,7 +162,7 @@ class GetCredentialActivity : FragmentActivity() {
             "com.android.mdl.appreader"
         ) // TODO: get from |request|
 
-        val authKey = credential.findAuthenticationKey(
+        val authKey = document.findAuthenticationKey(
             ProvisioningUtil.AUTH_KEY_DOMAIN,
             Timestamp.now()
         )
@@ -171,11 +171,11 @@ class GetCredentialActivity : FragmentActivity() {
         }
         val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            credentialRequest, nameSpacedData, staticAuthData
+            documentRequest, nameSpacedData, staticAuthData
         )
         val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
         var documentGenerator = DocumentGenerator(
-            credential.applicationData.getString(ProvisioningUtil.DOCUMENT_TYPE),
+            document.applicationData.getString(ProvisioningUtil.DOCUMENT_TYPE),
             staticAuthData.issuerAuth,
             encodedSessionTranscript
         )

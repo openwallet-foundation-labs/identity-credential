@@ -1,6 +1,6 @@
 package com.android.identity.wallet.documentdata
 
-import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.documenttype.DocumentAttributeType
 
 class MdocNamespaceComplexTypes(
     val namespace: String,
@@ -15,7 +15,7 @@ class MdocNamespaceComplexTypes(
             partOfArray: Boolean,
             identifier: String,
             displayName: String,
-            type: CredentialAttributeType
+            type: DocumentAttributeType
         ) = apply {
             dataElements.add(MdocComplexTypeDefinition(parentIdentifiers, partOfArray, identifier, displayName, type))
         }

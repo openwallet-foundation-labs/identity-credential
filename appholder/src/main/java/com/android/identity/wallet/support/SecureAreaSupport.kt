@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.fragment.app.Fragment
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.credential.AuthenticationKey
-import com.android.identity.credential.Credential
+import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Document
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
@@ -26,7 +26,7 @@ interface SecureAreaSupport {
 
     /**
      * This function should create [SecureArea.KeyUnlockData] based on the incoming
-     * [Credential.AuthenticationKey]. Its implementation should decide on the mechanism
+     * [Document.AuthenticationKey]. Its implementation should decide on the mechanism
      * that will do the unlocking (i.e. present a biometric prompts or other sort of UI),
      * and the way the [SecureArea.KeyUnlockData] is created.
      *

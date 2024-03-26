@@ -1,15 +1,15 @@
 package com.android.identity.wallet.util
 
 import android.graphics.Bitmap
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.IntegerOption
-import com.android.identity.credentialtype.StringOption
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.IntegerOption
+import com.android.identity.documenttype.StringOption
 
 data class Field(
     val id: Int,
     val label: String,
     val name: String,
-    val fieldType: CredentialAttributeType,
+    val fieldType: DocumentAttributeType,
     val value: Any?,
     val namespace: String? = null,
     val isArray: Boolean = false,

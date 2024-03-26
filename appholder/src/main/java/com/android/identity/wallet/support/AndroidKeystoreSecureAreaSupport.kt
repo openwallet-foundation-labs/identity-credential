@@ -21,7 +21,7 @@ import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.securearea.userAuthenticationTypeSet
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
-import com.android.identity.credential.AuthenticationKey
+import com.android.identity.document.AuthenticationKey
 import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
@@ -37,8 +37,6 @@ import com.android.identity.wallet.support.androidkeystore.AndroidAuthKeyCurveOp
 import com.android.identity.wallet.support.androidkeystore.AndroidAuthKeyCurveState
 import com.android.identity.wallet.composables.state.AuthTypeState
 import com.android.identity.wallet.composables.state.MdocAuthOption
-import com.android.identity.wallet.util.FormatUtil
-import java.io.ByteArrayInputStream
 
 class AndroidKeystoreSecureAreaSupport(
     private val capabilities: AndroidKeystoreSecureArea.Capabilities

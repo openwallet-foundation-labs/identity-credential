@@ -17,8 +17,8 @@ import androidx.annotation.AttrRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.android.identity.cbor.Cbor
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.MdocDataElement
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.MdocDataElement
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.mdoc.response.DeviceResponseParser
@@ -268,9 +268,9 @@ class ShowDocumentFragment : Fragment() {
                     val value: ByteArray = doc.getIssuerEntryData(ns, elem)
                     var valueStr: String
                     val mdocDataElement =
-                        VerifierApp.credentialTypeRepositoryInstance
-                            .getCredentialTypeForMdoc(doc.docType)
-                            ?.mdocCredentialType
+                        VerifierApp.documentTypeRepositoryInstance
+                            .getDocumentTypeForMdoc(doc.docType)
+                            ?.mdocDocumentType
                             ?.namespaces?.get(ns)?.dataElements?.get(elem)
                     val name = mdocDataElement?.attribute?.displayName ?: elem
                     if (isPortraitElement(mdocDataElement)) {
@@ -310,7 +310,7 @@ class ShowDocumentFragment : Fragment() {
     }
 
     private fun isPortraitElement(mdocDataElement: MdocDataElement?): Boolean {
-        if (mdocDataElement?.attribute?.type != CredentialAttributeType.Picture) {
+        if (mdocDataElement?.attribute?.type != DocumentAttributeType.Picture) {
             return false
         }
         return listOf("portrait", "fac").contains(mdocDataElement.attribute.identifier)

@@ -1,7 +1,7 @@
 package com.android.identity.wallet.documentdata
 
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.knowntypes.Options
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.knowntypes.Options
 
 object VaccinationDocument {
     const val MICOV_ATT_NAMESPACE = "org.micov.attestation.1"
@@ -14,7 +14,7 @@ object VaccinationDocument {
             false,
             "Result",
             "Test Result",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -22,7 +22,7 @@ object VaccinationDocument {
             false,
             "TypeOfTest",
             "Type of Test",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -30,7 +30,7 @@ object VaccinationDocument {
             false,
             "TimeOfTest",
             "Time of Test",
-            CredentialAttributeType.DateTime
+            DocumentAttributeType.DateTime
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -38,7 +38,7 @@ object VaccinationDocument {
             false,
             "SeCondFulfilled",
             "Second Fulfilled",
-            CredentialAttributeType.Boolean
+            DocumentAttributeType.Boolean
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -46,7 +46,7 @@ object VaccinationDocument {
             false,
             "SeCondType",
             "Second Type",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_ATT_NAMESPACE,
@@ -54,7 +54,7 @@ object VaccinationDocument {
             false,
             "SeCondExpiry",
             "Second Expiry",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -62,7 +62,7 @@ object VaccinationDocument {
             false,
             "tg",
             "Disease or Agent Targeted",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -70,7 +70,7 @@ object VaccinationDocument {
             false,
             "vp",
             "Vaccine or Prophylaxis",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -78,7 +78,7 @@ object VaccinationDocument {
             false,
             "mp",
             "Vaccine Medicinal Product",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -86,7 +86,7 @@ object VaccinationDocument {
             false,
             "br",
             "Vaccine Brand",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -94,7 +94,7 @@ object VaccinationDocument {
             false,
             "ma",
             "Manufacturer",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -102,7 +102,7 @@ object VaccinationDocument {
             false,
             "bn",
             "Batch/Lot Number of the Vaccine",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -110,7 +110,7 @@ object VaccinationDocument {
             false,
             "dn",
             "Dose Number",
-            CredentialAttributeType.Number
+            DocumentAttributeType.Number
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -118,7 +118,7 @@ object VaccinationDocument {
             false,
             "sd",
             "Total Series of Doses",
-            CredentialAttributeType.Number
+            DocumentAttributeType.Number
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -126,7 +126,7 @@ object VaccinationDocument {
             false,
             "dt",
             "Date of Vaccination",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -134,7 +134,7 @@ object VaccinationDocument {
             false,
             "co",
             "Country of Vaccination",
-            CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
+            DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -142,7 +142,7 @@ object VaccinationDocument {
             false,
             "ao",
             "Administering Organization",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -150,7 +150,7 @@ object VaccinationDocument {
             false,
             "ap",
             "Administering Professional",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -158,7 +158,7 @@ object VaccinationDocument {
             false,
             "nx",
             "Due Date of Next Dose",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -166,7 +166,7 @@ object VaccinationDocument {
             false,
             "is",
             "Certificate Issuer",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -174,7 +174,7 @@ object VaccinationDocument {
             false,
             "ci",
             "Unique Certificate Identifier (UVCI)",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -182,7 +182,7 @@ object VaccinationDocument {
             false,
             "pd",
             "Protection Duration",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -190,7 +190,7 @@ object VaccinationDocument {
             false,
             "vf",
             "Valid From",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -198,7 +198,7 @@ object VaccinationDocument {
             false,
             "vu",
             "Valid Until",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -206,7 +206,7 @@ object VaccinationDocument {
             false,
             "pty",
             "Type of Person Identifier",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -214,7 +214,7 @@ object VaccinationDocument {
             false,
             "pnr",
             "Unique number for the PTY/PIC/(PIA) combination",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -222,7 +222,7 @@ object VaccinationDocument {
             false,
             "pic",
             "Issuing Country of the PTY",
-            CredentialAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
+            DocumentAttributeType.StringOptions(Options.COUNTRY_ISO_3166_1_ALPHA_2)
         )
         .addDefinition(
             MICOV_VTR_NAMESPACE,
@@ -230,7 +230,7 @@ object VaccinationDocument {
             false,
             "pia",
             "Issuing Authority of the PTY",
-            CredentialAttributeType.String,
+            DocumentAttributeType.String,
         )
         .build()
 }

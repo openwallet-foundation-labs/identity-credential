@@ -24,8 +24,8 @@ import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaX509Certificate
-import com.android.identity.issuance.CredentialConfiguration
-import com.android.identity.issuance.CredentialPresentationFormat
+import com.android.identity.issuance.DocumentConfiguration
+import com.android.identity.issuance.DocumentPresentationFormat
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
@@ -51,12 +51,12 @@ abstract class SelfSignedMdocIssuingAuthority(
 
     abstract val docType: String
 
-    override fun createPresentationData(presentationFormat: CredentialPresentationFormat,
-                                        credentialConfiguration: CredentialConfiguration,
+    override fun createPresentationData(presentationFormat: DocumentPresentationFormat,
+                                        documentConfiguration: DocumentConfiguration,
                                         authenticationKey: EcPublicKey
     ): ByteArray {
         // Right now we only support mdoc
-        check(presentationFormat == CredentialPresentationFormat.MDOC_MSO)
+        check(presentationFormat == DocumentPresentationFormat.MDOC_MSO)
 
         val now = Timestamp.now()
 
@@ -74,7 +74,7 @@ abstract class SelfSignedMdocIssuingAuthority(
         msoGenerator.setValidityInfo(timeSigned, validFrom, validUntil, null)
         val randomProvider = Random.Default
         val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-            credentialConfiguration.staticData,
+            documentConfiguration.staticData,
             randomProvider,
             16,
             null

@@ -88,7 +88,7 @@ class NfcEngagementHandler : HostApduService() {
 
         val application: WalletApplication = application as WalletApplication
 
-        if (application.credentialStore.listCredentials().size > 0
+        if (application.documentStore.listDocuments().size > 0
             && !PresentationActivity.isPresentationActive()) {
 
             val options = DataTransportOptions.Builder().build()

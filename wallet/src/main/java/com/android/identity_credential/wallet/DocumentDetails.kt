@@ -5,15 +5,15 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
-import com.android.identity.credential.Credential
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.credentialtype.MdocCredentialType
-import com.android.identity.credentialtype.knowntypes.DrivingLicense
+import com.android.identity.document.Document
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.documenttype.MdocDocumentType
+import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 
-private const val TAG = "ViewCredentialData"
+private const val TAG = "ViewDocumentData"
 
 /**
  * A class containing human-readable information (mainly PII) about a document.
@@ -41,7 +41,7 @@ private data class VisitNamespaceResult(
 
 private fun visitNamespace(
     context: Context,
-    mdocCredentialType: MdocCredentialType?,
+    mdocDocumentType: MdocDocumentType?,
     namespaceName: String,
     listOfEncodedIssuerSignedItemBytes: List<ByteArray>,
 ): VisitNamespaceResult {
@@ -55,7 +55,7 @@ private fun visitNamespace(
         val elementValue = issuerSignedItem["elementValue"]
         val encodedElementValue = Cbor.encode(elementValue)
 
-        val mdocDataElement = mdocCredentialType?.namespaces?.get(namespaceName)?.dataElements?.get(elementIdentifier)
+        val mdocDataElement = mdocDocumentType?.namespaces?.get(namespaceName)?.dataElements?.get(elementIdentifier)
 
         var elementValueAsString: String? = null
 
@@ -68,7 +68,7 @@ private fun visitNamespace(
                 )
             )
 
-            if (mdocDataElement.attribute.type == CredentialAttributeType.Picture &&
+            if (mdocDataElement.attribute.type == DocumentAttributeType.Picture &&
                 namespaceName == DrivingLicense.MDL_NAMESPACE) {
                 when (mdocDataElement.attribute.identifier) {
                     "portrait" -> {
@@ -97,9 +97,9 @@ private fun visitNamespace(
     return VisitNamespaceResult(portrait, signatureOrUsualMark, keysAndValues)
 }
 
-fun Credential.renderDocumentDetails(
+fun Document.renderDocumentDetails(
     context: Context,
-    credentialTypeRepository: CredentialTypeRepository
+    documentTypeRepository: DocumentTypeRepository
 ): DocumentDetails {
     if (certifiedAuthenticationKeys.size == 0) {
         return DocumentDetails("Unknown", null, null, mapOf())
@@ -109,20 +109,20 @@ fun Credential.renderDocumentDetails(
     var portrait: Bitmap? = null
     var signatureOrUsualMark: Bitmap? = null
 
-    val credentialData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
-    val issuerAuthCoseSign1 = Cbor.decode(credentialData.issuerAuth).asCoseSign1
+    val documentData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
+    val issuerAuthCoseSign1 = Cbor.decode(documentData.issuerAuth).asCoseSign1
     val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
     val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
 
     val mso = MobileSecurityObjectParser(encodedMso).parse()
 
-    val credentialType = credentialTypeRepository.getCredentialTypeForMdoc(mso.docType)
+    val documentType = documentTypeRepository.getDocumentTypeForMdoc(mso.docType)
     val kvPairs = mutableMapOf<String, String>()
     for (namespaceName in mso.valueDigestNamespaces) {
-        val digestIdMapping = credentialData.digestIdMapping[namespaceName] ?: continue
+        val digestIdMapping = documentData.digestIdMapping[namespaceName] ?: continue
         val result = visitNamespace(
             context,
-            credentialType?.mdocCredentialType,
+            documentType?.mdocDocumentType,
             namespaceName,
             digestIdMapping
         )
@@ -143,6 +143,6 @@ fun Credential.renderDocumentDetails(
         kvPairs += result.keysAndValues
     }
 
-    val typeName = credentialType?.displayName ?: mso.docType
+    val typeName = documentType?.displayName ?: mso.docType
     return DocumentDetails(typeName, portrait, signatureOrUsualMark, kvPairs)
 }

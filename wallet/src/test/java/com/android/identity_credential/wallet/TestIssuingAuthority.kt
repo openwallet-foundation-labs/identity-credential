@@ -1,9 +1,9 @@
 package com.android.identity_credential.wallet
 
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.EcPublicKey
-import com.android.identity.issuance.CredentialConfiguration
-import com.android.identity.issuance.CredentialPresentationFormat
+import com.android.identity.issuance.DocumentConfiguration
+import com.android.identity.issuance.DocumentPresentationFormat
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
@@ -24,8 +24,8 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
             "Test IA",
             byteArrayOf(1, 2, 3),
             "mDL from Test IA",
-            setOf(CredentialPresentationFormat.MDOC_MSO),
-            CredentialConfiguration(
+            setOf(DocumentPresentationFormat.MDOC_MSO),
+            DocumentConfiguration(
                 "mDL for Test IA (proofing pending)",
                 byteArrayOf(1, 2, 3),
                 "org.iso.18013.5.1.mDL",
@@ -37,15 +37,15 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
         deadlineMillis = 3000L
     }
 
-    override fun createPresentationData(presentationFormat: CredentialPresentationFormat,
-                                        credentialConfiguration: CredentialConfiguration,
+    override fun createPresentationData(presentationFormat: DocumentPresentationFormat,
+                                        documentConfiguration: DocumentConfiguration,
                                         authenticationKey: EcPublicKey
     ): ByteArray {
         return byteArrayOf(1, 2, 3)
     }
 
-    override fun developerModeRequestUpdate(currentConfiguration: CredentialConfiguration): CredentialConfiguration {
-        return configuration.pendingCredentialInformation
+    override fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration {
+        return configuration.pendingDocumentInformation
     }
 
     override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
@@ -85,9 +85,9 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
         return true
     }
 
-    override fun generateCredentialConfiguration(collectedEvidence: Map<String, EvidenceResponse>): CredentialConfiguration {
+    override fun generateDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>): DocumentConfiguration {
         val firstName = (collectedEvidence["name"] as EvidenceResponseQuestionString).answer
-        return CredentialConfiguration(
+        return DocumentConfiguration(
             "${firstName}'s Driving License",
             byteArrayOf(1, 2, 3),
             "org.iso.18013.5.1.mDL",

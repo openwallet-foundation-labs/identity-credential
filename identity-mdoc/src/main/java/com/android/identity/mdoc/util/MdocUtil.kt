@@ -21,9 +21,9 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.RawCbor
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tagged
-import com.android.identity.credential.CredentialRequest
-import com.android.identity.credential.CredentialRequest.DataElement
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.DocumentRequest.DataElement
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CreateCertificateOption
@@ -33,7 +33,7 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.X509v3Extension
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.mdoc.mso.StaticAuthDataParser.StaticAuthData
-import com.android.identity.mdoc.request.DeviceRequestParser.DocumentRequest
+import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.util.Logger
 import kotlinx.datetime.Instant
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
@@ -256,28 +256,28 @@ object MdocUtil {
     }
 
     /**
-     * Combines credential data with static authentication data for a given request.
+     * Combines document data with static authentication data for a given request.
      *
-     * This goes through all data element name in a given [CredentialRequest] and
-     * for each data element name, looks up `credentialData` and `staticAuthData`
+     * This goes through all data element name in a given [DocumentRequest] and
+     * for each data element name, looks up `documentData` and `staticAuthData`
      * for the value and if present, will include that in the result. Data elements with
-     * [CredentialRequest.DataElement.doNotSend] set to `true` are ignored.
+     * [DocumentRequest.DataElement.doNotSend] set to `true` are ignored.
      *
      * The result is intended to mimic `IssuerNameSpaces` CBOR as defined
      * in ISO 18013-5 except that the data is returned using a native maps and lists.
      * The returned data is a map from name spaces into a list of the bytes of the
      * `IssuerSignedItemBytes` CBOR.
      *
-     * @param request a [CredentialRequest] indicating which name spaces and data
+     * @param request a [DocumentRequest] indicating which name spaces and data
      * element names to include in the result.
-     * @param credentialData Credential data, organized by name space.
+     * @param documentData Document data, organized by name space.
      * @param staticAuthData Static authentication data.
      * @return A map described above.
      */
     @JvmStatic
     fun mergeIssuerNamesSpaces(
-        request: CredentialRequest,
-        credentialData: NameSpacedData,
+        request: DocumentRequest,
+        documentData: NameSpacedData,
         staticAuthData: StaticAuthData
     ): Map<String, MutableList<ByteArray>> {
         val issuerSignedItemMap = calcIssuerSignedItemMap(staticAuthData.digestIdMapping)
@@ -286,14 +286,14 @@ object MdocUtil {
             if (doNotSend) {
                 continue
             }
-            if (!credentialData.hasDataElement(nameSpaceName, dataElementName)) {
+            if (!documentData.hasDataElement(nameSpaceName, dataElementName)) {
                 Logger.d(TAG,
-                    "No data element in credential for nameSpace $nameSpaceName "
+                    "No data element in document for nameSpace $nameSpaceName "
                             + " dataElementName $dataElementName"
                 )
                 continue
             }
-            val value = credentialData.getDataElement(nameSpaceName, dataElementName)
+            val value = documentData.getDataElement(nameSpaceName, dataElementName)
             val encodedIssuerSignedItemMaybeWithoutValue =
                 lookupIssuerSignedMap(issuerSignedItemMap, nameSpaceName, dataElementName)
             if (encodedIssuerSignedItemMaybeWithoutValue == null) {
@@ -320,15 +320,15 @@ object MdocUtil {
         Cbor.decode(encodedIssuerSignedItem)["elementValue"] != Simple.NULL
 
     /**
-     * Helper function to generate a [CredentialRequest].
+     * Helper function to generate a [DocumentRequest].
      *
-     * @param documentRequest a [com.android.identity.mdoc.request.DeviceRequestParser.DocumentRequest].
-     * @return a [CredentialRequest] representing for the given [com.android.identity.mdoc.request.DeviceRequestParser.DocumentRequest].
+     * @param documentRequest a [com.android.identity.mdoc.request.DeviceRequestParser.DocRequest].
+     * @return a [DocumentRequest] representing for the given [com.android.identity.mdoc.request.DeviceRequestParser.DocRequest].
      */
     @JvmStatic
-    fun generateCredentialRequest(
-        documentRequest: DocumentRequest
-    ): CredentialRequest {
+    fun generateDocumentRequest(
+        documentRequest: DeviceRequestParser.DocRequest
+    ): DocumentRequest {
         val elements: MutableList<DataElement> = ArrayList()
         for (namespaceName in documentRequest.namespaces) {
             for (dataElementName in documentRequest.getEntryNames(namespaceName!!)) {
@@ -337,7 +337,7 @@ object MdocUtil {
                 elements.add(DataElement(namespaceName, dataElementName, intentToRetain, false))
             }
         }
-        return CredentialRequest(elements)
+        return DocumentRequest(elements)
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.android.identity.wallet.documentdata
 
-import com.android.identity.credentialtype.CredentialAttributeType
+import com.android.identity.documenttype.DocumentAttributeType
 
 class MdocComplexTypes private constructor(
     val docType: String,
@@ -17,7 +17,7 @@ class MdocComplexTypes private constructor(
             partOfArray: Boolean,
             identifier: String,
             displayName: String,
-            type: CredentialAttributeType
+            type: DocumentAttributeType
         ) = apply {
             if (!namespaces.containsKey(namespace)) {
                 namespaces[namespace] = MdocNamespaceComplexTypes.Builder(namespace)

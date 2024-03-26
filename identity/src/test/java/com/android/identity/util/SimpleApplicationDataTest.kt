@@ -15,7 +15,7 @@
  */
 package com.android.identity.util
 
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.NameSpacedData
 import org.junit.Assert
 import org.junit.Test
 

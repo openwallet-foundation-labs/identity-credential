@@ -30,7 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.android.identity.credential.CredentialStore
+import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
@@ -56,7 +56,6 @@ import com.android.identity_credential.wallet.util.getActivity
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.shouldShowRationale
 import kotlinx.coroutines.launch
 
 
@@ -67,7 +66,7 @@ fun EvidenceRequestMessageView(
     evidenceRequest: EvidenceRequestMessage,
     provisioningViewModel: ProvisioningViewModel,
     issuingAuthorityRepository: IssuingAuthorityRepository,
-    credentialStore: CredentialStore
+    documentStore: DocumentStore
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -90,7 +89,7 @@ fun EvidenceRequestMessageView(
                     provisioningViewModel.provideEvidence(
                         evidence = EvidenceResponseMessage(false),
                         issuingAuthorityRepository = issuingAuthorityRepository,
-                        credentialStore = credentialStore
+                        documentStore = documentStore
                     )
             }) {
                 Text(evidenceRequest.rejectButtonText)
@@ -102,7 +101,7 @@ fun EvidenceRequestMessageView(
                 provisioningViewModel.provideEvidence(
                     evidence = EvidenceResponseMessage(true),
                     issuingAuthorityRepository = issuingAuthorityRepository,
-                    credentialStore = credentialStore
+                    documentStore = documentStore
                 )
         }) {
             Text(evidenceRequest.acceptButtonText)
@@ -116,7 +115,7 @@ fun EvidenceRequestNotificationPermissionView(
     evidenceRequest: EvidenceRequestNotificationPermission,
     provisioningViewModel: ProvisioningViewModel,
     issuingAuthorityRepository: IssuingAuthorityRepository,
-    credentialStore: CredentialStore
+    documentStore: DocumentStore
 ) {
 
     // Only need to request POST_NOTIFICATIONS permission if on Android 13 (Tiramisu) or later.
@@ -126,7 +125,7 @@ fun EvidenceRequestNotificationPermissionView(
             provisioningViewModel.provideEvidence(
                 evidence = EvidenceResponseNotificationPermission(true),
                 issuingAuthorityRepository = issuingAuthorityRepository,
-                credentialStore = credentialStore
+                documentStore = documentStore
             )
         }
         return
@@ -137,7 +136,7 @@ fun EvidenceRequestNotificationPermissionView(
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseNotificationPermission(true),
             issuingAuthorityRepository = issuingAuthorityRepository,
-            credentialStore = credentialStore
+            documentStore = documentStore
         )
     } else {
         Column {
@@ -166,7 +165,7 @@ fun EvidenceRequestNotificationPermissionView(
                         provisioningViewModel.provideEvidence(
                             evidence = EvidenceResponseNotificationPermission(false),
                             issuingAuthorityRepository = issuingAuthorityRepository,
-                            credentialStore = credentialStore
+                            documentStore = documentStore
                         )
                     }) {
                     Text(evidenceRequest.continueWithoutPermissionButtonText)
@@ -286,7 +285,7 @@ fun EvidenceRequestIcaoPassiveAuthenticationView(
     evidenceRequest: EvidenceRequestIcaoPassiveAuthentication,
     provisioningViewModel: ProvisioningViewModel,
     issuingAuthorityRepository: IssuingAuthorityRepository,
-    credentialStore: CredentialStore,
+    documentStore: DocumentStore,
     permissionTracker: PermissionTracker
 ) {
     EvidenceRequestIcaoView(
@@ -296,7 +295,7 @@ fun EvidenceRequestIcaoPassiveAuthenticationView(
         provisioningViewModel.provideEvidence(
             evidence = EvidenceResponseIcaoPassiveAuthentication(nfcData.dataGroups, nfcData.sod),
             issuingAuthorityRepository = issuingAuthorityRepository,
-            credentialStore = credentialStore
+            documentStore = documentStore
         )
     }
 }

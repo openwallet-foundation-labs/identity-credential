@@ -4,11 +4,11 @@ import android.app.Application
 import com.android.identity.android.util.AndroidLogPrinter
 import com.android.identity.util.Logger
 import androidx.preference.PreferenceManager
-import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.credentialtype.knowntypes.DrivingLicense
-import com.android.identity.credentialtype.knowntypes.EUPersonalID
-import com.android.identity.credentialtype.knowntypes.VaccinationDocument
-import com.android.identity.credentialtype.knowntypes.VehicleRegistration
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.VaccinationDocument
+import com.android.identity.documenttype.knowntypes.VehicleRegistration
 import com.android.identity.storage.GenericStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.trustmanagement.TrustManager
@@ -37,8 +37,8 @@ class VerifierApp : Application() {
         GenericStorageEngine(getDir("Certificates", MODE_PRIVATE))
     }
 
-    private val credentialTypeRepository by lazy {
-        CredentialTypeRepository()
+    private val documentTypeRepository by lazy {
+        DocumentTypeRepository()
     }
 
     override fun onCreate() {
@@ -60,11 +60,11 @@ class VerifierApp : Application() {
         KeysAndCertificates.getTrustedIssuerCertificates(this).forEach {
             trustManagerInstance.addTrustPoint(TrustPoint(it))
         }
-        credentialTypeRepositoryInstance = credentialTypeRepository
-        credentialTypeRepositoryInstance.addCredentialType(DrivingLicense.getCredentialType())
-        credentialTypeRepositoryInstance.addCredentialType(VehicleRegistration.getCredentialType())
-        credentialTypeRepositoryInstance.addCredentialType(VaccinationDocument.getCredentialType())
-        credentialTypeRepositoryInstance.addCredentialType(EUPersonalID.getCredentialType())
+        documentTypeRepositoryInstance = documentTypeRepository
+        documentTypeRepositoryInstance.addDocumentType(DrivingLicense.getDocumentType())
+        documentTypeRepositoryInstance.addDocumentType(VehicleRegistration.getDocumentType())
+        documentTypeRepositoryInstance.addDocumentType(VaccinationDocument.getDocumentType())
+        documentTypeRepositoryInstance.addDocumentType(EUPersonalID.getDocumentType())
     }
 
     companion object {
@@ -72,7 +72,7 @@ class VerifierApp : Application() {
         private lateinit var userPreferencesInstance: UserPreferences
         lateinit var trustManagerInstance: TrustManager
         lateinit var certificateStorageEngineInstance: StorageEngine
-        lateinit var credentialTypeRepositoryInstance: CredentialTypeRepository
+        lateinit var documentTypeRepositoryInstance: DocumentTypeRepository
         fun isDebugLogEnabled(): Boolean {
             return userPreferencesInstance.isDebugLoggingEnabled()
         }

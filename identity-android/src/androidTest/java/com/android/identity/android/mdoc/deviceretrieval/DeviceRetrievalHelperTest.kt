@@ -32,10 +32,10 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.Cose.coseSign1Sign
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.credential.AuthenticationKey
-import com.android.identity.credential.Credential
-import com.android.identity.credential.CredentialStore
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Document
+import com.android.identity.document.DocumentStore
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
@@ -49,13 +49,13 @@ import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestGenerator
 import com.android.identity.mdoc.request.DeviceRequestParser
-import com.android.identity.mdoc.request.DeviceRequestParser.DocumentRequest
+import com.android.identity.mdoc.request.DeviceRequestParser.DocRequest
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.sessionencryption.SessionEncryption
 import com.android.identity.mdoc.util.MdocUtil.calculateDigestsForNameSpace
-import com.android.identity.mdoc.util.MdocUtil.generateCredentialRequest
+import com.android.identity.mdoc.util.MdocUtil.generateDocumentRequest
 import com.android.identity.mdoc.util.MdocUtil.generateIssuerNameSpaces
 import com.android.identity.mdoc.util.MdocUtil.mergeIssuerNamesSpaces
 import com.android.identity.mdoc.util.MdocUtil.stripIssuerNameSpaces
@@ -95,7 +95,7 @@ class DeviceRetrievalHelperTest {
     private lateinit var mStorageEngine: StorageEngine
     private lateinit var mSecureArea: SecureArea
     private lateinit var mSecureAreaRepository: SecureAreaRepository
-    private lateinit var mCredential: Credential
+    private lateinit var mDocument: Document
     private lateinit var mAuthKey: AuthenticationKey
     private lateinit var mTimeSigned: Timestamp
     private lateinit var mTimeValidityBegin: Timestamp
@@ -114,20 +114,20 @@ class DeviceRetrievalHelperTest {
         mSecureAreaRepository = SecureAreaRepository()
         mSecureArea = SoftwareSecureArea(mStorageEngine)
         mSecureAreaRepository.addImplementation(mSecureArea)
-        val credentialStore = CredentialStore(
+        val documentStore = DocumentStore(
             mStorageEngine,
             mSecureAreaRepository
         )
 
-        // Create the credential...
-        mCredential = credentialStore.createCredential("testCredential")
-        credentialStore.addCredential(mCredential)
+        // Create the document...
+        mDocument = documentStore.createDocument("testDocument")
+        documentStore.addDocument(mDocument)
         val nameSpacedData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryBoolean(AAMVA_NAMESPACE, "real_id", true)
             .build()
-        mCredential.applicationData.setNameSpacedData("credentialData", nameSpacedData)
+        mDocument.applicationData.setNameSpacedData("documentData", nameSpacedData)
 
         // Create an authentication key... make sure the authKey used supports both
         // mdoc ECDSA and MAC authentication.
@@ -135,7 +135,7 @@ class DeviceRetrievalHelperTest {
         mTimeSigned = ofEpochMilli(nowMillis)
         mTimeValidityBegin = ofEpochMilli(nowMillis + 3600 * 1000)
         mTimeValidityEnd = ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        mAuthKey = mCredential.createAuthenticationKey(
+        mAuthKey = mDocument.createAuthenticationKey(
             AUTH_KEY_DOMAIN,
             mSecureArea,
             SoftwareCreateKeySettings.Builder(ByteArray(0))
@@ -361,7 +361,7 @@ class DeviceRetrievalHelperTest {
                     presentation[0]!!.sessionTranscript
                 )
                 val deviceRequest = parser.parse()
-                val docRequests: Collection<DocumentRequest> = deviceRequest.documentRequests
+                val docRequests: Collection<DocRequest> = deviceRequest.docRequests
                 Assert.assertEquals(1, docRequests.size.toLong())
                 val request = docRequests.iterator().next()
                 Assert.assertEquals(MDL_DOCTYPE, request.docType)
@@ -382,8 +382,8 @@ class DeviceRetrievalHelperTest {
                     val deviceSignedData = NameSpacedData.Builder().build()
                     val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
                         mergeIssuerNamesSpaces(
-                            generateCredentialRequest(request),
-                            mCredential.applicationData.getNameSpacedData("credentialData"),
+                            generateDocumentRequest(request),
+                            mDocument.applicationData.getNameSpacedData("documentData"),
                             staticAuthData
                         )
                     generator.addDocument(

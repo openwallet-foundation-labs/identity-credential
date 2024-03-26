@@ -225,7 +225,7 @@ fun MainScreenContent(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) {
         if (cardViewModel.cards.isEmpty()) {
-            MainScreenNoCredentialsAvailable(onNavigate, context)
+            MainScreenNoDocumentsAvailable(onNavigate, context)
         } else {
             if (!hasProximityPresentationPermissions.allPermissionsGranted &&
                 !settingsModel.hideMissingProximityPermissionsWarning.value!!) {
@@ -269,7 +269,7 @@ fun MainScreenContent(
 
             Spacer(modifier = Modifier.weight(0.25f))
 
-            MainScreenCredentialPager(
+            MainScreenDocumentPager(
                 onNavigate = onNavigate,
                 cardViewModel = cardViewModel,
                 settingsModel = settingsModel
@@ -313,7 +313,7 @@ fun MainScreenContent(
 }
 
 @Composable
-fun MainScreenNoCredentialsAvailable(
+fun MainScreenNoDocumentsAvailable(
     onNavigate: (String) -> Unit,
     context: Context
 ) {
@@ -369,7 +369,7 @@ fun MainScreenNoCredentialsAvailable(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MainScreenCredentialPager(
+fun MainScreenDocumentPager(
     onNavigate: (String) -> Unit,
     cardViewModel: CardViewModel,
     settingsModel: SettingsModel,

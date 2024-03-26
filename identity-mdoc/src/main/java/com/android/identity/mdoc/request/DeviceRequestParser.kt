@@ -64,7 +64,7 @@ class DeviceRequestParser(
      *
      *
      * This parser will successfully parse requests where the request is signed by the reader
-     * but the signature check fails. The method [DocumentRequest.readerAuthenticated]
+     * but the signature check fails. The method [DocRequest.readerAuthenticated]
      * can used to get additional information whether `ItemsRequest` was authenticated.
      *
      * A `GeneralSecurityException` may be thrown if there issues within the default
@@ -91,13 +91,13 @@ class DeviceRequestParser(
      * as specified in *ISO/IEC 18013-5* section 8.3 *Device Retrieval*.
      */
     class DeviceRequest internal constructor() {
-        private val _documentRequests = mutableListOf<DocumentRequest>()
+        private val _docRequests = mutableListOf<DocRequest>()
 
         /**
          * The document requests in the `DeviceRequest` CBOR.
          */
-        val documentRequests: List<DocumentRequest>
-            get() = _documentRequests
+        val docRequests: List<DocRequest>
+            get() = _docRequests
 
         /**
          * The version string set in the `DeviceRequest` CBOR.
@@ -159,7 +159,7 @@ class DeviceRequestParser(
                         }
                     }
                     val docType = itemsRequest["docType"].asTstr
-                    val builder = DocumentRequest.Builder(
+                    val builder = DocRequest.Builder(
                         docType,
                         Cbor.encode(itemsRequest),
                         requestInfo,
@@ -171,12 +171,12 @@ class DeviceRequestParser(
                     // parse nameSpaces
                     val nameSpaces = itemsRequest["nameSpaces"]
                     parseNamespaces(nameSpaces, builder)
-                    _documentRequests.add(builder.build())
+                    _docRequests.add(builder.build())
                 }
             }
         }
 
-        private fun parseNamespaces(nameSpaces: DataItem, builder: DocumentRequest.Builder) {
+        private fun parseNamespaces(nameSpaces: DataItem, builder: DocRequest.Builder) {
             for ((nameSpaceDataItem, itemsMap) in nameSpaces.asMap) {
                 val nameSpace = nameSpaceDataItem.asTstr
                 for ((itemKeyDataItem, itemValDataItem) in itemsMap.asMap) {
@@ -197,7 +197,7 @@ class DeviceRequestParser(
      * [CBOR](http://cbor.io/) (part of `DeviceRequest`)
      * as specified in *ISO/IEC 18013-5* section 8.3 *Device Retrieval*.
      */
-    class DocumentRequest internal constructor(
+    class DocRequest internal constructor(
         /**
          * The document type (commonly referred to as `docType`) in the request.
          */
@@ -293,7 +293,7 @@ class DeviceRequestParser(
             readerCertChain: CertificateChain?,
             readerAuthenticated: Boolean
         ) {
-            private val result = DocumentRequest(
+            private val result = DocRequest(
                 docType,
                 encodedItemsRequest, requestInfo, encodedReaderAuth, readerCertChain,
                 readerAuthenticated
@@ -311,7 +311,7 @@ class DeviceRequestParser(
                 innerMap[entryName] = intentToRetain
             }
 
-            fun build(): DocumentRequest {
+            fun build(): DocRequest {
                 return result
             }
         }

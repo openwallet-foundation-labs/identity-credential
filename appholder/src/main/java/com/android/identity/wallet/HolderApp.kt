@@ -5,12 +5,12 @@ import android.content.Context
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
-import com.android.identity.credential.CredentialStore
-import com.android.identity.credentialtype.CredentialTypeRepository
-import com.android.identity.credentialtype.knowntypes.DrivingLicense
-import com.android.identity.credentialtype.knowntypes.EUPersonalID
-import com.android.identity.credentialtype.knowntypes.VaccinationDocument
-import com.android.identity.credentialtype.knowntypes.VehicleRegistration
+import com.android.identity.document.DocumentStore
+import com.android.identity.documenttype.DocumentTypeRepository
+import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.documenttype.knowntypes.VaccinationDocument
+import com.android.identity.documenttype.knowntypes.VehicleRegistration
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.GenericStorageEngine
@@ -30,8 +30,8 @@ import java.security.cert.X509Certificate
 
 class HolderApp: Application() {
 
-    private val credentialTypeRepository by lazy {
-        CredentialTypeRepository()
+    private val documentTypeRepository by lazy {
+        DocumentTypeRepository()
     }
 
     private val trustManager by lazy {
@@ -52,11 +52,11 @@ class HolderApp: Application() {
         DynamicColors.applyToActivitiesIfAvailable(this)
         PreferencesHelper.initialize(this)
         PeriodicKeysRefreshWorkRequest(this).schedulePeriodicKeysRefreshing()
-        credentialTypeRepositoryInstance = credentialTypeRepository
-        credentialTypeRepositoryInstance.addCredentialType(DrivingLicense.getCredentialType())
-        credentialTypeRepositoryInstance.addCredentialType(VehicleRegistration.getCredentialType())
-        credentialTypeRepositoryInstance.addCredentialType(VaccinationDocument.getCredentialType())
-        credentialTypeRepositoryInstance.addCredentialType(EUPersonalID.getCredentialType())
+        documentTypeRepositoryInstance = documentTypeRepository
+        documentTypeRepositoryInstance.addDocumentType(DrivingLicense.getDocumentType())
+        documentTypeRepositoryInstance.addDocumentType(VehicleRegistration.getDocumentType())
+        documentTypeRepositoryInstance.addDocumentType(VaccinationDocument.getDocumentType())
+        documentTypeRepositoryInstance.addDocumentType(EUPersonalID.getDocumentType())
         trustManagerInstance = trustManager
         certificateStorageEngineInstance = certificateStorageEngine
         certificateStorageEngineInstance.enumerate().forEach {
@@ -70,13 +70,13 @@ class HolderApp: Application() {
 
     companion object {
 
-        lateinit var credentialTypeRepositoryInstance: CredentialTypeRepository
+        lateinit var documentTypeRepositoryInstance: DocumentTypeRepository
         lateinit var trustManagerInstance: TrustManager
         lateinit var certificateStorageEngineInstance: StorageEngine
-        fun createCredentialStore(
+        fun createDocumentStore(
             context: Context,
             secureAreaRepository: SecureAreaRepository
-        ): CredentialStore {
+        ): DocumentStore {
             val storageDir = PreferencesHelper.getKeystoreBackedStorageLocation(context)
             val storageEngine = AndroidStorageEngine.Builder(context, storageDir).build()
 
@@ -85,7 +85,7 @@ class HolderApp: Application() {
 
             secureAreaRepository.addImplementation(androidKeystoreSecureArea)
             secureAreaRepository.addImplementation(softwareSecureArea)
-            return CredentialStore(storageEngine, secureAreaRepository)
+            return DocumentStore(storageEngine, secureAreaRepository)
         }
     }
 

@@ -71,7 +71,6 @@ import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalLong;
 
 import kotlin.Pair;
 
@@ -207,9 +206,9 @@ public class RequestServletTest {
             .parse();
 
         Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
-        List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
+        List<DeviceRequestParser.DocRequest> docRequestsList = dr.getDocRequests();
         Assert.assertEquals(docRequestsList.size(), 1);
-        DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
+        DeviceRequestParser.DocRequest docRequest = docRequestsList.get(0);
         Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
 
         Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey),
@@ -255,9 +254,9 @@ public class RequestServletTest {
                 .parse();
 
         Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
-        List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
+        List<DeviceRequestParser.DocRequest> docRequestsList = dr.getDocRequests();
         Assert.assertEquals(docRequestsList.size(), 1);
-        DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
+        DeviceRequestParser.DocRequest docRequest = docRequestsList.get(0);
         Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
         Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey), ServletConsts.OI_SUCCESS);
     }
@@ -295,9 +294,9 @@ public class RequestServletTest {
                 .parse();
 
         Assert.assertEquals(EngagementGenerator.ENGAGEMENT_VERSION_1_0, dr.getVersion());
-        List<DeviceRequestParser.DocumentRequest> docRequestsList = dr.getDocumentRequests();
+        List<DeviceRequestParser.DocRequest> docRequestsList = dr.getDocRequests();
         Assert.assertEquals(docRequestsList.size(), 1);
-        DeviceRequestParser.DocumentRequest docRequest = docRequestsList.get(0);
+        DeviceRequestParser.DocRequest docRequest = docRequestsList.get(0);
         Assert.assertEquals(docRequest.getDocType(), ServletConsts.MDL_DOCTYPE);
         Assert.assertEquals(RequestServlet.getOriginInfoStatus(dKey),
             ServletConsts.OI_FAILURE_START + ServletConsts.OI_FAILURE_END.trim());

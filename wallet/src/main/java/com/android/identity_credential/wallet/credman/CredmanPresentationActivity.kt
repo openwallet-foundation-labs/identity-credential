@@ -24,11 +24,11 @@ import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
-import com.android.identity.credential.AuthenticationKey
-import com.android.identity.credential.CredentialRequest
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.DocumentRequest
+import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
-import com.android.identity.issuance.CredentialExtensions.credentialConfiguration
+import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
@@ -40,7 +40,6 @@ import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.SelfSignedMdlIssuingAuthority
 import com.android.identity_credential.wallet.WalletApplication
 import com.android.identity_credential.wallet.showBiometricPrompt
 import org.json.JSONObject
@@ -76,7 +75,7 @@ class CredmanPresentationActivity : FragmentActivity() {
         val callingAppInfo = IntentHelper.extractCallingAppInfo(intent)
         //log("CredId: $credentialId ${request!!.credentialOptions.get(0).requestMatcher}")
 
-        val dataElements = mutableListOf<CredentialRequest.DataElement>()
+        val dataElements = mutableListOf<DocumentRequest.DataElement>()
 
         val json = JSONObject(request!!.credentialOptions.get(0).requestMatcher)
         val provider = json.getJSONArray("providers").getJSONObject(0)
@@ -98,7 +97,7 @@ class CredmanPresentationActivity : FragmentActivity() {
                 val nameSpaceName = name.substring(0, finalDot)
                 val dataElementName = name.substring(finalDot + 1)
                 dataElements.add(
-                    CredentialRequest.DataElement(
+                    DocumentRequest.DataElement(
                         nameSpaceName,
                         dataElementName,
                         false
@@ -107,12 +106,12 @@ class CredmanPresentationActivity : FragmentActivity() {
             }
         }
 
-        val credentialRequest = CredentialRequest(dataElements)
+        val documentRequest = DocumentRequest(dataElements)
 
-        val credentialStore = walletApp.credentialStore
-        val credentialName = credentialStore.listCredentials().get(credentialId.toInt())
-        val credential = credentialStore.lookupCredential(credentialName)
-        val credConf = credential!!.credentialConfiguration
+        val credentialStore = walletApp.documentStore
+        val credentialName = credentialStore.listDocuments().get(credentialId.toInt())
+        val credential = credentialStore.lookupDocument(credentialName)
+        val credConf = credential!!.documentConfiguration
 
         val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
             nonce,
@@ -129,7 +128,7 @@ class CredmanPresentationActivity : FragmentActivity() {
         }
         val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            credentialRequest, credConf.staticData, staticAuthData
+            documentRequest, credConf.staticData, staticAuthData
         )
 
         val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1

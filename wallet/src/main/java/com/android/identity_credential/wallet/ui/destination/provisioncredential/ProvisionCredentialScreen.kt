@@ -1,6 +1,5 @@
 package com.android.identity_credential.wallet.ui.destination.provisioncredential
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.identity.credential.CredentialStore
+import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
@@ -34,12 +33,12 @@ import com.android.identity_credential.wallet.ui.ScreenWithAppBar
 
 
 @Composable
-fun ProvisionCredentialScreen(
+fun ProvisionDocumentScreen(
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
     permissionTracker: PermissionTracker,
     issuingAuthorityRepository: IssuingAuthorityRepository,
-    credentialStore: CredentialStore
+    documentStore: DocumentStore
 ) {
     ScreenWithAppBar(title = stringResource(R.string.provisioning_title), navigationIcon = {
         if (provisioningViewModel.state.value != ProvisioningViewModel.State.PROOFING_COMPLETE) {
@@ -92,7 +91,7 @@ fun ProvisionCredentialScreen(
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseQuestionString(inputString),
                                     issuingAuthorityRepository = issuingAuthorityRepository,
-                                    credentialStore = credentialStore
+                                    documentStore = documentStore
                                 )
                             }
                         )
@@ -103,7 +102,7 @@ fun ProvisionCredentialScreen(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,
-                            credentialStore = credentialStore
+                            documentStore = documentStore
                         )
                     }
 
@@ -112,7 +111,7 @@ fun ProvisionCredentialScreen(
                             evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,
-                            credentialStore = credentialStore
+                            documentStore = documentStore
                         )
                     }
 
@@ -123,7 +122,7 @@ fun ProvisionCredentialScreen(
                                 provisioningViewModel.provideEvidence(
                                     evidence = EvidenceResponseQuestionMultipleChoice(selectedOption),
                                     issuingAuthorityRepository = issuingAuthorityRepository,
-                                    credentialStore = credentialStore
+                                    documentStore = documentStore
                                 )
                             }
                         )
@@ -134,7 +133,7 @@ fun ProvisionCredentialScreen(
                             evidenceRequest = evidenceRequest,
                             provisioningViewModel = provisioningViewModel,
                             issuingAuthorityRepository = issuingAuthorityRepository,
-                            credentialStore = credentialStore,
+                            documentStore = documentStore,
                             permissionTracker = permissionTracker
                         )
                     }

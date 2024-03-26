@@ -1,7 +1,7 @@
 package com.android.identity.wallet.documentdata
 
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.StringOption
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.StringOption
 
 object DrivingLicense {
     const val MDL_NAMESPACE = "org.iso.18013.5.1"
@@ -13,7 +13,7 @@ object DrivingLicense {
             true,
             "vehicle_category_code",
             "Vehicle Category Code",
-            CredentialAttributeType.StringOptions(
+            DocumentAttributeType.StringOptions(
                 listOf(
                     StringOption(null, "(not set)"),
                     StringOption("A", "Motorcycles (A)"),
@@ -41,7 +41,7 @@ object DrivingLicense {
             true,
             "issue_date",
             "Date of Issue",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MDL_NAMESPACE,
@@ -49,7 +49,7 @@ object DrivingLicense {
             true,
             "expiry_date",
             "Date of Expiry",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             MDL_NAMESPACE,
@@ -57,7 +57,7 @@ object DrivingLicense {
             true,
             "codes",
             "Codes of Driving Privileges",
-            CredentialAttributeType.ComplexType,
+            DocumentAttributeType.ComplexType,
         )
         // details of DrivingPrivilege.codes
         .addDefinition(
@@ -66,7 +66,7 @@ object DrivingLicense {
             true,
             "code",
             "Code",
-            CredentialAttributeType.StringOptions(
+            DocumentAttributeType.StringOptions(
                 listOf(
                     StringOption(null, "(not set)"),
                     StringOption(
@@ -110,7 +110,7 @@ object DrivingLicense {
             true,
             "sign",
             "Sign",
-            CredentialAttributeType.StringOptions(
+            DocumentAttributeType.StringOptions(
                 listOf(
                     StringOption(null, "(not set)"),
                     StringOption("=", "Equals (=)"),
@@ -127,7 +127,7 @@ object DrivingLicense {
             true,
             "value",
             "Value",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         ).
             // details of domestic_driving_privileges
         addDefinition(
@@ -136,7 +136,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_class",
             "Domestic Vehicle Class",
-            CredentialAttributeType.ComplexType,
+            DocumentAttributeType.ComplexType,
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -144,7 +144,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_restrictions",
             "Domestic Vehicle Restrictions",
-            CredentialAttributeType.ComplexType
+            DocumentAttributeType.ComplexType
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -152,7 +152,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_endorsements",
             "Domestic Vehicle Endorsements",
-            CredentialAttributeType.ComplexType
+            DocumentAttributeType.ComplexType
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_class
         .addDefinition(
@@ -161,7 +161,7 @@ object DrivingLicense {
             false,
             "domestic_vehicle_class_code",
             "Domestic Vehicle Class Code",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -169,7 +169,7 @@ object DrivingLicense {
             false,
             "domestic_vehicle_class_description",
             "Domestic Vehicle Class Description",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -177,7 +177,7 @@ object DrivingLicense {
             false,
             "issue_date",
             "Date of Issue",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -185,7 +185,7 @@ object DrivingLicense {
             false,
             "expiry_date",
             "Date of Expiry",
-            CredentialAttributeType.Date
+            DocumentAttributeType.Date
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_restrictions
         .addDefinition(
@@ -194,7 +194,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_restriction_code",
             "Restriction Code",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -202,7 +202,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_restriction_description",
             "Vehicle Category Description",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         // details of DomesticDrivingPrivilege.domestic_vehicle_endorsements
         .addDefinition(
@@ -211,7 +211,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_endorsement_code",
             "Endorsement Code",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .addDefinition(
             AAMVA_NAMESPACE,
@@ -219,7 +219,7 @@ object DrivingLicense {
             true,
             "domestic_vehicle_endorsement_description",
             "Vehicle Endorsement Description",
-            CredentialAttributeType.String
+            DocumentAttributeType.String
         )
         .build()
 }

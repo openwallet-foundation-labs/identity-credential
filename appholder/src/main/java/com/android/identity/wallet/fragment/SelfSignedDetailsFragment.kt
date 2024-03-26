@@ -34,9 +34,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.android.identity.credentialtype.CredentialAttributeType
-import com.android.identity.credentialtype.IntegerOption
-import com.android.identity.credentialtype.StringOption
+import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.documenttype.IntegerOption
+import com.android.identity.documenttype.StringOption
 import com.android.identity.wallet.databinding.FragmentSelfSignedDetailsBinding
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil.fullDateStringToMilliseconds
@@ -89,7 +89,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 0,
                 "Document Name",
                 provisionInfo.docName,
-                CredentialAttributeType.String,
+                DocumentAttributeType.String,
                 documentName
             )
         )
@@ -144,7 +144,7 @@ class SelfSignedDetailsFragment : Fragment() {
 
     private fun getField(field: Field): Field {
         return when (field.fieldType) {
-            is CredentialAttributeType.Picture -> {
+            is DocumentAttributeType.Picture -> {
                 Field(
                     field.id,
                     field.label,
@@ -158,7 +158,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 )
             }
 
-            is CredentialAttributeType.Boolean -> {
+            is DocumentAttributeType.Boolean -> {
                 Field(
                     field.id,
                     field.label,
@@ -191,7 +191,7 @@ class SelfSignedDetailsFragment : Fragment() {
 
     private fun addField(field: Field) {
         when (field.fieldType) {
-            is CredentialAttributeType.Picture -> {
+            is DocumentAttributeType.Picture -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTextView(field.id + 500, field.label)
                 )
@@ -200,7 +200,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 ) { dispatchTakePictureIntent(field.id) })
             }
 
-            is CredentialAttributeType.Boolean -> {
+            is DocumentAttributeType.Boolean -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTextView(field.id + 500, field.label)
                 )
@@ -209,7 +209,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 )
             }
 
-            is CredentialAttributeType.String, CredentialAttributeType.Number -> {
+            is DocumentAttributeType.String, DocumentAttributeType.Number -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTextView(field.id + 500, field.label)
                 )
@@ -218,7 +218,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 )
             }
 
-            is CredentialAttributeType.Date, CredentialAttributeType.DateTime -> {
+            is DocumentAttributeType.Date, DocumentAttributeType.DateTime -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTextView(field.id + 500, field.label)
                 )
@@ -227,7 +227,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 )
             }
 
-            is CredentialAttributeType.IntegerOptions -> {
+            is DocumentAttributeType.IntegerOptions -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTextView(field.id + 500, field.label)
                 )
@@ -238,7 +238,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 )
             }
 
-            is CredentialAttributeType.StringOptions -> {
+            is DocumentAttributeType.StringOptions -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTextView(field.id + 500, field.label)
                 )
@@ -249,7 +249,7 @@ class SelfSignedDetailsFragment : Fragment() {
                 )
             }
 
-            is CredentialAttributeType.ComplexType -> {
+            is DocumentAttributeType.ComplexType -> {
                 binding.layoutSelfSignedDetails.addView(
                     getTitleView(field.id + 500, field.label)
                 )

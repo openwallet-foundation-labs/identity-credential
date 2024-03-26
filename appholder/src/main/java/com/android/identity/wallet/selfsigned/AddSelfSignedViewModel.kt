@@ -20,8 +20,8 @@ class AddSelfSignedViewModel(
     )
 
     val documentItems: List<DocumentItem> =
-        HolderApp.credentialTypeRepositoryInstance.credentialTypes.filter { it.mdocCredentialType != null }
-            .map { DocumentItem(it.mdocCredentialType!!.docType, it.displayName) }
+        HolderApp.documentTypeRepositoryInstance.documentTypes.filter { it.mdocDocumentType != null }
+            .map { DocumentItem(it.mdocDocumentType!!.docType, it.displayName) }
 
 
     fun updateDocumentType(newValue: String, newName: String) {

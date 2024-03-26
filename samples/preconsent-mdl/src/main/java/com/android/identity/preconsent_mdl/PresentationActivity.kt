@@ -43,7 +43,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleOwner
-import com.android.identity.credential.NameSpacedData
+import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
@@ -253,16 +253,16 @@ class PresentationActivity : ComponentActivity() {
             transferHelper.getDeviceRequest(),
             transferHelper.getSessionTranscript()
         ).parse()
-        val docRequest = request.documentRequests[0]
-        val credentialRequest = MdocUtil.generateCredentialRequest(docRequest!!)
+        val docRequest = request.docRequests[0]
+        val documentRequest = MdocUtil.generateDocumentRequest(docRequest!!)
         val now = Timestamp.now()
-        val credential = transferHelper.credentialStore.lookupCredential(MainActivity.CREDENTIAL_ID)!!
-        val authKey = credential.findAuthenticationKey(MainActivity.AUTH_KEY_DOMAIN, now)!!
+        val document = transferHelper.documentStore.lookupDocument(MainActivity.CREDENTIAL_ID)!!
+        val authKey = document.findAuthenticationKey(MainActivity.AUTH_KEY_DOMAIN, now)!!
 
         val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            credentialRequest,
-            credential.applicationData.getNameSpacedData("credentialData"),
+            documentRequest,
+            document.applicationData.getNameSpacedData("documentData"),
             staticAuthData
         )
 
