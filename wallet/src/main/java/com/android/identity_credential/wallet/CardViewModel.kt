@@ -238,7 +238,7 @@ class CardViewModel : ViewModel() {
         val data = credential.renderDocumentDetails(context, credentialTypeRepository)
 
         val keyInfos = mutableStateListOf<CardKeyInfo>()
-        for (authKey in credential.authenticationKeys) {
+        for (authKey in credential.certifiedAuthenticationKeys) {
             keyInfos.add(createCardInfoForAuthKey(authKey))
         }
 

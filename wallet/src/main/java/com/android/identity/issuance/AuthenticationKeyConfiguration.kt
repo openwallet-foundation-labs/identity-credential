@@ -1,8 +1,7 @@
 package com.android.identity.issuance
 
 /**
- * The configuration to use when creating new [Credential.PendingAuthenticationKey] instances.
- * instances.
+ * The configuration to use when creating new `AuthenticationKey` instances.
  */
 data class AuthenticationKeyConfiguration(
     /**

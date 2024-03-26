@@ -36,7 +36,6 @@ import com.android.identity.wallet.support.SecureAreaSupport
 import com.android.identity.wallet.util.DocumentData.MICOV_DOCTYPE
 import com.android.identity.wallet.util.DocumentData.MVR_DOCTYPE
 import java.io.ByteArrayOutputStream
-import java.security.cert.X509Certificate
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -288,7 +287,7 @@ class ProvisioningUtil private constructor(
                 val authKeySecureArea = instance!!.secureAreaRepository.getImplementation(authKeySecureAreaIdentifier)
                     ?: throw IllegalStateException("No Secure Area with id ${authKeySecureAreaIdentifier} for credential ${it.name}")
 
-                val authKeys = authenticationKeys.map { key ->
+                val authKeys = certifiedAuthenticationKeys.map { key ->
                     val info = authKeySecureArea.getKeyInfo(key.alias)
                     DocumentInformation.KeyData(
                         counter = key.authenticationKeyCounter.toInt(),

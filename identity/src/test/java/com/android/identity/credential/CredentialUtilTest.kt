@@ -53,7 +53,7 @@ class CredentialUtilTest {
         val credential = credentialStore.createCredential(
             "testCredential"
         )
-        Assert.assertEquals(0, credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(0, credential.certifiedAuthenticationKeys.size.toLong())
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
         val authKeySettings = CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
         val numAuthKeys = 10
@@ -91,7 +91,7 @@ class CredentialUtilTest {
         }
         // We should now have |numAuthKeys| certified keys and none pending
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(numAuthKeys.toLong(), credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(numAuthKeys.toLong(), credential.certifiedAuthenticationKeys.size.toLong())
 
         // Certifying again at this point should not make a difference.
         numKeysCreated = CredentialUtil.managedAuthenticationKeyHelper(
@@ -109,7 +109,7 @@ class CredentialUtilTest {
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
 
         // Use up until just before the limit, and check it doesn't make a difference
-        for (ak in credential.authenticationKeys) {
+        for (ak in credential.certifiedAuthenticationKeys) {
             for (n in 0 until maxUsesPerKey - 1) {
                 ak.increaseUsageCount()
             }
@@ -131,7 +131,7 @@ class CredentialUtilTest {
         // For the first 5, use one more time and check replacements are generated for those
         // Let the replacements expire just a tad later
         count = 0
-        for (ak in credential.authenticationKeys) {
+        for (ak in credential.certifiedAuthenticationKeys) {
             ak.increaseUsageCount()
             if (++count >= 5) {
                 break
@@ -161,12 +161,12 @@ class CredentialUtilTest {
         }
         // We should now have |numAuthKeys| certified keys and none pending
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(numAuthKeys.toLong(), credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(numAuthKeys.toLong(), credential.certifiedAuthenticationKeys.size.toLong())
         // Check that the _right_ ones were removed by inspecting issuer-provided data.
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         count = 0
-        for (authKey in credential.authenticationKeys) {
+        for (authKey in credential.certifiedAuthenticationKeys) {
             val expectedData = arrayOf(
                 byteArrayOf(0, 5),
                 byteArrayOf(0, 6),
@@ -208,12 +208,12 @@ class CredentialUtilTest {
         }
         // We should now have |numAuthKeys| certified keys and none pending
         Assert.assertEquals(0, credential.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(numAuthKeys.toLong(), credential.authenticationKeys.size.toLong())
+        Assert.assertEquals(numAuthKeys.toLong(), credential.certifiedAuthenticationKeys.size.toLong())
         // Check that the _right_ ones were removed by inspecting issuer-provided data.
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         count = 0
-        for (authKey in credential.authenticationKeys) {
+        for (authKey in credential.certifiedAuthenticationKeys) {
             val expectedData = arrayOf(
                 byteArrayOf(1, 0),
                 byteArrayOf(1, 1),

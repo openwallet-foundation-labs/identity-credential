@@ -135,7 +135,7 @@ class DeviceRetrievalHelperTest {
         mTimeSigned = ofEpochMilli(nowMillis)
         mTimeValidityBegin = ofEpochMilli(nowMillis + 3600 * 1000)
         mTimeValidityEnd = ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        val pendingAuthKey = mCredential.createPendingAuthenticationKey(
+        mAuthKey = mCredential.createAuthenticationKey(
             AUTH_KEY_DOMAIN,
             mSecureArea,
             SoftwareCreateKeySettings.Builder(ByteArray(0))
@@ -143,12 +143,13 @@ class DeviceRetrievalHelperTest {
                 .build(),
             null
         )
+        Assert.assertFalse(mAuthKey.isCertified)
 
         // Generate an MSO and issuer-signed data for this authentication key.
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             MDL_DOCTYPE,
-            pendingAuthKey.attestation.certificates[0].publicKey
+            mAuthKey.attestation.certificates[0].publicKey
         )
         msoGenerator.setValidityInfo(mTimeSigned, mTimeValidityBegin, mTimeValidityEnd, null)
         val issuerNameSpaces = generateIssuerNameSpaces(
@@ -212,7 +213,7 @@ class DeviceRetrievalHelperTest {
         ).generate()
 
         // Now that we have issuer-provided authentication data we certify the authentication key.
-        mAuthKey = pendingAuthKey.certify(
+        mAuthKey.certify(
             issuerProvidedAuthenticationData,
             mTimeValidityBegin,
             mTimeValidityEnd
