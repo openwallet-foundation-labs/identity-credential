@@ -70,7 +70,7 @@ fun DocumentInfoScreen(
 
     DocumentInfoScreenContent(
         screenState = state,
-        onRefreshAuthKeys = viewModel::refreshAuthKeys,
+        onRefreshCredentials = viewModel::refreshCredentials,
         onShowDocumentElements = { onNavigateToDocumentDetails() },
         onDeleteDocument = { viewModel.promptDocumentDelete() },
         onConfirmDocumentDelete = viewModel::confirmDocumentDelete,
@@ -83,7 +83,7 @@ fun DocumentInfoScreen(
 private fun DocumentInfoScreenContent(
     modifier: Modifier = Modifier,
     screenState: DocumentInfoScreenState,
-    onRefreshAuthKeys: () -> Unit,
+    onRefreshCredentials: () -> Unit,
     onShowDocumentElements: () -> Unit,
     onDeleteDocument: () -> Unit,
     onConfirmDocumentDelete: () -> Unit,
@@ -175,7 +175,7 @@ private fun DocumentInfoScreenContent(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
                                     .weight(1f)
-                                    .clickable { onRefreshAuthKeys() },
+                                    .clickable { onRefreshCredentials() },
                                 horizontalAlignment = CenterHorizontally
                             ) {
                                 Column(
@@ -403,12 +403,11 @@ private fun PreviewDocumentInfoScreenLoading() {
             screenState = DocumentInfoScreenState(
                 isLoading = true
             ),
-            onRefreshAuthKeys = {},
+            onRefreshCredentials = {},
             onShowDocumentElements = {},
             onDeleteDocument = {},
-            onConfirmDocumentDelete = {},
-            onCancelDocumentDelete = {}
-        )
+            onConfirmDocumentDelete = {}
+        ) {}
     }
 }
 
@@ -450,11 +449,10 @@ private fun PreviewDocumentInfoScreen() {
                     )
                 )
             ),
-            onRefreshAuthKeys = {},
+            onRefreshCredentials = {},
             onShowDocumentElements = {},
             onDeleteDocument = {},
-            onConfirmDocumentDelete = {},
-            onCancelDocumentDelete = {}
-        )
+            onConfirmDocumentDelete = {}
+        ) {}
     }
 }

@@ -21,7 +21,7 @@ import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.securearea.userAuthenticationTypeSet
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
@@ -51,7 +51,7 @@ class AndroidKeystoreSecureAreaSupport(
     )
 
     override fun Fragment.unlockKey(
-        authKey: AuthenticationKey,
+        authKey: Credential,
         onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {

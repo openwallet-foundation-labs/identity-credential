@@ -24,7 +24,7 @@ import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
@@ -110,8 +110,8 @@ class CredmanPresentationActivity : FragmentActivity() {
 
         val credentialStore = walletApp.documentStore
         val credentialName = credentialStore.listDocuments().get(credentialId.toInt())
-        val credential = credentialStore.lookupDocument(credentialName)
-        val credConf = credential!!.documentConfiguration
+        val document = credentialStore.lookupDocument(credentialName)
+        val credConf = document!!.documentConfiguration
 
         val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
             nonce,
@@ -119,14 +119,14 @@ class CredmanPresentationActivity : FragmentActivity() {
             "com.android.mdl.appreader"
         ) // TODO: get from |request|
 
-        val authKey = credential.findAuthenticationKey(
-            WalletApplication.AUTH_KEY_DOMAIN,
+        val credential = document.findCredential(
+            WalletApplication.CREDENTIAL_DOMAIN,
             Timestamp.now()
         )
-        if (authKey == null) {
-            throw IllegalStateException("No authkey")
+        if (credential == null) {
+            throw IllegalStateException("No credential")
         }
-        val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
+        val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
             documentRequest, credConf.staticData, staticAuthData
         )
@@ -144,11 +144,11 @@ class CredmanPresentationActivity : FragmentActivity() {
         )
         documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
         try {
-            addDeviceNamespaces(documentGenerator, authKey, null)
-            completeResponse(authKey, deviceResponseGenerator, documentGenerator,
+            addDeviceNamespaces(documentGenerator, credential, null)
+            completeResponse(credential, deviceResponseGenerator, documentGenerator,
                 requesterIdentity, encodedSessionTranscript)
         } catch (e: KeyLockedException) {
-            val keyUnlockData = AndroidKeystoreKeyUnlockData(authKey.alias)
+            val keyUnlockData = AndroidKeystoreKeyUnlockData(credential.alias)
             showBiometricPrompt(
                 this,
                 title = applicationContext.resources.getString(R.string.presentation_biometric_prompt_title),
@@ -157,8 +157,8 @@ class CredmanPresentationActivity : FragmentActivity() {
                 setOf(UserAuthenticationType.BIOMETRIC, UserAuthenticationType.LSKF),
                 false,
                 onSuccess = {
-                    addDeviceNamespaces(documentGenerator, authKey, keyUnlockData)
-                    completeResponse(authKey, deviceResponseGenerator, documentGenerator,
+                    addDeviceNamespaces(documentGenerator, credential, keyUnlockData)
+                    completeResponse(credential, deviceResponseGenerator, documentGenerator,
                         requesterIdentity, encodedSessionTranscript)
                 },
                 onCanceled = {},
@@ -171,7 +171,7 @@ class CredmanPresentationActivity : FragmentActivity() {
 
     private fun addDeviceNamespaces(
         documentGenerator: DocumentGenerator,
-        authKey: AuthenticationKey,
+        authKey: Credential,
         unlockData: KeyUnlockData?
     ) {
         documentGenerator.setDeviceNamespacesSignature(
@@ -183,7 +183,7 @@ class CredmanPresentationActivity : FragmentActivity() {
     }
 
     private fun completeResponse(
-        authKey: AuthenticationKey,
+        authKey: Credential,
         deviceResponseGenerator: DeviceResponseGenerator,
         documentGenerator: DocumentGenerator,
         requesterIdentity: PublicKey,

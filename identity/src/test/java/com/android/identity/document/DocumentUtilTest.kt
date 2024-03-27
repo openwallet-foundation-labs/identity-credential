@@ -45,7 +45,7 @@ class DocumentUtilTest {
     }
 
     @Test
-    fun managedAuthenticationKeyHelper() {
+    fun managedCredentialHelper() {
         val documentStore = DocumentStore(
             storageEngine,
             secureAreaRepository
@@ -53,120 +53,120 @@ class DocumentUtilTest {
         val document = documentStore.createDocument(
             "testDocument"
         )
-        Assert.assertEquals(0, document.certifiedAuthenticationKeys.size.toLong())
-        Assert.assertEquals(0, document.pendingAuthenticationKeys.size.toLong())
+        Assert.assertEquals(0, document.certifiedCredentials.size.toLong())
+        Assert.assertEquals(0, document.pendingCredentials.size.toLong())
         val authKeySettings = CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
-        val numAuthKeys = 10
-        val maxUsesPerKey = 5
+        val numCreds = 10
+        val maxUsesPerCred = 5
         val minValidTimeMillis = 10L
-        var numKeysCreated: Int
-        val managedKeyDomain = "managedAuthenticationKeys"
+        var numCredsCreated: Int
+        val managedCredDomain = "managedCredentials"
 
-        // Start the process at time 100 and certify all those keys so they're
+        // Start the process at time 100 and certify all those credentials so they're
         // valid until time 200.
-        numKeysCreated = DocumentUtil.managedAuthenticationKeyHelper(
+        numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             secureArea,
             authKeySettings,
-            managedKeyDomain,
+            managedCredDomain,
             Timestamp.ofEpochMilli(100),
-            numAuthKeys,
-            maxUsesPerKey,
+            numCreds,
+            maxUsesPerCred,
             minValidTimeMillis,
             false
         )
-        Assert.assertEquals(numAuthKeys.toLong(), numKeysCreated.toLong())
+        Assert.assertEquals(numCreds.toLong(), numCredsCreated.toLong())
         Assert.assertEquals(
-            numAuthKeys.toLong(),
-            document.pendingAuthenticationKeys.size.toLong()
+            numCreds.toLong(),
+            document.pendingCredentials.size.toLong()
         )
         var count = 0
-        for (pak in document.pendingAuthenticationKeys) {
-            Assert.assertTrue(pak.applicationData.getBoolean(managedKeyDomain))
+        for (pak in document.pendingCredentials) {
+            Assert.assertTrue(pak.applicationData.getBoolean(managedCredDomain))
             pak.certify(
                 byteArrayOf(0, count++.toByte()),
                 Timestamp.ofEpochMilli(100),
                 Timestamp.ofEpochMilli(200)
             )
         }
-        // We should now have |numAuthKeys| certified keys and none pending
-        Assert.assertEquals(0, document.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(numAuthKeys.toLong(), document.certifiedAuthenticationKeys.size.toLong())
+        // We should now have |numCreds| certified credentials and none pending
+        Assert.assertEquals(0, document.pendingCredentials.size.toLong())
+        Assert.assertEquals(numCreds.toLong(), document.certifiedCredentials.size.toLong())
 
         // Certifying again at this point should not make a difference.
-        numKeysCreated = DocumentUtil.managedAuthenticationKeyHelper(
+        numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             secureArea,
             authKeySettings,
-            managedKeyDomain,
+            managedCredDomain,
             Timestamp.ofEpochMilli(100),
-            numAuthKeys,
-            maxUsesPerKey,
+            numCreds,
+            maxUsesPerCred,
             minValidTimeMillis,
             false
         )
-        Assert.assertEquals(0, numKeysCreated.toLong())
-        Assert.assertEquals(0, document.pendingAuthenticationKeys.size.toLong())
+        Assert.assertEquals(0, numCredsCreated.toLong())
+        Assert.assertEquals(0, document.pendingCredentials.size.toLong())
 
         // Use up until just before the limit, and check it doesn't make a difference
-        for (ak in document.certifiedAuthenticationKeys) {
-            for (n in 0 until maxUsesPerKey - 1) {
+        for (ak in document.certifiedCredentials) {
+            for (n in 0 until maxUsesPerCred - 1) {
                 ak.increaseUsageCount()
             }
         }
-        numKeysCreated = DocumentUtil.managedAuthenticationKeyHelper(
+        numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             secureArea,
             authKeySettings,
-            managedKeyDomain,
+            managedCredDomain,
             Timestamp.ofEpochMilli(100),
-            numAuthKeys,
-            maxUsesPerKey,
+            numCreds,
+            maxUsesPerCred,
             minValidTimeMillis,
             false
         )
-        Assert.assertEquals(0, numKeysCreated.toLong())
-        Assert.assertEquals(0, document.pendingAuthenticationKeys.size.toLong())
+        Assert.assertEquals(0, numCredsCreated.toLong())
+        Assert.assertEquals(0, document.pendingCredentials.size.toLong())
 
         // For the first 5, use one more time and check replacements are generated for those
         // Let the replacements expire just a tad later
         count = 0
-        for (ak in document.certifiedAuthenticationKeys) {
+        for (ak in document.certifiedCredentials) {
             ak.increaseUsageCount()
             if (++count >= 5) {
                 break
             }
         }
-        numKeysCreated = DocumentUtil.managedAuthenticationKeyHelper(
+        numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             secureArea,
             authKeySettings,
-            managedKeyDomain,
+            managedCredDomain,
             Timestamp.ofEpochMilli(100),
-            numAuthKeys,
-            maxUsesPerKey,
+            numCreds,
+            maxUsesPerCred,
             minValidTimeMillis,
             false
         )
-        Assert.assertEquals(5, numKeysCreated.toLong())
-        Assert.assertEquals(5, document.pendingAuthenticationKeys.size.toLong())
+        Assert.assertEquals(5, numCredsCreated.toLong())
+        Assert.assertEquals(5, document.pendingCredentials.size.toLong())
         count = 0
-        for (pak in document.pendingAuthenticationKeys) {
-            Assert.assertEquals(managedKeyDomain, pak.domain)
+        for (pak in document.pendingCredentials) {
+            Assert.assertEquals(managedCredDomain, pak.domain)
             pak.certify(
                 byteArrayOf(1, count++.toByte()),
                 Timestamp.ofEpochMilli(100),
                 Timestamp.ofEpochMilli(210)
             )
         }
-        // We should now have |numAuthKeys| certified keys and none pending
-        Assert.assertEquals(0, document.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(numAuthKeys.toLong(), document.certifiedAuthenticationKeys.size.toLong())
+        // We should now have |numCreds| certified credentials and none pending
+        Assert.assertEquals(0, document.pendingCredentials.size.toLong())
+        Assert.assertEquals(numCreds.toLong(), document.certifiedCredentials.size.toLong())
         // Check that the _right_ ones were removed by inspecting issuer-provided data.
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         count = 0
-        for (authKey in document.certifiedAuthenticationKeys) {
+        for (cred in document.certifiedCredentials) {
             val expectedData = arrayOf(
                 byteArrayOf(0, 5),
                 byteArrayOf(0, 6),
@@ -179,41 +179,41 @@ class DocumentUtilTest {
                 byteArrayOf(1, 3),
                 byteArrayOf(1, 4)
             )
-            Assert.assertArrayEquals(expectedData[count++], authKey.issuerProvidedData)
+            Assert.assertArrayEquals(expectedData[count++], cred.issuerProvidedData)
         }
 
-        // Now move close to the expiration date of the original five auth keys.
+        // Now move close to the expiration date of the original five credentials.
         // This should trigger just them for replacement
-        numKeysCreated = DocumentUtil.managedAuthenticationKeyHelper(
+        numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
             secureArea,
             authKeySettings,
-            managedKeyDomain,
+            managedCredDomain,
             Timestamp.ofEpochMilli(195),
-            numAuthKeys,
-            maxUsesPerKey,
+            numCreds,
+            maxUsesPerCred,
             minValidTimeMillis,
             false
         )
-        Assert.assertEquals(5, numKeysCreated.toLong())
-        Assert.assertEquals(5, document.pendingAuthenticationKeys.size.toLong())
+        Assert.assertEquals(5, numCredsCreated.toLong())
+        Assert.assertEquals(5, document.pendingCredentials.size.toLong())
         count = 0
-        for (pak in document.pendingAuthenticationKeys) {
-            Assert.assertEquals(managedKeyDomain, pak.domain)
+        for (pak in document.pendingCredentials) {
+            Assert.assertEquals(managedCredDomain, pak.domain)
             pak.certify(
                 byteArrayOf(2, count++.toByte()),
                 Timestamp.ofEpochMilli(100),
                 Timestamp.ofEpochMilli(210)
             )
         }
-        // We should now have |numAuthKeys| certified keys and none pending
-        Assert.assertEquals(0, document.pendingAuthenticationKeys.size.toLong())
-        Assert.assertEquals(numAuthKeys.toLong(), document.certifiedAuthenticationKeys.size.toLong())
+        // We should now have |numCreds| certified credentials and none pending
+        Assert.assertEquals(0, document.pendingCredentials.size.toLong())
+        Assert.assertEquals(numCreds.toLong(), document.certifiedCredentials.size.toLong())
         // Check that the _right_ ones were removed by inspecting issuer-provided data.
         // We rely on some implementation details on how ordering works... also cross-reference
         // with data passed into certify() functions above.
         count = 0
-        for (authKey in document.certifiedAuthenticationKeys) {
+        for (credential in document.certifiedCredentials) {
             val expectedData = arrayOf(
                 byteArrayOf(1, 0),
                 byteArrayOf(1, 1),
@@ -226,7 +226,7 @@ class DocumentUtilTest {
                 byteArrayOf(2, 3),
                 byteArrayOf(2, 4)
             )
-            Assert.assertArrayEquals(expectedData[count++], authKey.issuerProvidedData)
+            Assert.assertArrayEquals(expectedData[count++], credential.issuerProvidedData)
         }
     }
 }

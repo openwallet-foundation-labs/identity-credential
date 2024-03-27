@@ -24,7 +24,7 @@ import com.android.identity.cbor.toDataItem
 import com.android.identity.cose.Cose
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.DocumentRequest.DataElement
@@ -62,7 +62,7 @@ class DeviceResponseGeneratorTest {
     private lateinit var secureArea: SecureArea
     private lateinit var secureAreaRepository: SecureAreaRepository
 
-    private lateinit  var authKey: AuthenticationKey
+    private lateinit  var authKey: Credential
     private lateinit  var document: Document
     private lateinit  var timeSigned: Timestamp
     private lateinit  var timeValidityBegin: Timestamp
@@ -117,7 +117,7 @@ class DeviceResponseGeneratorTest {
         timeSigned = Timestamp.ofEpochMilli(nowMillis)
         timeValidityBegin = Timestamp.ofEpochMilli(nowMillis + 3600 * 1000)
         timeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        authKey = document.createAuthenticationKey(
+        authKey = document.createCredential(
             AUTH_KEY_DOMAIN,
             secureArea,
             SoftwareCreateKeySettings.Builder(ByteArray(0))

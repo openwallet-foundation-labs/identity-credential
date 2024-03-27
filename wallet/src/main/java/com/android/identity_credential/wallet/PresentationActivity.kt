@@ -43,7 +43,7 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
@@ -164,7 +164,7 @@ class PresentationActivity : FragmentActivity() {
         finish()
     }
 
-    private fun onAuthenticationKeyLocked(authKey: AuthenticationKey) {
+    private fun onAuthenticationKeyLocked(authKey: Credential) {
         val keyInfo = authKey.secureArea.getKeyInfo(authKey.alias)
         var userAuthenticationTypes = emptySet<UserAuthenticationType>()
         if (keyInfo is AndroidKeystoreKeyInfo) {
@@ -191,7 +191,7 @@ class PresentationActivity : FragmentActivity() {
 
     private fun finishProcessingRequest(
         keyUnlockData: KeyUnlockData? = null,
-        authKey: AuthenticationKey? = null,
+        authKey: Credential? = null,
     ) {
         // finish processing the request on IO thread
         lifecycleScope.launch {

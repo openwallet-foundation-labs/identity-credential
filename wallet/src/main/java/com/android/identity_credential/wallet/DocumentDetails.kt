@@ -101,10 +101,10 @@ fun Document.renderDocumentDetails(
     context: Context,
     documentTypeRepository: DocumentTypeRepository
 ): DocumentDetails {
-    if (certifiedAuthenticationKeys.size == 0) {
+    if (certifiedCredentials.size == 0) {
         return DocumentDetails("Unknown", null, null, mapOf())
     }
-    val authKey = certifiedAuthenticationKeys[0]
+    val authKey = certifiedCredentials[0]
 
     var portrait: Bitmap? = null
     var signatureOrUsualMark: Bitmap? = null
