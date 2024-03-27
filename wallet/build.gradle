@@ -58,6 +58,7 @@ dependencies {
     implementation project(':identity-android')
     implementation project(':mrtd-reader')
     implementation project(':cbor-processor')
+    implementation project(':jpeg2k')
 
     ksp project(':cbor-processor')
 

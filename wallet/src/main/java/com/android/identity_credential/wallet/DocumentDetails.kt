@@ -2,7 +2,6 @@ package com.android.identity_credential.wallet
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.DiagnosticOption
 import com.android.identity.document.Document
@@ -10,6 +9,7 @@ import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.MdocDocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.jpeg2k.Jpeg2kConverter
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 
@@ -127,18 +127,11 @@ fun Document.renderDocumentDetails(
             digestIdMapping
         )
         if (result.portrait != null) {
-            portrait = BitmapFactory.decodeByteArray(
-                result.portrait,
-                0,
-                result.portrait.size
-            )
+            portrait = Jpeg2kConverter.decodeByteArray(context, result.portrait)
         }
         if (result.signatureOrUsualMark != null) {
-            signatureOrUsualMark = BitmapFactory.decodeByteArray(
-                result.signatureOrUsualMark,
-                0,
-                result.signatureOrUsualMark.size
-            )
+            signatureOrUsualMark = Jpeg2kConverter.decodeByteArray(
+                context, result.signatureOrUsualMark)
         }
         kvPairs += result.keysAndValues
     }

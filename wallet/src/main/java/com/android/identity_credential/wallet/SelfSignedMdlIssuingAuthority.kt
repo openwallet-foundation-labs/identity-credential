@@ -23,7 +23,12 @@ import com.android.identity.storage.StorageEngine
 import com.android.identity_credential.mrtd.MrtdNfcData
 import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 import java.io.ByteArrayOutputStream
 import kotlin.time.Duration.Companion.days
 
@@ -158,18 +163,28 @@ class SelfSignedMdlIssuingAuthority(
                 "FEMALE" -> 2L
                 else -> 0L
             }
-            val portrait = bitmapData(decoded.photo, R.drawable.img_erika_portrait)
-            val signatureOrUsualMark = bitmapData(decoded.signature, R.drawable.img_erika_signature)
+            val timeZone = TimeZone.currentSystemDefault()
+            val dateOfBirth = LocalDate.parse(input = decoded.dateOfBirth,
+                format = LocalDate.Format {
+                    // date of birth cannot be in future
+                    yearTwoDigits(now.toLocalDateTime(timeZone).year - 99)
+                    monthNumber()
+                    dayOfMonth()
+                })
+            val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
+            // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
+            val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
+            val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
+            val portrait = decoded.photo ?: bitmapData(R.drawable.img_erika_portrait)
+            val signatureOrUsualMark = decoded.signature ?: bitmapData(R.drawable.img_erika_signature)
 
             // Make sure we set at least all the mandatory data elements
-            //
-            // TODO: get birth_date from passport
             //
             staticData = NameSpacedData.Builder()
                 .putEntryString(MDL_NAMESPACE, "given_name", firstName)
                 .putEntryString(MDL_NAMESPACE, "family_name", lastName)
                 .putEntry(MDL_NAMESPACE, "birth_date",
-                    Cbor.encode(LocalDate.parse("1970-01-01").toDataItemFullDate))
+                        Cbor.encode(dateOfBirth.toDataItemFullDate))
                 .putEntryByteString(MDL_NAMESPACE, "portrait", portrait)
                 .putEntryByteString(MDL_NAMESPACE, "signature_usual_mark", signatureOrUsualMark)
                 .putEntryNumber(MDL_NAMESPACE, "sex", sex)
@@ -187,8 +202,8 @@ class SelfSignedMdlIssuingAuthority(
                 .putEntry(MDL_NAMESPACE, "driving_privileges",
                     Cbor.encode(CborArray.builder().end().build()))
 
-                .putEntryBoolean(MDL_NAMESPACE, "age_over_18", true)
-                .putEntryBoolean(MDL_NAMESPACE, "age_over_21", true)
+                .putEntryBoolean(MDL_NAMESPACE, "age_over_18", ageOver18)
+                .putEntryBoolean(MDL_NAMESPACE, "age_over_21", ageOver21)
 
                 .putEntryString(AAMVA_NAMESPACE, "DHS_compliance", "F")
                 .putEntryNumber(AAMVA_NAMESPACE, "EDL_credential", 1)
@@ -231,8 +246,8 @@ class SelfSignedMdlIssuingAuthority(
     }
 
     private fun getSampleData(documentType: DocumentType): NameSpacedData.Builder {
-        val portrait = bitmapData(null, R.drawable.img_erika_portrait)
-        val signatureOrUsualMark = bitmapData(null, R.drawable.img_erika_signature)
+        val portrait = bitmapData(R.drawable.img_erika_portrait)
+        val signatureOrUsualMark = bitmapData(R.drawable.img_erika_signature)
         val builder = NameSpacedData.Builder()
         for ((namespaceName, namespace) in documentType.mdocDocumentType!!.namespaces) {
             for ((dataElementName, dataElement) in namespace.dataElements) {
