@@ -11,7 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Timestamp
@@ -40,7 +40,7 @@ class SecureAreaSupportNull : SecureAreaSupport {
     }
 
     override fun Fragment.unlockKey(
-        authKey: AuthenticationKey,
+        authKey: Credential,
         onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {

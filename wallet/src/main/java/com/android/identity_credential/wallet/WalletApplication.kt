@@ -43,7 +43,7 @@ class WalletApplication : Application() {
 
         private const val NOTIFICATION_ID_FOR_MISSING_PROXIMITY_PRESENTATION_PERMISSIONS = 42
 
-        const val AUTH_KEY_DOMAIN = "mdoc/MSO"
+        const val CREDENTIAL_DOMAIN = "mdoc/MSO"
 
         // The permissions needed to perform 18013-5 presentations. This only include the
         // BLE permissions because that's the only transport we currently support in the

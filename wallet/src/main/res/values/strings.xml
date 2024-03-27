@@ -156,7 +156,7 @@
     <string name="provisioning_unexpected">Unexpected state: %1$s</string>
 
     <!-- Presentation screen -->
-    <string name="presentation_authkey_usage_warning">Reused Authentication Key</string>
+    <string name="presentation_credential_usage_warning">Reused Credential</string>
     <string name="presentation_biometric_prompt_title">Use your screen lock</string>
     <string name="presentation_biometric_prompt_subtitle">Authentication is required to share this information</string>
     <string name="presentation_lskf_warning_dismiss_btn">Ok</string>

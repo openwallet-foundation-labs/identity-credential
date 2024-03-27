@@ -22,7 +22,7 @@ import com.android.identity.document.NameSpacedData
  *
  * This interface exists to support applications which wish to store additional data it wants to
  * associate with any object, such as a [com.android.identity.document.Document] or
- * [com.android.identity.document.AuthenticationKey].
+ * [com.android.identity.document.Credential].
  *
  * For example, on a [com.android.identity.document.Document] object one could use this to store the
  * document type (e.g. DocType for 18013-5 documents), user-visible name, logos/background, state,

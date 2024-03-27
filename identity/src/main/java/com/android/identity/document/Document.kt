@@ -44,27 +44,27 @@ import com.android.identity.util.Timestamp
  * sufficiently recent patch level, it's communicating with the expected Android
  * application, etc).
  *
- * Each document may have a number of *Authentication Keys*
- * associated with it. These keys are intended to be used in ways specified by the
+ * Each document may have a number of *Credentials*
+ * associated with it. These credentials are intended to be used in ways specified by the
  * underlying document format but the general idea is that they are created on
  * the device and then sent to the issuer for certification. The issuer then returns
- * some format-specific data related to the key. For Mobile Driving License and MDOCs according
+ * some format-specific data related to the credential. For Mobile Driving License and MDOCs according
  * to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html)
- * the authentication key plays the role of *DeviceKey* and the issuer-signed
- * data includes the *Mobile Security Object* which includes the authentication
- * key and is signed by the issuer. This is used for anti-cloning and to return data signed
+ * the credential plays the role of *DeviceKey* and the issuer-signed
+ * data includes the *Mobile Security Object* which includes the
+ * credential and is signed by the issuer. This is used for anti-cloning and to return data signed
  * by the device. The way it works in this API is that the application can use
- * [createAuthenticationKey]
- * to get an [AuthenticationKey]. With this in hand, the application can use
- * [AuthenticationKey.attestation] and send the attestation
+ * [createCredential]
+ * to get an [Credential]. With this in hand, the application can use
+ * [Credential.attestation] and send the attestation
  * to the issuer for certification. The issuer will then craft document-format
  * specific data (for ISO/IEC 18013-5:2021 it will be a signed MSO which references
- * the public part of the newly created authentication key) and send it back
+ * the public part of the newly created credential) and send it back
  * to the app. The application can then call
- * [AuthenticationKey.certify] which would add any issuer provided authentication data to the
- * key and make it ready for use in presentation. To retrieve all keys
- * which still require certification, use [pendingAuthenticationKeys], and to retrieve all
- * certified keys, use [certifiedAuthenticationKeys].
+ * [Credential.certify] which would add any issuer provided authentication data to the
+ * credential and make it ready for use in presentation. To retrieve all credentials
+ * which still require certification, use [pendingCredentials], and to retrieve all
+ * certified credentials, use [certifiedCredentials].
  *
  * At document presentation time the application first receives the request
  * from a remote reader using a specific document presentation protocol, such
@@ -96,7 +96,7 @@ class Document private constructor(
      * Application specific data.
      *
      * Use this object to store additional data an application may want to associate
-     * with the authentication key. Setters and associated getters are
+     * with the credential. Setters and associated getters are
      * enumerated in the [ApplicationData] interface.
      */
     private var _applicationData = SimpleApplicationData { saveDocument() }
@@ -104,28 +104,28 @@ class Document private constructor(
         get() = _applicationData
 
     /**
-     * Authentication keys which still need to be certified
+     * Credentials which still need to be certified
      */
-    private var _pendingAuthenticationKeys = mutableListOf<AuthenticationKey>()
-    val pendingAuthenticationKeys: List<AuthenticationKey>
+    private var _pendingCredentials = mutableListOf<Credential>()
+    val pendingCredentials: List<Credential>
         // Return shallow copy b/c backing field may get modified if certify() or delete() is called.
-        get() = _pendingAuthenticationKeys.toList()
+        get() = _pendingCredentials.toList()
 
     /**
-     * Certified authentication keys.
+     * Certified credentials.
      */
-    private var _certifiedAuthenticationKeys = mutableListOf<AuthenticationKey>()
-    val certifiedAuthenticationKeys: List<AuthenticationKey>
+    private var _certifiedCredentials = mutableListOf<Credential>()
+    val certifiedCredentials: List<Credential>
         // Return shallow copy b/c backing field may get modified if certify() or delete() is called.
-        get() = _certifiedAuthenticationKeys.toList()
+        get() = _certifiedCredentials.toList()
 
     /**
-     * Authentication key counter.
+     * Credential counter.
      *
      * This is a number which starts at 0 and is increased by one for every call
-     * to [createAuthenticationKey].
+     * to [createCredential].
      */
-    var authenticationKeyCounter: Long = 0
+    var credentialCounter: Long = 0
         private set
 
     internal fun saveDocument() {
@@ -135,15 +135,15 @@ class Document private constructor(
         val t0 = Timestamp.now()
         val mapBuilder = CborMap.builder().apply {
             put("applicationData", _applicationData.encodeAsCbor())
-            val pendingAuthenticationKeysArrayBuilder = putArray("pendingAuthenticationKeys")
-            for (pendingAuthenticationKey in _pendingAuthenticationKeys) {
-                pendingAuthenticationKeysArrayBuilder.add(pendingAuthenticationKey.toCbor())
+            val pendingCredentialsArrayBuilder = putArray("pendingCredentials")
+            for (pendingCredential in _pendingCredentials) {
+                pendingCredentialsArrayBuilder.add(pendingCredential.toCbor())
             }
-            val authenticationKeysArrayBuilder = putArray("certifiedAuthenticationKeys")
-            for (authenticationKey in _certifiedAuthenticationKeys) {
-                authenticationKeysArrayBuilder.add(authenticationKey.toCbor())
+            val certifiedCredentialsArrayBuilder = putArray("certifiedCredentials")
+            for (certifiedCredential in _certifiedCredentials) {
+                certifiedCredentialsArrayBuilder.add(certifiedCredential.toCbor())
             }
-            put("authenticationKeyCounter", authenticationKeyCounter)
+            put("credentialCounter", credentialCounter)
         }
         storageEngine.put(DOCUMENT_PREFIX + name, Cbor.encode(mapBuilder.end().build()))
         val t1 = Timestamp.now()
@@ -151,7 +151,7 @@ class Document private constructor(
         // Saving a document is a costly affair (often more than 100ms) so log when we're doing
         // this so application developers are aware. This is to deter applications from storing
         // ephemeral data in the ApplicationData instances of the document and our associated
-        // authentication keys.
+        // credentials.
         val durationMillis = t1.toEpochMilli() - t0.toEpochMilli()
         Logger.i(TAG, "Saved document '$name' to disk in $durationMillis msec")
         store.emitOnDocumentChanged(this)
@@ -166,52 +166,52 @@ class Document private constructor(
                 saveDocument()
             }
 
-        _pendingAuthenticationKeys = ArrayList()
-        for (item in map["pendingAuthenticationKeys"].asArray) {
-            _pendingAuthenticationKeys.add(AuthenticationKey.fromCbor(item, this))
+        _pendingCredentials = ArrayList()
+        for (item in map["pendingCredentials"].asArray) {
+            _pendingCredentials.add(Credential.fromCbor(item, this))
         }
-        _certifiedAuthenticationKeys = ArrayList()
-        for (item in map["certifiedAuthenticationKeys"].asArray) {
-            _certifiedAuthenticationKeys.add(AuthenticationKey.fromCbor(item, this))
+        _certifiedCredentials = ArrayList()
+        for (item in map["certifiedCredentials"].asArray) {
+            _certifiedCredentials.add(Credential.fromCbor(item, this))
         }
-        authenticationKeyCounter = map["authenticationKeyCounter"].asNumber
+        credentialCounter = map["credentialCounter"].asNumber
         addedToStore = true
         return true
     }
 
     internal fun deleteDocument() {
-        _pendingAuthenticationKeys.clear()
-        _certifiedAuthenticationKeys.clear()
+        _pendingCredentials.clear()
+        _certifiedCredentials.clear()
         storageEngine.delete(DOCUMENT_PREFIX + name)
     }
 
     /**
-     * Finds a suitable certified authentication key to use.
+     * Finds a suitable certified credential to use.
      *
-     * @param domain The domain to pick the authentication key from.
+     * @param domain The domain to pick the credential from.
      * @param now Pass current time to ensure that the selected slot's validity period or
      * `null` to not consider validity times.
-     * @return An authentication key which can be used for signing or `null` if none was found.
+     * @return A credential which can be used for signing or `null` if none was found.
      */
-    fun findAuthenticationKey(
+    fun findCredential(
         domain: String,
         now: Timestamp?
-    ): AuthenticationKey? {
-        var candidate: AuthenticationKey? = null
-        _certifiedAuthenticationKeys.filter {
+    ): Credential? {
+        var candidate: Credential? = null
+        _certifiedCredentials.filter {
             it.domain == domain && (
                     now != null
                             && (now.toEpochMilli() >= it.validFrom.toEpochMilli())
                             && (now.toEpochMilli() <= it.validUntil.toEpochMilli())
                     )
-        }.forEach { authenticationKey ->
+        }.forEach { credential ->
             // If we already have a candidate, prefer this one if its usage count is lower
-            candidate?.let { candidateAuthKey ->
-                if (authenticationKey.usageCount < candidateAuthKey.usageCount) {
-                    candidate = authenticationKey
+            candidate?.let { candidateCredential ->
+                if (credential.usageCount < candidateCredential.usageCount) {
+                    candidate = credential
                 }
             } ?: run {
-                candidate = authenticationKey
+                candidate = credential
             }
 
         }
@@ -219,36 +219,36 @@ class Document private constructor(
     }
 
     /**
-     * Creates a new authentication key.
+     * Creates a new credential.
      *
-     * This returns an [AuthenticationKey] which should be sent to the document
-     * issuer for certification. Use [AuthenticationKey.certify] when certification
+     * This returns an [Credential] which should be sent to the document
+     * issuer for certification. Use [Credential.certify] when certification
      * has been obtained.
      *
-     * For a higher-level way of managing authentication keys, see
-     * [DocumentUtil.managedAuthenticationKeyHelper].
+     * For a higher-level way of managing credentials, see
+     * [DocumentUtil.managedCredentialHelper].
      *
-     * @param domain a string used to group authentications keys together.
-     * @param secureArea the secure area to use for the authentication key.
-     * @param createKeySettings settings for the authentication key.
-     * @param asReplacementFor if not `null`, replace the given authentication key
+     * @param domain a string used to group credentials together.
+     * @param secureArea the secure area to use for the credential.
+     * @param createKeySettings settings for the credential.
+     * @param asReplacementFor if not `null`, replace the given credential
      * with this one, once it has been certified.
-     * @return an [AuthenticationKey].
+     * @return an [Credential].
      * @throws IllegalArgumentException if `asReplacementFor` is not null and the given
-     * key already has a pending key intending to replace it.
+     * credential already has a pending credential intending to replace it.
      */
-    fun createAuthenticationKey(
+    fun createCredential(
         domain: String,
         secureArea: SecureArea,
         createKeySettings: CreateKeySettings,
-        asReplacementFor: AuthenticationKey?
-    ): AuthenticationKey {
+        asReplacementFor: Credential?
+    ): Credential {
         check(asReplacementFor?.replacement == null) {
-            "The given key already has an existing pending key intending to replace it"
+            "The given credential already has an existing pending credential intending to replace it"
         }
         val alias =
-            AUTHENTICATION_KEY_ALIAS_PREFIX + name + "_authKey_" + authenticationKeyCounter++
-        val authenticationKey = AuthenticationKey.create(
+            AUTHENTICATION_KEY_ALIAS_PREFIX + name + "_credential_" + credentialCounter++
+        val credential = Credential.create(
             alias,
             domain,
             secureArea,
@@ -256,31 +256,31 @@ class Document private constructor(
             asReplacementFor,
             this
         )
-        _pendingAuthenticationKeys.add(authenticationKey)
-        asReplacementFor?.replacementAlias = authenticationKey.alias
+        _pendingCredentials.add(credential)
+        asReplacementFor?.replacementAlias = credential.alias
         saveDocument()
-        return authenticationKey
+        return credential
     }
 
 
-    internal fun removeAuthenticationKey(authenticationKey: AuthenticationKey) {
-        val listToModify = if (authenticationKey.isCertified) _certifiedAuthenticationKeys
-            else _pendingAuthenticationKeys
-        check(listToModify.remove(authenticationKey)) { "Error removing authentication key" }
+    internal fun removeCredential(credential: Credential) {
+        val listToModify = if (credential.isCertified) _certifiedCredentials
+            else _pendingCredentials
+        check(listToModify.remove(credential)) { "Error removing credential" }
 
-        if (authenticationKey.replacementForAlias != null) {
-            for (authKey in _certifiedAuthenticationKeys) {
-                if (authKey.alias == authenticationKey.replacementForAlias) {
-                    authKey.replacementAlias = null
+        if (credential.replacementForAlias != null) {
+            for (cred in _certifiedCredentials) {
+                if (cred.alias == credential.replacementForAlias) {
+                    cred.replacementAlias = null
                     break
                 }
             }
         }
 
-        if (authenticationKey.replacementAlias != null) {
-            for (pendingAuthKey in _pendingAuthenticationKeys) {
-                if (pendingAuthKey.alias == authenticationKey.replacementAlias) {
-                    pendingAuthKey.replacementForAlias = null
+        if (credential.replacementAlias != null) {
+            for (pendingCred in _pendingCredentials) {
+                if (pendingCred.alias == credential.replacementAlias) {
+                    pendingCred.replacementForAlias = null
                     break
                 }
             }
@@ -289,25 +289,25 @@ class Document private constructor(
     }
 
     /**
-     * Certifies the authentication key. Should only be called by [AuthenticationKey.certify]
+     * Certifies the credential. Should only be called by [Credential.certify]
      *
      * @param issuerProvidedAuthenticationData the issuer-provided static authentication data.
      * @param validFrom the point in time before which the data is not valid.
      * @param validUntil the point in time after which the data is not valid.
      */
-    internal fun certifyPendingAuthenticationKey(
-        authenticationKey: AuthenticationKey
-    ): AuthenticationKey {
-        check(_pendingAuthenticationKeys.remove(authenticationKey)) { "Error removing authentication key from pending list" }
-        _certifiedAuthenticationKeys.add(authenticationKey)
+    internal fun certifyPendingCredential(
+        credential: Credential
+    ): Credential {
+        check(_pendingCredentials.remove(credential)) { "Error removing credential from pending list" }
+        _certifiedCredentials.add(credential)
         saveDocument()
-        return authenticationKey
+        return credential
     }
 
     companion object {
         private const val TAG = "Document"
         internal const val DOCUMENT_PREFIX = "IC_Document_"
-        internal const val AUTHENTICATION_KEY_ALIAS_PREFIX = "IC_AuthenticationKey_"
+        internal const val AUTHENTICATION_KEY_ALIAS_PREFIX = "IC_Credential_"
 
         // Called by DocumentStore.createDocument().
         internal fun create(

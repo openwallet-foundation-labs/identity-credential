@@ -152,7 +152,7 @@ object DocumentExtensions {
         val numAuthKeys = 3
         val minValidTimeMillis = 30 * 24 * 3600L
         val secureArea = secureAreaRepository.getImplementation("AndroidKeystoreSecureArea")!!
-        val authKeyDomain = WalletApplication.AUTH_KEY_DOMAIN
+        val authKeyDomain = WalletApplication.CREDENTIAL_DOMAIN
 
         // OK, let's see if configuration is available
         if (!refreshState(issuingAuthorityRepository)) {
@@ -165,8 +165,8 @@ object DocumentExtensions {
             return -1
         }
         if (state.condition == DocumentCondition.CONFIGURATION_AVAILABLE) {
-            certifiedAuthenticationKeys.forEach { it.delete() }
-            pendingAuthenticationKeys.forEach { it.delete() }
+            certifiedCredentials.forEach { it.delete() }
+            pendingCredentials.forEach { it.delete() }
 
             documentConfiguration = issuer.documentGetConfiguration(documentIdentifier)
 
@@ -197,7 +197,7 @@ object DocumentExtensions {
         if (state.condition == DocumentCondition.READY) {
             val now = Timestamp.now()
             // First do a dry-run to see how many pending authentication keys will be created
-            val numPendingAuthKeysToCreate = DocumentUtil.managedAuthenticationKeyHelper(
+            val numPendingAuthKeysToCreate = DocumentUtil.managedCredentialHelper(
                 this,
                 secureArea,
                 null,
@@ -219,7 +219,7 @@ object DocumentExtensions {
                 } else {
                     CreateKeySettings(authKeyConfig.challenge)
                 }
-                DocumentUtil.managedAuthenticationKeyHelper(
+                DocumentUtil.managedCredentialHelper(
                     this,
                     secureArea,
                     authKeySettings,
@@ -230,7 +230,7 @@ object DocumentExtensions {
                     minValidTimeMillis,
                     false)
                 val documentPresentationRequests = mutableListOf<DocumentPresentationRequest>()
-                for (pendingAuthKey in pendingAuthenticationKeys) {
+                for (pendingAuthKey in pendingCredentials) {
                     documentPresentationRequests.add(
                         DocumentPresentationRequest(
                             DocumentPresentationFormat.MDOC_MSO,
@@ -248,7 +248,7 @@ object DocumentExtensions {
         var numAuthKeysRefreshed = 0
         if (state.numAvailableCPO > 0) {
             for (cpo in issuer.documentGetPresentationObjects(documentIdentifier)) {
-                val pendingAuthKey = pendingAuthenticationKeys.find {
+                val pendingAuthKey = pendingCredentials.find {
                     it.attestation.certificates.first().publicKey.equals(cpo.authenticationKey) }
                 if (pendingAuthKey == null) {
                     Logger.w(TAG, "No pending AuthenticationKey for pubkey ${cpo.authenticationKey}")

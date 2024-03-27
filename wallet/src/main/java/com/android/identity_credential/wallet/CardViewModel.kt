@@ -10,7 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.cbor.Cbor
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -121,7 +121,7 @@ class CardViewModel : ViewModel() {
             // TODO: this can be done more elegantly
             //
             refreshDocumentMutex.withLock {
-                val numAuthKeysRefreshed = document.housekeeping(
+                val numCredsRefreshed = document.housekeeping(
                     walletApplication,
                     issuingAuthorityRepository,
                     secureAreaRepository,
@@ -138,8 +138,8 @@ class CardViewModel : ViewModel() {
                         Toast.makeText(
                             context,
                             String.format(
-                                context.resources.getQuantityString(R.plurals.refreshed_authkey, numAuthKeysRefreshed),
-                                numAuthKeysRefreshed
+                                context.resources.getQuantityString(R.plurals.refreshed_cred, numCredsRefreshed),
+                                numCredsRefreshed
                             ),
                             Toast.LENGTH_SHORT
                         ).show()
@@ -239,7 +239,7 @@ class CardViewModel : ViewModel() {
         val data = document.renderDocumentDetails(context, documentTypeRepository)
 
         val keyInfos = mutableStateListOf<CardKeyInfo>()
-        for (authKey in document.certifiedAuthenticationKeys) {
+        for (authKey in document.certifiedCredentials) {
             keyInfos.add(createCardInfoForAuthKey(authKey))
         }
 
@@ -260,7 +260,7 @@ class CardViewModel : ViewModel() {
         )
     }
 
-    private fun createCardInfoForAuthKey(authKey: AuthenticationKey): CardKeyInfo {
+    private fun createCardInfoForAuthKey(authKey: Credential): CardKeyInfo {
 
         val documentData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
         val issuerAuthCoseSign1 = Cbor.decode(documentData.issuerAuth).asCoseSign1

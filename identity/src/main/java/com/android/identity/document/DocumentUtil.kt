@@ -26,97 +26,97 @@ object DocumentUtil {
     private const val TAG = "DocumentUtil"
 
     /**
-     * A helper for managing a set of authentication keys.
+     * A helper for managing a set of credentials.
      *
-     * This helper provides a high-level way to manage authentication keys on a
-     * [Document]. Its goal is to always have a fixed number of authentication
-     * keys available within the following constraints
+     * This helper provides a high-level way to manage credentials on a
+     * [Document]. Its goal is to always have a fixed number of
+     * credentials available within the following constraints
      *
-     * - If a key is used more than `maxUsesPerKey` times, a replacement is generated.
-     * - If a key expires within `minValidTimeMillis` milliseconds, a replacement is generated.
+     * - If a credential is used more than `maxUsesPerCredential` times, a replacement is generated.
+     * - If a credential expires within `minValidTimeMillis` milliseconds, a replacement is generated.
      *
-     * This is all implemented on top of [Document.createAuthenticationKey]
-     * and [AuthenticationKey.certify]. The application should examine the return
-     * value and if positive, collect the not-yet-certified authentication keys via
-     * [Document.pendingAuthenticationKeys], send them to the issuer for certification,
-     * and then call [AuthenticationKey.certify] when receiving the certification
+     * This is all implemented on top of [Document.createCredential]
+     * and [Credential.certify]. The application should examine the return
+     * value and if positive, collect the not-yet-certified credentials via
+     * [Document.pendingCredentials], send them to the issuer for certification,
+     * and then call [Credential.certify] when receiving the certification
      * from the issuer.
      *
-     * @param document the document to manage authentication keys for.
-     * @param secureArea the secure area to use for new authentication keys.
-     * @param createKeySettings the settings used to create new authentication keys.
-     * @param domain the domain to use for created authentication keys.
-     * @param now the time right now, used for determining which existing keys to replace.
-     * @param numAuthenticationKeys the number of authentication keys that should be kept.
-     * @param maxUsesPerKey the maximum number of uses per key.
-     * @param minValidTimeMillis requests a replacement for a key if it expires within this window.
-     * @param dryRun don't actually create the keys, just return how many would be created.
-     * @return the number of authentication keys created.
+     * @param document the document to manage credentials for.
+     * @param secureArea the secure area to use for new credentials.
+     * @param createKeySettings the settings used to create new credentials.
+     * @param domain the domain to use for created credentials.
+     * @param now the time right now, used for determining which existing credentials to replace.
+     * @param numCredentials the number of credentials that should be kept.
+     * @param maxUsesPerCredential the maximum number of uses per credential.
+     * @param minValidTimeMillis requests a replacement for a credential if it expires within this window.
+     * @param dryRun don't actually create the credentials, just return how many would be created.
+     * @return the number of credentials created.
      */
     @JvmStatic
-    fun managedAuthenticationKeyHelper(
+    fun managedCredentialHelper(
         document: Document,
         secureArea: SecureArea,
         createKeySettings: CreateKeySettings?,
         domain: String,
         now: Timestamp,
-        numAuthenticationKeys: Int,
-        maxUsesPerKey: Int,
+        numAuthenticationCredentials: Int,
+        maxUsesPerCredential: Int,
         minValidTimeMillis: Long,
         dryRun: Boolean
     ): Int {
-        // First determine which of the existing keys need a replacement...
-        var numKeysNotNeedingReplacement = 0
+        // First determine which of the existing credentials need a replacement...
+        var numCredentialsNotNeedingReplacement = 0
         var numReplacementsGenerated = 0
-        for (authKey in document.certifiedAuthenticationKeys.filter { it.domain == domain }) {
-            var keyExceededUseCount = false
-            var keyBeyondExpirationDate = false
-            if (authKey.usageCount >= maxUsesPerKey) {
-                keyExceededUseCount = true
+        for (authCredential in document.certifiedCredentials.filter { it.domain == domain }) {
+            var credentialExceededUseCount = false
+            var credentialBeyondExpirationDate = false
+            if (authCredential.usageCount >= maxUsesPerCredential) {
+                credentialExceededUseCount = true
             }
             val expirationDate = Timestamp.ofEpochMilli(
-                authKey.validUntil.toEpochMilli() - minValidTimeMillis
+                authCredential.validUntil.toEpochMilli() - minValidTimeMillis
             )
             if (now.toEpochMilli() > expirationDate.toEpochMilli()) {
-                keyBeyondExpirationDate = true
+                credentialBeyondExpirationDate = true
             }
-            if (keyExceededUseCount || keyBeyondExpirationDate) {
-                if (authKey.replacement == null) {
+            if (credentialExceededUseCount || credentialBeyondExpirationDate) {
+                if (authCredential.replacement == null) {
                     if (!dryRun) {
-                        document.createAuthenticationKey(
+                        document.createCredential(
                             domain,
                             secureArea,
                             createKeySettings!!,
-                            authKey
+                            authCredential
                         )
                     }
                     numReplacementsGenerated++
                     continue
                 }
             }
-            numKeysNotNeedingReplacement++
+            numCredentialsNotNeedingReplacement++
         }
 
-        var numExistingPendingKeys =
-            document.pendingAuthenticationKeys.filter { it.domain == domain }.size
+        var numExistingPendingCredentials =
+            document.pendingCredentials.filter { it.domain == domain }.size
         if (dryRun) {
-            numExistingPendingKeys += numReplacementsGenerated
+            numExistingPendingCredentials += numReplacementsGenerated
         }
 
-        // It's possible we need to generate pending keys that aren't replacements
-        val numNonReplacementsToGenerate = (numAuthenticationKeys
-                - numKeysNotNeedingReplacement
-                - numExistingPendingKeys)
+        // It's possible we need to generate pending credentials that aren't replacements
+        val numNonReplacementsToGenerate = (numAuthenticationCredentials
+                - numCredentialsNotNeedingReplacement
+                - numExistingPendingCredentials)
         if (!dryRun) {
             if (numNonReplacementsToGenerate > 0) {
                 for (n in 0 until numNonReplacementsToGenerate) {
-                    val pendingKey = document.createAuthenticationKey(
+                    val pendingCredential = document.createCredential(
                         domain,
                         secureArea,
                         createKeySettings!!,
                         null
                     )
-                    pendingKey.applicationData.setBoolean(domain, true)
+                    pendingCredential.applicationData.setBoolean(domain, true)
                 }
             }
         }

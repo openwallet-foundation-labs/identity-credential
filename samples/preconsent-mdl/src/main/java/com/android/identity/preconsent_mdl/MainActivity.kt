@@ -133,26 +133,26 @@ class MainActivity : ComponentActivity() {
         document.applicationData.setNameSpacedData("documentData", documentData)
         document.applicationData.setString("docType", MDL_DOCTYPE)
 
-        // Create AuthKeys and MSOs, make sure they're valid for a long time
+        // Create Credentials and MSOs, make sure they're valid for a long time
         val timeSigned = now
         val validFrom = now
         val validUntil = Instant.fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 365 * 24 * 3600 * 1000L)
 
-        // Create three authentication keys and certify them
+        // Create three credentials and certify them
         for (n in 0..2) {
-            val pendingAuthKey = document.createAuthenticationKey(
+            val pendingCredential = document.createCredential(
                 AUTH_KEY_DOMAIN,
                 transferHelper.androidKeystoreSecureArea,
                 CreateKeySettings("".toByteArray()),
                 null
             )
 
-            // Generate an MSO and issuer-signed data for this authentication key.
+            // Generate an MSO and issuer-signed data for this credentials.
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 MDL_DOCTYPE,
-                pendingAuthKey.attestation.certificates[0].publicKey
+                pendingCredential.attestation.certificates[0].publicKey
             )
             msoGenerator.setValidityInfo(
                 Timestamp.ofEpochMilli(timeSigned.toEpochMilliseconds()),
@@ -201,7 +201,7 @@ class MainActivity : ComponentActivity() {
                 encodedIssuerAuth
             ).generate()
 
-            pendingAuthKey.certify(
+            pendingCredential.certify(
                 issuerProvidedAuthenticationData,
                 Timestamp.ofEpochMilli(validFrom.toEpochMilliseconds()),
                 Timestamp.ofEpochMilli(validUntil.toEpochMilliseconds()))

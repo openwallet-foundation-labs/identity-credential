@@ -9,7 +9,7 @@ import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -163,7 +163,7 @@ class TransferManager private constructor(private val context: Context) {
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
         deviceResponseGenerator: DeviceResponseGenerator,
-        authKey: AuthenticationKey?,
+        authKey: Credential?,
         authKeyUnlockData: KeyUnlockData?,
     ) = suspendCancellableCoroutine { continuation ->
         var result: AddDocumentToResponseResult
@@ -181,20 +181,20 @@ class TransferManager private constructor(private val context: Context) {
 
         val request = DocumentRequest(dataElements)
 
-        val authKeyToUse: AuthenticationKey
+        val credentialToUse: Credential
         if (authKey != null) {
-            authKeyToUse = authKey
+            credentialToUse = authKey
         } else {
-            authKeyToUse = document.findAuthenticationKey(ProvisioningUtil.AUTH_KEY_DOMAIN, Timestamp.now())
-                ?: throw IllegalStateException("No auth key available")
+            credentialToUse = document.findCredential(ProvisioningUtil.CREDENTIAL_DOMAIN, Timestamp.now())
+                ?: throw IllegalStateException("No credential available")
         }
 
-        if (authKeyToUse.usageCount >= documentInformation.maxUsagesPerKey) {
-            logWarning("Using Auth Key previously used ${authKeyToUse.usageCount} times, and maxUsagesPerKey is ${documentInformation.maxUsagesPerKey}")
+        if (credentialToUse.usageCount >= documentInformation.maxUsagesPerKey) {
+            logWarning("Using Credential previously used ${credentialToUse.usageCount} times, and maxUsagesPerKey is ${documentInformation.maxUsagesPerKey}")
             signingKeyUsageLimitPassed = true
         }
 
-        val staticAuthData = StaticAuthDataParser(authKeyToUse.issuerProvidedData).parse()
+        val staticAuthData = StaticAuthDataParser(credentialToUse.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
             request,
             document.applicationData.getNameSpacedData("documentData"),
@@ -206,32 +206,32 @@ class TransferManager private constructor(private val context: Context) {
         try {
             val generator = DocumentGenerator(docType, staticAuthData.issuerAuth, transcript)
                 .setIssuerNamespaces(mergedIssuerNamespaces)
-            val keyInfo = authKeyToUse.secureArea.getKeyInfo(authKeyToUse.alias)
+            val keyInfo = credentialToUse.secureArea.getKeyInfo(credentialToUse.alias)
             if (keyInfo.keyPurposes.contains(KeyPurpose.SIGN)) {
                 generator.setDeviceNamespacesSignature(
                     NameSpacedData.Builder().build(),
-                    authKeyToUse.secureArea,
-                    authKeyToUse.alias,
+                    credentialToUse.secureArea,
+                    credentialToUse.alias,
                     authKeyUnlockData,
                     Algorithm.ES256
                 )
             } else {
                 generator.setDeviceNamespacesMac(
                     NameSpacedData.Builder().build(),
-                    authKeyToUse.secureArea,
-                    authKeyToUse.alias,
+                    credentialToUse.secureArea,
+                    credentialToUse.alias,
                     authKeyUnlockData,
                     communication.deviceRetrievalHelper!!.eReaderKey
                 )
             }
             val data = generator.generate()
             deviceResponseGenerator.addDocument(data)
-            log("Increasing usage count on ${authKeyToUse.alias}")
-            authKeyToUse.increaseUsageCount()
+            log("Increasing usage count on ${credentialToUse.alias}")
+            credentialToUse.increaseUsageCount()
             ProvisioningUtil.getInstance(context).trackUsageTimestamp(document)
             result = AddDocumentToResponseResult.DocumentAdded(signingKeyUsageLimitPassed)
         } catch (lockedException: KeyLockedException) {
-            result = AddDocumentToResponseResult.DocumentLocked(authKeyToUse)
+            result = AddDocumentToResponseResult.DocumentLocked(credentialToUse)
         }
         continuation.resume(result)
     }

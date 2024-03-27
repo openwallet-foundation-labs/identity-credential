@@ -37,7 +37,7 @@ import java.io.File
 //
 class AndroidKeystoreSecureAreaDocumentStoreTest {
     companion object {
-        private const val AUTH_KEY_DOMAIN = "domain"
+        private const val CREDENTIAL_DOMAIN = "domain"
     }
 
     private lateinit var storageEngine: StorageEngine
@@ -63,10 +63,10 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         documentStore.addDocument(document!!)
         Assert.assertEquals("testDocument", document!!.name)
 
-        // Create pending authentication key and check its attestation
+        // Create pending credential and check its attestation
         val authKeyChallenge = byteArrayOf(20, 21, 22)
-        val pendingAuthenticationKey = document.createAuthenticationKey(
-            AUTH_KEY_DOMAIN,
+        val pendingCredential = document.createCredential(
+            CREDENTIAL_DOMAIN,
             secureArea,
             AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge)
                 .setUserAuthenticationRequired(
@@ -76,9 +76,9 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
                 .build(),
             null
         )
-        Assert.assertFalse(pendingAuthenticationKey.isCertified)
+        Assert.assertFalse(pendingCredential.isCertified)
         val parser =
-            AndroidAttestationExtensionParser(pendingAuthenticationKey.attestation.certificates[0].javaX509Certificate)
+            AndroidAttestationExtensionParser(pendingCredential.attestation.certificates[0].javaX509Certificate)
         Assert.assertArrayEquals(
             authKeyChallenge,
             parser.attestationChallenge

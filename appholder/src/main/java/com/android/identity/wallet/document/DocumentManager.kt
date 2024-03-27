@@ -342,9 +342,9 @@ class DocumentManager private constructor(private val context: Context) {
         return mapBuilder.end().build()[0]
     }
 
-    fun refreshAuthKeys(documentName: String) {
+    fun refreshCredentials(documentName: String) {
         val documentInformation = requireNotNull(getDocumentInformation(documentName))
         val document = requireNotNull(getDocumentByName(documentName))
-        ProvisioningUtil.getInstance(context).refreshAuthKeys(document, documentInformation.docType)
+        ProvisioningUtil.getInstance(context).refreshCredentials(document, documentInformation.docType)
     }
 }

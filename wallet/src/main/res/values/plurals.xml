@@ -24,8 +24,8 @@
         <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>
     </plurals>
-    <plurals name="refreshed_authkey">
-        <item quantity="one">Refreshed %d Authentication Key</item>
-        <item quantity="other">Refreshed %d Authentication Keys</item>
+    <plurals name="refreshed_cred">
+        <item quantity="one">Refreshed %d Credential</item>
+        <item quantity="other">Refreshed %d Credentials</item>
     </plurals>
 </resources>

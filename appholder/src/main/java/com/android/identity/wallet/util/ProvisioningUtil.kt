@@ -72,7 +72,7 @@ class ProvisioningUtil private constructor(
         document.applicationData.setNumber(MIN_VALIDITY_IN_DAYS, provisionInfo.minValidityInDays.toLong())
         document.applicationData.setNumber(LAST_TIME_USED, -1)
         document.applicationData.setString(AUTH_KEY_SECURE_AREA_IDENTIFIER, authKeySecureArea.identifier)
-        document.applicationData.setNumber(NUM_AUTH_KEYS, provisionInfo.numberMso.toLong())
+        document.applicationData.setNumber(NUM_CREDENTIALS, provisionInfo.numberMso.toLong())
 
         // Store settings for auth-key creation, these are all SecureArea-specific and we store
         // them in a single blob at AUTH_KEY_SETTINGS
@@ -81,8 +81,8 @@ class ProvisioningUtil private constructor(
             AUTH_KEY_SETTINGS,
             support.createAuthKeySettingsConfiguration(provisionInfo.secureAreaSupportState))
 
-        // Create initial batch of auth keys
-        refreshAuthKeys(document, provisionInfo.docType)
+        // Create initial batch of credentials
+        refreshCredentials(document, provisionInfo.docType)
     }
 
     private fun ProvisionInfo.documentName(): String {
@@ -95,11 +95,11 @@ class ProvisioningUtil private constructor(
         document.applicationData.setNumber(LAST_TIME_USED, now.toEpochMilli())
     }
 
-    fun refreshAuthKeys(document: Document, docType: String) {
+    fun refreshCredentials(document: Document, docType: String) {
         val secureAreaIdentifier = document.applicationData.getString(AUTH_KEY_SECURE_AREA_IDENTIFIER)
         val minValidTimeDays = document.applicationData.getNumber(MIN_VALIDITY_IN_DAYS)
-        val maxUsagesPerKey = document.applicationData.getNumber(MAX_USAGES_PER_KEY)
-        val numAuthKeys = document.applicationData.getNumber(NUM_AUTH_KEYS)
+        val maxUsagesPerCred = document.applicationData.getNumber(MAX_USAGES_PER_KEY)
+        val numCreds = document.applicationData.getNumber(NUM_CREDENTIALS)
         val validityInDays = document.applicationData.getNumber(VALIDITY_IN_DAYS).toInt()
 
         val now = Timestamp.now()
@@ -117,26 +117,26 @@ class ProvisioningUtil private constructor(
             validUntil
         )
 
-        val pendingKeysCount = DocumentUtil.managedAuthenticationKeyHelper(
+        val pendingCredsCount = DocumentUtil.managedCredentialHelper(
             document,
             secureArea,
             settings,
-            AUTH_KEY_DOMAIN,
+            CREDENTIAL_DOMAIN,
             now,
-            numAuthKeys.toInt(),
-            maxUsagesPerKey.toInt(),
+            numCreds.toInt(),
+            maxUsagesPerCred.toInt(),
             minValidTimeDays*24*60*60*1000L,
             false
         )
-        if (pendingKeysCount <= 0) {
+        if (pendingCredsCount <= 0) {
             return
         }
 
-        for (pendingAuthKey in document.pendingAuthenticationKeys) {
+        for (pendingCred in document.pendingCredentials) {
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 docType,
-                pendingAuthKey.attestation.certificates.first().publicKey
+                pendingCred.attestation.certificates.first().publicKey
             )
             msoGenerator.setValidityInfo(now, validFrom, validUntil, null)
 
@@ -148,7 +148,7 @@ class ProvisioningUtil private constructor(
                 val portrait = document.applicationData.getNameSpacedData("documentData")
                     .getDataElementByteString("org.iso.18013.5.1", "portrait")
                 val portrait_override = overridePortrait(portrait,
-                    pendingAuthKey.authenticationKeyCounter)
+                    pendingCred.credentialCounter)
 
                 dataElementExceptions =
                     mapOf("org.iso.18013.5.1" to listOf("given_name", "portrait"))
@@ -214,7 +214,7 @@ class ProvisioningUtil private constructor(
                 encodedIssuerAuth
             ).generate()
 
-            pendingAuthKey.certify(
+            pendingCred.certify(
                 issuerProvidedAuthenticationData,
                 validFrom,
                 validUntil
@@ -253,17 +253,17 @@ class ProvisioningUtil private constructor(
 
     companion object {
 
-        const val AUTH_KEY_DOMAIN = "mdoc/MSO"
+        const val CREDENTIAL_DOMAIN = "mdoc/MSO"
         private const val USER_VISIBLE_NAME = "userVisibleName"
         const val DOCUMENT_TYPE = "documentType"
         private const val DATE_PROVISIONED = "dateProvisioned"
         private const val CARD_ART = "cardArt"
         private const val IS_SELF_SIGNED = "isSelfSigned"
-        private const val MAX_USAGES_PER_KEY = "maxUsagesPerKey"
+        private const val MAX_USAGES_PER_KEY = "maxUsagesPerCredential"
         private const val VALIDITY_IN_DAYS = "validityInDays"
         private const val MIN_VALIDITY_IN_DAYS = "minValidityInDays"
         private const val LAST_TIME_USED = "lastTimeUsed"
-        private const val NUM_AUTH_KEYS = "numAuthKeys"
+        private const val NUM_CREDENTIALS = "numCredentials"
         private const val AUTH_KEY_SETTINGS = "authKeySettings"
         private const val AUTH_KEY_SECURE_AREA_IDENTIFIER = "authKeySecureAreaIdentifier"
 
@@ -287,10 +287,10 @@ class ProvisioningUtil private constructor(
                 val authKeySecureArea = instance!!.secureAreaRepository.getImplementation(authKeySecureAreaIdentifier)
                     ?: throw IllegalStateException("No Secure Area with id ${authKeySecureAreaIdentifier} for document ${it.name}")
 
-                val authKeys = certifiedAuthenticationKeys.map { key ->
+                val credentials = certifiedCredentials.map { key ->
                     val info = authKeySecureArea.getKeyInfo(key.alias)
                     DocumentInformation.KeyData(
-                        counter = key.authenticationKeyCounter.toInt(),
+                        counter = key.credentialCounter.toInt(),
                         validFrom = key.validFrom.formatted(),
                         validUntil = key.validUntil.formatted(),
                         domain = key.domain,
@@ -317,7 +317,7 @@ class ProvisioningUtil private constructor(
                     selfSigned = it.applicationData.getBoolean(IS_SELF_SIGNED),
                     maxUsagesPerKey = it.applicationData.getNumber(MAX_USAGES_PER_KEY).toInt(),
                     lastTimeUsed = lastTimeUsed,
-                    authKeys = authKeys
+                    authKeys = credentials
                 )
             }
         }

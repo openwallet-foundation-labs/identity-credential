@@ -8,7 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.mdoc.request.DeviceRequestParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.securearea.KeyUnlockData
@@ -102,7 +102,7 @@ class TransferDocumentViewModel(val app: Application) : AndroidViewModel(app) {
 
     fun sendResponseForSelection(
         onResultReady: (result: AddDocumentToResponseResult) -> Unit,
-        authKey: AuthenticationKey? = null,
+        authKey: Credential? = null,
         authKeyUnlockData: KeyUnlockData? = null
     ) {
         val elementsToSend = signedElements.collect()

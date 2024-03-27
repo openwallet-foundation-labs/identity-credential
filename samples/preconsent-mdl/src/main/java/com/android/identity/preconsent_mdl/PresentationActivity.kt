@@ -257,9 +257,9 @@ class PresentationActivity : ComponentActivity() {
         val documentRequest = MdocUtil.generateDocumentRequest(docRequest!!)
         val now = Timestamp.now()
         val document = transferHelper.documentStore.lookupDocument(MainActivity.CREDENTIAL_ID)!!
-        val authKey = document.findAuthenticationKey(MainActivity.AUTH_KEY_DOMAIN, now)!!
+        val credential = document.findCredential(MainActivity.AUTH_KEY_DOMAIN, now)!!
 
-        val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
+        val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
             documentRequest,
             document.applicationData.getNameSpacedData("documentData"),
@@ -272,8 +272,8 @@ class PresentationActivity : ComponentActivity() {
                 .setIssuerNamespaces(mergedIssuerNamespaces)
                 .setDeviceNamespacesSignature(
                     NameSpacedData.Builder().build(),
-                    authKey.secureArea,
-                    authKey.alias,
+                    credential.secureArea,
+                    credential.alias,
                     null,
                     Algorithm.ES256
                 )

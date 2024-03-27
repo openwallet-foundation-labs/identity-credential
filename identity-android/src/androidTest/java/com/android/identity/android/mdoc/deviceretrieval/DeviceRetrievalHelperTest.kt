@@ -32,7 +32,7 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.Cose.coseSign1Sign
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
@@ -85,7 +85,7 @@ import kotlin.random.Random
 @Suppress("deprecation")
 class DeviceRetrievalHelperTest {
     companion object {
-        private const val AUTH_KEY_DOMAIN = "domain"
+        private const val CREDENTIAL_DOMAIN = "domain"
 
         private const val MDL_DOCTYPE = "org.iso.18013.5.1.mDL"
         private const val MDL_NAMESPACE = "org.iso.18013.5.1"
@@ -96,7 +96,7 @@ class DeviceRetrievalHelperTest {
     private lateinit var mSecureArea: SecureArea
     private lateinit var mSecureAreaRepository: SecureAreaRepository
     private lateinit var mDocument: Document
-    private lateinit var mAuthKey: AuthenticationKey
+    private lateinit var mCredential: Credential
     private lateinit var mTimeSigned: Timestamp
     private lateinit var mTimeValidityBegin: Timestamp
     private lateinit var mTimeValidityEnd: Timestamp
@@ -129,27 +129,27 @@ class DeviceRetrievalHelperTest {
             .build()
         mDocument.applicationData.setNameSpacedData("documentData", nameSpacedData)
 
-        // Create an authentication key... make sure the authKey used supports both
+        // Create a credential... make sure the credential used supports both
         // mdoc ECDSA and MAC authentication.
         val nowMillis = Calendar.getInstance().timeInMillis / 1000 * 1000
         mTimeSigned = ofEpochMilli(nowMillis)
         mTimeValidityBegin = ofEpochMilli(nowMillis + 3600 * 1000)
         mTimeValidityEnd = ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        mAuthKey = mDocument.createAuthenticationKey(
-            AUTH_KEY_DOMAIN,
+        mCredential = mDocument.createCredential(
+            CREDENTIAL_DOMAIN,
             mSecureArea,
             SoftwareCreateKeySettings.Builder(ByteArray(0))
                 .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
                 .build(),
             null
         )
-        Assert.assertFalse(mAuthKey.isCertified)
+        Assert.assertFalse(mCredential.isCertified)
 
-        // Generate an MSO and issuer-signed data for this authentication key.
+        // Generate an MSO and issuer-signed data for this credential.
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             MDL_DOCTYPE,
-            mAuthKey.attestation.certificates[0].publicKey
+            mCredential.attestation.certificates[0].publicKey
         )
         msoGenerator.setValidityInfo(mTimeSigned, mTimeValidityBegin, mTimeValidityEnd, null)
         val issuerNameSpaces = generateIssuerNameSpaces(
@@ -212,8 +212,8 @@ class DeviceRetrievalHelperTest {
             encodedIssuerAuth
         ).generate()
 
-        // Now that we have issuer-provided authentication data we certify the authentication key.
-        mAuthKey.certify(
+        // Now that we have issuer-provided authentication data we certify the credential.
+        mCredential.certify(
             issuerProvidedAuthenticationData,
             mTimeValidityBegin,
             mTimeValidityEnd
@@ -377,7 +377,7 @@ class DeviceRetrievalHelperTest {
                     val generator = DeviceResponseGenerator(
                         Constants.DEVICE_RESPONSE_STATUS_OK
                     )
-                    val staticAuthData = StaticAuthDataParser(mAuthKey.issuerProvidedData)
+                    val staticAuthData = StaticAuthDataParser(mCredential.issuerProvidedData)
                         .parse()
                     val deviceSignedData = NameSpacedData.Builder().build()
                     val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
@@ -395,8 +395,8 @@ class DeviceRetrievalHelperTest {
                             .setIssuerNamespaces(mergedIssuerNamespaces)
                             .setDeviceNamespacesSignature(
                                 deviceSignedData,
-                                mAuthKey.secureArea,
-                                mAuthKey.alias,
+                                mCredential.secureArea,
+                                mCredential.alias,
                                 null,
                                 Algorithm.ES256
                             )

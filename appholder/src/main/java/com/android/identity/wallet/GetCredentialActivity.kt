@@ -10,7 +10,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
@@ -36,7 +36,7 @@ import java.security.PublicKey
 class GetCredentialActivity : FragmentActivity() {
 
     fun addDeviceNamespaces(documentGenerator : DocumentGenerator,
-                            authKey : AuthenticationKey,
+                            authKey : Credential,
                             unlockData: KeyUnlockData?) {
         documentGenerator.setDeviceNamespacesSignature(
             NameSpacedData.Builder().build(),
@@ -46,7 +46,7 @@ class GetCredentialActivity : FragmentActivity() {
             Algorithm.ES256)
     }
 
-    fun doBiometricAuth(authKey : AuthenticationKey,
+    fun doBiometricAuth(authKey : Credential,
                         forceLskf : Boolean,
                         onBiometricAuthCompleted: (unlockData: KeyUnlockData?) -> Unit) {
         var title = "To share your credential we need to check that it's you."
@@ -162,14 +162,14 @@ class GetCredentialActivity : FragmentActivity() {
             "com.android.mdl.appreader"
         ) // TODO: get from |request|
 
-        val authKey = document.findAuthenticationKey(
-            ProvisioningUtil.AUTH_KEY_DOMAIN,
+        val credential = document.findCredential(
+            ProvisioningUtil.CREDENTIAL_DOMAIN,
             Timestamp.now()
         )
-        if (authKey == null) {
-            throw IllegalStateException("No authkey")
+        if (credential == null) {
+            throw IllegalStateException("No credential")
         }
-        val staticAuthData = StaticAuthDataParser(authKey.issuerProvidedData).parse()
+        val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
             documentRequest, nameSpacedData, staticAuthData
         )
@@ -181,14 +181,14 @@ class GetCredentialActivity : FragmentActivity() {
         )
         documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
         try {
-            addDeviceNamespaces(documentGenerator, authKey, null)
-            completeResponse(authKey, deviceResponseGenerator, documentGenerator,
+            addDeviceNamespaces(documentGenerator, credential, null)
+            completeResponse(credential, deviceResponseGenerator, documentGenerator,
                 requesterIdentity, encodedSessionTranscript)
         } catch (e: KeyLockedException) {
-            doBiometricAuth(authKey, false) { keyUnlockData ->
+            doBiometricAuth(credential, false) { keyUnlockData ->
                 if (keyUnlockData != null) {
-                    addDeviceNamespaces(documentGenerator, authKey, keyUnlockData)
-                    completeResponse(authKey, deviceResponseGenerator, documentGenerator,
+                    addDeviceNamespaces(documentGenerator, credential, keyUnlockData)
+                    completeResponse(credential, deviceResponseGenerator, documentGenerator,
                         requesterIdentity, encodedSessionTranscript)
                 } else {
                     log("Need to convey error")
@@ -197,7 +197,7 @@ class GetCredentialActivity : FragmentActivity() {
         }
     }
 
-    fun completeResponse(authKey: AuthenticationKey,
+    fun completeResponse(authKey: Credential,
                          deviceResponseGenerator: DeviceResponseGenerator,
                          documentGenerator: DocumentGenerator,
                          requesterIdentity: PublicKey,

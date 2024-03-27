@@ -51,11 +51,11 @@ class DocumentInfoViewModel(
         _state.update { it.copy(isDeletingPromptShown = false) }
     }
 
-    fun refreshAuthKeys() {
+    fun refreshCredentials() {
         _state.update { it.copy(isLoading = true) }
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                documentManager.refreshAuthKeys(args.documentName)
+                documentManager.refreshCredentials(args.documentName)
             }
             loadDocument(args.documentName)
         }

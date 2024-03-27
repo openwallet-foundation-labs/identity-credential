@@ -6,7 +6,7 @@ import android.os.Looper
 import android.widget.Toast
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.cbor.Cbor
-import com.android.identity.document.AuthenticationKey
+import com.android.identity.document.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
@@ -159,23 +159,23 @@ class TransferHelper(
         credentialId: String,
         documentRequest: DocumentRequest,
         onFinishedProcessing: (ByteArray) -> Unit,
-        onAuthenticationKeyLocked: (authenticationKey: AuthenticationKey) -> Unit,
+        onAuthenticationKeyLocked: (credential: Credential) -> Unit,
         keyUnlockData: KeyUnlockData? = null,
-        authKey: AuthenticationKey? = null
+        authKey: Credential? = null
     ) {
         val credential = documentStore.lookupDocument(credentialId)!!
 
         val encodedDeviceResponse: ByteArray
         val credentialConfiguration = credential.documentConfiguration
         val now = Timestamp.now()
-        val authKeyToUse: AuthenticationKey = authKey
-            ?: (credential.findAuthenticationKey(WalletApplication.AUTH_KEY_DOMAIN, now)
+        val credentialToUse: Credential = authKey
+            ?: (credential.findCredential(WalletApplication.CREDENTIAL_DOMAIN, now)
                 ?: run {
-                    onError(IllegalStateException("No valid auth keys, please request more"))
+                    onError(IllegalStateException("No valid credentials, please request more"))
                     return
                 })
 
-        val staticAuthData = StaticAuthDataParser(authKeyToUse.issuerProvidedData).parse()
+        val staticAuthData = StaticAuthDataParser(credentialToUse.issuerProvidedData).parse()
         val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
         val encodedMsoBytes = Cbor.decode(issuerAuthCoseSign1.payload!!)
         val encodedMso = Cbor.encode(encodedMsoBytes.asTaggedEncodedCbor)
@@ -198,7 +198,7 @@ class TransferHelper(
                 docType = mso.docType,
                 issuerAuth = staticAuthData.issuerAuth,
                 mergedIssuerNamespaces = mergedIssuerNamespaces,
-                authKey = authKeyToUse,
+                authKey = credentialToUse,
                 keyUnlockData = keyUnlockData
             )
         }
@@ -216,10 +216,10 @@ class TransferHelper(
         docType: String,
         issuerAuth: ByteArray,
         mergedIssuerNamespaces: Map<String, MutableList<ByteArray>>,
-        authKey: AuthenticationKey,
+        authKey: Credential,
         keyUnlockData: KeyUnlockData?
     ) = suspendCancellableCoroutine { continuation ->
-        var result: AuthenticationKey?
+        var result: Credential?
 
         try {
             deviceResponseGenerator.addDocument(
@@ -242,7 +242,7 @@ class TransferHelper(
                 Handler(Looper.getMainLooper()).post {
                     Toast.makeText(
                         context,
-                        context.resources.getString(R.string.presentation_authkey_usage_warning),
+                        context.resources.getString(R.string.presentation_credential_usage_warning),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
