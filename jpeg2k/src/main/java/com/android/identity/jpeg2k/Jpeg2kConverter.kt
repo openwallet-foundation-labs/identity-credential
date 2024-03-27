@@ -1,8 +1,11 @@
 package com.android.identity.jpeg2k
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlin.math.min
@@ -20,6 +23,7 @@ class Jpeg2kConverter(private val tmpDir: File) {
     /** Parses JPEG2000 file and returns a Bitmap. */
     fun convertToBitmap(j2k: ByteArray): Bitmap {
         val pdf = convertToPdfData(j2k)
+        tmpDir.mkdirs()
         val pdfFile = File.createTempFile("tmp_conv", ".pdf", tmpDir)
         val out = pdfFile.outputStream()
         out.write(pdf.bytes)
@@ -129,6 +133,22 @@ class Jpeg2kConverter(private val tmpDir: File) {
     }
 
     companion object {
+        /**
+         * Replacement for [BitmapFactory.decodeByteArray]
+         */
+        fun decodeByteArray(context: Context, data: ByteArray): Bitmap? {
+            val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+            if (bitmap != null) {
+                return bitmap
+            }
+            return try {
+                Jpeg2kConverter(File(context.cacheDir, "j2k_conv")).convertToBitmap(data)
+            } catch (err: IllegalArgumentException) {
+                Log.e("JPEG2K_CONV", "JPEFG2000 parsing failed", err)
+                null
+            }
+        }
+
         private const val pdfTemplate = """%PDF-1.5
 1 0 obj
 << /Pages 2 0 R /Type /Catalog >>

@@ -22,7 +22,12 @@ import com.android.identity.storage.StorageEngine
 import com.android.identity_credential.mrtd.MrtdNfcData
 import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
 import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 import java.io.ByteArrayOutputStream
 import kotlin.time.Duration.Companion.days
 
@@ -159,15 +164,25 @@ class SelfSignedEuPidIssuingAuthority(
                 "FEMALE" -> 2L
                 else -> 0L
             }
+            val timeZone = TimeZone.currentSystemDefault()
+            val dateOfBirth = LocalDate.parse(input = decoded.dateOfBirth,
+                format = LocalDate.Format {
+                    // date of birth cannot be in future
+                    yearTwoDigits(now.toLocalDateTime(timeZone).year - 99)
+                    monthNumber()
+                    dayOfMonth()
+                })
+            val dateOfBirthInstant = dateOfBirth.atStartOfDayIn(timeZone)
+            // over 18/21 is calculated purely based on calendar date (not based on the birth time zone)
+            val ageOver18 = now > dateOfBirthInstant.plus(18, DateTimeUnit.YEAR, timeZone)
+            val ageOver21 = now > dateOfBirthInstant.plus(21, DateTimeUnit.YEAR, timeZone)
+
             // Make sure we set at least all the mandatory data elements
-            //
-            // TODO: get birth_date from passport
-            //
             staticData = NameSpacedData.Builder()
                 .putEntryString(EUPID_NAMESPACE, "given_name", firstName)
                 .putEntryString(EUPID_NAMESPACE, "family_name", lastName)
                 .putEntry(EUPID_NAMESPACE, "birth_date",
-                    Cbor.encode(LocalDate.parse("1970-01-01").toDataItemFullDate))
+                    Cbor.encode(dateOfBirth.toDataItemFullDate))
                 .putEntryNumber(EUPID_NAMESPACE, "gender", sex)
                 .putEntry(EUPID_NAMESPACE, "issuance_date",
                     Cbor.encode(issueDate.toDataItemDateTimeString))
@@ -178,8 +193,8 @@ class SelfSignedEuPidIssuingAuthority(
                     resourceString(R.string.utopia_eu_pid_issuing_authority_name))
                 .putEntryString(EUPID_NAMESPACE, "issuing_country",
                     "UT")
-                .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", true)
-                .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", true)
+                .putEntryBoolean(EUPID_NAMESPACE, "age_over_18", ageOver18)
+                .putEntryBoolean(EUPID_NAMESPACE, "age_over_21", ageOver21)
                 .putEntryString(EUPID_NAMESPACE, "document_number", "1234567890")
                 .putEntryString(EUPID_NAMESPACE, "administrative_number", "123456789")
                 .build()

@@ -1,8 +1,5 @@
 package com.android.identity_credential.mrtd
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import com.android.identity.jpeg2k.Jpeg2kConverter
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.jmrtd.lds.AbstractImageInfo
 import org.jmrtd.lds.SODFile
@@ -42,7 +39,8 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
         val dg1 = DG1File(ByteArrayInputStream(bytes1))
         mrtdLogI(TAG, "Done with DG1")
 
-        var photo: Bitmap? = null
+        var photo: ByteArray? = null
+        var photoMediaType: String? = null
         if (data.dataGroups.containsKey(2)) {
             val bytes = data.dataGroups[2]!!
             // NB: don't try to calculate digest wrapping ByteArrayInputStream with
@@ -59,8 +57,9 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
             for (faceInfo in dg2.faceInfos) {
                 for (faceImageInfo in faceInfo.faceImageInfos) {
                     mrtdLogI(TAG, "reading face image from DG2")
-                    photo = readImage(faceImageInfo)
+                    photo = readImageBytes(faceImageInfo)
                     if (photo != null) {
+                        photoMediaType = faceImageInfo.mimeType
                         break
                     }
                 }
@@ -68,7 +67,8 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
             mrtdLogI(TAG, "Done with DG2")
         }
 
-        var signature: Bitmap? = null
+        var signature: ByteArray? = null
+        var signatureMediaType: String? = null;
         if (data.dataGroups.containsKey(7)) {
             val bytes = data.dataGroups[7]!!
             val digestBytes = MessageDigest.getInstance(sod.digestAlgorithm).digest(bytes)
@@ -81,8 +81,9 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
 
             for (image in dg7.images) {
                 mrtdLogI(TAG, "reading signature from DG7")
-                signature = readImage(image)
+                signature = readImageBytes(image)
                 if (signature != null) {
+                    signatureMediaType = image.mimeType
                     break
                 }
             }
@@ -114,17 +115,27 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
 
         val info = dg1.mrzInfo
         return MrtdDecodedData(
-            info.secondaryIdentifier,
-            info.primaryIdentifier,
-            info.issuingState,
-            info.nationality,
-            info.gender.toString(),
-            photo,
-            signature
+            firstName = info.secondaryIdentifier,
+            lastName = info.primaryIdentifier,
+            firstNameComponents = info.secondaryIdentifierComponents.toList(),
+            issuingState = info.issuingState,
+            nationality = info.nationality,
+            gender = info.gender.toString(),
+            dateOfBirth = info.dateOfBirth,
+            dateOfExpiry = info.dateOfExpiry,
+            documentCode = info.documentCode,
+            documentNumber = info.documentNumber,
+            personalNumber = info.personalNumber,
+            optionalData1 = info.optionalData1,
+            optionalData2 = info.optionalData2,
+            photoMediaType = photoMediaType,
+            photo = photo,
+            signatureMediaType = signatureMediaType,
+            signature = signature
         )
     }
 
-    private fun readImage(imageInfo: AbstractImageInfo): Bitmap? {
+    private fun readImageBytes(imageInfo: AbstractImageInfo): ByteArray? {
         val arr = ByteArray(imageInfo.imageLength)
         val stream = imageInfo.imageInputStream
         val len = stream.read(arr)
@@ -132,11 +143,6 @@ class MrtdNfcDataDecoder(private val mTmpFolder: File) {
             // Failed to read somehow
             return null
         }
-        mrtdLogI(TAG, "Image type: ${imageInfo.mimeType}")
-        return if ("image/jp2" == imageInfo.mimeType) {
-            Jpeg2kConverter(mTmpFolder).convertToBitmap(arr)
-        } else {
-            BitmapFactory.decodeByteArray(arr, 0, arr.size)
-        }
+        return arr
     }
 }

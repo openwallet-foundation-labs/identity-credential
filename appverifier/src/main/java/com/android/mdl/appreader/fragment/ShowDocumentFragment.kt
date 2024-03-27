@@ -1,7 +1,6 @@
 package com.android.mdl.appreader.fragment
 
 import android.content.res.Resources
-import android.graphics.BitmapFactory
 import android.icu.text.SimpleDateFormat
 import android.icu.util.GregorianCalendar
 import android.icu.util.TimeZone
@@ -21,6 +20,7 @@ import com.android.identity.documenttype.DocumentAttributeType
 import com.android.identity.documenttype.MdocDataElement
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificate
+import com.android.identity.jpeg2k.Jpeg2kConverter
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.VerifierApp
@@ -77,7 +77,7 @@ class ShowDocumentFragment : Fragment() {
         portraitBytes?.let { pb ->
             logDebug("Showing portrait " + pb.size + " bytes")
             binding.ivPortrait.setImageBitmap(
-                BitmapFactory.decodeByteArray(portraitBytes, 0, pb.size)
+                Jpeg2kConverter.decodeByteArray(requireContext(), portraitBytes!!)
             )
             binding.ivPortrait.visibility = View.VISIBLE
         }
@@ -85,7 +85,7 @@ class ShowDocumentFragment : Fragment() {
         signatureBytes?.let { signature ->
             logDebug("Showing signature " + signature.size + " bytes")
             binding.ivSignature.setImageBitmap(
-                BitmapFactory.decodeByteArray(signatureBytes, 0, signature.size)
+                Jpeg2kConverter.decodeByteArray(requireContext(), signatureBytes!!)
             )
             binding.ivSignature.visibility = View.VISIBLE
         }
