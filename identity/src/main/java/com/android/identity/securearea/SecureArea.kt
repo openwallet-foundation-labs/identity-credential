@@ -23,7 +23,18 @@ import com.android.identity.crypto.EcPublicKey
  *
  * This interface exists to abstract the underlying secure area used
  * used for creation of key material and other security objects related
- * to documents.
+ * to identity documents and associated credentials.
+ *
+ * A Secure Area may require authentication before a key can be used and
+ * this is modeled through the [KeyLockedException] and [KeyUnlockData]
+ * types. Applications will need to use Secure-Area specific mechanisms
+ * to obtain the required authentication.
+ *
+ * Existing keys in a Secure Area may be invalidated and this can happen
+ * on Android if e.g. the LSKF is removed or if a Cloud-based Secure Area
+ * is turned down. This is modeled through the [KeyInvalidatedException]
+ * being thrown when attempting to use the key. Applications can also use
+ * [getKeyInvalidated] to learn ahead of time if a key is still usable.
  */
 interface SecureArea {
     /**
@@ -90,6 +101,7 @@ interface SecureArea {
      * or the key wasn't created with purpose [KeyPurpose.SIGN].
      * @throws IllegalArgumentException if the signature algorithm isn’t compatible with the key.
      * @throws KeyLockedException if the key needs unlocking.
+     * @throws KeyInvalidatedException if the key is no longer usable.
      */
     @Throws(KeyLockedException::class)
     fun sign(
@@ -114,6 +126,7 @@ interface SecureArea {
      * @throws IllegalArgumentException if there is no key with the given alias
      * or the key wasn't created with purpose [KeyPurpose.AGREE_KEY].
      * @throws KeyLockedException if the key needs unlocking.
+     * @throws KeyInvalidatedException if the key is no longer usable.
      */
     @Throws(KeyLockedException::class)
     fun keyAgreement(
@@ -128,6 +141,16 @@ interface SecureArea {
      * @param alias the alias of the EC key to use.
      * @return a [KeyInfo] object.
      * @throws IllegalArgumentException if there is no key with the given alias.
+     * @throws KeyInvalidatedException if the key is invalidated.
      */
     fun getKeyInfo(alias: String): KeyInfo
+
+    /**
+     * Checks whether the key has been invalidated.
+     *
+     * @param alias the alias of the EC key to check for.
+     * @return `true` if the key has been invalidated, `false` otherwise.
+     * @throws IllegalArgumentException if there is no key with the given alias.
+     */
+    fun getKeyInvalidated(alias: String): Boolean
 }

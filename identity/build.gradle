@@ -19,9 +19,11 @@ dependencies {
     implementation libs.bouncy.castle.bcpkix
     implementation libs.kotlinx.io.bytestring
     implementation libs.kotlinx.datetime
+    implementation libs.kotlinx.coroutines.core
 
     testImplementation libs.bundles.unit.testing
     testImplementation libs.bouncy.castle.bcprov
+    testImplementation libs.kotlinx.coroutine.test
 }
 
 apply from: '../publish-helper.gradle'

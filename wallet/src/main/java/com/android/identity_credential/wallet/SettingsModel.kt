@@ -1,9 +1,11 @@
 package com.android.identity_credential.wallet
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.FileProvider
 import androidx.core.content.edit
 import androidx.lifecycle.MutableLiveData
@@ -23,6 +25,8 @@ class SettingsModel(
     // Non visible in the Settings screen
     val focusedCardId = MutableLiveData("")
     val hideMissingProximityPermissionsWarning = MutableLiveData(false)
+
+    val screenLockIsSetup = MutableLiveData(false)
 
     companion object {
         private const val TAG = "SettingsModel"
@@ -90,6 +94,21 @@ class SettingsModel(
                 putBoolean(PREFERENCE_HIDE_MISSING_PROXIMITY_PERMISSIONS_WARNING, it)
             }
         }
+
+        updateScreenLockIsSetup()
+    }
+
+    // Can be called when entering the application's main activity to update `screenLockIsSetup`.
+    // This is for the case where the user deletes the LSKF from the device.
+    fun updateScreenLockIsSetup() {
+        val keyguardManager = walletApplication.applicationContext
+            .getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        val value = keyguardManager.isDeviceSecure
+        if (value == screenLockIsSetup.value) {
+            return
+        }
+        screenLockIsSetup.value = value
+        screenLockIsSetup.postValue(value)
     }
 
     fun clearLog() {

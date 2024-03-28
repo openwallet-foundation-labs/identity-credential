@@ -33,6 +33,7 @@ import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaPublicKey
+import com.android.identity.securearea.KeyInvalidatedException
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
@@ -197,6 +198,12 @@ class AndroidKeystoreSecureArea(
                 else -> throw IllegalArgumentException("Curve is not supported")
             }
             if (aSettings.userAuthenticationRequired) {
+                val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                if (!keyguardManager.isDeviceSecure) {
+                    throw ScreenLockRequiredException(
+                        "Screen lock must be set up to create keys with user authentication"
+                    )
+                }
                 builder.setUserAuthenticationRequired(true)
                 val timeoutMillis = aSettings.userAuthenticationTimeoutMillis
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -246,7 +253,7 @@ class AndroidKeystoreSecureArea(
             try {
                 kpg.initialize(builder.build())
             } catch (e: InvalidAlgorithmParameterException) {
-                throw IllegalStateException(e.message, e)
+                throw IllegalStateException(e)
             }
             kpg.generateKeyPair()
         } catch (e: NoSuchAlgorithmException) {
@@ -282,11 +289,13 @@ class AndroidKeystoreSecureArea(
      * @param existingAlias the alias of the existing key.
      */
     fun createKeyForExistingAlias(existingAlias: String) {
+
+        val ks = KeyStore.getInstance("AndroidKeyStore")
+        ks.load(null)
+        val entry = ks.getEntry(existingAlias, null)
+            ?: throw IllegalArgumentException("A key with this alias doesn't exist")
+
         var keyInfo: android.security.keystore.KeyInfo = try {
-            val ks = KeyStore.getInstance("AndroidKeyStore")
-            ks.load(null)
-            val entry = ks.getEntry(existingAlias, null)
-                ?: throw IllegalArgumentException("No entry for alias")
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
             try {
@@ -415,11 +424,10 @@ class AndroidKeystoreSecureArea(
                 }
             }
         }
+
+        val (entry, _) = loadKey(alias)
+
         return try {
-            val ks = KeyStore.getInstance("AndroidKeyStore")
-            ks.load(null)
-            val entry = ks.getEntry(alias, null)
-                ?: throw IllegalArgumentException("No entry for alias")
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val s = Signature.getInstance(getSignatureAlgorithmName(signatureAlgorithm))
             s.initSign(privateKey)
@@ -447,11 +455,8 @@ class AndroidKeystoreSecureArea(
         otherKey: EcPublicKey,
         keyUnlockData: com.android.identity.securearea.KeyUnlockData?
     ): ByteArray {
+        val (entry, _) = loadKey(alias)
         return try {
-            val ks = KeyStore.getInstance("AndroidKeyStore")
-            ks.load(null)
-            val entry = ks.getEntry(alias, null)
-                ?: throw IllegalArgumentException("No entry for alias")
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val ka = KeyAgreement.getInstance("ECDH", "AndroidKeyStore")
             ka.init(privateKey)
@@ -474,19 +479,37 @@ class AndroidKeystoreSecureArea(
         }
     }
 
+    // @throws IllegalArgumentException if the key doesn't exist.
+    // @throws KeyInvalidatedException if LSKF was removed and the key is no longer available.
+    private fun loadKey(alias: String): Pair<KeyStore.Entry, ByteArray> {
+        val data = storageEngine[PREFIX + alias] ?: throw IllegalArgumentException("No key with given alias")
+
+        val ks = KeyStore.getInstance("AndroidKeyStore")
+        ks.load(null)
+        // If the LSKF is removed, all auth-bound keys are removed and the result is
+        // that KeyStore.getEntry() returns null.
+        val entry = ks.getEntry(alias, null)
+            ?: throw KeyInvalidatedException("This key is no longer available")
+
+        return Pair(entry, data)
+    }
+
+    override fun getKeyInvalidated(alias: String): Boolean {
+        try {
+            loadKey(alias)
+        } catch (e: KeyInvalidatedException) {
+            return true
+        }
+        return false
+    }
+
     override fun getKeyInfo(alias: String): AndroidKeystoreKeyInfo {
+        val (entry, data) = loadKey(alias)
         return try {
-            val ks = KeyStore.getInstance("AndroidKeyStore")
-            ks.load(null)
-            val entry = ks.getEntry(alias, null)
-                ?: throw IllegalArgumentException("No entry for alias")
             val privateKey = (entry as KeyStore.PrivateKeyEntry).privateKey
             val factory = KeyFactory.getInstance(privateKey.algorithm, "AndroidKeyStore")
             val keyInfo =
                 factory.getKeySpec(privateKey, android.security.keystore.KeyInfo::class.java)
-
-            val data = storageEngine[PREFIX + alias]
-                ?: throw IllegalArgumentException("No key with given alias")
             val map = Cbor.decode(data)
             val keyPurposes = map["keyPurposes"].asNumber.keyPurposeSet
             val userAuthenticationRequired = map["userAuthenticationRequired"].asBoolean
@@ -572,16 +595,16 @@ class AndroidKeystoreSecureArea(
      * @param context the application context.
      */
     class Capabilities(context: Context) {
-        private val mKeyguardManager: KeyguardManager
-        private val mApiLevel: Int
-        private val mTeeFeatureLevel: Int
-        private val mSbFeatureLevel: Int
+        private val keyguardManager: KeyguardManager
+        private val apiLevel: Int
+        private val teeFeatureLevel: Int
+        private val sbFeatureLevel: Int
 
         init {
-            mKeyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-            mTeeFeatureLevel = getFeatureVersionKeystore(context, false)
-            mSbFeatureLevel = getFeatureVersionKeystore(context, true)
-            mApiLevel = Build.VERSION.SDK_INT
+            keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            teeFeatureLevel = getFeatureVersionKeystore(context, false)
+            sbFeatureLevel = getFeatureVersionKeystore(context, true)
+            apiLevel = Build.VERSION.SDK_INT
         }
 
         val secureLockScreenSetup: Boolean
@@ -591,7 +614,7 @@ class AndroidKeystoreSecureArea(
              * This checks whether the device currently has a secure lock
              * screen (either PIN, pattern, or password).
              */
-            get() = mKeyguardManager.isDeviceSecure
+            get() = keyguardManager.isDeviceSecure
 
         /**
          * Whether it's possible to specify multiple authentication types.
@@ -602,7 +625,7 @@ class AndroidKeystoreSecureArea(
          * Biometric only, or both).
          */
         val multipleAuthenticationTypesSupported: Boolean
-            get() = mApiLevel >= Build.VERSION_CODES.R
+            get() = apiLevel >= Build.VERSION_CODES.R
 
         /**
          * Whether Attest Keys are supported.
@@ -610,7 +633,7 @@ class AndroidKeystoreSecureArea(
          * This is only supported in KeyMint 1.0 (version 100) and higher.
          */
         val attestKeySupported: Boolean
-            get() = mTeeFeatureLevel >= 100
+            get() = teeFeatureLevel >= 100
 
         /**
          * Whether Key Agreement is supported.
@@ -618,7 +641,7 @@ class AndroidKeystoreSecureArea(
          * This is only supported in KeyMint 1.0 (version 100) and higher.
          */
         val keyAgreementSupported: Boolean
-            get() = mTeeFeatureLevel >= 100
+            get() = teeFeatureLevel >= 100
 
         /**
          * Whether Curve25519 is supported.
@@ -626,7 +649,7 @@ class AndroidKeystoreSecureArea(
          * This is only supported in KeyMint 2.0 (version 200) and higher.
          */
         val curve25519Supported: Boolean
-            get() = mTeeFeatureLevel >= 200
+            get() = teeFeatureLevel >= 200
 
         /**
          * Whether StrongBox is supported.
@@ -634,7 +657,7 @@ class AndroidKeystoreSecureArea(
          * StrongBox requires dedicated hardware and is not available on all devices.
          */
         val strongBoxSupported: Boolean
-            get() = mSbFeatureLevel > 0
+            get() = sbFeatureLevel > 0
 
         /**
          * Whether StrongBox Attest Keys are supported.
@@ -642,7 +665,7 @@ class AndroidKeystoreSecureArea(
          * This is only supported in StrongBox KeyMint 1.0 (version 100) and higher.
          */
         val strongBoxAttestKeySupported: Boolean
-            get() = mSbFeatureLevel >= 100
+            get() = sbFeatureLevel >= 100
 
         /**
          * Whether StrongBox Key Agreement is supported.
@@ -650,7 +673,7 @@ class AndroidKeystoreSecureArea(
          * This is only supported in StrongBox KeyMint 1.0 (version 100) and higher.
          */
         val strongBoxKeyAgreementSupported: Boolean
-            get() = mSbFeatureLevel >= 100
+            get() = sbFeatureLevel >= 100
 
         /**
          * Whether StrongBox Curve25519 is supported.
@@ -658,7 +681,7 @@ class AndroidKeystoreSecureArea(
          * This is only supported in StrongBox KeyMint 2.0 (version 200) and higher.
          */
         val strongBoxCurve25519Supported: Boolean
-            get() = mSbFeatureLevel >= 200
+            get() = sbFeatureLevel >= 200
     }
 
     companion object {

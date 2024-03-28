@@ -41,6 +41,12 @@
         Proximity presentation requires permissions to be granted.
     </string>
 
+    <!-- No screenlock setup snackbar -->
+    <string name="no_screenlock_snackbar_text">
+        This device has no screen lock. Some things may not work.
+    </string>
+    <string name="no_screenlock_snackbar_action_label">Add Screen Lock</string>
+
     <!-- Notifications about documents -->
     <string name="notifications_document_application_approved_and_ready_to_use">
         The application has been reviewed and your document is ready to use.
@@ -94,57 +100,63 @@
     <string name="add_screen_title">Add to Wallet</string>
     <string name="add_screen_select_issuer">Select the kind of document to add</string>
 
-    <!-- Card Information screen -->
-    <string name="card_info_screen_title">Document</string>
-    <string name="card_info_screen_confirm_deletion_title">Confirm Deletion</string>
-    <string name="card_info_screen_confirm_deletion_message">Are you sure you want to delete this document?</string>
-    <string name="card_info_screen_confirm_deletion_confirm_button">Delete</string>
-    <string name="card_info_screen_confirm_deletion_dismiss_button">Cancel</string>
-    <string name="card_info_screen_menu_item_check_for_update">Check for Update</string>
-    <string name="card_info_screen_menu_item_show_data">Show Data</string>
-    <string name="card_info_screen_menu_item_show_keys">Show Keys</string>
-    <string name="card_info_screen_menu_item_request_update">Request Update</string>
-    <string name="card_info_screen_request_update_title">Request Update</string>
-    <string name="card_info_screen_request_update_message">
+    <!-- DocumentInfoScreen -->
+    <string name="document_info_screen_title">Document</string>
+    <string name="document_info_screen_confirm_deletion_title">Confirm Deletion</string>
+    <string name="document_info_screen_confirm_deletion_message">Are you sure you want to delete this document?</string>
+    <string name="document_info_screen_confirm_deletion_confirm_button">Delete</string>
+    <string name="document_info_screen_confirm_deletion_dismiss_button">Cancel</string>
+    <string name="document_info_screen_menu_item_check_for_update">Check for Update</string>
+    <string name="document_info_screen_menu_item_show_data">Show Data</string>
+    <string name="document_info_screen_menu_item_show_credentials">Show Credentials</string>
+    <string name="document_info_screen_menu_item_request_update">Request Update</string>
+    <string name="document_info_screen_request_update_title">Request Update</string>
+    <string name="document_info_screen_request_update_message">
         This is a Developer Mode feature to request a document update from the Issuing Authority.
     </string>
-    <string name="card_info_screen_request_update_remote_deletion_checkbox_string">
+    <string name="document_info_screen_request_update_remote_deletion_checkbox_string">
         Request deletion
     </string>
-    <string name="card_info_screen_request_update_notify_application_checkbox_string">
+    <string name="document_info_screen_request_update_notify_application_checkbox_string">
         Notify application
     </string>
-    <string name="card_info_screen_request_update_confirm_button">Request Update</string>
-    <string name="card_info_screen_request_update_dismiss_button">Cancel</string>
-    <string name="card_info_screen_menu_item_delete">Delete</string>
-    <string name="card_info_screen_data_name">Name</string>
-    <string name="card_info_screen_data_issuer">Issuer</string>
-    <string name="card_info_screen_data_status">Status</string>
-    <string name="card_info_screen_data_last_update_check">Last Update Check</string>
+    <string name="document_info_screen_request_update_confirm_button">Request Update</string>
+    <string name="document_info_screen_request_update_dismiss_button">Cancel</string>
+    <string name="document_info_screen_menu_item_delete">Delete</string>
+    <string name="document_info_screen_data_name">Name</string>
+    <string name="document_info_screen_data_issuer">Issuer</string>
+    <string name="document_info_screen_data_status">Status</string>
+    <string name="document_info_screen_data_last_update_check">Last Update Check</string>
+    <string name="document_info_screen_error_dialog_title">Error Refreshing</string>
+    <string name="document_info_screen_error_dialog_confirm_button">OK</string>
+    <string name="document_info_screen_refresh_error_missing_screenlock">
+        A screen lock must be set up to refresh this document.
+    </string>
 
-    <!-- Card Details screen -->
-    <string name="card_details_screen_title">Document Data</string>
-    <string name="card_details_screen_disclaimer">UNVERIFIED DATA\nDO NOT USE</string>
-    <string name="card_details_screen_flash_pass_lecture">
+    <!-- DocumentDetailsScreen -->
+    <string name="document_details_screen_title">Document Data</string>
+    <string name="document_details_screen_disclaimer">UNVERIFIED DATA\nDO NOT USE</string>
+    <string name="document_details_screen_flash_pass_lecture">
         Showing this screen is not a secure way of sharing identity data because the verifier
         has no way to confirm the authenticity of the data. Use NFC or QR to share identity
         data in a secure and privacy-preserving manner.
     </string>
-    <string name="card_details_boolean_true_value">True</string>
-    <string name="card_details_boolean_false_value">False</string>
+    <string name="document_details_boolean_true_value">True</string>
+    <string name="document_details_boolean_false_value">False</string>
 
-    <!-- Card Keys screen -->
-    <string name="card_keys_screen_title">Credential Keys</string>
+    <!-- CredentialInfoScreen -->
+    <string name="credential_info_screen_title">Credentials</string>
+    <string name="credential_info_screen_no_credentials">No Credentials Available</string>
 
-    <!-- CardViewModel -->
-    <string name="card_view_model_status_proofing_required">User proofing required</string>
-    <string name="card_view_model_status_proofing_processing">Application is processing</string>
-    <string name="card_view_model_status_proofing_failed">Application not approved</string>
-    <string name="card_view_model_status_configuration_available">Update available</string>
-    <string name="card_view_model_status_ready">Ready to be used</string>
-    <string name="card_view_model_status_deletion_requested">Deletion requested</string>
-    <string name="card_view_model_unknown_issuer">Unknown Issuer</string>
-    <string name="card_view_model_unknown_card_type">Unknown Card Type</string>
+    <!-- DocumentModel -->
+    <string name="document_model_status_proofing_required">User proofing required</string>
+    <string name="document_model_status_proofing_processing">Application is processing</string>
+    <string name="document_model_status_proofing_failed">Application not approved</string>
+    <string name="document_model_status_configuration_available">Update available</string>
+    <string name="document_model_status_no_usable_credential">Credentials expired or missing</string>
+    <string name="document_model_status_ready">Ready to be used</string>
+    <string name="document_model_status_deletion_requested">Deletion requested</string>
+    <string name="document_model_refresh_no_update_toast_text">No update available</string>
 
     <!-- Provisioning screen -->
     <string name="provisioning_title">Provisioning</string>

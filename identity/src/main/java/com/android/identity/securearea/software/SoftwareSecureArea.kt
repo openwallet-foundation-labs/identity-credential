@@ -262,6 +262,11 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         return SoftwareKeyInfo(publicKey, attestation, keyPurposes, passphraseRequired)
     }
 
+    override fun getKeyInvalidated(alias: String): Boolean {
+        // Software keys are never invalidated.
+        return false
+    }
+
     companion object {
         private const val TAG = "SoftwareSecureArea"
 

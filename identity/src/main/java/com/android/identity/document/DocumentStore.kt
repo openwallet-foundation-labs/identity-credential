@@ -19,6 +19,10 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.runBlocking
 
 /**
  * Class for storing real-world identity documents.
@@ -59,8 +63,8 @@ class DocumentStore(
      *
      * The returned document isn't yet added to the store and exists only in memory
      * (e.g. not persisted to the [StorageEngine] the document store has been configured with)
-     * until [addDocument] has been called. Observers of the store will not be notified until
-     * this happens.
+     * until [addDocument] has been called. Events will not be emitted (via [eventFlow]) until
+     * this happens
      *
      * @param name an identifier for the document.
      * @return A newly created document.
@@ -83,7 +87,7 @@ class DocumentStore(
     /**
      * Adds a document created with [createDocument] to the document store.
      *
-     * This makes the document visible to observers.
+     * This makes the document visible to collectors collecing from [eventFlow].
      *
      * @param document the document.
      */
@@ -135,27 +139,45 @@ class DocumentStore(
         }
     }
 
-    private val observers = mutableListOf<Observer>()
+    /**
+     * Types of events used in the [eventFlow] property.
+     */
+    enum class EventType {
+        /**
+         * A document was added to the store.
+         */
+        DOCUMENT_ADDED,
 
-    fun startObserving(observer: Observer) {
-        observers.add(observer)
+        /**
+         * A document was deleted from the store.
+         */
+        DOCUMENT_DELETED,
+
+        /**
+         * A document in the store was updated.
+         */
+        DOCUMENT_UPDATED
     }
 
-    fun stopObserving(observer: Observer) {
-        if (!observers.remove(observer)) {
-            Logger.w(TAG, "Observer to be removed doesn't exist")
-        }
-    }
+    private val _eventFlow = MutableSharedFlow<Pair<EventType, Document>>()
+
+    /**
+     * A [SharedFlow] which can be used to listen for when credentials are added and removed
+     * from the store as well as when credentials in the store have been updated.
+     */
+    val eventFlow
+        get() = _eventFlow.asSharedFlow()
+
 
     private fun emitOnDocumentAdded(document: Document) {
-        for (observer in observers) {
-            observer.onDocumentAdded(document)
+        runBlocking {
+            _eventFlow.emit(Pair(EventType.DOCUMENT_ADDED, document))
         }
     }
 
     private fun emitOnDocumentDeleted(document: Document) {
-        for (observer in observers) {
-            observer.onDocumentDeleted(document)
+        runBlocking {
+            _eventFlow.emit(Pair(EventType.DOCUMENT_DELETED, document))
         }
     }
 
@@ -165,36 +187,9 @@ class DocumentStore(
             // This is to prevent emitting onChanged when creating a document.
             return
         }
-        for (observer in observers) {
-            observer.onDocumentChanged(document)
+        runBlocking {
+            _eventFlow.emit(Pair(EventType.DOCUMENT_UPDATED, document))
         }
-    }
-
-    /**
-     * An interface which can be used to observe when documents are added, removed, and changed
-     * in a [DocumentStore].
-     */
-    interface Observer {
-        /**
-         * Called when a document is added to the store using [addDocument].
-         *
-         * @param document the document that was added.
-         */
-        fun onDocumentAdded(document: Document)
-
-        /**
-         * Called when a document is removed from the store using [deleteDocument].
-         *
-         * @param document the document that was removed.
-         */
-        fun onDocumentDeleted(document: Document)
-
-        /**
-         * Called when data on a document changed.
-         *
-         * @param document the document for which data was changed.
-         */
-        fun onDocumentChanged(document: Document)
     }
 
     companion object {
