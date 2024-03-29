@@ -6,7 +6,9 @@ import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.simple.SimpleIcaoNfcTunnelDriver
+import com.android.identity_credential.mrtd.MrtdAccessData
 import com.android.identity_credential.mrtd.MrtdNfc
+import com.android.identity_credential.mrtd.MrtdNfcChipAccess
 import com.android.identity_credential.mrtd.MrtdNfcData
 import com.android.identity_credential.mrtd.MrtdNfcDataReader
 import kotlinx.coroutines.channels.Channel
@@ -41,7 +43,7 @@ import java.util.Arrays
  * dedicated thread and do command and response dispatching.
  */
 class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
-    private val requestChannel = Channel<EvidenceRequestIcaoNfcTunnel>()
+    private val requestChannel = Channel<OptionalRequest>()
     private val responseChannel = Channel<EvidenceResponseIcaoNfcTunnel>()
     private var dataGroups: List<Int>? = null
     private var processingThread: Thread? = null
@@ -49,14 +51,16 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
     private var progressPercent: Int = 0
     private var chipAuthenticationDone = false
     private var activeAuthenticationDone = false
+    private var accessData: MrtdAccessData? = null
     private var data: MrtdNfcData? = null
 
-    override fun init(dataGroups: List<Int>) {
+    override fun init(dataGroups: List<Int>, accessData: MrtdAccessData?) {
         this.dataGroups = dataGroups
+        this.accessData = accessData
     }
 
     override suspend fun handleNfcTunnelResponse(
-        evidence: EvidenceResponseIcaoNfcTunnel): EvidenceRequestIcaoNfcTunnel {
+        evidence: EvidenceResponseIcaoNfcTunnel): EvidenceRequestIcaoNfcTunnel? {
         if (processingThread == null) {
             // Handshake response
             val thread = Thread {
@@ -68,7 +72,7 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
         } else {
             responseChannel.send(evidence)
         }
-        return requestChannel.receive()
+        return requestChannel.receive().request
     }
 
     override fun collectEvidence(): EvidenceResponse {
@@ -170,21 +174,39 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
 
     private fun handleTunnel() {
         var service: PassportService? = null
+        val accessData = this.accessData
         val rawService = TunnelCardService {
-            service?.wrapper != null
+            // if access data is null, mark transmission as encrypted, so that there
+            // is not encryption applied downstream.
+            accessData != null || service?.wrapper != null
         }
-        service = PassportService(
-            rawService, PassportService.NORMAL_MAX_TRANCEIVE_LENGTH,
-            PassportService.NORMAL_MAX_TRANCEIVE_LENGTH,
-            false,
-            false
-        )
 
-        // This is needed so that our PassportService is in the right state (as this command
-        // was issued on the client). We do not send actual commands to the tunnel.
-        service.sendSelectApplet(false)
+        if (accessData == null) {
+            // Assume that the client have already performed basic access control step and
+            // a secure channel was established.
+            service = PassportService(
+                rawService, PassportService.NORMAL_MAX_TRANCEIVE_LENGTH,
+                PassportService.NORMAL_MAX_TRANCEIVE_LENGTH,
+                false,
+                false
+            )
 
-        rawService.connect()
+            // This is needed so that our PassportService is in the right state (as this command
+            // was issued on the client). We do not send actual commands to the tunnel.
+            service.sendSelectApplet(false)
+
+            rawService.connect()
+        } else {
+            // Raw tunnel, perform BAC or PACE first.
+            rawService.connect()
+
+            val chipAccess = MrtdNfcChipAccess(false)  // TODO: enable mac?
+            service = chipAccess.open(rawService, accessData) { status ->
+                if (status is MrtdNfc.ReadingData) {
+                    progressPercent = status.progressPercent
+                }
+            }
+        }
 
         val dg14bytes = handleChipAuthentication(service)
         val dg15bytes = if (chipAuthenticationDone) null else handleActiveAuthentication(service)
@@ -220,7 +242,7 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
         rawService.close()
     }
 
-    inner class TunnelCardService(private val encrypted: () -> Boolean) : CardService() {
+    inner class TunnelCardService(private val passThrough: () -> Boolean) : CardService() {
         private var closed = false
         private var connected = false
 
@@ -243,11 +265,13 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
             }
             return runBlocking {
                 val requestType =
-                    if (authenticating) EvidenceRequestIcaoNfcTunnelType.AUTHENTICATING
-                    else if (encrypted()) EvidenceRequestIcaoNfcTunnelType.READING_ENCRYPTED
-                    else EvidenceRequestIcaoNfcTunnelType.READING
-                requestChannel.send(EvidenceRequestIcaoNfcTunnel(
-                    requestType, progressPercent, commandAPDU!!.bytes))
+                    if (authenticating) {
+                        EvidenceRequestIcaoNfcTunnelType.AUTHENTICATING
+                    } else {
+                        EvidenceRequestIcaoNfcTunnelType.READING
+                    }
+                requestChannel.send(OptionalRequest(EvidenceRequestIcaoNfcTunnel(
+                    requestType, passThrough(), progressPercent, commandAPDU!!.bytes)))
                 val evidenceResponse = responseChannel.receive()
                 ResponseAPDU(evidenceResponse.response)
             }
@@ -260,9 +284,7 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
         override fun close() {
             closed = true
             runBlocking {
-                requestChannel.send(EvidenceRequestIcaoNfcTunnel(
-                    EvidenceRequestIcaoNfcTunnelType.HANDSHAKE, 0, byteArrayOf()
-                ))
+                requestChannel.send(OptionalRequest(null))
             }
         }
 
@@ -270,4 +292,7 @@ class NfcTunnelDriver : SimpleIcaoNfcTunnelDriver {
             return false
         }
     }
+
+    // Channel does not accept null, so use a wrapper
+    data class OptionalRequest(val request: EvidenceRequestIcaoNfcTunnel?)
 }

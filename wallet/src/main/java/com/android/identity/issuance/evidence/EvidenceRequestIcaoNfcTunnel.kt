@@ -9,16 +9,22 @@ package com.android.identity.issuance.evidence
  *
  * See Section 6.2 "Chip Authentication" and Section 7.1 "Terminal Authentication" in
  * ICAO Doc 9303 part 11.
+ *
+ * [requestType] first request is handshake, followed by authenticating and then reading data
+ * [passThrough] send messages to NFC chip as is, without additional client-to-chip encryption
+ * [progressPercent] approximate progress of either authenticating or reading stage
+ * [message] raw NFC message to pass to the chip
  */
 data class EvidenceRequestIcaoNfcTunnel(
     val requestType: EvidenceRequestIcaoNfcTunnelType,
+    val passThrough: Boolean,
     val progressPercent: Int,
     val message: ByteArray)
     : EvidenceRequest() {
 
     override fun toString(): String {
-        return "EvidenceRequestIcaoNfcTunnel{type=$requestType, progress=$progressPercent," +
-                "length=${message.size}}"
+        return "EvidenceRequestIcaoNfcTunnel{type=$requestType, passThrough=$passThrough, " +
+                "progress=$progressPercent, length=${message.size}}"
     }
 
     override fun equals(other: Any?): Boolean {

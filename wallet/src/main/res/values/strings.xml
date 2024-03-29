@@ -243,7 +243,9 @@
     <string name="utopia_eu_pid_issuing_authority_reject">Cancel</string>
     <string name="utopia_eu_pid_issuing_authority_hardcoded_or_derived">Scan ePassport/eID?</string>
     <string name="utopia_eu_pid_issuing_authority_hardcoded_option">No, create PID with hard-coded data</string>
-    <string name="utopia_eu_pid_issuing_authority_passport_option">Yes, derive the PID from ePassport/eID</string>
+    <string name="utopia_eu_pid_issuing_authority_passport_option">Yes, derive the PID from ePassport</string>
+    <string name="utopia_eu_pid_issuing_authority_id_option">Yes, derive the PID from eID</string>
+    <string name="utopia_eu_pid_issuing_authority_enter_can">Enter the 6-digit Card Access Number printed on your card</string>
     <string name="utopia_eu_pid_issuing_authority_continue">Continue</string>
     <string name="utopia_eu_pid_issuing_authority_application_finish">
         Your application is about to be sent the ID issuer for verification. You will get notified

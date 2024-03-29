@@ -3,7 +3,10 @@ package com.android.identity_credential.mrtd
 import net.sf.scuba.smartcards.CardService
 import net.sf.scuba.smartcards.CardServiceException
 import net.sf.scuba.smartcards.ISO7816
+import org.jmrtd.AccessKeySpec
 import org.jmrtd.BACKey
+import org.jmrtd.PACEKeySpec
+import org.jmrtd.PACESecretKeySpec
 import org.jmrtd.PassportService
 import org.jmrtd.lds.CardAccessFile
 import org.jmrtd.lds.PACEInfo
@@ -22,7 +25,7 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
      *
      * This must be called on a background thread.
      */
-    fun open(cardService: CardService, mrzData: MrtdMrzData,
+    fun open(cardService: CardService, accessData: MrtdAccessData,
              onStatus: (MrtdNfc.Status) -> Unit): PassportService {
         mrtdLogI(TAG, "Opening NFC connection")
         cardService.open()
@@ -39,8 +42,11 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
         onStatus(MrtdNfc.Connected)
 
 
-        val bacKeySpec =
-            BACKey(mrzData.documentNumber, mrzData.dateOfBirth, mrzData.dateOfExpiration)
+        val accessKeySpec: AccessKeySpec = when (accessData) {
+            is MrtdAccessDataMrz -> BACKey(accessData.documentNumber, accessData.dateOfBirth, accessData.dateOfExpiration)
+            is MrtdAccessDataCan -> PACEKeySpec(accessData.canCode, PassportService.CAN_PACE_KEY_REFERENCE)
+            is MrtdAccessDataPin -> PACEKeySpec(accessData.pinCode, PassportService.PIN_PACE_KEY_REFERENCE)
+        }
 
         var hasPaceSucceeded = false
         try {
@@ -55,7 +61,7 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
                     mrtdLogI(TAG, "attempting PACE")
                     onStatus(MrtdNfc.AttemptingPACE)
                     service.doPACE(
-                        bacKeySpec,
+                        accessKeySpec,
                         securityInfo.objectIdentifier,
                         PACEInfo.toParameterSpec(securityInfo.parameterId),
                         securityInfo.parameterId
@@ -78,10 +84,10 @@ class MrtdNfcChipAccess(private val shouldCheckMac: Boolean) {
 
         service.sendSelectApplet(hasPaceSucceeded)
 
-        if (!hasPaceSucceeded) {
+        if (!hasPaceSucceeded && accessKeySpec is BACKey) {
             mrtdLogI(TAG, "attempting BAC")
             onStatus(MrtdNfc.AttemptingBAC)
-            service.doBAC(bacKeySpec)
+            service.doBAC(accessKeySpec)
             mrtdLogI(TAG, "BAC succeeded")
             onStatus(MrtdNfc.BACSucceeded)
         }

@@ -20,6 +20,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleCh
 import com.android.identity.issuance.simple.SimpleIcaoNfcTunnelDriver
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.storage.StorageEngine
+import com.android.identity_credential.mrtd.MrtdAccessData
 import com.android.identity_credential.mrtd.MrtdNfcData
 import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
 import kotlinx.datetime.Clock
@@ -82,7 +83,7 @@ class SelfSignedMdlIssuingAuthority(
                 on(id = "hardcoded", text = resourceString(R.string.utopia_mdl_issuing_authority_hardcoded_option)) {
                 }
                 on(id = "passport", text = resourceString(R.string.utopia_mdl_issuing_authority_passport_option)) {
-                    icaoTunnel("tunnel", listOf(1, 2, 7)) {
+                    icaoTunnel("tunnel", listOf(1, 2, 7), true) {
                         whenChipAuthenticated {}
                         whenActiveAuthenticated {}
                         whenNotAuthenticated {}
@@ -104,6 +105,10 @@ class SelfSignedMdlIssuingAuthority(
                 assets = mapOf()
             )
         }
+    }
+
+    override fun getMrtdAccessData(collectedEvidence: Map<String, EvidenceResponse>): MrtdAccessData? {
+        return null
     }
 
     override fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {

@@ -10,8 +10,7 @@ enum class EvidenceRequestIcaoNfcTunnelType {
      * Requests client to establish the tunnel for NFC messages between the [IssuingAuthority] and
      * the chip in a MRTD (Machine-readable Travel Document, e.g. a passport).
      *
-     * Unlike all other requests, does not carry any payload. [EvidenceRequestIcaoNfcTunnel.message]
-     * must be an empty array.
+     * Does not carry any payload, [EvidenceRequestIcaoNfcTunnel.message] must be an empty array.
      *
      * [EvidenceRequestIcaoNfcTunnel.progressPercent] must be zero.
      */
@@ -33,22 +32,11 @@ enum class EvidenceRequestIcaoNfcTunnelType {
      * Reading data without secure channel (i.e. [IssuingAuthority] is unable or unwilling to
      * establish it).
      *
-     * The data should be passed to the chip (and read from the chip) using PACE or BAC message
-     * encryption.
+     * The data should be passed to the chip (and read from the chip) using the channel encryption
+     * established during the initial access.
      *
      * [EvidenceRequestIcaoNfcTunnel.progressPercent] indicates approximate progress of the reading
      * step.
      */
-    READING,
-
-    /**
-     * Reading data using secure channel.
-     *
-     * The data should be passed to the chip (and read from the chip) as-is without PACE or BAC
-     * message encryption.
-     *
-     * [EvidenceRequestIcaoNfcTunnel.progressPercent] indicates approximate progress of the reading
-     * step.
-     */
-    READING_ENCRYPTED
+    READING
 }

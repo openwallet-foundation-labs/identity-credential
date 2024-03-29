@@ -1,7 +1,6 @@
 package com.android.identity_credential.mrtd
 
 import android.os.Handler
-import android.util.Log
 import android.util.Size
 import androidx.activity.ComponentActivity
 import androidx.camera.core.CameraSelector
@@ -20,7 +19,7 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 /**
- * OCR scanner that extracts [MrtdMrzData] from camera feed.
+ * OCR scanner that extracts [MrtdAccessDataMrz] from camera feed.
  *
  * TODO: hook cancellation
  */
@@ -33,14 +32,14 @@ class MrtdMrzScanner(private val mActivity: ComponentActivity) {
      * Starts camera and scans camera feed until it finds passport/ID image that contains valid
      * data.
      */
-    suspend fun readFromCamera(surfaceProvider: Preview.SurfaceProvider): MrtdMrzData {
+    suspend fun readFromCamera(surfaceProvider: Preview.SurfaceProvider): MrtdAccessDataMrz {
         val provider = ProcessCameraProvider.getInstance(mActivity).await()
         return onCameraReady(provider, surfaceProvider)
     }
 
     private suspend fun onCameraReady(
         cameraProvider: ProcessCameraProvider, surfaceProvider: Preview.SurfaceProvider
-    ): MrtdMrzData {
+    ): MrtdAccessDataMrz {
         val mainHandler = Handler(mActivity.mainLooper)
 
         // Preview
@@ -87,7 +86,7 @@ class MrtdMrzScanner(private val mActivity: ComponentActivity) {
     }
 
     @androidx.annotation.OptIn(ExperimentalGetImage::class)
-    private fun recognize(imageProxy: ImageProxy, dataCb: (keyData: MrtdMrzData) -> Unit) {
+    private fun recognize(imageProxy: ImageProxy, dataCb: (keyData: MrtdAccessDataMrz) -> Unit) {
         val mediaImage = imageProxy.image ?: return
         val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)

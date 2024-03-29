@@ -15,7 +15,7 @@ class EvidenceRequestTest {
     @Test
     fun cborSerialization_IcaoNfcTunnel() {
         val orig = EvidenceRequestIcaoNfcTunnel(
-            EvidenceRequestIcaoNfcTunnelType.READING, 15, byteArrayOf(3, 7, 1))
+            EvidenceRequestIcaoNfcTunnelType.READING, true, 15, byteArrayOf(3, 7, 1))
         val copy = EvidenceRequest.fromCbor(orig.toCbor())
         Assert.assertEquals(orig, copy)
     }

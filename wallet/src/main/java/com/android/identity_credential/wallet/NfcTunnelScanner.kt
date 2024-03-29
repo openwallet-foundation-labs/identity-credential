@@ -14,16 +14,16 @@ import org.jmrtd.PassportService
 class NfcTunnelScanner(private val provisioningViewModel: ProvisioningViewModel) : MrtdNfcReader<Unit> {
     override fun read(
         rawConnection: CardService,
-        connection: PassportService,
+        connection: PassportService?,
         onStatus: (MrtdNfc.Status) -> Unit
     ) {
         provisioningViewModel.runIcaoNfcTunnel { request ->
             val command = CommandAPDU(request.message)
 
-            val rawCommand = if (request.requestType == EvidenceRequestIcaoNfcTunnelType.READING_ENCRYPTED) {
-                command // already encrypted from tunnel
+            val rawCommand = if (request.passThrough) {
+                command // pass as is to the chip
             } else {
-                val wrapper = connection.wrapper
+                val wrapper = connection?.wrapper
                 if (wrapper != null) {
                     wrapper.wrap(command)
                 } else {
@@ -38,10 +38,10 @@ class NfcTunnelScanner(private val provisioningViewModel: ProvisioningViewModel)
                 }
             )
             val rawResponse = rawConnection.transmit(rawCommand)
-            val response = if (request.requestType == EvidenceRequestIcaoNfcTunnelType.READING_ENCRYPTED) {
-                rawResponse // transmit encrypted into the tunnel
+            val response = if (request.passThrough) {
+                rawResponse // transmit as is into the tunnel
             } else {
-                val wrapper = connection.wrapper
+                val wrapper = connection?.wrapper
                 if (wrapper != null) {
                     wrapper.unwrap(rawResponse)
                 } else {

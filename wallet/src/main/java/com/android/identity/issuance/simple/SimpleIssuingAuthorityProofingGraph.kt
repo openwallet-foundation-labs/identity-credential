@@ -96,7 +96,9 @@ class SimpleIssuingAuthorityProofingGraph {
      *
      * Branches can be configured using [IcaoChoices] methods.
      */
-    fun icaoTunnel(id: String, dataGroups: List<Int>, initChoices: IcaoChoices.() -> Unit) {
+    fun icaoTunnel(id: String, dataGroups: List<Int>,
+                   basicAuthentication: Boolean,
+                   initChoices: IcaoChoices.() -> Unit) {
         chain.add { followUp ->
             val choices = IcaoChoices()
             choices.initChoices()
@@ -104,7 +106,7 @@ class SimpleIssuingAuthorityProofingGraph {
                 choices.chipAuthenticationGraph).associateBy({graph -> graph}) { graph ->
                     graph.build(followUp)
                 }
-            IcaoNfcTunnelNode(id, dataGroups,
+            IcaoNfcTunnelNode(id, dataGroups, basicAuthentication,
                 successfulActiveAuthentication = map[choices.activeAuthenticationGraph]!!,
                 successfulChipAuthentication = map[choices.chipAuthenticationGraph]!!,
                 noAuthentication = map[choices.noAuthenticationGraph]!!
@@ -131,7 +133,7 @@ class SimpleIssuingAuthorityProofingGraph {
 
         /**
          * Configures the branch that should be used when some form of authentication succeeded
-         * (either Active Authentication or Chip Authentication).
+         * beyond basic authentication (either Active Authentication or Chip Authentication).
          */
         fun whenAuthenticated(init: SimpleIssuingAuthorityProofingGraph.() -> Unit) {
             activeAuthenticationGraph.init()
@@ -153,8 +155,8 @@ class SimpleIssuingAuthorityProofingGraph {
         }
 
         /**
-         * Configures the branch that should be used when MRTD does not support any authentication
-         * method that can verify that MRTD was not cloned.
+         * Configures the branch that should be used when MRTD only supports basic authentication
+         * and does not support any authentication that can verify that MRTD was not cloned.
          */
         fun whenNotAuthenticated(init: SimpleIssuingAuthorityProofingGraph.() -> Unit) {
             noAuthenticationGraph.init()
@@ -220,13 +222,14 @@ class SimpleIssuingAuthorityProofingGraph {
     class IcaoNfcTunnelNode(
         override val nodeId: String,
         val dataGroups: List<Int>,
+        private val basicAuthentication: Boolean,
         private val successfulChipAuthentication: Node,
         private val successfulActiveAuthentication: Node,
         private val noAuthentication: Node): Node() {
 
         override val requests: List<EvidenceRequest>
-            get() = listOf(EvidenceRequestIcaoNfcTunnel(
-                EvidenceRequestIcaoNfcTunnelType.HANDSHAKE, 0, byteArrayOf()))
+            get() = listOf(EvidenceRequestIcaoNfcTunnel(EvidenceRequestIcaoNfcTunnelType.HANDSHAKE,
+                !basicAuthentication, 0, byteArrayOf()))
         override val followUps: Iterable<Node>
             get() = setOf(successfulActiveAuthentication, successfulChipAuthentication, noAuthentication)
 

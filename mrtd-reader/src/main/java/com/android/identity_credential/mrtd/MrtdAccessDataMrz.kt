@@ -8,8 +8,8 @@ package com.android.identity_credential.mrtd
  * an MRTD. Other info in MRZ (and more) can then be captured in a much better way from the NFC
  * chip.
  */
-data class MrtdMrzData(
+data class MrtdAccessDataMrz(
     val documentNumber: String,
     val dateOfBirth: String,
     val dateOfExpiration: String
-)
+) : MrtdAccessData()
