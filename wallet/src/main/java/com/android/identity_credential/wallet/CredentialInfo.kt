@@ -1,11 +1,10 @@
 package com.android.identity_credential.wallet
 
-import android.graphics.Bitmap
 import androidx.compose.runtime.Immutable
 import kotlinx.datetime.Instant
 
 @Immutable
-data class CardKeyInfo(
+data class CredentialInfo(
     val description: String,
 
     val usageCount: Int,

@@ -25,6 +25,8 @@ import com.android.identity.util.ApplicationData
 import com.android.identity.util.Logger
 import com.android.identity.util.SimpleApplicationData
 import com.android.identity.util.Timestamp
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 /**
  * This class represents a document created in [DocumentStore].
@@ -262,6 +264,44 @@ class Document private constructor(
         return credential
     }
 
+    /**
+     * Goes through all credentials and deletes the ones with keys that are invalidated.
+     */
+    fun deleteInvalidatedCredentials() {
+        for (pendingCredential in pendingCredentials) {
+            if (pendingCredential.secureArea.getKeyInvalidated(pendingCredential.alias)) {
+                Logger.i(TAG, "Deleting invalidated pending credential  ${pendingCredential.alias}")
+                pendingCredential.delete()
+            }
+        }
+        for (credential in certifiedCredentials) {
+            if (credential.secureArea.getKeyInvalidated(credential.alias)) {
+                Logger.i(TAG, "Deleting invalidated credential ${credential.alias}")
+                credential.delete()
+            }
+        }
+    }
+
+    /**
+     * Returns whether an usable credential exists at a given point in time.
+     *
+     * @param at the point in time to check for.
+     * @returns `true` if an usable credential exists for the given time, `false` otherwise
+     */
+    fun hasUsableCredential(at: Instant = Clock.System.now()): Boolean {
+        val credentials = certifiedCredentials
+        if (credentials.isEmpty()) {
+            return false
+        }
+        for (credential in credentials) {
+            val validFrom = Instant.fromEpochMilliseconds(credential.validFrom.toEpochMilli())
+            val validUntil = Instant.fromEpochMilliseconds(credential.validUntil.toEpochMilli())
+            if (at >= validFrom && at < validUntil) {
+                return true
+            }
+        }
+        return false
+    }
 
     internal fun removeCredential(credential: Credential) {
         val listToModify = if (credential.isCertified) _certifiedCredentials

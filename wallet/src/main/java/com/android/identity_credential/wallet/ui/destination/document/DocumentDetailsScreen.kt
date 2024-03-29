@@ -29,24 +29,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.CardViewModel
+import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.KeyValuePairText
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 
 
-private const val TAG = "CardDetailsScreen"
+private const val TAG = "DocumentDetailsScreen"
 
 @Composable
-fun CardDetailsScreen(
-    cardId: String,
-    cardViewModel: CardViewModel,
+fun DocumentDetailsScreen(
+    documentId: String,
+    documentModel: DocumentModel,
     onNavigate: (String) -> Unit
 ) {
-    val card = cardViewModel.getCard(cardId)
+    val card = documentModel.getDocumentInfo(documentId)
     if (card == null) {
-        Logger.w(TAG, "No card with id $cardId")
+        Logger.w(TAG, "No document with id $documentId")
         onNavigate(WalletDestination.Main.route)
         return
     }
@@ -57,12 +57,12 @@ fun CardDetailsScreen(
     ) {
 
         ScreenWithAppBarAndBackButton(
-            title = stringResource(R.string.card_details_screen_title),
+            title = stringResource(R.string.document_details_screen_title),
             onBackButtonClick = { onNavigate(WalletDestination.PopBackStack.route) }
         ) {
             Column() {
                 Text(
-                    text = stringResource(R.string.card_details_screen_flash_pass_lecture),
+                    text = stringResource(R.string.document_details_screen_flash_pass_lecture),
                     textAlign = TextAlign.Center,
                     fontStyle = FontStyle.Italic,
                     style = MaterialTheme.typography.bodySmall,
@@ -110,7 +110,7 @@ fun CardDetailsScreen(
             modifier = Modifier.align(Alignment.Center)
         ) {
             Text(
-                text = stringResource(id = R.string.card_details_screen_disclaimer),
+                text = stringResource(id = R.string.document_details_screen_disclaimer),
                 textAlign = TextAlign.Center,
                 lineHeight = 1.25.em,
                 color = Color(red = 255, green = 128, blue = 128, alpha = 192),

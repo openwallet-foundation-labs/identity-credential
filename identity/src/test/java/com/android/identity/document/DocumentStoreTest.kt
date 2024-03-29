@@ -24,6 +24,11 @@ import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Timestamp
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.junit.Assert
 import org.junit.Before
@@ -70,53 +75,40 @@ class DocumentStoreTest {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test
-    fun testObserver() {
-        val documentStore = DocumentStore(
+    fun testEventFlow() = runTest {
+        val credentialStore = DocumentStore(
             storageEngine,
             secureAreaRepository
         )
 
-        val sb = StringBuilder()
-        val observer = object : DocumentStore.Observer {
-            override fun onDocumentAdded(document: Document) {
-                sb.append("Added ${document.name}")
-            }
-
-            override fun onDocumentDeleted(document: Document) {
-                sb.append("Deleted ${document.name}")
-            }
-
-            override fun onDocumentChanged(document: Document) {
-                sb.append("Changed ${document.name}")
-            }
+        val events = mutableListOf<Pair<DocumentStore.EventType, Document>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            credentialStore.eventFlow.toList(events)
         }
-        documentStore.startObserving(observer)
 
-        val cred0 = documentStore.createDocument("cred0")
-        Assert.assertEquals("", sb.toString())
+        val cred0 = credentialStore.createDocument("doc0")
         cred0.applicationData.setString("foo", "should not be notified")
-        Assert.assertEquals("", sb.toString())
-        documentStore.addDocument(cred0)
-        Assert.assertEquals("Added cred0", sb.toString())
-        sb.clear()
-        val cred1 = documentStore.createDocument("cred1")
-        Assert.assertEquals("", sb.toString())
-        val cred2 = documentStore.createDocument("cred2")
-        Assert.assertEquals("", sb.toString())
-        documentStore.addDocument(cred1)
-        Assert.assertEquals("Added cred1", sb.toString())
-        documentStore.addDocument(cred2)
-        Assert.assertEquals("Added cred1" + "Added cred2", sb.toString())
-        sb.clear()
+        credentialStore.addDocument(cred0)
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, cred0), events.last())
+
+        val cred1 = credentialStore.createDocument("doc1")
+        val cred2 = credentialStore.createDocument("doc2")
+        credentialStore.addDocument(cred1)
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, cred1), events.last())
+        credentialStore.addDocument(cred2)
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, cred2), events.last())
         cred2.applicationData.setString("foo", "bar")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_UPDATED, cred2), events.last())
         cred1.applicationData.setString("foo", "bar")
-        Assert.assertEquals("Changed cred2" + "Changed cred1", sb.toString())
-        sb.clear()
-        documentStore.deleteDocument("cred0")
-        documentStore.deleteDocument("cred2")
-        documentStore.deleteDocument("cred1")
-        Assert.assertEquals("Deleted cred0" + "Deleted cred2" + "Deleted cred1", sb.toString())
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_UPDATED, cred1), events.last())
+        credentialStore.deleteDocument("doc0")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, cred0), events.last())
+        credentialStore.deleteDocument("doc2")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, cred2), events.last())
+        credentialStore.deleteDocument("doc1")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, cred1), events.last())
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.android.identity_credential.wallet.ui.destination.main
 
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,9 +61,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.util.Logger
-import com.android.identity_credential.wallet.CardViewModel
+import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.QrEngagementViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.SettingsModel
@@ -79,7 +82,7 @@ private const val TAG = "MainScreen"
 fun MainScreen(
     onNavigate: (String) -> Unit,
     qrEngagementViewModel: QrEngagementViewModel,
-    cardViewModel: CardViewModel,
+    documentModel: DocumentModel,
     settingsModel: SettingsModel,
     context: Context,
 ) {
@@ -131,7 +134,7 @@ fun MainScreen(
             onNavigate = onNavigate,
             settingsModel = settingsModel,
             qrEngagementViewModel = qrEngagementViewModel,
-            cardViewModel = cardViewModel,
+            documentModel = documentModel,
             scope = scope,
             drawerState = drawerState,
             context = context
@@ -145,7 +148,7 @@ fun MainScreenContent(
     onNavigate: (String) -> Unit,
     settingsModel: SettingsModel,
     qrEngagementViewModel: QrEngagementViewModel,
-    cardViewModel: CardViewModel,
+    documentModel: DocumentModel,
     scope: CoroutineScope,
     drawerState: DrawerState,
     context: Context,
@@ -224,7 +227,26 @@ fun MainScreenContent(
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) {
-        if (cardViewModel.cards.isEmpty()) {
+        if (!settingsModel.screenLockIsSetup.value!!) {
+            LaunchedEffect(snackbarHostState) {
+                when (snackbarHostState.showSnackbar(
+                    message = context.getString(R.string.no_screenlock_snackbar_text),
+                    actionLabel = context.getString(R.string.no_screenlock_snackbar_action_label),
+                    duration = SnackbarDuration.Indefinite,
+                    withDismissAction = false
+                )) {
+                    SnackbarResult.Dismissed -> {
+                    }
+                    SnackbarResult.ActionPerformed -> {
+                        val intent = Intent(Settings.ACTION_SECURITY_SETTINGS)
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        ContextCompat.startActivity(context, intent, null)
+                    }
+                }
+            }
+        }
+
+        if (documentModel.documentInfos.isEmpty()) {
             MainScreenNoDocumentsAvailable(onNavigate, context)
         } else {
             if (!hasProximityPresentationPermissions.allPermissionsGranted &&
@@ -262,7 +284,7 @@ fun MainScreenContent(
                     )
                     Text(
                         modifier = Modifier.padding(8.dp),
-                        text = stringResource(R.string.wallet_screen_nfc_presentation_instructions),
+                        text = stringResource(R.string.wallet_screen_nfc_presentation_instructions)
                     )
                 }
             }
@@ -271,7 +293,7 @@ fun MainScreenContent(
 
             MainScreenDocumentPager(
                 onNavigate = onNavigate,
-                cardViewModel = cardViewModel,
+                documentModel = documentModel,
                 settingsModel = settingsModel
             )
 
@@ -371,17 +393,17 @@ fun MainScreenNoDocumentsAvailable(
 @Composable
 fun MainScreenDocumentPager(
     onNavigate: (String) -> Unit,
-    cardViewModel: CardViewModel,
+    documentModel: DocumentModel,
     settingsModel: SettingsModel,
 ) {
     val pagerState = rememberPagerState(
-        initialPage = cardViewModel.getCardIndex(settingsModel.focusedCardId.value!!) ?: 0,
-        pageCount = { cardViewModel.cards.size }
+        initialPage = documentModel.getCardIndex(settingsModel.focusedCardId.value!!) ?: 0,
+        pageCount = { documentModel.documentInfos.size }
     )
 
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page ->
-            settingsModel.focusedCardId.value = cardViewModel.cards[page].id
+            settingsModel.focusedCardId.value = documentModel.documentInfos[page].documentId
         }
     }
 
@@ -390,13 +412,13 @@ fun MainScreenDocumentPager(
             state = pagerState,
             modifier = Modifier.height(200.dp)
         ) { page ->
-            val card = cardViewModel.cards[page]
+            val card = documentModel.documentInfos[page]
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    bitmap = card.cardArtwork.asImageBitmap(),
+                    bitmap = card.documentArtwork.asImageBitmap(),
                     contentDescription =
                     stringResource(R.string.accessibility_artwork_for, card.name),
                     modifier = Modifier.clickable(onClick = {
@@ -406,7 +428,7 @@ fun MainScreenDocumentPager(
                                     listOf(
                                         Pair(
                                             WalletDestination.CardInfo.Argument.CARD_ID,
-                                            card.id
+                                            card.documentId
                                         )
                                     )
                                 )
