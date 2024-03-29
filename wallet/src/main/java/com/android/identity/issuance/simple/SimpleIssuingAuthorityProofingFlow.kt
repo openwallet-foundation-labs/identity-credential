@@ -44,12 +44,12 @@ class SimpleIssuingAuthorityProofingFlow(
             if (nfcTunnel == null) {
                 nfcTunnel = tunnelDriverFactory!!()
                 val dataGroups = (currentNode as SimpleIssuingAuthorityProofingGraph.IcaoNfcTunnelNode).dataGroups
-                nfcTunnel!!.init(dataGroups)
+                nfcTunnel!!.init(dataGroups, issuingAuthority.getMrtdAccessData(credentialId))
             }
             val tunnel = nfcTunnel!!
             // This is special case
             val nextRequest = tunnel.handleNfcTunnelResponse(evidenceResponse)
-            if (nextRequest.requestType == EvidenceRequestIcaoNfcTunnelType.HANDSHAKE) {
+            if (nextRequest == null) {
                 // end if tunnel workflow; do not send to the client, instead save collected
                 // evidence and move on to the next node in the evidence collection graph.
                 nfcTunnel = null

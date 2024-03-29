@@ -3,7 +3,7 @@ package com.android.identity_credential.mrtd
 import java.util.Locale
 
 /**
- * Extracts [MrtdMrzData] from text that was captured by OCR of a passport page.
+ * Extracts [MrtdAccessDataMrz] from text that was captured by OCR of a passport page.
  *
  * It is expected that OCRed text contains many errors. This function does a lot of validation
  * and returns non-null result only if everything checks out.
@@ -15,7 +15,7 @@ import java.util.Locale
  * - T2: https://www.icao.int/publications/Documents/9303_p6_cons_en.pdf
  * - T3: https://www.icao.int/publications/Documents/9303_p4_cons_en.pdf
  */
-public fun extractMrtdMrzData(text: String): MrtdMrzData? {
+public fun extractMrtdMrzData(text: String): MrtdAccessDataMrz? {
     val lines = fixCommonMistakes(text).lines()
 
     for (i in 0 until lines.lastIndex) {
@@ -132,16 +132,16 @@ internal fun fixCommonMistakes(input: String): String {
     return input.replace("«", "<").replace(" ", "").uppercase(Locale.ROOT)
 }
 
-private fun extractT1Text(firstTwoLines: String): MrtdMrzData {
-    return MrtdMrzData(
+private fun extractT1Text(firstTwoLines: String): MrtdAccessDataMrz {
+    return MrtdAccessDataMrz(
         firstTwoLines.substring(5, 14),
         firstTwoLines.substring(30, 36),
         firstTwoLines.substring(38, 44)
     )
 }
 
-private fun extractT23Text(secondLine: String): MrtdMrzData {
-    return MrtdMrzData(
+private fun extractT23Text(secondLine: String): MrtdAccessDataMrz {
+    return MrtdAccessDataMrz(
         secondLine.substring(0, 9),
         secondLine.substring(13, 19),
         secondLine.substring(21, 27)

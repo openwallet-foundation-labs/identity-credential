@@ -10,6 +10,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.storage.EphemeralStorageEngine
+import com.android.identity_credential.mrtd.MrtdAccessData
 
 class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
     companion object {
@@ -17,6 +18,10 @@ class TestIssuingAuthority: SimpleIssuingAuthority(EphemeralStorageEngine()) {
     }
 
     override lateinit var configuration: IssuingAuthorityConfiguration
+
+    override fun getMrtdAccessData(collectedEvidence: Map<String, EvidenceResponse>): MrtdAccessData? {
+        return null
+    }
 
     init {
         configuration = IssuingAuthorityConfiguration(

@@ -20,6 +20,7 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.issuance.UnknownDocumentException
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
+import com.android.identity_credential.mrtd.MrtdAccessData
 import kotlinx.datetime.Clock
 import java.lang.UnsupportedOperationException
 import java.util.Timer
@@ -63,6 +64,12 @@ abstract class SimpleIssuingAuthority(
     open fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {
         throw UnsupportedOperationException("Tunnel not supported")
     }
+
+    // If issuing authority has NFC card access data (such as PIN or CAN code -
+    // probably from already-collected evidence) return it here. This is required
+    // to avoid scanning passport/id card MRZ strip with camera.
+    abstract fun getMrtdAccessData(
+        collectedEvidence: Map<String, EvidenceResponse>): MrtdAccessData?
 
     abstract fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node
 
@@ -303,6 +310,11 @@ abstract class SimpleIssuingAuthority(
         val issuerDocument = loadIssuerDocument(documentId)
         issuerDocument.collectedEvidence[nodeId] = evidenceResponse
         saveIssuerDocument(documentId, issuerDocument)
+    }
+
+    fun getMrtdAccessData(documentId: String): MrtdAccessData? {
+        val issuerDocument = loadIssuerDocument(documentId)
+        return getMrtdAccessData(issuerDocument.collectedEvidence)
     }
 
     private fun hasCpoRequestForAuthenticationKey(

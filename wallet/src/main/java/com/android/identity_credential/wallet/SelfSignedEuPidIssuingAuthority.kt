@@ -16,9 +16,12 @@ import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResul
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
+import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.simple.SimpleIcaoNfcTunnelDriver
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
 import com.android.identity.storage.StorageEngine
+import com.android.identity_credential.mrtd.MrtdAccessData
+import com.android.identity_credential.mrtd.MrtdAccessDataCan
 import com.android.identity_credential.mrtd.MrtdNfcData
 import com.android.identity_credential.mrtd.MrtdNfcDataDecoder
 import kotlinx.datetime.Clock
@@ -75,12 +78,19 @@ class SelfSignedEuPidIssuingAuthority(
                 id = "path",
                 message = resourceString(R.string.utopia_eu_pid_issuing_authority_hardcoded_or_derived),
                 assets = mapOf(),
-                acceptButtonText = "Continue"
+                acceptButtonText = resourceString(R.string.utopia_eu_pid_issuing_authority_continue)
             ) {
                 on(id = "hardcoded", text = resourceString(R.string.utopia_eu_pid_issuing_authority_hardcoded_option)) {
                 }
                 on(id = "passport", text = resourceString(R.string.utopia_eu_pid_issuing_authority_passport_option)) {
-                    icaoTunnel("tunnel", listOf(1, 2, 7)) {
+                    icaoPassiveAuthentication("passive", listOf(1))
+                }
+                on(id = "id_card", text = resourceString(R.string.utopia_eu_pid_issuing_authority_id_option)) {
+                    question("can",
+                        resourceString(R.string.utopia_eu_pid_issuing_authority_enter_can),
+                        mapOf(), "",
+                        resourceString(R.string.utopia_eu_pid_issuing_authority_continue))
+                    icaoTunnel("tunnel", listOf(1), false) {
                         whenChipAuthenticated {}
                         whenActiveAuthenticated {}
                         whenNotAuthenticated {}
@@ -106,6 +116,14 @@ class SelfSignedEuPidIssuingAuthority(
 
     override fun createNfcTunnelHandler(): SimpleIcaoNfcTunnelDriver {
         return NfcTunnelDriver()
+    }
+
+    override fun getMrtdAccessData(collectedEvidence: Map<String, EvidenceResponse>): MrtdAccessData? {
+        return if (collectedEvidence.containsKey("can")) {
+            MrtdAccessDataCan((collectedEvidence["can"] as EvidenceResponseQuestionString).answer)
+        } else {
+            null
+        }
     }
 
     override fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean {

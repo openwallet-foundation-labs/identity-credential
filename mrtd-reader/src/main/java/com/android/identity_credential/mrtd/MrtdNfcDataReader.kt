@@ -5,13 +5,16 @@ import net.sf.scuba.smartcards.CardServiceException
 import org.jmrtd.PassportService
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
-import java.lang.IllegalArgumentException
+import kotlin.IllegalArgumentException
 
 private const val TAG = "MrtdNfcDataReader"
 
 class MrtdNfcDataReader(private val dataGroups: List<Int>) : MrtdNfcReader<MrtdNfcData> {
-    override fun read(rawConnection: CardService, connection: PassportService,
+    override fun read(rawConnection: CardService, connection: PassportService?,
                       onStatus: (MrtdNfc.Status) -> Unit): MrtdNfcData {
+        if (connection == null) {
+            throw IllegalArgumentException("PassportService is null, card access was not performed")
+        }
         var totalLength = 0
         var groupsRead = 0
         mrtdLogI(TAG, "Examining DGs")

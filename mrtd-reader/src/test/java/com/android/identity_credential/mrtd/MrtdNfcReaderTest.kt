@@ -150,7 +150,7 @@ class MrtdNfcReaderTest {
 
         val data: MrtdNfcData
         try {
-            val service = chipAccess.open(cardService, MrtdMrzData("0000", "940506", "280808")) {
+            val service = chipAccess.open(cardService, MrtdAccessDataMrz("0000", "940506", "280808")) {
                 statusList.add(it)
             }
             data = reader.read(cardService, service) {
