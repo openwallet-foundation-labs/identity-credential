@@ -26,6 +26,7 @@ import com.android.identity.util.Timestamp
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.log
 import com.google.android.gms.identitycredentials.GetCredentialResponse
+import com.google.android.gms.identitycredentials.IntentHelper
 import com.google.android.gms.identitycredentials.IntentHelper.EXTRA_CREDENTIAL_ID
 import com.google.android.gms.identitycredentials.IntentHelper.extractCallingAppInfo
 import com.google.android.gms.identitycredentials.IntentHelper.extractGetCredentialRequest
@@ -113,88 +114,117 @@ class GetCredentialActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val request = extractGetCredentialRequest(intent)
+        val cmrequest = extractGetCredentialRequest(intent)
         val credentialId = intent.getLongExtra(EXTRA_CREDENTIAL_ID, -1)
-        val callingAppInfo = extractCallingAppInfo(intent)
-        //log("CredId: $credentialId ${request!!.credentialOptions.get(0).requestMatcher}")
+        //val credentialId = 0
+        // This call is currently broken, have to extract this info manually for now
+        //val callingAppInfo = extractCallingAppInfo(intent)
+
+        val callingPackageName = intent.getStringExtra(IntentHelper.EXTRA_CALLING_PACKAGE_NAME)!!
+        val callingOrigin = intent.getStringExtra(IntentHelper.EXTRA_ORIGIN)
+
+        log("CredId: $credentialId ${cmrequest!!.credentialOptions.get(0).requestMatcher}")
+        log("Calling app $callingPackageName $callingOrigin")
 
         val dataElements = mutableListOf<DocumentRequest.DataElement>()
 
-        val json = JSONObject(request!!.credentialOptions.get(0).requestMatcher)
+        val json = JSONObject(cmrequest!!.credentialOptions.get(0).requestMatcher)
         val provider = json.getJSONArray("providers").getJSONObject(0)
-        val responseFormat = provider.get("responseFormat")
-        val params = provider.getJSONObject("params")
-        val nonceBase64 = params.getString("nonce")
-        val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
-        val requesterIdentityBase64 = params.getString("requesterIdentity")
-        val requesterIdentity = CredmanUtil.publicKeyFromUncompressed(
-            Base64.decode(requesterIdentityBase64, Base64.NO_WRAP or Base64.URL_SAFE))
-        log("responseFormat: $responseFormat nonce: $nonce requester: $requesterIdentity")
-        val fields = provider.getJSONObject("selector").getJSONArray("fields")
-        for (n in 0 until fields.length()) {
-            // TODO: request format needs revision, this won't work if data elements have dots in them.
-            val field = fields.getJSONObject(n)
-            val name = field.getString("name")
-            var finalDot = name.lastIndexOf('.')
-            if (finalDot > 0) {
-                val nameSpaceName = name.substring(0, finalDot)
-                val dataElementName = name.substring(finalDot + 1)
+
+        val protocol = provider.getString("protocol")
+        log("Request protocol: $protocol")
+        val request = provider.getString("request")
+        log("Request: $request")
+
+        if (protocol == "preview") {
+            val previewRequest = JSONObject(request)
+            val selector = previewRequest.getJSONObject("selector")
+            val nonceBase64 = previewRequest.getString("nonce")
+            val readerPublicKeyBase64 = previewRequest.getString("readerPublicKey")
+            val docType = selector.getString("doctype")
+            log("DocType: $docType")
+            log("nonce: $nonceBase64")
+            log("readerPublicKey: $readerPublicKeyBase64")
+
+            val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
+            val readerPublicKey = CredmanUtil.publicKeyFromUncompressed(
+                Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE))
+
+            val fields = selector.getJSONArray("fields")
+            for (n in 0 until fields.length()) {
+                val field = fields.getJSONObject(n)
+                val name = field.getString("name")
+                val namespace = field.getString("namespace")
+                val intentToRetain = field.getString("intentToRetain")
+                log("Field $namespace $name $intentToRetain")
                 dataElements.add(
                     DocumentRequest.DataElement(
-                        nameSpaceName,
-                        dataElementName,
+                        namespace,
+                        name,
                         false
                     )
                 )
             }
-        }
+            val documentRequest = DocumentRequest(dataElements)
 
-        val documentRequest = DocumentRequest(dataElements)
+            val documentStore = ProvisioningUtil.getInstance(applicationContext).documentStore
+            val documentName = documentStore.listDocuments().get(credentialId.toInt())
+            val document = documentStore.lookupDocument(documentName)
+            val nameSpacedData = document!!.applicationData.getNameSpacedData("documentData")
 
-        val documentStore = ProvisioningUtil.getInstance(applicationContext).documentStore
-        val documentName = documentStore.listDocuments().get(credentialId.toInt())
-        val document = documentStore.lookupDocument(documentName)
-        val nameSpacedData = document!!.applicationData.getNameSpacedData("documentData")
+            val encodedSessionTranscript = if (callingOrigin == null) {
+                CredmanUtil.generateAndroidSessionTranscript(
+                    nonce,
+                    readerPublicKey,
+                    callingPackageName)
+            } else
+            {
+                CredmanUtil.generateBrowserSessionTranscript(
+                    nonce,
+                    callingOrigin,
+                    readerPublicKey
+                )
+            }
 
-        val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
-            nonce,
-            requesterIdentity,
-            "com.android.mdl.appreader"
-        ) // TODO: get from |request|
-
-        val credential = document.findCredential(
-            ProvisioningUtil.CREDENTIAL_DOMAIN,
-            Timestamp.now()
-        )
-        if (credential == null) {
-            throw IllegalStateException("No credential")
-        }
-        val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
-        val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
-            documentRequest, nameSpacedData, staticAuthData
-        )
-        val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
-        var documentGenerator = DocumentGenerator(
-            document.applicationData.getString(ProvisioningUtil.DOCUMENT_TYPE),
-            staticAuthData.issuerAuth,
-            encodedSessionTranscript
-        )
-        documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
-        try {
-            addDeviceNamespaces(documentGenerator, credential, null)
-            completeResponse(credential, deviceResponseGenerator, documentGenerator,
-                requesterIdentity, encodedSessionTranscript)
-        } catch (e: KeyLockedException) {
-            doBiometricAuth(credential, false) { keyUnlockData ->
-                if (keyUnlockData != null) {
-                    addDeviceNamespaces(documentGenerator, credential, keyUnlockData)
-                    completeResponse(credential, deviceResponseGenerator, documentGenerator,
-                        requesterIdentity, encodedSessionTranscript)
-                } else {
-                    log("Need to convey error")
+            val credential = document.findCredential(
+                ProvisioningUtil.CREDENTIAL_DOMAIN,
+                Timestamp.now()
+            )
+            if (credential == null) {
+                throw IllegalStateException("No credential")
+            }
+            val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
+            val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
+                documentRequest, nameSpacedData, staticAuthData
+            )
+            val deviceResponseGenerator = DeviceResponseGenerator(Constants.DEVICE_RESPONSE_STATUS_OK)
+            val documentGenerator = DocumentGenerator(
+                document.applicationData.getString(ProvisioningUtil.DOCUMENT_TYPE),
+                staticAuthData.issuerAuth,
+                encodedSessionTranscript
+            )
+            documentGenerator.setIssuerNamespaces(mergedIssuerNamespaces)
+            try {
+                addDeviceNamespaces(documentGenerator, credential, null)
+                completeResponse(credential, deviceResponseGenerator, documentGenerator,
+                    readerPublicKey, encodedSessionTranscript)
+            } catch (e: KeyLockedException) {
+                doBiometricAuth(credential, false) { keyUnlockData ->
+                    if (keyUnlockData != null) {
+                        addDeviceNamespaces(documentGenerator, credential, keyUnlockData)
+                        completeResponse(credential, deviceResponseGenerator, documentGenerator,
+                            readerPublicKey, encodedSessionTranscript)
+                    } else {
+                        log("Need to convey error")
+                    }
                 }
             }
+
         }
+
+
+
+
     }
 
     fun completeResponse(authKey: Credential,
@@ -213,8 +243,11 @@ class GetCredentialActivity : FragmentActivity() {
         val encodedCredentialDocument = CredmanUtil.generateCredentialDocument(cipherText, encapsulatedPublicKey)
         authKey.increaseUsageCount()
 
+        val token = JSONObject()
+        token.put("token", Base64.encodeToString(encodedCredentialDocument, Base64.NO_WRAP or Base64.URL_SAFE))
+
         val bundle = Bundle()
-        bundle.putByteArray("identityToken", Base64.encodeToString(encodedCredentialDocument, Base64.NO_WRAP or Base64.URL_SAFE).toByteArray())
+        bundle.putByteArray("identityToken", token.toString(2).toByteArray())
         val credentialResponse = com.google.android.gms.identitycredentials.Credential("type", bundle)
         val response = GetCredentialResponse(credentialResponse)
         val resultData = Intent()
