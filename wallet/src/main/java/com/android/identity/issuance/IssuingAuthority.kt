@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.SharedFlow
  * An [IssuingAuthority] instance represents a particular document type from a particular
  * issuer. If a single issuer has documents of different types, an [IssuingAuthority] instance
  * is needed for each type.
+ *
+ * Documents are identifier by an identifier - `documentId` - and each document may have
+ * multiple credentials associated with it.
  */
 interface IssuingAuthority {
     /**
@@ -16,36 +19,34 @@ interface IssuingAuthority {
     val configuration: IssuingAuthorityConfiguration
 
     /**
-     * Performs a network call to the Issuing Authority to get information about a document.
+     * Calls the issuer to start creating a document.
      *
-     * @throws UnknownDocumentException if the given documentId isn't valid.
+     * The result of this flow is `documentId` which is an unique identifier for the document
+     * and used in all subsequent communications with the issuer. If this completes successfully,
+     * [getState] can be used to check the state of the document.
+     *
+     * @return a [RegistrationFlow] instance.
      */
-    suspend fun documentGetState(documentId: String): DocumentState
+    fun register(): RegistrationFlow
 
     /**
-     * A [SharedFlow] which can be used to listen for when a credential has changed state
+     * Performs a network call to the Issuing Authority to get information about a document.
+     *
+     * @throws UnknownDocumentException if the given `documentId` isn't valid.
+     */
+    suspend fun getState(documentId: String): DocumentState
+
+    /**
+     * A [SharedFlow] which can be used to listen for when a document has changed state
      * on the issuer side. The first element in the pair is an [IssuingAuthority], the second
-     * element is the `credentialId`.
+     * element is the `documentId`.
      */
     val eventFlow: SharedFlow<Pair<IssuingAuthority, String>>
 
     /**
-     * Calls the IA to start creating a document.
+     * Calls the issuer to start proofing the applicant.
      *
-     * The result of this flow is documentId which is an unique identifier for the document
-     * and used in all subsequent communications with the issuer.
-     *
-     * If this completes successfully, [documentGetState] can be used to check the state
-     * of the document.
-     *
-     * @return a [RegisterDocumentFlow] instance.
-     */
-    fun registerDocument(): RegisterDocumentFlow
-
-    /**
-     * Calls the IA to start proofing the user.
-     *
-     * This will fail unless the state returned by [documentGetState] is in the condition
+     * This will fail unless the state returned by [getState] is in the condition
      * [DocumentCondition.PROOFING_REQUIRED].
      *
      * If this completes successfully, the condition will transition to
@@ -56,10 +57,10 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in state [DocumentCondition.PROOFING_REQUIRED].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    fun documentProof(documentId: String): ProofingFlow
+    fun proof(documentId: String): ProofingFlow
 
     /**
-     * Calls the IA to get configuration for the configured document.
+     * Calls the issuer to get configuration for the configured document.
      *
      * Once this has been read, the condition changes to [DocumentCondition.READY]
      *
@@ -67,37 +68,36 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in condition [DocumentCondition.CONFIGURATION_AVAILABLE].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    suspend fun documentGetConfiguration(documentId: String): DocumentConfiguration
+    suspend fun getDocumentConfiguration(documentId: String): DocumentConfiguration
 
     /**
-     * Request issuance of Document Presentation Objects.
+     * Request issuance of credentials for a document.
      *
-     * This flow is for requesting Documents Presentation Objects which is an asynchronous
-     * operation since it may take several hours for the issuer to mint these (this may happen
-     * at times when compute resources are less expensive).
+     * This flow is for requesting Credentials which is an asynchronous operation since it
+     * could take several hours for the issuer to mint these (this may happen at times when
+     * compute resources are less expensive).
      *
      * The application can track the number of pending and available objects in the
      * [DocumentState] object and collect the ones that are ready, via
-     * the [documentGetPresentationObjects] method.
+     * the [getCredentials] method.
      *
      * @param documentId the document to request presentation objects for.
      * @throws IllegalStateException if not in state [DocumentCondition.READY].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    fun documentRequestPresentationObjects(documentId: String): RequestPresentationObjectsFlow
+    fun requestCredentials(documentId: String): RequestCredentialsFlow
 
     /**
-     * Calls the IA to get available Document Presentation Objects.
+     * Calls the IA to get available credentials.
      *
-     * This should be called when [numAvailableDocumentPresentationObjects] in
+     * This should be called when [DocumentState.numAvailableCredentials] in
      * the state is greater than zero. On success, these objects will be removed
-     * from the IA server and [numAvailableDocumentPresentationObjects] will
+     * from the IA server and [DocumentState.numAvailableCredentials] will
      * be set to 0 in the state.
      *
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    suspend fun documentGetPresentationObjects(documentId: String):
-            List<DocumentPresentationObject>
+    suspend fun getCredentials(documentId: String): List<CredentialData>
 
     /**
      * Request update of the document data
@@ -108,11 +108,11 @@ interface IssuingAuthority {
      * When this is called the issuer should generate a new [DocumentConfiguration], put the
      * document into the [DocumentCondition.CONFIGURATION_AVAILABLE] condition
      * and post a notification to the application if the passed [notifyApplicationOfUpdate]
-     * is set to true. The
+     * is set to true.
      *
      * Upon receiving this notification the application will show an UI notification
-     * to the user, delete existing CPOs / AuthKeys, download the new [DocumentConfiguration],
-     * and request new CPOs.
+     * to the user, delete existing credentials, download the new [DocumentConfiguration],
+     * and request new credentials.
      *
      * The sole reason for this feature is to make it easy to test the data update
      * flow both from an application and an issuer point of view. The [notifyApplicationOfUpdate]
@@ -125,7 +125,7 @@ interface IssuingAuthority {
      * @throws IllegalStateException if not in state [DocumentCondition.READY].
      * @throws UnknownDocumentException if the given documentId isn't valid.
      */
-    suspend fun documentDeveloperModeRequestUpdate(
+    suspend fun developerModeRequestUpdate(
         documentId: String,
         requestRemoteDeletion: Boolean,
         notifyApplicationOfUpdate: Boolean

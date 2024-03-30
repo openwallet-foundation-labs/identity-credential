@@ -204,7 +204,7 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
             .setEcCurve(curve)
             .setKeyPurposes(purposes)
             .setValidityPeriod(validFrom, validUntil)
-            .setPassphraseRequired(passphraseRequired, passphrase)
+            .setPassphraseRequired(passphraseRequired, passphrase, null)
             .setAttestationKey(
                 softwareAttestationKey,
                 softwareAttestationKeySignatureAlgorithm,

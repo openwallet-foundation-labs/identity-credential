@@ -23,14 +23,14 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
 
 
     // Screens with arguments
-    object CardInfo : WalletDestination(Route.CARD_INFO) {
+    object DocumentInfo : WalletDestination(Route.DOCUMENT_INFO) {
         /**
          * enum class Argument defines all the various (optional) arguments that can be passed to
-         * the route (CARD_INFO)
+         * the route (DOCUMENT_INFO)
          */
         enum class Argument(val argument: NamedNavArgument) {
-            CARD_ID( // this argument is needed
-                navArgument("cardId") {
+            DOCUMENT_ID( // this argument is needed
+                navArgument("documentId") {
                     type = NavType.StringType
                     nullable = false // and cannot be optional
                 }
@@ -41,10 +41,16 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
                     nullable = true
                 }
             ),
-            KEYS( // this argument is optional, sections like 'keys' can be passed
+            CREDENTIALS( // this argument is optional, sections like 'credentials' can be passed
                 navArgument("section") {
                     type = NavType.StringType
                     nullable = true
+                }
+            ),
+            AUTH_REQUIRED( // this argument is optional, sections like 'details' can be passed
+                navArgument("auth_required") {
+                    type = NavType.BoolType
+                    defaultValue = false
                 }
             ),
 
@@ -53,6 +59,9 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
             // easily extract any argument from `backStackEntry`
             fun extractFromBackStackEntry(backStackEntry: NavBackStackEntry) =
                 backStackEntry.arguments?.getString(argument.name)
+
+            fun extractBooleanFromBackStackEntry(backStackEntry: NavBackStackEntry) =
+                backStackEntry.arguments?.getBoolean(argument.name)
         }
 
         /**
@@ -130,8 +139,8 @@ sealed class WalletDestination(val routeEnum: Route) : DestinationArguments() {
                     argumentValue
                 }
             val argName = when (this) {
-                is CardInfo -> {
-                    enumArgumentObj as CardInfo.Argument
+                is DocumentInfo -> {
+                    enumArgumentObj as DocumentInfo.Argument
                     enumArgumentObj.argument.name
                 }
 
@@ -164,7 +173,8 @@ enum class Route(val routeName: String, val argumentsStr: String = "") {
     ABOUT("about"),
     SETTINGS("settings"),
     ADD_TO_WALLET("add_to_wallet"),
-    CARD_INFO("card_info", "cardId={cardId}&section={section}"),
+    DOCUMENT_INFO("document_info",
+        "documentId={documentId}&section={section}&auth_required={auth_required}"),
     PROVISION_DOCUMENT("provision_document"),
     QR_ENGAGEMENT("qr_engagement"),
 

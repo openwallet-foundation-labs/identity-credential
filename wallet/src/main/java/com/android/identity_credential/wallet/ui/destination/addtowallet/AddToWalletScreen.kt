@@ -23,6 +23,7 @@ import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity_credential.wallet.DocumentModel
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
+import com.android.identity_credential.wallet.SettingsModel
 import com.android.identity_credential.wallet.navigation.WalletDestination
 import com.android.identity_credential.wallet.ui.ScreenWithAppBarAndBackButton
 
@@ -32,7 +33,8 @@ fun AddToWalletScreen(
     provisioningViewModel: ProvisioningViewModel,
     onNavigate: (String) -> Unit,
     documentStore: DocumentStore,
-    issuingAuthorityRepository: IssuingAuthorityRepository
+    issuingAuthorityRepository: IssuingAuthorityRepository,
+    settingsModel: SettingsModel,
 ) {
     ScreenWithAppBarAndBackButton(
         title = stringResource(R.string.add_screen_title),
@@ -81,7 +83,8 @@ fun AddToWalletScreen(
                     provisioningViewModel.start(
                         issuingAuthorityRepository = issuingAuthorityRepository,
                         documentStore = documentStore,
-                        issuerIdentifier = issuerDisplayData.configuration.identifier
+                        issuerIdentifier = issuerDisplayData.configuration.identifier,
+                        settingsModel = settingsModel,
                     )
                     onNavigate(WalletDestination.ProvisionDocument.route)
                 }) {

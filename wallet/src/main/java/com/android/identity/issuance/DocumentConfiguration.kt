@@ -2,6 +2,7 @@ package com.android.identity.issuance
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
+import com.android.identity.cbor.Simple
 import com.android.identity.document.NameSpacedData
 
 /**
@@ -34,7 +35,15 @@ data class DocumentConfiguration(
     /**
      * Static data in the credential.
      */
-    val staticData: NameSpacedData
+    val staticData: NameSpacedData,
+
+    /**
+     * If `true`, require that the user authenticates to view document information.
+     *
+     * The authentication required will be the same as from one of the credentials
+     * in the document e.g. LSKF/Biometric or passphrase.
+     */
+    val requireUserAuthenticationToViewDocument: Boolean,
 ) {
     companion object {
         fun fromCbor(encodedData: ByteArray): DocumentConfiguration {
@@ -43,7 +52,8 @@ data class DocumentConfiguration(
                 map["name"].asTstr,
                 map["cardArt"].asBstr,
                 map["mdocDocType"].asTstr,
-                NameSpacedData.fromEncodedCbor(map["staticData"].asBstr)
+                NameSpacedData.fromEncodedCbor(map["staticData"].asBstr),
+                map.getOrDefault("requireUserAuthenticationToViewDocument", Simple.FALSE).asBoolean
             )
         }
 
@@ -56,6 +66,7 @@ data class DocumentConfiguration(
                 .put("cardArt", cardArt)
                 .put("mdocDocType", mdocDocType)
                 .put("staticData", staticData.encodeAsCbor())
+                .put("requireUserAuthenticationToViewDocument", requireUserAuthenticationToViewDocument)
                 .end()
                 .build())
     }

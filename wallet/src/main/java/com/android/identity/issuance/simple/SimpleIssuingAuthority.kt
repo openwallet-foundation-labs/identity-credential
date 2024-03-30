@@ -6,18 +6,22 @@ import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.RawCbor
 import com.android.identity.issuance.DocumentCondition
 import com.android.identity.issuance.DocumentConfiguration
-import com.android.identity.issuance.DocumentPresentationFormat
-import com.android.identity.issuance.DocumentPresentationObject
-import com.android.identity.issuance.DocumentPresentationRequest
+import com.android.identity.issuance.CredentialFormat
+import com.android.identity.issuance.CredentialData
+import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.DocumentState
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.ProofingFlow
-import com.android.identity.issuance.RegisterDocumentFlow
-import com.android.identity.issuance.RequestPresentationObjectsFlow
+import com.android.identity.issuance.RegistrationFlow
+import com.android.identity.issuance.RequestCredentialsFlow
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.issuance.CredentialConfiguration
+import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.UnknownDocumentException
+import com.android.identity.issuance.fromDataItem
+import com.android.identity.issuance.toDataItem
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Logger
 import com.android.identity_credential.mrtd.MrtdAccessData
@@ -25,10 +29,14 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import java.lang.UnsupportedOperationException
 import java.util.Timer
 import kotlin.concurrent.timerTask
 import kotlin.random.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * An simple implementation of an [IssuingAuthority].
@@ -46,7 +54,7 @@ abstract class SimpleIssuingAuthority(
     abstract override val configuration: IssuingAuthorityConfiguration
 
     // This can be changed to simulate proofing and requesting CPOs being slow.
-    protected var deadlineMillis: Long = 0L
+    protected var delayForProofingAndIssuance: Duration = 0.seconds
 
     private val _eventFlow = MutableSharedFlow<Pair<IssuingAuthority, String>>()
 
@@ -69,31 +77,37 @@ abstract class SimpleIssuingAuthority(
     abstract fun getMrtdAccessData(
         collectedEvidence: Map<String, EvidenceResponse>): MrtdAccessData?
 
-    abstract fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node
+    abstract fun getProofingGraphRoot(
+        registrationResponse: RegistrationResponse
+    ): SimpleIssuingAuthorityProofingGraph.Node
 
     // Collected evidence responses are keyed by graph node ids.
     abstract fun checkEvidence(collectedEvidence: Map<String, EvidenceResponse>): Boolean
     abstract fun generateDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>): DocumentConfiguration
 
-    abstract fun createPresentationData(presentationFormat: DocumentPresentationFormat,
+    abstract fun createCredentialConfiguration(collectedEvidence: MutableMap<String, EvidenceResponse>): CredentialConfiguration
+
+    abstract fun createPresentationData(presentationFormat: CredentialFormat,
                                         documentConfiguration: DocumentConfiguration,
                                         authenticationKey: EcPublicKey): ByteArray
 
     abstract fun developerModeRequestUpdate(currentConfiguration: DocumentConfiguration): DocumentConfiguration
 
-    private data class CpoRequest(
+    private data class SimpleCredentialRequest(
         val authenticationKey: EcPublicKey,
-        val presentationData: ByteArray,
-        val deadlineMillis: Long,
+        val format: CredentialFormat,
+        val data: ByteArray,
+        val deadline: Instant,
     ) {
 
         companion object {
-            fun fromCbor(encodedData: ByteArray): CpoRequest {
+            fun fromCbor(encodedData: ByteArray): SimpleCredentialRequest {
                 val map = Cbor.decode(encodedData)
-                return CpoRequest(
+                return SimpleCredentialRequest(
                     map["authenticationKey"].asCoseKey.ecPublicKey,
-                    map["presentationData"].asBstr,
-                    map["deadline"].asNumber
+                    CredentialFormat.valueOf(map["format"].asTstr),
+                    map["data"].asBstr,
+                    Instant.fromEpochMilliseconds(map["deadline"].asNumber)
                 )
             }
         }
@@ -102,8 +116,9 @@ abstract class SimpleIssuingAuthority(
             return Cbor.encode(
                 CborMap.builder()
                     .put("authenticationKey", authenticationKey.toCoseKey().toDataItem)
-                    .put("presentationData", presentationData)
-                    .put("deadline", deadlineMillis)
+                    .put("format", format.name)
+                    .put("data", data)
+                    .put("deadline", deadline.toEpochMilliseconds())
                     .end()
                     .build())
         }
@@ -111,15 +126,19 @@ abstract class SimpleIssuingAuthority(
 
     // The document as seen from the issuer's perspective
     private data class IssuerDocument(
-        var proofingDeadlineMillis: Long,
+        val registrationResponse: RegistrationResponse,
+        var proofingDeadline: Instant,
         var state: DocumentCondition,
         var collectedEvidence: MutableMap<String, EvidenceResponse>,
         var documentConfiguration: DocumentConfiguration?,
-        var cpoRequests: MutableList<CpoRequest>
+        var simpleCredentialRequests: MutableList<SimpleCredentialRequest>
     ) {
         companion object {
             fun fromCbor(encodedData: ByteArray): IssuerDocument {
                 val map = Cbor.decode(encodedData)
+
+                val registrationResponse = RegistrationResponse.fromDataItem(map["registrationResponse"])
+
                 val stateAsInt = map["state"].asNumber.toInt()
                 val state = DocumentCondition.values().firstOrNull {it.ordinal == stateAsInt}
                     ?: throw IllegalArgumentException("Unknown state with value $stateAsInt")
@@ -131,9 +150,11 @@ abstract class SimpleIssuingAuthority(
                         EvidenceResponse.fromCbor(Cbor.encode(evidenceMap[evidenceId]!!))
                 }
 
-                val cpoRequests = mutableListOf<CpoRequest>()
-                for (cpoRequestDataItem in map["cpoRequests"].asArray) {
-                    cpoRequests.add(CpoRequest.fromCbor(Cbor.encode(cpoRequestDataItem)))
+                val credentialRequests = mutableListOf<SimpleCredentialRequest>()
+                for (credentialRequestDataItem in map["credentialRequests"].asArray) {
+                    credentialRequests.add(
+                        SimpleCredentialRequest.fromCbor(Cbor.encode(credentialRequestDataItem))
+                    )
                 }
 
                 val documentConfiguration: DocumentConfiguration? =
@@ -142,28 +163,30 @@ abstract class SimpleIssuingAuthority(
                     }
 
                 return IssuerDocument(
-                    map["proofingDeadline"].asNumber,
+                    registrationResponse,
+                    Instant.fromEpochMilliseconds(map["proofingDeadline"].asNumber),
                     state,
                     collectedEvidence,
                     documentConfiguration,
-                    cpoRequests,
+                    credentialRequests,
                 )
             }
         }
         fun toCbor(): ByteArray {
-            val cpoArrayBuilder = CborArray.builder()
-            cpoRequests.forEach() { cpoRequest ->
-                cpoArrayBuilder.add(RawCbor(cpoRequest.toCbor()))
+            val credentialRequestsBuilder = CborArray.builder()
+            simpleCredentialRequests.forEach() { cpoRequest ->
+                credentialRequestsBuilder.add(RawCbor(cpoRequest.toCbor()))
             }
             val ceMapBuilder = CborMap.builder()
             collectedEvidence.forEach() { evidence ->
                 ceMapBuilder.put(evidence.key, RawCbor(evidence.value.toCbor()))
             }
             val mapBuilder = CborMap.builder()
-                .put("proofingDeadline", proofingDeadlineMillis)
+                .put("registrationResponse", registrationResponse.toDataItem)
+                .put("proofingDeadline", proofingDeadline.toEpochMilliseconds())
                 .put("state", state.ordinal.toLong())
                 .put("collectedEvidence", ceMapBuilder.end().build())
-                .put("cpoRequests", cpoArrayBuilder.end().build())
+                .put("credentialRequests", credentialRequestsBuilder.end().build())
             if (documentConfiguration != null) {
                 mapBuilder.put("documentConfiguration", documentConfiguration!!.toCbor())
             }
@@ -187,14 +210,14 @@ abstract class SimpleIssuingAuthority(
         storageEngine.delete(documentId)
     }
 
-    override suspend fun documentGetState(documentId: String): DocumentState {
-        val nowMillis = System.currentTimeMillis()
+    override suspend fun getState(documentId: String): DocumentState {
+        val now = Clock.System.now()
 
         val issuerDocument = loadIssuerDocument(documentId)
 
         // Evaluate proofing, if deadline has passed...
         if (issuerDocument.state == DocumentCondition.PROOFING_PROCESSING) {
-            if (nowMillis >= issuerDocument.proofingDeadlineMillis) {
+            if (now >= issuerDocument.proofingDeadline) {
                 issuerDocument.state =
                     if (checkEvidence(issuerDocument.collectedEvidence)) {
                         DocumentCondition.CONFIGURATION_AVAILABLE
@@ -206,30 +229,41 @@ abstract class SimpleIssuingAuthority(
         }
 
         // Calculate pending/available depending on deadline
-        var numPendingCPOs = 0
-        var numAvailableCPOs = 0
-        for (cpoRequest in issuerDocument.cpoRequests) {
-            if (nowMillis >= cpoRequest.deadlineMillis) {
-                numAvailableCPOs += 1
+        var numPendingCredentialRequests = 0
+        var numAvailableCredentialRequests = 0
+        for (cpoRequest in issuerDocument.simpleCredentialRequests) {
+            if (now >= cpoRequest.deadline) {
+                numAvailableCredentialRequests += 1
             } else {
-                numPendingCPOs += 1
+                numPendingCredentialRequests += 1
             }
         }
-        return DocumentState(nowMillis, issuerDocument.state, numPendingCPOs, numAvailableCPOs)
+        return DocumentState(
+            now,
+            issuerDocument.state,
+            numPendingCredentialRequests,
+            numAvailableCredentialRequests
+        )
     }
 
 
-    override fun registerDocument(): RegisterDocumentFlow {
-        val documentId = "Document_${System.currentTimeMillis()}_${Random.nextInt()}"
-        return SimpleIssuingAuthorityRegisterDocumentFlow(this, documentId)
+    override fun register(): RegistrationFlow {
+        val now = Clock.System.now()
+        val documentId = "Document_${now}_${Random.nextInt()}"
+        return SimpleIssuingAuthorityRegistrationFlow(this, documentId)
     }
 
-    override fun documentProof(documentId: String): ProofingFlow {
-        return SimpleIssuingAuthorityProofingFlow(this, documentId,
-            getProofingGraphRoot(), this::createNfcTunnelHandler)
+    override fun proof(documentId: String): ProofingFlow {
+        val issuerDocument = loadIssuerDocument(documentId)
+        return SimpleIssuingAuthorityProofingFlow(
+            this,
+            documentId,
+            getProofingGraphRoot(issuerDocument.registrationResponse),
+            this::createNfcTunnelHandler
+        )
     }
 
-    override suspend fun documentGetConfiguration(documentId: String): DocumentConfiguration {
+    override suspend fun getDocumentConfiguration(documentId: String): DocumentConfiguration {
         val issuerDocument = loadIssuerDocument(documentId)
         check(issuerDocument.state == DocumentCondition.CONFIGURATION_AVAILABLE)
         issuerDocument.state = DocumentCondition.READY
@@ -241,40 +275,49 @@ abstract class SimpleIssuingAuthority(
         return issuerDocument.documentConfiguration!!
     }
 
-    override fun documentRequestPresentationObjects(documentId: String): RequestPresentationObjectsFlow {
-        return SimpleIssuingAuthorityRequestPresentationObjectsFlow(this, documentId)
+    override fun requestCredentials(documentId: String): RequestCredentialsFlow {
+        val issuerDocument = loadIssuerDocument(documentId)
+        check(issuerDocument.state == DocumentCondition.READY)
+
+        val credentialConfiguration = createCredentialConfiguration(issuerDocument.collectedEvidence)
+        return SimpleIssuingAuthorityRequestCredentialsFlow(
+            this,
+            documentId,
+            credentialConfiguration)
     }
 
-    override suspend fun documentGetPresentationObjects(documentId: String): List<DocumentPresentationObject> {
-        val nowMillis = System.currentTimeMillis()
-        val validFromMillis = nowMillis
-        val validUntilMillis = nowMillis + 30*24*3600*1000L
+    override suspend fun getCredentials(documentId: String): List<CredentialData> {
+        val now = Clock.System.now()
+        val validFrom = now
+        val validUntil = now + 30.days
         val issuerDocument = loadIssuerDocument(documentId)
-        val availableCPOs = mutableListOf<DocumentPresentationObject>()
-        val pendingCPOs = mutableListOf<CpoRequest>()
-        for (cpoRequest in issuerDocument.cpoRequests) {
-            if (nowMillis >= cpoRequest.deadlineMillis) {
-                availableCPOs.add(DocumentPresentationObject(
+        val availableCPOs = mutableListOf<CredentialData>()
+        val pendingCPOs = mutableListOf<SimpleCredentialRequest>()
+        for (cpoRequest in issuerDocument.simpleCredentialRequests) {
+            if (now >= cpoRequest.deadline) {
+                availableCPOs.add(CredentialData(
                     cpoRequest.authenticationKey,
-                    validFromMillis,
-                    validUntilMillis,
-                    cpoRequest.presentationData,
+                    validFrom,
+                    validUntil,
+                    cpoRequest.format,
+                    cpoRequest.data,
                 ))
             } else {
                 pendingCPOs.add(cpoRequest)
             }
         }
-        issuerDocument.cpoRequests = pendingCPOs
+        issuerDocument.simpleCredentialRequests = pendingCPOs
         saveIssuerDocument(documentId, issuerDocument)
         return availableCPOs
     }
 
-    fun addDocumentId(documentId: String) {
+    fun addDocumentId(documentId: String, response: RegistrationResponse) {
         // Initial state is PROOFING_REQUIRED
         saveIssuerDocument(
             documentId,
             IssuerDocument(
-                0L,
+                response,
+                Instant.fromEpochMilliseconds(0),
                 DocumentCondition.PROOFING_REQUIRED,
                 mutableMapOf(),           // collectedEvidence - initially empty
                 null,  // no initial document configuration
@@ -287,19 +330,18 @@ abstract class SimpleIssuingAuthority(
         val issuerDocument = loadIssuerDocument(documentId)
         issuerDocument.state = DocumentCondition.PROOFING_PROCESSING
 
-        val proofingTimeMillis = deadlineMillis
-        issuerDocument.proofingDeadlineMillis = Clock.System.now().toEpochMilliseconds() + proofingTimeMillis
+        issuerDocument.proofingDeadline = Clock.System.now() + delayForProofingAndIssuance
 
         saveIssuerDocument(documentId, issuerDocument)
 
-        if (proofingTimeMillis == 0L) {
+        if (delayForProofingAndIssuance == 0.seconds) {
             Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing")
             emitOnStateChanged(documentId)
         } else {
             Timer().schedule(timerTask {
                 Logger.i(TAG, "Emitting onStateChanged on $documentId for proofing")
                 emitOnStateChanged(documentId)
-            }, proofingTimeMillis)
+            }, delayForProofingAndIssuance.inWholeMilliseconds)
         }
     }
 
@@ -319,7 +361,7 @@ abstract class SimpleIssuingAuthority(
         issuerDocument: IssuerDocument,
         authenticationKey: EcPublicKey
     ) : Boolean {
-        for (cpoRequest in issuerDocument.cpoRequests) {
+        for (cpoRequest in issuerDocument.simpleCredentialRequests) {
             if (cpoRequest.authenticationKey.equals(authenticationKey)) {
                 return true
             }
@@ -329,47 +371,47 @@ abstract class SimpleIssuingAuthority(
 
     fun addCpoRequests(
         documentId: String,
-        documentPresentationRequests: List<DocumentPresentationRequest>
+        credentialRequests: List<CredentialRequest>
     ) {
-        val nowMillis = System.currentTimeMillis()
-        val deadlineTimeMillis = deadlineMillis
+        val now = Clock.System.now()
 
         val issuerDocument = loadIssuerDocument(documentId)
-        for (request in documentPresentationRequests) {
+        for (request in credentialRequests) {
             // Skip if we already have a request for the authentication key
             if (hasCpoRequestForAuthenticationKey(issuerDocument,
-                    request.authenticationKeyAttestation.certificates.first().publicKey)) {
+                    request.secureAreaBoundKeyAttestation.certificates.first().publicKey)) {
                 Logger.d(TAG, "Already has cpoRequest for attestation with key " +
-                        "${request.authenticationKeyAttestation.certificates.first().publicKey}")
+                        "${request.secureAreaBoundKeyAttestation.certificates.first().publicKey}")
                 continue
             }
-            val authenticationKey = request.authenticationKeyAttestation.certificates.first().publicKey
+            val authenticationKey = request.secureAreaBoundKeyAttestation.certificates.first().publicKey
             val presentationData = createPresentationData(
-                request.documentPresentationFormat,
+                request.format,
                 issuerDocument.documentConfiguration!!,
                 authenticationKey
             )
-            val cpoRequest = CpoRequest(
+            val simpleCredentialRequest = SimpleCredentialRequest(
                 authenticationKey,
+                request.format,
                 presentationData,
-                nowMillis + deadlineTimeMillis,
+                now + delayForProofingAndIssuance,
             )
-            issuerDocument.cpoRequests.add(cpoRequest)
+            issuerDocument.simpleCredentialRequests.add(simpleCredentialRequest)
         }
         saveIssuerDocument(documentId, issuerDocument)
 
-        if (deadlineTimeMillis == 0L) {
+        if (delayForProofingAndIssuance == 0.seconds) {
             Logger.i(TAG, "Emitting onStateChanged on $documentId for CpoRequest")
             emitOnStateChanged(documentId)
         } else {
             Timer().schedule(timerTask {
                 Logger.i(TAG, "Emitting onStateChanged on $documentId for CpoRequest")
                 emitOnStateChanged(documentId)
-            }, deadlineTimeMillis)
+            }, delayForProofingAndIssuance.inWholeMilliseconds)
         }
     }
 
-    override suspend fun documentDeveloperModeRequestUpdate(
+    override suspend fun developerModeRequestUpdate(
         documentId: String,
         requestRemoteDeletion: Boolean,
         notifyApplicationOfUpdate: Boolean
@@ -385,7 +427,7 @@ abstract class SimpleIssuingAuthority(
         val document = loadIssuerDocument(documentId)
         document.documentConfiguration = developerModeRequestUpdate(document.documentConfiguration!!)
         document.state = DocumentCondition.CONFIGURATION_AVAILABLE
-        document.cpoRequests.clear()
+        document.simpleCredentialRequests.clear()
         saveIssuerDocument(documentId, document)
         if (notifyApplicationOfUpdate) {
             emitOnStateChanged(documentId)

@@ -22,7 +22,7 @@ data class CertificateChain(
      *
      * Use [fromDataItem] to decode the returned data item.
      */
-    val dataItem: DataItem
+    val toDataItem: DataItem
         get() = if (certificates.size == 1) {
             certificates[0].toDataItem
         } else {

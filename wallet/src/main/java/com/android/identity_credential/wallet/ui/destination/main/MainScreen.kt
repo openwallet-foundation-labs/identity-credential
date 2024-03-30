@@ -423,11 +423,11 @@ fun MainScreenDocumentPager(
                     stringResource(R.string.accessibility_artwork_for, card.name),
                     modifier = Modifier.clickable(onClick = {
                         onNavigate(
-                            WalletDestination.CardInfo
+                            WalletDestination.DocumentInfo
                                 .getRouteWithArguments(
                                     listOf(
                                         Pair(
-                                            WalletDestination.CardInfo.Argument.CARD_ID,
+                                            WalletDestination.DocumentInfo.Argument.DOCUMENT_ID,
                                             card.documentId
                                         )
                                     )

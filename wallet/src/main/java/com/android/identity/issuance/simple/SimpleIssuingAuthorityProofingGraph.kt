@@ -1,6 +1,7 @@
 package com.android.identity.issuance.simple
 
 import com.android.identity.issuance.evidence.EvidenceRequest
+import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnelType
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
@@ -11,6 +12,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
+import com.android.identity.securearea.PassphraseConstraints
 
 /**
  * A builder of the graph of [Node]s that describes proofing workflows.
@@ -62,6 +64,24 @@ class SimpleIssuingAuthorityProofingGraph {
                  defaultValue: String, acceptButtonText: String) {
         val evidenceRequest = EvidenceRequestQuestionString(message, assets,
             defaultValue, acceptButtonText)
+        chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
+    }
+
+    /** Sends [EvidenceRequestCreatePassphrase]. */
+    fun createPassphrase(
+        id: String,
+        message: String,
+        verifyMessage: String,
+        assets: Map<String, ByteArray>,
+        passphraseConstraints: PassphraseConstraints,
+    ) {
+        val evidenceRequest = EvidenceRequestCreatePassphrase(
+            passphraseMinLength = passphraseConstraints.minLength,
+            passphraseMaxLength = passphraseConstraints.maxLength,
+            passphraseRequireNumerical = passphraseConstraints.requireNumerical,
+            message = message,
+            verifyMessage = verifyMessage,
+            assets = assets)
         chain.add { followUp -> SimpleNode(id, followUp, evidenceRequest) }
     }
 

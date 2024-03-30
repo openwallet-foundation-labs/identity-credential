@@ -120,6 +120,7 @@ class SoftwareSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isPassphraseProtected)
+        Assert.assertNull(keyInfo.passphraseConstraints)
         val dataToSign = byteArrayOf(4, 5, 6)
         val derSignature: ByteArray
         derSignature = try {
@@ -151,6 +152,7 @@ class SoftwareSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isPassphraseProtected)
+        Assert.assertNull(keyInfo.passphraseConstraints)
 
         // Check the leaf certificate is self-signed.
         Assert.assertTrue(
@@ -182,6 +184,7 @@ class SoftwareSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isPassphraseProtected)
+        Assert.assertNull(keyInfo.passphraseConstraints)
 
         // Check challenge.
         val cert = keyInfo.attestation.certificates[0].javaX509Certificate
@@ -206,6 +209,7 @@ class SoftwareSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isPassphraseProtected)
+        Assert.assertNull(keyInfo.passphraseConstraints)
 
         // Check challenge.
         val cert = keyInfo.attestation.certificates[0].javaX509Certificate
@@ -257,6 +261,7 @@ class SoftwareSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isPassphraseProtected)
+        Assert.assertNull(keyInfo.passphraseConstraints)
 
         // First do the ECDH from the perspective of our side...
         val ourSharedSecret: ByteArray
@@ -313,6 +318,7 @@ class SoftwareSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertFalse(keyInfo.isPassphraseProtected)
+        Assert.assertNull(keyInfo.passphraseConstraints)
 
         // First do the ECDH from the perspective of our side...
         val ourSharedSecret: ByteArray
@@ -395,10 +401,11 @@ class SoftwareSecureAreaTest {
         val storage = EphemeralStorageEngine()
         val ks = SoftwareSecureArea(storage)
         val passphrase = "verySekrit"
+        val passphraseConstraints = PassphraseConstraints.PIN_SIX_DIGITS
         ks.createKey(
             "testKey",
             SoftwareCreateKeySettings.Builder(ByteArray(0))
-                .setPassphraseRequired(true, passphrase)
+                .setPassphraseRequired(true, passphrase, passphraseConstraints)
                 .build()
         )
         val keyInfo = ks.getKeyInfo("testKey")
@@ -407,6 +414,8 @@ class SoftwareSecureAreaTest {
         Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
         Assert.assertEquals(EcCurve.P256, keyInfo.publicKey.curve)
         Assert.assertTrue(keyInfo.isPassphraseProtected)
+        Assert.assertNotNull(keyInfo.passphraseConstraints)
+        Assert.assertEquals(keyInfo.passphraseConstraints, passphraseConstraints)
         val dataToSign = byteArrayOf(4, 5, 6)
         var derSignature = ByteArray(0)
         try {
@@ -525,6 +534,7 @@ class SoftwareSecureAreaTest {
             Assert.assertEquals(setOf(KeyPurpose.SIGN), keyInfo.keyPurposes)
             Assert.assertEquals(ecCurve, keyInfo.publicKey.curve)
             Assert.assertFalse(keyInfo.isPassphraseProtected)
+            Assert.assertNull(keyInfo.passphraseConstraints)
             val signatureAlgorithms = when (ecCurve) {
                 EcCurve.P256,
                 EcCurve.P384,
@@ -601,6 +611,7 @@ class SoftwareSecureAreaTest {
             Assert.assertEquals(setOf(KeyPurpose.AGREE_KEY), keyInfo.keyPurposes)
             Assert.assertEquals(ecCurve, keyInfo.publicKey.curve)
             Assert.assertFalse(keyInfo.isPassphraseProtected)
+            Assert.assertNull(keyInfo.passphraseConstraints)
 
             // First do the ECDH from the perspective of our side...
             var ourSharedSecret: ByteArray

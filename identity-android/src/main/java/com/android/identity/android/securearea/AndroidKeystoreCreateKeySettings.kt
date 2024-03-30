@@ -1,6 +1,7 @@
 package com.android.identity.android.securearea
 
 import android.os.Build
+import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
@@ -69,6 +70,33 @@ class AndroidKeystoreCreateKeySettings private constructor(
         private var attestKeyAlias: String? = null
         private var validFrom: Timestamp? = null
         private var validUntil: Timestamp? = null
+
+        /**
+         * Apply settings from configuration object.
+         *
+         * @param configuration configuration from a CBOR map.
+         * @return the builder.
+         */
+        fun applyConfiguration(configuration: DataItem) = apply {
+            var userAutenticationRequired = false
+            var userAuthenticationTimeoutMillis = 0L
+            var userAuthenticationTypes = setOf<UserAuthenticationType>()
+            for ((key, value) in configuration.asMap) {
+                when (key.asTstr) {
+                    "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
+                    "curve" -> setEcCurve(EcCurve.fromInt(value.asNumber.toInt()))
+                    "useStrongBox" -> setUseStrongBox(value.asBoolean)
+                    "userAuthenticationRequired" -> userAutenticationRequired = value.asBoolean
+                    "userAuthenticationTimeoutMillis" -> userAuthenticationTimeoutMillis = value.asNumber
+                    "userAuthenticationTypes" -> userAuthenticationTypes = UserAuthenticationType.decodeSet(value.asNumber)
+                }
+            }
+            setUserAuthenticationRequired(
+                userAutenticationRequired,
+                userAuthenticationTimeoutMillis,
+                userAuthenticationTypes
+            )
+        }
 
         /**
          * Sets the key purpose.

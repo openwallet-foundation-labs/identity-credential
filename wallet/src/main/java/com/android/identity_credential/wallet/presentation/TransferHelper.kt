@@ -14,7 +14,7 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.javaX509Certificates
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
-import com.android.identity.issuance.DocumentPresentationFormat
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -98,13 +98,13 @@ class TransferHelper(
         val docRequest = request.docRequests[0]
 
         // TODO support more formats
-        val documentPresentationFormat: DocumentPresentationFormat =
-            DocumentPresentationFormat.MDOC_MSO
+        val credentialFormat: CredentialFormat =
+            CredentialFormat.MDOC_MSO
 
         // TODO when selecting a matching credential of the MDOC_MSO format, also use docRequest.docType
         //     to select a credential of the right doctype
         val credentialId: String = findFirstdocumentSatisfyingRequest(
-            settingsModel, documentPresentationFormat, docRequest)
+            settingsModel, credentialFormat, docRequest)
             ?: run {
                 onError(IllegalStateException("No matching credentials in wallet"))
                 return null
@@ -272,25 +272,25 @@ class TransferHelper(
      * If multiple credentials can satisfy the request, preference is given to the currently
      * focused credential in the main pager.
      *
-     * @param documentPresentationFormat the presentation format type for which credentials are queried
+     * @param credentialFormat the presentation format type for which credentials are queried
      * @param docRequest the docRequest, including the requested DocType.
      * @return credential identifier if found, otherwise null.
      */
     private fun findFirstdocumentSatisfyingRequest(
         settingsModel: SettingsModel,
-        documentPresentationFormat: DocumentPresentationFormat,
+        credentialFormat: CredentialFormat,
         docRequest: DeviceRequestParser.DocRequest,
     ): String? {
         // prefer the credential which is on-screen if possible
         val credentialIdFromPager: String? = settingsModel.focusedCardId.value
         if (credentialIdFromPager != null
-            && candocumentSatisfyRequest(credentialIdFromPager, documentPresentationFormat, docRequest)
+            && candocumentSatisfyRequest(credentialIdFromPager, credentialFormat, docRequest)
         ) {
             return credentialIdFromPager
         }
 
         return documentStore.listDocuments().firstOrNull { credentialId ->
-            candocumentSatisfyRequest(credentialId, documentPresentationFormat, docRequest)
+            candocumentSatisfyRequest(credentialId, credentialFormat, docRequest)
         }
     }
 
@@ -298,14 +298,14 @@ class TransferHelper(
      * Return whether the passed credential id can satisfy the request
      *
      * @param credentialId id of credential to check
-     * @param documentPresentationFormat the request presentation format for transferring
+     * @param credentialFormat the request presentation format for transferring
      * credential data
      * @param docRequest the DocRequest, including the DocType
      * @return whether the specified credential id can satisfy the request
      */
     private fun candocumentSatisfyRequest(
         credentialId: String,
-        documentPresentationFormat: DocumentPresentationFormat,
+        credentialFormat: CredentialFormat,
         docRequest: DeviceRequestParser.DocRequest
     ): Boolean {
         val credential = documentStore.lookupDocument(credentialId)!!
@@ -314,7 +314,7 @@ class TransferHelper(
             issuingAuthorityRepository.lookupIssuingAuthority(issuingAuthorityIdentifier)
                 ?: throw IllegalArgumentException("No issuer with id $issuingAuthorityIdentifier")
         val credentialFormats = issuer.configuration.documentFormats
-        if (!credentialFormats.contains(documentPresentationFormat)) {
+        if (!credentialFormats.contains(credentialFormat)) {
             return false;
         }
 

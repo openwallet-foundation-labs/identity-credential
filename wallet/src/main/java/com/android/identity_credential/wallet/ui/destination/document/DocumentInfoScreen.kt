@@ -61,8 +61,8 @@ fun DocumentInfoScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    val card = documentModel.getDocumentInfo(documentId)
-    if (card == null) {
+    val documentInfo = documentModel.getDocumentInfo(documentId)
+    if (documentInfo == null) {
         Logger.w(TAG, "No card with id $documentId")
         onNavigate(WalletDestination.Main.route)
         return
@@ -122,7 +122,7 @@ fun DocumentInfoScreen(
 
                         coroutineScope.launch {
                             documentModel.developerModeRequestUpdate(
-                                card,
+                                documentInfo,
                                 remoteDeletionCheckedState.value,
                                 notifyApplicationCheckedState.value
                             )
@@ -152,7 +152,7 @@ fun DocumentInfoScreen(
                 Button(
                     onClick = {
                         showDeleteConfirmationDialog = false
-                        documentModel.deleteCard(card)
+                        documentModel.deleteCard(documentInfo)
                         onNavigate(WalletDestination.PopBackStack.route)
                     }) {
                     Text(stringResource(R.string.document_info_screen_confirm_deletion_confirm_button))
@@ -187,7 +187,7 @@ fun DocumentInfoScreen(
 
                         coroutineScope.launch {
                             try {
-                                documentModel.refreshCard(card)
+                                documentModel.refreshCard(documentInfo)
                             } catch (e: ScreenLockRequiredException) {
                                 showErrorMessage = context.getString(R.string.document_info_screen_refresh_error_missing_screenlock)
                             } catch (e: Exception) {
@@ -200,10 +200,12 @@ fun DocumentInfoScreen(
                     text = { Text(text = stringResource(R.string.document_info_screen_menu_item_show_data)) },
                     leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
                     onClick = {
-                        onNavigate(WalletDestination.CardInfo.getRouteWithArguments(
+                        onNavigate(WalletDestination.DocumentInfo.getRouteWithArguments(
                             listOf(
-                                Pair(WalletDestination.CardInfo.Argument.CARD_ID, card.documentId),
-                                Pair(WalletDestination.CardInfo.Argument.SECTION, "details")
+                                Pair(WalletDestination.DocumentInfo.Argument.DOCUMENT_ID, documentInfo.documentId),
+                                Pair(WalletDestination.DocumentInfo.Argument.SECTION, "details"),
+                                Pair(WalletDestination.DocumentInfo.Argument.AUTH_REQUIRED,
+                                    documentInfo.requireUserAuthenticationToViewDocument),
                             )
                         ))
                         showMenu = false
@@ -229,10 +231,10 @@ fun DocumentInfoScreen(
                         },
                         onClick = {
                             onNavigate(
-                                WalletDestination.CardInfo.getRouteWithArguments(
+                                WalletDestination.DocumentInfo.getRouteWithArguments(
                                     listOf(
-                                        Pair(WalletDestination.CardInfo.Argument.CARD_ID, card.documentId),
-                                        Pair(WalletDestination.CardInfo.Argument.SECTION, "keys")
+                                        Pair(WalletDestination.DocumentInfo.Argument.DOCUMENT_ID, documentInfo.documentId),
+                                        Pair(WalletDestination.DocumentInfo.Argument.SECTION, "credentials")
                                     )
                                 )
                             )
@@ -263,8 +265,8 @@ fun DocumentInfoScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    bitmap = card.documentArtwork.asImageBitmap(),
-                    contentDescription = stringResource(R.string.accessibility_artwork_for, card.name),
+                    bitmap = documentInfo.documentArtwork.asImageBitmap(),
+                    contentDescription = stringResource(R.string.accessibility_artwork_for, documentInfo.name),
                     modifier = Modifier.height(200.dp)
                 )
             }
@@ -273,19 +275,19 @@ fun DocumentInfoScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = card.typeName,
+                    text = documentInfo.typeName,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.padding(8.dp)
                 )
             }
             Spacer(modifier = Modifier.weight(0.5f))
-            KeyValuePairText(stringResource(R.string.document_info_screen_data_name), card.name)
-            KeyValuePairText(stringResource(R.string.document_info_screen_data_issuer), card.issuerName)
-            KeyValuePairText(stringResource(R.string.document_info_screen_data_status), card.status)
+            KeyValuePairText(stringResource(R.string.document_info_screen_data_name), documentInfo.name)
+            KeyValuePairText(stringResource(R.string.document_info_screen_data_issuer), documentInfo.issuerName)
+            KeyValuePairText(stringResource(R.string.document_info_screen_data_status), documentInfo.status)
             KeyValuePairText(
                 stringResource(R.string.document_info_screen_data_last_update_check),
-                durationFromNowText(card.lastRefresh).replaceFirstChar {
+                durationFromNowText(documentInfo.lastRefresh).replaceFirstChar {
                     if (it.isLowerCase()) it.titlecase(
                         Locale.US
                     ) else it.toString()
@@ -296,8 +298,8 @@ fun DocumentInfoScreen(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Image(
-                    bitmap = card.issuerLogo.asImageBitmap(),
-                    contentDescription = stringResource(R.string.accessibility_artwork_for, card.issuerName),
+                    bitmap = documentInfo.issuerLogo.asImageBitmap(),
+                    contentDescription = stringResource(R.string.accessibility_artwork_for, documentInfo.issuerName),
                     modifier = Modifier.height(150.dp)
                 )
             }

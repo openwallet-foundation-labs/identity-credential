@@ -24,15 +24,19 @@ import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifi
 import com.android.identity.issuance.DocumentExtensions.numDocumentConfigurationsDownloaded
 import com.android.identity.issuance.DocumentExtensions.refreshState
 import com.android.identity.issuance.DocumentExtensions.state
-import com.android.identity.issuance.DocumentPresentationFormat
-import com.android.identity.issuance.DocumentPresentationRequest
+import com.android.identity.issuance.CredentialFormat
+import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInvalidatedException
+import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.SecureAreaRepository
+import com.android.identity.securearea.software.SoftwareCreateKeySettings
+import com.android.identity.securearea.software.SoftwareKeyInfo
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
 import com.android.identity_credential.wallet.credman.CredmanRegistry
@@ -144,7 +148,7 @@ class DocumentModel(
             issuingAuthorityRepository.lookupIssuingAuthority(document.issuingAuthorityIdentifier)
                 ?: throw IllegalArgumentException("No issuer with id ${document.issuingAuthorityIdentifier}")
 
-        issuer.documentDeveloperModeRequestUpdate(
+        issuer.developerModeRequestUpdate(
             document.documentIdentifier,
             requestRemoteDeletion,
             notifyApplicationOfUpdate
@@ -225,13 +229,14 @@ class DocumentModel(
         return DocumentInfo(
             documentId = document.name,
             attentionNeeded = attentionNeeded,
+            requireUserAuthenticationToViewDocument = documentConfiguration.requireUserAuthenticationToViewDocument,
             name = documentConfiguration.displayName,
             issuerName = issuer.configuration.issuingAuthorityName,
             issuerDocumentDescription = issuer.configuration.description,
             typeName = data.typeName,
             issuerLogo = issuerLogo,
             documentArtwork = documentBitmap,
-            lastRefresh = Instant.fromEpochMilliseconds(document.state.timestamp),
+            lastRefresh = document.state.timestamp,
             status = statusString,
             attributes = data.attributes,
             attributePortrait = data.portrait,
@@ -257,6 +262,7 @@ class DocumentModel(
         try {
             val deviceKeyInfo = credential.secureArea.getKeyInfo(credential.alias)
             kvPairs.put("Device Key Curve", deviceKeyInfo.publicKey.curve.name)
+            kvPairs.put("Device Key Purposes", deviceKeyInfo.keyPurposes.toString())
             kvPairs.put("Secure Area", credential.secureArea.displayName)
 
             if (deviceKeyInfo is AndroidKeystoreKeyInfo) {
@@ -283,6 +289,35 @@ class DocumentModel(
                         "No"
                     }
                 kvPairs.put("In StrongBox", isStrongBoxBacked)
+            } else if (deviceKeyInfo is SoftwareKeyInfo) {
+                val passphraseProtected =
+                    if (deviceKeyInfo.isPassphraseProtected) {
+                        val constraints = deviceKeyInfo.passphraseConstraints
+                        if (constraints == null) {
+                            "Yes"
+                        } else {
+                            if (constraints.requireNumerical) {
+                                if (constraints.maxLength == Int.MAX_VALUE) {
+                                    "Numerical, at least ${constraints.minLength} digits"
+                                } else if (constraints.minLength == constraints.maxLength) {
+                                    "Numerical, ${constraints.minLength} digits"
+                                } else {
+                                    "Numerical, ${constraints.minLength}-${constraints.maxLength} digits"
+                                }
+                            } else {
+                                if (constraints.maxLength == Int.MAX_VALUE) {
+                                    "At least ${constraints.minLength} characters"
+                                } else if (constraints.minLength == constraints.maxLength) {
+                                    "${constraints.minLength} characters"
+                                } else {
+                                    "${constraints.minLength}-${constraints.maxLength} characters"
+                                }
+                            }
+                        }
+                    } else {
+                        "None"
+                    }
+                kvPairs.put("Passphrase", passphraseProtected)
             }
         } catch (e: KeyInvalidatedException) {
             kvPairs.put("Device Key", "Invalidated")
@@ -518,7 +553,6 @@ class DocumentModel(
         // TODO: this should all come from issuer configuration
         val numAuthKeys = 3
         val minValidTimeMillis = 30 * 24 * 3600L
-        val secureArea = secureAreaRepository.getImplementation("AndroidKeystoreSecureArea")!!
         val authKeyDomain = WalletApplication.CREDENTIAL_DOMAIN
 
         // OK, let's see if configuration is available
@@ -534,7 +568,7 @@ class DocumentModel(
         if (document.state.condition == DocumentCondition.CONFIGURATION_AVAILABLE) {
             document.certifiedCredentials.forEach { it.delete() }
             document.pendingCredentials.forEach { it.delete() }
-            document.documentConfiguration = issuer.documentGetConfiguration(
+            document.documentConfiguration = issuer.getDocumentConfiguration(
                 document.documentIdentifier
             )
 
@@ -567,7 +601,7 @@ class DocumentModel(
             // First do a dry-run to see how many pending credentials will be created
             val numPendingAuthKeysToCreate = DocumentUtil.managedCredentialHelper(
                 document,
-                secureArea,
+                null,
                 null,
                 authKeyDomain,
                 now,
@@ -578,20 +612,26 @@ class DocumentModel(
             )
             if (numPendingAuthKeysToCreate > 0) {
                 val requestCpoFlow =
-                    issuer.documentRequestPresentationObjects(document.documentIdentifier)
-                val authKeyConfig = requestCpoFlow.getAuthenticationKeyConfiguration()
-                // TODO: extend AuthenticationKeyConfiguration to include e.g. auth settings
-                val authKeySettings: CreateKeySettings =
-                    if (secureArea is AndroidKeystoreSecureArea) {
-                        AndroidKeystoreCreateKeySettings.Builder(authKeyConfig.challenge)
-                            .setUserAuthenticationRequired(
-                                true, 0,
-                                setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
-                            )
+                    issuer.requestCredentials(document.documentIdentifier)
+                val credConfig = requestCpoFlow.getCredentialConfiguration()
+
+                val secureArea = secureAreaRepository.getImplementation(credConfig.secureAreaIdentifier)
+                    ?: throw IllegalArgumentException("No SecureArea ${credConfig.secureAreaIdentifier}")
+                val authKeySettings: CreateKeySettings = when (secureArea) {
+                    is AndroidKeystoreSecureArea -> {
+                        AndroidKeystoreCreateKeySettings.Builder(credConfig.challenge)
+                            .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
                             .build()
-                    } else {
-                        CreateKeySettings(authKeyConfig.challenge)
                     }
+
+                    is SoftwareSecureArea -> {
+                        SoftwareCreateKeySettings.Builder(credConfig.challenge)
+                            .applyConfiguration(Cbor.decode(credConfig.secureAreaConfiguration))
+                            .build()
+                    }
+
+                    else -> throw IllegalStateException("Unexpected SecureArea $secureArea")
+                }
                 DocumentUtil.managedCredentialHelper(
                     document,
                     secureArea,
@@ -603,16 +643,16 @@ class DocumentModel(
                     minValidTimeMillis,
                     false
                 )
-                val documentPresentationRequests = mutableListOf<DocumentPresentationRequest>()
+                val credentialRequests = mutableListOf<CredentialRequest>()
                 for (pendingAuthKey in document.pendingCredentials) {
-                    documentPresentationRequests.add(
-                        DocumentPresentationRequest(
-                            DocumentPresentationFormat.MDOC_MSO,
+                    credentialRequests.add(
+                        CredentialRequest(
+                            CredentialFormat.MDOC_MSO,
                             pendingAuthKey.attestation
                         )
                     )
                 }
-                requestCpoFlow.sendAuthenticationKeys(documentPresentationRequests)
+                requestCpoFlow.sendCredentials(credentialRequests)
                 if (!document.refreshState(issuingAuthorityRepository)) {
                     return -1
                 }
@@ -620,19 +660,19 @@ class DocumentModel(
         }
 
         var numAuthKeysRefreshed = 0
-        if (document.state.numAvailableCPO > 0) {
-            for (cpo in issuer.documentGetPresentationObjects(document.documentIdentifier)) {
+        if (document.state.numAvailableCredentials > 0) {
+            for (cpo in issuer.getCredentials(document.documentIdentifier)) {
                 val pendingCredential = document.pendingCredentials.find {
-                    it.attestation.certificates.first().publicKey.equals(cpo.authenticationKey)
+                    it.attestation.certificates.first().publicKey.equals(cpo.secureAreaBoundKey)
                 }
                 if (pendingCredential == null) {
-                    Logger.w(TAG, "No pending Credential for pubkey ${cpo.authenticationKey}")
+                    Logger.w(TAG, "No pending Credential for pubkey ${cpo.secureAreaBoundKey}")
                     continue
                 }
                 pendingCredential.certify(
-                    cpo.presentationData,
-                    Timestamp.ofEpochMilli(cpo.validFromMillis),
-                    Timestamp.ofEpochMilli(cpo.validUntilMillis)
+                    cpo.data,
+                    Timestamp.ofEpochMilli(cpo.validFrom.toEpochMilliseconds()),
+                    Timestamp.ofEpochMilli(cpo.validUntil.toEpochMilliseconds())
                 )
                 numAuthKeysRefreshed += 1
             }
