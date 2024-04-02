@@ -133,8 +133,8 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
         //    ]
         fun generateAndroidSessionTranscript(
             nonce: ByteArray,
-            publicKey: PublicKey,
-            packageName: String
+            packageName: String,
+            requesterIdHash: ByteArray
         ): ByteArray {
             return Cbor.encode(
                 CborArray.builder()
@@ -144,7 +144,7 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
                     .add(ANDROID_HANDOVER_V1)
                     .add(nonce)
                     .add(packageName.toByteArray())
-                    .add(generatePublicKeyHash(publicKey))
+                    .add(requesterIdHash)
                     .end()
                     .end()
                     .build()
@@ -182,7 +182,7 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
         fun generateBrowserSessionTranscript(
             nonce: ByteArray,
             origin: String,
-            publicKey: PublicKey
+            requesterIdHash: ByteArray
         ): ByteArray {
             val originInfoBytes = generateOriginInfoBytes(origin)
 
@@ -194,14 +194,19 @@ class CredmanUtil(private val publicKey: PublicKey, private val privateKey: Priv
                     .add(BROWSER_HANDOVER_V1)
                     .add(nonce)
                     .add(originInfoBytes)
-                    .add(generatePublicKeyHash(publicKey))
+                    .add(requesterIdHash)
                     .end()
                     .end()
                     .build()
             )
         }
 
-        private fun generatePublicKeyHash(publicKey: PublicKey): ByteArray {
+        fun generateClientIdHash(clientId: String): ByteArray {
+            val md = MessageDigest.getInstance("SHA-256")
+            return md.digest(clientId.encodeToByteArray())
+        }
+
+         fun generatePublicKeyHash(publicKey: PublicKey): ByteArray {
             publicKey as ECPublicKey
             val encodedKey = EllipticCurves.pointEncode(
                 EllipticCurves.CurveType.NIST_P256,
