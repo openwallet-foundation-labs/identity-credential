@@ -215,16 +215,18 @@
     <!-- SelfSignedMdlIssuingAuthority -->
     <string name="utopia_mdl_issuing_authority_description">Utopia Driving License</string>
     <string name="utopia_mdl_issuing_authority_name">Utopia Department of Motor Vehicles</string>
-    <string name="utopia_mdl_issuing_authority_tos">
-        ## Provisioning a Mobile Driving License (mDL)\n\n
-        In the following screens, information will be collected for provisioning of a mDL.\n\n
-        The mDL can either contain hard-coded data for fictional person or
-        data derived from the chip in an ePassport or eID document.\n\n
-        In this version of the application the mDL is generated and signed on-device. In future
+    <string name="utopia_mdl_issuing_authority_tos"><![CDATA[
+        <img src=\'utopia_logo.png\' style=\'height: 150px; display: block; margin: auto\'
+           alt=\'State of Utopia Department of Motor Vehicles\'/>
+        <h2>Provisioning a Mobile Driving License (mDL)</h2>
+        <p>In the following screens, information will be collected for provisioning of a mDL.</p>
+        <p>The mDL can either contain hard-coded data for fictional person or
+        data derived from the chip in an ePassport or eID document.</p>
+        <p>In this version of the application the mDL is generated and signed on-device. In future
         versions the collected evidence will be conveyed securely and privately to an issuance
-        server for evaluation and signing of the mDL.\n\n
-        The created mDL will be bound to this device.
-    </string>
+        server for evaluation and signing of the mDL.</p>
+        <p>The created mDL will be bound to this device.</p>
+    ]]></string>
     <string name="utopia_mdl_issuing_authority_accept">I understand</string>
     <string name="utopia_mdl_issuing_authority_reject">Cancel</string>
     <string name="utopia_mdl_issuing_authority_hardcoded_or_derived">Scan ePassport/eID?</string>
@@ -242,6 +244,8 @@
     <string name="utopia_eu_pid_issuing_authority_description">Utopia Personal Information Document</string>
     <string name="utopia_eu_pid_issuing_authority_name">Utopia Central Registry</string>
     <string name="utopia_eu_pid_issuing_authority_tos">
+        ![State of Utopia Central Registry seal](utopia_logo.png){
+           style=height:150px;display:block;margin:auto}\n\n
         ## Provisioning a Personal Information Document (PID)\n\n
         In the following screens, information will be collected for provisioning of a PID.\n\n
         The PID can either contain hard-coded data for fictional person or
