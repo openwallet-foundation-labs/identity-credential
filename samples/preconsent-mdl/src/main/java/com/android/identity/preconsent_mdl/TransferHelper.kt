@@ -27,11 +27,13 @@ import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
+import com.android.identity.credential.CredentialFactory
 import com.android.identity.document.DocumentStore
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Constants
@@ -71,6 +73,7 @@ class TransferHelper private constructor(private val context: Context) {
     var secureAreaRepository: SecureAreaRepository
     var androidKeystoreSecureArea: AndroidKeystoreSecureArea
     var documentStore: DocumentStore
+    private var credentialFactory: CredentialFactory
 
     private var sharedPreferences: SharedPreferences
     private var storageEngine: StorageEngine
@@ -102,7 +105,9 @@ class TransferHelper private constructor(private val context: Context) {
         secureAreaRepository = SecureAreaRepository();
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(context, storageEngine);
         secureAreaRepository.addImplementation(androidKeystoreSecureArea);
-        documentStore = DocumentStore(storageEngine, secureAreaRepository)
+        credentialFactory = CredentialFactory()
+        credentialFactory.addCredentialImplementation(MdocCredential::class)
+        documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
         state.value = State.NOT_CONNECTED
     }
 

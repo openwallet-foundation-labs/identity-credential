@@ -15,6 +15,7 @@ dependencies {
 
     ksp project(':cbor-processor')
 
+    implementation libs.kotlin.reflect
     implementation libs.bouncy.castle.bcprov
     implementation libs.bouncy.castle.bcpkix
     implementation libs.kotlinx.io.bytestring

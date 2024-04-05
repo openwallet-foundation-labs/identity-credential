@@ -15,6 +15,9 @@
  */
 package com.android.identity.document
 
+import com.android.identity.credential.Credential
+import com.android.identity.credential.CredentialFactory
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
@@ -39,6 +42,7 @@ class DocumentStoreTest {
     private lateinit var storageEngine: StorageEngine
     private lateinit var secureArea: SecureArea
     private lateinit var secureAreaRepository: SecureAreaRepository
+    private lateinit var credentialFactory: CredentialFactory
 
     // This isn't really used, we only use a single domain.
     private val CREDENTIAL_DOMAIN = "domain"
@@ -50,6 +54,9 @@ class DocumentStoreTest {
         secureAreaRepository = SecureAreaRepository()
         secureArea = SoftwareSecureArea(storageEngine)
         secureAreaRepository.addImplementation(secureArea)
+        credentialFactory = CredentialFactory()
+        credentialFactory.addCredentialImplementation(SecureAreaBoundCredential::class)
+        credentialFactory.addCredentialImplementation(Credential::class)
     }
 
     @Test
@@ -57,20 +64,21 @@ class DocumentStoreTest {
         storageEngine.deleteAll()
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         Assert.assertEquals(0, documentStore.listDocuments().size.toLong())
         for (n in 0..9) {
-            documentStore.addDocument(documentStore.createDocument("testCred$n"))
+            documentStore.addDocument(documentStore.createDocument("testDoc$n"))
         }
         Assert.assertEquals(10, documentStore.listDocuments().size.toLong())
-        documentStore.deleteDocument("testCred1")
+        documentStore.deleteDocument("testDoc1")
         Assert.assertEquals(9, documentStore.listDocuments().size.toLong())
         for (n in 0..9) {
             if (n == 1) {
-                Assert.assertFalse(documentStore.listDocuments().contains("testCred$n"))
+                Assert.assertFalse(documentStore.listDocuments().contains("testDoc$n"))
             } else {
-                Assert.assertTrue(documentStore.listDocuments().contains("testCred$n"))
+                Assert.assertTrue(documentStore.listDocuments().contains("testDoc$n"))
             }
         }
     }
@@ -78,44 +86,46 @@ class DocumentStoreTest {
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun testEventFlow() = runTest {
-        val credentialStore = DocumentStore(
+        val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
 
         val events = mutableListOf<Pair<DocumentStore.EventType, Document>>()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            credentialStore.eventFlow.toList(events)
+            documentStore.eventFlow.toList(events)
         }
 
-        val cred0 = credentialStore.createDocument("doc0")
-        cred0.applicationData.setString("foo", "should not be notified")
-        credentialStore.addDocument(cred0)
-        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, cred0), events.last())
+        val doc0 = documentStore.createDocument("doc0")
+        doc0.applicationData.setString("foo", "should not be notified")
+        documentStore.addDocument(doc0)
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, doc0), events.last())
 
-        val cred1 = credentialStore.createDocument("doc1")
-        val cred2 = credentialStore.createDocument("doc2")
-        credentialStore.addDocument(cred1)
-        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, cred1), events.last())
-        credentialStore.addDocument(cred2)
-        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, cred2), events.last())
-        cred2.applicationData.setString("foo", "bar")
-        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_UPDATED, cred2), events.last())
-        cred1.applicationData.setString("foo", "bar")
-        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_UPDATED, cred1), events.last())
-        credentialStore.deleteDocument("doc0")
-        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, cred0), events.last())
-        credentialStore.deleteDocument("doc2")
-        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, cred2), events.last())
-        credentialStore.deleteDocument("doc1")
-        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, cred1), events.last())
+        val doc1 = documentStore.createDocument("doc1")
+        val doc2 = documentStore.createDocument("doc2")
+        documentStore.addDocument(doc1)
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, doc1), events.last())
+        documentStore.addDocument(doc2)
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_ADDED, doc2), events.last())
+        doc2.applicationData.setString("foo", "bar")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_UPDATED, doc2), events.last())
+        doc1.applicationData.setString("foo", "bar")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_UPDATED, doc1), events.last())
+        documentStore.deleteDocument("doc0")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, doc0), events.last())
+        documentStore.deleteDocument("doc2")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, doc2), events.last())
+        documentStore.deleteDocument("doc1")
+        Assert.assertEquals(Pair(DocumentStore.EventType.DOCUMENT_DELETED, doc1), events.last())
     }
 
     @Test
     fun testCreationDeletion() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
 
         val document = documentStore.createDocument(
@@ -141,7 +151,8 @@ class DocumentStoreTest {
     fun testCaching() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         val a = documentStore.createDocument("a")
         documentStore.addDocument(a)
@@ -165,7 +176,8 @@ class DocumentStoreTest {
     fun testNameSpacedData() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         val document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
@@ -193,7 +205,8 @@ class DocumentStoreTest {
     fun testCredentialUsage() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         val document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
@@ -213,12 +226,11 @@ class DocumentStoreTest {
 
         // Create ten credentials...
         for (n in 0..9) {
-            document.createCredential(
-                CREDENTIAL_DOMAIN,
-                secureArea,
-                CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-                null
+            var pendingCredential = Credential(
+                null,
+                CREDENTIAL_DOMAIN
             )
+            document.addCredential(pendingCredential)
         }
         Assert.assertEquals(0, document.certifiedCredentials.size.toLong())
         Assert.assertEquals(10, document.pendingCredentials.size.toLong())
@@ -293,12 +305,13 @@ class DocumentStoreTest {
         // Create and certify five replacements
         n = 0
         while (n < 5) {
-            document.createCredential(
+            var pendingCredential = SecureAreaBoundCredential(
+                null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-                null
             )
+            document.addCredential(pendingCredential)
             n++
         }
         Assert.assertEquals(10, document.certifiedCredentials.size.toLong())
@@ -355,7 +368,8 @@ class DocumentStoreTest {
         val timeValidityEnd = Timestamp.ofEpochMilli(150)
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         val document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
@@ -365,12 +379,13 @@ class DocumentStoreTest {
         // Create ten pending credentials and certify four of them
         n = 0
         while (n < 4) {
-            document.createCredential(
+            var pendingCredential = SecureAreaBoundCredential(
+                null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-                null
             )
+            document.addCredential(pendingCredential)
             n++
         }
         Assert.assertEquals(0, document.certifiedCredentials.size.toLong())
@@ -394,17 +409,23 @@ class DocumentStoreTest {
         Assert.assertEquals(0, document.pendingCredentials.size.toLong())
         n = 0
         while (n < 6) {
-            document.createCredential(
+            var pendingCredential = SecureAreaBoundCredential(
+                null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
-                CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-                null
+                CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
             )
+            document.addCredential(pendingCredential)
             n++
         }
         Assert.assertEquals(4, document.certifiedCredentials.size.toLong())
         Assert.assertEquals(6, document.pendingCredentials.size.toLong())
-        val document2 = documentStore.lookupDocument("testDocument")
+        val documentStore2 = DocumentStore(
+            storageEngine,
+            secureAreaRepository,
+            credentialFactory
+        )
+        val document2 = documentStore2.lookupDocument("testDocument")
         Assert.assertNotNull(document2)
         Assert.assertEquals(4, document2!!.certifiedCredentials.size.toLong())
         Assert.assertEquals(6, document2.pendingCredentials.size.toLong())
@@ -415,24 +436,26 @@ class DocumentStoreTest {
         val it2 = document2.certifiedCredentials.iterator()
         n = 0
         while (n < 4) {
-            val cred1 = it1.next()
-            val cred2 = it2.next()
-            Assert.assertEquals(cred1.alias, cred2.alias)
-            Assert.assertEquals(cred1.validFrom, cred2.validFrom)
-            Assert.assertEquals(cred1.validUntil, cred2.validUntil)
-            Assert.assertEquals(cred1.usageCount.toLong(), cred2.usageCount.toLong())
-            Assert.assertArrayEquals(cred1.issuerProvidedData, cred2.issuerProvidedData)
-            Assert.assertEquals(cred1.attestation, cred2.attestation)
+            val doc1 = it1.next() as SecureAreaBoundCredential
+            val doc2 = it2.next() as SecureAreaBoundCredential
+            Assert.assertEquals(doc1.identifier, doc2.identifier)
+            Assert.assertEquals(doc1.alias, doc2.alias)
+            Assert.assertEquals(doc1.validFrom, doc2.validFrom)
+            Assert.assertEquals(doc1.validUntil, doc2.validUntil)
+            Assert.assertEquals(doc1.usageCount.toLong(), doc2.usageCount.toLong())
+            Assert.assertArrayEquals(doc1.issuerProvidedData, doc2.issuerProvidedData)
+            Assert.assertEquals(doc1.attestation, doc2.attestation)
             n++
         }
         val itp1 = document.pendingCredentials.iterator()
         val itp2 = document2.pendingCredentials.iterator()
         n = 0
         while (n < 6) {
-            val cred1 = itp1.next()
-            val cred2 = itp2.next()
-            Assert.assertEquals(cred1.alias, cred2.alias)
-            Assert.assertEquals(cred1.attestation, cred2.attestation)
+            val doc1 = itp1.next() as SecureAreaBoundCredential
+            val doc2 = itp2.next() as SecureAreaBoundCredential
+            Assert.assertEquals(doc1.identifier, doc2.identifier)
+            Assert.assertEquals(doc1.alias, doc2.alias)
+            Assert.assertEquals(doc1.attestation, doc2.attestation)
             n++
         }
     }
@@ -441,7 +464,8 @@ class DocumentStoreTest {
     fun testCredentialValidity() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         val document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
@@ -463,12 +487,13 @@ class DocumentStoreTest {
         // check it below.
         var n = 0
         while (n < 10) {
-            document.createCredential(
+            var pendingCredential = SecureAreaBoundCredential(
+                null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-                null
             )
+            document.addCredential(pendingCredential)
             n++
         }
         Assert.assertEquals(10, document.pendingCredentials.size.toLong())
@@ -526,7 +551,8 @@ class DocumentStoreTest {
     fun testApplicationData() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         val document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
@@ -573,17 +599,19 @@ class DocumentStoreTest {
     fun testCredentialApplicationData() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         var document: Document? = documentStore.createDocument("testDocument")
         documentStore.addDocument(document!!)
         for (n in 0..9) {
-            val pendingCredential = document.createCredential(
+            val pendingCredential = SecureAreaBoundCredential(
+                null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-                null
             )
+            document.addCredential(pendingCredential)
             val value = String.format("bar%02d", n)
             val pendingAppData = pendingCredential.applicationData
             pendingAppData.setString("foo", value)
@@ -652,19 +680,21 @@ class DocumentStoreTest {
     fun testCredentialReplacement() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         val document = documentStore.createDocument("testDocument")
         documentStore.addDocument(document)
         Assert.assertEquals(0, document.certifiedCredentials.size.toLong())
         Assert.assertEquals(0, document.pendingCredentials.size.toLong())
         for (n in 0..9) {
-            val pendingCredential = document.createCredential(
+            val pendingCredential = SecureAreaBoundCredential(
+                null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-                null
             )
+            document.addCredential(pendingCredential)
             pendingCredential.certify(
                 byteArrayOf(0, n.toByte()),
                 Timestamp.ofEpochMilli(100),
@@ -675,14 +705,15 @@ class DocumentStoreTest {
         Assert.assertEquals(10, document.certifiedCredentials.size.toLong())
 
         // Now replace the fifth credential
-        val keyToReplace = document.certifiedCredentials[5]
-        Assert.assertArrayEquals(byteArrayOf(0, 5), keyToReplace.issuerProvidedData)
-        val pendingCredential = document.createCredential(
+        val credToReplace = document.certifiedCredentials[5] as SecureAreaBoundCredential
+        Assert.assertArrayEquals(byteArrayOf(0, 5), credToReplace.issuerProvidedData)
+        val pendingCredential = SecureAreaBoundCredential(
+            credToReplace,
             CREDENTIAL_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-            keyToReplace
         )
+        document.addCredential(pendingCredential)
         // ... it's not replaced until certify() is called
         Assert.assertEquals(1, document.pendingCredentials.size.toLong())
         Assert.assertEquals(10, document.certifiedCredentials.size.toLong())
@@ -718,12 +749,13 @@ class DocumentStoreTest {
         // Test the case where the replacement credential is prematurely deleted. The credential
         // being replaced should no longer reference it has a replacement...
         val toBeReplaced = document.certifiedCredentials[0]
-        var replacement = document.createCredential(
+        var replacement = SecureAreaBoundCredential(
+            toBeReplaced as SecureAreaBoundCredential,
             CREDENTIAL_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-            toBeReplaced
         )
+        document.addCredential(replacement)
         Assert.assertEquals(toBeReplaced, replacement.replacementFor)
         Assert.assertEquals(replacement, toBeReplaced.replacement)
         replacement.delete()
@@ -731,12 +763,13 @@ class DocumentStoreTest {
 
         // Similarly, test the case where the credential to be replaced is prematurely deleted.
         // The replacement credential should no longer indicate it's a replacement credential.
-        replacement = document.createCredential(
+        replacement = SecureAreaBoundCredential(
+            toBeReplaced,
             CREDENTIAL_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
-            toBeReplaced
         )
+        document.addCredential(replacement)
         Assert.assertEquals(toBeReplaced, replacement.replacementFor)
         Assert.assertEquals(replacement, toBeReplaced.replacement)
         toBeReplaced.delete()

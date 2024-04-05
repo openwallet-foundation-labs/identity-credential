@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.fragment.app.Fragment
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.document.Credential
 import com.android.identity.document.Document
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.SecureArea
@@ -35,7 +35,7 @@ interface SecureAreaSupport {
      * there is a provided way to navigate using the [findNavController] function.
      */
     fun Fragment.unlockKey(
-        authKey: Credential,
+        credential: MdocCredential,
         onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     )

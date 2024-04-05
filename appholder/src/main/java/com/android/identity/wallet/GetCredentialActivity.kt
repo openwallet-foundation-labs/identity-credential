@@ -10,13 +10,13 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
-import com.android.identity.document.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Crypto
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
@@ -40,21 +40,21 @@ import java.util.StringTokenizer
 class GetCredentialActivity : FragmentActivity() {
 
     fun addDeviceNamespaces(documentGenerator : DocumentGenerator,
-                            authKey : Credential,
+                            credential : MdocCredential,
                             unlockData: KeyUnlockData?) {
         documentGenerator.setDeviceNamespacesSignature(
             NameSpacedData.Builder().build(),
-            authKey.secureArea,
-            authKey.alias,
+            credential.secureArea,
+            credential.alias,
             unlockData,
             Algorithm.ES256)
     }
 
-    fun doBiometricAuth(authKey : Credential,
+    fun doBiometricAuth(credential : MdocCredential,
                         forceLskf : Boolean,
                         onBiometricAuthCompleted: (unlockData: KeyUnlockData?) -> Unit) {
         var title = "To share your credential we need to check that it's you."
-        var unlockData = AndroidKeystoreKeyUnlockData(authKey.alias)
+        var unlockData = AndroidKeystoreKeyUnlockData(credential.alias)
         var cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
 
         val promptInfoBuilder = BiometricPrompt.PromptInfo.Builder()
@@ -88,7 +88,7 @@ class GetCredentialActivity : FragmentActivity() {
                         Logger.d("TAG", "onAuthenticationError $errorCode $errString")
                         // TODO: "Use LSKF"...  without this delay, the prompt won't work correctly
                         Handler(Looper.getMainLooper()).postDelayed({
-                            doBiometricAuth(authKey, true, onBiometricAuthCompleted)
+                            doBiometricAuth(credential, true, onBiometricAuthCompleted)
                         }, 100)
                     }
                 }
@@ -128,7 +128,7 @@ class GetCredentialActivity : FragmentActivity() {
         val credential = document.findCredential(
             ProvisioningUtil.CREDENTIAL_DOMAIN,
             Timestamp.now()
-        ) ?: throw IllegalStateException("No credential")
+        ) as MdocCredential? ?: throw IllegalStateException("No credential")
         val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
             documentRequest, nameSpacedData, staticAuthData

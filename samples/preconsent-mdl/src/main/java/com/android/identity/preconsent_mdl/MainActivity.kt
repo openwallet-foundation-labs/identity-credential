@@ -67,6 +67,7 @@ import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
@@ -141,12 +142,14 @@ class MainActivity : ComponentActivity() {
 
         // Create three credentials and certify them
         for (n in 0..2) {
-            val pendingCredential = document.createCredential(
+            val pendingCredential = MdocCredential(
+                null,
                 AUTH_KEY_DOMAIN,
                 transferHelper.androidKeystoreSecureArea,
                 CreateKeySettings("".toByteArray()),
-                null
+                MDL_DOCTYPE
             )
+            document.addCredential(pendingCredential)
 
             // Generate an MSO and issuer-signed data for this credentials.
             val msoGenerator = MobileSecurityObjectGenerator(

@@ -43,7 +43,7 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.document.Credential
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
@@ -164,14 +164,14 @@ class PresentationActivity : FragmentActivity() {
         finish()
     }
 
-    private fun onAuthenticationKeyLocked(authKey: Credential) {
-        val keyInfo = authKey.secureArea.getKeyInfo(authKey.alias)
+    private fun onAuthenticationKeyLocked(credential: MdocCredential) {
+        val keyInfo = credential.secureArea.getKeyInfo(credential.alias)
         var userAuthenticationTypes = emptySet<UserAuthenticationType>()
         if (keyInfo is AndroidKeystoreKeyInfo) {
             userAuthenticationTypes = keyInfo.userAuthenticationTypes
         }
 
-        val unlockData = AndroidKeystoreKeyUnlockData(authKey.alias)
+        val unlockData = AndroidKeystoreKeyUnlockData(credential.alias)
         val cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
 
         showBiometricPrompt(
@@ -182,7 +182,7 @@ class PresentationActivity : FragmentActivity() {
             userAuthenticationTypes = userAuthenticationTypes,
             requireConfirmation = false,
             onCanceled = { finish() },
-            onSuccess = { finishProcessingRequest(unlockData, authKey) },
+            onSuccess = { finishProcessingRequest(unlockData, credential) },
             onError = {exception ->
                 Logger.e(TAG, exception.toString())
                 finish() },
@@ -191,7 +191,7 @@ class PresentationActivity : FragmentActivity() {
 
     private fun finishProcessingRequest(
         keyUnlockData: KeyUnlockData? = null,
-        authKey: Credential? = null,
+        credential: MdocCredential? = null,
     ) {
         // finish processing the request on IO thread
         lifecycleScope.launch {
@@ -202,7 +202,7 @@ class PresentationActivity : FragmentActivity() {
                 keyUnlockData = keyUnlockData,
                 onFinishedProcessing = onFinishedProcessingRequest,
                 onAuthenticationKeyLocked = { onAuthenticationKeyLocked(it) },
-                authKey = authKey
+                credential = credential
             )
         }
     }

@@ -17,7 +17,8 @@ package com.android.identity.document
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
-import com.android.identity.securearea.CreateKeySettings
+import com.android.identity.credential.Credential
+import com.android.identity.credential.CredentialFactory
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
@@ -50,15 +51,16 @@ import kotlinx.datetime.Instant
  * associated with it. These credentials are intended to be used in ways specified by the
  * underlying document format but the general idea is that they are created on
  * the device and then sent to the issuer for certification. The issuer then returns
- * some format-specific data related to the credential. For Mobile Driving License and MDOCs according
- * to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html)
+ * some format-specific data related to the credential.
+ *
+ * Using Mobile Driving License and MDOCs according
+ * to [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html) as an example,
  * the credential plays the role of *DeviceKey* and the issuer-signed
  * data includes the *Mobile Security Object* which includes the
  * credential and is signed by the issuer. This is used for anti-cloning and to return data signed
- * by the device. The way it works in this API is that the application can use
- * [createCredential]
- * to get an [Credential]. With this in hand, the application can use
- * [Credential.attestation] and send the attestation
+ * by the device. The way it works in this API is that the application can create an [MdocCredential]
+ * (using [MdocCredential.create]) tied to a [Document]. With this in hand, the application can use
+ * [MdocCredential.attestation] and send the attestation
  * to the issuer for certification. The issuer will then craft document-format
  * specific data (for ISO/IEC 18013-5:2021 it will be a signed MSO which references
  * the public part of the newly created credential) and send it back
@@ -80,12 +82,19 @@ import kotlinx.datetime.Instant
  * of document regardless of format, presentation, or issuance protocol used.
  *
  * @param name the name of the document which can be used with [DocumentStore].
+ * @param storageEngine the [StorageEngine] to use for storing/retrieving documents.
+ * @param secureAreaRepository the repository of configured [SecureArea] that can
+ * be used.
+ * @param store the [DocumentStore] which holds this document.
+ * @param credentialFactory the [CredentialFactory] to use for retrieving serialized credentials
+ * associated with documents.
  */
 class Document private constructor(
     val name: String,
     private val storageEngine: StorageEngine,
-    internal val secureAreaRepository: SecureAreaRepository,
-    private val store: DocumentStore
+    val secureAreaRepository: SecureAreaRepository,
+    private val store: DocumentStore,
+    private val credentialFactory: CredentialFactory
 ) {
     private var addedToStore = false
 
@@ -124,8 +133,7 @@ class Document private constructor(
     /**
      * Credential counter.
      *
-     * This is a number which starts at 0 and is increased by one for every call
-     * to [createCredential].
+     * This is a number which starts at 0 and is increased by one for every credential created.
      */
     var credentialCounter: Long = 0
         private set
@@ -170,11 +178,11 @@ class Document private constructor(
 
         _pendingCredentials = ArrayList()
         for (item in map["pendingCredentials"].asArray) {
-            _pendingCredentials.add(Credential.fromCbor(item, this))
+            _pendingCredentials.add(credentialFactory.createCredential(item, this))
         }
         _certifiedCredentials = ArrayList()
         for (item in map["certifiedCredentials"].asArray) {
-            _certifiedCredentials.add(Credential.fromCbor(item, this))
+            _certifiedCredentials.add(credentialFactory.createCredential(item, this))
         }
         credentialCounter = map["credentialCounter"].asNumber
         addedToStore = true
@@ -221,62 +229,41 @@ class Document private constructor(
     }
 
     /**
-     * Creates a new credential.
-     *
-     * This returns an [Credential] which should be sent to the document
-     * issuer for certification. Use [Credential.certify] when certification
-     * has been obtained.
+     * Adds a new credential to the document. Should be called immediately after [Credential]
+     * instantiation.
      *
      * For a higher-level way of managing credentials, see
      * [DocumentUtil.managedCredentialHelper].
      *
-     * @param domain a string used to group credentials together.
-     * @param secureArea the secure area to use for the credential.
-     * @param createKeySettings settings for the credential.
-     * @param asReplacementFor if not `null`, replace the given credential
-     * with this one, once it has been certified.
-     * @return an [Credential].
+     * @param credential The credential to be added.
      * @throws IllegalArgumentException if `asReplacementFor` is not null and the given
      * credential already has a pending credential intending to replace it.
      */
-    fun createCredential(
-        domain: String,
-        secureArea: SecureArea,
-        createKeySettings: CreateKeySettings,
-        asReplacementFor: Credential?
-    ): Credential {
-        check(asReplacementFor?.replacement == null) {
-            "The given credential already has an existing pending credential intending to replace it"
+    fun addCredential(
+        credential: Credential,
+    ) {
+        check(_pendingCredentials.none { it.identifier == credential.identifier }) {
+            "There is already a pending credential with the same identifier as the given credential"
         }
-        val alias =
-            AUTHENTICATION_KEY_ALIAS_PREFIX + name + "_credential_" + credentialCounter++
-        val credential = Credential.create(
-            alias,
-            domain,
-            secureArea,
-            createKeySettings,
-            asReplacementFor,
-            this
-        )
+        credentialCounter++
+        credential.document = this
         _pendingCredentials.add(credential)
-        asReplacementFor?.replacementAlias = credential.alias
         saveDocument()
-        return credential
     }
 
     /**
-     * Goes through all credentials and deletes the ones with keys that are invalidated.
+     * Goes through all credentials and deletes the ones which are invalidated.
      */
     fun deleteInvalidatedCredentials() {
         for (pendingCredential in pendingCredentials) {
-            if (pendingCredential.secureArea.getKeyInvalidated(pendingCredential.alias)) {
-                Logger.i(TAG, "Deleting invalidated pending credential  ${pendingCredential.alias}")
+            if (pendingCredential.isInvalidated) {
+                Logger.i(TAG, "Deleting invalidated pending credential  ${pendingCredential.identifier}")
                 pendingCredential.delete()
             }
         }
         for (credential in certifiedCredentials) {
-            if (credential.secureArea.getKeyInvalidated(credential.alias)) {
-                Logger.i(TAG, "Deleting invalidated credential ${credential.alias}")
+            if (credential.isInvalidated) {
+                Logger.i(TAG, "Deleting invalidated credential ${credential.identifier}")
                 credential.delete()
             }
         }
@@ -308,19 +295,19 @@ class Document private constructor(
             else _pendingCredentials
         check(listToModify.remove(credential)) { "Error removing credential" }
 
-        if (credential.replacementForAlias != null) {
+        if (credential.replacementForIdentifier != null) {
             for (cred in _certifiedCredentials) {
-                if (cred.alias == credential.replacementForAlias) {
-                    cred.replacementAlias = null
+                if (cred.identifier == credential.replacementForIdentifier) {
+                    cred.replacementIdentifier = null
                     break
                 }
             }
         }
 
-        if (credential.replacementAlias != null) {
+        if (credential.replacementIdentifier != null) {
             for (pendingCred in _pendingCredentials) {
-                if (pendingCred.alias == credential.replacementAlias) {
-                    pendingCred.replacementForAlias = null
+                if (pendingCred.identifier == credential.replacementIdentifier) {
+                    pendingCred.replacementForIdentifier = null
                     break
                 }
             }
@@ -331,9 +318,7 @@ class Document private constructor(
     /**
      * Certifies the credential. Should only be called by [Credential.certify]
      *
-     * @param issuerProvidedAuthenticationData the issuer-provided static authentication data.
-     * @param validFrom the point in time before which the data is not valid.
-     * @param validUntil the point in time after which the data is not valid.
+     * @param credential The credential to certify.
      */
     internal fun certifyPendingCredential(
         credential: Credential
@@ -354,17 +339,19 @@ class Document private constructor(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
             name: String,
-            store: DocumentStore
+            store: DocumentStore,
+            credentialFactory: CredentialFactory
         ): Document =
-            Document(name, storageEngine, secureAreaRepository, store).apply { saveDocument() }
+            Document(name, storageEngine, secureAreaRepository, store, credentialFactory).apply { saveDocument() }
 
         // Called by DocumentStore.lookupDocument().
         internal fun lookup(
             storageEngine: StorageEngine,
             secureAreaRepository: SecureAreaRepository,
             name: String,
-            store: DocumentStore
-        ): Document? = Document(name, storageEngine, secureAreaRepository, store).run {
+            store: DocumentStore,
+            credentialFactory: CredentialFactory
+        ): Document? = Document(name, storageEngine, secureAreaRepository, store, credentialFactory).run {
             if (loadDocument()) {
                 this// return this Document object
             } else { // when document.loadDocument() == false

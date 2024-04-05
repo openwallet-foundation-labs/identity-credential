@@ -32,7 +32,7 @@ import com.android.identity.cose.Cose
 import com.android.identity.cose.Cose.coseSign1Sign
 import com.android.identity.cose.CoseLabel
 import com.android.identity.cose.CoseNumberLabel
-import com.android.identity.document.Credential
+import com.android.identity.credential.CredentialFactory
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
@@ -44,6 +44,7 @@ import com.android.identity.crypto.Crypto.createX509v3Certificate
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -96,7 +97,7 @@ class DeviceRetrievalHelperTest {
     private lateinit var mSecureArea: SecureArea
     private lateinit var mSecureAreaRepository: SecureAreaRepository
     private lateinit var mDocument: Document
-    private lateinit var mCredential: Credential
+    private lateinit var mMdocCredential: MdocCredential
     private lateinit var mTimeSigned: Timestamp
     private lateinit var mTimeValidityBegin: Timestamp
     private lateinit var mTimeValidityEnd: Timestamp
@@ -114,9 +115,12 @@ class DeviceRetrievalHelperTest {
         mSecureAreaRepository = SecureAreaRepository()
         mSecureArea = SoftwareSecureArea(mStorageEngine)
         mSecureAreaRepository.addImplementation(mSecureArea)
+        var credentialFactory = CredentialFactory()
+        credentialFactory.addCredentialImplementation(MdocCredential::class)
         val documentStore = DocumentStore(
             mStorageEngine,
-            mSecureAreaRepository
+            mSecureAreaRepository,
+            credentialFactory
         )
 
         // Create the document...
@@ -135,21 +139,23 @@ class DeviceRetrievalHelperTest {
         mTimeSigned = ofEpochMilli(nowMillis)
         mTimeValidityBegin = ofEpochMilli(nowMillis + 3600 * 1000)
         mTimeValidityEnd = ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        mCredential = mDocument.createCredential(
+        mMdocCredential = MdocCredential(
+            null,
             CREDENTIAL_DOMAIN,
             mSecureArea,
             SoftwareCreateKeySettings.Builder(ByteArray(0))
                 .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
                 .build(),
-            null
+            MDL_DOCTYPE
         )
-        Assert.assertFalse(mCredential.isCertified)
+        mDocument.addCredential(mMdocCredential)
+        Assert.assertFalse(mMdocCredential.isCertified)
 
         // Generate an MSO and issuer-signed data for this credential.
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             MDL_DOCTYPE,
-            mCredential.attestation.certificates[0].publicKey
+            mMdocCredential.attestation.certificates[0].publicKey
         )
         msoGenerator.setValidityInfo(mTimeSigned, mTimeValidityBegin, mTimeValidityEnd, null)
         val issuerNameSpaces = generateIssuerNameSpaces(
@@ -213,7 +219,7 @@ class DeviceRetrievalHelperTest {
         ).generate()
 
         // Now that we have issuer-provided authentication data we certify the credential.
-        mCredential.certify(
+        mMdocCredential.certify(
             issuerProvidedAuthenticationData,
             mTimeValidityBegin,
             mTimeValidityEnd
@@ -377,7 +383,7 @@ class DeviceRetrievalHelperTest {
                     val generator = DeviceResponseGenerator(
                         Constants.DEVICE_RESPONSE_STATUS_OK
                     )
-                    val staticAuthData = StaticAuthDataParser(mCredential.issuerProvidedData)
+                    val staticAuthData = StaticAuthDataParser(mMdocCredential.issuerProvidedData)
                         .parse()
                     val deviceSignedData = NameSpacedData.Builder().build()
                     val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
@@ -395,8 +401,8 @@ class DeviceRetrievalHelperTest {
                             .setIssuerNamespaces(mergedIssuerNamespaces)
                             .setDeviceNamespacesSignature(
                                 deviceSignedData,
-                                mCredential.secureArea,
-                                mCredential.alias,
+                                mMdocCredential.secureArea,
+                                mMdocCredential.alias,
                                 null,
                                 Algorithm.ES256
                             )

@@ -15,6 +15,8 @@
  */
 package com.android.identity.document
 
+import com.android.identity.credential.CredentialFactory
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.crypto.EcCurve
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
@@ -31,9 +33,10 @@ import org.junit.Test
 import java.security.Security
 
 class DocumentUtilTest {
-    lateinit var storageEngine: StorageEngine
-    lateinit var secureArea: SecureArea
-    lateinit var secureAreaRepository: SecureAreaRepository
+    private lateinit var storageEngine: StorageEngine
+    private lateinit var secureArea: SecureArea
+    private lateinit var secureAreaRepository: SecureAreaRepository
+    private lateinit var credentialFactory: CredentialFactory
 
     @Before
     fun setup() {
@@ -42,13 +45,16 @@ class DocumentUtilTest {
         secureAreaRepository = SecureAreaRepository()
         secureArea = SoftwareSecureArea(storageEngine)
         secureAreaRepository.addImplementation(secureArea)
+        credentialFactory = CredentialFactory()
+        credentialFactory.addCredentialImplementation(SecureAreaBoundCredential::class)
     }
 
     @Test
     fun managedCredentialHelper() {
         val documentStore = DocumentStore(
             storageEngine,
-            secureAreaRepository
+            secureAreaRepository,
+            credentialFactory
         )
         val document = documentStore.createDocument(
             "testDocument"
@@ -66,9 +72,13 @@ class DocumentUtilTest {
         // valid until time 200.
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
-            secureArea,
-            authKeySettings,
             managedCredDomain,
+            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                credentialToReplace,
+                managedCredDomain,
+                secureArea,
+                authKeySettings
+            )},
             Timestamp.ofEpochMilli(100),
             numCreds,
             maxUsesPerCred,
@@ -96,9 +106,13 @@ class DocumentUtilTest {
         // Certifying again at this point should not make a difference.
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
-            secureArea,
-            authKeySettings,
             managedCredDomain,
+            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                credentialToReplace,
+                managedCredDomain,
+                secureArea,
+                authKeySettings
+            )},
             Timestamp.ofEpochMilli(100),
             numCreds,
             maxUsesPerCred,
@@ -116,9 +130,13 @@ class DocumentUtilTest {
         }
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
-            secureArea,
-            authKeySettings,
             managedCredDomain,
+            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                credentialToReplace,
+                managedCredDomain,
+                secureArea,
+                authKeySettings
+            )},
             Timestamp.ofEpochMilli(100),
             numCreds,
             maxUsesPerCred,
@@ -139,9 +157,13 @@ class DocumentUtilTest {
         }
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
-            secureArea,
-            authKeySettings,
             managedCredDomain,
+            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                credentialToReplace,
+                managedCredDomain,
+                secureArea,
+                authKeySettings
+            )},
             Timestamp.ofEpochMilli(100),
             numCreds,
             maxUsesPerCred,
@@ -186,9 +208,13 @@ class DocumentUtilTest {
         // This should trigger just them for replacement
         numCredsCreated = DocumentUtil.managedCredentialHelper(
             document,
-            secureArea,
-            authKeySettings,
             managedCredDomain,
+            createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                credentialToReplace,
+                managedCredDomain,
+                secureArea,
+                authKeySettings
+            )},
             Timestamp.ofEpochMilli(195),
             numCreds,
             maxUsesPerCred,

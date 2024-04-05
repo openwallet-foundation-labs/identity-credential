@@ -1,20 +1,8 @@
 package com.android.identity.issuance
 
-import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
-import com.android.identity.android.securearea.AndroidKeystoreSecureArea
-import com.android.identity.android.securearea.UserAuthenticationType
+
 import com.android.identity.document.Document
-import com.android.identity.document.DocumentUtil
-import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.SecureAreaRepository
-import com.android.identity.util.Logger
-import com.android.identity.util.Timestamp
-import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.WalletApplication
 import java.lang.IllegalArgumentException
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 /**
  * A set of extensions on the [Document] type for working with the [IssuingAuthority]

@@ -24,7 +24,7 @@ import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
-import com.android.identity.document.Credential
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
@@ -65,13 +65,13 @@ class CredmanPresentationActivity : FragmentActivity() {
 
     private fun addDeviceNamespaces(
         documentGenerator: DocumentGenerator,
-        authKey: Credential,
+        credential: MdocCredential,
         unlockData: KeyUnlockData?
     ) {
         documentGenerator.setDeviceNamespacesSignature(
             NameSpacedData.Builder().build(),
-            authKey.secureArea,
-            authKey.alias,
+            credential.secureArea,
+            credential.alias,
             unlockData,
             Algorithm.ES256)
     }
@@ -92,7 +92,7 @@ class CredmanPresentationActivity : FragmentActivity() {
         val credential = document.findCredential(
             WalletApplication.CREDENTIAL_DOMAIN,
             Timestamp.now()
-        )
+        ) as MdocCredential?
         if (credential == null) {
             throw IllegalStateException("No credential")
         }
