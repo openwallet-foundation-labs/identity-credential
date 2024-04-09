@@ -18,8 +18,9 @@ private val markdownRenderer = object : WebViewContentRenderer() {
         a { color: ${asWebColor(linkColor)} }    
         """.trimIndent()
 
-    // Use markdown with attribute and anchor plugins. Only id and class attributes
-    // are allowed (mostly for security reasons, others can be added if they are safe).
+    // Use markdown with attribute and anchor plugins. Only id, class, width, height, and
+    // style attributes are allowed (mostly for security reasons, others can be added
+    // if they are safe).
     override fun getBootstrapHtml(style: String) =
         """
         <!DOCTYPE html>
@@ -35,7 +36,7 @@ private val markdownRenderer = object : WebViewContentRenderer() {
         }
         function render(markdownText, css) {
           var md = markdownit().use(markdownItAttrs,
-             {allowedAttributes: ['id', 'class']}).use(markdownItAnchor);
+             {allowedAttributes: ['id', 'class', 'width', 'height', 'style']}).use(markdownItAnchor);
           document.getElementById('content').innerHTML = md.render(markdownText);
           document.getElementById('style').textContent = css;
           reportHeight();

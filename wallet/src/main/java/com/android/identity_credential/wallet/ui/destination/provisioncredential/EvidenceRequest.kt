@@ -51,7 +51,7 @@ import com.android.identity_credential.wallet.NfcTunnelScanner
 import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
-import com.android.identity_credential.wallet.ui.MarkdownText
+import com.android.identity_credential.wallet.ui.RichTextSnippet
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -70,7 +70,7 @@ fun EvidenceRequestMessageView(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        MarkdownText(
+        RichTextSnippet(
                 modifier = Modifier.padding(8.dp),
                 content = evidenceRequest.message,
                 assets = evidenceRequest.assets
@@ -146,7 +146,7 @@ fun EvidenceRequestNotificationPermissionView(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
             ) {
-                MarkdownText(
+                RichTextSnippet(
                     modifier = Modifier.padding(8.dp),
                     content = evidenceRequest.permissionNotGrantedMessage,
                     assets = evidenceRequest.assets
@@ -190,7 +190,7 @@ fun EvidenceRequestQuestionStringView(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        MarkdownText(
+        RichTextSnippet(
             modifier = Modifier.padding(8.dp),
             content = evidenceRequest.message,
             assets = evidenceRequest.assets
@@ -229,7 +229,7 @@ fun EvidenceRequestQuestionMultipleChoiceView(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center
     ) {
-        MarkdownText(
+        RichTextSnippet(
             modifier = Modifier.padding(8.dp),
             content = evidenceRequest.message,
             assets = evidenceRequest.assets
