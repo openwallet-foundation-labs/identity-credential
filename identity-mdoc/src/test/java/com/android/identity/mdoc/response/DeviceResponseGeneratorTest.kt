@@ -39,6 +39,7 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataParser
+import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
@@ -543,6 +544,16 @@ class DeviceResponseGeneratorTest {
         Assert.assertEquals(1, doc.getIssuerEntryNames("ns2").size.toLong())
         Assert.assertEquals("foo1", doc.getIssuerEntryString("ns2", "bar1"))
     }
+
+    @Test
+    @Throws(Exception::class)
+    fun testDocumentGeneratorNoDocuments() {
+        val deviceResponseGenerator = DeviceResponseGenerator(20)
+        val encodedDeviceResponse = deviceResponseGenerator.generate()
+
+        Assert.assertEquals(TestVectors.DEVICE_RESPONSE_NO_DOCUMENTS_STATUS_20.fromHex, encodedDeviceResponse)ß
+    }
+
 
     companion object {
         const val DOC_TYPE = "com.example.document_xyz"

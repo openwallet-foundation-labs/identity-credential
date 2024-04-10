@@ -34,6 +34,7 @@ import com.android.identity.cbor.Tagged
  */
 class DeviceResponseGenerator(private val mStatusCode: Long) {
     private val mDocumentsBuilder = CborArray.builder()
+    private var mDocumentAdded = false
 
     /**
      * Adds a new document to the device response.
@@ -87,6 +88,8 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
         errors: Map<String?, Map<String?, Long?>>?,
         encodedIssuerAuth: ByteArray
     ) = apply {
+        mDocumentAdded = true
+
         val insOuter = CborMap.builder()
         for ((ns, encodedIssuerSignedItemBytesList) in issuerNameSpaces) {
             insOuter.putArray(ns!!).let { insInner ->
@@ -150,6 +153,8 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
      * @return the generator.
      */
     fun addDocument(encodedDocument: ByteArray) = apply {
+        mDocumentAdded = true
+
         mDocumentsBuilder.add(Cbor.decode(encodedDocument))
     }
 
@@ -161,7 +166,9 @@ class DeviceResponseGenerator(private val mStatusCode: Long) {
     fun generate(): ByteArray =
         CborMap.builder().run {
             put("version", "1.0")
-            put("documents", mDocumentsBuilder.end().build())
+            if (mDocumentAdded) {
+                put("documents", mDocumentsBuilder.end().build())
+            }
             // TODO: The documentErrors map entry should only be present if there is a non-zero
             //  number of elements in the array. Right now we don't have a way for the application
             //  to convey document errors but when we add that API we'll need to do something so
