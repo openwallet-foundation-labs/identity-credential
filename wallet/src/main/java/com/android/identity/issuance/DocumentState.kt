@@ -2,6 +2,7 @@ package com.android.identity.issuance
 
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
+import kotlinx.datetime.Instant
 
 /**
  * The state of a document, as seen from the issuer's point of view.
@@ -10,7 +11,7 @@ data class DocumentState(
     /**
      * The point in time this state object was generated.
      */
-    val timestamp: Long,
+    val timestamp: Instant,
 
     /**
      * The current condition of the document.
@@ -18,29 +19,29 @@ data class DocumentState(
     val condition: DocumentCondition,
 
     /**
-     * The number of pending Document Presentation Objects.
+     * The number of pending credentials.
      *
-     * These are CPOs which the application requested but which are not yet ready
+     * These are credentials which the application requested but which are not yet ready
      * the be collected.
      */
-    val numPendingCPO: Int,
+    val numPendingCredentials: Int,
 
     /**
-     * The number of available Document Presentation Objects.
+     * The number of available credentials.
      *
-     * These are CPOs which the application requested and which are now ready to
+     * These are credentials which the application requested and which are now ready to
      * be collected
      */
-    val numAvailableCPO: Int,
+    val numAvailableCredentials: Int,
     ) {
     companion object {
         fun fromCbor(encodedData: ByteArray): DocumentState {
             val map = Cbor.decode(encodedData)
             return DocumentState(
-                map["timestamp"].asNumber,
+                Instant.fromEpochMilliseconds(map["timestamp"].asNumber),
                 DocumentCondition.fromInt(map["condition"].asNumber.toInt()),
-                map["numPendingCPO"].asNumber.toInt(),
-                map["numAvailableCPO"].asNumber.toInt()
+                map["numPendingCredentials"].asNumber.toInt(),
+                map["numAvailableCredentials"].asNumber.toInt()
             )
         }
     }
@@ -48,10 +49,10 @@ data class DocumentState(
     fun toCbor(): ByteArray {
         return Cbor.encode(
             CborMap.builder()
-                .put("timestamp", timestamp)
+                .put("timestamp", timestamp.toEpochMilliseconds())
                 .put("condition", condition.value)
-                .put("numPendingCPO", numPendingCPO)
-                .put("numAvailableCPO", numAvailableCPO)
+                .put("numPendingCredentials", numPendingCredentials)
+                .put("numAvailableCredentials", numAvailableCredentials)
                 .end()
                 .build())
     }

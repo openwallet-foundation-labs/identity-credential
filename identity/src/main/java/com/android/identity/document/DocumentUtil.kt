@@ -43,7 +43,7 @@ object DocumentUtil {
      * from the issuer.
      *
      * @param document the document to manage credentials for.
-     * @param secureArea the secure area to use for new credentials.
+     * @param secureArea the secure area to use for new credentials, must not be null if `dryRun` is false.
      * @param createKeySettings the settings used to create new credentials.
      * @param domain the domain to use for created credentials.
      * @param now the time right now, used for determining which existing credentials to replace.
@@ -56,7 +56,7 @@ object DocumentUtil {
     @JvmStatic
     fun managedCredentialHelper(
         document: Document,
-        secureArea: SecureArea,
+        secureArea: SecureArea?,
         createKeySettings: CreateKeySettings?,
         domain: String,
         now: Timestamp,
@@ -65,6 +65,7 @@ object DocumentUtil {
         minValidTimeMillis: Long,
         dryRun: Boolean
     ): Int {
+        check(dryRun || (secureArea != null && createKeySettings != null))
         // First determine which of the existing credentials need a replacement...
         var numCredentialsNotNeedingReplacement = 0
         var numReplacementsGenerated = 0
@@ -85,7 +86,7 @@ object DocumentUtil {
                     if (!dryRun) {
                         document.createCredential(
                             domain,
-                            secureArea,
+                            secureArea!!,
                             createKeySettings!!,
                             authCredential
                         )
@@ -112,7 +113,7 @@ object DocumentUtil {
                 for (n in 0 until numNonReplacementsToGenerate) {
                     val pendingCredential = document.createCredential(
                         domain,
-                        secureArea,
+                        secureArea!!,
                         createKeySettings!!,
                         null
                     )

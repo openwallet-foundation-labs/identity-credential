@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet
 
 import android.os.Looper
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,7 +11,7 @@ import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.DocumentExtensions.documentIdentifier
 import com.android.identity.issuance.DocumentExtensions.issuingAuthorityIdentifier
 import com.android.identity.issuance.DocumentExtensions.refreshState
-import com.android.identity.issuance.DocumentRegistrationResponse
+import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthority
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.issuance.ProofingFlow
@@ -42,9 +43,7 @@ class ProvisioningViewModel : ViewModel() {
 
     var error: Throwable? = null
 
-    // If we're provisioning, this is non-null set to the issuer
     private lateinit var issuer: IssuingAuthority
-//    private lateinit var application: WalletApplication
 
     fun reset() {
         state.value = State.IDLE
@@ -52,28 +51,34 @@ class ProvisioningViewModel : ViewModel() {
         document = null
         proofingFlow = null
         evidenceRequests = null
+        nextEvidenceRequest.value = null
     }
 
     private var proofingFlow: ProofingFlow? = null
 
     var document: Document? = null
-    var evidenceRequests: List<EvidenceRequest>? = null
+    private var evidenceRequests: List<EvidenceRequest>? = null
+
+    val nextEvidenceRequest = mutableStateOf<EvidenceRequest?>(null)
 
     fun start(
         issuingAuthorityRepository: IssuingAuthorityRepository,
         documentStore: DocumentStore,
-        issuerIdentifier: String
+        issuerIdentifier: String,
+        settingsModel: SettingsModel,
     ) {
         issuer = issuingAuthorityRepository.lookupIssuingAuthority(issuerIdentifier)!!
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 state.value = State.CREDENTIAL_REGISTRATION
-                val createDocumentKeyFlow = this@ProvisioningViewModel.issuer.registerDocument()
+                val createDocumentKeyFlow = this@ProvisioningViewModel.issuer.register()
                 val documentRegistrationConfiguration =
                     createDocumentKeyFlow.getDocumentRegistrationConfiguration()
-                val issuerDocumentIdentifier = documentRegistrationConfiguration.identifier
-                val response = DocumentRegistrationResponse()
+                val issuerDocumentIdentifier = documentRegistrationConfiguration.documentId
+                val response = RegistrationResponse(
+                    settingsModel.developerModeEnabled.value!!
+                )
                 createDocumentKeyFlow.sendDocumentRegistrationResponse(response)
 
                 val documentIdentifier =
@@ -88,7 +93,7 @@ class ProvisioningViewModel : ViewModel() {
                     it.refreshState(issuingAuthorityRepository)
                 }
 
-                proofingFlow = issuer.documentProof(issuerDocumentIdentifier)
+                proofingFlow = issuer.proof(issuerDocumentIdentifier)
                 evidenceRequests = proofingFlow!!.getEvidenceRequests()
                 Logger.d(TAG, "ers0 ${evidenceRequests!!.size}")
                 if (evidenceRequests!!.size == 0) {
@@ -99,6 +104,7 @@ class ProvisioningViewModel : ViewModel() {
                     documentStore.addDocument(document!!)
                     proofingFlow!!.completeProofing()
                 } else {
+                    nextEvidenceRequest.value = evidenceRequests!!.first()
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }
             } catch (e: Throwable) {
@@ -134,6 +140,7 @@ class ProvisioningViewModel : ViewModel() {
                     documentStore.addDocument(document!!)
                     proofingFlow!!.completeProofing()
                 } else {
+                    nextEvidenceRequest.value = evidenceRequests!!.first()
                     state.value = State.EVIDENCE_REQUESTS_READY
                 }
             } catch (e: Throwable) {
@@ -190,6 +197,7 @@ class ProvisioningViewModel : ViewModel() {
             state.value = State.SUBMITTING_EVIDENCE
             state.value = State.EVIDENCE_REQUESTS_READY
             evidenceRequests = proofingFlow!!.getEvidenceRequests()
+            nextEvidenceRequest.value = evidenceRequests!!.first()
         }
     }
 }

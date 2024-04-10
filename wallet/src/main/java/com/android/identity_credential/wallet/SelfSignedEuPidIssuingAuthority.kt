@@ -3,13 +3,17 @@ package com.android.identity_credential.wallet
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.cbor.toDataItemFullDate
+import com.android.identity.crypto.EcCurve
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.knowntypes.EUPersonalID
+import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.DocumentConfiguration
-import com.android.identity.issuance.DocumentPresentationFormat
+import com.android.identity.issuance.CredentialFormat
+import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
@@ -19,6 +23,7 @@ import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleCh
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionString
 import com.android.identity.issuance.simple.SimpleIcaoNfcTunnelDriver
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
+import com.android.identity.securearea.KeyPurpose
 import com.android.identity.storage.StorageEngine
 import com.android.identity_credential.mrtd.MrtdAccessData
 import com.android.identity_credential.mrtd.MrtdAccessDataCan
@@ -59,13 +64,15 @@ class SelfSignedEuPidIssuingAuthority(
             issuingAuthorityName = resourceString(R.string.utopia_eu_pid_issuing_authority_name),
             issuingAuthorityLogo = icon,
             description = resourceString(R.string.utopia_eu_pid_issuing_authority_description),
-            documentFormats = setOf(DocumentPresentationFormat.MDOC_MSO),
+            documentFormats = setOf(CredentialFormat.MDOC_MSO),
             pendingDocumentInformation = createDocumentConfiguration(null)
         )
         tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_pid_issuing_authority_logo))
     }
 
-    override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
+    override fun getProofingGraphRoot(
+        registrationResponse: RegistrationResponse
+    ): SimpleIssuingAuthorityProofingGraph.Node {
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
                 "tos",
@@ -134,6 +141,25 @@ class SelfSignedEuPidIssuingAuthority(
         return createDocumentConfiguration(collectedEvidence)
     }
 
+    override fun createCredentialConfiguration(
+        collectedEvidence: MutableMap<String, EvidenceResponse>
+    ): CredentialConfiguration {
+        val challenge = byteArrayOf(1, 2, 3)
+        return CredentialConfiguration(
+            challenge,
+            "AndroidKeystoreSecureArea",
+            Cbor.encode(
+                CborMap.builder()
+                    .put("curve", EcCurve.P256.coseCurveIdentifier)
+                    .put("purposes", KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)))
+                    .put("userAuthenticationRequired", true)
+                    .put("userAuthenticationTimeoutMillis", 0L)
+                    .put("userAuthenticationTypes", 3 /* LSKF + Biometrics */)
+                    .end().build()
+            )
+        )
+    }
+
     private fun createDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): DocumentConfiguration {
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(
@@ -146,7 +172,8 @@ class SelfSignedEuPidIssuingAuthority(
                 resourceString(R.string.utopia_eu_pid_issuing_authority_pending_document_title),
                 cardArt,
                 EUPID_DOCTYPE,
-                NameSpacedData.Builder().build()
+                NameSpacedData.Builder().build(),
+                false
             )
         }
 
@@ -220,7 +247,8 @@ class SelfSignedEuPidIssuingAuthority(
             resourceString(R.string.utopia_eu_pid_issuing_authority_document_title, firstName),
             cardArt,
             EUPID_DOCTYPE,
-            staticData
+            staticData,
+            false
         )
     }
 
@@ -241,6 +269,7 @@ class SelfSignedEuPidIssuingAuthority(
             cardArt = currentConfiguration.cardArt,
             mdocDocType = currentConfiguration.mdocDocType,
             staticData = builder.build(),
+            requireUserAuthenticationToViewDocument = false
         )
     }
 

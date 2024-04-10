@@ -121,7 +121,7 @@ class DeviceRequestGenerator(
             val unprotectedHeaders = mapOf<CoseLabel, DataItem>(
                 Pair(
                     CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                    readerKeyCertificateChain.dataItem
+                    readerKeyCertificateChain.toDataItem
                 )
             )
             readerAuth = coseSign1Sign(

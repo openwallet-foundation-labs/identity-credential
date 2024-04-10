@@ -101,11 +101,6 @@ private class BiometricUserAuthPrompt(
             super.onAuthenticationSucceeded(result)
             onSuccess()
         }
-
-        override fun onAuthenticationFailed() {
-            super.onAuthenticationFailed()
-            onCanceled.invoke()
-        }
     }
 
     private var biometricPrompt = BiometricPrompt(

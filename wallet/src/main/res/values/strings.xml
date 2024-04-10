@@ -189,6 +189,12 @@
         succeeds, the next screen will appear automatically.
     </string>
     <string name="evidence_nfc_scan_title">Scan your document using NFC</string>
+    <string name="evidence_create_passphrase_label_passphrase">Passphrase</string>
+    <string name="evidence_create_passphrase_label_pin">PIN</string>
+    <string name="evidence_create_passphrase_next">Next</string>
+    <string name="evidence_create_passphrase_confirm">Confirm</string>
+    <string name="evidence_create_passphrase_no_match">The passphrase didn\'t match, please try again</string>
+    <string name="evidence_create_passphrase_no_match_pin">The PIN didn\'t match, please try again</string>
 
     <!-- NFC status -->
     <string name="nfc_status_initial">Establishing NFC connection</string>

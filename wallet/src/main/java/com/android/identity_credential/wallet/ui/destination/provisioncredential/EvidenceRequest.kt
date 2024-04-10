@@ -1,6 +1,7 @@
 package com.android.identity_credential.wallet.ui.destination.provisioncredential
 
 import android.Manifest
+import android.content.Context
 import android.os.Build
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -8,6 +9,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -22,9 +24,11 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,8 +38,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.identity.document.DocumentStore
 import com.android.identity.issuance.IssuingAuthorityRepository
+import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
-import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnelType
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestNotificationPermission
@@ -44,6 +48,7 @@ import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseNotificationPermission
+import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity_credential.mrtd.MrtdNfc
 import com.android.identity_credential.mrtd.MrtdNfcDataReader
 import com.android.identity_credential.mrtd.MrtdNfcReader
@@ -52,9 +57,12 @@ import com.android.identity_credential.wallet.PermissionTracker
 import com.android.identity_credential.wallet.ProvisioningViewModel
 import com.android.identity_credential.wallet.R
 import com.android.identity_credential.wallet.ui.RichTextSnippet
+import com.android.identity_credential.wallet.ui.PassphraseEntryField
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 private const val TAG = "EvidenceRequest"
@@ -217,6 +225,150 @@ fun EvidenceRequestQuestionStringView(
             Text(evidenceRequest.acceptButtonText)
         }
     }
+}
+
+@Composable
+fun EvidenceRequestCreatePassphraseView(
+    context: Context,
+    evidenceRequest: EvidenceRequestCreatePassphrase,
+    onAccept: (String) -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var chosenPassphrase by remember { mutableStateOf("") }
+    var verifiedPassphrase by remember { mutableStateOf("") }
+    var showMatchErrorText by remember { mutableStateOf(false) }
+
+    val constraints = PassphraseConstraints(
+        minLength = evidenceRequest.passphraseMinLength,
+        maxLength = evidenceRequest.passphraseMaxLength,
+        requireNumerical = evidenceRequest.passphraseRequireNumerical,
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (chosenPassphrase.isEmpty()) {
+            RichTextSnippet(
+                modifier = Modifier.padding(8.dp),
+                content = evidenceRequest.message,
+                assets = evidenceRequest.assets
+            )
+        } else {
+            RichTextSnippet(
+                modifier = Modifier.padding(8.dp),
+                content = evidenceRequest.verifyMessage,
+                assets = evidenceRequest.assets
+            )
+        }
+    }
+
+    if (chosenPassphrase.isEmpty()) {
+        // Choose PIN
+        var currentPassphraseMeetsRequirements by remember { mutableStateOf(false) }
+        var currentPassphrase by remember { mutableStateOf("") }
+        PassphraseEntryField(
+            constraints = constraints,
+            checkWeakPassphrase = true,
+            onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                currentPassphrase = passphrase
+                currentPassphraseMeetsRequirements = passphraseMeetsRequirements
+                val isFixedLength = (constraints.minLength == constraints.maxLength)
+                if (isFixedLength && currentPassphraseMeetsRequirements) {
+                    chosenPassphrase = passphrase
+                } else if (donePressed) {
+                    chosenPassphrase = passphrase
+                }
+            }
+        )
+
+        if (constraints.minLength != constraints.maxLength) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                Button(
+                    enabled = currentPassphraseMeetsRequirements,
+                    onClick = { chosenPassphrase = currentPassphrase }
+                ) {
+                    Text(stringResource(id = R.string.evidence_create_passphrase_next))
+                }
+            }
+        }
+    } else if (verifiedPassphrase.isEmpty()) {
+        // Verify PIN
+        var currentPassphrase by remember { mutableStateOf("") }
+        PassphraseEntryField(
+            constraints = constraints,
+            checkWeakPassphrase = false,
+            onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                currentPassphrase = passphrase
+                val isFixedLength = (constraints.minLength == constraints.maxLength)
+                if (isFixedLength && currentPassphrase.length == constraints.minLength) {
+                    verifiedPassphrase = passphrase
+                } else if (donePressed) {
+                    verifiedPassphrase = passphrase
+                }
+            }
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Spacer(modifier = Modifier.weight(1.0f))
+            if (constraints.minLength != constraints.maxLength) {
+                Button(
+                    onClick = { verifiedPassphrase = currentPassphrase },
+                ) {
+                    Text(stringResource(id = R.string.evidence_create_passphrase_confirm))
+                }
+            }
+        }
+    } else {
+        if (chosenPassphrase == verifiedPassphrase) {
+            onAccept(chosenPassphrase)
+            return
+        } else {
+            showMatchErrorText = true
+            PassphraseEntryField(
+                constraints = constraints,
+                checkWeakPassphrase = false,
+                onChanged = { passphrase, passphraseMeetsRequirements, donePressed ->
+                }
+            )
+            SideEffect {
+                scope.launch {
+                    delay(2000)
+                    verifiedPassphrase = ""
+                    showMatchErrorText = false
+                }
+            }
+        }
+    }
+
+    val matchErrorText = if (showMatchErrorText) {
+        if (constraints.requireNumerical) {
+             context.getString(R.string.evidence_create_passphrase_no_match_pin)
+        } else {
+            context.getString(R.string.evidence_create_passphrase_no_match)
+        }
+    } else ""
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = matchErrorText,
+            color = Color.Red
+        )
+    }
 
 }
 
@@ -237,26 +389,25 @@ fun EvidenceRequestQuestionMultipleChoiceView(
     }
 
     val radioOptions = evidenceRequest.possibleValues
-    val (selectedOption, onOptionSelected) = remember {
-        mutableStateOf(radioOptions.keys.iterator().next())
-    }
+    val radioOptionsKeys = radioOptions.keys.toList()
+    val (selectedOption, onOptionSelected) = remember { mutableStateOf(0) }
     Column {
         radioOptions.forEach { entry ->
             Row(
                 Modifier
                     .fillMaxWidth()
                     .selectable(
-                        selected = (entry.key == selectedOption),
+                        selected = (entry.key == radioOptionsKeys[selectedOption]),
                         onClick = {
-                            onOptionSelected(entry.key)
+                            onOptionSelected(radioOptionsKeys.indexOf(entry.key))
                         }
                     )
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
-                    selected = (entry.key == selectedOption),
-                    onClick = { onOptionSelected(entry.key) }
+                    selected = (entry.key == radioOptionsKeys[selectedOption]),
+                    onClick = { onOptionSelected(radioOptionsKeys.indexOf(entry.key)) }
                 )
                 Text(
                     text = entry.value,
@@ -272,7 +423,9 @@ fun EvidenceRequestQuestionMultipleChoiceView(
         horizontalArrangement = Arrangement.Center
     ) {
         Button(onClick = {
-            onAccept(selectedOption)
+            onAccept(radioOptionsKeys[selectedOption])
+            // Reset to first choice, for the next time this is used
+            onOptionSelected(0)
         }) {
             Text(evidenceRequest.acceptButtonText)
         }

@@ -28,8 +28,11 @@ import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyPurpose.Companion.encodeSet
 import com.android.identity.securearea.KeyUnlockData
+import com.android.identity.securearea.PassphraseConstraints
 import com.android.identity.securearea.SecureArea
+import com.android.identity.securearea.fromDataItem
 import com.android.identity.securearea.keyPurposeSet
+import com.android.identity.securearea.toDataItem
 import com.android.identity.storage.StorageEngine
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -82,7 +85,7 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
                 val encodedPublicKey = Cbor.encode(privateKey.publicKey.toCoseKey().toDataItem)
                 val secretKey = derivePrivateKeyEncryptionKey(
                     encodedPublicKey,
-                    settings.passphrase
+                    settings.passphrase!!
                 )
                 val cleartextPrivateKey = Cbor.encode(privateKey.toCoseKey().toDataItem)
                 val iv = Random.Default.nextBytes(12)
@@ -150,7 +153,10 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
                 }
             }
             mapBuilder.put("publicKey", privateKey.publicKey.toCoseKey().toDataItem)
-            val attestationBuilder = mapBuilder.put("attestation", CertificateChain(certs).dataItem)
+            if (settings.passphraseConstraints != null) {
+                mapBuilder.put("passphraseConstraints", settings.passphraseConstraints.toDataItem)
+            }
+            val attestationBuilder = mapBuilder.put("attestation", CertificateChain(certs).toDataItem)
             attestationBuilder.end()
             storageEngine.put(PREFIX + alias, Cbor.encode(mapBuilder.end().build()))
         } catch (e: Exception) {
@@ -259,7 +265,16 @@ class SoftwareSecureArea(private val storageEngine: StorageEngine) : SecureArea 
         val passphraseRequired = map["passphraseRequired"].asBoolean
         val publicKey = map["publicKey"].asCoseKey.ecPublicKey
         val attestation = map["attestation"].asCertificateChain
-        return SoftwareKeyInfo(publicKey, attestation, keyPurposes, passphraseRequired)
+        val passphraseConstraints = map.getOrNull("passphraseConstraints")?.let {
+            PassphraseConstraints.fromDataItem(it)
+        }
+        return SoftwareKeyInfo(
+            publicKey,
+            attestation,
+            keyPurposes,
+            passphraseRequired,
+            passphraseConstraints
+        )
     }
 
     override fun getKeyInvalidated(alias: String): Boolean {

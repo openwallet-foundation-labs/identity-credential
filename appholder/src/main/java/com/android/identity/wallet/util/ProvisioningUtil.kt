@@ -203,7 +203,7 @@ class ProvisioningUtil private constructor(
                     unprotectedHeaders = mapOf(
                         Pair(
                             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                            CertificateChain(listOf(Certificate(issuerCert.encoded))).dataItem
+                            CertificateChain(listOf(Certificate(issuerCert.encoded))).toDataItem
                         )
                     ),
                 ).toDataItem

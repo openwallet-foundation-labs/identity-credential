@@ -13,6 +13,9 @@ data class DocumentInfo(
     // with the document.
     val attentionNeeded: Boolean,
 
+    // Whether user-authentication is required to view data.
+    val requireUserAuthenticationToViewDocument: Boolean,
+
     // Display string for the document
     val name: String,
 

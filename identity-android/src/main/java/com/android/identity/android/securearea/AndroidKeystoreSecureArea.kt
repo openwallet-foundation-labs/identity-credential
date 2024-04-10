@@ -33,6 +33,7 @@ import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaPublicKey
+import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyInvalidatedException
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
@@ -574,7 +575,7 @@ class AndroidKeystoreSecureArea(
         map.put("userAuthenticationRequired", settings.userAuthenticationRequired)
         map.put("userAuthenticationTimeoutMillis", settings.userAuthenticationTimeoutMillis)
         map.put("useStrongBox", settings.useStrongBox)
-        map.put("attestation", attestation.dataItem)
+        map.put("attestation", attestation.toDataItem)
         storageEngine.put(PREFIX + alias, Cbor.encode(map.end().build()))
     }
 

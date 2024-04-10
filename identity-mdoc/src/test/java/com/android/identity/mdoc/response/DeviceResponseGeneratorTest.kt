@@ -177,7 +177,7 @@ class DeviceResponseGeneratorTest {
         )
         val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(java.util.List.of(documentSignerCert)).dataItem
+            CertificateChain(java.util.List.of(documentSignerCert)).toDataItem
         )
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(

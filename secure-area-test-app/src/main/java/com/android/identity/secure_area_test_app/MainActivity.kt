@@ -1038,7 +1038,7 @@ class MainActivity :  FragmentActivity() {
                 softwareAttestationKeyIssuer,
                 softwareAttestationKeyCertification)
         if (passphrase != null) {
-            builder.setPassphraseRequired(true, passphrase)
+            builder.setPassphraseRequired(true, passphrase, null)
         }
         softwareSecureArea.createKey("testKey", builder.build())
 

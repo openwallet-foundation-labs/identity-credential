@@ -4,14 +4,13 @@ import com.android.identity.issuance.evidence.EvidenceRequest
 import com.android.identity.issuance.evidence.EvidenceResponse
 import com.android.identity.issuance.ProofingFlow
 import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnel
-import com.android.identity.issuance.evidence.EvidenceRequestIcaoNfcTunnelType
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnel
 import com.android.identity.util.Logger
 import java.lang.IllegalStateException
 
 class SimpleIssuingAuthorityProofingFlow(
     private val issuingAuthority: SimpleIssuingAuthority,
-    private val credentialId: String,
+    private val documentId: String,
     private var currentNode: SimpleIssuingAuthorityProofingGraph.Node?,
     private val tunnelDriverFactory: (() -> SimpleIcaoNfcTunnelDriver)? = null
 ) : ProofingFlow {
@@ -44,7 +43,7 @@ class SimpleIssuingAuthorityProofingFlow(
             if (nfcTunnel == null) {
                 nfcTunnel = tunnelDriverFactory!!()
                 val dataGroups = (currentNode as SimpleIssuingAuthorityProofingGraph.IcaoNfcTunnelNode).dataGroups
-                nfcTunnel!!.init(dataGroups, issuingAuthority.getMrtdAccessData(credentialId))
+                nfcTunnel!!.init(dataGroups, issuingAuthority.getMrtdAccessData(documentId))
             }
             val tunnel = nfcTunnel!!
             // This is special case
@@ -62,12 +61,12 @@ class SimpleIssuingAuthorityProofingFlow(
             evidenceResponse
         }
         val currentNode = this.currentNode ?: throw IllegalStateException("Evidence is not expected")
-        issuingAuthority.addCollectedEvidence(credentialId, currentNode.nodeId, evidence)
+        issuingAuthority.addCollectedEvidence(documentId, currentNode.nodeId, evidence)
         this.currentNode = currentNode.selectFollowUp(evidence)
     }
 
     override suspend fun completeProofing() {
-        issuingAuthority.setProofingProcessing(credentialId)
+        issuingAuthority.setProofingProcessing(documentId)
     }
 
 }

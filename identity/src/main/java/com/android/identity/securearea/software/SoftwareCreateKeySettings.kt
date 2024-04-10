@@ -1,18 +1,23 @@
 package com.android.identity.securearea.software
 
+import com.android.identity.cbor.DataItem
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.securearea.fromDataItem
 import com.android.identity.util.Timestamp
 
 /**
  * Class used to indicate key creation settings for software-backed keys.
  */
-class SoftwareCreateKeySettings private constructor(
+class SoftwareCreateKeySettings internal constructor(
     val passphraseRequired: Boolean,
-    val passphrase: String,
+    val passphrase: String?,
+    val passphraseConstraints: PassphraseConstraints?,
     ecCurve: EcCurve,
     keyPurposes: Set<KeyPurpose>,
     attestationChallenge: ByteArray,
@@ -23,7 +28,7 @@ class SoftwareCreateKeySettings private constructor(
     val attestationKeySignatureAlgorithm: Algorithm?,
     val attestationKeyIssuer: String?,
     val attestationKeyCertification: CertificateChain?,
-) : com.android.identity.securearea.CreateKeySettings(
+) : CreateKeySettings(
     attestationChallenge,
     keyPurposes,
     ecCurve
@@ -34,20 +39,47 @@ class SoftwareCreateKeySettings private constructor(
      * @param attestationChallenge challenge to include in attestation for the key.
      */
     class Builder(
-        private val attestationChallenge: ByteArray,
-        private var keyPurposes: Set<KeyPurpose> = setOf(KeyPurpose.SIGN),
-        private var ecCurve: EcCurve = EcCurve.P256,
-        private var passphraseRequired: Boolean = false,
-        private var passphrase: String? = "",
-        private var subject: String? = null,
-        private var validFrom: Timestamp? = null,
-        private var validUntil: Timestamp? = null,
-        private var attestationKey: EcPrivateKey? = null,
-        private var attestationKeySignatureAlgorithm: Algorithm? = null,
-        private var attestationKeyIssuer: String? = null,
-        private var attestationKeyCertification: CertificateChain? = null
+        private val attestationChallenge: ByteArray
     ) {
-        constructor(challenge: ByteArray) : this(challenge, setOf(KeyPurpose.SIGN))
+        private var keyPurposes: Set<KeyPurpose> = setOf(KeyPurpose.SIGN)
+        private var ecCurve: EcCurve = EcCurve.P256
+        private var passphraseRequired: Boolean = false
+        private var passphrase: String? = null
+        private var passphraseConstraints: PassphraseConstraints? = null
+        private var subject: String? = null
+        private var validFrom: Timestamp? = null
+        private var validUntil: Timestamp? = null
+        private var attestationKey: EcPrivateKey? = null
+        private var attestationKeySignatureAlgorithm: Algorithm? = null
+        private var attestationKeyIssuer: String? = null
+        private var attestationKeyCertification: CertificateChain? = null
+
+        /**
+         * Apply settings from configuration object.
+         *
+         * @param configuration configuration from a CBOR map.
+         * @return the builder.
+         */
+        fun applyConfiguration(configuration: DataItem) = apply {
+            var passphraseRequired = false
+            var passphrase: String? = null
+            var passphraseConstraints: PassphraseConstraints? = null
+            for ((key, value) in configuration.asMap) {
+                when (key.asTstr) {
+                    "purposes" -> setKeyPurposes(KeyPurpose.decodeSet(value.asNumber))
+                    "curve" -> setEcCurve(EcCurve.fromInt(value.asNumber.toInt()))
+                    "passphrase" -> {
+                        passphraseRequired = true
+                        passphrase = value.asTstr
+                    }
+                    "passphraseConstraints" -> {
+                        passphraseRequired = true
+                        passphraseConstraints = PassphraseConstraints.fromDataItem(value)
+                    }
+                }
+            }
+            setPassphraseRequired(passphraseRequired, passphrase, passphraseConstraints)
+        }
 
         /**
          * Sets the attestation key to use for attesting to the key.
@@ -102,12 +134,20 @@ class SoftwareCreateKeySettings private constructor(
          *
          * @param required whether a passphrase is required.
          * @param passphrase the passphrase to use, must not be `null` if `required` is `true`.
+         * @param constraints constraints for the passphrase or `null` if not constrained.
          * @return the builder.
          */
-        fun setPassphraseRequired(required: Boolean, passphrase: String?) = apply {
-            check(!(passphraseRequired && passphrase == null)) { "Passphrase cannot be null if it's required" }
+        fun setPassphraseRequired(
+            required: Boolean,
+            passphrase: String?,
+            constraints: PassphraseConstraints?
+        ) = apply {
+            check(!passphraseRequired || passphrase != null) {
+                "Passphrase cannot be null if passphrase is required"
+            }
             passphraseRequired = required
             this.passphrase = passphrase
+            this.passphraseConstraints = constraints
         }
 
         /**
@@ -141,7 +181,7 @@ class SoftwareCreateKeySettings private constructor(
          */
         fun build(): SoftwareCreateKeySettings =
             SoftwareCreateKeySettings(
-                passphraseRequired, passphrase!!, ecCurve,
+                passphraseRequired, passphrase, passphraseConstraints, ecCurve,
                 keyPurposes, attestationChallenge,
                 subject, validFrom, validUntil,
                 attestationKey, attestationKeySignatureAlgorithm,

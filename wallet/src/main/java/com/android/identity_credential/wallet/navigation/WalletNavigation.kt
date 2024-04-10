@@ -104,30 +104,35 @@ fun WalletNavigation(
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = navigateTo,
                 documentStore = application.documentStore,
-                issuingAuthorityRepository = application.issuingAuthorityRepository
+                issuingAuthorityRepository = application.issuingAuthorityRepository,
+                settingsModel = application.settingsModel,
             )
         }
 
         composable(
-            route = WalletDestination.CardInfo.routeWithArgs,
-            arguments = WalletDestination.CardInfo.getArguments()
+            route = WalletDestination.DocumentInfo.routeWithArgs,
+            arguments = WalletDestination.DocumentInfo.getArguments()
         ) { backStackEntry ->
-            val cardId = WalletDestination.CardInfo
-                .Argument.CARD_ID
+            val cardId = WalletDestination.DocumentInfo
+                .Argument.DOCUMENT_ID
                 .extractFromBackStackEntry(backStackEntry) ?: ""
-            val section = WalletDestination.CardInfo
+            val section = WalletDestination.DocumentInfo
                 .Argument.SECTION
                 .extractFromBackStackEntry(backStackEntry)
+            val requireAuthentication = WalletDestination.DocumentInfo
+                .Argument.AUTH_REQUIRED
+                .extractBooleanFromBackStackEntry(backStackEntry) ?: false
 
             when (section) {
                 "details" -> {
                     DocumentDetailsScreen(
                         documentId = cardId,
                         documentModel = documentModel,
+                        requireAuthentication = requireAuthentication,
                         onNavigate = navigateTo,
                     )
                 }
-                "keys" -> {
+                "credentials" -> {
                     CredentialInfoScreen(
                         documentId = cardId,
                         documentModel = documentModel,
@@ -151,6 +156,7 @@ fun WalletNavigation(
          */
         composable(WalletDestination.ProvisionDocument.route) {
             ProvisionDocumentScreen(
+                context = application.applicationContext,
                 provisioningViewModel = provisioningViewModel,
                 onNavigate = navigateTo,
                 permissionTracker = permissionTracker,

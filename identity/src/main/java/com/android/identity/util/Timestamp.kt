@@ -15,6 +15,9 @@
  */
 package com.android.identity.util
 
+import com.android.identity.cbor.DataItem
+import com.android.identity.cbor.toDataItem
+
 /**
  * Represents a single instant in time. Ideally, we'd use `java.time.Instant`, but we cannot
  * do so until we move to API level 26.

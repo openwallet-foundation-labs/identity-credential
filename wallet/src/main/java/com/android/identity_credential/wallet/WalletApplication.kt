@@ -35,6 +35,7 @@ import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.issuance.IssuingAuthorityRepository
 import com.android.identity.securearea.SecureAreaRepository
+import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
@@ -89,6 +90,7 @@ class WalletApplication : Application() {
     lateinit var settingsModel: SettingsModel
     lateinit var documentModel: DocumentModel
     lateinit var androidKeystoreSecureArea: AndroidKeystoreSecureArea
+    lateinit var softwareSecureArea: SoftwareSecureArea
 
     override fun onCreate() {
         super.onCreate()
@@ -113,9 +115,14 @@ class WalletApplication : Application() {
         // init AndroidKeyStoreSecureArea
         androidKeystoreSecureArea = AndroidKeystoreSecureArea(applicationContext, storageEngine)
 
+        // init SoftwareSecureArea
+        softwareSecureArea = SoftwareSecureArea(storageEngine)
+        // TODO: generate and set attestation keys
+
         // init SecureAreaRepository
         secureAreaRepository = SecureAreaRepository()
         secureAreaRepository.addImplementation(androidKeystoreSecureArea)
+        secureAreaRepository.addImplementation(softwareSecureArea)
 
         // init documentStore
         documentStore = DocumentStore(storageEngine, secureAreaRepository)

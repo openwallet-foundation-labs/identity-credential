@@ -1,15 +1,15 @@
 package com.android.identity.issuance
 
 /**
- * An enumeration of Document Presentation Formats.
+ * An enumeration of Credential Formats that an issuer may support.
  */
-enum class DocumentPresentationFormat {
+enum class CredentialFormat {
 
     /**
-     * This Document Presentation Format is for mdoc as defined in
+     * This CredentialFormat for mdoc as defined in
      * [ISO/IEC 18013-5:2021](https://www.iso.org/standard/69084.html).
      *
-     * For this presentation format, the [DocumentPresentationObject.presentationData]
+     * For this format, the [CredentialData.data]
      * contains CBOR conforming to the follow CDDL:
      * ```
      * StaticAuthData = {

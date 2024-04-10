@@ -1,9 +1,9 @@
 package com.android.identity_credential.wallet
 
-import com.android.identity.issuance.DocumentRegistrationResponse
+import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.DocumentCondition
-import com.android.identity.issuance.DocumentPresentationFormat
-import com.android.identity.issuance.DocumentPresentationRequest
+import com.android.identity.issuance.CredentialFormat
+import com.android.identity.issuance.CredentialRequest
 import com.android.identity.issuance.evidence.EvidenceRequestMessage
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionMultipleChoice
 import com.android.identity.issuance.evidence.EvidenceRequestQuestionString
@@ -66,19 +66,19 @@ class SelfSignedMdlTest {
         val ia = TestIssuingAuthority()
 
         // Register credential...
-        val registerdocumentFlow = ia.registerDocument()
+        val registerdocumentFlow = ia.register()
         val credentialRegistrationConfiguration = registerdocumentFlow.getDocumentRegistrationConfiguration()
-        val credentialId = credentialRegistrationConfiguration.identifier
-        val registrationResponse = DocumentRegistrationResponse()
+        val credentialId = credentialRegistrationConfiguration.documentId
+        val registrationResponse = RegistrationResponse(true)
         registerdocumentFlow.sendDocumentRegistrationResponse(registrationResponse)
 
         // Check we're now in the proofing state.
         Assert.assertEquals(
             DocumentCondition.PROOFING_REQUIRED,
-            ia.documentGetState(credentialId).condition)
+            ia.getState(credentialId).condition)
 
         // Perform proofing
-        val proofingFlow = ia.documentProof(credentialId)
+        val proofingFlow = ia.proof(credentialId)
 
         // First piece of evidence to return...
         var evidenceToGet = proofingFlow.getEvidenceRequests()
@@ -100,7 +100,7 @@ class SelfSignedMdlTest {
         proofingFlow.sendEvidence(EvidenceResponseQuestionString("Max"))
         Assert.assertEquals(
             DocumentCondition.PROOFING_REQUIRED,
-            ia.documentGetState(credentialId).condition)
+            ia.getState(credentialId).condition)
 
         // Third piece of evidence to return...
         evidenceToGet = proofingFlow.getEvidenceRequests()
@@ -129,83 +129,83 @@ class SelfSignedMdlTest {
 
         Assert.assertEquals(
             DocumentCondition.PROOFING_PROCESSING,
-            ia.documentGetState(credentialId).condition)
+            ia.getState(credentialId).condition)
         // Processing is hard-coded to take three seconds
         Thread.sleep(2100)
         Assert.assertEquals(
             DocumentCondition.PROOFING_PROCESSING,
-            ia.documentGetState(credentialId).condition)
+            ia.getState(credentialId).condition)
         Thread.sleep(900)
         Assert.assertEquals(
             DocumentCondition.CONFIGURATION_AVAILABLE,
-            ia.documentGetState(credentialId).condition)
+            ia.getState(credentialId).condition)
 
         // Check we can get the credential configuration
-        val configuration = ia.documentGetConfiguration(credentialId)
+        val configuration = ia.getDocumentConfiguration(credentialId)
         Assert.assertEquals("Max's Driving License", configuration.displayName)
         Assert.assertEquals(
             DocumentCondition.READY,
-            ia.documentGetState(credentialId).condition)
+            ia.getState(credentialId).condition)
 
         // Check we can get CPOs, first request them
         val numMso = 5
-        val requestCpoFlow = ia.documentRequestPresentationObjects(credentialId)
-        val authKeyConfiguration = requestCpoFlow.getAuthenticationKeyConfiguration()
-        val documentPresentationRequests = mutableListOf<DocumentPresentationRequest>()
+        val requestCpoFlow = ia.requestCredentials(credentialId)
+        val authKeyConfiguration = requestCpoFlow.getCredentialConfiguration()
+        val credentialRequests = mutableListOf<CredentialRequest>()
         for (authKeyNumber in IntRange(0, numMso - 1)) {
             val alias = "AuthKey_$authKeyNumber"
             secureArea.createKey(alias, CreateKeySettings(authKeyConfiguration.challenge))
-            documentPresentationRequests.add(
-                DocumentPresentationRequest(
-                    DocumentPresentationFormat.MDOC_MSO,
+            credentialRequests.add(
+                CredentialRequest(
+                    CredentialFormat.MDOC_MSO,
                     secureArea.getKeyInfo(alias).attestation
                 )
             )
         }
-        requestCpoFlow.sendAuthenticationKeys(documentPresentationRequests)
+        requestCpoFlow.sendCredentials(credentialRequests)
 
         // documentInformation should now reflect that the CPOs are pending and not
         // yet available..
-        ia.documentGetState(credentialId).let {
+        ia.getState(credentialId).let {
             Assert.assertEquals(DocumentCondition.READY, it.condition)
-            Assert.assertEquals(5, it.numPendingCPO)
-            Assert.assertEquals(0, it.numAvailableCPO)
+            Assert.assertEquals(5, it.numPendingCredentials)
+            Assert.assertEquals(0, it.numAvailableCredentials)
         }
-        Assert.assertEquals(0, ia.documentGetPresentationObjects(credentialId).size)
+        Assert.assertEquals(0, ia.getCredentials(credentialId).size)
         Thread.sleep(100)
         // Still not available...
-        ia.documentGetState(credentialId).let {
+        ia.getState(credentialId).let {
             Assert.assertEquals(DocumentCondition.READY, it.condition)
-            Assert.assertEquals(5, it.numPendingCPO)
-            Assert.assertEquals(0, it.numAvailableCPO)
+            Assert.assertEquals(5, it.numPendingCredentials)
+            Assert.assertEquals(0, it.numAvailableCredentials)
         }
-        Assert.assertEquals(0, ia.documentGetPresentationObjects(credentialId).size)
+        Assert.assertEquals(0, ia.getCredentials(credentialId).size)
         // But it is available after 3 seconds
         Thread.sleep(2900)
-        ia.documentGetState(credentialId).let {
+        ia.getState(credentialId).let {
             Assert.assertEquals(DocumentCondition.READY, it.condition)
-            Assert.assertEquals(0, it.numPendingCPO)
-            Assert.assertEquals(5, it.numAvailableCPO)
+            Assert.assertEquals(0, it.numPendingCredentials)
+            Assert.assertEquals(5, it.numAvailableCredentials)
         }
         // Check we get 5 CPOs and that they match the keys we passed in..
-        ia.documentGetPresentationObjects(credentialId).let {
+        ia.getCredentials(credentialId).let {
             Assert.assertEquals(5, it.size)
             for (n in IntRange(0, it.size - 1)) {
                 Assert.assertEquals(
-                    it[n].authenticationKey,
-                    documentPresentationRequests[n]
-                        .authenticationKeyAttestation.certificates.first().publicKey
+                    it[n].secureAreaBoundKey,
+                    credentialRequests[n]
+                        .secureAreaBoundKeyAttestation.certificates.first().publicKey
                 )
             }
         }
         // Once we collected them, they are no longer available to be collected
         // and nothing is pending
-        ia.documentGetState(credentialId).let {
+        ia.getState(credentialId).let {
             Assert.assertEquals(DocumentCondition.READY, it.condition)
-            Assert.assertEquals(0, it.numPendingCPO)
-            Assert.assertEquals(0, it.numAvailableCPO)
+            Assert.assertEquals(0, it.numPendingCredentials)
+            Assert.assertEquals(0, it.numAvailableCredentials)
         }
-        Assert.assertEquals(0, ia.documentGetPresentationObjects(credentialId).size)
+        Assert.assertEquals(0, ia.getCredentials(credentialId).size)
     }
 
 }

@@ -183,7 +183,7 @@ class MainActivity : ComponentActivity() {
             ))
             val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
                 CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).dataItem
+                CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).toDataItem
             ))
             val encodedIssuerAuth = Cbor.encode(
                 Cose.coseSign1Sign(

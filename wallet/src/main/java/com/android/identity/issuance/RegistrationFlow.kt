@@ -3,7 +3,7 @@ package com.android.identity.issuance
 /**
  * A flow used to create a new document.
  */
-interface RegisterDocumentFlow {
+interface RegistrationFlow {
 
     /**
      * Gets the configuration for registering a document with the issuer.
@@ -12,9 +12,9 @@ interface RegisterDocumentFlow {
      * obtained, the application should return the required information and return it
      * using [sendDocumentRegistrationResponse]
      *
-     * @return the [DocumentRegistrationConfiguration].
+     * @return the [RegistrationConfiguration].
      */
-    suspend fun getDocumentRegistrationConfiguration(): DocumentRegistrationConfiguration
+    suspend fun getDocumentRegistrationConfiguration(): RegistrationConfiguration
 
     /**
      * Sends registration information to the issuer.
@@ -24,5 +24,5 @@ interface RegisterDocumentFlow {
      * @param response the response
      * @throws IllegalArgumentException if the issuer rejects the response.
      */
-    suspend fun sendDocumentRegistrationResponse(response: DocumentRegistrationResponse)
+    suspend fun sendDocumentRegistrationResponse(response: RegistrationResponse)
 }

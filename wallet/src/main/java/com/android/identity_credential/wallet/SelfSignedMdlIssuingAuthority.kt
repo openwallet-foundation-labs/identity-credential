@@ -4,21 +4,30 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborArray
+import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.toDataItemDateTimeString
 import com.android.identity.cbor.toDataItemFullDate
+import com.android.identity.crypto.EcCurve
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentType
 import com.android.identity.documenttype.knowntypes.DrivingLicense
+import com.android.identity.issuance.CredentialConfiguration
 import com.android.identity.issuance.DocumentConfiguration
-import com.android.identity.issuance.DocumentPresentationFormat
+import com.android.identity.issuance.CredentialFormat
+import com.android.identity.issuance.RegistrationResponse
 import com.android.identity.issuance.IssuingAuthorityConfiguration
+import com.android.identity.issuance.evidence.EvidenceRequestCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponse
+import com.android.identity.issuance.evidence.EvidenceResponseCreatePassphrase
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoNfcTunnelResult
 import com.android.identity.issuance.evidence.EvidenceResponseIcaoPassiveAuthentication
 import com.android.identity.issuance.evidence.EvidenceResponseMessage
 import com.android.identity.issuance.evidence.EvidenceResponseQuestionMultipleChoice
 import com.android.identity.issuance.simple.SimpleIcaoNfcTunnelDriver
 import com.android.identity.issuance.simple.SimpleIssuingAuthorityProofingGraph
+import com.android.identity.securearea.KeyPurpose
+import com.android.identity.securearea.PassphraseConstraints
+import com.android.identity.securearea.toDataItem
 import com.android.identity.storage.StorageEngine
 import com.android.identity_credential.mrtd.MrtdAccessData
 import com.android.identity_credential.mrtd.MrtdNfcData
@@ -59,13 +68,15 @@ class SelfSignedMdlIssuingAuthority(
             issuingAuthorityName = resourceString(R.string.utopia_mdl_issuing_authority_name),
             issuingAuthorityLogo = icon,
             description = resourceString(R.string.utopia_mdl_issuing_authority_description),
-            documentFormats = setOf(DocumentPresentationFormat.MDOC_MSO),
+            documentFormats = setOf(CredentialFormat.MDOC_MSO),
             pendingDocumentInformation = createDocumentConfiguration(null)
         )
         tosAssets = mapOf("utopia_logo.png" to resourceBytes(R.drawable.utopia_dmv_issuing_authority_logo))
     }
 
-    override fun getProofingGraphRoot(): SimpleIssuingAuthorityProofingGraph.Node {
+    override fun getProofingGraphRoot(
+        registrationResponse: RegistrationResponse,
+    ): SimpleIssuingAuthorityProofingGraph.Node {
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
                 "tos",
@@ -87,6 +98,111 @@ class SelfSignedMdlIssuingAuthority(
                         whenChipAuthenticated {}
                         whenActiveAuthenticated {}
                         whenNotAuthenticated {}
+                    }
+                }
+            }
+            if (registrationResponse.developerModeEnabled) {
+                message(
+                    "devmode_message",
+                    message = "The following screens appear only because Developer Mode is enabled",
+                    assets = mapOf(),
+                    acceptButtonText = resourceString(R.string.utopia_mdl_issuing_authority_continue),
+                    null
+                )
+                choice(
+                    id = "devmode_sa",
+                    message = "Choose Secure Area",
+                    assets = mapOf(),
+                    acceptButtonText = "Continue"
+                ) {
+                    on(id = "devmode_sa_android", text = "Android Keystore") {
+                        choice(
+                            id = "devmode_sa_android_use_strongbox",
+                            message = "Use StrongBox",
+                            assets = mapOf(),
+                            acceptButtonText = "Continue"
+                        ) {
+                            on(id = "devmode_sa_android_use_strongbox_no", text = "Don't use StrongBox") {}
+                            on(id = "devmode_sa_android_use_strongbox_yes", text = "Use StrongBox") {}
+                        }
+                        choice(
+                            id = "devmode_sa_android_user_auth",
+                            message = "Choose user authentication",
+                            assets = mapOf(),
+                            acceptButtonText = "Continue"
+                        ) {
+                            on(id = "devmode_sa_android_user_auth_lskf_biometrics", text = "LSKF or Biometrics") {}
+                            on(id = "devmode_sa_android_user_auth_lskf", text = "Only LSKF") {}
+                            on(id = "devmode_sa_android_user_auth_biometrics", text = "Only Biometrics") {}
+                            on(id = "devmode_sa_android_user_auth_none", text = "None") {}
+                        }
+                        choice(
+                            id = "devmode_sa_android_mdoc_auth",
+                            message = "Choose mdoc authentication mode and EC curve",
+                            assets = mapOf(),
+                            acceptButtonText = "Continue"
+                        ) {
+                            on(id = "devmode_sa_android_mdoc_auth_ecdsa_p256", text = "ECDSA w/ P-256") {}
+                            on(id = "devmode_sa_android_mdoc_auth_ed25519", text = "EdDSA w/ Ed25519") {}
+                            on(id = "devmode_sa_android_mdoc_auth_ed448", text = "EdDSA w/ Ed448") {}
+                            on(id = "devmode_sa_android_mdoc_auth_ecdh_p256", text = "ECDH w/ P-256") {}
+                            on(id = "devmode_sa_android_mdoc_auth_x25519", text = "XDH w/ X25519") {}
+                            on(id = "devmode_sa_android_mdoc_auth_x448", text = "XDH w/ X448") {}
+                        }
+                    }
+
+                    on(id = "devmode_sa_software", text = "Software") {
+                        choice(
+                            id = "devmode_sa_software_passphrase_complexity",
+                            message = "Choose what kind of passphrase to use",
+                            assets = mapOf(),
+                            acceptButtonText = "Continue"
+                        ) {
+                            on(id = "devmode_sa_software_passphrase_6_digit_pin", text = "6-digit PIN") {
+                                createPassphrase(
+                                    "devmode_sa_software_passphrase",
+                                    message = "## Choose 6-digit PIN\n\nChoose the PIN to use for the document.\n\nThis is asked every time the document is presented so make sure you memorize it and don't share it with anyone else.",
+                                    verifyMessage = "## Verify PIN\n\nEnter the PIN you chose in the previous screen.",
+                                    assets = mapOf(),
+                                    PassphraseConstraints.PIN_SIX_DIGITS
+                                )
+                            }
+                            on(id = "devmode_sa_software_passphrase_8_char_or_longer_passphrase", text = "Passphrase 8 chars or longer") {
+                                createPassphrase(
+                                    "devmode_sa_software_passphrase",
+                                    message = "## Choose passphrase\n\nChoose the passphrase to use for the document.\n\nThis is asked every time the document is presented so make sure you memorize it and don't share it with anyone else.",
+                                    verifyMessage = "## Verify passphrase\n\nEnter the passphrase you chose in the previous screen.",
+                                    assets = mapOf(),
+                                    PassphraseConstraints(8, Int.MAX_VALUE, false)
+                                )
+                            }
+                            on(id = "devmode_sa_software_passphrase_none", text = "None") {}
+                        }
+                        choice(
+                            id = "devmode_sa_software_mdoc_auth",
+                            message = "Choose mdoc authentication mode and EC curve",
+                            assets = mapOf(),
+                            acceptButtonText = "Continue"
+                        ) {
+                            on(id = "devmode_sa_software_mdoc_auth_ecdsa_p256", text = "ECDSA w/ P-256") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdsa_p384", text = "ECDSA w/ P-384") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdsa_p521", text = "ECDSA w/ P-521") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp256r1", text = "ECDSA w/ brainpoolP256r1") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp320r1", text = "ECDSA w/ brainpoolP320r1") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp384r1", text = "ECDSA w/ brainpoolP384r1") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp512r1", text = "ECDSA w/ brainpoolP512r1") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ed25519", text = "EdDSA w/ Ed25519") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ed448", text = "EdDSA w/ Ed448") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdh_p256", text = "ECDH w/ P-256") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdh_p384", text = "ECDH w/ P-384") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdh_p521", text = "ECDH w/ P-521") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdh_brainpoolp256r1", text = "ECDH w/ brainpoolP256r1") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdh_brainpoolp320r1", text = "ECDH w/ brainpoolP320r1") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdh_brainpoolp384r1", text = "ECDH w/ brainpoolP384r1") {}
+                            on(id = "devmode_sa_software_mdoc_auth_ecdh_brainpoolp512r1", text = "ECDH w/ brainpoolP512r1") {}
+                            on(id = "devmode_sa_software_mdoc_auth_x25519", text = "XDH w/ X25519") {}
+                            on(id = "devmode_sa_software_mdoc_auth_x448", text = "XDH w/ X448") {}
+                        }
                     }
                 }
             }
@@ -123,6 +239,130 @@ class SelfSignedMdlIssuingAuthority(
         return createDocumentConfiguration(collectedEvidence)
     }
 
+    override fun createCredentialConfiguration(
+        collectedEvidence: MutableMap<String, EvidenceResponse>
+    ): CredentialConfiguration {
+        val challenge = byteArrayOf(1, 2, 3)
+        if (!collectedEvidence.containsKey("devmode_sa")) {
+            return CredentialConfiguration(
+                challenge,
+                "AndroidKeystoreSecureArea",
+                Cbor.encode(
+                    CborMap.builder()
+                        .put("curve", EcCurve.P256.coseCurveIdentifier)
+                        .put("purposes", KeyPurpose.encodeSet(setOf(KeyPurpose.SIGN)))
+                        .put("userAuthenticationRequired", true)
+                        .put("userAuthenticationTimeoutMillis", 0L)
+                        .put("userAuthenticationTypes", 3 /* LSKF + Biometrics */)
+                        .end().build()
+                )
+            )
+        }
+
+        val chosenSa = (collectedEvidence["devmode_sa"] as EvidenceResponseQuestionMultipleChoice).answerId
+        when (chosenSa) {
+            "devmode_sa_android" -> {
+                val useStrongBox = when ((collectedEvidence["devmode_sa_android_use_strongbox"]
+                        as EvidenceResponseQuestionMultipleChoice).answerId) {
+                    "devmode_sa_android_use_strongbox_yes" -> true
+                    "devmode_sa_android_use_strongbox_no" -> false
+                    else -> throw IllegalStateException()
+                }
+                val userAuthType = when ((collectedEvidence["devmode_sa_android_user_auth"]
+                        as EvidenceResponseQuestionMultipleChoice).answerId) {
+                    "devmode_sa_android_user_auth_lskf_biometrics" -> 3
+                    "devmode_sa_android_user_auth_lskf" -> 1
+                    "devmode_sa_android_user_auth_biometrics" -> 2
+                    "devmode_sa_android_user_auth_none" -> 0
+                    else -> throw IllegalStateException()
+                }
+                val (curve, purposes) = when ((collectedEvidence["devmode_sa_android_mdoc_auth"]
+                        as EvidenceResponseQuestionMultipleChoice).answerId) {
+                    "devmode_sa_android_mdoc_auth_ecdsa_p256" -> Pair(EcCurve.P256, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_android_mdoc_auth_ed25519" -> Pair(EcCurve.ED25519, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_android_mdoc_auth_ed448" -> Pair(EcCurve.ED448, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_android_mdoc_auth_ecdh_p256" -> Pair(EcCurve.P256, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_android_mdoc_auth_x25519" -> Pair(EcCurve.X25519, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_android_mdoc_auth_x448" -> Pair(EcCurve.X448, setOf(KeyPurpose.AGREE_KEY))
+                    else -> throw IllegalStateException()
+                }
+                return CredentialConfiguration(
+                    challenge,
+                    "AndroidKeystoreSecureArea",
+                    Cbor.encode(
+                        CborMap.builder()
+                            .put("useStrongBox", useStrongBox)
+                            .put("userAuthenticationRequired", (userAuthType != 0))
+                            .put("userAuthenticationTimeoutMillis", 0L)
+                            .put("userAuthenticationTypes", userAuthType)
+                            .put("curve", curve.coseCurveIdentifier)
+                            .put("purposes", KeyPurpose.encodeSet(purposes))
+                            .end().build()
+                    )
+                )
+
+            }
+
+            "devmode_sa_software" -> {
+                val (curve, purposes) = when ((collectedEvidence["devmode_sa_software_mdoc_auth"]
+                        as EvidenceResponseQuestionMultipleChoice).answerId) {
+                    "devmode_sa_software_mdoc_auth_ecdsa_p256" -> Pair(EcCurve.P256, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ecdsa_p384" -> Pair(EcCurve.P384, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ecdsa_p521" -> Pair(EcCurve.P521, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp256r1" -> Pair(EcCurve.BRAINPOOLP256R1, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp320r1" -> Pair(EcCurve.BRAINPOOLP320R1, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp384r1" -> Pair(EcCurve.BRAINPOOLP384R1, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ecdsa_brainpoolp512r1" -> Pair(EcCurve.BRAINPOOLP512R1, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ed25519" -> Pair(EcCurve.ED25519, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ed448" -> Pair(EcCurve.ED448, setOf(KeyPurpose.SIGN))
+                    "devmode_sa_software_mdoc_auth_ecdh_p256" -> Pair(EcCurve.P256, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_software_mdoc_auth_ecdh_p384" -> Pair(EcCurve.P384, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_software_mdoc_auth_ecdh_p521" -> Pair(EcCurve.P521, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_software_mdoc_auth_ecdh_brainpoolp256r1" -> Pair(EcCurve.BRAINPOOLP256R1, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_software_mdoc_auth_ecdh_brainpoolp320r1" -> Pair(EcCurve.BRAINPOOLP320R1, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_software_mdoc_auth_ecdh_brainpoolp384r1" -> Pair(EcCurve.BRAINPOOLP384R1, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_software_mdoc_auth_ecdh_brainpoolp512r1" -> Pair(EcCurve.BRAINPOOLP512R1, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_software_mdoc_auth_x25519" -> Pair(EcCurve.X25519, setOf(KeyPurpose.AGREE_KEY))
+                    "devmode_sa_software_mdoc_auth_x448" -> Pair(EcCurve.X448, setOf(KeyPurpose.AGREE_KEY))
+                    else -> throw IllegalStateException()
+                }
+                var passphrase: String? = null
+                val passphraseConstraints = when ((collectedEvidence["devmode_sa_software_passphrase_complexity"]
+                        as EvidenceResponseQuestionMultipleChoice).answerId) {
+                    "devmode_sa_software_passphrase_none" -> null
+                    "devmode_sa_software_passphrase_6_digit_pin" -> {
+                        passphrase = (collectedEvidence["devmode_sa_software_passphrase"]
+                                as EvidenceResponseCreatePassphrase).passphrase
+                        PassphraseConstraints.PIN_SIX_DIGITS
+                    }
+                    "devmode_sa_software_passphrase_8_char_or_longer_passphrase" -> {
+                        passphrase = (collectedEvidence["devmode_sa_software_passphrase"]
+                                as EvidenceResponseCreatePassphrase).passphrase
+                        PassphraseConstraints(8, Int.MAX_VALUE, false)
+                    }
+                    else -> throw IllegalStateException()
+                }
+                val builder = CborMap.builder()
+                    .put("curve", curve.coseCurveIdentifier)
+                    .put("purposes", KeyPurpose.encodeSet(purposes))
+                if (passphrase != null) {
+                    builder.put("passphrase", passphrase)
+                }
+                if (passphraseConstraints != null) {
+                    builder.put("passphraseConstraints", passphraseConstraints.toDataItem)
+                }
+                return CredentialConfiguration(
+                    challenge,
+                    "SoftwareSecureArea",
+                    Cbor.encode(builder.end().build())
+                )
+            }
+            else -> {
+                throw IllegalStateException("Unexpected value $chosenSa")
+            }
+        }
+    }
+
     private fun createDocumentConfiguration(collectedEvidence: Map<String, EvidenceResponse>?): DocumentConfiguration {
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(
@@ -135,7 +375,8 @@ class SelfSignedMdlIssuingAuthority(
                 resourceString(R.string.utopia_mdl_issuing_authority_pending_document_title),
                 cardArt,
                 MDL_DOCTYPE,
-                NameSpacedData.Builder().build()
+                NameSpacedData.Builder().build(),
+                true
             )
         }
 
@@ -221,7 +462,8 @@ class SelfSignedMdlIssuingAuthority(
             resourceString(R.string.utopia_mdl_issuing_authority_document_title, firstName),
             cardArt,
             MDL_DOCTYPE,
-            staticData
+            staticData,
+            true
         )
     }
 
@@ -243,11 +485,12 @@ class SelfSignedMdlIssuingAuthority(
         )
 
         return DocumentConfiguration(
-                displayName = currentConfiguration.displayName,
-                cardArt = currentConfiguration.cardArt,
-                mdocDocType = currentConfiguration.mdocDocType,
-                staticData = builder.build(),
-            )
+            displayName = currentConfiguration.displayName,
+            cardArt = currentConfiguration.cardArt,
+            mdocDocType = currentConfiguration.mdocDocType,
+            staticData = builder.build(),
+            requireUserAuthenticationToViewDocument = false
+        )
     }
 
     private fun getSampleData(documentType: DocumentType): NameSpacedData.Builder {

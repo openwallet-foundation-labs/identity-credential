@@ -25,7 +25,7 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.javaX509Certificate
 import com.android.identity.issuance.DocumentConfiguration
-import com.android.identity.issuance.DocumentPresentationFormat
+import com.android.identity.issuance.CredentialFormat
 import com.android.identity.issuance.simple.SimpleIssuingAuthority
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
@@ -51,12 +51,12 @@ abstract class SelfSignedMdocIssuingAuthority(
 
     abstract val docType: String
 
-    override fun createPresentationData(presentationFormat: DocumentPresentationFormat,
+    override fun createPresentationData(presentationFormat: CredentialFormat,
                                         documentConfiguration: DocumentConfiguration,
                                         authenticationKey: EcPublicKey
     ): ByteArray {
         // Right now we only support mdoc
-        check(presentationFormat == DocumentPresentationFormat.MDOC_MSO)
+        check(presentationFormat == CredentialFormat.MDOC_MSO)
 
         val now = Timestamp.now()
 
@@ -97,7 +97,7 @@ abstract class SelfSignedMdocIssuingAuthority(
         ))
         val unprotectedHeaders = mapOf<CoseLabel, DataItem>(Pair(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).dataItem
+            CertificateChain(listOf(Certificate(documentSigningKeyCert.encodedCertificate))).toDataItem
         ))
         val encodedIssuerAuth = Cbor.encode(
             Cose.coseSign1Sign(

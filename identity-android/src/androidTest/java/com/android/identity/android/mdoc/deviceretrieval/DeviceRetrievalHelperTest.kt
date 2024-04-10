@@ -195,7 +195,7 @@ class DeviceRetrievalHelperTest {
         )
         val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(java.util.List.of(mDocumentSignerCert)).dataItem
+            CertificateChain(java.util.List.of(mDocumentSignerCert)).toDataItem
         )
         val encodedIssuerAuth = encode(
             coseSign1Sign(
