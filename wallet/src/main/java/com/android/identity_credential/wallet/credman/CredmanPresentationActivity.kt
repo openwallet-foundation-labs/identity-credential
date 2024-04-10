@@ -21,6 +21,7 @@ import android.os.Bundle
 import android.util.Base64
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
+import com.android.identity.android.mdoc.util.CredmanUtil.Companion.generatePublicKeyHash
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
@@ -115,8 +116,8 @@ class CredmanPresentationActivity : FragmentActivity() {
 
         val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
             nonce,
-            requesterIdentity,
-            "com.android.mdl.appreader"
+            "com.android.mdl.appreader",
+            generatePublicKeyHash(requesterIdentity)
         ) // TODO: get from |request|
 
         val credential = document.findCredential(
