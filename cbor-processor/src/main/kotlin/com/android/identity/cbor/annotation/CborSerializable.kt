@@ -1,7 +1,7 @@
 package com.android.identity.cbor.annotation
 
 @Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.SOURCE)
+@Retention(AnnotationRetention.BINARY)
 annotation class CborSerializable(
     /**
      * Optional parameter for sealed class hierarchies to define the key that carries type id.

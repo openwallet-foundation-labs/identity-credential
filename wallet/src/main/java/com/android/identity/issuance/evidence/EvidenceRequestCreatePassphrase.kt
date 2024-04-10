@@ -11,10 +11,7 @@ import com.android.identity.securearea.PassphraseConstraints
  * @param length Length of the PIN
  */
 data class EvidenceRequestCreatePassphrase (
-    // TODO: use PassphraseConstraints instead when cbor-processor is fixed
-    val passphraseMinLength: Int,
-    val passphraseMaxLength: Int,
-    val passphraseRequireNumerical: Boolean,
+    val passphraseConstraints: PassphraseConstraints,
     val message: String,
     val verifyMessage: String,
     val assets: Map<String, ByteArray>,

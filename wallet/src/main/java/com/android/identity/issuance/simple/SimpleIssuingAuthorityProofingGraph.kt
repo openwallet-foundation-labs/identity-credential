@@ -76,9 +76,7 @@ class SimpleIssuingAuthorityProofingGraph {
         passphraseConstraints: PassphraseConstraints,
     ) {
         val evidenceRequest = EvidenceRequestCreatePassphrase(
-            passphraseMinLength = passphraseConstraints.minLength,
-            passphraseMaxLength = passphraseConstraints.maxLength,
-            passphraseRequireNumerical = passphraseConstraints.requireNumerical,
+            passphraseConstraints = passphraseConstraints,
             message = message,
             verifyMessage = verifyMessage,
             assets = assets)

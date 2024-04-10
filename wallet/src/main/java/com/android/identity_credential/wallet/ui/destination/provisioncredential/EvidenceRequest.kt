@@ -238,11 +238,7 @@ fun EvidenceRequestCreatePassphraseView(
     var verifiedPassphrase by remember { mutableStateOf("") }
     var showMatchErrorText by remember { mutableStateOf(false) }
 
-    val constraints = PassphraseConstraints(
-        minLength = evidenceRequest.passphraseMinLength,
-        maxLength = evidenceRequest.passphraseMaxLength,
-        requireNumerical = evidenceRequest.passphraseRequireNumerical,
-    )
+    val constraints = evidenceRequest.passphraseConstraints
 
     Row(
         modifier = Modifier.fillMaxWidth(),
