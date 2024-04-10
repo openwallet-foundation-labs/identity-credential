@@ -43,11 +43,13 @@ import com.android.mdl.appreader.util.TransferStatus
 import com.android.mdl.appreader.util.logDebug
 import com.android.mdl.appreader.util.logError
 import com.google.android.gms.identitycredentials.CredentialOption
+import com.google.android.gms.identitycredentials.GetCredentialException
 import com.google.android.gms.identitycredentials.GetCredentialRequest
 import com.google.android.gms.identitycredentials.IdentityCredentialManager
 import com.google.android.gms.identitycredentials.IntentHelper
+import org.json.JSONArray
+import org.json.JSONObject
 import java.security.KeyPair
-import java.security.PublicKey
 import java.security.SecureRandom
 
 class RequestOptionsFragment() : Fragment() {
@@ -90,67 +92,67 @@ class RequestOptionsFragment() : Fragment() {
                         onSelectionUpdated = createRequestViewModel::onRequestUpdate,
                         onRequestConfirm = { onRequestConfirmed(it.isCustomMdlRequest) },
                         onRequestQRCodePreview = { navigateToQRCodeScan(it.isCustomMdlRequest) },
-                        onRequestViaCredman = {onRequestViaCredman(it)}
+                        onRequestPreviewProtocol = { onRequestViaCredman("preview", it)},
+                        onRequestOpenId4VPProtocol = { onRequestViaCredman("openid4vp", it)}
                     )
                 }
             }
         }
     }
 
-    private fun buildJsonRequest(requestDocument: RequestDocument,
-                                 nonce: ByteArray,
-                                 requesterIdentityPublicKey: EcPublicKey): String {
-        val sb = StringBuilder();
+    private fun buildPreviewProtocolRequestJson(
+        requestDocument: RequestDocument,
+        nonce: ByteArray,
+        readerPublicKey: EcPublicKey
+    ): String {
+        val json = JSONObject()
+        val nonceEncoded = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
+        val publicKeyBytes =
+            (readerPublicKey as EcPublicKeyDoubleCoordinate).let {
+                byteArrayOf(0x04) + it.x + it.y
+            }
+        val publicKeyBytesEncoded = Base64.encodeToString(
+            publicKeyBytes,
+            Base64.NO_WRAP or Base64.URL_SAFE
+        )
 
-        sb.append("{\n" +
-                "  \"providers\": [\n" +
-                "    {\n" +
-                "      \"responseFormat\": \"mdoc\",\n" +
-                "      \"selector\": {\n" +
-                "        \"fields\": [\n" +
-                "          {\n" +
-                "            \"name\": \"doctype\",\n" +
-                "            \"equal\": \"${requestDocument.docType}\"\n" +
-                "          }")
+
+        val selector = JSONObject()
+        requestDocument.docType
+        selector.put("format", JSONArray().put("mdoc"))
+        selector.put( "doctype", requestDocument.docType)
+        val fields = JSONArray()
         val itemsToRequest = requestDocument.itemsToRequest
         itemsToRequest.forEach { (nameSpaceName, dataElementNamesToIntentToRetainMap) ->
             dataElementNamesToIntentToRetainMap.forEach { (dataElementName, intentToRetain) ->
-                sb.append(",\n" +
-                        "          {\n" +
-                        "            \"name\": \"${nameSpaceName}.${dataElementName}\"\n" +
-                        "          }"
-                )
+                val field = JSONObject()
+                field.put("namespace", nameSpaceName)
+                field.put("name", dataElementName)
+                field.put("intentToRetain", intentToRetain)
+                fields.put(field)
             }
         }
-
-        val nonceBase64 = Base64.encodeToString(nonce, Base64.NO_WRAP or Base64.URL_SAFE)
-        val uncompressed =
-            (requesterIdentityPublicKey as EcPublicKeyDoubleCoordinate).let {
-            byteArrayOf(0x04) + it.x + it.y
-        }
-        val requesterIdentityBase64 = Base64.encodeToString(uncompressed, Base64.NO_WRAP or Base64.URL_SAFE)
-        sb.append("\n" +
-                "        ]\n" +
-                "      },\n" +
-                "      \"params\": {\n" +
-                "        \"nonce\": \"${nonceBase64}\",\n" +
-                "        \"requesterIdentity\": \"${requesterIdentityBase64}\"\n" +
-                "      }\n" +
-                "    }\n" +
-                "  ]\n" +
-                "}")
-        return sb.toString()
+        selector.put("fields", fields)
+        json.put("selector", selector)
+        json.put("nonce", nonceEncoded)
+        json.put("readerPublicKey", publicKeyBytesEncoded)
+        Log.i("TAG", json.toString(2))
+        return json.toString()
     }
 
-    private fun onRequestViaCredman(state: RequestingDocumentState) {
+    private fun onRequestViaCredman(protocol: String, state: RequestingDocumentState) {
 
         val client = IdentityCredentialManager.Companion.getClient(this.requireContext())
-        val nonce = ByteArray(16)
+
+        // Generate nonce
+        val nonce = ByteArray(32)
         SecureRandom().nextBytes(nonce)
-        val requestIdentityKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val requestIdentityKeyPair = KeyPair(
-            requestIdentityKey.publicKey.javaPublicKey,
-            requestIdentityKey.javaPrivateKey
+
+        // Generate the readerKey.
+        val readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val readerKeyPair = KeyPair(
+            readerKey.publicKey.javaPublicKey,
+            readerKey.javaPrivateKey
         )
 
         // TODO: Right now we just request the first of potentially multiple documents, it
@@ -159,13 +161,25 @@ class RequestOptionsFragment() : Fragment() {
         //  option in the reader.
         val requestedDocuments = calcRequestDocumentList()
         val requestedDocument = requestedDocuments.getAll().get(0)
-        val requestJson = buildJsonRequest(requestedDocument, nonce, requestIdentityKey.publicKey)
+
+
+        val request = when(protocol) {
+            "preview" -> buildPreviewProtocolRequestJson(requestedDocument, nonce, readerKey.publicKey)
+            "openid4vp" -> buildPreviewProtocolRequestJson(requestedDocument, nonce, readerKey.publicKey)
+            else -> ""
+        }
+
+        val digitalCredentialsRequest = JSONObject()
+        val provider =  JSONObject()
+        provider.put("protocol", protocol)
+        provider.put("request", request)
+        digitalCredentialsRequest.put("providers", JSONArray().put(provider))
 
         val option = CredentialOption(
             type = "com.credman.IdentityCredential",
             credentialRetrievalData = Bundle(),
             candidateQueryData = Bundle(),
-            requestMatcher = requestJson,
+            requestMatcher = digitalCredentialsRequest.toString(),
             requestType = "",
             protocolType = "",
         )
@@ -177,21 +191,29 @@ class RequestOptionsFragment() : Fragment() {
                 override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
                     super.onReceiveResult(resultCode, resultData)
                     Log.i("TAG", "Got a result $resultCode $resultData")
+                    try {
+                        val response = IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
+                        val responseJson = String(response.credential.data.getByteArray("identityToken")!!)
+                        Log.i("TAG", "Response JSON $responseJson")
 
-                    val response = IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
-                    val identityToken = Base64.decode(
-                        String(response.credential.data.getByteArray("identityToken")!!),
-                        Base64.NO_WRAP or Base64.URL_SAFE)
-                    //Logger.dCbor("TAG", "identityToken", identityToken!!)
+                        val bundle = Bundle()
+                        bundle.putString("responseJson", responseJson)
+                        bundle.putByteArray("nonce", nonce)
 
-                    val bundle = Bundle()
-                    bundle.putByteArray("identityToken", identityToken)
-                    bundle.putByteArray("nonce", nonce)
-
-                    requireActivity().runOnUiThread {
-                        findNavController().navigate(RequestOptionsFragmentDirections
-                           .toShowDeviceResponse(bundle, requestIdentityKeyPair))
+                        requireActivity().runOnUiThread {
+                            findNavController().navigate(RequestOptionsFragmentDirections
+                                .toShowDeviceResponse(bundle, readerKeyPair))
+                        }
+                    } catch (e: GetCredentialException) {
+                        requireActivity().runOnUiThread {
+                            Toast.makeText(
+                                requireContext(),
+                                "Exception ${e.type} ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
+
                 }
             }
         )).addOnSuccessListener {result ->
