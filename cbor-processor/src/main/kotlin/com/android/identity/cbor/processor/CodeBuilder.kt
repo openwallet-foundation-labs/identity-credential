@@ -15,10 +15,18 @@ import java.io.Writer
  */
 class CodeBuilder(
     private val classesToImport: MutableMap<String, String> = mutableMapOf(), // simple to fully qualified name
+    private val functionsToImport: MutableMap<String, MutableSet<String>> = mutableMapOf(),  // function name to package set
     private var indentDepth: Int = 0,
     private val varCounts: MutableMap<String, Int> = mutableMapOf()
 ) {
     private val code: MutableList<Any> = mutableListOf()
+
+    /**
+     * Add and import for a function from a given package.
+     */
+    fun importFunctionName(function: String, packageName: String) {
+        functionsToImport.computeIfAbsent(function) { mutableSetOf() }.add(packageName);
+    }
 
     /**
      * Add given class to import list, simple class name can then be used in the code
@@ -66,7 +74,8 @@ class CodeBuilder(
      * called).
      */
     fun insertionPoint(): CodeBuilder {
-        val builder = CodeBuilder(classesToImport, indentDepth, varCounts)
+        val builder = CodeBuilder(
+            classesToImport, functionsToImport, indentDepth, varCounts)
         code.add(builder)
         return builder
     }
@@ -194,6 +203,11 @@ class CodeBuilder(
         file.write("package $packageName\n\n")
         classesToImport.forEach { (_, qualifiedName) ->
             file.write("import $qualifiedName\n")
+        }
+        functionsToImport.forEach { (functionName, packageNames) ->
+            packageNames.forEach { packageName ->
+                file.write("import $packageName.$functionName\n")
+            }
         }
         file.write("\n")
         writeCodeTo(file)

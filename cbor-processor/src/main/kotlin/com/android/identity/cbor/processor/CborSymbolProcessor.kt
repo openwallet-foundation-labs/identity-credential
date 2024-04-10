@@ -121,13 +121,14 @@ class CborSymbolProcessor(
             }
 
             emptyLine()
-            block("fun ${deserializerName(classDeclaration)}(dataItem: DataItem): $baseName") {
+            val deserializer = deserializerName(classDeclaration, true)
+            block("fun $deserializer(dataItem: DataItem): $baseName") {
                 val typeKey = getTypeKey(annotation)
                 line("val type = dataItem[\"$typeKey\"].asTstr")
                 block("return when (type)") {
                     for (subclass in subclasses) {
                         val typeId = getTypeId(classDeclaration, subclass)
-                        line("\"$typeId\" -> ${deserializerName(subclass)}(dataItem)")
+                        line("\"$typeId\" -> ${deserializerName(subclass, false)}(dataItem)")
                     }
                     line("else -> throw IllegalArgumentException(\"wrong type: \$type\")")
                 }
@@ -200,7 +201,8 @@ class CborSymbolProcessor(
             val dataItem = varName("dataItem")
 
             emptyLine()
-            block("fun ${deserializerName(classDeclaration)}($dataItem: DataItem): $baseName") {
+            val deserializer = deserializerName(classDeclaration, true)
+            block("fun $deserializer($dataItem: DataItem): $baseName") {
                 val constructorParameters = mutableListOf<String>()
                 classDeclaration.getAllProperties().forEach { property ->
                     val fieldName = property.simpleName.asString()
@@ -314,10 +316,16 @@ class CborSymbolProcessor(
         return null
     }
 
-    private fun deserializerName(classDeclaration: KSClassDeclaration): String {
+    private fun deserializerName(
+            classDeclaration: KSClassDeclaration, forDeclaration: Boolean): String {
         val baseName = classDeclaration.simpleName.asString()
         return if (hasCompanion(classDeclaration)) {
-            "${baseName}.Companion.fromDataItem"
+            if (forDeclaration) {
+                "${baseName}.Companion.fromDataItem"
+            } else {
+                // for call
+                "${baseName}.fromDataItem"
+            }
         } else {
             "${baseName}_fromDataItem"
         }
@@ -334,7 +342,8 @@ class CborSymbolProcessor(
         type: KSType
     ): String {
         val declaration = type.declaration
-        when (declaration.qualifiedName!!.asString()) {
+        val qualifiedName = declaration.qualifiedName!!.asString()
+        when (qualifiedName) {
             "kotlin.collections.Map" ->
                 with(codeBuilder) {
                     val map = varName("map")
@@ -388,6 +397,10 @@ class CborSymbolProcessor(
             ) {
                 "$code.name"
             } else {
+                codeBuilder.importQualifiedName(qualifiedName)
+                if (findAnnotation(declaration, annotationSerializable) != null) {
+                    codeBuilder.importFunctionName("toDataItem", declaration.packageName.asString())
+                }
                 "$code.toDataItem"
             }
         }
@@ -461,7 +474,12 @@ class CborSymbolProcessor(
                 "${typeRef(codeBuilder, type)}.valueOf($code.asTstr)"
             } else {
                 codeBuilder.importQualifiedName(qualifiedName)
-                "${deserializerName(declaration as KSClassDeclaration)}($code)"
+                val deserializer = deserializerName(declaration as KSClassDeclaration, false)
+                if (findAnnotation(declaration, annotationSerializable) != null) {
+                    val shortName = deserializer.substring(deserializer.lastIndexOf(".") + 1)
+                    codeBuilder.importFunctionName(shortName, declaration.packageName.asString())
+                }
+                "${deserializer}($code)"
             }
         }
     }
