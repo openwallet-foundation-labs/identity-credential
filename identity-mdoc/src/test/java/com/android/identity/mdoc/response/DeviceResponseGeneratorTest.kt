@@ -49,6 +49,7 @@ import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Timestamp
+import com.android.identity.util.fromHex
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -551,7 +552,7 @@ class DeviceResponseGeneratorTest {
         val deviceResponseGenerator = DeviceResponseGenerator(20)
         val encodedDeviceResponse = deviceResponseGenerator.generate()
 
-        Assert.assertEquals(TestVectors.DEVICE_RESPONSE_NO_DOCUMENTS_STATUS_20.fromHex, encodedDeviceResponse)
+        Assert.assertArrayEquals(TestVectors.DEVICE_RESPONSE_NO_DOCUMENTS_STATUS_20.fromHex, encodedDeviceResponse)
     }
 
 
