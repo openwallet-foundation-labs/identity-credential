@@ -551,7 +551,7 @@ class DeviceResponseGeneratorTest {
         val deviceResponseGenerator = DeviceResponseGenerator(20)
         val encodedDeviceResponse = deviceResponseGenerator.generate()
 
-        Assert.assertEquals(TestVectors.DEVICE_RESPONSE_NO_DOCUMENTS_STATUS_20.fromHex, encodedDeviceResponse)ß
+        Assert.assertEquals(TestVectors.DEVICE_RESPONSE_NO_DOCUMENTS_STATUS_20.fromHex, encodedDeviceResponse)
     }
 
 
