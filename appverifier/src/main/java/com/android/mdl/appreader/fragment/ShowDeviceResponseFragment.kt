@@ -7,6 +7,7 @@ import android.icu.util.GregorianCalendar
 import android.icu.util.TimeZone
 import android.os.Bundle
 import android.text.Html
+import android.util.Base64
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -29,6 +30,7 @@ import com.android.mdl.appreader.trustmanagement.CustomValidators
 import com.android.mdl.appreader.trustmanagement.getCommonName
 import com.android.mdl.appreader.util.FormatUtil
 import com.android.mdl.appreader.util.logDebug
+import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.interfaces.ECPublicKey
 
@@ -71,23 +73,25 @@ class ShowDeviceResponseFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val encodedCredentialDocument = args.bundle.getByteArray("identityToken")!!
+        val responseJson = JSONObject(args.bundle.getString("responseJson")!!)
         val nonce = args.bundle.getByteArray("nonce")!!
         val requestIdentityKeyPair = args.requestIdentityKeyPair
 
-        val (cipherText, encapsulatedPublicKey) = CredmanUtil.parseCredentialDocument(encodedCredentialDocument)
+        val encryptedCredentialDocumentBase64 = responseJson.getString("token")!!
+        val encryptedCredentialDocument = Base64.decode(encryptedCredentialDocumentBase64, Base64.URL_SAFE or Base64.NO_WRAP )
+
+        val (cipherText, encapsulatedPublicKey) = CredmanUtil.parseCredentialDocument(encryptedCredentialDocument)
 
         val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
             nonce,
-            requestIdentityKeyPair.public,
-            "com.android.mdl.appreader") // TODO: get from app
+            requireContext().packageName,
+            CredmanUtil.generatePublicKeyHash(requestIdentityKeyPair.public)
+        )
 
         val credmanUtil = CredmanUtil(requestIdentityKeyPair.public, requestIdentityKeyPair.private)
         val encodedDeviceResponse = credmanUtil.decrypt(cipherText,
             encapsulatedPublicKey as ECPublicKey,
             encodedSessionTranscript)
-
-        //Logger.dCbor("TAG", "encodedDeviceResponse", encodedDeviceResponse)
 
         val parser = DeviceResponseParser(encodedDeviceResponse, encodedSessionTranscript)
         val deviceResponse = parser.parse()

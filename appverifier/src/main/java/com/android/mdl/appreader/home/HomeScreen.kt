@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -51,7 +52,8 @@ fun HomeScreen(
     onSelectionUpdated: (elements: DocumentElementsRequest) -> Unit,
     onRequestConfirm: (request: RequestingDocumentState) -> Unit,
     onRequestQRCodePreview: (request: RequestingDocumentState) -> Unit,
-    onRequestViaCredman: (request: RequestingDocumentState) -> Unit
+    onRequestPreviewProtocol: (request: RequestingDocumentState) -> Unit,
+    onRequestOpenId4VPProtocol: (request: RequestingDocumentState) -> Unit,
 ) {
     Box(modifier = modifier) {
         NfcLabel(
@@ -121,12 +123,23 @@ fun HomeScreen(
             ) {
                 Text(text = "Scan QR Code")
             }
-            Button(
-                modifier = Modifier
-                    .padding(8.dp),
-                onClick = { onRequestViaCredman(state) }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(5.dp)
             ) {
-                Text(text = "Request via Credman")
+                Column(
+                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp)
+                ) {
+                    Button(onClick = { onRequestPreviewProtocol(state) }) {
+                        Text(textAlign = TextAlign.Center, text = "Request Credentials (Preview)")
+                    }
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth().weight(1f).padding(3.dp)
+                ) {
+                    Button(onClick = { onRequestOpenId4VPProtocol(state)}) {
+                        Text(textAlign = TextAlign.Center, text = "Request Credentials (OpenID4VP)")
+                    }
+                }
             }
         }
     }
@@ -194,7 +207,9 @@ private fun HomeScreenPreview() {
             onSelectionUpdated = {},
             onRequestConfirm = {},
             onRequestQRCodePreview = {},
-            onRequestViaCredman = {},
+            onRequestPreviewProtocol = {},
+            onRequestOpenId4VPProtocol = {}
+
         )
     }
 }
