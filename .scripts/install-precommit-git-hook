@@ -1,0 +1,8 @@
+#!/bin/bash
+
+project_path=`pwd | xargs dirname`
+git config --local core.hooksPath $project_path
+ln -s ./pre-commit.ktlint ../.git/hooks/pre-commit.ktlint
+echo -e "\n==== Finished installing the KTLint pre-commit Git hook ==== \n"
+echo "Listing from project's .git/hooks/" 
+cd ../.git/hooks && ls -la | grep ktlint
