@@ -39,7 +39,6 @@ import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataParser
-import com.android.identity.mdoc.TestVectors
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.SecureArea
@@ -552,7 +551,8 @@ class DeviceResponseGeneratorTest {
         val deviceResponseGenerator = DeviceResponseGenerator(20)
         val encodedDeviceResponse = deviceResponseGenerator.generate()
 
-        Assert.assertArrayEquals(TestVectors.DEVICE_RESPONSE_NO_DOCUMENTS_STATUS_20.fromHex, encodedDeviceResponse)
+        // cbor of a DeviceResponse with no documents key: {"version": "1.0", "status": 20}
+        Assert.assertArrayEquals("A26776657273696F6E63312E306673746174757314".fromHex, encodedDeviceResponse)
     }
 
 
