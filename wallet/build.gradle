@@ -84,7 +84,6 @@ dependencies {
 
     implementation libs.net.sf.scuba.scuba.sc.android
     implementation libs.org.jmrtd.jmrtd
-
     implementation libs.androidx.camera.view
 
     androidTestImplementation libs.androidx.test.ext.junit

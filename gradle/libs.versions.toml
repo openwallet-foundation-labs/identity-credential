@@ -47,6 +47,7 @@
     junit = "4.13.2"
     org-jetbrains-kotlin-jvm = "1.8.20"
     accompanist-permissions = "0.34.0"
+    ktlint = "12.1.0"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -126,6 +127,8 @@
 
     accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist-permissions"}
 
+    ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
+
 [bundles]
     androidx-core = ["androidx-core-ktx", "androidx-appcompat", "androidx-material", "androidx-contraint-layout", "androidx-fragment-ktx", "androidx-legacy-v4", "androidx-preference-ktx", "androidx-work"]
     androidx-lifecycle = ["androidx-lifecycle-extensions", "androidx-lifecycle-livedata", "androidx-lifecycle-viewmodel"]
@@ -151,3 +154,4 @@
     parcelable = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
     ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
     org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "org-jetbrains-kotlin-jvm" }
+    ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
