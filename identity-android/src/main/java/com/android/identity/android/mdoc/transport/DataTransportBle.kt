@@ -240,6 +240,15 @@ abstract class DataTransportBle(
             baos.write(0x02)
             baos.write(0x1c) // LE Role
             baos.write(leRole)
+
+            // From section 8.3.3.1.1.2 in 18013-5:
+            // The following requirements apply for including the UUID field during NFC device engagement:
+            // — for Negotiated Handover, if the mdoc reader supports mdoc central client mode, it shall include a
+            // UUID in the Handover Request message, to be used for mdoc central client mode;
+            // — for Negotiated Handover, if the mdoc chooses to use mdoc peripheral server mode, it shall include a
+            // UUID in the Handover Select message, to be used for mdoc peripheral server mode;
+            // — for Static Handover, the mdoc shall send one UUID in the handover select message, to be used for
+            // mdoc central client mode, mdoc peripheral server mode or both.
             var isReaderClaimingCentralClient = !isForHandoverSelect && cm.supportsCentralClientMode;
             var isMdocClaimingPeripheralServer = isForHandoverSelect && cm.supportsPeripheralServerMode;
             var shouldIncludeUuid = !isNegotiatedHandover || (isNegotiatedHandover && (isReaderClaimingCentralClient || isMdocClaimingPeripheralServer));
