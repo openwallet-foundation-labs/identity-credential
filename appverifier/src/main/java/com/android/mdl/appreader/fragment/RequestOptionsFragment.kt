@@ -32,6 +32,7 @@ import com.android.identity.crypto.EcPublicKey
 import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.crypto.javaPrivateKey
 import com.android.identity.crypto.javaPublicKey
+import com.android.identity.util.Logger
 import com.android.mdl.appreader.document.RequestDocument
 import com.android.mdl.appreader.document.RequestDocumentList
 import com.android.mdl.appreader.home.HomeScreen
@@ -53,6 +54,9 @@ import java.security.KeyPair
 import java.security.SecureRandom
 
 class RequestOptionsFragment() : Fragment() {
+    companion object {
+        private const val TAG = "RequestOptionsFragment"
+    }
 
     private val createRequestViewModel: CreateRequestViewModel by activityViewModels()
     private val args: RequestOptionsFragmentArgs by navArgs()
@@ -136,7 +140,7 @@ class RequestOptionsFragment() : Fragment() {
         json.put("selector", selector)
         json.put("nonce", nonceEncoded)
         json.put("readerPublicKey", publicKeyBytesEncoded)
-        Log.i("TAG", json.toString(2))
+        Logger.i(TAG, json.toString(2))
         return json.toString()
     }
 
@@ -190,11 +194,11 @@ class RequestOptionsFragment() : Fragment() {
             resultReceiver = object: ResultReceiver(null) {
                 override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
                     super.onReceiveResult(resultCode, resultData)
-                    Log.i("TAG", "Got a result $resultCode $resultData")
+                    Logger.i(TAG, "Got a result $resultCode $resultData")
                     try {
                         val response = IntentHelper.extractGetCredentialResponse(resultCode, resultData!!)
                         val responseJson = String(response.credential.data.getByteArray("identityToken")!!)
-                        Log.i("TAG", "Response JSON $responseJson")
+                        Logger.i(TAG, "Response JSON $responseJson")
 
                         val bundle = Bundle()
                         bundle.putString("responseJson", responseJson)
@@ -205,6 +209,7 @@ class RequestOptionsFragment() : Fragment() {
                                 .toShowDeviceResponse(bundle, readerKeyPair))
                         }
                     } catch (e: GetCredentialException) {
+                        Logger.e(TAG, "An error occurred", e)
                         requireActivity().runOnUiThread {
                             Toast.makeText(
                                 requireContext(),
