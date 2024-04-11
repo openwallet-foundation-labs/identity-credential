@@ -185,7 +185,8 @@ abstract class DataTransportBle(
         fun toNdefRecord(
             cm: ConnectionMethodBle,
             auxiliaryReferences: List<String>,
-            isForHandoverSelect: Boolean
+            isForHandoverSelect: Boolean,
+            isNegotiatedHandover: Boolean
         ): Pair<NdefRecord, ByteArray>? {
             // The OOB data is defined in "Supplement to the Bluetooth Core Specification".
             //
@@ -239,7 +240,10 @@ abstract class DataTransportBle(
             baos.write(0x02)
             baos.write(0x1c) // LE Role
             baos.write(leRole)
-            if (uuid != null) {
+            var isReaderClaimingCentralClient = !isForHandoverSelect && cm.supportsCentralClientMode;
+            var isMdocClaimingPeripheralServer = isForHandoverSelect && cm.supportsPeripheralServerMode;
+            var shouldIncludeUuid = !isNegotiatedHandover || (isNegotiatedHandover && (isReaderClaimingCentralClient || isMdocClaimingPeripheralServer));
+            if (shouldIncludeUuid && uuid != null) {
                 baos.write(0x11) // Complete List of 128-bit Service UUID’s (0x07)
                 baos.write(0x07)
                 val uuidBuf = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)

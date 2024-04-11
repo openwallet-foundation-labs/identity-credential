@@ -334,7 +334,8 @@ class NfcEngagementHelper private constructor(
                 val hsMessage = NfcUtil.createNdefMessageHandoverSelect(
                     cmsFromTransports,
                     deviceEngagement,
-                    options
+                    options,
+                    false
                 )
                 Logger.dHex(TAG, "handleSelectFile: Handover Select", hsMessage)
                 val fileContents = ByteArray(hsMessage.size + 2)
@@ -625,7 +626,8 @@ class NfcEngagementHelper private constructor(
         val hsMessage = NfcUtil.createNdefMessageHandoverSelect(
             listWithSelectedConnectionMethod,
             deviceEngagement,
-            options
+            options,
+            true
         )
         val fileContents = ByteArray(hsMessage.size + 2)
         fileContents[0] = (hsMessage.size / 256).toByte()

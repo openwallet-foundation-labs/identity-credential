@@ -194,7 +194,8 @@ object NfcUtil {
         methods: List<ConnectionMethod>,
         encodedDeviceEngagement: ByteArray?,
         encodedReaderEngagement: ByteArray?,
-        options: DataTransportOptions?
+        options: DataTransportOptions?,
+        isNegotiatedHandover: Boolean
     ): ByteArray {
         var isHandoverSelect = false
         if (encodedDeviceEngagement != null) {
@@ -211,7 +212,7 @@ object NfcUtil {
         // TODO: we actually need to do the reverse disambiguation to e.g. merge two
         //  disambiguated BLE ConnectionMethods...
         for (cm in methods) {
-            val records = toNdefRecord(cm, auxiliaryReferences, isHandoverSelect)
+            val records = toNdefRecord(cm, auxiliaryReferences, isHandoverSelect, isNegotiatedHandover)
             if (records != null) {
                 if (Logger.isDebugEnabled) {
                     Logger.d(
@@ -267,13 +268,15 @@ object NfcUtil {
     fun createNdefMessageHandoverSelect(
         methods: List<ConnectionMethod>,
         encodedDeviceEngagement: ByteArray,
-        options: DataTransportOptions?
+        options: DataTransportOptions?,
+        isNegotiatedHandover: Boolean
     ): ByteArray {
         return createNdefMessageHandoverSelectOrRequest(
             methods,
             encodedDeviceEngagement,
             null,
-            options
+            options,
+            isNegotiatedHandover
         )
     }
 
@@ -287,7 +290,8 @@ object NfcUtil {
             methods,
             null,
             encodedReaderEngagement,
-            options
+            options,
+            true
         )
     }
 
@@ -538,13 +542,15 @@ object NfcUtil {
     fun toNdefRecord(
         connectionMethod: ConnectionMethod,
         auxiliaryReferences: List<String>,
-        isForHandoverSelect: Boolean
+        isForHandoverSelect: Boolean,
+        ifNegotiatedHandover: Boolean
     ): Pair<NdefRecord, ByteArray>? {
         if (connectionMethod is ConnectionMethodBle) {
             return DataTransportBle.toNdefRecord(
                 connectionMethod,
                 auxiliaryReferences,
-                isForHandoverSelect
+                isForHandoverSelect,
+                ifNegotiatedHandover
             )
         } else if (connectionMethod is ConnectionMethodNfc) {
             return DataTransportNfc.toNdefRecord(
