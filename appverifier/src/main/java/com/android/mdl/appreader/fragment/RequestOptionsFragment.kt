@@ -154,10 +154,6 @@ class RequestOptionsFragment() : Fragment() {
 
         // Generate the readerKey.
         val readerKey = Crypto.createEcPrivateKey(EcCurve.P256)
-        val readerKeyPair = KeyPair(
-            readerKey.publicKey.javaPublicKey,
-            readerKey.javaPrivateKey
-        )
 
         // TODO: Right now we just request the first of potentially multiple documents, it
         //  would be nice to request each document in sequence and then display all the
@@ -206,7 +202,14 @@ class RequestOptionsFragment() : Fragment() {
 
                         requireActivity().runOnUiThread {
                             findNavController().navigate(RequestOptionsFragmentDirections
-                                .toShowDeviceResponse(bundle, readerKeyPair))
+                                .toShowDeviceResponse(
+                                    bundle,
+                                    KeyPair(
+                                        readerKey.publicKey.javaPublicKey,
+                                        readerKey.javaPrivateKey
+                                    )
+                                )
+                            )
                         }
                     } catch (e: GetCredentialException) {
                         Logger.e(TAG, "An error occurred", e)

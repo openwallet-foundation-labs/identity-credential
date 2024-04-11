@@ -48,6 +48,7 @@
     org-jetbrains-kotlin-jvm = "1.8.20"
     accompanist-permissions = "0.34.0"
     ktlint = "12.1.0"
+    tink = "1.9.0"
 
 [libraries]
     androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -126,6 +127,7 @@
     play-services-tasks = { module = "com.google.android.gms:play-services-tasks", version = "18.0.2" }
 
     accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist-permissions"}
+    tink = { group = "com.google.crypto.tink", name = "tink-android", version.ref = "tink"}
 
     ktlint-gradle = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlint" }
 

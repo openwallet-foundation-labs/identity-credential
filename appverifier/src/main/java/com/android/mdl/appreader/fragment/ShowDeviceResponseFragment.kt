@@ -19,8 +19,13 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.android.identity.android.mdoc.util.CredmanUtil
 import com.android.identity.cbor.Cbor
+import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.crypto.javaPublicKey
 import com.android.identity.crypto.javaX509Certificates
+import com.android.identity.crypto.toEcPrivateKey
 import com.android.identity.mdoc.response.DeviceResponseParser
 import com.android.mdl.appreader.R
 import com.android.mdl.appreader.VerifierApp
@@ -76,22 +81,29 @@ class ShowDeviceResponseFragment : Fragment() {
         val responseJson = JSONObject(args.bundle.getString("responseJson")!!)
         val nonce = args.bundle.getByteArray("nonce")!!
         val requestIdentityKeyPair = args.requestIdentityKeyPair
+        val requestIdentityKey = requestIdentityKeyPair.private.toEcPrivateKey(
+            requestIdentityKeyPair.public,
+            EcCurve.P256
+        )
 
         val encryptedCredentialDocumentBase64 = responseJson.getString("token")!!
         val encryptedCredentialDocument = Base64.decode(encryptedCredentialDocumentBase64, Base64.URL_SAFE or Base64.NO_WRAP )
 
         val (cipherText, encapsulatedPublicKey) = CredmanUtil.parseCredentialDocument(encryptedCredentialDocument)
 
+        val uncompressed = (requestIdentityKey.publicKey as EcPublicKeyDoubleCoordinate).asUncompressedPointEncoding
         val encodedSessionTranscript = CredmanUtil.generateAndroidSessionTranscript(
             nonce,
             requireContext().packageName,
-            CredmanUtil.generatePublicKeyHash(requestIdentityKeyPair.public)
+            Crypto.digest(Algorithm.SHA256, uncompressed)
         )
 
-        val credmanUtil = CredmanUtil(requestIdentityKeyPair.public, requestIdentityKeyPair.private)
-        val encodedDeviceResponse = credmanUtil.decrypt(cipherText,
-            encapsulatedPublicKey as ECPublicKey,
-            encodedSessionTranscript)
+        val encodedDeviceResponse = Crypto.hpkeDecrypt(
+            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+            requestIdentityKey,
+            cipherText,
+            encodedSessionTranscript,
+            encapsulatedPublicKey)
 
         val parser = DeviceResponseParser(encodedDeviceResponse, encodedSessionTranscript)
         val deviceResponse = parser.parse()

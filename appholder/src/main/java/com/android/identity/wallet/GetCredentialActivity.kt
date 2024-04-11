@@ -9,13 +9,14 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
-import com.android.identity.android.mdoc.util.CredmanUtil.Companion.generateClientIdHash
-import com.android.identity.android.mdoc.util.CredmanUtil.Companion.generatePublicKeyHash
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.document.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.mdoc.mso.StaticAuthDataParser
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
@@ -30,12 +31,10 @@ import com.android.identity.wallet.util.log
 import com.google.android.gms.identitycredentials.GetCredentialResponse
 import com.google.android.gms.identitycredentials.IntentHelper
 import com.google.android.gms.identitycredentials.IntentHelper.EXTRA_CREDENTIAL_ID
-import com.google.android.gms.identitycredentials.IntentHelper.extractCallingAppInfo
 import com.google.android.gms.identitycredentials.IntentHelper.extractGetCredentialRequest
 import com.google.android.gms.identitycredentials.IntentHelper.setGetCredentialException
 import com.google.android.gms.identitycredentials.IntentHelper.setGetCredentialResponse
 import org.json.JSONObject
-import java.security.PublicKey
 import java.util.StringTokenizer
 
 class GetCredentialActivity : FragmentActivity() {
@@ -201,7 +200,8 @@ class GetCredentialActivity : FragmentActivity() {
 
                 // Covert nonce and publicKey
                 val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
-                val readerPublicKey = CredmanUtil.publicKeyFromUncompressed(
+                val readerPublicKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
+                    EcCurve.P256,
                     Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE)
                 )
 
@@ -227,20 +227,21 @@ class GetCredentialActivity : FragmentActivity() {
                     CredmanUtil.generateAndroidSessionTranscript(
                         nonce,
                         callingPackageName,
-                        generatePublicKeyHash(readerPublicKey)
+                        Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
                     )
                 } else {
                     CredmanUtil.generateBrowserSessionTranscript(
                         nonce,
                         callingOrigin,
-                        generatePublicKeyHash(readerPublicKey)
+                        Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
                     )
                 }
                 // Create ISO DeviceResponse
                 createMDocDeviceResponse(credentialId, dataElements, encodedSessionTranscript) { deviceResponse ->
                     // The Preview protocol HPKE encrypts the response.
-                    val credmanUtil = CredmanUtil(readerPublicKey, null)
-                    val (cipherText, encapsulatedPublicKey) = credmanUtil.encrypt(
+                    val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
+                        Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                        readerPublicKey,
                         deviceResponse,
                         encodedSessionTranscript
                     )
@@ -307,13 +308,13 @@ class GetCredentialActivity : FragmentActivity() {
                     CredmanUtil.generateAndroidSessionTranscript(
                         nonce,
                         callingPackageName,
-                        generateClientIdHash(clientID)
+                        Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
                     )
                 } else {
                     CredmanUtil.generateBrowserSessionTranscript(
                         nonce,
                         callingOrigin,
-                        generateClientIdHash(clientID)
+                        Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
                     )
                 }
                 // Create ISO DeviceResponse

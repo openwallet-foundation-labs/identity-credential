@@ -20,6 +20,7 @@ dependencies {
     implementation libs.kotlinx.io.bytestring
     implementation libs.kotlinx.datetime
     implementation libs.kotlinx.coroutines.core
+    implementation libs.tink
 
     testImplementation libs.bundles.unit.testing
     testImplementation libs.bouncy.castle.bcprov

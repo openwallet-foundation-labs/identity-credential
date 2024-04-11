@@ -21,7 +21,6 @@ import android.os.Bundle
 import android.util.Base64
 import androidx.fragment.app.FragmentActivity
 import com.android.identity.android.mdoc.util.CredmanUtil
-import com.android.identity.android.mdoc.util.CredmanUtil.Companion.generatePublicKeyHash
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.cbor.Cbor
@@ -29,6 +28,9 @@ import com.android.identity.document.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.crypto.Algorithm
+import com.android.identity.crypto.Crypto
+import com.android.identity.crypto.EcCurve
+import com.android.identity.crypto.EcPublicKeyDoubleCoordinate
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.mso.MobileSecurityObjectParser
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -178,7 +180,8 @@ class CredmanPresentationActivity : FragmentActivity() {
 
                 // Covert nonce and publicKey
                 val nonce = Base64.decode(nonceBase64, Base64.NO_WRAP or Base64.URL_SAFE)
-                val readerPublicKey = CredmanUtil.publicKeyFromUncompressed(
+                val readerPublicKey = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(
+                    EcCurve.P256,
                     Base64.decode(readerPublicKeyBase64, Base64.NO_WRAP or Base64.URL_SAFE)
                 )
 
@@ -204,20 +207,21 @@ class CredmanPresentationActivity : FragmentActivity() {
                     CredmanUtil.generateAndroidSessionTranscript(
                         nonce,
                         callingPackageName,
-                        generatePublicKeyHash(readerPublicKey)
+                        Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
                     )
                 } else {
                     CredmanUtil.generateBrowserSessionTranscript(
                         nonce,
                         callingOrigin,
-                        generatePublicKeyHash(readerPublicKey)
+                        Crypto.digest(Algorithm.SHA256, readerPublicKey.asUncompressedPointEncoding)
                     )
                 }
                 // Create ISO DeviceResponse
                 createMDocDeviceResponse(credentialId, dataElements, encodedSessionTranscript) { deviceResponse ->
                     // The Preview protocol HPKE encrypts the response.
-                    val credmanUtil = CredmanUtil(readerPublicKey, null)
-                    val (cipherText, encapsulatedPublicKey) = credmanUtil.encrypt(
+                    val (cipherText, encapsulatedPublicKey) = Crypto.hpkeEncrypt(
+                        Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+                        readerPublicKey,
                         deviceResponse,
                         encodedSessionTranscript
                     )
@@ -287,13 +291,13 @@ class CredmanPresentationActivity : FragmentActivity() {
                     CredmanUtil.generateAndroidSessionTranscript(
                         nonce,
                         callingPackageName,
-                        CredmanUtil.generateClientIdHash(clientID)
+                        Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
                     )
                 } else {
                     CredmanUtil.generateBrowserSessionTranscript(
                         nonce,
                         callingOrigin,
-                        CredmanUtil.generateClientIdHash(clientID)
+                        Crypto.digest(Algorithm.SHA256, clientID.toByteArray())
                     )
                 }
                 // Create ISO DeviceResponse
