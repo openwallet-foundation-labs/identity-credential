@@ -54,7 +54,7 @@ abstract class WebViewContentRenderer {
         backgroundColor: Color = MaterialTheme.colorScheme.surface,
         assets: Map<String, ByteArray>? = null
     ) {
-        var contentHeight = remember { mutableIntStateOf(0) }
+        val contentHeight = remember { mutableIntStateOf(0) }
         var m = modifier;
         if (contentHeight.intValue > 0) {
             m = m.height(contentHeight.intValue.dp)
@@ -68,7 +68,6 @@ abstract class WebViewContentRenderer {
                     backgroundColor = backgroundColor
                 )
             )
-            val client = ClientImpl(bootstrapHtml, assets)
             AndroidView(factory = { context ->
                 val webView = WebView(context).apply {
                     layoutParams = ViewGroup.LayoutParams(
@@ -79,7 +78,7 @@ abstract class WebViewContentRenderer {
 
                     settings.javaScriptEnabled = true
 
-                    webViewClient = client
+                    webViewClient = ClientImpl(bootstrapHtml, assets)
                 }
 
                 val mainHandler = android.os.Handler(context.mainLooper)
@@ -102,6 +101,7 @@ abstract class WebViewContentRenderer {
 
                 webView
             }, update = { webView ->
+                val client = webView.webViewClient as ClientImpl
                 client.assets = assets
                 webView.isHorizontalScrollBarEnabled = false
                 webView.isVerticalScrollBarEnabled = verticalScrolling

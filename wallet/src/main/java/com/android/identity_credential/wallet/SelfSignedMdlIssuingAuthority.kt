@@ -77,6 +77,9 @@ class SelfSignedMdlIssuingAuthority(
     override fun getProofingGraphRoot(
         registrationResponse: RegistrationResponse,
     ): SimpleIssuingAuthorityProofingGraph.Node {
+        val devAssets = mapOf("tools.svg" to resourceBytes(R.raw.tools))
+        val devNotice = "\n\n![Development Setting](tools.svg){style=height:1.5em;vertical-align:middle;margin-right:0.5em}" +
+                " Development Mode setting"
         return SimpleIssuingAuthorityProofingGraph.create {
             message(
                 "tos",
@@ -92,6 +95,17 @@ class SelfSignedMdlIssuingAuthority(
                 acceptButtonText = "Continue"
             ) {
                 on(id = "hardcoded", text = resourceString(R.string.utopia_mdl_issuing_authority_hardcoded_option)) {
+                    if (registrationResponse.developerModeEnabled) {
+                        choice(
+                            id = "devmode_image_format",
+                            message = "Choose format for images in mDL $devNotice",
+                            assets = devAssets,
+                            acceptButtonText = "Continue"
+                        ) {
+                            on(id = "devmode_image_format_jpeg", text = "JPEG") {}
+                            on(id = "devmode_image_format_jpeg2000", text = "JPEG 2000") {}
+                        }
+                    }
                 }
                 on(id = "passport", text = resourceString(R.string.utopia_mdl_issuing_authority_passport_option)) {
                     icaoTunnel("tunnel", listOf(1, 2, 7), true) {
@@ -102,24 +116,17 @@ class SelfSignedMdlIssuingAuthority(
                 }
             }
             if (registrationResponse.developerModeEnabled) {
-                message(
-                    "devmode_message",
-                    message = "The following screens appear only because Developer Mode is enabled",
-                    assets = mapOf(),
-                    acceptButtonText = resourceString(R.string.utopia_mdl_issuing_authority_continue),
-                    null
-                )
                 choice(
                     id = "devmode_sa",
-                    message = "Choose Secure Area",
-                    assets = mapOf(),
+                    message = "Choose Secure Area $devNotice",
+                    assets = devAssets,
                     acceptButtonText = "Continue"
                 ) {
                     on(id = "devmode_sa_android", text = "Android Keystore") {
                         choice(
                             id = "devmode_sa_android_use_strongbox",
-                            message = "Use StrongBox",
-                            assets = mapOf(),
+                            message = "Use StrongBox $devNotice",
+                            assets = devAssets,
                             acceptButtonText = "Continue"
                         ) {
                             on(id = "devmode_sa_android_use_strongbox_no", text = "Don't use StrongBox") {}
@@ -127,8 +134,8 @@ class SelfSignedMdlIssuingAuthority(
                         }
                         choice(
                             id = "devmode_sa_android_user_auth",
-                            message = "Choose user authentication",
-                            assets = mapOf(),
+                            message = "Choose user authentication $devNotice",
+                            assets = devAssets,
                             acceptButtonText = "Continue"
                         ) {
                             on(id = "devmode_sa_android_user_auth_lskf_biometrics", text = "LSKF or Biometrics") {}
@@ -138,8 +145,8 @@ class SelfSignedMdlIssuingAuthority(
                         }
                         choice(
                             id = "devmode_sa_android_mdoc_auth",
-                            message = "Choose mdoc authentication mode and EC curve",
-                            assets = mapOf(),
+                            message = "Choose mdoc authentication mode and EC curve $devNotice",
+                            assets = devAssets,
                             acceptButtonText = "Continue"
                         ) {
                             on(id = "devmode_sa_android_mdoc_auth_ecdsa_p256", text = "ECDSA w/ P-256") {}
@@ -154,25 +161,25 @@ class SelfSignedMdlIssuingAuthority(
                     on(id = "devmode_sa_software", text = "Software") {
                         choice(
                             id = "devmode_sa_software_passphrase_complexity",
-                            message = "Choose what kind of passphrase to use",
-                            assets = mapOf(),
+                            message = "Choose what kind of passphrase to use $devNotice",
+                            assets = devAssets,
                             acceptButtonText = "Continue"
                         ) {
                             on(id = "devmode_sa_software_passphrase_6_digit_pin", text = "6-digit PIN") {
                                 createPassphrase(
                                     "devmode_sa_software_passphrase",
-                                    message = "## Choose 6-digit PIN\n\nChoose the PIN to use for the document.\n\nThis is asked every time the document is presented so make sure you memorize it and don't share it with anyone else.",
-                                    verifyMessage = "## Verify PIN\n\nEnter the PIN you chose in the previous screen.",
-                                    assets = mapOf(),
+                                    message = "## Choose 6-digit PIN\n\nChoose the PIN to use for the document.\n\nThis is asked every time the document is presented so make sure you memorize it and don't share it with anyone else. $devNotice",
+                                    verifyMessage = "## Verify PIN\n\nEnter the PIN you chose in the previous screen. $devNotice",
+                                    assets = devAssets,
                                     PassphraseConstraints.PIN_SIX_DIGITS
                                 )
                             }
                             on(id = "devmode_sa_software_passphrase_8_char_or_longer_passphrase", text = "Passphrase 8 chars or longer") {
                                 createPassphrase(
                                     "devmode_sa_software_passphrase",
-                                    message = "## Choose passphrase\n\nChoose the passphrase to use for the document.\n\nThis is asked every time the document is presented so make sure you memorize it and don't share it with anyone else.",
-                                    verifyMessage = "## Verify passphrase\n\nEnter the passphrase you chose in the previous screen.",
-                                    assets = mapOf(),
+                                    message = "## Choose passphrase\n\nChoose the passphrase to use for the document.\n\nThis is asked every time the document is presented so make sure you memorize it and don't share it with anyone else. $devNotice",
+                                    verifyMessage = "## Verify passphrase\n\nEnter the passphrase you chose in the previous screen. $devNotice",
+                                    assets = devAssets,
                                     PassphraseConstraints(8, Int.MAX_VALUE, false)
                                 )
                             }
@@ -180,8 +187,8 @@ class SelfSignedMdlIssuingAuthority(
                         }
                         choice(
                             id = "devmode_sa_software_mdoc_auth",
-                            message = "Choose mdoc authentication mode and EC curve",
-                            assets = mapOf(),
+                            message = "Choose mdoc authentication mode and EC curve $devNotice",
+                            assets = devAssets,
                             acceptButtonText = "Continue"
                         ) {
                             on(id = "devmode_sa_software_mdoc_auth_ecdsa_p256", text = "ECDSA w/ P-256") {}
@@ -390,7 +397,10 @@ class SelfSignedMdlIssuingAuthority(
 
         val path = (collectedEvidence["path"] as EvidenceResponseQuestionMultipleChoice).answerId
         if (path == "hardcoded") {
-            staticData = getSampleData(credType).build()
+            val imageFormat = collectedEvidence["devmode_image_format"]
+            val jpeg2k = imageFormat is EvidenceResponseQuestionMultipleChoice &&
+                    imageFormat.answerId == "devmode_image_format_jpeg2000"
+            staticData = getSampleData(jpeg2k, credType).build()
         } else {
             val icaoPassiveData = collectedEvidence["passive"]
             val icaoTunnelData = collectedEvidence["tunnel"]
@@ -493,9 +503,17 @@ class SelfSignedMdlIssuingAuthority(
         )
     }
 
-    private fun getSampleData(documentType: DocumentType): NameSpacedData.Builder {
-        val portrait = bitmapData(R.drawable.img_erika_portrait)
-        val signatureOrUsualMark = bitmapData(R.drawable.img_erika_signature)
+    private fun getSampleData(jpeg2k: Boolean, documentType: DocumentType): NameSpacedData.Builder {
+        val portrait = if (jpeg2k) {
+            resourceBytes(R.raw.img_erika_portrait)
+        } else {
+            bitmapData(R.drawable.img_erika_portrait)
+        }
+        val signatureOrUsualMark = if (jpeg2k) {
+            resourceBytes(R.raw.img_erika_signature)
+        } else {
+            bitmapData(R.drawable.img_erika_signature)
+        }
         val builder = NameSpacedData.Builder()
         for ((namespaceName, namespace) in documentType.mdocDocumentType!!.namespaces) {
             for ((dataElementName, dataElement) in namespace.dataElements) {

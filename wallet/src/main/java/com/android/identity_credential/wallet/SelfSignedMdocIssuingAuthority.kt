@@ -159,11 +159,11 @@ abstract class SelfSignedMdocIssuingAuthority(
 
     }
 
-    protected fun bitmapData(defaultResourceId: Int): ByteArray {
+    protected fun bitmapData(resourceId: Int): ByteArray {
         val baos = ByteArrayOutputStream()
         BitmapFactory.decodeResource(
             application.applicationContext.resources,
-            defaultResourceId
+            resourceId
         ).compress(Bitmap.CompressFormat.JPEG, 90, baos)
         return baos.toByteArray()
     }
