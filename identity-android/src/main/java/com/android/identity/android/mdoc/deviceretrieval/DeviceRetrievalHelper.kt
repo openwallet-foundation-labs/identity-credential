@@ -32,6 +32,7 @@ import com.android.identity.mdoc.origininfo.OriginInfo
 import com.android.identity.mdoc.sessionencryption.SessionEncryption
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
+import java.lang.NullPointerException
 import java.util.concurrent.Executor
 
 /**
@@ -290,7 +291,16 @@ class DeviceRetrievalHelper internal constructor(
 
     private fun processMessageReceived(data: ByteArray) {
         Logger.dCbor(TAG, "SessionData received", data)
-        val status = ensureSessionEncryption(data)
+        val status = try {
+            ensureSessionEncryption(data)
+        } catch(e: Exception) {
+            when(e) {
+                is IllegalStateException,
+                is IllegalArgumentException,
+                is NullPointerException -> Constants.SESSION_DATA_STATUS_SESSION_TERMINATION
+                else -> throw e
+            }
+        }
         if (status != null) {
             transport!!.sendMessage(SessionEncryption.encodeStatus(status))
             transport!!.close()
