@@ -104,7 +104,6 @@ class GetCredentialActivity : FragmentActivity() {
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
                     Logger.d("TAG", "onAuthenticationFailed")
-                    onBiometricAuthCompleted(null)
                 }
             })
 
