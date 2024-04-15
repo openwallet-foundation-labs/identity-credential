@@ -198,18 +198,75 @@ class CryptoTests {
         val privateKey2 = EcPrivateKey.fromPem(pemPrivateKey, publicKey)
         Assert.assertEquals(privateKey2, privateKey)
     }
-    
-    @Test fun testPemEncodeDecode_P256() = testPemEncodeDecode(EcCurve.P256)
-    @Test fun testPemEncodeDecode_P384() = testPemEncodeDecode(EcCurve.P384)
-    @Test fun testPemEncodeDecode_P521() = testPemEncodeDecode(EcCurve.P521)
-    @Test fun testPemEncodeDecode_BRAINPOOLP256R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP256R1)
-    @Test fun testPemEncodeDecode_BRAINPOOLP320R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP320R1)
-    @Test fun testPemEncodeDecode_BRAINPOOLP384R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP384R1)
-    @Test fun testPemEncodeDecode_BRAINPOOLP512R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP512R1)
-    @Test fun testPemEncodeDecode_ED25519() = testPemEncodeDecode(EcCurve.ED25519)
-    @Test fun testPemEncodeDecode_X25519() = testPemEncodeDecode(EcCurve.X25519)
-    @Test fun testPemEncodeDecode_ED448() = testPemEncodeDecode(EcCurve.ED448)
-    @Test fun testPemEncodeDecode_X448() = testPemEncodeDecode(EcCurve.X448)
+
+    @Test
+    fun testPemEncodeDecode_P256() = testPemEncodeDecode(EcCurve.P256)
+    @Test
+    fun testPemEncodeDecode_P384() = testPemEncodeDecode(EcCurve.P384)
+    @Test
+    fun testPemEncodeDecode_P521() = testPemEncodeDecode(EcCurve.P521)
+    @Test
+    fun testPemEncodeDecode_BRAINPOOLP256R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP256R1)
+    @Test
+    fun testPemEncodeDecode_BRAINPOOLP320R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP320R1)
+    @Test
+    fun testPemEncodeDecode_BRAINPOOLP384R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP384R1)
+    @Test
+    fun testPemEncodeDecode_BRAINPOOLP512R1() = testPemEncodeDecode(EcCurve.BRAINPOOLP512R1)
+    @Test
+    fun testPemEncodeDecode_ED25519() = testPemEncodeDecode(EcCurve.ED25519)
+    @Test
+    fun testPemEncodeDecode_X25519() = testPemEncodeDecode(EcCurve.X25519)
+    @Test
+    fun testPemEncodeDecode_ED448() = testPemEncodeDecode(EcCurve.ED448)
+    @Test
+    fun testPemEncodeDecode_X448() = testPemEncodeDecode(EcCurve.X448)
+
+    fun testUncompressedFromTo(curve: EcCurve) {
+        val privateKey = Crypto.createEcPrivateKey(curve)
+        val publicKey = privateKey.publicKey as EcPublicKeyDoubleCoordinate
+
+        val uncompressedForm = publicKey.asUncompressedPointEncoding
+        val key = EcPublicKeyDoubleCoordinate.fromUncompressedPointEncoding(curve, uncompressedForm)
+
+        Assert.assertEquals(key, publicKey)
+    }
+
+    @Test
+    fun testUncompressedFromTo_P256() = testUncompressedFromTo(EcCurve.P256)
+    @Test
+    fun testUncompressedFromTo_P384() = testUncompressedFromTo(EcCurve.P384)
+    @Test
+    fun testUncompressedFromTo_P521() = testUncompressedFromTo(EcCurve.P521)
+    @Test
+    fun testUncompressedFromTo_BRAINPOOLP256R1() = testUncompressedFromTo(EcCurve.BRAINPOOLP256R1)
+    @Test
+    fun testUncompressedFromTo_BRAINPOOLP320R1() = testUncompressedFromTo(EcCurve.BRAINPOOLP320R1)
+    @Test
+    fun testUncompressedFromTo_BRAINPOOLP384R1() = testUncompressedFromTo(EcCurve.BRAINPOOLP384R1)
+    @Test
+    fun testUncompressedFromTo_BRAINPOOLP512R1() = testUncompressedFromTo(EcCurve.BRAINPOOLP512R1)
 
 
+    @Test
+    fun testHpkeRoundtrip() {
+        val receiver = Crypto.createEcPrivateKey(EcCurve.P256)
+        val plainText = "Hello World".toByteArray()
+        val aad = "123".toByteArray()
+
+        val (cipherText, encKey) = Crypto.hpkeEncrypt(
+            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+            receiver.publicKey,
+            plainText,
+            aad)
+
+        val decryptedText = Crypto.hpkeDecrypt(
+            Algorithm.HPKE_BASE_P256_SHA256_AES128GCM,
+            receiver,
+            cipherText,
+            aad,
+            encKey)
+
+        Assert.assertArrayEquals(decryptedText, plainText)
+    }
 }

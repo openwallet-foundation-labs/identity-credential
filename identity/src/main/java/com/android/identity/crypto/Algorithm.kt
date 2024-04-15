@@ -49,6 +49,16 @@ enum class Algorithm(val coseAlgorithmIdentifier: Int) {
     /** AES-GCM mode w/ 256-bit key, 128-bit tag */
     A256GCM(3),
 
+    /**
+     * Cipher suite for COSE-HPKE in Base Mode that uses the DHKEM(P-256, HKDF-SHA256) KEM,
+     * the HKDF-SHA256 KDF and the AES-128-GCM AEAD.
+     *
+     * Note that this value is still TBD and the proposed value is from
+     * [Use of Hybrid Public-Key Encryption (HPKE) with CBOR Object Signing and Encryption (COSE)](https://www.ietf.org/archive/id/draft-ietf-cose-hpke-07.html#IANA)
+     *
+     */
+    HPKE_BASE_P256_SHA256_AES128GCM(35),
+
     ;
 
     companion object {
