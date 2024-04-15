@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -43,10 +44,10 @@ import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.securearea.AndroidKeystoreKeyInfo
 import com.android.identity.android.securearea.AndroidKeystoreKeyUnlockData
 import com.android.identity.android.securearea.UserAuthenticationType
-import com.android.identity.document.Credential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.EcPrivateKey
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.document.Credential
 import com.android.identity.issuance.DocumentExtensions.documentConfiguration
 import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.securearea.KeyUnlockData
@@ -104,7 +105,53 @@ class PresentationActivity : FragmentActivity() {
         fun isPresentationActive(): Boolean {
             return state.value != State.NOT_CONNECTED
         }
+    } // end companion object
+
+    /**
+     * Defines the flows of UI screens/dialogs/components that the user can get into and provide
+     * the results of the user's interaction with each flow so as to proceed to the "next" flow.
+     *
+     * A "flow" defines its own UI behavior (such as ConsentPrompt) and has its own flow of operations.
+     * Each flow ultimately updates the ReturnState that is a result of the user's interaction with the
+     * previous or current flow.
+     */
+    sealed class PresentationFlow {
+        // A flow's return state is tied to the user's interaction with the flow, such tapping on "Cancel"
+        enum class ReturnState {
+            SUCCESS, // from user
+            CANCEL, // from user - generally we don't use this because we just close the activity if user taps on Cancel
+            LOCKED_AUTHENTICATION_KEY, // for biometrics from os/app
+            INIT // for initialization of state
+        }
+
+
+        /**
+         * ConsentPrompt Flow - On confirmation, attempt to finish processing request and if auth key
+         * is locked then change [presentationFlow] to [PresentationFlow.BiometricsPrompt] and set
+         * [flowReturnState] to [PresentationFlow.ReturnState.LOCKED_AUTHENTICATION_KEY]
+         */
+        object ConsentPrompt : PresentationFlow()
+
+        /**
+         * BiometricsPrompt - if return state is [PresentationFlow.ReturnState.LOCKED_AUTHENTICATION_KEY]
+         * show biometrics prompt. On success, save the unlock key data and auth key to use in the next flow
+         * and set flow to [PresentationFlow.PassphrasePrompt]  and save bytes for submitting request.
+         */
+        object BiometricsPrompt : PresentationFlow()
+
+        /**
+         * PassphrasePrompt - prompt the user for a passphrase, if successful invokes [onFinishedProcessingRequestGlobal]
+         * with bytes [processedByteArray] (saved from biometrics prompt success) and submits the response.
+         */
+        object PassphrasePrompt : PresentationFlow()
+
+        /**
+         * None : used to initialize MutableStateFlow keeping track of the flow as user progresses.
+         */
+        object None : PresentationFlow()
+
     }
+
 
     enum class State {
         NOT_CONNECTED,
@@ -120,11 +167,10 @@ class PresentationActivity : FragmentActivity() {
 
     private var deviceRequest: ByteArray? = null
     private var deviceRetrievalHelper: DeviceRetrievalHelper? = null
-    private var consentData: ConsentPromptData? = null
 
     // Transfer helper facilitates starting processing a presentation request and obtaining the
-    // response bytes once processing has finished. This enables showing one or more dialogs to
-    // the user to accept before sending a response to requesting party.
+// response bytes once processing has finished. This enables showing one or more dialogs to
+// the user to accept before sending a response to requesting party.
     private var transferHelper: TransferHelper? = null
 
     // Define the Builder for building a TransferHelper once it gets new instance of DeviceRetrievalHelper
@@ -146,7 +192,7 @@ class PresentationActivity : FragmentActivity() {
     }
 
     // lambda called with response bytes once the request has finished processing and is ready to be sent to requesting party
-    private val onFinishedProcessingRequest: (ByteArray) -> Unit = { encodedDeviceResponse ->
+    private val onFinishedProcessingRequestGlobal: (ByteArray) -> Unit = { encodedDeviceResponse ->
         // ensure we are in the right state before sending the response
         check(state.value == State.REQUEST_AVAILABLE) { "Not in REQUEST_AVAILABLE state" }
 
@@ -164,64 +210,35 @@ class PresentationActivity : FragmentActivity() {
         finish()
     }
 
-    private fun onAuthenticationKeyLocked(authKey: Credential) {
-        val keyInfo = authKey.secureArea.getKeyInfo(authKey.alias)
-        var userAuthenticationTypes = emptySet<UserAuthenticationType>()
-        if (keyInfo is AndroidKeystoreKeyInfo) {
-            userAuthenticationTypes = keyInfo.userAuthenticationTypes
-        }
+    data class BiometricsPromptData(
+        val keyUnlockData: KeyUnlockData?,
+        val authKey: Credential?,
+    )
 
-        val unlockData = AndroidKeystoreKeyUnlockData(authKey.alias)
-        val cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
-
-        showBiometricPrompt(
-            activity = this,
-            title = applicationContext.resources.getString(R.string.presentation_biometric_prompt_title),
-            subtitle = applicationContext.resources.getString(R.string.presentation_biometric_prompt_subtitle),
-            cryptoObject = cryptoObject,
-            userAuthenticationTypes = userAuthenticationTypes,
-            requireConfirmation = false,
-            onCanceled = { finish() },
-            onSuccess = { finishProcessingRequest(unlockData, authKey) },
-            onError = {exception ->
-                Logger.e(TAG, exception.toString())
-                finish() },
-        )
-    }
-
-    private fun finishProcessingRequest(
-        keyUnlockData: KeyUnlockData? = null,
-        authKey: Credential? = null,
-    ) {
-        // finish processing the request on IO thread
-        lifecycleScope.launch {
-            transferHelper?.finishProcessingRequest(
-                requestedDocType = consentData!!.docType,
-                credentialId = consentData!!.credentialId,
-                documentRequest = consentData!!.documentRequest,
-                keyUnlockData = keyUnlockData,
-                onFinishedProcessing = onFinishedProcessingRequest,
-                onAuthenticationKeyLocked = { onAuthenticationKeyLocked(it) },
-                authKey = authKey
-            )
-        }
-    }
-
-    override fun onDestroy() {
-        Logger.i(TAG, "onDestroy")
-        disconnect()
-        super.onDestroy()
-    }
+    var biometricsPromptData: BiometricsPromptData? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Logger.i(TAG, "onCreate")
         super.onCreate(savedInstanceState)
+        var authKeyLockedCredential: Credential? = null
+        var processedByteArray: ByteArray? = null
 
+        data class BiometricsPromptData(
+            val keyUnlockData: KeyUnlockData?,
+            val authKey: Credential?,
+        )
+
+        var biometricsPromptData: BiometricsPromptData? = null
         setContent {
             IdentityCredentialTheme {
 
                 val stateDisplay = remember { mutableStateOf("Idle") }
                 val consentPromptData = remember { mutableStateOf<ConsentPromptData?>(null) }
+                // the current presentation flow being shown to the user
+                val presentationFlow =
+                    remember { mutableStateOf<PresentationFlow>(PresentationFlow.None) }
+                // the return state of a flow as a result of the user interacting with it
+                val flowReturnState = remember { mutableStateOf(PresentationFlow.ReturnState.INIT) }
 
                 state.observe(this as LifecycleOwner) { state ->
                     when (state) {
@@ -295,23 +312,160 @@ class PresentationActivity : FragmentActivity() {
                         }
                     }
 
-                    // when consent data is available, show consent prompt above activity's UI
-                    consentData = consentPromptData.value
-                    if (consentData != null) {
-                        ConsentPrompt(
-                            consentData = consentData!!,
-                            documentTypeRepository = walletApp.documentTypeRepository,
-                            onConfirm = { // user accepted to send requested credential data
-                                finishProcessingRequest()
-                            },
-                            onCancel = { // user declined submitting data to requesting party
-                                finish() // close activity
+
+                    // show the appropriate Presentation Flow and handle processing
+                    when (presentationFlow.value) {
+                        // first time activity runs, no flow is actively showing
+                        PresentationFlow.None -> {
+                            // show as soon as consent data is populated and available
+                            consentPromptData.value?.let {
+                                // set flow to show be consent prompt
+                                presentationFlow.value = PresentationFlow.ConsentPrompt
+
+                                // show ConsentPrompt and update return state on confirmation
+                                ConsentPrompt(
+                                    consentData = it,
+                                    documentTypeRepository = walletApp.documentTypeRepository,
+                                    onConfirm = { // user accepted to send requested credential data
+                                        // update return state for consent prompt flow
+                                        flowReturnState.value = PresentationFlow.ReturnState.SUCCESS
+                                    },
+                                    onCancel = { // user declined submitting data to requesting party
+                                        finish() // close activity, don't propagate a ReturnState
+                                    }
+                                )
                             }
-                        )
+                        }
+
+                        // user is viewing the Consent Prompt flow
+                        PresentationFlow.ConsentPrompt -> {
+                            // check whether user confirmed consent prompt
+                            if (flowReturnState.value == PresentationFlow.ReturnState.SUCCESS) {
+                                // proceed attempting to finish processing the request
+                                finishProcessingRequest(onAuthKeyLocked = {
+                                    // auth key is locked - change presentation flow to go to biometrics
+                                    presentationFlow.value = PresentationFlow.BiometricsPrompt
+                                    // set return state (in this case from consent prompt) to be evaluated during biometrics flow
+                                    flowReturnState.value =
+                                        PresentationFlow.ReturnState.LOCKED_AUTHENTICATION_KEY
+                                    // save this credential to be used to unlock the key
+                                    authKeyLockedCredential = it
+                                }, consentData = consentPromptData.value)
+                            }
+                        }
+
+                        // user is viewing biometrics flow
+                        PresentationFlow.BiometricsPrompt -> {
+                            when (flowReturnState.value) {
+                                // the return state from current or previous flow is "locked auth key"
+                                PresentationFlow.ReturnState.LOCKED_AUTHENTICATION_KEY -> {
+                                    // show the biometrics prompt
+                                    onAuthenticationKeyLocked(
+                                        authKeyLockedCredential!!,
+                                        flowReturnState
+                                    )
+                                }
+
+                                // we have a valid key unlock data and auth key to use for retrying finishing processing request
+                                PresentationFlow.ReturnState.SUCCESS -> {
+                                    finishProcessingRequest(
+                                        keyUnlockData = biometricsPromptData!!.keyUnlockData,
+                                        authKey = biometricsPromptData!!.authKey,
+                                        onAuthKeyLocked = {
+                                            // if it's still locked we'll need to re-prompt (shouldn't happen)
+                                            flowReturnState.value =
+                                                PresentationFlow.ReturnState.LOCKED_AUTHENTICATION_KEY
+                                            // for this credential
+                                            authKeyLockedCredential = it
+                                        },
+                                        onFinishedProcessingRequest = {
+                                            // track the processed bytes to pass to the global lambda for submitting the request
+                                            processedByteArray = it
+                                            // change set flow to passphrase
+                                            presentationFlow.value =
+                                                PresentationFlow.PassphrasePrompt
+                                            flowReturnState.value =
+                                                PresentationFlow.ReturnState.INIT
+                                        },
+                                        consentData = consentPromptData.value
+                                    )
+                                }
+
+                                else -> {}
+                            }
+                        }
+
+                        // user is on the Passphrase flow
+                        PresentationFlow.PassphrasePrompt -> {
+
+                        }
                     }
                 }
             }
         }
+    }
+
+    private fun onAuthenticationKeyLocked(
+        authKey: Credential,
+        flowReturnState: MutableState<PresentationFlow.ReturnState>,
+    ) {
+        val keyInfo = authKey.secureArea.getKeyInfo(authKey.alias)
+        var userAuthenticationTypes = emptySet<UserAuthenticationType>()
+        if (keyInfo is AndroidKeystoreKeyInfo) {
+            userAuthenticationTypes = keyInfo.userAuthenticationTypes
+        }
+
+        val unlockData = AndroidKeystoreKeyUnlockData(authKey.alias)
+        val cryptoObject = unlockData.getCryptoObjectForSigning(Algorithm.ES256)
+
+        showBiometricPrompt(
+            activity = this,
+            title = applicationContext.resources.getString(R.string.presentation_biometric_prompt_title),
+            subtitle = applicationContext.resources.getString(R.string.presentation_biometric_prompt_subtitle),
+            cryptoObject = cryptoObject,
+            userAuthenticationTypes = userAuthenticationTypes,
+            requireConfirmation = false,
+            onCanceled = { finish() },
+            onSuccess = {
+                // save unlock data and auth key that was a success from biometrics authentication
+                biometricsPromptData = BiometricsPromptData(unlockData, authKey)
+                flowReturnState.value = PresentationFlow.ReturnState.SUCCESS
+            },
+            onError = { exception ->
+                Logger.e(TAG, exception.toString())
+                finish()
+            },
+        )
+    }
+
+    private fun finishProcessingRequest(
+        keyUnlockData: KeyUnlockData? = null,
+        authKey: Credential? = null,
+        onAuthKeyLocked: (credential: Credential) -> Unit,
+        onFinishedProcessingRequest: (ByteArray) -> Unit = {
+            // make sure the override - if this param is supplied - to also invoke onFinishedProcessingRequestGlobal
+            onFinishedProcessingRequestGlobal.invoke(it)
+        },
+        consentData: ConsentPromptData?
+    ) {
+        // finish processing the request on IO thread
+        lifecycleScope.launch {
+            transferHelper?.finishProcessingRequest(
+                requestedDocType = consentData!!.docType,
+                credentialId = consentData!!.credentialId,
+                documentRequest = consentData!!.documentRequest,
+                keyUnlockData = keyUnlockData,
+                onFinishedProcessing = onFinishedProcessingRequest,
+                onAuthenticationKeyLocked = onAuthKeyLocked,
+                authKey = authKey
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        Logger.i(TAG, "onDestroy")
+        disconnect()
+        super.onDestroy()
     }
 
     /**
