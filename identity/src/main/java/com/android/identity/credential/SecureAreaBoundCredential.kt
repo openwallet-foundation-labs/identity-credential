@@ -25,39 +25,55 @@ import com.android.identity.securearea.SecureArea
 
 /**
  * Base class for credentials bound to a [SecureArea].
+ *
+ * This associates a key from a [SecureArea] to a [Credential]
  */
-open class SecureAreaBoundCredential protected constructor() : Credential() {
+open class SecureAreaBoundCredential : Credential {
+    companion object {
+        private const val TAG = "SecureAreaBoundCredential"
+        // This is to avoid collisions with other uses of the Secure Area.
+        private const val SECURE_AREA_ALIAS_PREFIX = "SecureAreaBoundCredential_"
+    }
 
     /**
-     * Creates a new [SecureAreaBoundCredential].
+     * Constructs a new [SecureAreaBoundCredential].
      *
+     * @param document the document to add the credential to.
      * @param asReplacementFor the credential this credential will replace, if not null
      * @param domain the domain of the credential
      * @param secureArea the secure area for the authentication key associated with this credential.
      * @param createKeySettings the settings used to create new credentials.
      */
     constructor(
+        document: Document,
         asReplacementFor: Credential?,
         domain: String,
         secureArea: SecureArea,
         createKeySettings: CreateKeySettings,
-    ) : this() {
-        SecureAreaBoundCredential.apply { create(
-            asReplacementFor,
-            domain,
-            secureArea,
-            createKeySettings
-        ) }
+    ) : super(document, asReplacementFor, domain) {
+        this.secureArea = secureArea
+        this.alias = SECURE_AREA_ALIAS_PREFIX + identifier
+        this.secureArea.createKey(alias, createKeySettings)
+        // Only the leaf constructor should add the credential to the document.
+        if (this::class == SecureAreaBoundCredential::class) {
+            addToDocument()
+        }
     }
 
-    companion object {
-        const val AUTHENTICATION_KEY_ALIAS_PREFIX = "IC_SecureAreaBoundCredential_"
-        const val TAG = "SecureAreaBoundCredential"
-
-        internal fun fromCbor(
-            dataItem: DataItem,
-            document: Document
-        ) = SecureAreaBoundCredential().apply { deserialize(dataItem, document) }
+    /**
+     * Constructs a Credential from serialized data.
+     *
+     * @param document the [Document] that the credential belongs to.
+     * @param dataItem the serialized data.
+     */
+    constructor(
+        document: Document,
+        dataItem: DataItem,
+    ) : super(document, dataItem) {
+        alias = dataItem["alias"].asTstr
+        val secureAreaIdentifier = dataItem["secureAreaIdentifier"].asTstr
+        secureArea = document.secureAreaRepository.getImplementation(secureAreaIdentifier)
+            ?: throw IllegalStateException("Unknown Secure Area $secureAreaIdentifier")
     }
 
     /**
@@ -65,25 +81,24 @@ open class SecureAreaBoundCredential protected constructor() : Credential() {
      *
      * This can be used together with the alias returned by [alias].
      */
-    lateinit var secureArea: SecureArea
-        protected set
+    val secureArea: SecureArea
 
     /**
      * The alias for the authentication key associated with this credential.
      *
      * This can be used together with the [SecureArea] returned by [secureArea]
      */
-    lateinit var alias: String
-        protected set
+    val alias: String
 
     override val isInvalidated: Boolean
         get() = secureArea.getKeyInvalidated(alias)
 
     /**
-     * The X.509 certificate chain for the authentication key associated with this credential.
+     * The certificate chain for the [SecureArea] key associated with this credential.
      *
      * The application should send this credential to the issuer which should create issuer-provided
-     * data (e.g. an MSO if using ISO/IEC 18013-5:2021) using the credential as the `DeviceKey`.
+     * data (if using ISO/IEC 18013-5:2021 this would include the MSO). Once received, the
+     * application should call [Credential.certify] to certify the [Credential].
      */
     val attestation: CertificateChain
         get() = secureArea.getKeyInfo(alias).attestation
@@ -93,34 +108,9 @@ open class SecureAreaBoundCredential protected constructor() : Credential() {
         super.delete()
     }
 
-    protected fun create(
-        asReplacementFor: Credential?,
-        domain: String,
-        secureArea: SecureArea,
-        createKeySettings: CreateKeySettings,
-    ): SecureAreaBoundCredential {
-        super.create(asReplacementFor, domain)
-        this.alias = AUTHENTICATION_KEY_ALIAS_PREFIX + this.identifier
-        this.secureArea = secureArea
-        this.secureArea.createKey(alias, createKeySettings)
-        return this
-    }
-
-    override fun addSerializedData(mapBuilder: MapBuilder<CborBuilder>) {
-        mapBuilder.put("secureAreaIdentifier", secureArea.identifier)
+    override fun addSerializedData(builder: MapBuilder<CborBuilder>) {
+        super.addSerializedData(builder)
+        builder.put("secureAreaIdentifier", secureArea.identifier)
             .put("alias", alias)
-    }
-
-    override fun deserialize(
-        dataItem: DataItem,
-        document: Document
-    ): SecureAreaBoundCredential {
-        super.deserialize(dataItem, document)
-        alias = dataItem["alias"].asTstr
-        val secureAreaIdentifier = dataItem["secureAreaIdentifier"].asTstr
-        secureArea = document.secureAreaRepository.getImplementation(secureAreaIdentifier)
-            ?: throw IllegalStateException("Unknown Secure Area $secureAreaIdentifier")
-
-        return this
     }
 }

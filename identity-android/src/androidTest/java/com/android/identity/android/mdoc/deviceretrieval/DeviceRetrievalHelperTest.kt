@@ -93,16 +93,16 @@ class DeviceRetrievalHelperTest {
         private const val AAMVA_NAMESPACE = "org.aamva.18013.5.1"
     }
 
-    private lateinit var mStorageEngine: StorageEngine
-    private lateinit var mSecureArea: SecureArea
-    private lateinit var mSecureAreaRepository: SecureAreaRepository
-    private lateinit var mDocument: Document
-    private lateinit var mMdocCredential: MdocCredential
-    private lateinit var mTimeSigned: Timestamp
-    private lateinit var mTimeValidityBegin: Timestamp
-    private lateinit var mTimeValidityEnd: Timestamp
-    private lateinit var mDocumentSignerKey: EcPrivateKey
-    private lateinit var mDocumentSignerCert: Certificate
+    private lateinit var storageEngine: StorageEngine
+    private lateinit var secureArea: SecureArea
+    private lateinit var secureAreaRepository: SecureAreaRepository
+    private lateinit var document: Document
+    private lateinit var mdocCredential: MdocCredential
+    private lateinit var timeSigned: Timestamp
+    private lateinit var timeValidityBegin: Timestamp
+    private lateinit var timeValidityEnd: Timestamp
+    private lateinit var documentSignerKey: EcPrivateKey
+    private lateinit var documentSignerCert: Certificate
     
     @Before
     fun setUp() {
@@ -111,53 +111,53 @@ class DeviceRetrievalHelperTest {
         Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
         Security.addProvider(BouncyCastleProvider())
         
-        mStorageEngine = EphemeralStorageEngine()
-        mSecureAreaRepository = SecureAreaRepository()
-        mSecureArea = SoftwareSecureArea(mStorageEngine)
-        mSecureAreaRepository.addImplementation(mSecureArea)
+        storageEngine = EphemeralStorageEngine()
+        secureAreaRepository = SecureAreaRepository()
+        secureArea = SoftwareSecureArea(storageEngine)
+        secureAreaRepository.addImplementation(secureArea)
         var credentialFactory = CredentialFactory()
         credentialFactory.addCredentialImplementation(MdocCredential::class)
         val documentStore = DocumentStore(
-            mStorageEngine,
-            mSecureAreaRepository,
+            storageEngine,
+            secureAreaRepository,
             credentialFactory
         )
 
         // Create the document...
-        mDocument = documentStore.createDocument("testDocument")
-        documentStore.addDocument(mDocument)
+        document = documentStore.createDocument("testDocument")
+        documentStore.addDocument(document)
         val nameSpacedData = NameSpacedData.Builder()
             .putEntryString(MDL_NAMESPACE, "given_name", "Erika")
             .putEntryString(MDL_NAMESPACE, "family_name", "Mustermann")
             .putEntryBoolean(AAMVA_NAMESPACE, "real_id", true)
             .build()
-        mDocument.applicationData.setNameSpacedData("documentData", nameSpacedData)
+        document.applicationData.setNameSpacedData("documentData", nameSpacedData)
 
         // Create a credential... make sure the credential used supports both
         // mdoc ECDSA and MAC authentication.
         val nowMillis = Calendar.getInstance().timeInMillis / 1000 * 1000
-        mTimeSigned = ofEpochMilli(nowMillis)
-        mTimeValidityBegin = ofEpochMilli(nowMillis + 3600 * 1000)
-        mTimeValidityEnd = ofEpochMilli(nowMillis + 10 * 86400 * 1000)
-        mMdocCredential = MdocCredential(
+        timeSigned = ofEpochMilli(nowMillis)
+        timeValidityBegin = ofEpochMilli(nowMillis + 3600 * 1000)
+        timeValidityEnd = ofEpochMilli(nowMillis + 10 * 86400 * 1000)
+        mdocCredential = MdocCredential(
+            document,
             null,
             CREDENTIAL_DOMAIN,
-            mSecureArea,
+            secureArea,
             SoftwareCreateKeySettings.Builder(ByteArray(0))
                 .setKeyPurposes(setOf(KeyPurpose.SIGN, KeyPurpose.AGREE_KEY))
                 .build(),
             MDL_DOCTYPE
         )
-        mDocument.addCredential(mMdocCredential)
-        Assert.assertFalse(mMdocCredential.isCertified)
+        Assert.assertFalse(mdocCredential.isCertified)
 
         // Generate an MSO and issuer-signed data for this credential.
         val msoGenerator = MobileSecurityObjectGenerator(
             "SHA-256",
             MDL_DOCTYPE,
-            mMdocCredential.attestation.certificates[0].publicKey
+            mdocCredential.attestation.certificates[0].publicKey
         )
-        msoGenerator.setValidityInfo(mTimeSigned, mTimeValidityBegin, mTimeValidityEnd, null)
+        msoGenerator.setValidityInfo(timeSigned, timeValidityBegin, timeValidityEnd, null)
         val issuerNameSpaces = generateIssuerNameSpaces(
             nameSpacedData,
             Random,
@@ -176,10 +176,10 @@ class DeviceRetrievalHelperTest {
         val validUntil = fromEpochMilliseconds(
             validFrom.toEpochMilliseconds() + 5L * 365 * 24 * 60 * 60 * 1000
         )
-        mDocumentSignerKey = createEcPrivateKey(EcCurve.P256)
-        mDocumentSignerCert = createX509v3Certificate(
-            mDocumentSignerKey.publicKey,
-            mDocumentSignerKey,
+        documentSignerKey = createEcPrivateKey(EcCurve.P256)
+        documentSignerCert = createX509v3Certificate(
+            documentSignerKey.publicKey,
+            documentSignerKey,
             null,
             Algorithm.ES256,
             "1",
@@ -201,11 +201,11 @@ class DeviceRetrievalHelperTest {
         )
         val unprotectedHeaders = java.util.Map.of<CoseLabel, DataItem>(
             CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-            CertificateChain(java.util.List.of(mDocumentSignerCert)).toDataItem
+            CertificateChain(java.util.List.of(documentSignerCert)).toDataItem
         )
         val encodedIssuerAuth = encode(
             coseSign1Sign(
-                mDocumentSignerKey,
+                documentSignerKey,
                 taggedEncodedMso,
                 true,
                 Algorithm.ES256,
@@ -219,10 +219,10 @@ class DeviceRetrievalHelperTest {
         ).generate()
 
         // Now that we have issuer-provided authentication data we certify the credential.
-        mMdocCredential.certify(
+        mdocCredential.certify(
             issuerProvidedAuthenticationData,
-            mTimeValidityBegin,
-            mTimeValidityEnd
+            timeValidityBegin,
+            timeValidityEnd
         )
     }
     
@@ -383,13 +383,13 @@ class DeviceRetrievalHelperTest {
                     val generator = DeviceResponseGenerator(
                         Constants.DEVICE_RESPONSE_STATUS_OK
                     )
-                    val staticAuthData = StaticAuthDataParser(mMdocCredential.issuerProvidedData)
+                    val staticAuthData = StaticAuthDataParser(mdocCredential.issuerProvidedData)
                         .parse()
                     val deviceSignedData = NameSpacedData.Builder().build()
                     val mergedIssuerNamespaces: Map<String, List<ByteArray>> =
                         mergeIssuerNamesSpaces(
                             generateDocumentRequest(request),
-                            mDocument.applicationData.getNameSpacedData("documentData"),
+                            document.applicationData.getNameSpacedData("documentData"),
                             staticAuthData
                         )
                     generator.addDocument(
@@ -401,8 +401,8 @@ class DeviceRetrievalHelperTest {
                             .setIssuerNamespaces(mergedIssuerNamespaces)
                             .setDeviceNamespacesSignature(
                                 deviceSignedData,
-                                mMdocCredential.secureArea,
-                                mMdocCredential.alias,
+                                mdocCredential.secureArea,
+                                mdocCredential.alias,
                                 null,
                                 Algorithm.ES256
                             )

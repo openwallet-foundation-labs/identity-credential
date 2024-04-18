@@ -74,6 +74,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                document,
                 credentialToReplace,
                 managedCredDomain,
                 secureArea,
@@ -108,6 +109,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                document,
                 credentialToReplace,
                 managedCredDomain,
                 secureArea,
@@ -132,6 +134,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                document,
                 credentialToReplace,
                 managedCredDomain,
                 secureArea,
@@ -159,6 +162,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                document,
                 credentialToReplace,
                 managedCredDomain,
                 secureArea,
@@ -210,6 +214,7 @@ class DocumentUtilTest {
             document,
             managedCredDomain,
             createCredential = {credentialToReplace -> SecureAreaBoundCredential(
+                document,
                 credentialToReplace,
                 managedCredDomain,
                 secureArea,

@@ -71,6 +71,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         // Create pending credential and check its attestation
         val authKeyChallenge = byteArrayOf(20, 21, 22)
         val pendingCredential = SecureAreaBoundCredential(
+            document,
             null,
             CREDENTIAL_DOMAIN,
             secureArea,
@@ -81,7 +82,6 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
                 )
                 .build(),
         )
-        document.addCredential(pendingCredential)
         Assert.assertFalse(pendingCredential.isCertified)
         val parser =
             AndroidAttestationExtensionParser(pendingCredential.attestation.certificates[0].javaX509Certificate)

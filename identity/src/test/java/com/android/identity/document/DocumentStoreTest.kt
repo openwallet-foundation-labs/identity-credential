@@ -226,11 +226,11 @@ class DocumentStoreTest {
 
         // Create ten credentials...
         for (n in 0..9) {
-            var pendingCredential = Credential(
+            val credential = Credential(
+                document,
                 null,
                 CREDENTIAL_DOMAIN
             )
-            document.addCredential(pendingCredential)
         }
         Assert.assertEquals(0, document.certifiedCredentials.size.toLong())
         Assert.assertEquals(10, document.pendingCredentials.size.toLong())
@@ -239,13 +239,14 @@ class DocumentStoreTest {
         // ... and certify all of them
         var n = 0
         for (pendingCredential in document.pendingCredentials) {
-            val issuerProvidedAuthenticationData = byteArrayOf(1, 2, n++.toByte())
+            val issuerProvidedAuthenticationData = byteArrayOf(1, 2, n.toByte())
             pendingCredential.certify(
                 issuerProvidedAuthenticationData,
                 timeValidityBegin,
                 timeValidityEnd
             )
             Assert.assertEquals(n.toLong(), pendingCredential.credentialCounter)
+            n += 1
         }
         Assert.assertEquals(10, document.certifiedCredentials.size.toLong())
         Assert.assertEquals(0, document.pendingCredentials.size.toLong())
@@ -305,19 +306,19 @@ class DocumentStoreTest {
         // Create and certify five replacements
         n = 0
         while (n < 5) {
-            var pendingCredential = SecureAreaBoundCredential(
+            SecureAreaBoundCredential(
+                document,
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
             )
-            document.addCredential(pendingCredential)
             n++
         }
         Assert.assertEquals(10, document.certifiedCredentials.size.toLong())
         Assert.assertEquals(5, document.pendingCredentials.size.toLong())
         Assert.assertEquals(15, document.credentialCounter)
-        n = 11
+        n = 10
         for (pendingCredential in document.pendingCredentials) {
             pendingCredential.certify(
                 ByteArray(0),
@@ -379,13 +380,13 @@ class DocumentStoreTest {
         // Create ten pending credentials and certify four of them
         n = 0
         while (n < 4) {
-            var pendingCredential = SecureAreaBoundCredential(
+            SecureAreaBoundCredential(
+                document,
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
             )
-            document.addCredential(pendingCredential)
             n++
         }
         Assert.assertEquals(0, document.certifiedCredentials.size.toLong())
@@ -409,13 +410,13 @@ class DocumentStoreTest {
         Assert.assertEquals(0, document.pendingCredentials.size.toLong())
         n = 0
         while (n < 6) {
-            var pendingCredential = SecureAreaBoundCredential(
+            SecureAreaBoundCredential(
+                document,
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256)
             )
-            document.addCredential(pendingCredential)
             n++
         }
         Assert.assertEquals(4, document.certifiedCredentials.size.toLong())
@@ -488,12 +489,12 @@ class DocumentStoreTest {
         var n = 0
         while (n < 10) {
             var pendingCredential = SecureAreaBoundCredential(
+                document,
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
             )
-            document.addCredential(pendingCredential)
             n++
         }
         Assert.assertEquals(10, document.pendingCredentials.size.toLong())
@@ -606,12 +607,12 @@ class DocumentStoreTest {
         documentStore.addDocument(document!!)
         for (n in 0..9) {
             val pendingCredential = SecureAreaBoundCredential(
+                document,
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
             )
-            document.addCredential(pendingCredential)
             val value = String.format("bar%02d", n)
             val pendingAppData = pendingCredential.applicationData
             pendingAppData.setString("foo", value)
@@ -689,12 +690,12 @@ class DocumentStoreTest {
         Assert.assertEquals(0, document.pendingCredentials.size.toLong())
         for (n in 0..9) {
             val pendingCredential = SecureAreaBoundCredential(
+                document,
                 null,
                 CREDENTIAL_DOMAIN,
                 secureArea,
                 CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
             )
-            document.addCredential(pendingCredential)
             pendingCredential.certify(
                 byteArrayOf(0, n.toByte()),
                 Timestamp.ofEpochMilli(100),
@@ -708,12 +709,12 @@ class DocumentStoreTest {
         val credToReplace = document.certifiedCredentials[5] as SecureAreaBoundCredential
         Assert.assertArrayEquals(byteArrayOf(0, 5), credToReplace.issuerProvidedData)
         val pendingCredential = SecureAreaBoundCredential(
+            document,
             credToReplace,
             CREDENTIAL_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
         )
-        document.addCredential(pendingCredential)
         // ... it's not replaced until certify() is called
         Assert.assertEquals(1, document.pendingCredentials.size.toLong())
         Assert.assertEquals(10, document.certifiedCredentials.size.toLong())
@@ -750,12 +751,12 @@ class DocumentStoreTest {
         // being replaced should no longer reference it has a replacement...
         val toBeReplaced = document.certifiedCredentials[0]
         var replacement = SecureAreaBoundCredential(
+            document,
             toBeReplaced as SecureAreaBoundCredential,
             CREDENTIAL_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
         )
-        document.addCredential(replacement)
         Assert.assertEquals(toBeReplaced, replacement.replacementFor)
         Assert.assertEquals(replacement, toBeReplaced.replacement)
         replacement.delete()
@@ -764,12 +765,12 @@ class DocumentStoreTest {
         // Similarly, test the case where the credential to be replaced is prematurely deleted.
         // The replacement credential should no longer indicate it's a replacement credential.
         replacement = SecureAreaBoundCredential(
+            document,
             toBeReplaced,
             CREDENTIAL_DOMAIN,
             secureArea,
             CreateKeySettings(ByteArray(0), setOf(KeyPurpose.SIGN), EcCurve.P256),
         )
-        document.addCredential(replacement)
         Assert.assertEquals(toBeReplaced, replacement.replacementFor)
         Assert.assertEquals(replacement, toBeReplaced.replacement)
         toBeReplaced.delete()

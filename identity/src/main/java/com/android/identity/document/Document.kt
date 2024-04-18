@@ -178,11 +178,11 @@ class Document private constructor(
 
         _pendingCredentials = ArrayList()
         for (item in map["pendingCredentials"].asArray) {
-            _pendingCredentials.add(credentialFactory.createCredential(item, this))
+            _pendingCredentials.add(credentialFactory.createCredential(this, item))
         }
         _certifiedCredentials = ArrayList()
         for (item in map["certifiedCredentials"].asArray) {
-            _certifiedCredentials.add(credentialFactory.createCredential(item, this))
+            _certifiedCredentials.add(credentialFactory.createCredential(this, item))
         }
         credentialCounter = map["credentialCounter"].asNumber
         addedToStore = true
@@ -228,27 +228,13 @@ class Document private constructor(
         return candidate
     }
 
-    /**
-     * Adds a new credential to the document. Should be called immediately after [Credential]
-     * instantiation.
-     *
-     * For a higher-level way of managing credentials, see
-     * [DocumentUtil.managedCredentialHelper].
-     *
-     * @param credential The credential to be added.
-     * @throws IllegalArgumentException if `asReplacementFor` is not null and the given
-     * credential already has a pending credential intending to replace it.
-     */
-    fun addCredential(
+    // Adds a newly created [Credential] to the document, returns the assigned credential counter
+    internal fun addCredential(
         credential: Credential,
-    ) {
-        check(_pendingCredentials.none { it.identifier == credential.identifier }) {
-            "There is already a pending credential with the same identifier as the given credential"
-        }
-        credentialCounter++
-        credential.document = this
+    ) : Long {
+        val assignedCounter = credentialCounter++
         _pendingCredentials.add(credential)
-        saveDocument()
+        return assignedCounter
     }
 
     /**

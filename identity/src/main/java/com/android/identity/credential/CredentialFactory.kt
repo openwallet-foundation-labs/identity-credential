@@ -49,15 +49,20 @@ class CredentialFactory {
     /**
      * Creates a [Credential] from serialized data.
      *
-     * @param dataItem The serialized credential
      * @param document The document associated with the credential
+     * @param dataItem The serialized credential
      * @return a credential instance
      */
-    fun createCredential(dataItem: DataItem, document: Document): Credential {
+    fun createCredential(document: Document, dataItem: DataItem): Credential {
         val credentialType = dataItem["credentialType"].asTstr
         val credClass = credentials.first { it.simpleName == credentialType}
-        val fromCbor = credClass.companionObject?.declaredMemberFunctions?.first { it.name == "fromCbor" }
-        check(fromCbor != null)
-        return fromCbor.call(credClass.companionObject?.objectInstance, dataItem, document) as Credential
+
+        // Pick the constructor(document: Document, dataItem: DataItem) and invoke.
+        val constructor = credClass.constructors.first {
+            it.parameters.size == 2 &&
+            it.parameters[0].type.classifier == Document::class &&
+            it.parameters[1].type.classifier == DataItem::class
+        }
+        return constructor.call(document, dataItem)
     }
 }

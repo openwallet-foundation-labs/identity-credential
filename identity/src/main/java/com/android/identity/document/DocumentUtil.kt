@@ -83,8 +83,7 @@ object DocumentUtil {
             if (credentialExceededUseCount || credentialBeyondExpirationDate) {
                 if (authCredential.replacement == null) {
                     if (!dryRun) {
-                        val pendingCredential = createCredential!!.invoke(authCredential)
-                        document.addCredential(pendingCredential)
+                        createCredential!!.invoke(authCredential)
                     }
                     numReplacementsGenerated++
                     continue
@@ -107,7 +106,6 @@ object DocumentUtil {
             if (numNonReplacementsToGenerate > 0) {
                 for (n in 0 until numNonReplacementsToGenerate) {
                     val pendingCredential = createCredential!!.invoke(null)
-                    document.addCredential(pendingCredential)
                     pendingCredential.applicationData.setBoolean(domain, true)
                 }
             }
