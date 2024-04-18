@@ -20,13 +20,13 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import co.nstant.`in`.cbor.CborBuilder
 import com.android.identity.cbor.Cbor
-import com.android.identity.document.Credential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.Crypto
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.EcPrivateKey
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.securearea.software.SoftwareCreateKeySettings
@@ -56,7 +56,7 @@ class SoftwareKeystoreSecureAreaSupport : SecureAreaSupport {
     private val screenState = SoftwareKeystoreSecureAreaSupportState()
 
     override fun Fragment.unlockKey(
-        authKey: Credential,
+        credential: MdocCredential,
         onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {

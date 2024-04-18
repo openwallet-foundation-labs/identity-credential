@@ -5,12 +5,14 @@ import android.content.Context
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
+import com.android.identity.credential.CredentialFactory
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
 import com.android.identity.documenttype.knowntypes.DrivingLicense
 import com.android.identity.documenttype.knowntypes.EUPersonalID
 import com.android.identity.documenttype.knowntypes.VaccinationDocument
 import com.android.identity.documenttype.knowntypes.VehicleRegistration
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.GenericStorageEngine
@@ -85,7 +87,10 @@ class HolderApp: Application() {
 
             secureAreaRepository.addImplementation(androidKeystoreSecureArea)
             secureAreaRepository.addImplementation(softwareSecureArea)
-            return DocumentStore(storageEngine, secureAreaRepository)
+
+            var credentialFactory = CredentialFactory()
+            credentialFactory.addCredentialImplementation(MdocCredential::class)
+            return DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
         }
     }
 

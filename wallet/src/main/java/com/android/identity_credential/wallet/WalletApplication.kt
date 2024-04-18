@@ -25,6 +25,8 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
+import com.android.identity.credential.CredentialFactory
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.documenttype.DocumentTypeRepository
@@ -86,6 +88,7 @@ class WalletApplication : Application() {
     lateinit var documentTypeRepository: DocumentTypeRepository
     lateinit var issuingAuthorityRepository: IssuingAuthorityRepository
     lateinit var secureAreaRepository: SecureAreaRepository
+    lateinit var credentialFactory: CredentialFactory
     lateinit var documentStore: DocumentStore
     lateinit var settingsModel: SettingsModel
     lateinit var documentModel: DocumentModel
@@ -124,8 +127,12 @@ class WalletApplication : Application() {
         secureAreaRepository.addImplementation(androidKeystoreSecureArea)
         secureAreaRepository.addImplementation(softwareSecureArea)
 
+        // init credentialFactory
+        credentialFactory = CredentialFactory()
+        credentialFactory.addCredentialImplementation(MdocCredential::class)
+
         // init documentStore
-        documentStore = DocumentStore(storageEngine, secureAreaRepository)
+        documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
 
         // init IssuingAuthorityRepository
         issuingAuthorityRepository = IssuingAuthorityRepository().apply {

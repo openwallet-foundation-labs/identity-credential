@@ -15,8 +15,8 @@
  */
 package com.android.identity.document
 
-import com.android.identity.securearea.CreateKeySettings
-import com.android.identity.securearea.SecureArea
+import com.android.identity.credential.Credential
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.util.Timestamp
 
 /**
@@ -26,16 +26,16 @@ object DocumentUtil {
     private const val TAG = "DocumentUtil"
 
     /**
-     * A helper for managing a set of credentials.
+     * A helper for managing a set of [Credential]s.
      *
      * This helper provides a high-level way to manage credentials on a
      * [Document]. Its goal is to always have a fixed number of
-     * credentials available within the following constraints
+     * credentials of a specific type available within the following constraints
      *
      * - If a credential is used more than `maxUsesPerCredential` times, a replacement is generated.
      * - If a credential expires within `minValidTimeMillis` milliseconds, a replacement is generated.
      *
-     * This is all implemented on top of [Document.createCredential]
+     * This is all implemented on top of [Credential] creation
      * and [Credential.certify]. The application should examine the return
      * value and if positive, collect the not-yet-certified credentials via
      * [Document.pendingCredentials], send them to the issuer for certification,
@@ -43,11 +43,11 @@ object DocumentUtil {
      * from the issuer.
      *
      * @param document the document to manage credentials for.
-     * @param secureArea the secure area to use for new credentials, must not be null if `dryRun` is false.
-     * @param createKeySettings the settings used to create new credentials.
      * @param domain the domain to use for created credentials.
+     * @param createCredential a lambda for creating the credential which only takes in an optional
+     * parameter for a replacement credential. This must not be null if dryRun is false.
      * @param now the time right now, used for determining which existing credentials to replace.
-     * @param numCredentials the number of credentials that should be kept.
+     * @param numAuthenticationCredentials the number of credentials that should be kept.
      * @param maxUsesPerCredential the maximum number of uses per credential.
      * @param minValidTimeMillis requests a replacement for a credential if it expires within this window.
      * @param dryRun don't actually create the credentials, just return how many would be created.
@@ -56,20 +56,19 @@ object DocumentUtil {
     @JvmStatic
     fun managedCredentialHelper(
         document: Document,
-        secureArea: SecureArea?,
-        createKeySettings: CreateKeySettings?,
         domain: String,
+        createCredential: ((credentialToReplace: Credential?) -> Credential)?,
         now: Timestamp,
         numAuthenticationCredentials: Int,
         maxUsesPerCredential: Int,
         minValidTimeMillis: Long,
         dryRun: Boolean
     ): Int {
-        check(dryRun || (secureArea != null && createKeySettings != null))
+        check(dryRun || createCredential != null)
         // First determine which of the existing credentials need a replacement...
         var numCredentialsNotNeedingReplacement = 0
         var numReplacementsGenerated = 0
-        for (authCredential in document.certifiedCredentials.filter { it.domain == domain }) {
+        for (authCredential in document.certifiedCredentials.filter { it.domain == domain}) {
             var credentialExceededUseCount = false
             var credentialBeyondExpirationDate = false
             if (authCredential.usageCount >= maxUsesPerCredential) {
@@ -84,12 +83,8 @@ object DocumentUtil {
             if (credentialExceededUseCount || credentialBeyondExpirationDate) {
                 if (authCredential.replacement == null) {
                     if (!dryRun) {
-                        document.createCredential(
-                            domain,
-                            secureArea!!,
-                            createKeySettings!!,
-                            authCredential
-                        )
+                        val pendingCredential = createCredential!!.invoke(authCredential)
+                        document.addCredential(pendingCredential)
                     }
                     numReplacementsGenerated++
                     continue
@@ -111,12 +106,8 @@ object DocumentUtil {
         if (!dryRun) {
             if (numNonReplacementsToGenerate > 0) {
                 for (n in 0 until numNonReplacementsToGenerate) {
-                    val pendingCredential = document.createCredential(
-                        domain,
-                        secureArea!!,
-                        createKeySettings!!,
-                        null
-                    )
+                    val pendingCredential = createCredential!!.invoke(null)
+                    document.addCredential(pendingCredential)
                     pendingCredential.applicationData.setBoolean(domain, true)
                 }
             }

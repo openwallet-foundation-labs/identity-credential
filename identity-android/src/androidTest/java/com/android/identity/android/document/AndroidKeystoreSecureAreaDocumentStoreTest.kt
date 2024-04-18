@@ -21,6 +21,8 @@ import com.android.identity.android.securearea.AndroidKeystoreCreateKeySettings
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.storage.AndroidStorageEngine
+import com.android.identity.credential.CredentialFactory
+import com.android.identity.credential.SecureAreaBoundCredential
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
 import com.android.identity.crypto.javaX509Certificate
@@ -43,6 +45,7 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
     private lateinit var storageEngine: StorageEngine
     private lateinit var secureArea: SecureArea
     private lateinit var secureAreaRepository: SecureAreaRepository
+    private lateinit var credentialFactory: CredentialFactory
 
     @Before
     fun setup() {
@@ -52,11 +55,13 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
         secureAreaRepository = SecureAreaRepository()
         secureArea = AndroidKeystoreSecureArea(context, storageEngine)
         secureAreaRepository.addImplementation(secureArea)
+        credentialFactory = CredentialFactory()
+        credentialFactory.addCredentialImplementation(SecureAreaBoundCredential::class)
     }
 
     @Test
     fun testBasic() {
-        val documentStore = DocumentStore(storageEngine, secureAreaRepository)
+        val documentStore = DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
         var document: Document? = documentStore.createDocument(
             "testDocument"
         )
@@ -65,7 +70,8 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
 
         // Create pending credential and check its attestation
         val authKeyChallenge = byteArrayOf(20, 21, 22)
-        val pendingCredential = document.createCredential(
+        val pendingCredential = SecureAreaBoundCredential(
+            null,
             CREDENTIAL_DOMAIN,
             secureArea,
             AndroidKeystoreCreateKeySettings.Builder(authKeyChallenge)
@@ -74,8 +80,8 @@ class AndroidKeystoreSecureAreaDocumentStoreTest {
                     setOf(UserAuthenticationType.LSKF, UserAuthenticationType.BIOMETRIC)
                 )
                 .build(),
-            null
         )
+        document.addCredential(pendingCredential)
         Assert.assertFalse(pendingCredential.isCertified)
         val parser =
             AndroidAttestationExtensionParser(pendingCredential.attestation.certificates[0].javaX509Certificate)

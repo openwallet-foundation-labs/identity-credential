@@ -6,7 +6,7 @@ import android.os.Looper
 import android.widget.Toast
 import com.android.identity.android.mdoc.deviceretrieval.DeviceRetrievalHelper
 import com.android.identity.cbor.Cbor
-import com.android.identity.document.Credential
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.DocumentStore
 import com.android.identity.document.NameSpacedData
@@ -152,28 +152,27 @@ class TransferHelper(
      * @param onAuthenticationKeyLocked callback when the authentication key is locked to give UI a
      *                                  chance to prompt user for authentication
      * @param keyUnlockData key unlock data for a specific authenticated key
-     * @param authKey a specified authentication key
+     * @param credential a specified authentication key
      */
     suspend fun finishProcessingRequest(
         requestedDocType: String,
         credentialId: String,
         documentRequest: DocumentRequest,
         onFinishedProcessing: (ByteArray) -> Unit,
-        onAuthenticationKeyLocked: (credential: Credential) -> Unit,
+        onAuthenticationKeyLocked: (mdocCredential: MdocCredential) -> Unit,
         keyUnlockData: KeyUnlockData? = null,
-        authKey: Credential? = null
+        credential: MdocCredential? = null
     ) {
-        val credential = documentStore.lookupDocument(credentialId)!!
-
+        val document = documentStore.lookupDocument(credentialId)!!
         val encodedDeviceResponse: ByteArray
-        val credentialConfiguration = credential.documentConfiguration
+        val credentialConfiguration = document.documentConfiguration
         val now = Timestamp.now()
-        val credentialToUse: Credential = authKey
-            ?: (credential.findCredential(WalletApplication.CREDENTIAL_DOMAIN, now)
+        val credentialToUse: MdocCredential = credential
+            ?: (document.findCredential(WalletApplication.CREDENTIAL_DOMAIN, now)
                 ?: run {
                     onError(IllegalStateException("No valid credentials, please request more"))
                     return
-                })
+                }) as MdocCredential
 
         val staticAuthData = StaticAuthDataParser(credentialToUse.issuerProvidedData).parse()
         val issuerAuthCoseSign1 = Cbor.decode(staticAuthData.issuerAuth).asCoseSign1
@@ -198,7 +197,7 @@ class TransferHelper(
                 docType = mso.docType,
                 issuerAuth = staticAuthData.issuerAuth,
                 mergedIssuerNamespaces = mergedIssuerNamespaces,
-                authKey = credentialToUse,
+                credential = credentialToUse,
                 keyUnlockData = keyUnlockData
             )
         }
@@ -216,10 +215,10 @@ class TransferHelper(
         docType: String,
         issuerAuth: ByteArray,
         mergedIssuerNamespaces: Map<String, MutableList<ByteArray>>,
-        authKey: Credential,
+        credential: MdocCredential,
         keyUnlockData: KeyUnlockData?
     ) = suspendCancellableCoroutine { continuation ->
-        var result: Credential?
+        var result: MdocCredential?
 
         try {
             deviceResponseGenerator.addDocument(
@@ -230,15 +229,15 @@ class TransferHelper(
                     .setIssuerNamespaces(mergedIssuerNamespaces)
                     .setDeviceNamespacesSignature(
                         NameSpacedData.Builder().build(),
-                        authKey.secureArea,
-                        authKey.alias,
+                        credential.secureArea,
+                        credential.alias,
                         keyUnlockData,
                         Algorithm.ES256
                     )
                     .generate()
             )
-            authKey.increaseUsageCount()
-            if (authKey.usageCount > 1) {
+            credential.increaseUsageCount()
+            if (credential.usageCount > 1) {
                 Handler(Looper.getMainLooper()).post {
                     Toast.makeText(
                         context,
@@ -249,7 +248,7 @@ class TransferHelper(
             }
             result = null
         } catch (e: KeyLockedException) {
-            result = authKey
+            result = credential
         }
 
         continuation.resume(result)

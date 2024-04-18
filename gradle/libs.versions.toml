@@ -1,5 +1,6 @@
 [versions]
     compile-sdk = "34"
+    kotlin-reflect = "1.9.23"
     min-sdk = "26"
     kotlin = "1.8.20"
     gradle-plugin = "7.4.0"
@@ -67,6 +68,8 @@
 
     androidx-navigation-ktx = { module = "androidx.navigation:navigation-fragment-ktx", version.ref = "navigation" }
     androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "navigation" }
+
+    kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin-reflect" }
 
     kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref="kotlinx-coroutines" }
     kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref="kotlinx-coroutines" }

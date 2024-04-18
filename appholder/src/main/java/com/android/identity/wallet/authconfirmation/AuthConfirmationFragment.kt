@@ -120,17 +120,17 @@ class AuthConfirmationFragment : BottomSheetDialogFragment() {
 
                 val secureAreaSupport = SecureAreaSupport.getInstance(
                     requireContext(),
-                    result.authKey.secureArea
+                    result.credential.secureArea
                 )
                 with(secureAreaSupport) {
                     unlockKey(
-                        authKey = result.authKey,
+                        credential = result.credential,
                         onKeyUnlocked = { keyUnlockData ->
                             viewModel.sendResponseForSelection(
                                 onResultReady = {
                                     onSendResponseResult(it)
                                 },
-                                result.authKey,
+                                result.credential,
                                 keyUnlockData
                             )
                         },

@@ -22,6 +22,7 @@ import com.android.identity.crypto.Certificate
 import com.android.identity.crypto.CertificateChain
 import com.android.identity.crypto.EcCurve
 import com.android.identity.crypto.toEcPrivateKey
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.mdoc.mso.MobileSecurityObjectGenerator
 import com.android.identity.mdoc.mso.StaticAuthDataGenerator
 import com.android.identity.mdoc.util.MdocUtil
@@ -119,9 +120,14 @@ class ProvisioningUtil private constructor(
 
         val pendingCredsCount = DocumentUtil.managedCredentialHelper(
             document,
-            secureArea,
-            settings,
             CREDENTIAL_DOMAIN,
+            {toBeReplaced -> MdocCredential(
+                toBeReplaced,
+                CREDENTIAL_DOMAIN,
+                secureArea,
+                settings,
+                docType
+            )},
             now,
             numCreds.toInt(),
             maxUsagesPerCred.toInt(),
@@ -132,7 +138,8 @@ class ProvisioningUtil private constructor(
             return
         }
 
-        for (pendingCred in document.pendingCredentials) {
+        for (pendingCred in document.pendingCredentials.filter { it.domain == CREDENTIAL_DOMAIN }) {
+            pendingCred as MdocCredential
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
                 docType,
@@ -288,6 +295,7 @@ class ProvisioningUtil private constructor(
                     ?: throw IllegalStateException("No Secure Area with id ${authKeySecureAreaIdentifier} for document ${it.name}")
 
                 val credentials = certifiedCredentials.map { key ->
+                    key as MdocCredential
                     val info = authKeySecureArea.getKeyInfo(key.alias)
                     DocumentInformation.KeyData(
                         counter = key.credentialCounter.toInt(),

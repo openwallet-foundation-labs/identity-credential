@@ -15,10 +15,10 @@
  */
 package com.android.identity.document
 
+import com.android.identity.credential.CredentialFactory
 import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.SecureAreaRepository
 import com.android.identity.storage.StorageEngine
-import com.android.identity.util.Logger
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -47,10 +47,13 @@ import kotlinx.coroutines.runBlocking
  * @param storageEngine the [StorageEngine] to use for storing/retrieving documents.
  * @param secureAreaRepository the repository of configured [SecureArea] that can
  * be used.
+ * @param credentialFactory the [CredentialFactory] to use for retrieving serialized credentials
+ * associated with documents.
  */
 class DocumentStore(
     private val storageEngine: StorageEngine,
-    private val secureAreaRepository: SecureAreaRepository
+    private val secureAreaRepository: SecureAreaRepository,
+    private val credentialFactory: CredentialFactory
 ) {
     // Use a cache so the same instance is returned by multiple lookupDocument() calls.
     private val documentCache = mutableMapOf<String, Document>()
@@ -79,7 +82,8 @@ class DocumentStore(
             storageEngine,
             secureAreaRepository,
             name,
-            this
+            this,
+            credentialFactory
         )
         return transientDocument
     }
@@ -106,7 +110,7 @@ class DocumentStore(
     fun lookupDocument(name: String): Document? {
         val result =
             documentCache[name]
-                ?: Document.lookup(storageEngine, secureAreaRepository, name, this)
+                ?: Document.lookup(storageEngine, secureAreaRepository, name, this, credentialFactory)
                 ?: return null
         documentCache[name] = result
         return result

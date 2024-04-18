@@ -9,7 +9,6 @@ import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.android.identity.document.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -19,6 +18,7 @@ import com.android.identity.mdoc.response.DeviceResponseGenerator
 import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.crypto.Algorithm
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.KeyLockedException
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
@@ -163,7 +163,7 @@ class TransferManager private constructor(private val context: Context) {
         docType: String,
         issuerSignedEntriesToRequest: MutableMap<String, Collection<String>>,
         deviceResponseGenerator: DeviceResponseGenerator,
-        authKey: Credential?,
+        credential: MdocCredential?,
         authKeyUnlockData: KeyUnlockData?,
     ) = suspendCancellableCoroutine { continuation ->
         var result: AddDocumentToResponseResult
@@ -181,11 +181,14 @@ class TransferManager private constructor(private val context: Context) {
 
         val request = DocumentRequest(dataElements)
 
-        val credentialToUse: Credential
-        if (authKey != null) {
-            credentialToUse = authKey
+        val credentialToUse: MdocCredential
+        if (credential != null) {
+            credentialToUse = credential
         } else {
-            credentialToUse = document.findCredential(ProvisioningUtil.CREDENTIAL_DOMAIN, Timestamp.now())
+            credentialToUse = document.findCredential(
+                ProvisioningUtil.CREDENTIAL_DOMAIN,
+                Timestamp.now()
+            ) as MdocCredential?
                 ?: throw IllegalStateException("No credential available")
         }
 

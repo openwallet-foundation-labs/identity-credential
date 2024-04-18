@@ -21,10 +21,10 @@ import com.android.identity.android.securearea.UserAuthenticationType
 import com.android.identity.android.securearea.userAuthenticationTypeSet
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.CborMap
-import com.android.identity.document.Credential
 import com.android.identity.crypto.Algorithm
 import com.android.identity.securearea.CreateKeySettings
 import com.android.identity.crypto.EcCurve
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.securearea.KeyPurpose
 import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Timestamp
@@ -51,12 +51,12 @@ class AndroidKeystoreSecureAreaSupport(
     )
 
     override fun Fragment.unlockKey(
-        authKey: Credential,
+        credential: MdocCredential,
         onKeyUnlocked: (unlockData: KeyUnlockData?) -> Unit,
         onUnlockFailure: (wasCancelled: Boolean) -> Unit
     ) {
-        val keyInfo = authKey.secureArea.getKeyInfo(authKey.alias) as AndroidKeystoreKeyInfo
-        val unlockData = AndroidKeystoreKeyUnlockData(authKey.alias)
+        val keyInfo = credential.secureArea.getKeyInfo(credential.alias) as AndroidKeystoreKeyInfo
+        val unlockData = AndroidKeystoreKeyUnlockData(credential.alias)
 
         val allowLskf = keyInfo.userAuthenticationTypes.contains(UserAuthenticationType.LSKF)
         val allowBiometric = keyInfo.userAuthenticationTypes.contains(UserAuthenticationType.BIOMETRIC)
@@ -74,7 +74,7 @@ class AndroidKeystoreSecureAreaSupport(
             .withCancelledCallback {
                 if (allowLskfUnlock) {
                     val runnable = {
-                        unlockKey(authKey, onKeyUnlocked, onUnlockFailure)
+                        unlockKey(credential, onKeyUnlocked, onUnlockFailure)
                     }
                     // Without this delay, the prompt won't reshow
                     Handler(Looper.getMainLooper()).postDelayed(runnable, 100)

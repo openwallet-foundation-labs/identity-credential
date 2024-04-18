@@ -51,6 +51,7 @@ import com.android.identity.mdoc.response.DocumentGenerator
 import com.android.identity.mdoc.util.MdocUtil
 import com.android.identity.preconsent_mdl.ui.theme.IdentityCredentialTheme
 import com.android.identity.crypto.Algorithm
+import com.android.identity.mdoc.credential.MdocCredential
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
@@ -257,7 +258,7 @@ class PresentationActivity : ComponentActivity() {
         val documentRequest = MdocUtil.generateDocumentRequest(docRequest!!)
         val now = Timestamp.now()
         val document = transferHelper.documentStore.lookupDocument(MainActivity.CREDENTIAL_ID)!!
-        val credential = document.findCredential(MainActivity.AUTH_KEY_DOMAIN, now)!!
+        val credential = document.findCredential(MainActivity.AUTH_KEY_DOMAIN, now) as MdocCredential
 
         val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()
         val mergedIssuerNamespaces = MdocUtil.mergeIssuerNamesSpaces(
