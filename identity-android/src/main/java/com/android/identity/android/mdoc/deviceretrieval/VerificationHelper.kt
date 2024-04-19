@@ -664,6 +664,14 @@ class VerificationHelper internal constructor(
                     checkNotNull(encodedDeviceEngagement) { "Device Engagement not found in HS message" }
                     check(parsedCms.size >= 1) { "No Alternative Carriers in HS message" }
 
+                    // Now that we have DeviceEngagement, pass eDeviceKeyBytes to the transport
+                    // since it's needed for the Ident characteristic as per ISO/IEC 18013-5:2021
+                    // clause 8.3.3.1.1.3 Connection setup
+                    val engagement = EngagementParser(encodedDeviceEngagement).parse()
+                    for (t in negotiatedHandoverListeningTransports) {
+                        t.setEDeviceKeyBytes(engagement.eSenderKeyBytes)
+                    }
+
                     // TODO: use selected CMs to pick from the list we offered... why would we
                     //  have to do this? Because some mDL / wallets don't return the UUID in
                     //  the HS message.

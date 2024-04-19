@@ -196,6 +196,7 @@ class DataTransportBleCentralClientMode(
 
     override fun setEDeviceKeyBytes(encodedEDeviceKeyBytes: ByteArray) {
         this.encodedEDeviceKeyBytes = encodedEDeviceKeyBytes
+        gattServer?.setEDeviceKeyBytes(encodedEDeviceKeyBytes)
     }
 
     // TODO: Check if BLE is enabled and error out if not so...
