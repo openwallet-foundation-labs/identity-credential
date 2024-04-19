@@ -22,75 +22,168 @@ import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.MapBuilder
 import com.android.identity.document.Document
 import com.android.identity.document.DocumentStore
+import com.android.identity.document.DocumentUtil
+import com.android.identity.securearea.SecureArea
 import com.android.identity.util.ApplicationData
 import com.android.identity.util.Logger
 import com.android.identity.util.SimpleApplicationData
 import com.android.identity.util.Timestamp
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.datetime.Clock
 
 /**
  * Base class for credentials.
  *
  * When a [Credential] is created, it is not certified. In order to use the [Credential]
- * for provisioning and presentation, call [Credential.certify] to certify the credential.
+ * for presentation, call [Credential.certify] to certify the credential. This is usually
+ * done by sending metadata about the [Credential] to the issuer and getting issuer-signed
+ * data back, including the validity-period the credential.
  *
- * When an application creates a new implementation of [Credential], it can be used by [Document]
- * by adding the new [Credential] implementation to a [CredentialFactory] (using the
- * [CredentialFactory.addCredentialImplementation] method) which is passed into [DocumentStore].
+ * An unique identifier for the credential is available in the [Credential.identifier]
+ * property which is set at credential creation time.
  *
- * Each concrete implementation should have a companion object with the following method to
- * generate a new credential instance of that type:
- * + fromCbor(dataItem: DataItem, document: Document): Credential
+ * Since credentials can be valid for only a limited time, applications are likely wanting
+ * to replace them on a regular basis. To this end, the [Credential] class has the
+ * [Credential.replacement] and [Credential.replacementFor] properties. For a high-level
+ * helper using this infrastructure, see [DocumentUtil.managedCredentialHelper].
  *
- * For example, [SecureAreaBoundCredential] contains [SecureAreaBoundCredential.Companion.fromCbor]
- * which utilizes [deserialize]
+ * Each credential has a _domain_ associated with it which is a textual string chosen
+ * by the application. This can be used to group credentials together and update a
+ * single domain independently of another one. For example, a [Document] may have
+ * - 10 [MDocCredential]s for normal use in the domain "mdoc", each requiring user authentication
+ *   to present.
+ * - 10 [MDocCredential]s for age-attestation in the domain "mdoc_age_attestation" which
+ *   are provisioned with only age attributes and the portrait image. These don't require user
+ *   authentication to present.
+ * At presentation time the application can pick a credential from "mdoc_age_attestation" domain
+ * if the verifier's request only includes age attestation. Since user authentication is not
+ * required to present these, this could be used to implement a pre-consent flow where the
+ * information is shared at the moment the user taps their device against the verifier.
+ *
+ * A credential may be invalidated and this is tracked in the [Credential.isInvalidated]
+ * property. For example this may happen if underlying key material for the credential
+ * is no longer usable, see [SecureArea.getKeyInvalidated] for example.
+ *
+ * [Credential] may be subclassed (for example, see [SecureAreaBoundCredential] and
+ * [MdocCredential]) and applications and libraries may bring their own implementations. An
+ * application will need to register its implementations with the [CredentialFactory] instance
+ * they use with their [DocumentStore] instance.
+ *
+ * Each concrete implementation of [Credential] must have `constructor(document: Document,
+ * dataItem: DataItem)` to construct an instance from serialized data. This is used by
+ * [CredentialFactory.createCredential] which is used when loading a [Document] instance from disk
+ * and deserializing its [Credential] instances.
  */
-open class Credential protected constructor() {
+open class Credential {
+    companion object {
+        private const val TAG = "Credential"
+        private const val CREDENTIAL_ID_PREFIX = "Credential"
 
-    /**
-     * Creates a new [Credential]
-     *
-     * @param asReplacementFor the credential this credential will replace, if not null
-     * @param domain the domain of the credential
-     */
-    constructor(
-        asReplacementFor: Credential?,
-        domain: String
-    ) : this() {
-        Credential.apply { create(asReplacementFor, domain) }
+        private var uniqueIdentifierCounter = 0
+        private val uniqueIdentifierCounterLock = Mutex()
     }
 
-    companion object {
-        const val TAG = "Credential"
+    /**
+     * Constructs a new [Credential].
+     *
+     * @param document the document to add the credential to.
+     * @param asReplacementFor the credential this credential will replace, if not null.
+     * @param domain the domain of the credential.
+     */
+    constructor(
+        document: Document,
+        asReplacementFor: Credential?,
+        domain: String
+    ) {
+        check(asReplacementFor?.replacement == null) {
+            "The given credential already has an existing pending credential intending to replace it"
+        }
+        this.domain = domain
+        this.identifier = createUniqueIdentifier()
+        this.document = document
+        replacementForIdentifier = asReplacementFor?.identifier
+        asReplacementFor?.replacementIdentifier = this.identifier
+        _applicationData = SimpleApplicationData { document.saveDocument() }
+        // Only the leaf constructor should add the credential to the document.
+        if (this::class == Credential::class) {
+            addToDocument()
+        }
+    }
 
-        /**
-         * Deserializes a credential for a particular document.
-         *
-         * @param dataItem the serialized credential.
-         * @param document the document associated with the credential.
-         * @return the credential object.
-         */
-        fun fromCbor(
-            dataItem: DataItem,
-            document: Document
-        ) = Credential().apply { deserialize(dataItem, document) }
+    // Should only be called by the leaf constructor, like this
+    //
+    //   if (this::class == MyCredentialClass::class) {
+    //       addToDocument()
+    //   }
+    //
+    // where MyCredentialClass is a class derived from Credential.
+    //
+    protected fun addToDocument() {
+        credentialCounter = document.addCredential(this)
+        document.saveDocument()
+    }
+
+    /**
+     * Constructs a Credential from serialized data.
+     *
+     * @param document the [Document] that the credential belongs to.
+     * @param dataItem the serialized data.
+     */
+    constructor(
+        document: Document,
+        dataItem: DataItem
+    ) {
+        val applicationDataDataItem = dataItem["applicationData"]
+        check(applicationDataDataItem is Bstr) { "applicationData not found or not byte[]" }
+        this.document = document
+        _applicationData = SimpleApplicationData
+            .decodeFromCbor(applicationDataDataItem.value) {
+                document.saveDocument()
+            }
+
+        identifier = dataItem["identifier"].asTstr
+        domain = dataItem["domain"].asTstr
+        usageCount = dataItem["usageCount"].asNumber.toInt()
+        isCertified = dataItem["isCertified"].asBoolean
+
+        if (isCertified) {
+            _issuerProvidedData = dataItem["data"].asBstr
+            _validFrom = Timestamp.ofEpochMilli(dataItem["validFrom"].asNumber)
+            _validUntil = Timestamp.ofEpochMilli(dataItem["validUntil"].asNumber)
+        } else {
+            _issuerProvidedData = null
+            _validFrom = null
+            _validUntil = null
+        }
+
+        replacementIdentifier = dataItem.getOrNull("replacementAlias")?.asTstr
+        replacementForIdentifier = dataItem.getOrNull("replacementForAlias")?.asTstr
+
+        credentialCounter = dataItem["credentialCounter"].asNumber
+
+    }
+
+    // Creates an alias which is guaranteed to be unique for all time (assuming the system clock
+    // only goes forwards)
+    private fun createUniqueIdentifier(): String {
+        synchronized(uniqueIdentifierCounterLock) {
+            val now = Clock.System.now()
+            return "${CREDENTIAL_ID_PREFIX}_${now.epochSeconds}_${now.nanosecondsOfSecond}_${uniqueIdentifierCounter++}"
+        }
     }
 
     /**
      * A stable identifier for the Credential instance.
      */
-    var identifier: String = ""
-        protected set
+    val identifier: String
 
     /**
      * The domain of the credential.
-     *
-     * This returns the domain set when the credential was created.
      */
-    lateinit var domain: String
-        protected set
+    val domain: String
 
     /**
-     * How many times the credential in the slot has been used.
+     * How many times the credential has been used in an identity presentation.
      */
     var usageCount = 0
         protected set
@@ -104,7 +197,7 @@ open class Credential protected constructor() {
     /**
      * Indicates whether the credential has been invalidated.
      */
-    open val isInvalidated: Boolean = false
+    open val isInvalidated = false
 
     /**
      * Application specific data.
@@ -115,7 +208,7 @@ open class Credential protected constructor() {
      */
     val applicationData: ApplicationData
         get() = _applicationData
-    private var _applicationData: SimpleApplicationData = SimpleApplicationData {  }
+    private val _applicationData: SimpleApplicationData
 
     /**
      * The issuer-provided data associated with the credential.
@@ -150,28 +243,25 @@ open class Credential protected constructor() {
     /**
      * The credential counter.
      *
-     * This is the value of the Document's Credential Counter
-     * at the time this credential was created.
+     * This is the value of the Document's Credential Counter at the time this credential was
+     * created.
      */
-    var credentialCounter: Long = 0
+    var credentialCounter: Long = -1
         protected set
 
-    internal var document: Document? = null
-        set(value) {
-            field = value
-            credentialCounter = document!!.credentialCounter
-            _applicationData = SimpleApplicationData { document!!.saveDocument() }
-            identifier = document!!.name + "_credential_" + credentialCounter
-            replacementFor?.replacementIdentifier = this.identifier
-        }
+    /**
+     * The [Document] that the credential belongs to.
+     */
+    val document: Document
+
     internal var replacementIdentifier: String? = null
-    var replacementForIdentifier: String? = null
+    internal var replacementForIdentifier: String? = null
 
     /**
      * The credential that will be replaced by this credential once it's been certified.
      */
     val replacementFor: Credential?
-        get() = document!!.certifiedCredentials?.firstOrNull { it.identifier == replacementForIdentifier }
+        get() = document.certifiedCredentials.firstOrNull { it.identifier == replacementForIdentifier }
             .also {
                 if (it == null && replacementForIdentifier != null) {
                     Logger.w(
@@ -186,7 +276,7 @@ open class Credential protected constructor() {
      * credential is designated to replace this credential.
      */
     val replacement: Credential?
-        get() = document?.pendingCredentials?.firstOrNull { it.identifier == replacementIdentifier }
+        get() = document.pendingCredentials.firstOrNull { it.identifier == replacementIdentifier }
             .also {
                 if (it == null && replacementIdentifier != null) {
                     Logger.w(
@@ -202,15 +292,17 @@ open class Credential protected constructor() {
      * After deletion, this object should no longer be used.
      */
     open fun delete() {
-        document?.removeCredential(this)
+        document.removeCredential(this)
     }
 
     /**
      * Increases usage count of the credential.
+     *
+     * This should be called when a crdential has been presented to a verifier.
      */
     fun increaseUsageCount() {
         usageCount += 1
-        document?.saveDocument()
+        document.saveDocument()
     }
 
     /**
@@ -226,7 +318,6 @@ open class Credential protected constructor() {
         validUntil: Timestamp
     ) {
         check(!isCertified) { "Credential is already certified" }
-        check(document != null) { "Credential is not associated with a document" }
         isCertified = true
         _issuerProvidedData = issuerProvidedAuthenticationData
         _validFrom = validFrom
@@ -235,37 +326,16 @@ open class Credential protected constructor() {
         replacementFor?.delete()
         replacementForIdentifier = null
 
-        document!!.certifyPendingCredential(this)
+        document.certifyPendingCredential(this)
     }
 
     /**
-     * Utility function for when a credential is created for the first time. Called by [Credential]
-     * constructor and constructors of inheriting classes.
+     * Method which can be overridden by [Credential] subclasses to add any additional information
+     * when serializing a credential.
      *
-     * @param asReplacementFor the credential this credential will replace, if not null
-     * @param domain the domain of the credential
-     * @return the credential object.
+     * @param builder a [MapBuilder] which can be used to add data.
      */
-    protected fun create(
-        asReplacementFor: Credential?,
-        domain: String
-    ): Credential {
-        check(asReplacementFor?.replacement == null) {
-            "The given credential already has an existing pending credential intending to replace it"
-        }
-        replacementForIdentifier = asReplacementFor?.identifier
-        this.domain = domain
-        return this
-    }
-
-    /**
-     * Used by [Credential] implementation to add any additional information to the mapBuilder.
-     *
-     * Called by [toCbor].
-     *
-     * @param mapBuilder the mapBuilder which can be modified before being returned by [toCbor]
-     */
-    open fun addSerializedData(mapBuilder: MapBuilder<CborBuilder>) {}
+    open fun addSerializedData(builder: MapBuilder<CborBuilder>) {}
 
     /**
      * Serializes the credential.
@@ -273,73 +343,29 @@ open class Credential protected constructor() {
      * @return a [DataItem] with all of the credential information.
      */
     fun toCbor(): DataItem {
-        val mapBuilder = CborMap.builder()
-        mapBuilder.put("identifier", identifier)
+        val builder = CborMap.builder()
+        builder.put("identifier", identifier)
+            .put("credentialType", this::class.simpleName!!)  // used by CredentialFactory
             .put("domain", domain)
             .put("usageCount", usageCount.toLong())
             .put("isCertified", isCertified)
             .put("applicationData", _applicationData.encodeAsCbor())
             .put("credentialCounter", credentialCounter)
 
-        // adds the class name of the credential implementation - this is used by CredentialFactory.createCredential
-        this::class.simpleName?.let { mapBuilder.put("credentialType", it) }
-
         if (replacementForIdentifier != null) {
-            mapBuilder.put("replacementForAlias", replacementForIdentifier!!)
+            builder.put("replacementForAlias", replacementForIdentifier!!)
         }
         if (replacementIdentifier != null) {
-            mapBuilder.put("replacementAlias", replacementIdentifier!!)
+            builder.put("replacementAlias", replacementIdentifier!!)
         }
 
         if (isCertified) {
-            mapBuilder.put("data", issuerProvidedData)
+            builder.put("data", issuerProvidedData)
                 .put("validFrom", validFrom.toEpochMilli())
                 .put("validUntil", validUntil.toEpochMilli())
         }
 
-        addSerializedData(mapBuilder)
-        return mapBuilder.end().build()
-    }
-
-    /**
-     * Deserializes a credential for a particular document.
-     *
-     * @param dataItem the serialized credential.
-     * @param document the document associated with the credential.
-     * @return the credential object.
-     */
-    open fun deserialize(
-        dataItem: DataItem,
-        document: Document
-    ): Credential {
-        val applicationDataDataItem = dataItem["applicationData"]
-        check(applicationDataDataItem is Bstr) { "applicationData not found or not byte[]" }
-        this.document = document
-        _applicationData = SimpleApplicationData
-            .decodeFromCbor(applicationDataDataItem.value) {
-                document.saveDocument()
-            }
-
-        identifier = dataItem["identifier"].asTstr
-        domain = dataItem["domain"].asTstr
-        usageCount = dataItem["usageCount"].asNumber.toInt()
-        isCertified = dataItem["isCertified"].asBoolean
-
-        if (isCertified) {
-            _issuerProvidedData = dataItem["data"].asBstr
-            _validFrom = Timestamp.ofEpochMilli(dataItem["validFrom"].asNumber)
-            _validUntil = Timestamp.ofEpochMilli(dataItem["validUntil"].asNumber)
-        } else {
-            _issuerProvidedData = null
-            _validFrom = null
-            _validUntil = null
-        }
-
-        replacementIdentifier = dataItem.getOrNull("replacementAlias")?.asTstr
-        replacementForIdentifier = dataItem.getOrNull("replacementForAlias")?.asTstr
-
-        credentialCounter = dataItem["credentialCounter"].asNumber
-
-        return this
+        addSerializedData(builder)
+        return builder.end().build()
     }
 }

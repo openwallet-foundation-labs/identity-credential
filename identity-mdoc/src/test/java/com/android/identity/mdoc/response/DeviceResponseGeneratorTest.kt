@@ -124,6 +124,7 @@ class DeviceResponseGeneratorTest {
         timeValidityBegin = Timestamp.ofEpochMilli(nowMillis + 3600 * 1000)
         timeValidityEnd = Timestamp.ofEpochMilli(nowMillis + 10 * 86400 * 1000)
         mdocCredential = MdocCredential(
+            document,
             null,
             AUTH_KEY_DOMAIN,
             secureArea,
@@ -132,7 +133,6 @@ class DeviceResponseGeneratorTest {
                 .build(),
             "org.iso.18013.5.1.mDL"
         )
-        document.addCredential(mdocCredential)
         Assert.assertFalse(mdocCredential.isCertified)
 
         // Generate an MSO and issuer-signed data for this authentication key.

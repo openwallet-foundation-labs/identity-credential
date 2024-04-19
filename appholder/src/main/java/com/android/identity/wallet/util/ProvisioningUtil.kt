@@ -122,6 +122,7 @@ class ProvisioningUtil private constructor(
             document,
             CREDENTIAL_DOMAIN,
             {toBeReplaced -> MdocCredential(
+                document,
                 toBeReplaced,
                 CREDENTIAL_DOMAIN,
                 secureArea,

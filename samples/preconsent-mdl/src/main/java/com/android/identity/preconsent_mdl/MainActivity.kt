@@ -143,13 +143,13 @@ class MainActivity : ComponentActivity() {
         // Create three credentials and certify them
         for (n in 0..2) {
             val pendingCredential = MdocCredential(
+                document,
                 null,
                 AUTH_KEY_DOMAIN,
                 transferHelper.androidKeystoreSecureArea,
                 CreateKeySettings("".toByteArray()),
                 MDL_DOCTYPE
             )
-            document.addCredential(pendingCredential)
 
             // Generate an MSO and issuer-signed data for this credentials.
             val msoGenerator = MobileSecurityObjectGenerator(

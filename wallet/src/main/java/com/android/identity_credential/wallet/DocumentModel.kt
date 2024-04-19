@@ -635,6 +635,7 @@ class DocumentModel(
                     document,
                     credDomain,
                     {toBeReplaced -> MdocCredential(
+                        document,
                         toBeReplaced,
                         credDomain,
                         secureArea,
