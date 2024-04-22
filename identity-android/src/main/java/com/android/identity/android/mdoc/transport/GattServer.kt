@@ -74,13 +74,17 @@ internal class GattServer(
     private var identValue: ByteArray? = null
     private var usingL2CAP = false
 
+    fun setEDeviceKeyBytes(encodedEDeviceKeyBytes: ByteArray) {
+        val ikm: ByteArray = encodedEDeviceKeyBytes
+        val info = "BLEIdent".toByteArray()
+        val salt = byteArrayOf()
+        identValue = Crypto.hkdf(Algorithm.HMAC_SHA256, ikm, salt, info, 16)
+    }
+
     @SuppressLint("NewApi")
     fun start(): Boolean {
         if (encodedEDeviceKeyBytes != null) {
-            val ikm: ByteArray = encodedEDeviceKeyBytes
-            val info = "BLEIdent".toByteArray()
-            val salt = byteArrayOf()
-            identValue = Crypto.hkdf(Algorithm.HMAC_SHA256, ikm, salt, info, 16)
+            setEDeviceKeyBytes(encodedEDeviceKeyBytes)
         }
         gattServer = try {
             bluetoothManager.openGattServer(context, this)
