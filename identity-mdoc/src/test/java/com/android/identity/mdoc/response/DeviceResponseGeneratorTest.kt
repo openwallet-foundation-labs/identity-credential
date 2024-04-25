@@ -49,6 +49,7 @@ import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.EphemeralStorageEngine
 import com.android.identity.storage.StorageEngine
 import com.android.identity.util.Timestamp
+import com.android.identity.util.fromHex
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -551,6 +552,17 @@ class DeviceResponseGeneratorTest {
         Assert.assertEquals(1, doc.getIssuerEntryNames("ns2").size.toLong())
         Assert.assertEquals("foo1", doc.getIssuerEntryString("ns2", "bar1"))
     }
+
+    @Test
+    @Throws(Exception::class)
+    fun testDocumentGeneratorNoDocuments() {
+        val deviceResponseGenerator = DeviceResponseGenerator(20)
+        val encodedDeviceResponse = deviceResponseGenerator.generate()
+
+        // cbor of a DeviceResponse with no documents key: {"version": "1.0", "status": 20}
+        Assert.assertArrayEquals("A26776657273696F6E63312E306673746174757314".fromHex, encodedDeviceResponse)
+    }
+
 
     companion object {
         const val DOC_TYPE = "com.example.document_xyz"
