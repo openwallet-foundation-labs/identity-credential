@@ -6,6 +6,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.CborMap
 import com.android.identity.cbor.DataItem
 import com.android.identity.cbor.Simple
+import java.util.Collections
 
 /**
  * COSE Signature message for a single signer.
@@ -71,6 +72,12 @@ data class CoseSign1(
             if (serializedProtectedHeaders.isNotEmpty()) {
                 val ph = Cbor.decode(serializedProtectedHeaders) as CborMap
                 ph.items.forEach { (key, value) -> protectedHeaders[key.asCoseLabel] = value }
+            }
+
+            // Check if the unprotected and protected headers include the same keys.
+            // Enforcing the "Labels in each of the maps MUST be unique." restriction coming from https://datatracker.ietf.org/doc/html/rfc8152#autoid-8
+            if (!Collections.disjoint(unprotectedHeaders.keys, protectedHeaders.keys)) {
+                throw IllegalArgumentException("CoseSIGN1 contains duplicate protected and unprotected headers.");
             }
 
             var payloadOrNil: ByteArray? = null
