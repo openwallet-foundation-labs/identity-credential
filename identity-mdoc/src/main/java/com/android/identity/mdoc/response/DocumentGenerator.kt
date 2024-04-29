@@ -117,7 +117,7 @@ class DocumentGenerator
                     secureArea,
                     keyAlias,
                     deviceAuthenticationBytes,
-                    true,
+                    false,
                     signatureAlgorithm,
                     mapOf(
                         Pair(
