@@ -199,6 +199,8 @@ object Cose {
      * @param detachedData detached data, if any.
      * @param signature the COSE_Sign1 object.
      * @param signatureAlgorithm the signature algorithm to use.
+     * @throws IllegalArgumentException if not exactly one of `detachedData` and
+     * `signature.payload` are non-`null`.
      * @return whether the signature is valid and was made with the private key corresponding to the
      * given public key.
      */
@@ -209,6 +211,10 @@ object Cose {
         signature: CoseSign1,
         signatureAlgorithm: Algorithm
     ): Boolean {
+        require(
+            (detachedData != null && signature.payload == null) ||
+                    (detachedData == null && signature.payload != null)
+        )
         val encodedProtectedHeaders =
             if (signature.protectedHeaders.isNotEmpty()) {
                 val phb = CborMap.builder()
